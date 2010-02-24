@@ -26,18 +26,16 @@
 #include <errno.h>
 #include <signal.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #include <linux/videodev2.h>
 #include <libv4l2.h>
-#include <libavformat/avformat.h>
 
 #define MP4_DATA_SIZE		(1024 * 1024)
 #define XVID_HEADER_SIZE	30
 
-#define MMAP_IO
-
 #define vprint(fmt, args...) \
-    ({ if (verbose) printf(fmt , ## args); })
+    ({ if (verbose) fprintf(stderr, fmt , ## args); })
 
 static int userptr_io;
 static int read_io;
@@ -46,6 +44,7 @@ static int buf_req = 8;
 static const char *outfile;
 static int mp4_size;
 static int verbose;
+static int out_fd;
 
 static int (*my_open)(const char *, int, ...) = open;
 static int (*my_close)(int) = close;
@@ -78,11 +77,6 @@ struct vop_header {
 	uint32_t end_nops[10];
 } __attribute__((packed));
 
-/* AVFormat stuff */
-static AVOutputFormat *fmt_out;
-static AVStream *video_st;
-static AVFormatContext *oc;
-
 static unsigned char xvid_header_stub[XVID_HEADER_SIZE] = {
 	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x20,
 	0x02, 0x48, 0x0d, 0xc0, 0x00, 0x40, 0x00, 0x40,
@@ -94,24 +88,17 @@ static int transcode_to_output(void *mp4)
 {
 	unsigned char *p;
 	struct vop_header *vh = mp4;
-	AVPacket pkt;
-
-	av_init_packet(&pkt);
-	pkt.stream_index = 0;
+	size_t size;
 
 	/* Skip the solo vop header */
 	mp4 += sizeof(*vh);
-
-	/* Sanity checks */
-	if (vh->size > mp4_size)
-		return 0;
 
 	/* This only works because the parts of vop_header we care about
 	 * are in the 34 bytes at the start of the buffer, and we only
 	 * overwrite the last 30 bytes for xvid_header_stub in i-frame case */
 	if (vh->vop_type == 0) {
 		/* Type 0 == I-frame */
-		mp4 = mp4 - sizeof(xvid_header_stub);
+		mp4 -= sizeof(xvid_header_stub);
 		memcpy(mp4, xvid_header_stub, sizeof(xvid_header_stub));
 
 		/* Munge the header */
@@ -126,109 +113,20 @@ static int transcode_to_output(void *mp4)
 		else
 			p[27] = (((vh->vsize << 4) & 0x3) << 6) + 0x28;
 
-		pkt.flags |= PKT_FLAG_KEY;
-		pkt.size = vh->size + sizeof(xvid_header_stub);
+		size = vh->size + sizeof(xvid_header_stub);
 	} else {
 		/* Anything else is a P frame */
-		pkt.size = vh->size;
+		size = vh->size;
 	}
 
-	pkt.data = mp4;
+	/* Sanity checks */
+	if (size > mp4_size)
+		return -1;
 
-	if (av_write_frame(oc, &pkt))
+	if (write(out_fd, mp4, size) != size)
 		return -1;
 
 	return 0;
-}
-
-static void close_avcodec(int sig)
-{
-	int i;
-
-	avcodec_close(video_st->codec);
-	av_write_trailer(oc);
-
-	for (i = 0; i < oc->nb_streams; i++) {
-		av_freep(&oc->streams[i]->codec);
-		av_freep(&oc->streams[i]);
-	}
-
-	if (!(fmt_out->flags & AVFMT_NOFILE))
-		url_fclose(oc->pb);
-
-	av_free(oc);
-
-	if (sig)
-		error(1, 0, "Terminated by signal");
-}
-
-static void open_avcodec(struct vop_header *vh)
-{
-	AVCodec *codec;
-	AVInputFormat *fmt_in;
-	struct sigaction sa;
-
-	/* This will make sure we close the stream */
-	sa.sa_handler = close_avcodec;
-	sa.sa_restorer = NULL;
-	sa.sa_flags = 0;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGKILL, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-
-	/* Initialize avcodec */
-	avcodec_init();
-	avcodec_register_all();
-	av_register_all();
-
-	/* Get the input and output formats */
-	fmt_out = guess_format(NULL, outfile, NULL);
-	if (!fmt_out)
-		error(1, 0, "Could not detect output file format");
-	fmt_in = av_find_input_format("mpeg");
-	if (!fmt_in)
-		error(1, 0, "Could not detect input file format");
-
-	oc = avformat_alloc_context();
-	if (!oc)
-		error(1, 0, "Could not allocate format context");
-
-	oc->oformat = fmt_out;
-	oc->iformat = fmt_in;
-	snprintf(oc->filename, sizeof(oc->filename), "%s", outfile);
-
-	/* Setup new video stream */
-	video_st = av_new_stream(oc, 0);
-	if (!video_st)
-		error(1, 0, "Failed to create new video stream");
-
-	video_st->codec->codec_id = CODEC_ID_MPEG4;
-	video_st->codec->codec_type = CODEC_TYPE_VIDEO;
-	video_st->codec->pix_fmt = PIX_FMT_YUV420P;
-	video_st->codec->width = vh->hsize << 4;
-	video_st->codec->height = vh->vsize << 4;
-	video_st->codec->time_base.den = 30;
-	video_st->codec->time_base.num = 1;
-
-	if (av_set_parameters(oc, NULL) < 0)
-		error(1, 0, "Invalid output format parameters");
-
-	/* Open Video output */
-	if ((codec = avcodec_find_encoder(video_st->codec->codec_id)) == NULL)
-		error(1, 0, "Cannot find output video codec");
-
-	if (avcodec_open(video_st->codec, codec) < 0)
-		error(1, 0, "Cannot open output video codec");
-
-	/* Open output file, if needed */
-	if (!(fmt_out->flags & AVFMT_NOFILE))
-		if (url_fopen(&oc->pb, outfile, URL_WRONLY) < 0)
-			error(1, 0, "Could not open output file");
-
-	av_write_header(oc);
-
-	return;
 }
 
 #define reset_vbuf(__vb) do {				\
@@ -371,7 +269,6 @@ static void return_buf(int fd)
 static void do_decode(int fd)
 {
 	void *mp4;
-	int first_read = 1;
 	unsigned long long size = 0;
 
 	prepare_buffers(fd);
@@ -383,12 +280,6 @@ static void do_decode(int fd)
 		if (!mp4)
 			break;
 
-		/* We need the header to open the codec */
-		if (first_read) {
-			open_avcodec(mp4);
-			first_read = 0;
-		}
-
 		if (transcode_to_output(mp4)) {
 			error(0, 0, "Error during transcode");
 			break;
@@ -396,9 +287,6 @@ static void do_decode(int fd)
 
 		return_buf(fd);
 	}
-
-	if (!first_read)
-		close_avcodec(0);
 }
 
 extern char *__progname;
@@ -463,6 +351,11 @@ int main(int argc, char **argv)
 	else
 		vprint("mmap I/O\n");
 
+	/* Open the output file */
+	out_fd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+	if (out_fd < 0)
+		error(1, errno, "%s: error opening outfile", outfile);
+
 	/* Open the device */
 	fd = my_open(dev, O_RDWR);
 	if (fd < 0)
@@ -495,7 +388,7 @@ int main(int argc, char **argv)
 	vprint("  Bus info: %s\n", dev_cap.bus_info);
 
 	if (!verbose)
-		printf("%s: Starting record\n", dev);
+		fprintf(stderr, "%s: Starting record\n", dev);
 
 	do_decode(fd);
 
