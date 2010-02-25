@@ -27,104 +27,135 @@
 #include <signal.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <stdio.h>
 
 #include <linux/videodev2.h>
-#include <libv4l2.h>
 
 #define MP4_DATA_SIZE		(1024 * 1024)
-#define XVID_HEADER_SIZE	30
 
 #define vprint(fmt, args...) \
     ({ if (verbose) fprintf(stderr, fmt , ## args); })
 
 static int userptr_io;
 static int read_io;
-static int libv4l2;
 static int buf_req = 8;
 static const char *outfile;
 static int mp4_size;
 static int verbose;
 static int out_fd;
 
-static int (*my_open)(const char *, int, ...) = open;
-static int (*my_close)(int) = close;
-static int (*my_ioctl)(int, unsigned long int, ...) = ioctl;
-static ssize_t (*my_read)(int, void *, size_t) = read;
-static void *(*my_mmap)(void *, size_t, int, int, int, off_t) = mmap;
-static int (*my_munmap)(void *, size_t) = munmap;
-
 struct vop_header {
 	/* VD_IDX0 */
-	uint32_t size:20, sync_start:1, page_stop:1, vop_type:2, channel:4,
+	u_int32_t size:20, sync_start:1, page_stop:1, vop_type:2, channel:4,
 		nop0:1, source_fl:1, interlace:1, progressive:1;
 
 	/* VD_IDX1 */
-	uint32_t vsize:8, hsize:8, frame_interop:1, nop1:7, win_id:4, scale:4;
+	u_int32_t vsize:8, hsize:8, frame_interop:1, nop1:7, win_id:4, scale:4;
 
 	/* VD_IDX2 */
-	uint32_t base_addr:16, nop2:15, hoff:1;
+	u_int32_t base_addr:16, nop2:15, hoff:1;
 
 	/* VD_IDX3 - User set macros */
-	uint32_t sy:12, sx:12, nop3:1, hzoom:1, read_interop:1,
+	u_int32_t sy:12, sx:12, nop3:1, hzoom:1, read_interop:1,
 		write_interlace:1, scale_mode:4;
 
 	/* VD_IDX4 - User set macros continued */
-	uint32_t write_page:8, nop4:24;
+	u_int32_t write_page:8, nop4:24;
 
 	/* VD_IDX5 */
-	uint32_t next_code_addr;
+	u_int32_t next_code_addr;
 
-	uint32_t end_nops[10];
+	u_int32_t end_nops[10];
 } __attribute__((packed));
 
-static unsigned char xvid_header_stub[XVID_HEADER_SIZE] = {
+#define PAR_11_VGA	1 // 1:1 Square
+#define PAR_43_PAL	2 // 4:3 pal (12:11 625-line)
+#define PAR_43_NTSC	3 // 4:3 ntsc (10:11 525-line)
+
+/* Simple profile level 3, object type video, plus fancy header */
+static unsigned char vid_file_header[] = {
+	0x00, 0x00, 0x01, 0xB0, 0x03, 0x00, 0x00, 0x01,
+	0xB5, 0x09, 0x00, 0x00, 0x01, 0xb2,
+	'B', 'l', 'u', 'e', 'c', 'h', 'e', 'r', 'r', 'y',
+};
+
+static unsigned char vid_vop_header[] = {
 	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x20,
 	0x02, 0x48, 0x0d, 0xc0, 0x00, 0x40, 0x00, 0x40,
-	0x00, 0x40, 0x00, 0x80, 0x00, 0x97, 0x53, 0x0a,
-	0x2c, 0x08, 0x3c, 0x28, 0x8c, 0x1f
+	0x00, 0x40, 0x00, 0x80, 0x00, 0x97, 0x53, 0x04,
+	0x1f, 0x4c, 0x58, 0x10, 0x78, 0x51, 0x18, 0x3e,
 };
+
+/*
+ * Things we can change around:
+ *
+ * byte  10,        4-bits 01111000                   aspect
+ * bytes 21,22,23, 16-bits 000x1111 11111111 1111x000 fps/res
+ * bytes 23,24,25  15-bits 00000n11 11111111 11111x00 interval
+ * bytes 25,26,27  13-bits 00000x11 11111111 111x0000 width
+ * bytes 27,28,29  13-bits 000x1111 11111111 1x000000 height
+ * byte  29         1-bit  0x100000                   interlace
+ */
+
+static void write_header(void)
+{
+	if (write(out_fd, vid_file_header, sizeof(vid_file_header)) !=
+	    sizeof(vid_file_header))
+		error(1, errno, "writing header to outfile");
+}
 
 static int transcode_to_output(void *mp4)
 {
-	unsigned char *p;
 	struct vop_header *vh = mp4;
-	size_t size;
+	static int vop_once;
 
 	/* Skip the solo vop header */
 	mp4 += sizeof(*vh);
 
-	/* This only works because the parts of vop_header we care about
-	 * are in the 34 bytes at the start of the buffer, and we only
-	 * overwrite the last 30 bytes for xvid_header_stub in i-frame case */
+	/* Sanity checks */
+	if (vh->size > mp4_size)
+		return 0;
+	if ((vh->vsize << 4) > 704 || (vh->hsize << 4) > 576)
+		return 0;
+
 	if (vh->vop_type == 0) {
-		/* Type 0 == I-frame */
-		mp4 -= sizeof(xvid_header_stub);
-		memcpy(mp4, xvid_header_stub, sizeof(xvid_header_stub));
+		unsigned char *p = vid_vop_header;
 
-		/* Munge the header */
-		p = mp4;
-		p[24] = vh->hsize;
-		p[25] = (vh->hsize << 8) + 0x8 +
-		    ((vh->vsize >> 6) & 0x7);
-		p[26] = (vh->vsize << 2) & 0xff;
+		/* Should not change mid-stream */
+		if (!vop_once) {
+			unsigned short fps = 30000;
+			unsigned short interval = 1000;
+			unsigned short w = vh->hsize << 4;
+			unsigned short h = vh->vsize << 4;
 
-		if (vh->scale > 8)
-			p[27] = (((vh->vsize << 4) & 0x3) << 6) + 0x38;
-		else
-			p[27] = (((vh->vsize << 4) & 0x3) << 6) + 0x28;
+			/* Aspect ration */
+			p[10] = (p[10] & 0x87) | ((PAR_43_NTSC << 3) & 0x78);
 
-		size = vh->size + sizeof(xvid_header_stub);
-	} else {
-		/* Anything else is a P frame */
-		size = vh->size;
+			/* Frame rate and interval */
+			p[22] = fps >> 4;
+			p[23] = ((fps << 4) & 0xf0) | 0x04 | (interval >> 13);
+			p[24] = (interval >> 5) & 0xff;
+			p[25] = ((interval << 3) & 0xf8) | 0x04;
+
+			/* Width and height */
+			p[26] = (w >> 3) & 0xff;
+			p[27] = ((h >> 9) & 0x0f) | 0x10;
+			p[28] = (h >> 1) & 0xff;
+
+			/* Interlace */
+			if (vh->scale > 8)
+				p[29] |= 0x20;
+
+			vop_once = 1;
+		}
+
+		if (write(out_fd, p, sizeof(vid_vop_header)) !=
+		    sizeof(vid_vop_header))
+			return errno;
 	}
 
-	/* Sanity checks */
-	if (size > mp4_size)
-		return -1;
-
-	if (write(out_fd, mp4, size) != size)
-		return -1;
+	if (write(out_fd, mp4, vh->size) != vh->size)
+		return errno;
 
 	return 0;
 }
@@ -159,7 +190,7 @@ static void prepare_buffers(int fd)
 	req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	req.memory = (userptr_io ? V4L2_MEMORY_USERPTR : V4L2_MEMORY_MMAP);
 
-	if (my_ioctl(fd, VIDIOC_REQBUFS, &req) < 0)
+	if (ioctl(fd, VIDIOC_REQBUFS, &req) < 0)
 		error(1, errno, "Device does not support mmap?");
 
 	if (req.count < 2)
@@ -178,7 +209,7 @@ static void prepare_buffers(int fd)
 		reset_vbuf(&vbuf);
 		vbuf.index = i;
 
-		if (my_ioctl(fd, VIDIOC_QUERYBUF, &vbuf) < 0)
+		if (ioctl(fd, VIDIOC_QUERYBUF, &vbuf) < 0)
 			error(1, errno, "VIDIOC_QUERYBUF failed");
 
 		if (userptr_io) {
@@ -190,7 +221,7 @@ static void prepare_buffers(int fd)
 				error(1, errno, "posix_memalign failed");
 		} else {
 			p_bufs[i].size = vbuf.length;
-			p_bufs[i].data = my_mmap(NULL, vbuf.length,
+			p_bufs[i].data = mmap(NULL, vbuf.length,
 					   PROT_WRITE | PROT_READ, MAP_SHARED,
 					   fd, vbuf.m.offset);
 			if (p_bufs[i].data == MAP_FAILED)
@@ -217,12 +248,12 @@ static void start_streaming(int fd)
 			vbuf.m.userptr = (unsigned long)p_bufs[i].data;
 			vbuf.length = p_bufs[i].size;
 		}
-		if (my_ioctl(fd, VIDIOC_QBUF, &vbuf) < 0)
+		if (ioctl(fd, VIDIOC_QBUF, &vbuf) < 0)
 			error(1, errno, "qbuf failed");
 	}
 
 	buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (my_ioctl(fd, VIDIOC_STREAMON, &buf_type) < 0)
+	if (ioctl(fd, VIDIOC_STREAMON, &buf_type) < 0)
 		error(1, errno, "streamon failed");
 }
 
@@ -232,7 +263,7 @@ struct v4l2_buffer *q_vbuf = (struct v4l2_buffer *)read_buf;
 static void *get_next_frame(int fd, unsigned long long *size)
 {
 	if (read_io) {
-		int ret = my_read(fd, read_buf, sizeof(read_buf));
+		int ret = read(fd, read_buf, sizeof(read_buf));
 		if (ret <= 0) {
 			error(0, errno, "error in read");
 			return NULL;
@@ -243,7 +274,7 @@ static void *get_next_frame(int fd, unsigned long long *size)
 
 	reset_vbuf(q_vbuf);
 
-	if (my_ioctl(fd, VIDIOC_DQBUF, q_vbuf) < 0) {
+	if (ioctl(fd, VIDIOC_DQBUF, q_vbuf) < 0) {
 		error(0, errno, "error in dqbuf");
 		return NULL;
 	}
@@ -262,7 +293,7 @@ static void return_buf(int fd)
 	if (read_io)
 		return;
 
-	if (my_ioctl(fd, VIDIOC_QBUF, q_vbuf) < 0)
+	if (ioctl(fd, VIDIOC_QBUF, q_vbuf) < 0)
 		error(0, errno, "Error requeuing buffer");
 }
 
@@ -270,9 +301,11 @@ static void do_decode(int fd)
 {
 	void *mp4;
 	unsigned long long size = 0;
+	int ret;
 
 	prepare_buffers(fd);
 	start_streaming(fd);
+	write_header();
 
 	/* One loop per frame */
 	for (;;) {
@@ -280,8 +313,8 @@ static void do_decode(int fd)
 		if (!mp4)
 			break;
 
-		if (transcode_to_output(mp4)) {
-			error(0, 0, "Error during transcode");
+		if ((ret = transcode_to_output(mp4))) {
+			error(0, ret, "Error during transcode");
 			break;
 		}
 
@@ -296,7 +329,6 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s <args> [-o outfile]\n", __progname);
 	fprintf(stderr, "  -d\tName of v4l2 device (/dev/video0 default)\n");
 	fprintf(stderr, "  -o\tName of output file (required)\n");
-	fprintf(stderr, "  -V\tUse libv4l2 wrapper (default no)\n");
 	fprintf(stderr, "  -b\tNumber of buffers to use for mmap/userptr\n");
 	fprintf(stderr, "  -v\tVerbose output\n");
 	fprintf(stderr, "By default MMAP I/O is used. Alternatives:\n");
@@ -312,13 +344,12 @@ int main(int argc, char **argv)
 	int fd;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:o:b:urVvh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:o:b:urvh")) != -1) {
 		switch (opt) {
 		case 'o': outfile	= optarg;	break;
 		case 'd': dev		= optarg;	break;
 		case 'u': userptr_io	= 1;		break;
 		case 'r': read_io	= 1;		break;
-		case 'V': libv4l2	= 1;		break;
 		case 'b': buf_req	= atoi(optarg); break;
 		case 'v': verbose	= 1;		break;
 		case 'h':
@@ -333,23 +364,12 @@ int main(int argc, char **argv)
 	if (read_io && userptr_io)
 		usage();
 
-	if (libv4l2) {
-		my_open = v4l2_open;
-		my_close = v4l2_close;
-		my_ioctl = v4l2_ioctl;
-		my_read = v4l2_read;
-		my_mmap = v4l2_mmap;
-		my_munmap = v4l2_munmap;
-		vprint("Using libv4l2 with ");
-	} else
-		vprint("Using direct calls with ");
-
 	if (read_io)
-		vprint("read I/O\n");
+		vprint("Using read I/O\n");
 	else if (userptr_io)
-		vprint("user pointer I/O\n");
+		vprint("Using user pointer I/O\n");
 	else
-		vprint("mmap I/O\n");
+		vprint("Using mmap I/O\n");
 
 	/* Open the output file */
 	out_fd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0644);
@@ -357,12 +377,12 @@ int main(int argc, char **argv)
 		error(1, errno, "%s: error opening outfile", outfile);
 
 	/* Open the device */
-	fd = my_open(dev, O_RDWR);
+	fd = open(dev, O_RDWR);
 	if (fd < 0)
 		error(1, errno, "%s: error opening device", dev);
 
 	/* Query the capbilites and verify it is a solo encoder */
-	if (my_ioctl(fd, VIDIOC_QUERYCAP, &dev_cap) < 0)
+	if (ioctl(fd, VIDIOC_QUERYCAP, &dev_cap) < 0)
 		error(1, 0, "%s: error getting capabilities", dev);
 
 	if (!(dev_cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
@@ -392,7 +412,7 @@ int main(int argc, char **argv)
 
 	do_decode(fd);
 
-	my_close(fd);
+	close(fd);
 
 	return 0;
 }
