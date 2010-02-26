@@ -31,7 +31,7 @@
 
 #include <linux/videodev2.h>
 
-#define MP4_DATA_SIZE		(1024 * 1024)
+#define MP4_DATA_SIZE		(256 * 1024)
 
 #define vprint(fmt, args...) \
     ({ if (verbose) fprintf(stderr, fmt , ## args); })
@@ -40,125 +40,15 @@ static int userptr_io;
 static int read_io;
 static int buf_req = 8;
 static const char *outfile;
-static int mp4_size;
 static int verbose;
 static int out_fd;
-
-struct vop_header {
-	/* VD_IDX0 */
-	u_int32_t size:20, sync_start:1, page_stop:1, vop_type:2, channel:4,
-		nop0:1, source_fl:1, interlace:1, progressive:1;
-
-	/* VD_IDX1 */
-	u_int32_t vsize:8, hsize:8, frame_interop:1, nop1:7, win_id:4, scale:4;
-
-	/* VD_IDX2 */
-	u_int32_t base_addr:16, nop2:15, hoff:1;
-
-	/* VD_IDX3 - User set macros */
-	u_int32_t sy:12, sx:12, nop3:1, hzoom:1, read_interop:1,
-		write_interlace:1, scale_mode:4;
-
-	/* VD_IDX4 - User set macros continued */
-	u_int32_t write_page:8, nop4:24;
-
-	/* VD_IDX5 */
-	u_int32_t next_code_addr;
-
-	u_int32_t end_nops[10];
-} __attribute__((packed));
-
-#define PAR_11_VGA	1 // 1:1 Square
-#define PAR_43_PAL	2 // 4:3 pal (12:11 625-line)
-#define PAR_43_NTSC	3 // 4:3 ntsc (10:11 525-line)
 
 /* Simple profile level 3, object type video, plus fancy header */
 static unsigned char vid_file_header[] = {
 	0x00, 0x00, 0x01, 0xB0, 0x03, 0x00, 0x00, 0x01,
-	0xB5, 0x09, 0x00, 0x00, 0x01, 0xb2,
+	0xB5, 0x89, 0x13, 0x00, 0x00, 0x01, 0xb2,
 	'B', 'l', 'u', 'e', 'c', 'h', 'e', 'r', 'r', 'y',
 };
-
-static unsigned char vid_vop_header[] = {
-	0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x20,
-	0x02, 0x48, 0x0d, 0xc0, 0x00, 0x40, 0x00, 0x40,
-	0x00, 0x40, 0x00, 0x80, 0x00, 0x97, 0x53, 0x04,
-	0x1f, 0x4c, 0x58, 0x10, 0x78, 0x51, 0x18, 0x3e,
-};
-
-/*
- * Things we can change around:
- *
- * byte  10,        4-bits 01111000                   aspect
- * bytes 21,22,23, 16-bits 000x1111 11111111 1111x000 fps/res
- * bytes 23,24,25  15-bits 00000n11 11111111 11111x00 interval
- * bytes 25,26,27  13-bits 00000x11 11111111 111x0000 width
- * bytes 27,28,29  13-bits 000x1111 11111111 1x000000 height
- * byte  29         1-bit  0x100000                   interlace
- */
-
-static void write_header(void)
-{
-	if (write(out_fd, vid_file_header, sizeof(vid_file_header)) !=
-	    sizeof(vid_file_header))
-		error(1, errno, "writing header to outfile");
-}
-
-static int transcode_to_output(void *mp4)
-{
-	struct vop_header *vh = mp4;
-	static int vop_once;
-
-	/* Skip the solo vop header */
-	mp4 += sizeof(*vh);
-
-	/* Sanity checks */
-	if (vh->size > mp4_size)
-		return 0;
-	if ((vh->vsize << 4) > 704 || (vh->hsize << 4) > 576)
-		return 0;
-
-	if (vh->vop_type == 0) {
-		unsigned char *p = vid_vop_header;
-
-		/* Should not change mid-stream */
-		if (!vop_once) {
-			unsigned short fps = 30000;
-			unsigned short interval = 1000;
-			unsigned short w = vh->hsize << 4;
-			unsigned short h = vh->vsize << 4;
-
-			/* Aspect ration */
-			p[10] = (p[10] & 0x87) | ((PAR_43_NTSC << 3) & 0x78);
-
-			/* Frame rate and interval */
-			p[22] = fps >> 4;
-			p[23] = ((fps << 4) & 0xf0) | 0x04 | (interval >> 13);
-			p[24] = (interval >> 5) & 0xff;
-			p[25] = ((interval << 3) & 0xf8) | 0x04;
-
-			/* Width and height */
-			p[26] = (w >> 3) & 0xff;
-			p[27] = ((h >> 9) & 0x0f) | 0x10;
-			p[28] = (h >> 1) & 0xff;
-
-			/* Interlace */
-			if (vh->scale > 8)
-				p[29] |= 0x20;
-
-			vop_once = 1;
-		}
-
-		if (write(out_fd, p, sizeof(vid_vop_header)) !=
-		    sizeof(vid_vop_header))
-			return errno;
-	}
-
-	if (write(out_fd, mp4, vh->size) != vh->size)
-		return errno;
-
-	return 0;
-}
 
 #define reset_vbuf(__vb) do {				\
 	memset((__vb), 0, sizeof(*(__vb)));		\
@@ -227,8 +117,6 @@ static void prepare_buffers(int fd)
 			if (p_bufs[i].data == MAP_FAILED)
 				error(1, errno, "mmap failed");
 		}
-		if (!mp4_size)
-			mp4_size = p_bufs[i].size;
 	}
 }
 
@@ -260,34 +148,6 @@ static void start_streaming(int fd)
 static unsigned char read_buf[MP4_DATA_SIZE];
 struct v4l2_buffer *q_vbuf = (struct v4l2_buffer *)read_buf;
 
-static void *get_next_frame(int fd, unsigned long long *size)
-{
-	if (read_io) {
-		int ret = read(fd, read_buf, sizeof(read_buf));
-		if (ret <= 0) {
-			error(0, errno, "error in read");
-			return NULL;
-		}
-		*size += ret;
-		return read_buf;
-	}
-
-	reset_vbuf(q_vbuf);
-
-	if (ioctl(fd, VIDIOC_DQBUF, q_vbuf) < 0) {
-		error(0, errno, "error in dqbuf");
-		return NULL;
-	}
-
-	if (q_vbuf->index >= n_bufs) {
-		error(0, 0, "Got invalid vbuf index");
-		return NULL;
-	}
-
-	*size += q_vbuf->bytesused;
-	return p_bufs[q_vbuf->index].data;
-}
-
 static void return_buf(int fd)
 {
 	if (read_io)
@@ -297,26 +157,59 @@ static void return_buf(int fd)
 		error(0, errno, "Error requeuing buffer");
 }
 
+static void *get_next_frame(int fd, size_t *size)
+{
+	if (read_io) {
+		int ret = read(fd, read_buf, sizeof(read_buf));
+		if (ret <= 0)
+			error(1, errno, "error in read");
+		*size = ret;
+		return read_buf;
+	}
+
+	reset_vbuf(q_vbuf);
+
+	if (ioctl(fd, VIDIOC_DQBUF, q_vbuf) < 0) {
+		static unsigned int count = 0;
+		error(0, errno, "error in dqbuf: %u", ++count);
+		if (errno == EIO) {
+			return_buf(fd);
+			return get_next_frame(fd, size);
+		}
+		exit(1);
+	}
+
+	if (q_vbuf->index >= n_bufs)
+		error(1, 0, "Got invalid vbuf index");
+
+	*size = q_vbuf->bytesused;
+	return p_bufs[q_vbuf->index].data;
+}
+
 static void do_decode(int fd)
 {
-	void *mp4;
-	unsigned long long size = 0;
-	int ret;
-
 	prepare_buffers(fd);
 	start_streaming(fd);
-	write_header();
+
+	if (write(out_fd, vid_file_header, sizeof(vid_file_header)) !=
+	    sizeof(vid_file_header))
+		error(1, errno, "writing header to outfile");
 
 	/* One loop per frame */
 	for (;;) {
-		mp4 = get_next_frame(fd, &size);
-		if (!mp4)
-			break;
+		static int got_vop;
+		size_t size;
+		unsigned char *mp4 = get_next_frame(fd, &size);
 
-		if ((ret = transcode_to_output(mp4))) {
-			error(0, ret, "Error during transcode");
-			break;
-		}
+		/* Wait till I_VOP */
+		if (!got_vop && !(mp4[2] == 0x01 && mp4[3] == 0x00)) {
+			return_buf(fd);
+			continue;
+		} else
+			got_vop = 1;
+
+		if (write(out_fd, mp4, size) != size)
+			error(1, errno, "writing frame to outfile");
 
 		return_buf(fd);
 	}
