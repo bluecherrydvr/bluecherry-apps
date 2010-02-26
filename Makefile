@@ -1,5 +1,5 @@
 CPPFLAGS	= -I. -I../module/include
-LDFLAGS		= -lv4l2
+LDFLAGS		= 
 
 CFLAGS		= -Wall -Werror -g -O0 -pthread
 
