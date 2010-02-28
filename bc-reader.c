@@ -224,6 +224,7 @@ static void usage(void)
 	fprintf(stderr, "  -o\tName of output file (required)\n");
 	fprintf(stderr, "  -b\tNumber of buffers to use for mmap/userptr\n");
 	fprintf(stderr, "  -v\tVerbose output\n");
+	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
 	fprintf(stderr, "By default MMAP I/O is used. Alternatives:\n");
 	fprintf(stderr, "  -u\tuserptr I/O support\n");
 	fprintf(stderr, "  -r\tread() I/O support\n");
@@ -234,10 +235,12 @@ int main(int argc, char **argv)
 {
 	const char *dev = "/dev/video0";
 	struct v4l2_capability dev_cap;
+	struct v4l2_format vid;
 	int fd;
+	int d1_mode = 0;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:o:b:urvh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:o:b:urvhD")) != -1) {
 		switch (opt) {
 		case 'o': outfile	= optarg;	break;
 		case 'd': dev		= optarg;	break;
@@ -245,6 +248,7 @@ int main(int argc, char **argv)
 		case 'r': read_io	= 1;		break;
 		case 'b': buf_req	= atoi(optarg); break;
 		case 'v': verbose	= 1;		break;
+		case 'D': d1_mode	= 1;		break;
 		case 'h':
 		default:
 			usage();
@@ -276,7 +280,7 @@ int main(int argc, char **argv)
 
 	/* Query the capbilites and verify it is a solo encoder */
 	if (ioctl(fd, VIDIOC_QUERYCAP, &dev_cap) < 0)
-		error(1, 0, "%s: error getting capabilities", dev);
+		error(1, errno, "%s: error getting capabilities", dev);
 
 	if (!(dev_cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
 		error(1, 0, "%s: not a capture device", dev);
@@ -299,6 +303,23 @@ int main(int argc, char **argv)
 	vprint("  Version: %u.%u.%u\n", (dev_cap.version >> 16) & 0xff,
 	       (dev_cap.version >> 8) & 0xff, dev_cap.version & 0xff);
 	vprint("  Bus info: %s\n", dev_cap.bus_info);
+
+	/* Set the format */
+	vid.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	vid.fmt.pix.pixelformat = V4L2_PIX_FMT_MPEG;
+	vid.fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
+	if (d1_mode) {
+		vid.fmt.pix.width = 704;
+		vid.fmt.pix.height = 480;
+	} else {
+		vid.fmt.pix.width = 352;
+		vid.fmt.pix.height = 240;
+	}
+	vid.fmt.pix.field = V4L2_FIELD_ANY;
+	vid.fmt.pix.sizeimage = 0;
+
+	if (ioctl(fd, VIDIOC_S_FMT, &vid) < 0)
+		error(1, errno, "%s: error setting vid fmt cap", dev);
 
 	if (!verbose)
 		fprintf(stderr, "%s: Starting record\n", dev);
