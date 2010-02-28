@@ -208,6 +208,12 @@ static void do_decode(int fd)
 		} else
 			got_vop = 1;
 
+#if 0
+		if (mp4[2] == 0x01 && mp4[3] == 0x00)
+			fprintf(stderr, "Got I-Frame\n");
+		else
+			fprintf(stderr, "Got P-Frame\n");
+#endif
 		if (write(out_fd, mp4, size) != size)
 			error(1, errno, "writing frame to outfile");
 
@@ -225,6 +231,7 @@ static void usage(void)
 	fprintf(stderr, "  -b\tNumber of buffers to use for mmap/userptr\n");
 	fprintf(stderr, "  -v\tVerbose output\n");
 	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
+	fprintf(stderr, "  -i\tFrame interval (default 1)\n");
 	fprintf(stderr, "By default MMAP I/O is used. Alternatives:\n");
 	fprintf(stderr, "  -u\tuserptr I/O support\n");
 	fprintf(stderr, "  -r\tread() I/O support\n");
@@ -236,11 +243,13 @@ int main(int argc, char **argv)
 	const char *dev = "/dev/video0";
 	struct v4l2_capability dev_cap;
 	struct v4l2_format vid;
+	struct v4l2_streamparm sparm;
 	int fd;
 	int d1_mode = 0;
+	int interval = 1;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:o:b:urvhD")) != -1) {
+	while ((opt = getopt(argc, argv, "d:o:b:i:urvhD")) != -1) {
 		switch (opt) {
 		case 'o': outfile	= optarg;	break;
 		case 'd': dev		= optarg;	break;
@@ -249,11 +258,17 @@ int main(int argc, char **argv)
 		case 'b': buf_req	= atoi(optarg); break;
 		case 'v': verbose	= 1;		break;
 		case 'D': d1_mode	= 1;		break;
+		case 'i': interval	= atoi(optarg); break;
 		case 'h':
 		default:
 			usage();
 		}
 	}
+
+	if (interval < 1)
+		interval = 1;
+	else if (interval > 15)
+		interval = 15;
 
 	if (!outfile)
 		usage();
@@ -278,6 +293,7 @@ int main(int argc, char **argv)
 	if (fd < 0)
 		error(1, errno, "%s: error opening device", dev);
 
+	memset(&dev_cap, 0, sizeof(dev_cap));
 	/* Query the capbilites and verify it is a solo encoder */
 	if (ioctl(fd, VIDIOC_QUERYCAP, &dev_cap) < 0)
 		error(1, errno, "%s: error getting capabilities", dev);
@@ -304,7 +320,20 @@ int main(int argc, char **argv)
 	       (dev_cap.version >> 8) & 0xff, dev_cap.version & 0xff);
 	vprint("  Bus info: %s\n", dev_cap.bus_info);
 
+	/* Set the interval/framerate */
+	memset(&sparm, 0, sizeof(sparm));
+	sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	sparm.parm.capture.timeperframe.numerator = interval;
+	sparm.parm.capture.timeperframe.denominator = 30;
+	if (ioctl(fd, VIDIOC_S_PARM, &sparm) < 0)
+		error(1, errno, "%s: error setting capture parm", dev);
+
+	vprint("  Frames/sec: %f\n",
+		(float)sparm.parm.capture.timeperframe.denominator /
+		(float)sparm.parm.capture.timeperframe.numerator);
+
 	/* Set the format */
+	memset(&vid, 0, sizeof(vid));
 	vid.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	vid.fmt.pix.pixelformat = V4L2_PIX_FMT_MPEG;
 	vid.fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
@@ -316,10 +345,11 @@ int main(int argc, char **argv)
 		vid.fmt.pix.height = 240;
 	}
 	vid.fmt.pix.field = V4L2_FIELD_ANY;
-	vid.fmt.pix.sizeimage = 0;
 
 	if (ioctl(fd, VIDIOC_S_FMT, &vid) < 0)
 		error(1, errno, "%s: error setting vid fmt cap", dev);
+
+	vprint("  Format: %ux%d\n", vid.fmt.pix.width, vid.fmt.pix.height);
 
 	if (!verbose)
 		fprintf(stderr, "%s: Starting record\n", dev);
