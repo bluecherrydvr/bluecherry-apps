@@ -208,12 +208,6 @@ static void do_decode(int fd)
 		} else
 			got_vop = 1;
 
-#if 0
-		if (mp4[2] == 0x01 && mp4[3] == 0x00)
-			fprintf(stderr, "Got I-Frame\n");
-		else
-			fprintf(stderr, "Got P-Frame\n");
-#endif
 		if (write(out_fd, mp4, size) != size)
 			error(1, errno, "writing frame to outfile");
 
