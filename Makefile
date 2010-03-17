@@ -1,7 +1,7 @@
 CPPFLAGS	= -I. -I../module/include
-LDFLAGS		= 
+LDFLAGS		= -lavformat
 
-CFLAGS		= -Wall -Werror -g -O0 -pthread
+CFLAGS		= -Wall -Werror -g -O0
 
 TARGET		= bc-reader
 OBJS		= bc-reader.o
