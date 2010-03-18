@@ -9,13 +9,7 @@
 
 #include <linux/videodev2.h>
 
-#define BC_DATA_SIZE		(256 * 1024)
 #define BC_MAX_BUFFERS		32
-
-struct bc_buffer {
-	void *data;
-	size_t size;
-};
 
 struct bc_handle {
 	/* Track info about the v4l2 device */
@@ -25,7 +19,10 @@ struct bc_handle {
 	struct v4l2_capability	vcap;
 	struct v4l2_streamparm	vparm;
 	/* Userspace buffer accounting */
-	struct bc_buffer	p_buf[BC_MAX_BUFFERS];
+	struct {
+		void *data;
+		size_t size;
+	}			p_buf[BC_MAX_BUFFERS];
 	int			p_cnt;
 	struct v4l2_buffer	q_buf[BC_MAX_BUFFERS >> 1];
 	int			q_cnt;
