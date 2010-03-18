@@ -69,8 +69,6 @@ static void print_image(struct bc_handle *bc)
 		exit(1);
 	if (fwrite(bc_buf_data(bc), bc_buf_size(bc), 1, stdout) != 1)
 		exit(1);
-
-	bc_buf_return(bc);
 }
 
 int main(int argc, char **argv)
@@ -83,28 +81,20 @@ int main(int argc, char **argv)
 	if (ch < 0 || ch > 15)
 		print_error("Invalid channel %d", ch);
 
-	/* Setup the device first */
-
+	/* Setup the device */
 	sprintf(dev, "/dev/video%d", ch + 1);
-	if ((bc = bc_handle_get(dev)) == NULL);
-		print_error("Could not open device: %s", dev);
+	if ((bc = bc_handle_get(dev)) == NULL)
+		print_error("%s: error opening device: %m", dev);
 
-        if (strcmp((char *)bc->vcap.driver, "solo6010"))
-                print_error("%s: not a solo6010 device", dev);
-        if (strncmp((char *)bc->vcap.card, "Softlogic 6010 Enc ", 19))
-                print_error("%s: not a solo6010 encoder", dev);
-
-        bc->vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	/* Setup for MJPEG, leave everything else as default */
 	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
-		print_error("%s: error setting vid fmt cap: %m", dev);
+		print_error("%s: error setting mjpeg: %m", dev);
 
 	if (bc_handle_start(bc))
 		print_error("%s: error starting stream: %m", dev);
 
 	/* Now grab frame(s) */
-
 	if (fprintf(stdout, "Cache-Control: no-cache\r\n" \
 		    "Cache-Control: private\r\n" \
 		    "Pragma: no-cache\r\n") < 0)
@@ -126,6 +116,8 @@ int main(int argc, char **argv)
 			exit(1);
 		print_image(bc);
 	}
+
+	bc_handle_free(bc);
 
 	exit(0);
 }

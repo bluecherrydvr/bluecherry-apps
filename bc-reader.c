@@ -66,8 +66,10 @@ static int mux_out(struct bc_handle *bc)
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
 
-	if (av_write_frame(oc, &pkt))
-		return EINVAL;
+	if (av_write_frame(oc, &pkt)) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	return 0;
 }
@@ -181,17 +183,13 @@ static void do_decode(struct bc_handle *bc)
 			error(1, errno, "getting buffer");
 		if (is_key_frame(bc))
 			break;
-		bc_buf_return(bc);
 	}
 
 	/* Now loop endlessly */
 	for (;;) {
-		int ret;
+		if (mux_out(bc))
+			error(1, errno, "writing frame to outfile");
 
-		if ((ret = mux_out(bc)))
-			error(1, ret, "writing frame to outfile");
-
-		bc_buf_return(bc);
 		if (bc_buf_get(bc))
 			error(1, errno, "getting buffer");
 	}

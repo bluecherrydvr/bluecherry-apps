@@ -1,7 +1,7 @@
 CPPFLAGS	= -Ilib
 LDFLAGS		= -lavformat
 
-CFLAGS		= -Wall -Werror -g -O0
+CFLAGS		= -Wall -Werror -g -O2
 
 TARGETS		= bc-reader bc.cgi
 
