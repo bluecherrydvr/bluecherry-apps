@@ -1,7 +1,7 @@
 CPPFLAGS	= -I. -I../module/include
 LDFLAGS		= -lavformat
 
-CFLAGS		= -Wall -Werror -g -O0
+CFLAGS		= -Wall -Werror -g -O2
 
 TARGET		= libbluecherry.a
 OBJS		= bc-core.o

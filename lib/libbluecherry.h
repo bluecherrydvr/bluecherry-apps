@@ -40,11 +40,10 @@ void bc_handle_free(struct bc_handle *bc);
 int bc_handle_start(struct bc_handle *bc);
 void bc_handle_stop(struct bc_handle *bc);
 
-/* Retrieves the next buffer from the device. Info is stored in the handle */
+/* Retrieves the next buffer from the device */
 int bc_buf_get(struct bc_handle *bc);
-/* Returns the last retrieved buffer. May not call qbuf immediately! */
-void bc_buf_return(struct bc_handle *bc);
 
+/* Get the data pointer for the current buffer */
 static inline void *bc_buf_data(struct bc_handle *bc)
 {
 	if (bc->q_cnt == 0)
@@ -52,6 +51,7 @@ static inline void *bc_buf_data(struct bc_handle *bc)
 	return bc->p_buf[bc->q_buf[bc->q_cnt - 1].index].data;
 }
 
+/* Get the size in bytes used by the current buffer */
 static inline size_t bc_buf_size(struct bc_handle *bc)
 {
         if (bc->q_cnt == 0)

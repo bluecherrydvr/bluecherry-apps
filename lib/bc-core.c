@@ -22,7 +22,7 @@
 	(__vb)->memory = V4L2_MEMORY_MMAP;		\
 } while(0)
 
-static int prepare_buffers(struct bc_handle *bc)
+static int bc_bufs_prepare(struct bc_handle *bc)
 {
 	struct v4l2_requestbuffers req;
 	struct v4l2_buffer vbuf;
@@ -59,7 +59,7 @@ static int prepare_buffers(struct bc_handle *bc)
 	return 0;
 }
 
-static int start_streaming(struct bc_handle *bc)
+static int bc_streaming_start(struct bc_handle *bc)
 {
 	enum v4l2_buf_type buf_type;
 	struct v4l2_buffer vbuf;
@@ -79,7 +79,7 @@ static int start_streaming(struct bc_handle *bc)
 	return 0;
 }
 
-void bc_buf_return(struct bc_handle *bc)
+static void bc_buf_return(struct bc_handle *bc)
 {
 	int i;
 
@@ -95,8 +95,11 @@ void bc_buf_return(struct bc_handle *bc)
 
 int bc_buf_get(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb = &bc->q_buf[bc->q_cnt++];
+	struct v4l2_buffer *vb;
 
+	bc_buf_return(bc);
+
+	vb = &bc->q_buf[bc->q_cnt++];
 	reset_vbuf(vb);
 
 	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0) {
@@ -119,7 +122,7 @@ struct bc_handle *bc_handle_get(const char *dev)
 
 	if ((bc = malloc(sizeof(*bc))) == NULL) {
 		errno = ENOMEM;
-		return NULL;
+		goto error_fail;
 	}
 
 	memset(bc, 0, sizeof(*bc));
@@ -131,7 +134,7 @@ struct bc_handle *bc_handle_get(const char *dev)
 	if ((bc->dev_fd = open(bc->dev_file, O_RDWR)) < 0)
 		goto error_fail;
 
-	/* Query the capbilites and verify it is a bc encoder */
+	/* Query the capabilites and verify them */
 	if (ioctl(bc->dev_fd, VIDIOC_QUERYCAP, &bc->vcap) < 0)
 		goto error_fail;
 
@@ -160,7 +163,7 @@ error_fail:
 
 int bc_handle_start(struct bc_handle *bc)
 {
-	if (prepare_buffers(bc) || start_streaming(bc))
+	if (bc_bufs_prepare(bc) || bc_streaming_start(bc))
 		return -1;
 	return 0;
 }
@@ -172,7 +175,13 @@ void bc_handle_stop(struct bc_handle *bc)
 
 void bc_handle_free(struct bc_handle *bc)
 {
+	int save_err = errno;
+
+	if (!bc)
+		return;
 	if (bc->dev_fd >= 0)
 		close(bc->dev_fd);
 	free(bc);
+
+	errno = save_err;
 }
