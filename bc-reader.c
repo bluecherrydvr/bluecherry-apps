@@ -29,45 +29,23 @@
 #include <string.h>
 #include <stdio.h>
 
-#include <linux/videodev2.h>
+#include <libbluecherry.h>
 #include <libavformat/avformat.h>
-
-#define MP4_DATA_SIZE		(256 * 1024)
 
 #define vprint(fmt, args...) \
     ({ if (verbose) fprintf(stderr, fmt , ## args); })
 
-static int buf_req = 8;
 static const char *outfile;
 static int verbose;
-static int out_fd;
-static const char *dev = "/dev/video0";
-
-/* v4l globals */
-static struct v4l2_format vid;
-static struct v4l2_streamparm sparm;
 
 /* AVFormat stuff */
 static AVOutputFormat *fmt_out;
 static AVStream *video_st;
 static AVFormatContext *oc;
 
-#define reset_vbuf(__vb) do {				\
-	memset((__vb), 0, sizeof(*(__vb)));		\
-	(__vb)->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;	\
-	(__vb)->memory = V4L2_MEMORY_MMAP;		\
-} while(0)
-
-struct solo_buffer {
-	void *data;
-	size_t size;
-};
-
-static struct solo_buffer *p_bufs;
-
-static int is_key_frame(struct v4l2_buffer *vb)
+static int is_key_frame(struct bc_handle *bc)
 {
-	unsigned char *p = p_bufs[vb->index].data;
+	unsigned char *p = bc_buf_data(bc);
 
 	// XXX Should be checking vb->flags when driver sets it
 	if (p[2] == 0x01 && p[3] == 0x00)
@@ -76,127 +54,22 @@ static int is_key_frame(struct v4l2_buffer *vb)
 	return 0;
 }
 
-static int mux_out(struct v4l2_buffer *vb)
+static int mux_out(struct bc_handle *bc)
 {
 	AVPacket pkt;
 
 	av_init_packet(&pkt);
 
-	if (is_key_frame(vb))
+	if (is_key_frame(bc))
 		pkt.flags |= PKT_FLAG_KEY;
 
-	pkt.data = p_bufs[vb->index].data;
-	pkt.size = vb->bytesused;
+	pkt.data = bc_buf_data(bc);
+	pkt.size = bc_buf_size(bc);
 
 	if (av_write_frame(oc, &pkt))
 		return EINVAL;
 
 	return 0;
-}
-
-static void prepare_buffers(int fd)
-{
-	struct v4l2_requestbuffers req;
-	struct v4l2_buffer vbuf;
-	int i;
-
-	reset_vbuf(&req);
-	req.count = buf_req;
-
-	if (ioctl(fd, VIDIOC_REQBUFS, &req) < 0)
-		error(1, errno, "Device does not support mmap?");
-
-	if (req.count < 2)
-		error(1, 0, "VIDIOC_REQBUFS reports too few buffers");
-
-	if (req.count != buf_req)
-		error(0, 0, "Requested %d buffers, but returned %d",
-		      buf_req, req.count);
-
-	buf_req = req.count;
-
-	if ((p_bufs = calloc(buf_req, sizeof(*p_bufs))) == NULL)
-		error(1, errno, "Failed to allocate mmap buffers");
-
-	for (i = 0; i < buf_req; i++) {
-		reset_vbuf(&vbuf);
-		vbuf.index = i;
-
-		if (ioctl(fd, VIDIOC_QUERYBUF, &vbuf) < 0)
-			error(1, errno, "VIDIOC_QUERYBUF failed");
-
-		p_bufs[i].size = vbuf.length;
-		p_bufs[i].data = mmap(NULL, vbuf.length,
-				   PROT_WRITE | PROT_READ, MAP_SHARED,
-				   fd, vbuf.m.offset);
-		if (p_bufs[i].data == MAP_FAILED)
-			error(1, errno, "mmap failed");
-	}
-}
-
-static void start_streaming(int fd)
-{
-	enum v4l2_buf_type buf_type;
-	struct v4l2_buffer vbuf;
-	int i;
-
-	for (i = 0; i < buf_req; i++) {
-		reset_vbuf(&vbuf);
-		vbuf.index = i;
-		if (ioctl(fd, VIDIOC_QBUF, &vbuf) < 0)
-			error(1, errno, "qbuf failed");
-	}
-
-	buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (ioctl(fd, VIDIOC_STREAMON, &buf_type) < 0)
-		error(1, errno, "streamon failed");
-}
-
-/* return_buf and get_next_frame are NOT thread safe in that you cannot
- * call one while another thread is calling the other, or call them from
- * each other, nor can you return buffers out-of-order */
-static unsigned char read_buf[MP4_DATA_SIZE];
-static struct v4l2_buffer *q_vbuf = (struct v4l2_buffer *)read_buf;
-static int q_cnt;
-
-static void return_buf(int fd)
-{
-	int i;
-
-	/* Don't return bufs until half are used */
-	if (q_cnt < (buf_req >> 1))
-		return;
-
-	for (i = 0; i < q_cnt; i++) {
-		if (ioctl(fd, VIDIOC_QBUF, &q_vbuf[i]) < 0)
-			error(0, errno, "Error requeuing buffer");
-	}
-
-	q_cnt = 0;
-}
-
-static struct v4l2_buffer *get_next_frame(int fd)
-{
-	struct v4l2_buffer *vb = &q_vbuf[q_cnt];
-
-	reset_vbuf(vb);
-
-	if (ioctl(fd, VIDIOC_DQBUF, vb) < 0) {
-		static unsigned int count = 0;
-		error(0, errno, "error in dqbuf: %u", ++count);
-		if (errno == EIO) {
-			return_buf(fd);
-			return get_next_frame(fd);
-		}
-		exit(1);
-	}
-
-	if (vb->index >= buf_req)
-		error(1, 0, "Got invalid vbuf index");
-
-	q_cnt++;
-
-	return vb;
 }
 
 static void close_avcodec(int sig)
@@ -221,7 +94,7 @@ static void close_avcodec(int sig)
 }
 
 
-static void open_avcodec(void)
+static void open_avcodec(struct bc_handle *bc)
 {
 	AVCodec *codec;
 	AVInputFormat *fmt_in;
@@ -253,7 +126,7 @@ static void open_avcodec(void)
 	oc->oformat = fmt_out;
 	oc->iformat = fmt_in;
 	snprintf(oc->filename, sizeof(oc->filename), "%s", outfile);
-	snprintf(oc->title, sizeof(oc->title), "BC: %s", dev);
+	snprintf(oc->title, sizeof(oc->title), "BC: %s", bc->dev_file);
 
 	/* Setup new video stream */
 	video_st = av_new_stream(oc, 0);
@@ -262,20 +135,20 @@ static void open_avcodec(void)
 
 	video_st->stream_copy = 1;
 	video_st->time_base.den =
-		sparm.parm.capture.timeperframe.denominator;
+		bc->vparm.parm.capture.timeperframe.denominator;
 	video_st->time_base.num =
-		sparm.parm.capture.timeperframe.numerator;
+		bc->vparm.parm.capture.timeperframe.numerator;
 	snprintf(video_st->language, sizeof(video_st->language), "eng");
 
 	video_st->codec->codec_id = CODEC_ID_MPEG4;
 	video_st->codec->codec_type = CODEC_TYPE_VIDEO;
 	video_st->codec->pix_fmt = PIX_FMT_YUV420P;
-	video_st->codec->width = vid.fmt.pix.width;
-	video_st->codec->height = vid.fmt.pix.height;
+	video_st->codec->width = bc->vfmt.fmt.pix.width;
+	video_st->codec->height = bc->vfmt.fmt.pix.height;
 	video_st->codec->time_base.den =
-		sparm.parm.capture.timeperframe.denominator;
+		bc->vparm.parm.capture.timeperframe.denominator;
 	video_st->codec->time_base.num =
-		sparm.parm.capture.timeperframe.numerator;
+		bc->vparm.parm.capture.timeperframe.numerator;
 
 	if(oc->oformat->flags & AVFMT_GLOBALHEADER)
 		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -300,32 +173,27 @@ static void open_avcodec(void)
 	return;
 }
 
-static void do_decode(int fd)
+static void do_decode(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb;
-
-	prepare_buffers(fd);
-	start_streaming(fd);
-	open_avcodec();
-
 	/* Skip until we get an I-Frame */
 	for (;;) {
-		vb = get_next_frame(fd);
-		if (is_key_frame(vb))
+		if (bc_buf_get(bc))
+			error(1, errno, "getting buffer");
+		if (is_key_frame(bc))
 			break;
-		return_buf(fd);
+		bc_buf_return(bc);
 	}
 
 	/* Now loop endlessly */
 	for (;;) {
 		int ret;
 
-		if ((ret = mux_out(vb)))
+		if ((ret = mux_out(bc)))
 			error(1, ret, "writing frame to outfile");
 
-		return_buf(fd);
-
-		vb = get_next_frame(fd);
+		bc_buf_return(bc);
+		if (bc_buf_get(bc))
+			error(1, errno, "getting buffer");
 	}
 }
 
@@ -336,7 +204,6 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s <args> [-o outfile]\n", __progname);
 	fprintf(stderr, "  -d\tName of v4l2 device (/dev/video0 default)\n");
 	fprintf(stderr, "  -o\tName of output file (required)\n");
-	fprintf(stderr, "  -b\tNumber of buffers to use for mmap\n");
 	fprintf(stderr, "  -v\tVerbose output\n");
 	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
 	fprintf(stderr, "  -i\tFrame interval (default 1)\n");
@@ -345,17 +212,16 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-	struct v4l2_capability dev_cap;
-	int fd;
+	const char *dev = "/dev/video0";
+	struct bc_handle *bc;
 	int d1_mode = 0;
 	int interval = 1;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:o:b:i:vhD")) != -1) {
+	while ((opt = getopt(argc, argv, "d:o:i:vhD")) != -1) {
 		switch (opt) {
 		case 'o': outfile	= optarg;	break;
 		case 'd': dev		= optarg;	break;
-		case 'b': buf_req	= atoi(optarg); break;
 		case 'v': verbose	= 1;		break;
 		case 'D': d1_mode	= 1;		break;
 		case 'i': interval	= atoi(optarg); break;
@@ -371,73 +237,53 @@ int main(int argc, char **argv)
 	if (!outfile)
 		usage();
 
-	/* Open the output file */
-	out_fd = open(outfile, O_CREAT | O_WRONLY | O_TRUNC, 0644);
-	if (out_fd < 0)
-		error(1, errno, "%s: error opening outfile", outfile);
-
 	/* Open the device */
-	fd = open(dev, O_RDWR);
-	if (fd < 0)
+	if ((bc = bc_handle_get(dev)) == NULL)
 		error(1, errno, "%s: error opening device", dev);
 
-	memset(&dev_cap, 0, sizeof(dev_cap));
-	/* Query the capbilites and verify it is a solo encoder */
-	if (ioctl(fd, VIDIOC_QUERYCAP, &dev_cap) < 0)
-		error(1, errno, "%s: error getting capabilities", dev);
-
-	if (!(dev_cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
-		error(1, 0, "%s: not a capture device", dev);
-
-	if (!(dev_cap.capabilities & V4L2_CAP_STREAMING))
-		error(1, 0, "%s: does not support streaming I/O", dev);
-
-	if (strcmp((char *)dev_cap.driver, "solo6010"))
-		error(1, 0, "%s: not a solo6010 device", dev);
-	if (strncmp((char *)dev_cap.card, "Softlogic 6010 Enc ", 19))
-		error(1, 0, "%s: not a solo6010 encoder", dev);
-
-	vprint("V4L2 device: %s\n", dev_cap.card);
-	vprint("  Driver: %s\n", dev_cap.driver);
-	vprint("  Version: %u.%u.%u\n", (dev_cap.version >> 16) & 0xff,
-	       (dev_cap.version >> 8) & 0xff, dev_cap.version & 0xff);
-	vprint("  Bus info: %s\n", dev_cap.bus_info);
+	vprint("V4L2 device: %s\n", bc->vcap.card);
+	vprint("  Driver: %s\n", bc->vcap.driver);
+	vprint("  Version: %u.%u.%u\n", (bc->vcap.version >> 16) & 0xff,
+	       (bc->vcap.version >> 8) & 0xff, bc->vcap.version & 0xff);
+	vprint("  Bus info: %s\n", bc->vcap.bus_info);
 
 	/* Set the interval/framerate */
-	sparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	sparm.parm.capture.timeperframe.numerator = interval;
-	sparm.parm.capture.timeperframe.denominator = 30;
-	if (ioctl(fd, VIDIOC_S_PARM, &sparm) < 0)
+	bc->vparm.parm.capture.timeperframe.numerator = interval;
+	bc->vparm.parm.capture.timeperframe.denominator = 30;
+	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
 		error(1, errno, "%s: error setting capture parm", dev);
 
 	vprint("  Frames/sec: %f\n",
-		(float)sparm.parm.capture.timeperframe.denominator /
-		(float)sparm.parm.capture.timeperframe.numerator);
+		(float)bc->vparm.parm.capture.timeperframe.denominator /
+		(float)bc->vparm.parm.capture.timeperframe.numerator);
 
 	/* Set the format */
-	vid.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	vid.fmt.pix.pixelformat = V4L2_PIX_FMT_MPEG;
-	vid.fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
+	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MPEG;
 	if (d1_mode) {
-		vid.fmt.pix.width = 704;
-		vid.fmt.pix.height = 480;
+		bc->vfmt.fmt.pix.width = 704;
+		bc->vfmt.fmt.pix.height = 480;
 	} else {
-		vid.fmt.pix.width = 352;
-		vid.fmt.pix.height = 240;
+		bc->vfmt.fmt.pix.width = 352;
+		bc->vfmt.fmt.pix.height = 240;
 	}
-	vid.fmt.pix.field = V4L2_FIELD_ANY;
 
-	if (ioctl(fd, VIDIOC_S_FMT, &vid) < 0)
+	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
 		error(1, errno, "%s: error setting vid fmt cap", dev);
 
-	vprint("  Format: %ux%d\n", vid.fmt.pix.width, vid.fmt.pix.height);
+	vprint("  Format: %ux%d\n", bc->vfmt.fmt.pix.width,
+	       bc->vfmt.fmt.pix.height);
+
+	if (bc_handle_start(bc))
+		error(1, errno, "%s: starting stream", dev);
+
+	open_avcodec(bc);
 
 	if (!verbose)
 		fprintf(stderr, "%s: Starting record\n", dev);
 
-	do_decode(fd);
+	do_decode(bc);
 
-	close(fd);
+	bc_handle_free(bc);
 
 	return 0;
 }

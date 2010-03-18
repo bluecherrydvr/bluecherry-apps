@@ -1,14 +1,23 @@
-CPPFLAGS	= -I. -I../module/include
+CPPFLAGS	= -Ilib
 LDFLAGS		= -lavformat
 
 CFLAGS		= -Wall -Werror -g -O0
 
-TARGET		= bc-reader
-OBJS		= bc-reader.o
+TARGETS		= bc-reader bc.cgi
 
-all: $(TARGET)
+LIB		= lib/libbluecherry.a
 
-$(TARGET): $(OBJS)
+all: $(TARGETS)
+
+$(LIB): FORCE
+	$(MAKE) -C lib
+
+bc-reader: $(LIB) bc-reader.o
+
+bc.cgi: $(LIB) bc.cgi.o
 
 clean:
-	rm -f $(TARGET) $(OBJS)
+	$(MAKE) -C lib clean
+	rm -f *.o $(TARGETS)
+
+FORCE:
