@@ -31,24 +31,13 @@ static AVOutputFormat *fmt_out;
 static AVStream *video_st;
 static AVFormatContext *oc;
 
-static int is_key_frame(struct bc_handle *bc)
-{
-	unsigned char *p = bc_buf_data(bc);
-
-	// XXX Should be checking vb->flags when driver sets it
-	if (p[2] == 0x01 && p[3] == 0x00)
-		return 1;
-
-	return 0;
-}
-
 static int mux_out(struct bc_handle *bc)
 {
 	AVPacket pkt;
 
 	av_init_packet(&pkt);
 
-	if (is_key_frame(bc))
+	if (bc_buf_key_frame(bc))
 		pkt.flags |= PKT_FLAG_KEY;
 
 	pkt.data = bc_buf_data(bc);
@@ -169,7 +158,7 @@ static void do_decode(struct bc_handle *bc)
 	for (;;) {
 		if (bc_buf_get(bc))
 			error(1, errno, "getting buffer");
-		if (is_key_frame(bc))
+		if (bc_buf_key_frame(bc))
 			break;
 	}
 
