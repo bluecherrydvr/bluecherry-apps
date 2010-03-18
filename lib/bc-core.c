@@ -25,7 +25,6 @@
 static int bc_bufs_prepare(struct bc_handle *bc)
 {
 	struct v4l2_requestbuffers req;
-	struct v4l2_buffer vbuf;
 	int i;
 
 	reset_vbuf(&req);
@@ -39,19 +38,21 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 		return -1;
 	}
 
-	bc->p_cnt = req.count;
+	bc->p_cnt = bc->q_cnt = req.count;
 
 	for (i = 0; i < bc->p_cnt; i++) {
-		reset_vbuf(&vbuf);
-		vbuf.index = i;
+		struct v4l2_buffer *vb = &bc->q_buf[i];
 
-		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vbuf) < 0)
+		reset_vbuf(vb);
+		vb->index = i;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, vb) < 0)
 			return -1;
 
-		bc->p_buf[i].size = vbuf.length;
-		bc->p_buf[i].data = mmap(NULL, vbuf.length,
+		bc->p_buf[i].size = vb->length;
+		bc->p_buf[i].data = mmap(NULL, vb->length,
 					 PROT_WRITE | PROT_READ, MAP_SHARED,
-					 bc->dev_fd, vbuf.m.offset);
+					 bc->dev_fd, vb->m.offset);
 		if (bc->p_buf[i].data == MAP_FAILED)
 			return -1;
 	}
@@ -59,24 +60,26 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 	return 0;
 }
 
-static int bc_streaming_start(struct bc_handle *bc)
+int bc_handle_start(struct bc_handle *bc)
 {
-	enum v4l2_buf_type buf_type;
-	struct v4l2_buffer vbuf;
-	int i;
+	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-	for (i = 0; i < bc->p_cnt; i++) {
-		reset_vbuf(&vbuf);
-		vbuf.index = i;
-		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vbuf) < 0)
-			return -1;
-	}
-
-	buf_type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (ioctl(bc->dev_fd, VIDIOC_STREAMON, &buf_type) < 0)
+	if (ioctl(bc->dev_fd, VIDIOC_STREAMON, &type) < 0)
 		return -1;
 
 	return 0;
+}
+
+void bc_handle_stop(struct bc_handle *bc)
+{
+	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
+	while (bc->q_cnt < bc->p_cnt)
+		ioctl(bc->dev_fd, VIDIOC_DQBUF, &bc->q_buf[bc->q_cnt++]);
+
+	ioctl(bc->dev_fd, VIDIOC_STREAMOFF, &type);
+
+	return;
 }
 
 static void bc_buf_return(struct bc_handle *bc)
@@ -103,10 +106,8 @@ int bc_buf_get(struct bc_handle *bc)
 	reset_vbuf(vb);
 
 	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0) {
-		if (errno == EIO) {
-			bc_buf_return(bc);
+		if (errno == EIO)
 			return bc_buf_get(bc);
-		}
 		return -1;
 	}
 
@@ -154,23 +155,14 @@ struct bc_handle *bc_handle_get(const char *dev)
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
 		goto error_fail;
 
+	if (bc_bufs_prepare(bc))
+		goto error_fail;
+
 	return bc;
 
 error_fail:
 	bc_handle_free(bc);
 	return NULL;
-}
-
-int bc_handle_start(struct bc_handle *bc)
-{
-	if (bc_bufs_prepare(bc) || bc_streaming_start(bc))
-		return -1;
-	return 0;
-}
-
-void bc_handle_stop(struct bc_handle *bc)
-{
-	return;
 }
 
 void bc_handle_free(struct bc_handle *bc)
