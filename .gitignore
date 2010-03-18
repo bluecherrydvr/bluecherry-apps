@@ -1,3 +1,5 @@
 *.o
+*.a
 .*
 bc-reader
+bc.cgi
