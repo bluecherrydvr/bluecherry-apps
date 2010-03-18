@@ -1,3 +1,9 @@
+/*
+ * Copyright (C) 2009-2010 Ben Collins <bcollins@bluecherry.net>
+ *
+ * Confidential, all rights reserved. No distribution is permitted.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
