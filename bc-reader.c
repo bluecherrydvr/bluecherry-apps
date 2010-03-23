@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Ben Collins <bcollins@bluecherry.net>
+ * Copyright (C) 2010 Bluecherry, LLC
  *
  * Confidential, all rights reserved. No distribution is permitted.
  */
@@ -20,11 +20,7 @@
 #include <libbluecherry.h>
 #include <libavformat/avformat.h>
 
-#define vprint(fmt, args...) \
-    ({ if (verbose) fprintf(stderr, fmt , ## args); })
-
 static const char *outfile;
-static int verbose;
 
 /* AVFormat stuff */
 static AVOutputFormat *fmt_out;
@@ -179,7 +175,6 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s <args> [-o outfile]\n", __progname);
 	fprintf(stderr, "  -d\tName of v4l2 device (/dev/video0 default)\n");
 	fprintf(stderr, "  -o\tName of output file (required)\n");
-	fprintf(stderr, "  -v\tVerbose output\n");
 	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
 	fprintf(stderr, "  -i\tFrame interval (default 1)\n");
 	exit(1);
@@ -193,11 +188,10 @@ int main(int argc, char **argv)
 	int interval = 1;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:o:i:vhD")) != -1) {
+	while ((opt = getopt(argc, argv, "d:o:i:hD")) != -1) {
 		switch (opt) {
 		case 'o': outfile	= optarg;	break;
 		case 'd': dev		= optarg;	break;
-		case 'v': verbose	= 1;		break;
 		case 'D': d1_mode	= 1;		break;
 		case 'i': interval	= atoi(optarg); break;
 		case 'h': default: usage();
@@ -216,21 +210,11 @@ int main(int argc, char **argv)
 	if ((bc = bc_handle_get(dev)) == NULL)
 		error(1, errno, "%s: error opening device", dev);
 
-	vprint("V4L2 device: %s\n", bc->vcap.card);
-	vprint("  Driver: %s\n", bc->vcap.driver);
-	vprint("  Version: %u.%u.%u\n", (bc->vcap.version >> 16) & 0xff,
-	       (bc->vcap.version >> 8) & 0xff, bc->vcap.version & 0xff);
-	vprint("  Bus info: %s\n", bc->vcap.bus_info);
-
 	/* Set the interval/framerate */
 	bc->vparm.parm.capture.timeperframe.numerator = interval;
 	bc->vparm.parm.capture.timeperframe.denominator = 30;
 	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
 		error(1, errno, "%s: error setting capture parm", dev);
-
-	vprint("  Frames/sec: %f\n",
-		(float)bc->vparm.parm.capture.timeperframe.denominator /
-		(float)bc->vparm.parm.capture.timeperframe.numerator);
 
 	/* Set the format */
 	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MPEG;
@@ -245,16 +229,12 @@ int main(int argc, char **argv)
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
 		error(1, errno, "%s: error setting vid fmt cap", dev);
 
-	vprint("  Format: %ux%d\n", bc->vfmt.fmt.pix.width,
-	       bc->vfmt.fmt.pix.height);
-
 	if (bc_handle_start(bc))
 		error(1, errno, "%s: starting stream", dev);
 
 	open_avcodec(bc);
 
-	if (!verbose)
-		fprintf(stderr, "%s: Starting record\n", dev);
+	fprintf(stderr, "%s: Starting record\n", dev);
 
 	do_decode(bc);
 

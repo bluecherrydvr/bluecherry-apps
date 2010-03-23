@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Ben Collins <bcollins@bluecherry.net>
+ * Copyright (C) 2010 Bluecherry, LLC
  *
  * Confidential, all rights reserved. No distribution is permitted.
  */
@@ -65,9 +65,19 @@ static void parse_query_string(void)
 	}
 }
 
-static void print_image(struct bc_handle *bc)
+static void print_image(struct bc_handle *bc, int once)
 {
 	bc_buf_get(bc);
+
+	if (!once && bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON) {
+		static int mot_cnt;
+		if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED)
+			mot_cnt = 60;
+
+		if (mot_cnt == 0)
+			return;
+		mot_cnt--;
+	}
 
 	if (fprintf(stdout, "Content-type: image/jpeg\r\n") < 0)
 		exit(1);
@@ -108,7 +118,7 @@ int main(int argc, char **argv)
 
 	/* Single frame */
 	if (!mp) {
-		print_image(bc);
+		print_image(bc, 1);
 		exit(0);
 	}
 
@@ -120,7 +130,7 @@ int main(int argc, char **argv)
 	while(1) {
 		if (fprintf(stdout, "--" BOUNDARY "\r\n") < 0)
 			exit(1);
-		print_image(bc);
+		print_image(bc, 0);
 	}
 
 	bc_handle_free(bc);
