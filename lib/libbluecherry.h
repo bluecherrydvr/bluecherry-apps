@@ -7,9 +7,26 @@
 #ifndef __LIBBLUECHERRY_H
 #define __LIBBLUECHERRY_H
 
+#include <sys/types.h>
+
 #include <linux/videodev2.h>
 
-#define BC_MAX_BUFFERS		32
+#define BC_BUFFERS		32
+#define BC_BUFFERS_LOCAL	15
+#define BC_BUFFERS_THRESH	((BC_BUFFERS - BC_BUFFERS_LOCAL) / 2)
+#define BC_GOP			BC_BUFFERS_LOCAL
+
+/* Some things that are driver specific */
+#ifndef V4L2_BUF_FLAG_MOTION_ON
+#define V4L2_BUF_FLAG_MOTION_ON		0x0400
+#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
+#endif
+
+#ifndef V4L2_CID_MOTION_ENABLE
+#define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
+#define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
+#define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
+#endif
 
 struct bc_handle {
 	/* Track info about the v4l2 device */
@@ -20,22 +37,30 @@ struct bc_handle {
 	struct v4l2_streamparm	vparm;
 	/* Userspace buffer accounting */
 	struct {
-		void *data;
-		size_t size;
-	}			p_buf[BC_MAX_BUFFERS];
-	int			p_cnt;
-	struct v4l2_buffer	q_buf[BC_MAX_BUFFERS];
-	int			q_cnt;
-	int			cur_q_buf;
+		void		*data;
+		size_t		size;
+	}			p_buf[BC_BUFFERS];
+	
+	struct v4l2_buffer	q_buf[BC_BUFFERS];
+	int			rd_idx;
+	int			wr_idx;
+};
+
+enum bc_db_type {
+	BC_DB_SQLITE,
+	BC_DB_MYSQL,
+	BC_DB_PGSQL,
 };
 
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(const char *dev);
 void bc_handle_free(struct bc_handle *bc);
 
-/* Called to start/stop the stream */
+/* Called to start the stream */
 int bc_handle_start(struct bc_handle *bc);
-void bc_handle_stop(struct bc_handle *bc);
+
+/* Standard logging function for all BC services */
+void bc_log(char *msg, ...);
 
 /* Retrieves the next buffer from the device */
 int bc_buf_get(struct bc_handle *bc);
@@ -51,5 +76,13 @@ struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
 
 /* Is the current buffer a key frame? */
 int bc_buf_key_frame(struct bc_handle *bc);
+
+/* Format and parameter settings */
+int bc_set_interval(struct bc_handle *bc, u_int8_t interval);
+int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
+		  u_int16_t height);
+
+/* Enable or disable the motion detection */
+int bc_set_motion(struct bc_handle *bc, int on);
 
 #endif /* __LIBBLUECHERRY_H */

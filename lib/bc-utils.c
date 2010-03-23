@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010 Ben Collins <bcollins@bluecherry.net>
+ * Copyright (C) 2010 Bluecherry, LLC
  *
  * Confidential, all rights reserved. No distribution is permitted.
  */
@@ -13,36 +13,70 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdarg.h>
+#include <syslog.h>
 
 #include <libbluecherry.h>
 
+int bc_set_motion(struct bc_handle *bc, int on)
+{
+	struct v4l2_control vc;
+
+	vc.id = V4L2_CID_MOTION_ENABLE;
+	vc.value = on ? 1 : 0;
+	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+		return -1;
+	return 0;
+}
+
+static inline int bc_current_buf(struct bc_handle *bc)
+{
+	if (bc->rd_idx == bc->wr_idx)
+		return -1;
+	return (bc->rd_idx + (BC_BUFFERS - 1)) % BC_BUFFERS;
+}
+
 void *bc_buf_data(struct bc_handle *bc)
 {
-	if (bc->q_cnt == 0)
+	int idx = bc_current_buf(bc);
+
+	if (idx < 0)
 		return NULL;
-	return bc->p_buf[bc->q_buf[bc->q_cnt - 1].index].data;
+
+	return bc->p_buf[bc->q_buf[idx].index].data;
 }
 
 size_t bc_buf_size(struct bc_handle *bc)
 {
-	if (bc->q_cnt == 0)
+	int idx = bc_current_buf(bc);
+
+	if (idx < 0)
 		return 0;
-	return bc->q_buf[bc->q_cnt - 1].bytesused;
+
+	return bc->q_buf[idx].bytesused;
 }
 
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 {
-	if (bc->q_cnt == 0)
+	int idx = bc_current_buf(bc);
+
+	if (idx < 0)
 		return NULL;
-	return &bc->q_buf[bc->q_cnt - 1];
+
+	return &bc->q_buf[idx];
 }
 
 int bc_buf_key_frame(struct bc_handle *bc)
 {
 	unsigned char *p = bc_buf_data(bc);
+	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
 
-	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_KEYFRAME)
+	if (!p || !vb)
+		return 0;
+
+	if (vb->flags & V4L2_BUF_FLAG_KEYFRAME)
 		return 1;
+
 	/* Fallback */
         if (p[2] == 0x01 && p[3] == 0x00)
                 return 1;
@@ -50,4 +84,53 @@ int bc_buf_key_frame(struct bc_handle *bc)
         return 0;
 }
 
+int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
+{
+	struct v4l2_control vc;
 
+	bc->vparm.parm.capture.timeperframe.numerator = interval;
+	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
+		return -1;
+
+	/* Reset GOP */
+	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
+	vc.value = BC_GOP;
+	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+		return -1;
+
+	return 0;
+}
+
+int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
+		  u_int16_t height)
+{
+	if (fmt)
+		bc->vfmt.fmt.pix.pixelformat = fmt;
+	if (width)
+		bc->vfmt.fmt.pix.width = width;
+	if (height)
+		bc->vfmt.fmt.pix.height = height;
+
+	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
+		return -1;
+
+	return 0;
+}
+
+extern char *__progname;
+#define BC_LOG_SERVICE	LOG_LOCAL4
+
+void bc_log(char *msg, ...)
+{
+	va_list ap;
+	static int log_open = 0;
+
+	if (!log_open) {
+		openlog(__progname, LOG_PID | LOG_PERROR, BC_LOG_SERVICE);
+		log_open = 1;
+	}
+
+	va_start(ap, msg);
+	vsyslog(LOG_INFO | BC_LOG_SERVICE, msg, ap);
+	va_end(ap);
+}
