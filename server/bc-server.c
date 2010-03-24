@@ -19,21 +19,12 @@ static void do_decode(struct bc_rec *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
-	/* Skip until we get an I-Frame */
 	for (;;) {
-		if (bc_buf_get(bc))
-			srv_err("getting buffer: %m");
-		if (bc_buf_key_frame(bc))
-			break;
-	}
-
-	/* Now loop endlessly */
-	for (;;) {
-		if (bc_mux_out(bc_rec))
-			srv_err("error writing frame to outfile: %m");
-
 		if (bc_buf_get(bc))
 			srv_err("error getting buffer: %m");
+
+		if (bc_mux_out(bc_rec))
+			srv_err("error writing frame to outfile: %m");
 	}
 }
 

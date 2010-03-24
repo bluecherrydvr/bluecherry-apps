@@ -44,6 +44,7 @@ struct bc_handle {
 	struct v4l2_buffer	q_buf[BC_BUFFERS];
 	int			rd_idx;
 	int			wr_idx;
+	int			got_vop;
 };
 
 enum bc_db_type {

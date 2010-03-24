@@ -66,24 +66,6 @@ struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 	return &bc->q_buf[idx];
 }
 
-int bc_buf_key_frame(struct bc_handle *bc)
-{
-	unsigned char *p = bc_buf_data(bc);
-	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
-
-	if (!p || !vb)
-		return 0;
-
-	if (vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	/* Fallback */
-        if (p[2] == 0x01 && p[3] == 0x00)
-                return 1;
-
-        return 0;
-}
-
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 {
 	struct v4l2_control vc;
