@@ -1,5 +1,6 @@
 *.o
 *.a
 .*
+*.mkv
 bc-reader
 bc.cgi
