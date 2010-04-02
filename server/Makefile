@@ -1,5 +1,5 @@
 CPPFLAGS	= -I../lib -D_GNU_SOURCE
-LDFLAGS		= -lavformat -lpthread
+LDFLAGS		= -lavformat -lm -lpthread
 
 CFLAGS		= -Wall -Werror -g -O2 -pthread
 

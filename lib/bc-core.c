@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <libbluecherry.h>
 
@@ -132,21 +133,60 @@ int bc_buf_get(struct bc_handle *bc)
 	struct v4l2_buffer *vb;
 
 	if (bc_buf_return(bc))
-		return -1;
+		return errno;
 
 	vb = &bc->q_buf[bc->rd_idx];
 	reset_vbuf(vb);
 
 	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0)
-		return -1;
+		return errno;
 
 	increment_idx(&bc->rd_idx);
 
+	/* Skip frames until the first key frame */
 	if (!bc->got_vop) {
 		if (!bc_buf_key_frame(bc))
-			return bc_buf_get(bc);
+			return EAGAIN;
 		bc->got_vop = 1;
 	}
+
+	/* If no motion detection, then carry on normally */
+	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON))
+		return 0;
+
+	/* Motion flag resets counter and keep frame */
+	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
+		bc->mot_cnt = 60;
+		return 0;
+	}
+
+	/* If motion count is 0, try again */
+	if (bc->mot_cnt == 0)
+		return EAGAIN;
+
+	bc->mot_cnt--;
+
+	return 0;
+}
+
+int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
+{
+	struct v4l2_control vc;
+	double den = bc->vparm.parm.capture.timeperframe.denominator;
+	double num = interval;
+
+	bc->vparm.parm.capture.timeperframe.numerator = interval;
+	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
+		return -1;
+
+	/* Reset GOP */
+	bc->gop = lround(num / den / 2);
+	if (!bc->gop)
+		bc->gop = 1;
+	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
+	vc.value = bc->gop;
+	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+		return -1;
 
 	return 0;
 }
@@ -154,7 +194,6 @@ int bc_buf_get(struct bc_handle *bc)
 struct bc_handle *bc_handle_get(const char *dev)
 {
 	struct bc_handle *bc;
-	struct v4l2_control vc;
 
 	if ((bc = malloc(sizeof(*bc))) == NULL) {
 		errno = ENOMEM;
@@ -179,12 +218,6 @@ struct bc_handle *bc_handle_get(const char *dev)
 		goto error_fail;
 	}
 
-	/* Set GOP */
-	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-	vc.value = BC_GOP;
-	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-		goto error_fail;
-
 	/* Get the parameters */
 	bc->vparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_PARM, &bc->vparm) < 0)
@@ -193,6 +226,10 @@ struct bc_handle *bc_handle_get(const char *dev)
 	/* Get the format */
 	bc->vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
+		goto error_fail;
+
+	/* Set initial interval and GOP */
+	if (bc_set_interval(bc, 1) < 0)
 		goto error_fail;
 
 	if (bc_bufs_prepare(bc))

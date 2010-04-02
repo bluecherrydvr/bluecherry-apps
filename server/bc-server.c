@@ -18,9 +18,12 @@
 static void do_decode(struct bc_rec *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
+	int ret;
 
 	for (;;) {
-		if (bc_buf_get(bc))
+		if ((ret = bc_buf_get(bc)) == EAGAIN)
+			continue;
+		else if (ret)
 			srv_err("error getting buffer: %m");
 
 		if (bc_mux_out(bc_rec))

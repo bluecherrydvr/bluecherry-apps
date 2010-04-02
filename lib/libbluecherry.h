@@ -14,7 +14,6 @@
 #define BC_BUFFERS		32
 #define BC_BUFFERS_LOCAL	15
 #define BC_BUFFERS_THRESH	((BC_BUFFERS - BC_BUFFERS_LOCAL) / 2)
-#define BC_GOP			BC_BUFFERS_LOCAL
 
 /* Some things that are driver specific */
 #ifndef V4L2_BUF_FLAG_MOTION_ON
@@ -40,11 +39,13 @@ struct bc_handle {
 		void		*data;
 		size_t		size;
 	}			p_buf[BC_BUFFERS];
-	
 	struct v4l2_buffer	q_buf[BC_BUFFERS];
+	
 	int			rd_idx;
 	int			wr_idx;
 	int			got_vop;
+	int			mot_cnt;
+	int			gop;
 };
 
 enum bc_db_type {

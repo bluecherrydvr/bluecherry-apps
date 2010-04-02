@@ -66,23 +66,6 @@ struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 	return &bc->q_buf[idx];
 }
 
-int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
-{
-	struct v4l2_control vc;
-
-	bc->vparm.parm.capture.timeperframe.numerator = interval;
-	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
-		return -1;
-
-	/* Reset GOP */
-	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-	vc.value = BC_GOP;
-	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-		return -1;
-
-	return 0;
-}
-
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)
 {
