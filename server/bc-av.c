@@ -60,11 +60,15 @@ int bc_open_avcodec(struct bc_rec *bc_rec)
 
 	/* Get the input and output formats */
 	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);
-	if (!bc_rec->fmt_out)
+	if (!bc_rec->fmt_out) {
+		errno = EINVAL;
 		return -1;
+	}
 	fmt_in = av_find_input_format("mpeg");
-	if (!fmt_in)
+	if (!fmt_in) {
+		errno = EINVAL;
 		return -1;
+	}
 
 	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
 		return -1;
