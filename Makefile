@@ -3,7 +3,7 @@ LDFLAGS		= -lavformat
 
 CFLAGS		= -Wall -Werror -g -O2
 
-TARGETS		= bc-reader bc.cgi server/bc-server
+TARGETS		= bc.cgi server/bc-server
 
 LIB		= lib/libbluecherry.a
 

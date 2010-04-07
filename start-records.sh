@@ -10,5 +10,5 @@ fi
 
 for cnt in `seq $start $end`; do
 	test -e "/dev/video$cnt" || continue
-	./bc-reader -d "/dev/video$cnt" -o "test-$cnt.mkv" $@ &
+	./server/bc-server -d "/dev/video$cnt" -o "test-$cnt.mkv" $@ &
 done
