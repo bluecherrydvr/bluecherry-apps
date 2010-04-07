@@ -114,15 +114,11 @@ int bc_handle_start(struct bc_handle *bc)
 
 static int bc_buf_return(struct bc_handle *bc)
 {
-	int ret;
-
 	if (bc_local_bufs(bc) < (BC_BUFFERS_LOCAL + BC_BUFFERS_THRESH))
 		return 0;
 
 	while (bc_local_bufs(bc) > BC_BUFFERS_LOCAL) {
-		ret = ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
-		if (ret)
-			return -1;
+		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
 		increment_idx(&bc->wr_idx);
 	}
 	return 0;
@@ -138,8 +134,13 @@ int bc_buf_get(struct bc_handle *bc)
 	vb = &bc->q_buf[bc->rd_idx];
 	reset_vbuf(vb);
 
-	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0)
+	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0) {
+		if (errno == EIO) {
+			increment_idx(&bc->rd_idx);
+			errno = EAGAIN;
+		}
 		return errno;
+	}
 
 	increment_idx(&bc->rd_idx);
 
@@ -180,7 +181,7 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 		return -1;
 
 	/* Reset GOP */
-	bc->gop = lround(num / den / 2);
+	bc->gop = lround(den / num / 2);
 	if (!bc->gop)
 		bc->gop = 1;
 	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;

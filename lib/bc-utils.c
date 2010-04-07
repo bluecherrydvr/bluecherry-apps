@@ -46,7 +46,7 @@ void *bc_buf_data(struct bc_handle *bc)
 	return bc->p_buf[bc->q_buf[idx].index].data;
 }
 
-size_t bc_buf_size(struct bc_handle *bc)
+unsigned int bc_buf_size(struct bc_handle *bc)
 {
 	int idx = bc_current_buf(bc);
 

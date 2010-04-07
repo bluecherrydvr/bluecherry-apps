@@ -71,7 +71,7 @@ int bc_buf_get(struct bc_handle *bc);
 void *bc_buf_data(struct bc_handle *bc);
 
 /* Get the size in bytes used by the current buffer */
-size_t bc_buf_size(struct bc_handle *bc);
+unsigned int bc_buf_size(struct bc_handle *bc);
 
 /* Get the v4l2_buffer struct for the current buffer */
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
