@@ -23,7 +23,7 @@ static void print_error(char *msg, ...)
 	va_list ap;
 
 	va_start(ap, msg);
-	fprintf(stderr, msg, ap);
+	vfprintf(stderr, msg, ap);
 	va_end(ap);
 	fprintf(stderr, "\n");
 
