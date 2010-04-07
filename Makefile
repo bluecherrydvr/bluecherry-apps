@@ -3,7 +3,7 @@ LDFLAGS		= -lavformat
 
 CFLAGS		= -Wall -Werror -g -O2
 
-TARGETS		= bc.cgi server/bc-server
+TARGETS		= getjpeg bc.cgi server/bc-server
 
 LIB		= lib/libbluecherry.a
 
@@ -15,7 +15,7 @@ $(LIB): FORCE
 server/bc-server: FORCE
 	$(MAKE) -C server
 
-bc-reader: $(LIB) bc-reader.o
+getjpeg: $(LIB) getjpeg.o
 
 bc.cgi: $(LIB) bc.cgi.o
 
