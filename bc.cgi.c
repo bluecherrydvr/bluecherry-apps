@@ -81,7 +81,7 @@ static void print_image(struct bc_handle *bc, int once)
 
 	if (fprintf(stdout, "Content-type: image/jpeg\r\n") < 0)
 		exit(1);
-	if (fprintf(stdout, "Content-size: %lu\r\n\r\n", bc_buf_size(bc)) < 0)
+	if (fprintf(stdout, "Content-size: %u\r\n\r\n", bc_buf_size(bc)) < 0)
 		exit(1);
 	if (fwrite(bc_buf_data(bc), bc_buf_size(bc), 1, stdout) != 1)
 		exit(1);
