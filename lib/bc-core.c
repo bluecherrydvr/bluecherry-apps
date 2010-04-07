@@ -229,9 +229,8 @@ struct bc_handle *bc_handle_get(const char *dev)
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
 		goto error_fail;
 
-	/* Set initial interval and GOP */
-	if (bc_set_interval(bc, 1) < 0)
-		goto error_fail;
+	/* Set initial interval and GOP, but ignore failure */
+	bc_set_interval(bc, 1);
 
 	if (bc_bufs_prepare(bc))
 		goto error_fail;
