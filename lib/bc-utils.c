@@ -82,6 +82,27 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 	return 0;
 }
 
+int bc_set_osd(struct bc_handle *bc, char *str)
+{
+	struct v4l2_ext_control ctrl;
+	struct v4l2_ext_controls ctrls;
+
+	memset(&ctrl, 0, sizeof(ctrl));
+	memset(&ctrls, 0, sizeof(ctrls));
+
+	ctrls.count = 1;
+	ctrls.ctrl_class = V4L2_CTRL_CLASS_FM_TX;
+	ctrls.controls = &ctrl;
+	ctrl.id = V4L2_CID_RDS_TX_RADIO_TEXT;
+	ctrl.size = strlen(str);
+	ctrl.string = str;
+
+	if (ioctl(bc->dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
+		return -1;
+
+	return 0;
+}
+
 extern char *__progname;
 #define BC_LOG_SERVICE	LOG_LOCAL4
 

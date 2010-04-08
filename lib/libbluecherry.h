@@ -87,4 +87,7 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
 
+/* Set the text of the OSD */
+int bc_set_osd(struct bc_handle *bc, char *str);
+
 #endif /* __LIBBLUECHERRY_H */
