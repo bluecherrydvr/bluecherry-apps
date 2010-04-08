@@ -181,7 +181,7 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 		return -1;
 
 	/* Reset GOP */
-	bc->gop = lround(den / num / 2);
+	bc->gop = lround(den / num);
 	if (!bc->gop)
 		bc->gop = 1;
 	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
@@ -228,9 +228,6 @@ struct bc_handle *bc_handle_get(const char *dev)
 	bc->vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
 		goto error_fail;
-
-	/* Set initial interval and GOP, but ignore failure */
-	bc_set_interval(bc, 1);
 
 	if (bc_bufs_prepare(bc))
 		goto error_fail;
