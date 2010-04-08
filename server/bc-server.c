@@ -40,7 +40,7 @@ static void usage(void)
 	fprintf(stderr, "  -o\tName of output file (required)\n");
 	fprintf(stderr, "  -v\tVerbose output\n");
 	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
-	fprintf(stderr, "  -i\tFrame interval (default 1)\n");
+	fprintf(stderr, "  -i\tFrame interval (default, leave alone)\n");
 	fprintf(stderr, "  -m\tEnable motion detection (default off)\n");
 	exit(1);
 }
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	struct bc_handle *bc;
 	const char *dev = "/dev/video0";
 	int d1_mode = 0;
-	int interval = 1;
+	int interval = 0;
 	int motion = 0;
 	int opt;
 	int ret;
@@ -67,10 +67,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (interval < 1)
-		interval = 1;
-	else if (interval > 15)
-		interval = 15;
+	if (interval > 30)
+		interval = 30;
 
 	if (!bc_rec.outfile)
 		usage();
@@ -80,7 +78,7 @@ int main(int argc, char **argv)
 		srv_err("%s: error opening device: %m", dev);
 	bc_rec.bc = bc;
 
-	if (bc_set_interval(bc, interval))
+	if (interval > 0 && bc_set_interval(bc, interval))
 		srv_err("%s: error setting interval: %m", dev);
 
 	if (d1_mode)
