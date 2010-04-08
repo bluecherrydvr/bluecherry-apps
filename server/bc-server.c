@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <time.h>
 
 #include "bc-server.h"
 
@@ -14,6 +15,18 @@
 	bc_log(fmt, ## args);		\
 	exit(1);			\
 } while(0)
+
+static void update_time(struct bc_handle *bc)
+{
+	char buf[20];
+	struct tm tm;
+	time_t t;
+
+	t = time(NULL);
+	gmtime_r(&t, &tm);
+	strftime(buf, 20, "%F %T", &tm);
+	bc_set_osd(bc, buf);
+}
 
 static void do_decode(struct bc_rec *bc_rec)
 {
@@ -25,6 +38,9 @@ static void do_decode(struct bc_rec *bc_rec)
 			continue;
 		else if (ret)
 			srv_err("error getting buffer: %m");
+
+		if (bc_buf_key_frame(bc))
+			update_time(bc);
 
 		if (bc_mux_out(bc_rec))
 			srv_err("error writing frame to outfile: %m");
@@ -67,8 +83,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (interval > 30)
-		interval = 30;
+	if (interval > 15)
+		interval = 15;
 
 	if (!bc_rec.outfile)
 		usage();
