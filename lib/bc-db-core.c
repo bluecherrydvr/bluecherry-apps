@@ -38,3 +38,21 @@ int bc_db_open(struct bc_handle *bc, enum bc_db_type type)
 
 	return bc->dbh == NULL ? -1 : 0;
 }
+
+int bc_db_get_table(struct bc_handle *bc, int *nrows, int *ncols,
+		    char ***res, const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, fmt);
+	ret = bc->db_ops->get_table(bc->dbh, nrows, ncols, res, fmt, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+void bc_db_free_table(struct bc_handle *bc, char **res)
+{
+	bc->db_ops->free_table(bc->dbh, res);
+}

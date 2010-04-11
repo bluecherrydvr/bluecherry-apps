@@ -27,9 +27,9 @@ static int bc_db_sqlite_get_table(void *handle, int *nrows, int *ncols,
 					NULL, ap);
 }
 
-static void bc_db_sqlite_free_table(void *handle, char **result)
+static void bc_db_sqlite_free_table(void *handle, char **res)
 {
-	sqlite_free_table(result);
+	sqlite_free_table(res);
 }
 
 struct bc_db_ops bc_db_sqlite = {

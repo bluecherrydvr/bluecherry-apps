@@ -38,7 +38,7 @@ struct bc_db_ops {
 	void (*close)(void *handle);
 	int (*get_table)(void *handle, int *nrows, int *ncols, char ***res,
 			 const char *fmt, va_list ap);
-	void (*free_table)(void *handle, char **result);
+	void (*free_table)(void *handle, char **res);
 };
 
 struct bc_handle {
@@ -105,5 +105,8 @@ int bc_set_osd(struct bc_handle *bc, char *str);
 /* Database functions */
 int bc_db_open(struct bc_handle *bc, enum bc_db_type type);
 void bc_db_close(struct bc_handle *bc);
+int bc_db_get_table(struct bc_handle *bc, int *nrows, int *ncols,
+		    char ***res, const char *fmt, ...);
+void bc_db_free_table(struct bc_handle *bc, char **res);
 
 #endif /* __LIBBLUECHERRY_H */
