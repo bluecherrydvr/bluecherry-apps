@@ -8,6 +8,7 @@
 #define __LIBBLUECHERRY_H
 
 #include <sys/types.h>
+#include <stdarg.h>
 
 #include <linux/videodev2.h>
 
@@ -26,6 +27,19 @@
 #define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
+
+enum bc_db_type {
+	BC_DB_SQLITE,
+};
+
+struct bc_db_ops {
+	enum bc_db_type type;
+	void *(*open)(void);
+	void (*close)(void *handle);
+	int (*get_table)(void *handle, int *nrows, int *ncols, char ***res,
+			 const char *fmt, va_list ap);
+	void (*free_table)(void *handle, char **result);
+};
 
 struct bc_handle {
 	/* Track info about the v4l2 device */
@@ -46,12 +60,10 @@ struct bc_handle {
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;
-};
-
-enum bc_db_type {
-	BC_DB_SQLITE,
-	BC_DB_MYSQL,
-	BC_DB_PGSQL,
+	/* Database tracking and handlers */
+	enum bc_db_type		db_type;
+	void			*dbh;
+	struct bc_db_ops	*db_ops;
 };
 
 /* Called to open and close a handle for a device. */
@@ -89,5 +101,9 @@ int bc_set_motion(struct bc_handle *bc, int on);
 
 /* Set the text of the OSD */
 int bc_set_osd(struct bc_handle *bc, char *str);
+
+/* Database functions */
+int bc_db_open(struct bc_handle *bc, enum bc_db_type type);
+void bc_db_close(struct bc_handle *bc);
 
 #endif /* __LIBBLUECHERRY_H */
