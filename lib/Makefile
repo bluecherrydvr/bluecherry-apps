@@ -1,14 +1,20 @@
-CPPFLAGS	= -I. -I../module/include -D_GNU_SOURCE
-LDFLAGS		= -lavformat
+LD		= gcc
 
-CFLAGS		= -Wall -Werror -g -O2
+CPPFLAGS	= -I. -D_GNU_SOURCE
+LDFLAGS		= -lsqlite -lpq -lmysqlclient
 
-TARGET		= libbluecherry.a
-OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-sqlite.o
+CFLAGS		= -Wall -Werror -g -O2 -pthread -fPIC
 
-all: $(TARGET)
+SOLIB		= libbluecherry.so
+SOLIBVER	= libbluecherry.so.0
+OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-sqlite.o \
+		  bc-db-psql.o bc-db-mysql.o
 
-$(TARGET): $(OBJS)
-	$(AR) rcsu $@ $^
+all: $(SOLIBVER)
+
+$(SOLIBVER): $(OBJS)
+	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
+	ln -s $@ $(SOLIB)
+
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)

@@ -1,13 +1,13 @@
 CPPFLAGS	= -Ilib
-LDFLAGS		= -lavformat
+LDFLAGS		= -Llib -lbluecherry
 
 CFLAGS		= -Wall -Werror -g -O2
 
 TARGETS		= getjpeg bc.cgi server/bc-server
 
-LIB		= lib/libbluecherry.a
+LIB		= lib/libbluecherry.so
 
-all: $(TARGETS)
+all: $(LIB) $(TARGETS)
 
 $(LIB): FORCE
 	$(MAKE) -C lib
@@ -15,9 +15,9 @@ $(LIB): FORCE
 server/bc-server: FORCE
 	$(MAKE) -C server
 
-getjpeg: $(LIB) getjpeg.o
+getjpeg: getjpeg.o
 
-bc.cgi: $(LIB) bc.cgi.o
+bc.cgi: bc.cgi.o
 
 clean:
 	$(MAKE) -C lib clean

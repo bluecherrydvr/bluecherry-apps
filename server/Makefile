@@ -1,18 +1,18 @@
 CPPFLAGS	= -I../lib -D_GNU_SOURCE
-LDFLAGS		= -lavformat -lm -lpthread
+LDFLAGS		= -L../lib -lavformat -lm -lbluecherry
 
 CFLAGS		= -Wall -Werror -g -O2 -pthread
 
 TARGETS		= bc-server
-LIB		= ../lib/libbluecherry.a
+LIB		= ../lib/libbluecherry.so
 OBJS		= bc-server.o bc-av.o
 
-all: $(TARGETS)
+all: $(LIB) $(TARGETS)
 
 $(LIB): FORCE
 	$(MAKE) -C ../lib
 
-bc-server: $(LIB) $(OBJS)
+bc-server: $(OBJS)
 
 clean:
 	rm -f $(OBJS) $(TARGETS)
