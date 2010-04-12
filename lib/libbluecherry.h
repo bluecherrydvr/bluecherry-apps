@@ -28,8 +28,12 @@
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
+#define BC_DB_NAME			"bluecherry_db"
+
 enum bc_db_type {
 	BC_DB_SQLITE,
+	BC_DB_PSQL,
+	BC_DB_MYSQL,
 };
 
 struct bc_db_ops {
@@ -39,6 +43,12 @@ struct bc_db_ops {
 	int (*get_table)(void *handle, int *nrows, int *ncols, char ***res,
 			 const char *fmt, va_list ap);
 	void (*free_table)(void *handle, char **res);
+};
+
+struct bc_db_handle {
+	enum bc_db_type		db_type;
+	void			*dbh;
+	struct bc_db_ops	*db_ops;
 };
 
 struct bc_handle {
@@ -60,10 +70,9 @@ struct bc_handle {
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;
-	/* Database tracking and handlers */
-	enum bc_db_type		db_type;
-	void			*dbh;
-	struct bc_db_ops	*db_ops;
+	/* The database associated with this device */
+	struct bc_db_handle	*bc_db;
+	/* TODO: Need a handle to the settings structure for this device */
 };
 
 /* Called to open and close a handle for a device. */
@@ -103,10 +112,10 @@ int bc_set_motion(struct bc_handle *bc, int on);
 int bc_set_osd(struct bc_handle *bc, char *str);
 
 /* Database functions */
-int bc_db_open(struct bc_handle *bc, enum bc_db_type type);
-void bc_db_close(struct bc_handle *bc);
-int bc_db_get_table(struct bc_handle *bc, int *nrows, int *ncols,
+struct bc_db_handle *bc_db_open(enum bc_db_type type);
+void bc_db_close(struct bc_db_handle *bc_db);
+int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 		    char ***res, const char *fmt, ...);
-void bc_db_free_table(struct bc_handle *bc, char **res);
+void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
 
 #endif /* __LIBBLUECHERRY_H */

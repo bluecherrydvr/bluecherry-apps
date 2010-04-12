@@ -4,55 +4,60 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <stdlib.h>
 #include <errno.h>
 
 #include <libbluecherry.h>
 
 extern struct bc_db_ops bc_db_sqlite;
+extern struct bc_db_ops bc_db_psql;
+extern struct bc_db_ops bc_db_mysql;
 
-void bc_db_close(struct bc_handle *bc)
+void bc_db_close(struct bc_db_handle *bc_db)
 {
-	if (bc->dbh == NULL)
-		return;
+	if (bc_db->db_ops)
+		bc_db->db_ops->close(bc_db->dbh);
 
-	if (bc->db_ops)
-		bc->db_ops->close(bc->dbh);
-
-	bc->dbh = NULL;
+	bc_db->dbh = NULL;
 }
 
-int bc_db_open(struct bc_handle *bc, enum bc_db_type type)
+struct bc_db_handle *bc_db_open(enum bc_db_type type)
 {
-	/* Maybe check this first? */
-	bc_db_close(bc);
+	struct bc_db_handle *bc_db = malloc(sizeof(*bc_db));
+
+	if (bc_db == NULL)
+		return NULL;
 
 	switch (type) {
 	case BC_DB_SQLITE:
-		bc->db_type = BC_DB_SQLITE;
-		bc->db_ops = &bc_db_sqlite;
-		bc->dbh = bc->db_ops->open();
+		bc_db->db_type = BC_DB_SQLITE;
+		bc_db->db_ops = &bc_db_sqlite;
+		bc_db->dbh = bc_db->db_ops->open();
 		break;
+	case BC_DB_PSQL:
+	case BC_DB_MYSQL:
 	default:
-		return EINVAL;
+		free(bc_db);
+		return NULL;
 	}
 
-	return bc->dbh == NULL ? -1 : 0;
+	return bc_db;
 }
 
-int bc_db_get_table(struct bc_handle *bc, int *nrows, int *ncols,
+int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 		    char ***res, const char *fmt, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, fmt);
-	ret = bc->db_ops->get_table(bc->dbh, nrows, ncols, res, fmt, ap);
+	ret = bc_db->db_ops->get_table(bc_db->dbh, nrows, ncols, res, fmt, ap);
 	va_end(ap);
 
 	return ret;
 }
 
-void bc_db_free_table(struct bc_handle *bc, char **res)
+void bc_db_free_table(struct bc_db_handle *bc_db, char **res)
 {
-	bc->db_ops->free_table(bc->dbh, res);
+	bc_db->db_ops->free_table(bc_db->dbh, res);
 }

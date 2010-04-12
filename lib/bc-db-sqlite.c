@@ -8,7 +8,7 @@
 
 #include <sqlite.h>
 
-static const char db_name[] = "/var/lib/bluecherry/main.db";
+static const char db_name[] = "/var/lib/bluecherry/" BC_DB_NAME;
 
 static void *bc_db_sqlite_open(void)
 {
