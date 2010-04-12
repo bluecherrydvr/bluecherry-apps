@@ -5,7 +5,7 @@ CFLAGS		= -Wall -Werror -g -O2 -pthread
 
 TARGETS		= bc-server
 LIB		= ../lib/libbluecherry.so
-OBJS		= bc-server.o bc-av.o
+OBJS		= bc-server.o bc-thread.o bc-av.o
 
 all: $(LIB) $(TARGETS)
 

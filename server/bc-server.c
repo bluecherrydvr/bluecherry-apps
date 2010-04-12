@@ -6,120 +6,113 @@
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <time.h>
 
 #include "bc-server.h"
 
-#define srv_err(fmt, args...) do {	\
-	bc_log(fmt, ## args);		\
-	exit(1);			\
-} while(0)
-
-static void update_time(struct bc_handle *bc)
-{
-	char buf[20];
-	struct tm tm;
-	time_t t;
-
-	t = time(NULL);
-	gmtime_r(&t, &tm);
-	strftime(buf, 20, "%F %T", &tm);
-	bc_set_osd(bc, buf);
-}
-
-static void do_decode(struct bc_rec *bc_rec)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	int ret;
-
-	for (;;) {
-		if ((ret = bc_buf_get(bc)) == EAGAIN)
-			continue;
-		else if (ret)
-			srv_err("error getting buffer: %m");
-
-		if (bc_buf_key_frame(bc))
-			update_time(bc);
-
-		if (bc_mux_out(bc_rec))
-			srv_err("error writing frame to outfile: %m");
-	}
-}
-
 extern char *__progname;
+
+static char *get_val(char **rows, int ncols, int row, const char *colname)
+{
+	int i;
+
+	for (i = 0; i < ncols; i++) {
+		if (strcmp(colname, rows[i]) == 0)
+			break;
+	}
+
+	return (i == ncols) ? NULL : rows[((row + 1) * ncols) + i];
+}
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s <args> [-o outfile]\n", __progname);
-	fprintf(stderr, "  -d\tName of v4l2 device (/dev/video0 default)\n");
-	fprintf(stderr, "  -o\tName of output file (required)\n");
-	fprintf(stderr, "  -v\tVerbose output\n");
-	fprintf(stderr, "  -D\tUse D1 mode (default CIF)\n");
-	fprintf(stderr, "  -i\tFrame interval (default, leave alone)\n");
-	fprintf(stderr, "  -m\tEnable motion detection (default off)\n");
+	fprintf(stderr, "Usage: %s\n", __progname);
 	exit(1);
 }
 
 int main(int argc, char **argv)
 {
-	struct bc_rec bc_rec = { 0 };
-	struct bc_handle *bc;
-	const char *dev = "/dev/video0";
-	int d1_mode = 0;
-	int interval = 0;
-	int motion = 0;
+	struct bc_rec *bc_recs = NULL;
+	struct bc_db_handle *bc_db;
+	int nrows, ncols;
+	char **rows;
 	int opt;
-	int ret;
+	int res;
+	int i;
 
-	while ((opt = getopt(argc, argv, "d:o:i:vhDm")) != -1) {
+	while ((opt = getopt(argc, argv, "h")) != -1) {
 		switch (opt) {
-		case 'o': bc_rec.outfile	= optarg;	break;
-		case 'd': dev			= optarg;	break;
-		case 'D': d1_mode		= 1;		break;
-		case 'i': interval		= atoi(optarg); break;
-		case 'm': motion		= 1;		break;
 		case 'h': default: usage();
 		}
 	}
 
-	if (interval > 15)
-		interval = 15;
+	bc_log("Started");
 
-	if (!bc_rec.outfile)
-		usage();
+	bc_db = bc_db_open(BC_DB_SQLITE);
+	if (bc_db == NULL) {
+		bc_log("E: Could not open SQL database");
+		exit(1);
+	}
 
-	/* Open the device */
-	if ((bc = bc_handle_get(dev)) == NULL)
-		srv_err("%s: error opening device: %m", dev);
-	bc_rec.bc = bc;
+	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+			      "SELECT * from Devices;");
+	if (res != 0 || nrows == 0) {
+		bc_log("E: No devices to record from");
+		exit(1);
+	}
 
-	if (interval > 0 && bc_set_interval(bc, interval))
-		srv_err("%s: error setting interval: %m", dev);
+	/* Now that we have something to do... */
+	if (0) { //daemon(0, 0) == -1) {
+		bc_log("E: Could not fork to background: %m");
+		exit(1);
+	}
 
-	if (d1_mode)
-		ret = bc_set_format(bc, V4L2_PIX_FMT_MPEG, 704, 480);
-	else
-		ret = bc_set_format(bc, V4L2_PIX_FMT_MPEG, 352, 240);
+	for (i = 0; i < nrows; i++) {
+		char *dev = get_val(rows, ncols, i, "source_video");
+		char *proto = get_val(rows, ncols, i, "protocol");
+		char *id = get_val(rows, ncols, i, "id");
+		char *name = get_val(rows, ncols, i, "device_name");
+		struct bc_rec *bc_rec;
 
-	if (ret)
-		srv_err("%s: error setting format: %m", dev);
+		if (!dev || !proto || !id || !name)
+			continue;
 
-	if (bc_set_motion(bc, motion))
-		srv_err("%s: error setting motion detection", dev);
+		/* Only v4l2 for now */
+		if (strcmp(proto, "V4L2") != 0)
+			continue;
 
-	if (bc_handle_start(bc))
-		srv_err("%s: error starting stream: %m", dev);
+		bc_rec = malloc(sizeof(*bc_rec));
+		if (bc_rec == NULL) {
+			bc_log("E(%s): out of memory trying to start record",
+			       id);
+			continue;
+		}
 
-	if (bc_open_avcodec(&bc_rec))
-		srv_err("%s: error opening avcodec: %m", dev);
+		memset(bc_rec, 0, sizeof(*bc_rec));
+		bc_rec->next = bc_recs;
+		bc_recs = bc_rec;
 
-	bc_log("%s: Starting record", dev);
+		sprintf(bc_rec->outfile, BC_FILE_REC_BASE "%s-%lu.mkv",
+			id, time(NULL));
+		bc_rec->id = strdup(id);
+		bc_rec->dev = strdup(dev);
+		bc_rec->name = strdup(name);
+		bc_rec->width = atoi(get_val(rows, ncols, i, "resolutionX"));
+		bc_rec->height = atoi(get_val(rows, ncols, i, "resolutionY"));
 
-	do_decode(&bc_rec);
+		if (bc_start_record(bc_rec)) {
+			free(bc_rec);
+			continue;
+		}
 
-	bc_close_avcodec(&bc_rec);
-	bc_handle_free(bc);
+		/* Add to the list */
+		bc_rec->next = bc_recs;
+		bc_recs = bc_rec;
+	}
 
-	return 0;
+	sleep(30);
+
+	exit(0);
 }
