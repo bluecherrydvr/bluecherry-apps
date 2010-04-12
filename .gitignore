@@ -1,5 +1,7 @@
 *.o
 *.a
+*.so
+*.so.?
 .*
 *.mkv
 bc-reader
