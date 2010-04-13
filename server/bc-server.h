@@ -12,7 +12,7 @@
 #include <libbluecherry.h>
 #include <libavformat/avformat.h>
 
-#include "list.h"
+#include "bc-list.h"
 
 #define BC_FILE_REC_BASE	"/var/lib/bluecherry/recordings/"
 
@@ -30,7 +30,7 @@ struct bc_record {
 	int			mot_cnt;
 	int			mot_run_off;
 	pthread_t		thread;
-	struct list_head	list;
+	struct bc_list_struct	list;
 };
 
 int bc_mux_out(struct bc_record *bc_rec);

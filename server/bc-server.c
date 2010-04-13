@@ -11,9 +11,8 @@
 #include <time.h>
 
 #include "bc-server.h"
-#include "list.h"
 
-static LIST_HEAD(bc_rec_head);
+static BC_DECLARE_LIST(bc_rec_list);
 static struct bc_db_handle *bc_db;
 
 extern char *__progname;
@@ -40,20 +39,20 @@ static int get_val_int(char **rows, int ncols, int row, const char *colname)
 static void check_threads(void)
 {
 	struct bc_record *bc_rec;
-	struct list_head *lh;
+	struct bc_list_struct *lh;
 	int ret;
 	char *errmsg = NULL;
 
-	if (list_empty(&bc_rec_head))
+	if (bc_list_empty(&bc_rec_list))
 		return;
 
-	list_for_each(lh, &bc_rec_head) {
-		bc_rec = list_entry(lh, struct bc_record, list);
+	bc_list_for_each(lh, &bc_rec_list) {
+		bc_rec = bc_list_entry(lh, struct bc_record, list);
 		ret = pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg);
 		if (!ret) {
 			bc_log("I(%d): Record thread stopped: %s: %s",
 			       bc_rec->id, bc_rec->name, errmsg);
-			list_del(&bc_rec->list);
+			bc_list_del(&bc_rec->list);
 			free(bc_rec->dev);
 			free(bc_rec->name);
 			free(bc_rec);
@@ -64,13 +63,13 @@ static void check_threads(void)
 static int record_exists(const int id)
 {
 	struct bc_record *bc_rec;
-	struct list_head *lh;
+	struct bc_list_struct *lh;
 
-	if (list_empty(&bc_rec_head))
+	if (bc_list_empty(&bc_rec_list))
 		return 0;
 
-	list_for_each(lh, &bc_rec_head) {
-		bc_rec = list_entry(lh, struct bc_record, list);
+	bc_list_for_each(lh, &bc_rec_list) {
+		bc_rec = bc_list_entry(lh, struct bc_record, list);
 		if (bc_rec->id == id)
 			return 1;
 	}
@@ -136,7 +135,7 @@ static void check_db(void)
 			continue;
 		}
 
-		list_add(&bc_rec->list, &bc_rec_head);
+		bc_list_add(&bc_rec->list, &bc_rec_list);
 	}
 
 	bc_db_free_table(bc_db, rows);
