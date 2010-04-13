@@ -83,7 +83,7 @@ void bc_handle_free(struct bc_handle *bc);
 int bc_handle_start(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */
-void bc_log(char *msg, ...);
+void bc_log(char *msg, ...) __attribute__ ((format (printf, 1, 2)));
 
 /* Retrieves the next buffer from the device */
 int bc_buf_get(struct bc_handle *bc);
