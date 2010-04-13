@@ -8,9 +8,17 @@
 
 #include <postgresql/libpq-fe.h>
 
-static void *bc_db_psql_open(void)
+static void *bc_db_psql_open(struct config_t *cfg)
 {
-	return PQconnectdb("dbname='" BC_DB_NAME "'");
+	const char *dbname;
+	char buf[256];
+
+	if (!config_lookup_string(cfg, BC_CONFIG_DB ".dbname", &dbname))
+		return NULL;
+
+	snprintf(buf, sizeof(buf), "dbname='%s'", dbname);
+
+	return PQconnectdb(buf);
 }
 
 static void bc_db_psql_close(void *handle)

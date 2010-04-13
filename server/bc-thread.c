@@ -11,8 +11,9 @@
 
 #include "bc-server.h"
 
-static void update_time(struct bc_handle *bc)
+static void update_osd(struct bc_record *bc_rec)
 {
+	struct bc_handle *bc = bc_rec->bc;
 	char buf[20];
 	struct tm tm;
 	time_t t;
@@ -20,12 +21,12 @@ static void update_time(struct bc_handle *bc)
 	t = time(NULL);
 	gmtime_r(&t, &tm);
 	strftime(buf, 20, "%F %T", &tm);
-	bc_set_osd(bc, buf);
+	bc_set_osd(bc, "%s %s", bc_rec->name, buf);
 }
 
 static void *bc_device_thread(void *data)
 {
-	struct bc_rec *bc_rec = data;
+	struct bc_record *bc_rec = data;
 	struct bc_handle *bc = bc_rec->bc;
 	int ret;
 
@@ -39,7 +40,7 @@ static void *bc_device_thread(void *data)
 			/* XXX Do something */
 		}
 		if (bc_buf_key_frame(bc))
-			update_time(bc);
+			update_osd(bc_rec);
 
 		if (bc_mux_out(bc_rec)) {
 			bc_log("error writing frame to outfile: %m");
@@ -53,7 +54,7 @@ static void *bc_device_thread(void *data)
 	return NULL;
 }
 
-int bc_start_record(struct bc_rec *bc_rec)
+int bc_start_record(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc;
 	int ret;

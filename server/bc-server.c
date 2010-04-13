@@ -39,7 +39,7 @@ static int get_val_int(char **rows, int ncols, int row, const char *colname)
 
 static void check_threads(void)
 {
-	struct bc_rec *bc_rec;
+	struct bc_record *bc_rec;
 	struct list_head *lh;
 	int ret;
 	char *errmsg = NULL;
@@ -48,7 +48,7 @@ static void check_threads(void)
 		return;
 
 	list_for_each(lh, &bc_rec_head) {
-		bc_rec = list_entry(lh, struct bc_rec, list);
+		bc_rec = list_entry(lh, struct bc_record, list);
 		ret = pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg);
 		if (!ret) {
 			bc_log("I(%d): Record thread stopped: %s: %s",
@@ -63,14 +63,14 @@ static void check_threads(void)
 
 static int record_exists(const int id)
 {
-	struct bc_rec *bc_rec;
+	struct bc_record *bc_rec;
 	struct list_head *lh;
 
 	if (list_empty(&bc_rec_head))
 		return 0;
 
 	list_for_each(lh, &bc_rec_head) {
-		bc_rec = list_entry(lh, struct bc_rec, list);
+		bc_rec = list_entry(lh, struct bc_record, list);
 		if (bc_rec->id == id)
 			return 1;
 	}
@@ -80,7 +80,7 @@ static int record_exists(const int id)
 
 static void check_db(void)
 {
-	struct bc_rec *bc_rec;
+	struct bc_record *bc_rec;
 	int nrows, ncols;
 	char **rows;
 	int i;
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	bc_db = bc_db_open(BC_DB_SQLITE);
+	bc_db = bc_db_open();
 	if (bc_db == NULL) {
 		bc_log("E: Could not open SQL database");
 		exit(1);

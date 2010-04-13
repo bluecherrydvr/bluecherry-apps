@@ -36,6 +36,8 @@ CREATE TABLE "Devices" (
     preset_type_ID smallint
 );
 
+INSERT INTO Devices VALUES (1, 'Bedroom', 704, 480, NULL, 'V4L2', NULL, NULL, NULL, 0, '/dev/video2', NULL, NULL, NULL, 128, 128, 128, 128, 2, 'NTSC', 5, 5, NULL, NULL, NULL, 0, 0);
+
 CREATE TABLE "Events" (
     id integer PRIMARY KEY NOT NULL,
     source_ID smallint,

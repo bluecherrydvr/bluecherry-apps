@@ -6,7 +6,7 @@
 
 #include "bc-server.h"
 
-int bc_mux_out(struct bc_rec *bc_rec)
+int bc_mux_out(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
@@ -27,7 +27,7 @@ int bc_mux_out(struct bc_rec *bc_rec)
 	return 0;
 }
 
-void bc_close_avcodec(struct bc_rec *bc_rec)
+void bc_close_avcodec(struct bc_record *bc_rec)
 {
 	int i;
 
@@ -45,7 +45,7 @@ void bc_close_avcodec(struct bc_rec *bc_rec)
 	av_free(bc_rec->oc);
 }
 
-int bc_open_avcodec(struct bc_rec *bc_rec)
+int bc_open_avcodec(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	AVCodec *codec;

@@ -1,7 +1,7 @@
 LD		= gcc
 
 CPPFLAGS	= -I. -D_GNU_SOURCE
-LDFLAGS		= -lsqlite -lpq -lmysqlclient
+LDFLAGS		= -lsqlite -lpq -lmysqlclient -lconfig
 
 CFLAGS		= -Wall -Werror -g -O2 -pthread -fPIC
 

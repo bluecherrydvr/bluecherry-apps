@@ -8,16 +8,18 @@
 
 #include <mysql/mysql.h>
 
-static const char db_name[] = BC_DB_NAME;
-
-static void *bc_db_mysql_open(void)
+static void *bc_db_mysql_open(struct config_t *cfg)
 {
-	MYSQL *mysql = mysql_init(NULL);
+	const char *dbname;
+	MYSQL *mysql;
 
-	if (mysql == NULL)
+        if (!config_lookup_string(cfg, BC_CONFIG_DB ".dbname", &dbname))
+                return NULL;
+
+	if ((mysql = mysql_init(NULL)) == NULL)
 		return NULL;
 
-	if (mysql_real_connect(mysql, NULL, NULL, NULL, BC_DB_NAME,
+	if (mysql_real_connect(mysql, NULL, NULL, NULL, dbname,
 			       0, NULL, 0) == NULL) {
 		mysql_close(mysql);
 		return NULL;

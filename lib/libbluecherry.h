@@ -9,8 +9,13 @@
 
 #include <sys/types.h>
 #include <stdarg.h>
+#include <libconfig.h>
 
 #include <linux/videodev2.h>
+
+#define BC_CONFIG		"/etc/bluecherry.conf"
+#define BC_CONFIG_BASE		"bluecherry"
+#define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 
 #define BC_BUFFERS		32
 #define BC_BUFFERS_LOCAL	15
@@ -28,17 +33,15 @@
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
-#define BC_DB_NAME			"bluecherry_db"
-
 enum bc_db_type {
-	BC_DB_SQLITE,
-	BC_DB_PSQL,
-	BC_DB_MYSQL,
+	BC_DB_SQLITE = 0,
+	BC_DB_PSQL = 1,
+	BC_DB_MYSQL = 2,
 };
 
 struct bc_db_ops {
 	enum bc_db_type type;
-	void *(*open)(void);
+	void *(*open)(struct config_t *cfg);
 	void (*close)(void *handle);
 	int (*get_table)(void *handle, int *nrows, int *ncols, char ***res,
 			 const char *fmt, va_list ap);
@@ -83,7 +86,8 @@ void bc_handle_free(struct bc_handle *bc);
 int bc_handle_start(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */
-void bc_log(char *msg, ...) __attribute__ ((format (printf, 1, 2)));
+void bc_log(char *msg, ...)
+	__attribute__ ((format (printf, 1, 2)));
 
 /* Retrieves the next buffer from the device */
 int bc_buf_get(struct bc_handle *bc);
@@ -109,10 +113,11 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 int bc_set_motion(struct bc_handle *bc, int on);
 
 /* Set the text of the OSD */
-int bc_set_osd(struct bc_handle *bc, char *str);
+int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
+	__attribute__ ((format (printf, 2, 3)));
 
 /* Database functions */
-struct bc_db_handle *bc_db_open(enum bc_db_type type);
+struct bc_db_handle *bc_db_open(void);
 void bc_db_close(struct bc_db_handle *bc_db);
 int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 		    char ***res, const char *fmt, ...);

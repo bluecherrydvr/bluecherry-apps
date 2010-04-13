@@ -8,11 +8,14 @@
 
 #include <sqlite.h>
 
-static const char db_name[] = "/var/lib/bluecherry/" BC_DB_NAME;
-
-static void *bc_db_sqlite_open(void)
+static void *bc_db_sqlite_open(struct config_t *cfg)
 {
-	return sqlite_open(db_name, 0, NULL);
+	const char *file;
+
+	if (!config_lookup_string(cfg, BC_CONFIG_DB ".file", &file))
+		return NULL;
+
+	return sqlite_open(file, 0, NULL);
 }
 
 static void bc_db_sqlite_close(void *handle)

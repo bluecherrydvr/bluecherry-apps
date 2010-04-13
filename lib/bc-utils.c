@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <syslog.h>
+#include <stdio.h>
 
 #include <libbluecherry.h>
 
@@ -82,10 +83,16 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 	return 0;
 }
 
-int bc_set_osd(struct bc_handle *bc, char *str)
+int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 {
+	char buf[256];
+	va_list ap;
 	struct v4l2_ext_control ctrl;
 	struct v4l2_ext_controls ctrls;
+
+	va_start(ap, fmt);
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
 
 	memset(&ctrl, 0, sizeof(ctrl));
 	memset(&ctrls, 0, sizeof(ctrls));
@@ -94,8 +101,8 @@ int bc_set_osd(struct bc_handle *bc, char *str)
 	ctrls.ctrl_class = V4L2_CTRL_CLASS_FM_TX;
 	ctrls.controls = &ctrl;
 	ctrl.id = V4L2_CID_RDS_TX_RADIO_TEXT;
-	ctrl.size = strlen(str);
-	ctrl.string = str;
+	ctrl.size = strlen(fmt);
+	ctrl.string = fmt;
 
 	if (ioctl(bc->dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
 		return -1;

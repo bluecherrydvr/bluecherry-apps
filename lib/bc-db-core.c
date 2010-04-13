@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 
 #include <libbluecherry.h>
 
@@ -21,25 +22,47 @@ void bc_db_close(struct bc_db_handle *bc_db)
 	bc_db->dbh = NULL;
 }
 
-struct bc_db_handle *bc_db_open(enum bc_db_type type)
+struct bc_db_handle *bc_db_open(void)
 {
 	struct bc_db_handle *bc_db = malloc(sizeof(*bc_db));
+	struct config_t cfg;
+	long type;
 
 	if (bc_db == NULL)
 		return NULL;
+	memset(bc_db, 0, sizeof(*bc_db));
+
+	config_init(&cfg);
+	if (!config_read_file(&cfg, BC_CONFIG)) {
+		bc_log("E(%s): Error parsing config at line %d", BC_CONFIG,
+		       config_error_line(&cfg));
+		goto db_error;
+	}
+
+	if (!config_lookup_int(&cfg, BC_CONFIG_DB ".type", &type)) {
+		bc_log("E(%s): Could not get db type", BC_CONFIG);
+		goto db_error;
+	}
 
 	switch (type) {
 	case BC_DB_SQLITE:
 		bc_db->db_type = BC_DB_SQLITE;
 		bc_db->db_ops = &bc_db_sqlite;
-		bc_db->dbh = bc_db->db_ops->open();
+		bc_db->dbh = bc_db->db_ops->open(&cfg);
 		break;
 	case BC_DB_PSQL:
 	case BC_DB_MYSQL:
 	default:
-		free(bc_db);
-		return NULL;
+		bc_log("E(%s): Invalid db type %ld", BC_CONFIG, type);
 	}
+
+db_error:
+	if (bc_db && !bc_db->dbh) {
+		free(bc_db);
+		bc_db = NULL;
+	}
+
+	config_destroy(&cfg);
 
 	return bc_db;
 }
