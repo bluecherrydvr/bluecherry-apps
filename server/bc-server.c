@@ -11,6 +11,10 @@
 #include <time.h>
 
 #include "bc-server.h"
+#include "list.h"
+
+static LIST_HEAD(bc_rec_head);
+static struct bc_db_handle *bc_db;
 
 extern char *__progname;
 
@@ -26,57 +30,81 @@ static char *get_val(char **rows, int ncols, int row, const char *colname)
 	return (i == ncols) ? NULL : rows[((row + 1) * ncols) + i];
 }
 
-static void usage(void)
+static int get_val_int(char **rows, int ncols, int row, const char *colname)
 {
-	fprintf(stderr, "Usage: %s\n", __progname);
-	exit(1);
+	char *val = get_val(rows, ncols, row, colname);
+
+	return val ? atoi(val) : -1;
 }
 
-int main(int argc, char **argv)
+static void check_threads(void)
 {
-	struct bc_rec *bc_recs = NULL;
-	struct bc_db_handle *bc_db;
-	int nrows, ncols;
-	char **rows;
-	int opt;
-	int res;
-	int i;
+	struct bc_rec *bc_rec;
+	struct list_head *lh;
+	int ret;
+	char *errmsg = NULL;
 
-	while ((opt = getopt(argc, argv, "h")) != -1) {
-		switch (opt) {
-		case 'h': default: usage();
+	if (list_empty(&bc_rec_head))
+		return;
+
+	list_for_each(lh, &bc_rec_head) {
+		bc_rec = list_entry(lh, struct bc_rec, list);
+		ret = pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg);
+		if (!ret) {
+			bc_log("I(%d): Record thread stopped: %s: %s",
+			       bc_rec->id, bc_rec->name, errmsg);
+			list_del(&bc_rec->list);
+			free(bc_rec->dev);
+			free(bc_rec->name);
+			free(bc_rec);
 		}
 	}
+}
 
-	bc_log("Started");
+static int record_exists(const int id)
+{
+	struct bc_rec *bc_rec;
+	struct list_head *lh;
 
-	bc_db = bc_db_open(BC_DB_SQLITE);
-	if (bc_db == NULL) {
-		bc_log("E: Could not open SQL database");
-		exit(1);
+	if (list_empty(&bc_rec_head))
+		return 0;
+
+	list_for_each(lh, &bc_rec_head) {
+		bc_rec = list_entry(lh, struct bc_rec, list);
+		if (bc_rec->id == id)
+			return 1;
 	}
+
+	return 0;
+}
+
+static void check_db(void)
+{
+	struct bc_rec *bc_rec;
+	int nrows, ncols;
+	char **rows;
+	int i;
+	int res;
 
 	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
 			      "SELECT * from Devices;");
-	if (res != 0 || nrows == 0) {
-		bc_log("E: No devices to record from");
-		exit(1);
-	}
 
-	/* Now that we have something to do... */
-	if (0) { //daemon(0, 0) == -1) {
-		bc_log("E: Could not fork to background: %m");
-		exit(1);
-	}
+	if (res != 0 || nrows == 0)
+		return;
 
 	for (i = 0; i < nrows; i++) {
 		char *dev = get_val(rows, ncols, i, "source_video");
 		char *proto = get_val(rows, ncols, i, "protocol");
-		char *id = get_val(rows, ncols, i, "id");
+		int id = get_val_int(rows, ncols, i, "id");
 		char *name = get_val(rows, ncols, i, "device_name");
-		struct bc_rec *bc_rec;
+		struct tm tm;
+		time_t t;
+		char tbuf[30];
 
-		if (!dev || !proto || !id || !name)
+		if (record_exists(id))
+			continue;
+
+		if ((id < 0) || !dev || !proto || !name)
 			continue;
 
 		/* Only v4l2 for now */
@@ -85,18 +113,19 @@ int main(int argc, char **argv)
 
 		bc_rec = malloc(sizeof(*bc_rec));
 		if (bc_rec == NULL) {
-			bc_log("E(%s): out of memory trying to start record",
+			bc_log("E(%d): out of memory trying to start record",
 			       id);
 			continue;
 		}
 
 		memset(bc_rec, 0, sizeof(*bc_rec));
-		bc_rec->next = bc_recs;
-		bc_recs = bc_rec;
 
-		sprintf(bc_rec->outfile, BC_FILE_REC_BASE "%s-%lu.mkv",
-			id, time(NULL));
-		bc_rec->id = strdup(id);
+		t = time(NULL);
+		gmtime_r(&t, &tm);
+		strftime(tbuf, sizeof(tbuf), "%F-%T", &tm);
+		sprintf(bc_rec->outfile, BC_FILE_REC_BASE "%06d-%s.mkv",
+			id, tbuf);
+		bc_rec->id = id;
 		bc_rec->dev = strdup(dev);
 		bc_rec->name = strdup(name);
 		bc_rec->width = atoi(get_val(rows, ncols, i, "resolutionX"));
@@ -107,12 +136,56 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		/* Add to the list */
-		bc_rec->next = bc_recs;
-		bc_recs = bc_rec;
+		list_add(&bc_rec->list, &bc_rec_head);
 	}
 
-	sleep(30);
+	bc_db_free_table(bc_db, rows);
+}
+
+static void usage(void)
+{
+	fprintf(stderr, "Usage: %s\n", __progname);
+	exit(1);
+}
+
+int main(int argc, char **argv)
+{
+	int opt;
+	int loops;
+
+	while ((opt = getopt(argc, argv, "h")) != -1) {
+		switch (opt) {
+		case 'h': default: usage();
+		}
+	}
+
+	bc_db = bc_db_open(BC_DB_SQLITE);
+	if (bc_db == NULL) {
+		bc_log("E: Could not open SQL database");
+		exit(1);
+	}
+
+	if (daemon(0, 0) == -1) {
+		bc_log("E: Could not fork to background: %m");
+		exit(1);
+	}
+
+	bc_log("Started");
+
+	/* Main loop */
+	loops = 0;
+	for (;;) {
+		check_threads();
+
+		/* Check the db every minute */
+		if (loops-- > 0) {
+			sleep(1);
+			continue;
+		}
+		loops = 60;
+
+		check_db();
+	}
 
 	exit(0);
 }

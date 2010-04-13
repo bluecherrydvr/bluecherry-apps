@@ -29,7 +29,7 @@ static void *bc_device_thread(void *data)
 	struct bc_handle *bc = bc_rec->bc;
 	int ret;
 
-	bc_log("I(%s): Starting record: %s", bc_rec->id, bc_rec->name);
+	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
 
 	for (;;) {
 		if ((ret = bc_buf_get(bc)) == EAGAIN)
@@ -60,7 +60,7 @@ int bc_start_record(struct bc_rec *bc_rec)
 
 	/* Open the device */
 	if ((bc = bc_handle_get(bc_rec->dev)) == NULL) {
-		bc_log("E(%s): error opening device: %m", bc_rec->id);
+		bc_log("E(%d): error opening device: %m", bc_rec->id);
 		return -1;
 	}
 
@@ -70,23 +70,23 @@ int bc_start_record(struct bc_rec *bc_rec)
 			    bc_rec->height);
 
 	if (ret) {
-		bc_log("E(%s): error setting format: %m", bc_rec->id);
+		bc_log("E(%d): error setting format: %m", bc_rec->id);
 		return -1;
 	}
 
 	if (bc_handle_start(bc)) {
-		bc_log("E(%s): error starting stream: %m", bc_rec->id);
+		bc_log("E(%d): error starting stream: %m", bc_rec->id);
 		return -1;
 	}
  
 	if (bc_open_avcodec(bc_rec)) {
-		bc_log("E(%s): error opening avcodec: %m", bc_rec->id);
+		bc_log("E(%d): error opening avcodec: %m", bc_rec->id);
 		return -1;
 	}
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
-		bc_log("E(%s): failed to start thread: %m", bc_rec->id);
+		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
 		return -1;
 	}
  

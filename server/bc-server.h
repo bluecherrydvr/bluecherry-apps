@@ -12,6 +12,8 @@
 #include <libbluecherry.h>
 #include <libavformat/avformat.h>
 
+#include "list.h"
+
 #define BC_FILE_REC_BASE	"/var/lib/bluecherry/recordings/"
 
 struct bc_rec {
@@ -20,7 +22,7 @@ struct bc_rec {
 	AVStream		*video_st;
 	AVFormatContext		*oc;
 	char			outfile[PATH_MAX];
-	char			*id;
+	int			id;
 	char			*name;
 	char			*dev;
 	int			width;
@@ -28,7 +30,7 @@ struct bc_rec {
 	int			mot_cnt;
 	int			mot_run_off;
 	pthread_t		thread;
-	struct bc_rec		*next;
+	struct list_head	list;
 };
 
 int bc_mux_out(struct bc_rec *bc_rec);
