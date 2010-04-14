@@ -21,10 +21,10 @@ CREATE TABLE "Devices" (
     channel character(255),
     source_audio_in character(255),
     source_audio_out character(255),
-    saturation smallint DEFAULT 50,
-    brightness smallint DEFAULT 50,
-    hue smallint DEFAULT 50,
-    contrast smallint DEFAULT 50,
+    saturation smallint,
+    brightness smallint,
+    hue smallint,
+    contrast smallint,
     video_quality smallint DEFAULT 2,
     signal_type character(6),
     buffer_prerecording smallint DEFAULT 5,
@@ -33,20 +33,25 @@ CREATE TABLE "Devices" (
     ptz_control_protocol character(15),
     ptz_baud_rate character(6),
     ip_ptz_control_type smallint,
-    preset_type_ID smallint
+    preset_type_ID smallint,
+    motion_detection_on boolean,
+    motion_detection_threshold integer,
+    file_chop_type smallint
 );
 
-INSERT INTO Devices VALUES (1, 'Bedroom', 704, 480, NULL, 'V4L2', NULL, NULL, NULL, 0, '/dev/video2', NULL, NULL, NULL, 128, 128, 128, 128, 2, 'NTSC', 5, 5, NULL, NULL, NULL, 0, 0);
+/* file_chop_type: 0 = None, 1 = Hourly, 2 = Daily
+ * Only counts when motion_detection_on == false */
+
+-- video_quality: 1 = Low, 2 = Medium, 3 = High
 
 CREATE TABLE "Events" (
     id integer PRIMARY KEY NOT NULL,
-    source_ID smallint,
+    source_ID integer,
     date date,
-    recording_path character(512),
-    recording_type character(1),
-    recording_length integer,
-    file_size smallint,
-    format character(5),
+    file_path varchar,			-- actual file of the recorded event
+    recording_type character(3),	-- file extension ?
+    recording_length integer,		-- in seconds
+    file_size integer,			-- in bytes
     archived boolean DEFAULT false
 );
 
@@ -63,7 +68,7 @@ CREATE TABLE "Users" (
     name character(60),
     email character(60),
     phone character(15),
-    notes text,
+    notes varchar,
     access_setup boolean,
     access_remote boolean,
     access_web boolean,
