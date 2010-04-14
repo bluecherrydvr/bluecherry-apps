@@ -46,6 +46,7 @@ static void *bc_device_thread(void *data)
 				file_started = 0;
 				bc_close_avcodec(bc_rec);
 			}
+			continue;
 		} else if (ret) {
 			bc_log("error getting buffer: %m");
 			/* XXX Do something */

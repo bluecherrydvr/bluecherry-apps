@@ -114,6 +114,7 @@ int bc_handle_start(struct bc_handle *bc)
 
 static int bc_buf_return(struct bc_handle *bc)
 {
+#if 0
 	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
 
 	/* For motion control, only allow two buffers to be queued */
@@ -123,7 +124,7 @@ static int bc_buf_return(struct bc_handle *bc)
 		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
 		increment_idx(&bc->wr_idx);
 	}
-
+#endif
 	/* Maintain a balance of queued and dequeued buffers */
 	if (bc_local_bufs(bc) < (BC_BUFFERS_LOCAL + BC_BUFFERS_THRESH))
 		return 0;
@@ -171,6 +172,8 @@ int bc_buf_get(struct bc_handle *bc)
 		return 0;
 	}
 
+	/* XXX We can reset the vop without returning an ERESTART which
+	 * would cause video artifacting. */
 	/* Motion flag resets counter */
 	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
 		if (bc->mot_cnt == 0)
