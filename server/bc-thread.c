@@ -28,17 +28,37 @@ static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = data;
 	struct bc_handle *bc = bc_rec->bc;
+	int file_started = 0;
 	int ret;
+
+	if (bc_open_avcodec(bc_rec)) {
+		bc_log("E(%d): error opening avcodec: %m", bc_rec->id);
+		return NULL;
+        }
 
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
 
 	for (;;) {
-		if ((ret = bc_buf_get(bc)) == EAGAIN)
+		if ((ret = bc_buf_get(bc)) == EAGAIN) {
 			continue;
-		else if (ret) {
+		} else if (ret == ERESTART) {
+			if (file_started) {
+				file_started = 0;
+				bc_close_avcodec(bc_rec);
+			}
+		} else if (ret) {
 			bc_log("error getting buffer: %m");
 			/* XXX Do something */
 		}
+
+		if (!file_started) {
+			if (bc_open_avcodec(bc_rec))
+				bc_log("E(%d): error opening avcodec: %m",
+				       bc_rec->id);
+			else
+				file_started = 1;
+		}
+
 		if (bc_buf_key_frame(bc))
 			update_osd(bc_rec);
 
@@ -48,8 +68,8 @@ static void *bc_device_thread(void *data)
 		}
 	}
 
-	bc_close_avcodec(bc_rec);
-	bc_handle_free(bc);
+	if (file_started)
+		bc_close_avcodec(bc_rec);
 
 	return NULL;
 }
@@ -68,6 +88,7 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 
 	bc_rec->bc = bc;
 
+	/* Set the format */
 	width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
 	height = bc_db_get_val_int(rows, ncols, row, "resolutionY");
 
@@ -75,22 +96,29 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 
 	if (ret) {
 		bc_log("E(%d): error setting format: %m", bc_rec->id);
+		bc_handle_free(bc);
+		return -1;
+	}
+
+	/* Check motion detection */
+	ret = bc_db_get_val_bool(rows, ncols, row, "motion_detection_on");
+	ret = bc_set_motion(bc, ret);
+	if (ret) {
+		bc_log("E(%d): error setting motion: %m", bc_rec->id);
+		bc_handle_free(bc);
 		return -1;
 	}
 
 	if (bc_handle_start(bc)) {
 		bc_log("E(%d): error starting stream: %m", bc_rec->id);
+		bc_handle_free(bc);
 		return -1;
 	}
  
-	if (bc_open_avcodec(bc_rec)) {
-		bc_log("E(%d): error opening avcodec: %m", bc_rec->id);
-		return -1;
-	}
-
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
+		bc_handle_free(bc);
 		return -1;
 	}
  

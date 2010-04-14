@@ -114,6 +114,17 @@ int bc_handle_start(struct bc_handle *bc)
 
 static int bc_buf_return(struct bc_handle *bc)
 {
+	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
+
+	/* For motion control, only allow two buffers to be queued */
+	if (vb && vb->flags & V4L2_BUF_FLAG_MOTION_ON) {
+		if ((bc_local_bufs(bc) + 1) < BC_BUFFERS)
+			return 0;
+		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
+		increment_idx(&bc->wr_idx);
+	}
+
+	/* Maintain a balance of queued and dequeued buffers */
 	if (bc_local_bufs(bc) < (BC_BUFFERS_LOCAL + BC_BUFFERS_THRESH))
 		return 0;
 
@@ -121,6 +132,7 @@ static int bc_buf_return(struct bc_handle *bc)
 		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
 		increment_idx(&bc->wr_idx);
 	}
+
 	return 0;
 }
 
@@ -144,26 +156,38 @@ int bc_buf_get(struct bc_handle *bc)
 
 	increment_idx(&bc->rd_idx);
 
+	/* If no motion detection, then carry on normally */
+	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
+		/* Reset this counter in case motion gets turned back on */
+		bc->mot_cnt = 0;
+
+		/* Skip frames until the first key frame */
+		if (!bc->got_vop) {
+			if (!bc_buf_key_frame(bc))
+				return EAGAIN;
+			bc->got_vop = 1;
+		}
+
+		return 0;
+	}
+
+	/* Motion flag resets counter */
+	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
+		if (bc->mot_cnt == 0)
+			bc->got_vop = 0;
+		bc->mot_cnt = 60;
+	}
+
+	/* If motion count is 0, signal EOF */
+	if (bc->mot_cnt == 0)
+		return ERESTART;
+
 	/* Skip frames until the first key frame */
 	if (!bc->got_vop) {
 		if (!bc_buf_key_frame(bc))
-			return EAGAIN;
+			return EAGAIN; 
 		bc->got_vop = 1;
 	}
-
-	/* If no motion detection, then carry on normally */
-	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON))
-		return 0;
-
-	/* Motion flag resets counter and keep frame */
-	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
-		bc->mot_cnt = 60;
-		return 0;
-	}
-
-	/* If motion count is 0, try again */
-	if (bc->mot_cnt == 0)
-		return EAGAIN;
 
 	bc->mot_cnt--;
 

@@ -70,12 +70,10 @@ struct bc_handle {
 	
 	int			rd_idx;
 	int			wr_idx;
+	int			mot_idx;
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;
-	/* The database associated with this device */
-	struct bc_db_handle	*bc_db;
-	/* TODO: Need a handle to the settings structure for this device */
 };
 
 /* Called to open and close a handle for a device. */
@@ -126,5 +124,6 @@ void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
 /* Used to get specific values from a table result */
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
 int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname);
+int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname);
 
 #endif /* __LIBBLUECHERRY_H */

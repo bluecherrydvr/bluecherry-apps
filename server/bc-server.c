@@ -33,6 +33,7 @@ static void check_threads(void)
 			bc_log("I(%d): Record thread stopped: %s: %s",
 			       bc_rec->id, bc_rec->name, errmsg);
 			bc_list_del(&bc_rec->list);
+			bc_handle_free(bc_rec->bc);
 			free(bc_rec->dev);
 			free(bc_rec->name);
 			free(bc_rec);

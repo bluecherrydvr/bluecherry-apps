@@ -93,6 +93,7 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	va_start(ap, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, ap);
 	va_end(ap);
+	buf[sizeof(buf) - 1] = '\0';
 
 	memset(&ctrl, 0, sizeof(ctrl));
 	memset(&ctrls, 0, sizeof(ctrls));
@@ -101,8 +102,8 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	ctrls.ctrl_class = V4L2_CTRL_CLASS_FM_TX;
 	ctrls.controls = &ctrl;
 	ctrl.id = V4L2_CID_RDS_TX_RADIO_TEXT;
-	ctrl.size = strlen(fmt);
-	ctrl.string = fmt;
+	ctrl.size = strlen(buf);
+	ctrl.string = buf;
 
 	if (ioctl(bc->dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
 		return -1;
