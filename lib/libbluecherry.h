@@ -123,4 +123,8 @@ int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 		    char ***res, const char *fmt, ...);
 void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
 
+/* Used to get specific values from a table result */
+char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
+int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname);
+
 #endif /* __LIBBLUECHERRY_H */

@@ -54,9 +54,10 @@ static void *bc_device_thread(void *data)
 	return NULL;
 }
 
-int bc_start_record(struct bc_record *bc_rec)
+int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc;
+	int width, height;
 	int ret;
 
 	/* Open the device */
@@ -67,8 +68,10 @@ int bc_start_record(struct bc_record *bc_rec)
 
 	bc_rec->bc = bc;
 
-	ret = bc_set_format(bc, V4L2_PIX_FMT_MPEG, bc_rec->width,
-			    bc_rec->height);
+	width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
+	height = bc_db_get_val_int(rows, ncols, row, "resolutionY");
+
+	ret = bc_set_format(bc, V4L2_PIX_FMT_MPEG, width, height);
 
 	if (ret) {
 		bc_log("E(%d): error setting format: %m", bc_rec->id);

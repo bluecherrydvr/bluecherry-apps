@@ -8,7 +8,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <time.h>
 
 #include "bc-server.h"
 
@@ -16,25 +15,6 @@ static BC_DECLARE_LIST(bc_rec_list);
 static struct bc_db_handle *bc_db;
 
 extern char *__progname;
-
-static char *get_val(char **rows, int ncols, int row, const char *colname)
-{
-	int i;
-
-	for (i = 0; i < ncols; i++) {
-		if (strcmp(colname, rows[i]) == 0)
-			break;
-	}
-
-	return (i == ncols) ? NULL : rows[((row + 1) * ncols) + i];
-}
-
-static int get_val_int(char **rows, int ncols, int row, const char *colname)
-{
-	char *val = get_val(rows, ncols, row, colname);
-
-	return val ? atoi(val) : -1;
-}
 
 static void check_threads(void)
 {
@@ -92,13 +72,10 @@ static void check_db(void)
 		return;
 
 	for (i = 0; i < nrows; i++) {
-		char *dev = get_val(rows, ncols, i, "source_video");
-		char *proto = get_val(rows, ncols, i, "protocol");
-		int id = get_val_int(rows, ncols, i, "id");
-		char *name = get_val(rows, ncols, i, "device_name");
-		struct tm tm;
-		time_t t;
-		char tbuf[30];
+		char *dev = bc_db_get_val(rows, ncols, i, "source_video");
+		char *proto = bc_db_get_val(rows, ncols, i, "protocol");
+		int id = bc_db_get_val_int(rows, ncols, i, "id");
+		char *name = bc_db_get_val(rows, ncols, i, "device_name");
 
 		if (record_exists(id))
 			continue;
@@ -119,18 +96,11 @@ static void check_db(void)
 
 		memset(bc_rec, 0, sizeof(*bc_rec));
 
-		t = time(NULL);
-		gmtime_r(&t, &tm);
-		strftime(tbuf, sizeof(tbuf), "%F-%T", &tm);
-		sprintf(bc_rec->outfile, BC_FILE_REC_BASE "%06d-%s.mkv",
-			id, tbuf);
 		bc_rec->id = id;
 		bc_rec->dev = strdup(dev);
 		bc_rec->name = strdup(name);
-		bc_rec->width = atoi(get_val(rows, ncols, i, "resolutionX"));
-		bc_rec->height = atoi(get_val(rows, ncols, i, "resolutionY"));
 
-		if (bc_start_record(bc_rec)) {
+		if (bc_start_record(bc_rec, rows, ncols, i)) {
 			free(bc_rec);
 			continue;
 		}

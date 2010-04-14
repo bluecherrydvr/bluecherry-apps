@@ -25,10 +25,7 @@ struct bc_record {
 	int			id;
 	char			*name;
 	char			*dev;
-	int			width;
-	int			height;
 	int			mot_cnt;
-	int			mot_run_off;
 	pthread_t		thread;
 	struct bc_list_struct	list;
 };
@@ -36,6 +33,6 @@ struct bc_record {
 int bc_mux_out(struct bc_record *bc_rec);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
-int bc_start_record(struct bc_record *bc_rec);
+int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row);
 
 #endif /* __BC_SERVER_H */

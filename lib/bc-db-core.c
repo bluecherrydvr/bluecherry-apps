@@ -84,3 +84,23 @@ void bc_db_free_table(struct bc_db_handle *bc_db, char **res)
 {
 	bc_db->db_ops->free_table(bc_db->dbh, res);
 }
+
+char *bc_db_get_val(char **rows, int ncols, int row, const char *colname)
+{
+	int i;
+
+	for (i = 0; i < ncols; i++) {
+		if (strcmp(colname, rows[i]) == 0)
+			break;
+	}
+
+	return (i == ncols) ? NULL : rows[((row + 1) * ncols) + i];
+}
+
+int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname)
+{
+	char *val = bc_db_get_val(rows, ncols, row, colname);
+
+	return val ? atoi(val) : -1;
+}
+
