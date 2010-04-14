@@ -14,7 +14,7 @@ all: $(SOLIBVER)
 
 $(SOLIBVER): $(OBJS)
 	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
-	ln -s $@ $(SOLIB)
+	ln -sf $@ $(SOLIB)
 
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
