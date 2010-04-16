@@ -172,8 +172,6 @@ int bc_buf_get(struct bc_handle *bc)
 		return 0;
 	}
 
-	/* XXX We can reset the vop without returning an ERESTART which
-	 * would cause video artifacting. */
 	/* Motion flag resets counter */
 	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
 		if (bc->mot_cnt == 0)
@@ -194,7 +192,7 @@ int bc_buf_get(struct bc_handle *bc)
 
 	bc->mot_cnt--;
 
-	return 0;
+	return bc->mot_cnt ? 0 : ERESTART;
 }
 
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
