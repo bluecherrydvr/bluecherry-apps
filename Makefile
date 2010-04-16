@@ -12,12 +12,12 @@ all: $(LIB) $(TARGETS)
 $(LIB): FORCE
 	$(MAKE) -C lib
 
-server/bc-server: FORCE
+server/bc-server: $(LIB) FORCE
 	$(MAKE) -C server
 
-getjpeg: getjpeg.o
+getjpeg: $(LIB) getjpeg.o
 
-bc.cgi: bc.cgi.o
+bc.cgi: $(LIB) bc.cgi.o
 
 clean:
 	$(MAKE) -C lib clean
