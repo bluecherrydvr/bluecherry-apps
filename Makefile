@@ -1,7 +1,7 @@
-CPPFLAGS	= -Ilib
-LDFLAGS		= -Llib -lbluecherry
+include mk.conf
 
-CFLAGS		= -Wall -Werror -g -O2
+CPPFLAGS	+= -Ilib
+LDFLAGS		+= -Llib -lbluecherry
 
 TARGETS		= getjpeg bc.cgi server/bc-server
 
@@ -23,5 +23,10 @@ clean:
 	$(MAKE) -C lib clean
 	$(MAKE) -C server clean
 	rm -f *.o $(TARGETS)
+
+install: all
+	$(MAKE) -C lib $@
+	$(MAKE) -C server $@
+	$(INSTALL_PROG) -D bc.cgi $(DESTDIR)$(cgi_dir)/bc.cgi
 
 FORCE:

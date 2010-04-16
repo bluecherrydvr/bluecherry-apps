@@ -1,9 +1,8 @@
-LD		= gcc
+include ../mk.conf
 
-CPPFLAGS	= -I. -D_GNU_SOURCE
-LDFLAGS		= -lsqlite -lpq -lmysqlclient -lconfig
+LDFLAGS		+= -lsqlite -lpq -lmysqlclient -lconfig
 
-CFLAGS		= -Wall -Werror -g -O2 -pthread -fPIC
+CFLAGS		+= -fPIC
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= libbluecherry.so.0
@@ -15,6 +14,10 @@ all: $(SOLIBVER)
 $(SOLIBVER): $(OBJS)
 	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
 	ln -sf $@ $(SOLIB)
+
+install: all
+	$(INSTALL_DATA) -D $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIBVER)
+	ln -sf $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIB)
 
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
