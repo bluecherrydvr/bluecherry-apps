@@ -19,8 +19,7 @@ static void update_osd(struct bc_record *bc_rec)
 	time_t t;
 
 	t = time(NULL);
-	gmtime_r(&t, &tm);
-	strftime(buf, 20, "%F %T", &tm);
+	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
 	bc_set_osd(bc, "%s %s", bc_rec->name, buf);
 }
 
@@ -30,11 +29,6 @@ static void *bc_device_thread(void *data)
 	struct bc_handle *bc = bc_rec->bc;
 	int file_started = 0;
 	int ret;
-
-	if (bc_open_avcodec(bc_rec)) {
-		bc_log("E(%d): error opening avcodec: %m", bc_rec->id);
-		return NULL;
-        }
 
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
 
@@ -53,11 +47,13 @@ static void *bc_device_thread(void *data)
 		}
 
 		if (!file_started) {
-			if (bc_open_avcodec(bc_rec))
+			if (bc_open_avcodec(bc_rec)) {
 				bc_log("E(%d): error opening avcodec: %m",
 				       bc_rec->id);
-			else
+				continue;
+			} else {
 				file_started = 1;
+			}
 		}
 
 		if (bc_buf_key_frame(bc))

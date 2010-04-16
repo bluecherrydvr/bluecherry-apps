@@ -43,9 +43,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 		av_freep(&bc_rec->oc->streams[i]);
 	}
 
-	if (!(bc_rec->fmt_out->flags & AVFMT_NOFILE))
-		url_fclose(bc_rec->oc->pb);
-
+	url_fclose(bc_rec->oc->pb);
 	av_free(bc_rec->oc);
 }
 
@@ -77,16 +75,14 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	AVFormatContext *oc;
 	time_t t;
 	struct tm tm;
-	char date[12], mytime[10];
+	char date[12], mytime[10], dir[PATH_MAX];
 
 	t = time(NULL);
-	gmtime_r(&t, &tm);
-	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
+	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
 	strftime(mytime, sizeof(mytime), "%T", &tm);
-	sprintf(bc_rec->outfile, "%s/%s/%06d", BC_FILE_REC_BASE, date,
-		bc_rec->id);
-	mkdir_recursive(bc_rec->outfile);
-	sprintf(bc_rec->outfile, "%s/%s.mkv", bc_rec->outfile, mytime);
+	sprintf(dir, "%s/%s/%06d", BC_FILE_REC_BASE, date, bc_rec->id);
+	mkdir_recursive(dir);
+	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	/* Initialize avcodec */
 	avcodec_init();
@@ -150,10 +146,9 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (avcodec_open(video_st->codec, codec) < 0)
 		return -1;
 
-	/* Open output file, if needed */
-	if (!(bc_rec->fmt_out->flags & AVFMT_NOFILE))
-		if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0)
-			return -1;
+	/* Open output file */
+	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0)
+		return -1;
 
 	av_write_header(oc);
 
