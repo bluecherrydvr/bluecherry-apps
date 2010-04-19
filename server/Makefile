@@ -14,6 +14,8 @@ bc-server: $(LIB) $(OBJS)
 
 install: all
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
+	$(INSTALL_DATA) -D upstart-script \
+		$(DESTDIR)$(etc_dir)/init/bc-server.conf
 
 clean:
 	rm -f $(OBJS) $(TARGETS)
