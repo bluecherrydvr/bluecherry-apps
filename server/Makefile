@@ -1,19 +1,16 @@
-include ../mk.conf
+topdir = ..
+include $(topdir)/mk.conf
 
 CFLAGS		+= -pthread
-CPPFLAGS	+= -I../lib -I.
-LDFLAGS		+= -L../lib -lavformat -lm -lbluecherry
+LDFLAGS		+= -L$(topdir)/lib -lavformat -lm -lbluecherry
 
 TARGETS		= bc-server
-LIB		= ../lib/libbluecherry.so
 OBJS		= bc-server.o bc-thread.o bc-av.o
 
-all: $(LIB) $(TARGETS)
+all: $(TARGETS)
 
-$(LIB): FORCE
-	$(MAKE) -C ../lib
-
-bc-server: $(OBJS)
+bc-server: $(LIB) $(OBJS)
+	$(LD) $(LDFLAGS) $(OBJS) -o $@
 
 install: all
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
