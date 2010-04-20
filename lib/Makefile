@@ -1,7 +1,7 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lsqlite -lpq -lmysqlclient -lconfig
+LDFLAGS		+= -lsqlite -lpq -lmysqlclient -lconfig -lm
 
 CFLAGS		+= -fPIC
 
