@@ -7,7 +7,7 @@ db="/var/lib/bluecherry/bluecherry_db"
 
 case "$!" in
 	configure)
-		test -f "$sql" && (test -f "$db" || sqlite "$db" < "$sql")
+		test -f "$sql" && (test -f "$db" || sqlite3 "$db" < "$sql")
 		;;
 esac
 
