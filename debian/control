@@ -1,0 +1,15 @@
+Source: bluecherrydvr
+Section: admin
+Priority: optional
+Maintainer: Ben Collins <bcollins@bluecherry.com>
+Build-Depends: debhelper (>= 7), libsqlite0-dev, libmysqlclient-dev, libpq-dev,
+ libavcodec-dev, libavformat-dev, libavutil-dev, sqlite
+Standards-Version: 3.8.4
+
+Package: bluecherrydvr
+Architecture: any
+Pre-Depends: sqlite
+Depends: ${shlibs:Depends}
+Suggests: solo6010-dkms
+Description: Bluecherry DVR Server
+ This package contains the server components for the Bluecherry DVR system.

@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+sql="/usr/share/doc/bluecherrydvr/sqlite-dump.sql"
+db="/var/lib/bluecherry/bluecherry_db"
+
+case "$!" in
+	configure)
+		test -f "$sql" && (test -f "$db" || sqlite "$db" < "$sql")
+		;;
+esac
+
+#DEBHELPER#
