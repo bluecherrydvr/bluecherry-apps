@@ -10,6 +10,6 @@ stop on runlevel [016]
 
 expect fork
 respawn
-umask 022
+umask 027
 
 exec /usr/sbin/bc-server
