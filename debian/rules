@@ -7,6 +7,8 @@ override_dh_auto_install:
 	dh_auto_install
 	install -m644 -D misc/sql/v2-sqlite-dump.sql \
 		debian/bluecherrydvr/usr/share/doc/bluecherrydvr/sqlite-dump.sql
+	install -m644 -D misc/bluecherry.conf \
+		debian/bluecherrydvr/etc/bluecherry.conf
 
 override_dh_installinit:
 	dh_installinit -o --name=bc-server --upstart-only
