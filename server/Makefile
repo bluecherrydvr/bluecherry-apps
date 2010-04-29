@@ -2,10 +2,10 @@ topdir = ..
 include $(topdir)/mk.conf
 
 CFLAGS		+= -pthread
-LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry
+LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry -lasound
 
 TARGETS		= bc-server
-OBJS		= bc-server.o bc-thread.o bc-av.o
+OBJS		= bc-server.o bc-thread.o bc-av.o g723-dec.o
 
 all: $(TARGETS)
 

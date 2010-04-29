@@ -30,36 +30,64 @@ static void *bc_device_thread(void *data)
 	int file_started = 0;
 	int ret;
 
+	pthread_mutex_lock(&bc_rec->lock);
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
+	pthread_mutex_unlock(&bc_rec->lock);
 
 	for (;;) {
+		double audio_pts, video_pts;
+
 		if ((ret = bc_buf_get(bc)) == EAGAIN) {
 			continue;
 		} else if (ret == ERESTART) {
 			if (file_started) {
 				file_started = 0;
+				bc_alsa_close(bc_rec);
 				bc_close_avcodec(bc_rec);
 			}
 			continue;
 		} else if (ret) {
 			bc_log("error getting buffer: %m");
+			continue;
 			/* XXX Do something */
 		}
 
 		if (!file_started) {
+			bc_alsa_open(bc_rec);
 			if (bc_open_avcodec(bc_rec)) {
 				bc_log("E(%d): error opening avcodec: %m",
 				       bc_rec->id);
 				continue;
-			} else {
-				file_started = 1;
 			}
+			file_started = 1;
 		}
 
 		if (bc_buf_key_frame(bc))
 			update_osd(bc_rec);
 
-		if (bc_mux_out(bc_rec)) {
+		if (bc_rec->audio_st) {
+			AVStream *st;
+
+			st = bc_rec->video_st;
+			video_pts = (double)st->pts.val * st->time_base.num /
+				st->time_base.den;
+
+			st = bc_rec->audio_st;
+			audio_pts = (double)st->pts.val * st->time_base.num /
+				st->time_base.den;
+
+			while (audio_pts < video_pts) {
+				if (bc_aud_out(bc_rec)) {
+					break;
+					/* XXX Do something */
+				}
+				audio_pts = (double)st->pts.val *
+						st->time_base.num /
+						st->time_base.den;
+			}
+		}
+
+		if (bc_vid_out(bc_rec)) {
 			bc_log("error writing frame to outfile: %m");
 			/* XXX Do something */
 		}
@@ -69,6 +97,58 @@ static void *bc_device_thread(void *data)
 		bc_close_avcodec(bc_rec);
 
 	return NULL;
+}
+
+void bc_alsa_close(struct bc_record *bc_rec)
+{
+	if (!bc_rec->pcm)
+		return;
+
+	snd_pcm_close(bc_rec->pcm);
+	bc_rec->pcm = NULL;
+}
+
+int bc_alsa_open(struct bc_record *bc_rec)
+{
+	snd_pcm_hw_params_t *params = NULL;
+	snd_pcm_t *pcm = NULL;
+	char adev[256];
+	int err;
+
+	sprintf(adev, "hw:CARD=Softlogic0,DEV=0,SUBDEV=%d", bc_rec->id - 1);
+	if ((err = snd_pcm_open(&pcm, adev, SND_PCM_STREAM_CAPTURE, 0)) < 0)
+		return -1;
+
+	snd_pcm_hw_params_alloca(&params);
+
+	if (snd_pcm_hw_params_any(pcm, params) < 0)
+		return -1;
+
+	bc_rec->pcm = pcm;
+
+	if (snd_pcm_hw_params_set_access(pcm, params,
+					 SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_format(pcm, params, SND_PCM_FORMAT_U8) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_channels(pcm, params, 1) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_rate(pcm, params, 8000, 0) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params(pcm, params) < 0)
+		return -1;
+
+	if ((err = snd_pcm_prepare(pcm)) < 0)
+		return -1;
+
+	bc_rec->snd_err = 0;
+	g723_init(&bc_rec->g723_state);
+
+	return 0;
 }
 
 int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
@@ -118,6 +198,6 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 		bc_handle_free(bc);
 		return -1;
 	}
- 
+
 	return 0;
 }
