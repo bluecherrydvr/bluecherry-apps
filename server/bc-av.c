@@ -10,12 +10,23 @@
 
 #include "bc-server.h"
 
+static int pcm_dupe(short *in, int in_size, short *out)
+{
+	int n;
+
+	for (n = 0; n < in_size; n++)
+		out[n * 2] = out[(n * 2) + 1] = in[n];
+
+	return in_size * 2;
+}
+
 int bc_aud_out(struct bc_record *bc_rec)
 {
 	AVCodecContext *c = bc_rec->audio_st->codec;
 	AVPacket pkt;
 	unsigned char g723_data[48];
-	short pcm_data[128];
+	short pcm_in[256];
+	unsigned char mp2_out[1024];
 	int size;
 
 	/* This would be due to not being able to open the alsa dev */
@@ -37,16 +48,37 @@ int bc_aud_out(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	av_init_packet(&pkt);
+	size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
 
-	pkt.size = g723_decode(&bc_rec->g723_state, g723_data, 48,
-			       pcm_data) * 2;
+	bc_rec->pcm_buf_size += pcm_dupe(pcm_in, size,
+					 bc_rec->pcm_buf +
+					 bc_rec->pcm_buf_size);
+
+	/* We need enough data to encode first... */
+	if (bc_rec->pcm_buf_size < c->frame_size)
+		return 0;
+
+	av_init_packet(&pkt);
+	pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
+					bc_rec->pcm_buf);
+
+	/* Most likely, we don't align perfectly */
+	if (bc_rec->pcm_buf_size > c->frame_size)
+		memcpy(bc_rec->pcm_buf, bc_rec->pcm_buf + c->frame_size,
+		       (bc_rec->pcm_buf_size - c->frame_size) * 2);
+
+	bc_rec->pcm_buf_size -= c->frame_size;
+
+	/* Not enough to encode a full buffer yet */
+	if (pkt.size == 0)
+		return 0;
+
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 				       bc_rec->audio_st->time_base);
 	pkt.flags |= PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
-	pkt.data = (void *)pcm_data;
+	pkt.data = mp2_out;
 
 	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
 		errno = EIO;
@@ -58,7 +90,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 int bc_vid_out(struct bc_record *bc_rec)
 {
-	AVCodecContext *c = bc_rec->video_st->codec;
+	//AVCodecContext *c = bc_rec->video_st->codec;
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
 
@@ -69,9 +101,9 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
-	if (c->coded_frame->pts != AV_NOPTS_VALUE)
-		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-				       bc_rec->video_st->time_base);
+//	if (c->coded_frame->pts != AV_NOPTS_VALUE)
+//		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
+//				       bc_rec->video_st->time_base);
 	pkt.stream_index = bc_rec->video_st->index;
 
 	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
@@ -144,6 +176,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	/* Initialize avcodec */
+	avcodec_init();
 	av_register_all();
 
 	/* Get the output format */
@@ -194,12 +227,14 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 			return -1;
 		st = bc_rec->audio_st;
 
-		st->stream_copy = 1;
-		st->codec->codec_id = CODEC_ID_PCM_S16LE;
+		st->codec->codec_id = CODEC_ID_MP2;
 		st->codec->codec_type = CODEC_TYPE_AUDIO;
-		st->codec->bit_rate = 128000;
-		st->codec->sample_rate = 8000;
+		st->codec->bit_rate = 32000;
+		st->codec->sample_rate = 16000;
+		st->codec->sample_fmt = SAMPLE_FMT_S16;
 		st->codec->channels = 1;
+		st->codec->time_base = (AVRational){1, 16000};
+
 		snprintf(st->language, sizeof(st->language), "eng");
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
@@ -212,8 +247,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 
 	/* Open Video output */
-	if ((codec = avcodec_find_encoder(bc_rec->video_st->codec->codec_id))
-	    == NULL)
+	codec = avcodec_find_encoder(bc_rec->video_st->codec->codec_id);
+	if (codec == NULL)
 		return -1;
 
 	if (avcodec_open(bc_rec->video_st->codec, codec) < 0)
@@ -222,11 +257,15 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	/* Open Audio output */
 	if (bc_rec->audio_st) {
 		codec = avcodec_find_encoder(bc_rec->audio_st->codec->codec_id);
-		if (codec == NULL)
+		if (codec == NULL) {
+bc_log("Could not find AAC encoder");
 			return -1;
+		}
 
-		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0)
+		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0) {
+bc_log("Could not open AAC encoder");
 			return -1;
+		}
 	}
 
 	/* Open output file */

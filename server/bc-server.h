@@ -25,7 +25,12 @@ struct bc_record {
 	AVStream		*audio_st;
 	AVFormatContext		*oc;
 	snd_pcm_t		*pcm;
+
+	/* mp2 encoding accounting */
+	short			pcm_buf[2048];
+	int			pcm_buf_size;
 	struct g723_state	g723_state;
+
 	int			snd_err;
 	char			outfile[PATH_MAX];
 	int			id;
