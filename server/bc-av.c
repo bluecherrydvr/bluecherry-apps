@@ -10,6 +10,8 @@
 
 #include "bc-server.h"
 
+pthread_mutex_t av_lock;
+
 static int pcm_dupe(short *in, int in_size, short *out)
 {
 	int n;
@@ -24,8 +26,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 {
 	AVCodecContext *c = bc_rec->audio_st->codec;
 	AVPacket pkt;
-	unsigned char g723_data[48];
-	short pcm_in[256];
+	unsigned char g723_data[96];
+	short pcm_in[512];
 	unsigned char mp2_out[1024];
 	int size;
 
@@ -33,7 +35,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	if (!bc_rec->pcm)
 		return 0;
 
-	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, 48)) != 48) {
+	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
+	    != sizeof(g723_data)) {
 		if (!bc_rec->snd_err) {
 			bc_alsa_close(bc_rec);
 			bc_rec->snd_err = 1;
@@ -118,7 +121,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 {
 	int i;
 
-	pthread_mutex_lock(&bc_rec->lock);
+	pthread_mutex_lock(&av_lock);
 
 	avcodec_close(bc_rec->video_st->codec);
 	if (bc_rec->audio_st)
@@ -134,7 +137,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	url_fclose(bc_rec->oc->pb);
 	av_free(bc_rec->oc);
 
-	pthread_mutex_unlock(&bc_rec->lock);
+	pthread_mutex_unlock(&av_lock);
 }
 
 static void mkdir_recursive(char *path)
@@ -166,7 +169,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
 
-	pthread_mutex_lock(&bc_rec->lock);
+	pthread_mutex_lock(&av_lock);
 
 	t = time(NULL);
 	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
@@ -274,7 +277,7 @@ bc_log("Could not open AAC encoder");
 
 	av_write_header(oc);
 
-	pthread_mutex_unlock(&bc_rec->lock);
+	pthread_mutex_unlock(&av_lock);
 
 	return 0;
 }

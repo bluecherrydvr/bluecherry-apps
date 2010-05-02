@@ -30,9 +30,7 @@ static void *bc_device_thread(void *data)
 	int file_started = 0;
 	int ret;
 
-	pthread_mutex_lock(&bc_rec->lock);
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
-	pthread_mutex_unlock(&bc_rec->lock);
 
 	for (;;) {
 		double audio_pts, video_pts;

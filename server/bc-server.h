@@ -27,7 +27,7 @@ struct bc_record {
 	snd_pcm_t		*pcm;
 
 	/* mp2 encoding accounting */
-	short			pcm_buf[2048];
+	short			pcm_buf[4096];
 	int			pcm_buf_size;
 	struct g723_state	g723_state;
 
@@ -38,9 +38,10 @@ struct bc_record {
 	char			*dev;
 	int			mot_cnt;
 	pthread_t		thread;
-	pthread_mutex_t		lock;
 	struct bc_list_struct	list;
 };
+
+extern pthread_mutex_t av_lock;
 
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);

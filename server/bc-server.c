@@ -101,7 +101,6 @@ static void check_db(void)
 		bc_rec->id = id;
 		bc_rec->dev = strdup(dev);
 		bc_rec->name = strdup(name);
-		pthread_mutex_init(&bc_rec->lock, NULL);
 
 		if (bc_start_record(bc_rec, rows, ncols, i)) {
 			free(bc_rec->name);
@@ -118,7 +117,8 @@ static void check_db(void)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: %s\n", __progname);
+	fprintf(stderr, "Usage: %s [-s]\n", __progname);
+	fprintf(stderr, "  -s\tDo not background\n");
 	exit(1);
 }
 
@@ -126,12 +126,16 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int loops;
+	int bg = 1;
 
-	while ((opt = getopt(argc, argv, "h")) != -1) {
+	while ((opt = getopt(argc, argv, "hs")) != -1) {
 		switch (opt) {
+		case 's': bg = 0; break;
 		case 'h': default: usage();
 		}
 	}
+
+	pthread_mutex_init(&av_lock, NULL);
 
 	bc_db = bc_db_open();
 	if (bc_db == NULL) {
@@ -139,7 +143,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (daemon(0, 0) == -1) {
+	if (bg && daemon(0, 0) == -1) {
 		bc_log("E: Could not fork to background: %m");
 		exit(1);
 	}
