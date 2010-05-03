@@ -114,9 +114,17 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 extern char *__progname;
 #define BC_LOG_SERVICE	LOG_LOCAL4
 
-void bc_log(char *msg, ...)
+void bc_log(const char *msg, ...)
 {
 	va_list ap;
+
+	va_start(ap, msg);
+	bc_vlog(msg, ap);
+	va_end(ap);
+}
+
+void bc_vlog(const char *msg, va_list ap)
+{
 	static int log_open = 0;
 
 	if (!log_open) {
@@ -124,7 +132,5 @@ void bc_log(char *msg, ...)
 		log_open = 1;
 	}
 
-	va_start(ap, msg);
 	vsyslog(LOG_INFO | BC_LOG_SERVICE, msg, ap);
-	va_end(ap);
 }
