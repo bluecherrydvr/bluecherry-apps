@@ -40,20 +40,18 @@ static void *bc_device_thread(void *data)
 		} else if (ret == ERESTART) {
 			if (file_started) {
 				file_started = 0;
-				bc_alsa_close(bc_rec);
 				bc_close_avcodec(bc_rec);
 			}
 			continue;
 		} else if (ret) {
-			bc_log("error getting buffer: %m");
+			bc_log("E(%d): Failed to get vid buf", bc_rec->id);
 			continue;
 			/* XXX Do something */
 		}
 
 		if (!file_started) {
-			bc_alsa_open(bc_rec);
 			if (bc_open_avcodec(bc_rec)) {
-				bc_log("E(%d): error opening avcodec: %m",
+				bc_log("E(%d): error opening avcodec",
 				       bc_rec->id);
 				continue;
 			}
@@ -86,7 +84,8 @@ static void *bc_device_thread(void *data)
 		}
 
 		if (bc_vid_out(bc_rec)) {
-			bc_log("error writing frame to outfile: %m");
+			bc_log("E(%d): Error writing frame to outfile: %m",
+			       bc_rec->id);
 			/* XXX Do something */
 		}
 	}
@@ -95,58 +94,6 @@ static void *bc_device_thread(void *data)
 		bc_close_avcodec(bc_rec);
 
 	return NULL;
-}
-
-void bc_alsa_close(struct bc_record *bc_rec)
-{
-	if (!bc_rec->pcm)
-		return;
-
-	snd_pcm_close(bc_rec->pcm);
-	bc_rec->pcm = NULL;
-}
-
-int bc_alsa_open(struct bc_record *bc_rec)
-{
-	snd_pcm_hw_params_t *params = NULL;
-	snd_pcm_t *pcm = NULL;
-	char adev[256];
-	int err;
-
-	sprintf(adev, "hw:CARD=Softlogic0,DEV=0,SUBDEV=%d", bc_rec->id - 1);
-	if ((err = snd_pcm_open(&pcm, adev, SND_PCM_STREAM_CAPTURE, 0)) < 0)
-		return -1;
-
-	snd_pcm_hw_params_alloca(&params);
-
-	if (snd_pcm_hw_params_any(pcm, params) < 0)
-		return -1;
-
-	bc_rec->pcm = pcm;
-
-	if (snd_pcm_hw_params_set_access(pcm, params,
-					 SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
-		return -1;
-
-	if (snd_pcm_hw_params_set_format(pcm, params, SND_PCM_FORMAT_U8) < 0)
-		return -1;
-
-	if (snd_pcm_hw_params_set_channels(pcm, params, 1) < 0)
-		return -1;
-
-	if (snd_pcm_hw_params_set_rate(pcm, params, 8000, 0) < 0)
-		return -1;
-
-	if (snd_pcm_hw_params(pcm, params) < 0)
-		return -1;
-
-	if ((err = snd_pcm_prepare(pcm)) < 0)
-		return -1;
-
-	bc_rec->snd_err = 0;
-	g723_init(&bc_rec->g723_state);
-
-	return 0;
 }
 
 int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
@@ -162,6 +109,13 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 	}
 
 	bc_rec->bc = bc;
+
+	if (bc_rec->vid_interval > 0 && bc_set_interval(bc,
+					bc_rec->vid_interval) != 0) {
+		bc_log("E(%d): failed to set video interval", bc_rec->id);
+		bc_handle_free(bc);
+		return -1;
+	}
 
 	/* Set the format */
 	width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
@@ -189,7 +143,7 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 		bc_handle_free(bc);
 		return -1;
 	}
- 
+
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_log("E(%d): failed to start thread: %m", bc_rec->id);

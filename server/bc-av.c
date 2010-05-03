@@ -12,6 +12,81 @@
 
 pthread_mutex_t av_lock;
 
+static unsigned int bc_to_alsa_fmt(unsigned int fmt)
+{
+	/* Prefer S16_LE */
+	if (fmt & AUD_FMT_PCM_S16_LE)
+		return SND_PCM_FORMAT_S16_LE;
+	else if (fmt & AUD_FMT_PCM_U8)
+		return SND_PCM_FORMAT_U8;
+	else if (fmt & AUD_FMT_PCM_S8)
+		return SND_PCM_FORMAT_S8;
+	else if (fmt & AUD_FMT_PCM_U16_LE)
+		return SND_PCM_FORMAT_U16_LE;
+	else if (fmt & AUD_FMT_PCM_U16_BE)
+		return SND_PCM_FORMAT_U16_BE;
+	else if (fmt & AUD_FMT_PCM_S16_BE)
+		return SND_PCM_FORMAT_S16_BE;
+
+	return -1;
+}
+
+static void bc_alsa_close(struct bc_record *bc_rec)
+{
+	if (!bc_rec->pcm)
+		return;
+
+	snd_pcm_close(bc_rec->pcm);
+	bc_rec->pcm = NULL;
+}
+
+static int bc_alsa_open(struct bc_record *bc_rec)
+{
+	snd_pcm_hw_params_t *params = NULL;
+	snd_pcm_t *pcm = NULL;
+	int err;
+
+	/* No alsa device for this record */
+	if (bc_rec->aud_dev == NULL)
+		return 0;
+
+	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
+				SND_PCM_STREAM_CAPTURE, 0)) < 0)
+		return -1;
+
+	snd_pcm_hw_params_alloca(&params);
+
+	if (snd_pcm_hw_params_any(pcm, params) < 0)
+		return -1;
+
+	bc_rec->pcm = pcm;
+
+	if (snd_pcm_hw_params_set_access(pcm, params,
+					 SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_format(pcm, params,
+				bc_to_alsa_fmt(bc_rec->aud_format)) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_channels(pcm, params, 1) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params_set_rate(pcm, params, bc_rec->aud_rate, 0) < 0)
+		return -1;
+
+	if (snd_pcm_hw_params(pcm, params) < 0)
+		return -1;
+
+	if ((err = snd_pcm_prepare(pcm)) < 0)
+		return -1;
+
+	bc_rec->snd_err = 0;
+	g723_init(&bc_rec->g723_state);
+
+	return 0;
+}
+
 static int pcm_dupe(short *in, int in_size, short *out)
 {
 	int n;
@@ -123,6 +198,8 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 
 	pthread_mutex_lock(&av_lock);
 
+	bc_alsa_close(bc_rec);
+
 	avcodec_close(bc_rec->video_st->codec);
 	if (bc_rec->audio_st)
 		avcodec_close(bc_rec->audio_st->codec);
@@ -170,6 +247,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	char date[12], mytime[10], dir[PATH_MAX];
 
 	pthread_mutex_lock(&av_lock);
+
+	bc_alsa_open(bc_rec);
 
 	t = time(NULL);
 	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
@@ -260,15 +339,11 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	/* Open Audio output */
 	if (bc_rec->audio_st) {
 		codec = avcodec_find_encoder(bc_rec->audio_st->codec->codec_id);
-		if (codec == NULL) {
-bc_log("Could not find AAC encoder");
+		if (codec == NULL)
 			return -1;
-		}
 
-		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0) {
-bc_log("Could not open AAC encoder");
+		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0)
 			return -1;
-		}
 	}
 
 	/* Open output file */
