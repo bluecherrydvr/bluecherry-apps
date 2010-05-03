@@ -18,7 +18,7 @@ $(SOLIBVER): $(OBJS)
 
 install: all
 	$(INSTALL_DATA) -D $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIBVER)
-	ln -sf $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIB)
+#	ln -sf $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIB)
 
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
