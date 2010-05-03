@@ -10,6 +10,9 @@
 
 #include "bc-server.h"
 
+/* Use to maintain coherency between calls to avcodec open/close. The
+ * libavcodec open/close is not thread safe and libavcodec will complain
+ * (loudly) if it sees this occuring. */
 pthread_mutex_t av_lock;
 
 static unsigned int bc_to_alsa_fmt(unsigned int fmt)
@@ -256,10 +259,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	sprintf(dir, "%s/%s/%06d", BC_FILE_REC_BASE, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
-
-	/* Initialize avcodec */
-	avcodec_init();
-	av_register_all();
 
 	/* Get the output format */
 	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);

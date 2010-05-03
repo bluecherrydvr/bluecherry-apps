@@ -5,9 +5,10 @@
  */
 
 #include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/ioctl.h>
+#include <stdarg.h>
+#include <alloca.h>
+
+#include <libavutil/log.h>
 
 #include "bc-server.h"
 
@@ -136,6 +137,24 @@ static void usage(void)
 	exit(1);
 }
 
+static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
+{
+	char *msg;
+
+	if (level > AV_LOG_ERROR)
+		return;
+
+	msg = alloca(strlen(fmt) + 20);
+
+	if (msg == NULL) {
+		bc_vlog(fmt, ap);
+		return;
+	}
+
+	sprintf(msg, "[avlib]: %s", fmt);
+	bc_vlog(msg, ap);
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -150,6 +169,10 @@ int main(int argc, char **argv)
 	}
 
 	pthread_mutex_init(&av_lock, NULL);
+        avcodec_init();
+        av_register_all();
+	/* Help pipe av* log to our log */
+	av_log_set_callback(av_log_cb);
 
 	bc_db = bc_db_open();
 	if (bc_db == NULL) {
