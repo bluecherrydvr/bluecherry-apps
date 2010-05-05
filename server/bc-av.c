@@ -72,7 +72,8 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 				bc_to_alsa_fmt(bc_rec->aud_format)) < 0)
 		return -1;
 
-	if (snd_pcm_hw_params_set_channels(pcm, params, 1) < 0)
+	if (snd_pcm_hw_params_set_channels(pcm, params,
+					   bc_rec->aud_channels) < 0)
 		return -1;
 
 	if (snd_pcm_hw_params_set_rate(pcm, params, bc_rec->aud_rate, 0) < 0)
