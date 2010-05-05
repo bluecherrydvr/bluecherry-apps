@@ -35,21 +35,13 @@ static inline int bc_local_bufs(struct bc_handle *bc)
 
 int bc_buf_key_frame(struct bc_handle *bc)
 {
-	unsigned char *p = bc_buf_data(bc);
 	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
 
 	/* For everything other than mpeg, every frame is a keyframe */
 	if (bc->vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
 		return 1;
 
-	if (!p || !vb)
-		return 0;
-
-	if (vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	/* Fallback */
-	if (p[2] == 0x01 && p[3] == 0x00)
+	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
 		return 1;
 
 	return 0;
