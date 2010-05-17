@@ -13,7 +13,7 @@
 
 #include <linux/videodev2.h>
 
-#define BC_CONFIG		"/etc/bluecherry.conf"
+#define BC_CONFIG		ETCDIR"/bluecherry.conf"
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 

@@ -3,7 +3,7 @@ include $(topdir)/mk.conf
 
 LDFLAGS		+= -lsqlite3 -lpq -lmysqlclient -lconfig -lm
 
-CFLAGS		+= -fPIC
+CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= libbluecherry.so.0
