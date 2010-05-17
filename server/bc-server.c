@@ -6,7 +6,6 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
-#include <alloca.h>
 
 #include <libavutil/log.h>
 
@@ -14,6 +13,10 @@
 
 static BC_DECLARE_LIST(bc_rec_list);
 static struct bc_db_handle *bc_db;
+
+static int max_threads;
+static int cur_threads;
+static int record_id = -1;
 
 extern char *__progname;
 
@@ -40,6 +43,7 @@ static void check_threads(void)
 			free(bc_rec);
 			if (bc_rec->aud_dev)
 				free(bc_rec->aud_dev);
+			cur_threads--;
 		}
 	}
 }
@@ -83,10 +87,18 @@ static void check_db(void)
 		char *name = bc_db_get_val(rows, ncols, i, "device_name");
 		int id = bc_db_get_val_int(rows, ncols, i, "id");
 
+		if ((id < 0) || !dev || !proto || !name)
+			continue;
+
 		if (record_exists(id))
 			continue;
 
-		if ((id < 0) || !dev || !proto || !name)
+		/* Caller asked us to only use this record_id */
+		if (record_id >= 0 && id != record_id)
+			continue;
+
+		/* Caller asked us to only start so many threads */
+		if (max_threads && cur_threads >= max_threads)
 			continue;
 
 		/* Only v4l2 for now */
@@ -124,6 +136,7 @@ static void check_db(void)
 			continue;
 		}
 
+		cur_threads++;
 		bc_list_add(&bc_rec->list, &bc_rec_list);
 	}
 
@@ -134,22 +147,17 @@ static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [-s]\n", __progname);
 	fprintf(stderr, "  -s\tDo not background\n");
+	fprintf(stderr, "  -m\tMax threads to start\n");
+	fprintf(stderr, "  -r\tRecord a specifc ID only\n");
 	exit(1);
 }
 
 static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
-	char *msg;
+	char msg[strlen(fmt) + 20];
 
 	if (level > AV_LOG_ERROR)
 		return;
-
-	msg = alloca(strlen(fmt) + 20);
-
-	if (msg == NULL) {
-		bc_vlog(fmt, ap);
-		return;
-	}
 
 	sprintf(msg, "[avlib]: %s", fmt);
 	bc_vlog(msg, ap);
@@ -161,9 +169,11 @@ int main(int argc, char **argv)
 	int loops;
 	int bg = 1;
 
-	while ((opt = getopt(argc, argv, "hs")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
+		case 'm': max_threads = atoi(optarg); break;
+		case 'r': record_id = atoi(optarg); break;
 		case 'h': default: usage();
 		}
 	}
