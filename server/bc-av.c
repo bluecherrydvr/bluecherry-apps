@@ -91,6 +91,9 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	return 0;
 }
 
+/* Convert 8khz PCM to 16khz. Horrid in that we don't do wave smoothing,
+ * but it's fast and serves our purpose. MP2 audio doesn't support 8khz
+ * audio, which is why we need this. */
 static int pcm_dupe(short *in, int in_size, short *out)
 {
 	int n;
@@ -162,7 +165,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.stream_index = bc_rec->audio_st->index;
 	pkt.data = mp2_out;
 
-	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
+	if (av_write_frame(bc_rec->oc, &pkt)) {
 		errno = EIO;
 		return -1;
 	}
@@ -172,7 +175,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 int bc_vid_out(struct bc_record *bc_rec)
 {
-	//AVCodecContext *c = bc_rec->video_st->codec;
+	AVCodecContext *c = bc_rec->video_st->codec;
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
 
@@ -183,12 +186,12 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
-//	if (c->coded_frame->pts != AV_NOPTS_VALUE)
-//		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-//				       bc_rec->video_st->time_base);
+	if (c->coded_frame->pts != AV_NOPTS_VALUE)
+		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
+				       bc_rec->video_st->time_base);
 	pkt.stream_index = bc_rec->video_st->index;
 
-	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
+	if (av_write_frame(bc_rec->oc, &pkt)) {
 		errno = EIO;
 		return -1;
 	}
