@@ -1,0 +1,29 @@
+topdir = ..
+include $(topdir)/mk.conf
+
+EXTDIR		= $(shell php-config --extension-dir)
+MODULE		= bluecherry
+
+all: modules/$(MODULE).so
+
+configure: config.m4
+	phpize
+
+Makefile: configure
+	./configure --with-php-config=php-config
+
+modules/$(MODULE).so: Makefile FORCE
+	$(MAKE) -f Makefile
+
+install: modules/$(MODULE).so $(MODULE).php
+	$(INSTALL_DATA) -D modules/$(MODULE).so \
+		$(DESTDIR)$(EXTDIR)/$(MODULE).so
+	$(INSTALL_DATA) -D $(MODULE).ini \
+		$(DESTDIR)$(etc_dir)/php5/conf.d/$(MODULE).ini
+	$(INSTALL_DATA) -D bc-mjpeg.php $(DESTDIR)$(web_dir)/bc-mjpeg.php
+
+clean:
+	test -f Makefile && $(MAKE) -f Makefile distclean || true
+	phpize --clean
+
+FORCE:
