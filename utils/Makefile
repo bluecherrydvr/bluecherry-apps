@@ -4,7 +4,7 @@ include $(topdir)/mk.conf
 CPPFLAGS	+= -I$(topdir)/lib
 LDFLAGS		+= -L$(topdir)/lib -lbluecherry
 
-TARGETS		= getjpeg bc.cgi
+TARGETS		= getjpeg
 
 all: $(TARGETS)
 
@@ -14,5 +14,4 @@ $(TARGETS): $(LIB)
 clean:
 	rm -f $(TARGETS)
 
-install: bc.cgi
-	$(INSTALL_PROG) -D bc.cgi $(DESTDIR)$(cgi_dir)/bc.cgi
+install:
