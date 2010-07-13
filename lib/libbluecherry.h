@@ -121,9 +121,11 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 struct bc_db_handle *bc_db_open(void);
 void bc_db_close(struct bc_db_handle *bc_db);
 int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
-		    char ***res, const char *fmt, ...);
+		    char ***res, const char *fmt, ...)
+	__attribute__ ((format (printf, 5, 6)));
 void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
-int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...);
+int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
+	__attribute__ ((format (printf, 2, 3)));
 
 /* Used to get specific values from a table result */
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
