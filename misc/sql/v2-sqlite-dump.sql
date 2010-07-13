@@ -1,10 +1,11 @@
 DROP TABLE IF EXISTS AvailableSources;
 CREATE TABLE "AvailableSources" (
     id integer PRIMARY KEY NOT NULL,
-    device character(255),
+    devicepath character(255),
     name character(255),
+    driver character(255),
     status boolean,
-    path character(255)
+    alsasounddev character(255)
 );
 
 DROP TABLE IF EXISTS Devices;
