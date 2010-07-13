@@ -105,8 +105,6 @@ PHP_FUNCTION(bc_db_close)
 
 	BCDB_GET_RES("bc_db_close");
 
-	bc_db_close(bcdb);
-
 	zend_list_delete((long)bcdb);
 
 	RETURN_TRUE;
@@ -180,8 +178,6 @@ PHP_FUNCTION(bc_handle_free)
 	struct bc_handle *bch;
 
 	BCH_GET_RES("bc_handle_free");
-
-	bc_handle_free(bch);
 
 	zend_list_delete((long)bch);
 
