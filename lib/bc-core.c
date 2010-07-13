@@ -258,6 +258,7 @@ error_fail:
 
 void bc_handle_free(struct bc_handle *bc)
 {
+	/* Don't want this call to change errno at all */
 	int save_err = errno;
 
 	if (!bc)
