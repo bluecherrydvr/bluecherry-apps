@@ -4,13 +4,17 @@ include $(topdir)/mk.conf
 CFLAGS		+= -pthread
 LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry -lasound
 
-TARGETS		= bc-server
-OBJS		= bc-server.o bc-thread.o bc-av.o g723-dec.o
+TARGETS		= bc-server bc-detect
+SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o
+DETECT_OBJS	= bc-detect.o
 
 all: $(TARGETS)
 
-bc-server: $(LIB) $(OBJS)
-	$(LD) $(LDFLAGS) $(OBJS) -o $@
+bc-server: $(LIB) $(SERVER_OBJS)
+	$(LD) $(LDFLAGS) $(SERVER_OBJS) -o $@
+
+bc-detect: $(LIB) $(DETECT_OBJS)
+	$(LD) $(LDFLAGS) $(DETECT_OBJS) -o $@
 
 install: all upstart-script rsyslog.conf logrotate.conf
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
@@ -22,6 +26,6 @@ install: all upstart-script rsyslog.conf logrotate.conf
 		$(DESTDIR)$(etc_dir)/logrotate.d/bluecherry
 
 clean:
-	rm -f $(OBJS) $(TARGETS)
+	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
 
 FORCE:
