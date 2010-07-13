@@ -29,6 +29,20 @@ static void bc_db_sqlite_close(void *handle)
 	sqlite3_close(handle);
 }
 
+static int bc_db_sqlite_query(void *handle, const char *sql, va_list ap)
+{
+	int ret;
+	char *query = sqlite3_vmprintf(sql, ap);
+
+	if (query == NULL)
+		return -1;
+
+	ret = sqlite3_exec(handle, query, NULL, NULL, NULL);
+	sqlite3_free(query);
+
+	return ret;
+}
+
 static int bc_db_sqlite_get_table(void *handle, int *nrows, int *ncols,
 				  char ***res, const char *fmt, va_list ap)
 {
@@ -55,4 +69,5 @@ struct bc_db_ops bc_db_sqlite = {
 	.close		= bc_db_sqlite_close,
 	.get_table	= bc_db_sqlite_get_table,
 	.free_table	= bc_db_sqlite_free_table,
+	.query		= bc_db_sqlite_query,
 };

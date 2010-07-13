@@ -67,6 +67,18 @@ db_error:
 	return bc_db;
 }
 
+int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, sql);
+	ret = bc_db->db_ops->query(bc_db->dbh, sql, ap);
+	va_end(ap);
+
+	return ret;
+}
+
 int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 		    char ***res, const char *fmt, ...)
 {

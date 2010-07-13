@@ -26,6 +26,11 @@ static void bc_db_psql_close(void *handle)
 	PQfinish(handle);
 }
 
+static int bc_db_psql_query(void *handle, const char *sql, va_list ap)
+{
+	return -1;
+}
+
 static int bc_db_psql_get_table(void *handle, int *nrows, int *ncols,
 				  char ***res, const char *fmt, va_list ap)
 {
@@ -43,4 +48,5 @@ struct bc_db_ops bc_db_psql = {
 	.close		= bc_db_psql_close,
 	.get_table	= bc_db_psql_get_table,
 	.free_table	= bc_db_psql_free_table,
+	.query		= bc_db_psql_query,
 };

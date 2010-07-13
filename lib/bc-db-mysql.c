@@ -33,6 +33,11 @@ static void bc_db_mysql_close(void *handle)
 	mysql_close(handle);
 }
 
+static int bc_db_mysql_query(void *handle, const char *sql, va_list ap)
+{
+	return -1;
+}
+
 static int bc_db_mysql_get_table(void *handle, int *nrows, int *ncols,
 				 char ***res, const char *fmt, va_list ap)
 {
@@ -50,4 +55,5 @@ struct bc_db_ops bc_db_mysql = {
 	.close		= bc_db_mysql_close,
 	.get_table	= bc_db_mysql_get_table,
 	.free_table	= bc_db_mysql_free_table,
+	.query		= bc_db_mysql_query,
 };
