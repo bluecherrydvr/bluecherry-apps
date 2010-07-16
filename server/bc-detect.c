@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
 
 #include <libbluecherry.h>
 
@@ -47,6 +50,84 @@ static int device_exists(const char *dev)
 	}
 
 	return 0;
+}
+
+static const char *get_v4l2_card_name(const char *dev)
+{
+	char fulldev[128];
+	static struct v4l2_capability vcap;
+	int fd;
+	int ret;
+
+	sprintf(fulldev, "/dev/%s", dev);
+	fd = open(fulldev, O_RDWR);
+	if (fd == -1)
+		return NULL;
+
+	ret = ioctl(fd, VIDIOC_QUERYCAP, &vcap);
+
+	close(fd);
+
+	if (ret < 0)
+		return NULL;
+
+	return (const char *)vcap.card;
+}
+
+#define SOLO6010_CARD_DISP		"Softlogic 6010"
+#define SOLO6010_CARD_PREFIX_ENC	SOLO6010_CARD_DISP " Enc "
+
+#define SOLO6110_CARD_DISP		"Softlogic 6110"
+#define SOLO6110_CARD_PREFIX_ENC	SOLO6110_CARD_DISP " Enc "
+
+static void check_solo(const char *dev, const char **driver, const char **alsa)
+{
+	const char *card = get_v4l2_card_name(dev);
+	int devnum = atoi(dev + 5); /* The X in videoX */
+	static char alsadev[256];
+	char *prefix;
+	int i;
+
+	if (card == NULL)
+		return;
+
+	*driver = *alsa = NULL;
+
+	if (strlen(card) < strlen(SOLO6010_CARD_PREFIX_ENC))
+		return;
+
+	if (!strncmp(SOLO6010_CARD_PREFIX_ENC, card,
+		    strlen(SOLO6010_CARD_PREFIX_ENC))) {
+		*driver = "solo6010";
+		prefix = SOLO6010_CARD_DISP;
+	} else if (strncmp(SOLO6110_CARD_PREFIX_ENC, card,
+			   strlen(SOLO6110_CARD_PREFIX_ENC))) {
+                *driver = "solo6110";
+		prefix = SOLO6110_CARD_DISP;
+	}
+
+	if (*driver == NULL)
+		return;
+
+	/* We know we have a card now, so find it's parent by counting
+	 * backwards */
+	for (i = devnum - 1; i >= 0 && *alsa == NULL; i--) {
+		char parent[16];
+
+		sprintf(parent, "video%d", i);
+		card = get_v4l2_card_name(parent);
+
+		if (strcmp(card, prefix))
+			continue;
+
+		sprintf(alsadev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
+			i, (devnum - 1) - i);
+		*alsa = alsadev;
+	}
+
+	bc_log("Got %s and %s", *driver, *alsa ?: "none");
+
+	return;
 }
 
 static void usage(void)
@@ -94,18 +175,32 @@ int main(int argc, char **argv)
 
 	while ((dent = readdir(dir)) != NULL) {
 		const char *dev = dent->d_name;
+		const char *driver = NULL, *alsadev = NULL;
 
 		if (strncmp(dev, "video", 5))
 			continue;
 
+		/* Already in the database? */
 		if (device_exists(dev))
 			continue;
 
-		bc_log("Inserting /dev/%s into AvailableSources", dev);
+		/* Find the driver */
+		if (driver == NULL)
+			check_solo(dev, &driver, &alsadev);
+
+		if (driver == NULL)
+			continue;
+
+		bc_log("/dev/%s: Driver %s%s%s detected", dev, driver,
+		       alsadev ? ", AlsaDevice " : "",
+		       alsadev ?: "");
 
 		res = bc_db_query(bc_db, "INSERT INTO AvailableSources "
-				  "(devicepath, driver) "
-				  "VALUES('/dev/%s', 'solo6010');", dev);
+				  "(devicepath, driver, alsasounddev) "
+				  "VALUES('/dev/%s', '%s', '%s');", dev,
+				  driver, alsadev ?: "");
+		if (res)
+			bc_log("/dev/%s: Error inserting into database", dev);
 	}
 
 	closedir(dir);
