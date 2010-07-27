@@ -1,5 +1,5 @@
 #include "core/BluecherryApp.h"
-#include "MainWindow.h"
+#include "ui/MainWindow.h"
 #include <QApplication>
 #include <QSettings>
 

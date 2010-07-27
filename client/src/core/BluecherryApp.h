@@ -13,7 +13,7 @@ class BluecherryApp : public QObject
 public:
     explicit BluecherryApp();
 
-    QList<DVRServer*> servers() const;
+    QList<DVRServer*> servers() const { return m_servers; }
 
 private:
     QList<DVRServer*> m_servers;
