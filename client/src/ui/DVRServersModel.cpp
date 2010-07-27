@@ -1,6 +1,7 @@
 #include "core/BluecherryApp.h"
 #include "DVRServersModel.h"
 #include "core/DVRServer.h"
+#include <QTextDocument>
 
 DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -59,6 +60,14 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
     DVRServer *server = reinterpret_cast<DVRServer*>(index.internalPointer());
     if (!server)
         return QVariant();
+
+    if (role == Qt::ToolTipRole)
+    {
+        return tr("<span style='white-space:nowrap'><b>%1</b><br>%3 @ %2</span>", "tooltip")
+                .arg(Qt::escape(server->displayName()))
+                .arg(Qt::escape(server->hostname()))
+                .arg(Qt::escape(server->username()));
+    }
 
     switch (index.column())
     {

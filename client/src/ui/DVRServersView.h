@@ -9,6 +9,9 @@ class DVRServersView : public QTreeView
 
 public:
     explicit DVRServersView(QWidget *parent = 0);
+
+protected:
+    virtual void contextMenuEvent(QContextMenuEvent *event);
 };
 
 #endif // DVRSERVERSVIEW_H
