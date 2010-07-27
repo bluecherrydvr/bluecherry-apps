@@ -1,4 +1,5 @@
 #include "OptionsDialog.h"
+#include "OptionsServerPage.h"
 #include <QBoxLayout>
 #include <QTabWidget>
 
@@ -15,5 +16,5 @@ OptionsDialog::OptionsDialog(QWidget *parent)
     layout->addWidget(m_tabWidget);
 
     m_tabWidget->addTab(new QWidget, tr("General"));
-    m_tabWidget->addTab(new QWidget, tr("DVR Servers"));
+    m_tabWidget->addTab(new OptionsServerPage(this), tr("DVR Servers"));
 }

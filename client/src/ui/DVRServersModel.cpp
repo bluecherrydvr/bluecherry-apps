@@ -2,6 +2,8 @@
 #include "DVRServersModel.h"
 #include "core/DVRServer.h"
 #include <QTextDocument>
+#include <QApplication>
+#include <QStyle>
 
 DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -12,6 +14,14 @@ DVRServersModel::DVRServersModel(QObject *parent)
     {
         connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
     }
+}
+
+DVRServer *DVRServersModel::serverForRow(int row) const
+{
+    if (row < 0 || row >= servers.size())
+        return 0;
+
+    return servers[row];
 }
 
 int DVRServersModel::rowCount(const QModelIndex &parent) const
@@ -44,10 +54,10 @@ QModelIndex DVRServersModel::parent(const QModelIndex &child) const
 
 Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
 {
-    Qt::ItemFlags re = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    Qt::ItemFlags re = Qt::ItemIsEnabled;
 
-    if (index.isValid() && index.column() == 0)
-        re |= Qt::ItemIsEditable;
+    if (index.isValid())
+        re |= Qt::ItemIsSelectable | Qt::ItemIsEditable;
 
     return re;
 }
@@ -108,19 +118,39 @@ QVariant DVRServersModel::headerData(int section, Qt::Orientation orientation, i
 
 bool DVRServersModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    if (!index.isValid() || index.column() != 0 || role != Qt::EditRole)
+    if (!index.isValid() || role != Qt::EditRole)
         return false;
 
     DVRServer *server = reinterpret_cast<DVRServer*>(index.internalPointer());
     if (!server)
         return false;
 
-    QString name = value.toString().trimmed();
-    if (name.isEmpty())
-        return false;
+    switch (index.column())
+    {
+    case 0:
+        {
+            QString name = value.toString().trimmed();
+            if (name.isEmpty())
+                return false;
 
-    /* dataChanged will be emitted in response to the DVRServer::changed() signal */
-    server->setDisplayName(name);
+            /* dataChanged will be emitted in response to the DVRServer::changed() signal */
+            server->setDisplayName(name);
+        }
+        break;
+    case 1:
+        server->writeSetting("hostname", value.toString());
+        break;
+    case 2:
+        server->writeSetting("username", value.toString());
+        break;
+    case 3:
+        server->writeSetting("password", value.toString());
+        break;
+    default:
+        return false;
+    }
+
+    return true;
 }
 
 void DVRServersModel::serverDataChanged()
