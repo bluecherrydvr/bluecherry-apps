@@ -14,9 +14,14 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+public slots:
+    void showOptionsDialog();
+
 private:
     QTreeView *m_sourcesList;
     CameraAreaWidget *m_cameraArea;
+
+    void createMenu();
 
     QWidget *createSourcesList();
     QWidget *createPtzBox();

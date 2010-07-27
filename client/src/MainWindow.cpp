@@ -1,13 +1,17 @@
 #include "MainWindow.h"
 #include "CameraAreaWidget.h"
 #include "CameraAreaControls.h"
+#include "OptionsDialog.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
+#include <QMenuBar>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {   
+    createMenu();
+
     QWidget *centerWidget = new QWidget;
     QBoxLayout *mainLayout = new QHBoxLayout(centerWidget);
 
@@ -37,6 +41,14 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
 
+}
+
+void MainWindow::createMenu()
+{
+    QMenu *appMenu = menuBar()->addMenu(tr("&Application"));
+    appMenu->addAction(tr("&Options"), this, SLOT(showOptionsDialog()));
+    appMenu->addSeparator();
+    appMenu->addAction(tr("&Quit"), this, SLOT(close()));
 }
 
 QWidget *MainWindow::createSourcesList()
@@ -77,4 +89,11 @@ QWidget *MainWindow::createCameraControls()
 {
     CameraAreaControls *controls = new CameraAreaControls(m_cameraArea);
     return controls;
+}
+
+void MainWindow::showOptionsDialog()
+{
+    OptionsDialog *dlg = new OptionsDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->show();
 }
