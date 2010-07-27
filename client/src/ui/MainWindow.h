@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 class QTreeView;
+class DVRServersView;
 class CameraAreaWidget;
 
 class MainWindow : public QMainWindow
@@ -18,7 +19,7 @@ public slots:
     void showOptionsDialog();
 
 private:
-    QTreeView *m_sourcesList;
+    DVRServersView *m_sourcesList;
     CameraAreaWidget *m_cameraArea;
 
     void createMenu();

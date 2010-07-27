@@ -13,7 +13,8 @@ SOURCES += src/main.cpp \
     src/ui/OptionsDialog.cpp \
     src/core/DVRServer.cpp \
     src/core/BluecherryApp.cpp \
-    src/ui/DVRServersModel.cpp
+    src/ui/DVRServersModel.cpp \
+    src/ui/DVRServersView.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -21,4 +22,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/OptionsDialog.h \
     src/core/DVRServer.h \
     src/core/BluecherryApp.h \
-    src/ui/DVRServersModel.h
+    src/ui/DVRServersModel.h \
+    src/ui/DVRServersView.h

@@ -1,11 +1,10 @@
 #include "MainWindow.h"
 #include "CameraAreaWidget.h"
 #include "CameraAreaControls.h"
+#include "DVRServersView.h"
 #include "OptionsDialog.h"
-#include "DVRServersModel.h"
 #include <QBoxLayout>
 #include <QTreeView>
-#include <QHeaderView>
 #include <QGroupBox>
 #include <QMenuBar>
 
@@ -55,18 +54,9 @@ void MainWindow::createMenu()
 
 QWidget *MainWindow::createSourcesList()
 {
-    m_sourcesList = new QTreeView;
+    m_sourcesList = new DVRServersView;
     m_sourcesList->setMinimumHeight(220);
     m_sourcesList->setFixedWidth(170);
-    m_sourcesList->setRootIsDecorated(false);
-    m_sourcesList->header()->setVisible(false);
-
-    DVRServersModel *model = new DVRServersModel(m_sourcesList);
-    m_sourcesList->setModel(model);
-
-    /* We only show the server name in this list; hide other columns */
-    for (int i = 1, n = model->columnCount(); i < n; ++i)
-        m_sourcesList->header()->setSectionHidden(i, true);
 
     return m_sourcesList;
 }

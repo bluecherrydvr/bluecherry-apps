@@ -6,6 +6,11 @@ DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
     servers = bcApp->servers();
+
+    foreach (DVRServer *server, servers)
+    {
+        connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
+    }
 }
 
 int DVRServersModel::rowCount(const QModelIndex &parent) const
@@ -36,6 +41,16 @@ QModelIndex DVRServersModel::parent(const QModelIndex &child) const
     return QModelIndex();
 }
 
+Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
+{
+    Qt::ItemFlags re = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+
+    if (index.isValid() && index.column() == 0)
+        re |= Qt::ItemIsEditable;
+
+    return re;
+}
+
 QVariant DVRServersModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid())
@@ -48,15 +63,15 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
     switch (index.column())
     {
     case 0:
-        if (role == Qt::DisplayRole)
+        if (role == Qt::DisplayRole || role == Qt::EditRole)
             return server->displayName();
         break;
     case 1:
-        if (role == Qt::DisplayRole)
+        if (role == Qt::DisplayRole || role == Qt::EditRole)
             return server->hostname();
         break;
     case 2:
-        if (role == Qt::DisplayRole)
+        if (role == Qt::DisplayRole || role == Qt::EditRole)
             return server->username();
         break;
     }
@@ -80,4 +95,34 @@ QVariant DVRServersModel::headerData(int section, Qt::Orientation orientation, i
     }
 
     return QVariant();
+}
+
+bool DVRServersModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (!index.isValid() || index.column() != 0 || role != Qt::EditRole)
+        return false;
+
+    DVRServer *server = reinterpret_cast<DVRServer*>(index.internalPointer());
+    if (!server)
+        return false;
+
+    QString name = value.toString().trimmed();
+    if (name.isEmpty())
+        return false;
+
+    /* dataChanged will be emitted in response to the DVRServer::changed() signal */
+    server->setDisplayName(name);
+}
+
+void DVRServersModel::serverDataChanged()
+{
+    DVRServer *server = qobject_cast<DVRServer*>(sender());
+    if (!server)
+        return;
+
+    int row = servers.indexOf(server);
+    if (row < 0)
+        return;
+
+    emit dataChanged(index(row, 0), index(row, columnCount()-1));
 }
