@@ -1,5 +1,7 @@
 #include "DVRServersView.h"
 #include "DVRServersModel.h"
+#include "OptionsDialog.h"
+#include "OptionsServerPage.h"
 #include <QHeaderView>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -24,16 +26,37 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
+    QAction *aEditServer = 0;
+
     QModelIndex index = indexAt(event->pos());
     if (index.isValid())
     {
         menu.addAction(tr("Connect"))->setEnabled(false);
-        menu.addAction(tr("Edit server"));
+        aEditServer = menu.addAction(tr("Edit server"));
         menu.addSeparator();
     }
 
-    menu.addAction("Add new server...");
-    menu.addAction("Options");
+    QAction *aAddServer = menu.addAction("Add new server...");
+    QAction *aOptions = menu.addAction("Options");
 
-    menu.exec(event->globalPos());
+    QAction *action = menu.exec(event->globalPos());
+    if (!action)
+        return;
+
+    if (action == aEditServer || action == aAddServer || action == aOptions)
+    {
+        /* Open the options dialog and modify appropriately */
+        OptionsDialog *dlg = new OptionsDialog(this);
+        dlg->showPage(OptionsDialog::ServerPage);
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+        OptionsServerPage *pg = static_cast<OptionsServerPage*>(dlg->pageWidget(OptionsDialog::ServerPage));
+
+        if (action == aEditServer)
+            pg->setCurrentServer(static_cast<DVRServersModel*>(model())->serverForRow(index));
+        else if (action == aAddServer)
+            pg->addNewServer();
+
+        dlg->show();
+    }
 }

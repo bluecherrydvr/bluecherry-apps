@@ -5,6 +5,7 @@
 
 class QTableView;
 class QLineEdit;
+class DVRServer;
 
 class OptionsServerPage : public QWidget
 {
@@ -13,12 +14,15 @@ class OptionsServerPage : public QWidget
 public:
     explicit OptionsServerPage(QWidget *parent = 0);
 
+public slots:
+    void setCurrentServer(DVRServer *server);
+    void addNewServer();
+    void saveChanges();
+
 private slots:
     void currentServerChanged();
 
-    void addNewServer();
     void deleteServer();
-    void saveChanges();
 
 private:
     QTableView *m_serversView;

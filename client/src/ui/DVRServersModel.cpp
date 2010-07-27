@@ -24,6 +24,15 @@ DVRServer *DVRServersModel::serverForRow(int row) const
     return servers[row];
 }
 
+QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
+{
+    int row = servers.indexOf(server);
+    if (row < 0)
+        return QModelIndex();
+
+    return index(row, 0);
+}
+
 int DVRServersModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())

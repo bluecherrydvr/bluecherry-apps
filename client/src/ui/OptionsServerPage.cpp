@@ -82,6 +82,13 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     editsLayout->addWidget(m_passwordEdit, 1, 3);
 }
 
+void OptionsServerPage::setCurrentServer(DVRServer *server)
+{
+    QModelIndex index = static_cast<DVRServersModel*>(m_serversView->model())->indexForServer(server);
+    if (index.isValid())
+        m_serversView->setCurrentIndex(index);
+}
+
 void OptionsServerPage::currentServerChanged()
 {
     DVRServer *server = static_cast<DVRServersModel*>(m_serversView->model())->

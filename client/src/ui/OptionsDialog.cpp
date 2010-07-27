@@ -18,3 +18,13 @@ OptionsDialog::OptionsDialog(QWidget *parent)
     m_tabWidget->addTab(new QWidget, tr("General"));
     m_tabWidget->addTab(new OptionsServerPage(this), tr("DVR Servers"));
 }
+
+void OptionsDialog::showPage(OptionsPage page)
+{
+    m_tabWidget->setCurrentIndex((int)page);
+}
+
+QWidget *OptionsDialog::pageWidget(OptionsPage page) const
+{
+    return m_tabWidget->widget((int)page);
+}

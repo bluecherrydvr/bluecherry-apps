@@ -15,6 +15,8 @@ public:
     DVRServer *serverForRow(const QModelIndex &index) const { return serverForRow(index.row()); }
     DVRServer *serverForRow(int row) const;
 
+    QModelIndex indexForServer(DVRServer *server) const;
+
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const;
