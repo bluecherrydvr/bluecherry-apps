@@ -14,6 +14,10 @@ public:
     explicit BluecherryApp();
 
     QList<DVRServer*> servers() const { return m_servers; }
+    DVRServer *addNewServer(const QString &name);
+
+signals:
+    void serverAdded(DVRServer *server);
 
 private:
     QList<DVRServer*> m_servers;

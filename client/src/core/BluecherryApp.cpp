@@ -39,3 +39,15 @@ void BluecherryApp::loadServers()
         m_maxServerId = qMax(m_maxServerId, id);
     }
 }
+
+DVRServer *BluecherryApp::addNewServer(const QString &name)
+{
+    int id = ++m_maxServerId;
+
+    QSettings settings;
+    settings.setValue(QString::fromLatin1("servers/%1/displayName").arg(id), name);
+
+    DVRServer *server = new DVRServer(id, this);
+    emit serverAdded(server);
+    return server;
+}

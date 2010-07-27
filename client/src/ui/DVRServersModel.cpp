@@ -8,6 +8,7 @@
 DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
+    connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
     servers = bcApp->servers();
 
     foreach (DVRServer *server, servers)
@@ -173,4 +174,13 @@ void DVRServersModel::serverDataChanged()
         return;
 
     emit dataChanged(index(row, 0), index(row, columnCount()-1));
+}
+
+void DVRServersModel::serverAdded(DVRServer *server)
+{
+    beginInsertRows(QModelIndex(), servers.size(), servers.size());
+    servers.append(server);
+    endInsertRows();
+
+    connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
 }

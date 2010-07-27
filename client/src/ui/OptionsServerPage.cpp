@@ -1,5 +1,6 @@
 #include "OptionsServerPage.h"
 #include "DVRServersModel.h"
+#include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
 #include <QTableView>
 #include <QHeaderView>
@@ -31,27 +32,6 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     connect(m_serversView->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
             SLOT(currentServerChanged()));
 
-    /* Buttons (right of servers list) */
-    QBoxLayout *btnLayout = new QHBoxLayout;
-    mainLayout->addLayout(btnLayout);
-
-    QPushButton *newBtn = new QPushButton(tr("Add Server"));
-    connect(newBtn, SIGNAL(clicked()), SLOT(addNewServer()));
-    btnLayout->addWidget(newBtn);
-
-    QPushButton *delBtn = new QPushButton(tr("Delete"));
-    connect(delBtn, SIGNAL(clicked()), SLOT(deleteServer()));
-    btnLayout->addWidget(delBtn);
-
-    btnLayout->addStretch();
-    QPushButton *applyBtn = new QPushButton(tr("Apply"));
-    connect(applyBtn, SIGNAL(clicked()), SLOT(saveChanges()));
-    btnLayout->addWidget(applyBtn);
-
-    QFrame *line = new QFrame;
-    line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
-    mainLayout->addWidget(line);
-
     /* Editing area */
     QGridLayout *editsLayout = new QGridLayout;
     mainLayout->addLayout(editsLayout);
@@ -80,6 +60,30 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     m_passwordEdit = new QLineEdit;
     m_passwordEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
     editsLayout->addWidget(m_passwordEdit, 1, 3);
+
+    /* Buttons */
+    QFrame *line = new QFrame;
+    line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
+    mainLayout->addWidget(line);
+
+    QBoxLayout *btnLayout = new QHBoxLayout;
+    mainLayout->addLayout(btnLayout);
+
+    QPushButton *newBtn = new QPushButton(tr("Add Server"));
+    newBtn->setAutoDefault(false);
+    connect(newBtn, SIGNAL(clicked()), SLOT(addNewServer()));
+    btnLayout->addWidget(newBtn);
+
+    QPushButton *delBtn = new QPushButton(tr("Delete"));
+    delBtn->setAutoDefault(false);
+    connect(delBtn, SIGNAL(clicked()), SLOT(deleteServer()));
+    btnLayout->addWidget(delBtn);
+
+    btnLayout->addStretch();
+    QPushButton *applyBtn = new QPushButton(tr("Apply"));
+    applyBtn->setAutoDefault(false);
+    connect(applyBtn, SIGNAL(clicked()), SLOT(saveChanges()));
+    btnLayout->addWidget(applyBtn);
 }
 
 void OptionsServerPage::setCurrentServer(DVRServer *server)
@@ -110,7 +114,11 @@ void OptionsServerPage::currentServerChanged()
 
 void OptionsServerPage::addNewServer()
 {
+    DVRServer *server = bcApp->addNewServer(tr("New Server"));
+    setCurrentServer(server);
 
+    m_nameEdit->setFocus();
+    m_nameEdit->selectAll();
 }
 
 void OptionsServerPage::deleteServer()
@@ -118,12 +126,15 @@ void OptionsServerPage::deleteServer()
 
 }
 
-void OptionsServerPage::saveChanges()
+void OptionsServerPage::saveChanges(DVRServer *server)
 {
-    DVRServer *server = static_cast<DVRServersModel*>(m_serversView->model())->
-                        serverForRow(m_serversView->currentIndex());
     if (!server)
-        return;
+    {
+        server = static_cast<DVRServersModel*>(m_serversView->model())->
+                 serverForRow(m_serversView->currentIndex());
+        if (!server)
+            return;
+    }
 
     server->setDisplayName(m_nameEdit->text().trimmed());
     server->writeSetting("hostname", m_hostnameEdit->text());

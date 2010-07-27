@@ -28,6 +28,7 @@ public:
 
 private slots:
     void serverDataChanged();
+    void serverAdded(DVRServer *server);
 
 private:
     QList<DVRServer*> servers;

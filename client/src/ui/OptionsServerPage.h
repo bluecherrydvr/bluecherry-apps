@@ -17,7 +17,7 @@ public:
 public slots:
     void setCurrentServer(DVRServer *server);
     void addNewServer();
-    void saveChanges();
+    void saveChanges(DVRServer *server = 0);
 
 private slots:
     void currentServerChanged();
