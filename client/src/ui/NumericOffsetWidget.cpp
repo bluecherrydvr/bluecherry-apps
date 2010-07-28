@@ -19,14 +19,18 @@ void NumericOffsetWidget::setValue(int value)
     update();
 }
 
-QSize NumericOffsetWidget::sizeHint() const
+QSize NumericOffsetWidget::textAreaSize() const
 {
     QFontMetrics fm(font());
-    QSize textSize = fm.boundingRect(QLatin1String("999")).size();
+    return fm.boundingRect(QLatin1String("-999")).size() + QSize(6, 0);
+}
 
-    const int iconSize = 16, padding = 3;
+QSize NumericOffsetWidget::sizeHint() const
+{
+    const int iconSize = 16;
+    QSize textSize = textAreaSize();
 
-    return QSize(textSize.width() + (iconSize*2) + (padding*2), qMax(iconSize, textSize.height()));
+    return QSize(textSize.width() + (iconSize*2), qMax(iconSize, textSize.height()));
 }
 
 void NumericOffsetWidget::paintEvent(QPaintEvent *event)
@@ -34,13 +38,16 @@ void NumericOffsetWidget::paintEvent(QPaintEvent *event)
     QPainter p(this);
     QRect r = event->rect();
 
+    QSize textSize = textAreaSize();
+
+    int textLeft = (r.width() - textSize.width()) / 2;
+
     /* No icons yet; draw - and + instead */
-    p.drawText(QRect(0, 0, 16, r.height()), Qt::AlignVCenter | Qt::AlignLeft, QLatin1String("-"));
-    p.drawText(QRect(r.right()-16, 0, 16, r.height()), Qt::AlignVCenter | Qt::AlignRight, QLatin1String("+"));
+    p.drawText(QRect(textLeft - 16, 0, 16, r.height()), Qt::AlignVCenter | Qt::AlignRight, QLatin1String("-"));
+    p.drawText(QRect(textLeft + textSize.width(), 0, 16, r.height()), Qt::AlignVCenter | Qt::AlignLeft, QLatin1String("+"));
 
     /* Text */
-    r.adjusted(19, 0, -19, 0);
-    p.drawText(r, Qt::AlignCenter, QString::number(value()));
+    p.drawText(QRect(textLeft, 0, textSize.width(), r.height()), Qt::AlignCenter, QString::number(value()));
 }
 
 void NumericOffsetWidget::mousePressEvent(QMouseEvent *event)

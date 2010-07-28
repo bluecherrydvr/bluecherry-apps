@@ -30,6 +30,8 @@ protected:
 
 private:
     int m_value;
+
+    QSize textAreaSize() const;
 };
 
 #endif // NUMERICOFFSETWIDGET_H
