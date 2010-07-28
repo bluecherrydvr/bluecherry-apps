@@ -35,8 +35,8 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         menu.addSeparator();
     }
 
-    QAction *aAddServer = menu.addAction("Add new server...");
-    QAction *aOptions = menu.addAction("Options");
+    QAction *aAddServer = menu.addAction(tr("Add new server..."));
+    QAction *aOptions = menu.addAction(tr("Options"));
 
     QAction *action = menu.exec(event->globalPos());
     if (!action)

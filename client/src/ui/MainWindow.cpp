@@ -14,7 +14,7 @@
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-{   
+{
     createMenu();
 
     QWidget *centerWidget = new QWidget;
@@ -43,7 +43,7 @@ MainWindow::MainWindow(QWidget *parent)
     setCentralWidget(centerWidget);
 
     QSettings settings;
-    restoreGeometry(settings.value("ui/main/geometry").toByteArray());
+    restoreGeometry(settings.value(QLatin1String("ui/main/geometry")).toByteArray());
 }
 
 MainWindow::~MainWindow()
@@ -53,7 +53,7 @@ MainWindow::~MainWindow()
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     QSettings settings;
-    settings.setValue("ui/main/geometry", saveGeometry());
+    settings.setValue(QLatin1String("ui/main/geometry"), saveGeometry());
     QMainWindow::closeEvent(event);
 }
 

@@ -3,7 +3,7 @@ QT += core gui network phonon
 TARGET = bluecherry-client
 TEMPLATE = app
 
-DEFINES += -DQT_NO_CAST_FROM_ASCII -DQT_NO_CAST_TO_ASCII
+DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
 INCLUDEPATH += src
 
 SOURCES += src/main.cpp \
