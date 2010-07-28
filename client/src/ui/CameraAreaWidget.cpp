@@ -1,4 +1,5 @@
 #include "CameraAreaWidget.h"
+#include "LiveFeedWidget.h"
 #include <QGridLayout>
 
 CameraAreaWidget::CameraAreaWidget(QWidget *parent)
@@ -28,9 +29,7 @@ void CameraAreaWidget::setGridSize(int rows, int columns)
     {
         for (int c = 0; c < columns; ++c)
         {
-            QWidget *widget = new QWidget;
-            widget->setMinimumSize(50, 50);
-            widget->setStyleSheet(QLatin1String("background-color: black;"));
+            LiveFeedWidget *widget = new LiveFeedWidget;
             mainLayout->addWidget(widget, r, c);
             m_cameraWidgets.append(widget);
         }
