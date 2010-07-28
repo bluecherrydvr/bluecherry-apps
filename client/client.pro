@@ -15,7 +15,8 @@ SOURCES += src/main.cpp \
     src/core/BluecherryApp.cpp \
     src/ui/DVRServersModel.cpp \
     src/ui/DVRServersView.cpp \
-    src/ui/OptionsServerPage.cpp
+    src/ui/OptionsServerPage.cpp \
+    src/ui/NumericOffsetWidget.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -25,4 +26,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/core/BluecherryApp.h \
     src/ui/DVRServersModel.h \
     src/ui/DVRServersView.h \
-    src/ui/OptionsServerPage.h
+    src/ui/OptionsServerPage.h \
+    src/ui/NumericOffsetWidget.h

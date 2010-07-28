@@ -3,10 +3,12 @@
 #include "CameraAreaControls.h"
 #include "DVRServersView.h"
 #include "OptionsDialog.h"
+#include "NumericOffsetWidget.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
 #include <QMenuBar>
+#include <QLabel>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -63,10 +65,29 @@ QWidget *MainWindow::createSourcesList()
 
 QWidget *MainWindow::createPtzBox()
 {
-    QGroupBox *box = new QGroupBox(tr("PTZ Controls"));
+    QGroupBox *box = new QGroupBox(tr("Controls"));
+    QGridLayout *layout = new QGridLayout(box);
+    layout->setColumnStretch(1, 1);
 
-    /* Placeholder */
-    box->setMinimumHeight(200);
+    const QString labels[] = { tr("Brightness:"), tr("Contrast:"), tr("Saturation:"), tr("Hue:") };
+    for (int i = 0; i < 4; ++i)
+    {
+        QLabel *label = new QLabel(labels[i]);
+        label->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+        layout->addWidget(label, i, 0);
+    }
+
+    NumericOffsetWidget *brightness = new NumericOffsetWidget;
+    layout->addWidget(brightness, 0, 1);
+
+    NumericOffsetWidget *contrast = new NumericOffsetWidget;
+    layout->addWidget(contrast, 1, 1);
+
+    NumericOffsetWidget *saturation = new NumericOffsetWidget;
+    layout->addWidget(saturation, 2, 1);
+
+    NumericOffsetWidget *hue = new NumericOffsetWidget;
+    layout->addWidget(hue, 3, 1);
 
     return box;
 }
