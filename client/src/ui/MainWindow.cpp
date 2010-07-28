@@ -9,6 +9,8 @@
 #include <QGroupBox>
 #include <QMenuBar>
 #include <QLabel>
+#include <QCheckBox>
+#include <QSettings>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,11 +41,20 @@ MainWindow::MainWindow(QWidget *parent)
 
     /* Set center widget */
     setCentralWidget(centerWidget);
+
+    QSettings settings;
+    restoreGeometry(settings.value("ui/main/geometry").toByteArray());
 }
 
 MainWindow::~MainWindow()
 {
+}
 
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    QSettings settings;
+    settings.setValue("ui/main/geometry", saveGeometry());
+    QMainWindow::closeEvent(event);
 }
 
 void MainWindow::createMenu()
@@ -69,25 +80,30 @@ QWidget *MainWindow::createPtzBox()
     QGridLayout *layout = new QGridLayout(box);
     layout->setColumnStretch(1, 1);
 
+    int row = 0;
+
     const QString labels[] = { tr("Brightness:"), tr("Contrast:"), tr("Saturation:"), tr("Hue:") };
     for (int i = 0; i < 4; ++i)
     {
         QLabel *label = new QLabel(labels[i]);
         label->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-        layout->addWidget(label, i, 0);
+        layout->addWidget(label, row+i, 0);
     }
 
     NumericOffsetWidget *brightness = new NumericOffsetWidget;
-    layout->addWidget(brightness, 0, 1);
+    layout->addWidget(brightness, row++, 1);
 
     NumericOffsetWidget *contrast = new NumericOffsetWidget;
-    layout->addWidget(contrast, 1, 1);
+    layout->addWidget(contrast, row++, 1);
 
     NumericOffsetWidget *saturation = new NumericOffsetWidget;
-    layout->addWidget(saturation, 2, 1);
+    layout->addWidget(saturation, row++, 1);
 
     NumericOffsetWidget *hue = new NumericOffsetWidget;
-    layout->addWidget(hue, 3, 1);
+    layout->addWidget(hue, row++, 1);
+
+    QCheckBox *allChk = new QCheckBox(tr("Apply to all cameras"));
+    layout->addWidget(allChk, row++, 0, 1, 2, Qt::AlignCenter);
 
     return box;
 }

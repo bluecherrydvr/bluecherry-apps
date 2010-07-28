@@ -18,6 +18,9 @@ public:
 public slots:
     void showOptionsDialog();
 
+protected:
+    virtual void closeEvent(QCloseEvent *event);
+
 private:
     DVRServersView *m_sourcesList;
     CameraAreaWidget *m_cameraArea;
