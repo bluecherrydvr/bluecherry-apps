@@ -1,23 +1,26 @@
 #ifndef OPTIONSSERVERPAGE_H
 #define OPTIONSSERVERPAGE_H
 
-#include <QWidget>
+#include "OptionsDialog.h"
 
 class QTableView;
 class QLineEdit;
 class DVRServer;
 
-class OptionsServerPage : public QWidget
+class OptionsServerPage : public OptionsDialogPage
 {
     Q_OBJECT
 
 public:
     explicit OptionsServerPage(QWidget *parent = 0);
 
+    virtual bool hasUnsavedChanges() const;
+    virtual void saveChanges();
+    void saveChanges(DVRServer *server);
+
 public slots:
     void setCurrentServer(DVRServer *server);
     void addNewServer();
-    void saveChanges(DVRServer *server = 0);
 
 private slots:
     void currentServerChanged();

@@ -10,7 +10,7 @@
 #include <QPushButton>
 
 OptionsServerPage::OptionsServerPage(QWidget *parent)
-    : QWidget(parent)
+    : OptionsDialogPage(parent)
 {
     QBoxLayout *mainLayout = new QVBoxLayout(this);
     QBoxLayout *topLayout = new QHBoxLayout;
@@ -126,6 +126,17 @@ void OptionsServerPage::deleteServer()
 
 }
 
+bool OptionsServerPage::hasUnsavedChanges() const
+{
+    return m_nameEdit->isModified() || m_hostnameEdit->isModified()
+            || m_usernameEdit->isModified() || m_passwordEdit->isModified();
+}
+
+void OptionsServerPage::saveChanges()
+{
+    saveChanges(0);
+}
+
 void OptionsServerPage::saveChanges(DVRServer *server)
 {
     if (!server)
@@ -140,4 +151,9 @@ void OptionsServerPage::saveChanges(DVRServer *server)
     server->writeSetting("hostname", m_hostnameEdit->text());
     server->writeSetting("username", m_usernameEdit->text());
     server->writeSetting("password", m_passwordEdit->text());
+
+    m_nameEdit->setModified(false);
+    m_hostnameEdit->setModified(false);
+    m_usernameEdit->setModified(false);
+    m_passwordEdit->setModified(false);
 }

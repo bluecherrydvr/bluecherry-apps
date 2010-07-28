@@ -21,8 +21,24 @@ public:
     void showPage(OptionsPage page);
     QWidget *pageWidget(OptionsPage page) const;
 
+protected:
+    virtual void closeEvent(QCloseEvent *event);
+
 private:
     QTabWidget *m_tabWidget;
+};
+
+class OptionsDialogPage : public QWidget
+{
+    Q_OBJECT
+
+public:
+    OptionsDialogPage(QWidget *parent = 0) : QWidget(parent) { }
+
+    virtual bool hasUnsavedChanges() const = 0;
+
+public slots:
+    virtual void saveChanges() = 0;
 };
 
 #endif // OPTIONSDIALOG_H

@@ -2,6 +2,8 @@
 #include "OptionsServerPage.h"
 #include <QBoxLayout>
 #include <QTabWidget>
+#include <QMessageBox>
+#include <QCloseEvent>
 
 OptionsDialog::OptionsDialog(QWidget *parent)
     : QDialog(parent)
@@ -27,4 +29,49 @@ void OptionsDialog::showPage(OptionsPage page)
 QWidget *OptionsDialog::pageWidget(OptionsPage page) const
 {
     return m_tabWidget->widget((int)page);
+}
+
+void OptionsDialog::closeEvent(QCloseEvent *event)
+{
+    bool saveChanges = false;
+
+    /* Prompt the user to save changes if any are unsaved, but prompt only once */
+    for (int i = 0; i < m_tabWidget->count(); ++i)
+    {
+        OptionsDialogPage *pageWidget = qobject_cast<OptionsDialogPage*>(m_tabWidget->widget(i));
+        if (!pageWidget)
+            continue;
+
+        if (pageWidget->hasUnsavedChanges())
+        {
+            if (saveChanges)
+            {
+                pageWidget->saveChanges();
+                continue;
+            }
+
+            QMessageBox msg(QMessageBox::Question, tr("Options"), tr("Do you want to save your changes?"),
+                            QMessageBox::NoButton, this);
+
+            msg.addButton(QMessageBox::Save);
+            msg.addButton(QMessageBox::Discard);
+            msg.addButton(QMessageBox::Cancel);
+
+            switch (msg.exec())
+            {
+            case QMessageBox::Save:
+                saveChanges = true;
+                pageWidget->saveChanges();
+                break;
+            case QMessageBox::Discard:
+                event->accept();
+                return;
+            case QMessageBox::Cancel:
+                event->ignore();
+                return;
+            }
+        }
+    }
+
+    event->accept();
 }
