@@ -30,9 +30,12 @@ public:
 
 public slots:
     void setDisplayName(const QString &displayName);
+    /* Permanently remove from config and delete */
+    void removeServer();
 
 signals:
     void changed();
+    void serverRemoved(DVRServer *server);
 
 private:
     QString m_displayName;

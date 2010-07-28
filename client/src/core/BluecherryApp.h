@@ -18,6 +18,10 @@ public:
 
 signals:
     void serverAdded(DVRServer *server);
+    void serverRemoved(DVRServer *server);
+
+private slots:
+    void onServerRemoved(DVRServer *server);
 
 private:
     QList<DVRServer*> m_servers;

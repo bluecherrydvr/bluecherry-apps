@@ -33,9 +33,9 @@ void BluecherryApp::loadServers()
         }
 
         DVRServer *server = new DVRServer(id, this);
-        m_servers.append(server);
-        qDebug("Loaded server %d: %s", id, qPrintable(server->displayName()));
+        connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(onServerRemoved(DVRServer*)));
 
+        m_servers.append(server);
         m_maxServerId = qMax(m_maxServerId, id);
     }
 }
@@ -48,6 +48,14 @@ DVRServer *BluecherryApp::addNewServer(const QString &name)
     settings.setValue(QString::fromLatin1("servers/%1/displayName").arg(id), name);
 
     DVRServer *server = new DVRServer(id, this);
+    connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(onServerRemoved(DVRServer*)));
+
     emit serverAdded(server);
     return server;
+}
+
+void BluecherryApp::onServerRemoved(DVRServer *server)
+{
+    if (m_servers.removeOne(server))
+        emit serverRemoved(server);
 }

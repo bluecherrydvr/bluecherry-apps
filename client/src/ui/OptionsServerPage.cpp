@@ -123,7 +123,13 @@ void OptionsServerPage::addNewServer()
 
 void OptionsServerPage::deleteServer()
 {
+    DVRServer *server = static_cast<DVRServersModel*>(m_serversView->model())->
+                        serverForRow(m_serversView->currentIndex());
 
+    if (!server)
+        return;
+
+    server->removeServer();
 }
 
 bool OptionsServerPage::hasUnsavedChanges() const

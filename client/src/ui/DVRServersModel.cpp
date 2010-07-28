@@ -9,6 +9,8 @@ DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
     connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
+    connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
+
     servers = bcApp->servers();
 
     foreach (DVRServer *server, servers)
@@ -183,4 +185,15 @@ void DVRServersModel::serverAdded(DVRServer *server)
     endInsertRows();
 
     connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
+}
+
+void DVRServersModel::serverRemoved(DVRServer *server)
+{
+    int row = servers.indexOf(server);
+    if (row < 0)
+        return;
+
+    beginRemoveRows(QModelIndex(), row, row);
+    servers.removeAt(row);
+    endRemoveRows();
 }
