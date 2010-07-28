@@ -6,6 +6,7 @@
 class QTableView;
 class QLineEdit;
 class DVRServer;
+class QModelIndex;
 
 class OptionsServerPage : public OptionsDialogPage
 {
@@ -23,7 +24,7 @@ public slots:
     void addNewServer();
 
 private slots:
-    void currentServerChanged();
+    void currentServerChanged(const QModelIndex &newIndex, const QModelIndex &oldIndex);
 
     void deleteServer();
 

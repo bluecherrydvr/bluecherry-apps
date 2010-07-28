@@ -30,7 +30,7 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     topLayout->addWidget(m_serversView);
 
     connect(m_serversView->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
-            SLOT(currentServerChanged()));
+            SLOT(currentServerChanged(QModelIndex,QModelIndex)));
 
     /* Editing area */
     QGridLayout *editsLayout = new QGridLayout;
@@ -93,10 +93,14 @@ void OptionsServerPage::setCurrentServer(DVRServer *server)
         m_serversView->setCurrentIndex(index);
 }
 
-void OptionsServerPage::currentServerChanged()
+void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const QModelIndex &oldIndex)
 {
     DVRServer *server = static_cast<DVRServersModel*>(m_serversView->model())->
-                        serverForRow(m_serversView->currentIndex());
+                        serverForRow(oldIndex);
+    if (server)
+        saveChanges(server);
+
+    server = static_cast<DVRServersModel*>(m_serversView->model())->serverForRow(newIndex);
     if (!server)
     {
         m_nameEdit->clear();
@@ -153,13 +157,24 @@ void OptionsServerPage::saveChanges(DVRServer *server)
             return;
     }
 
-    server->setDisplayName(m_nameEdit->text().trimmed());
-    server->writeSetting("hostname", m_hostnameEdit->text());
-    server->writeSetting("username", m_usernameEdit->text());
-    server->writeSetting("password", m_passwordEdit->text());
-
-    m_nameEdit->setModified(false);
-    m_hostnameEdit->setModified(false);
-    m_usernameEdit->setModified(false);
-    m_passwordEdit->setModified(false);
+    if (m_nameEdit->isModified())
+    {
+        server->setDisplayName(m_nameEdit->text().trimmed());
+        m_nameEdit->setModified(false);
+    }
+    if (m_hostnameEdit->isModified())
+    {
+        server->writeSetting("hostname", m_hostnameEdit->text());
+        m_hostnameEdit->setModified(false);
+    }
+    if (m_usernameEdit->isModified())
+    {
+        server->writeSetting("username", m_usernameEdit->text());
+        m_usernameEdit->setModified(false);
+    }
+    if (m_passwordEdit->isModified())
+    {
+        server->writeSetting("password", m_passwordEdit->text());
+        m_passwordEdit->setModified(false);
+    }
 }
