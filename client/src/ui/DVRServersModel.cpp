@@ -1,6 +1,7 @@
 #include "core/BluecherryApp.h"
 #include "DVRServersModel.h"
 #include "core/DVRServer.h"
+#include "core/DVRCamera.h"
 #include <QTextDocument>
 #include <QApplication>
 #include <QStyle>
@@ -19,12 +20,22 @@ DVRServersModel::DVRServersModel(QObject *parent)
     }
 }
 
-DVRServer *DVRServersModel::serverForRow(int row) const
+DVRServer *DVRServersModel::serverForRow(const QModelIndex &index) const
 {
-    if (row < 0 || row >= servers.size())
-        return 0;
+    DVRServer *server = qobject_cast<DVRServer*>((QObject*)index.internalPointer());
+    if (server)
+        return server;
 
-    return servers[row];
+    return 0;
+}
+
+DVRCamera *DVRServersModel::cameraForRow(const QModelIndex &index) const
+{
+    DVRCamera *camera = qobject_cast<DVRCamera*>((QObject*)index.internalPointer());
+    if (camera)
+        return camera;
+
+    return 0;
 }
 
 QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
@@ -38,38 +49,64 @@ QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
 
 int DVRServersModel::rowCount(const QModelIndex &parent) const
 {
-    if (parent.isValid())
-        return 0;
-    else
+    if (!parent.isValid())
         return servers.size();
+
+    DVRServer *server = serverForRow(parent);
+    if (server)
+        return server->cameras().size();
+
+    return 0;
 }
 
 int DVRServersModel::columnCount(const QModelIndex &parent) const
 {
-    Q_UNUSED(parent);
-    return 3;
+    if (!parent.isValid())
+        return 3;
+    else
+        return 3;
 }
 
 QModelIndex DVRServersModel::index(int row, int column, const QModelIndex &parent) const
 {
-    if (parent.isValid() || row < 0 || column < 0 || row >= servers.size() || column >= columnCount())
-        return QModelIndex();
+    if (!parent.isValid())
+    {
+        if (row < 0 || column < 0 || row >= servers.size() || column >= columnCount())
+            return QModelIndex();
 
-    return createIndex(row, column, servers[row]);
+        return createIndex(row, column, (QObject*)servers[row]);
+    }
+    else
+    {
+        DVRServer *server = serverForRow(parent);
+        if (!server || row < 0 || column < 0 || column >= columnCount(parent))
+            return QModelIndex();
+
+        QList<DVRCamera*> cameras = server->cameras();
+        if (row >= cameras.size())
+            return QModelIndex();
+
+        return createIndex(row, column, (QObject*)cameras[row]);
+    }
 }
 
 QModelIndex DVRServersModel::parent(const QModelIndex &child) const
 {
-    Q_UNUSED(child);
-    return QModelIndex();
+    DVRCamera *camera = cameraForRow(child);
+    if (!camera)
+        return QModelIndex();
+
+    return indexForServer(camera->server);
 }
 
 Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
 {
-    Qt::ItemFlags re = Qt::ItemIsEnabled;
+    if (!index.isValid())
+        return 0;
 
-    if (index.isValid())
-        re |= Qt::ItemIsSelectable | Qt::ItemIsEditable;
+    Qt::ItemFlags re = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    if (!index.parent().isValid())
+        re |= Qt::ItemIsEditable;
 
     return re;
 }
@@ -79,32 +116,42 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return QVariant();
 
-    DVRServer *server = reinterpret_cast<DVRServer*>(index.internalPointer());
-    if (!server)
-        return QVariant();
-
-    if (role == Qt::ToolTipRole)
+    DVRServer *server = serverForRow(index);
+    if (server)
     {
-        return tr("<span style='white-space:nowrap'><b>%1</b><br>%3 @ %2</span>", "tooltip")
-                .arg(Qt::escape(server->displayName()))
-                .arg(Qt::escape(server->hostname()))
-                .arg(Qt::escape(server->username()));
+        if (role == Qt::ToolTipRole)
+        {
+            return tr("<span style='white-space:nowrap'><b>%1</b><br>%3 @ %2</span>", "tooltip")
+                    .arg(Qt::escape(server->displayName()))
+                    .arg(Qt::escape(server->hostname()))
+                    .arg(Qt::escape(server->username()));
+        }
+
+        switch (index.column())
+        {
+        case 0:
+            if (role == Qt::DisplayRole || role == Qt::EditRole)
+                return server->displayName();
+            break;
+        case 1:
+            if (role == Qt::DisplayRole || role == Qt::EditRole)
+                return server->hostname();
+            break;
+        case 2:
+            if (role == Qt::DisplayRole || role == Qt::EditRole)
+                return server->username();
+            break;
+        }
     }
 
-    switch (index.column())
+    DVRCamera *camera = cameraForRow(index);
+    if (camera)
     {
-    case 0:
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-            return server->displayName();
-        break;
-    case 1:
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-            return server->hostname();
-        break;
-    case 2:
-        if (role == Qt::DisplayRole || role == Qt::EditRole)
-            return server->username();
-        break;
+        switch (role)
+        {
+        case Qt::DisplayRole:
+            return camera->displayName();
+        }
     }
 
     return QVariant();
@@ -133,7 +180,7 @@ bool DVRServersModel::setData(const QModelIndex &index, const QVariant &value, i
     if (!index.isValid() || role != Qt::EditRole)
         return false;
 
-    DVRServer *server = reinterpret_cast<DVRServer*>(index.internalPointer());
+    DVRServer *server = serverForRow(index);
     if (!server)
         return false;
 

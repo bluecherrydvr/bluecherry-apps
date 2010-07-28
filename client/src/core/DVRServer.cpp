@@ -1,10 +1,18 @@
 #include "DVRServer.h"
+#include "DVRCamera.h"
 #include <QSettings>
 
 DVRServer::DVRServer(int id, QObject *parent)
     : QObject(parent), configId(id)
 {
     m_displayName = readSetting("displayName").toString();
+
+    /* Create some fake cameras for testing */
+    for (int i = 0; i < configId+2; ++i)
+    {
+        DVRCamera *camera = new DVRCamera(this, i);
+        m_cameras.append(camera);
+    }
 }
 
 QVariant DVRServer::readSetting(const QString &key) const

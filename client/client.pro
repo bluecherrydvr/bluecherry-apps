@@ -16,7 +16,8 @@ SOURCES += src/main.cpp \
     src/ui/DVRServersModel.cpp \
     src/ui/DVRServersView.cpp \
     src/ui/OptionsServerPage.cpp \
-    src/ui/NumericOffsetWidget.cpp
+    src/ui/NumericOffsetWidget.cpp \
+    src/core/DVRCamera.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -27,4 +28,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/DVRServersModel.h \
     src/ui/DVRServersView.h \
     src/ui/OptionsServerPage.h \
-    src/ui/NumericOffsetWidget.h
+    src/ui/NumericOffsetWidget.h \
+    src/core/DVRCamera.h

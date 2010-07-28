@@ -9,7 +9,6 @@
 DVRServersView::DVRServersView(QWidget *parent)
     : QTreeView(parent)
 {
-    setRootIsDecorated(false);
     header()->setVisible(false);
     setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::DoubleClicked);
     setContextMenuPolicy(Qt::DefaultContextMenu);

@@ -4,6 +4,7 @@
 #include <QAbstractItemModel>
 
 class DVRServer;
+class DVRCamera;
 
 class DVRServersModel : public QAbstractItemModel
 {
@@ -12,8 +13,8 @@ class DVRServersModel : public QAbstractItemModel
 public:
     explicit DVRServersModel(QObject *parent = 0);
 
-    DVRServer *serverForRow(const QModelIndex &index) const { return serverForRow(index.row()); }
-    DVRServer *serverForRow(int row) const;
+    DVRServer *serverForRow(const QModelIndex &index) const;
+    DVRCamera *cameraForRow(const QModelIndex &index) const;
 
     QModelIndex indexForServer(DVRServer *server) const;
 
