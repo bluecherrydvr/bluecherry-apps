@@ -54,6 +54,17 @@ DVRServer *BluecherryApp::addNewServer(const QString &name)
     return server;
 }
 
+DVRServer *BluecherryApp::findServerID(int id)
+{
+    for (QList<DVRServer*>::Iterator it = m_servers.begin(); it != m_servers.end(); ++it)
+    {
+        if ((*it)->configId == id)
+            return *it;
+    }
+
+    return 0;
+}
+
 void BluecherryApp::onServerRemoved(DVRServer *server)
 {
     if (m_servers.removeOne(server))

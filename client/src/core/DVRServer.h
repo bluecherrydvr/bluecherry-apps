@@ -22,6 +22,7 @@ public:
     QString password() const;
 
     QList<DVRCamera*> cameras() const { return m_cameras; }
+    DVRCamera *findCamera(int id) const;
 
     /* Settings */
     QVariant readSetting(const QString &key) const;

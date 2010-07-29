@@ -46,6 +46,17 @@ void DVRServer::setDisplayName(const QString &name)
     writeSetting("displayName", name);
 }
 
+DVRCamera *DVRServer::findCamera(int id) const
+{
+    for (QList<DVRCamera*>::ConstIterator it = m_cameras.begin(); it != m_cameras.end(); ++it)
+    {
+        if ((*it)->uniqueID == id)
+            return *it;
+    }
+
+    return 0;
+}
+
 void DVRServer::removeServer()
 {
     qDebug("Deleting DVR server %d", configId);

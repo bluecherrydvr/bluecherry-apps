@@ -12,6 +12,7 @@ DVRServersView::DVRServersView(QWidget *parent)
     header()->setVisible(false);
     setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::DoubleClicked);
     setContextMenuPolicy(Qt::DefaultContextMenu);
+    setDragEnabled(true);
 
     DVRServersModel *model = new DVRServersModel(this);
     setModel(model);

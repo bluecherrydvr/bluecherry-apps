@@ -5,6 +5,8 @@
 #include <QTextDocument>
 #include <QApplication>
 #include <QStyle>
+#include <QMimeData>
+#include <QDataStream>
 
 DVRServersModel::DVRServersModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -107,6 +109,8 @@ Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
     Qt::ItemFlags re = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
     if (!index.parent().isValid())
         re |= Qt::ItemIsEditable;
+    else
+        re |= Qt::ItemIsDragEnabled;
 
     return re;
 }
@@ -210,6 +214,33 @@ bool DVRServersModel::setData(const QModelIndex &index, const QVariant &value, i
     }
 
     return true;
+}
+
+QStringList DVRServersModel::mimeTypes() const
+{
+    return QStringList() << QLatin1String("application/x-bluecherry-dvrcamera");
+}
+
+/* application/x-bluecherry-dvrcamera is a list of int,int where each pair has the
+ * IDs of the server and the camera respectively. This is only used internally. */
+
+QMimeData *DVRServersModel::mimeData(const QModelIndexList &indexes) const
+{
+    QByteArray data;
+    QDataStream stream(&data, QIODevice::WriteOnly);
+
+    foreach (QModelIndex index, indexes)
+    {
+        DVRCamera *camera;
+        if (!index.isValid() || !(camera = cameraForRow(index)))
+            continue;
+
+        stream << camera->server->configId << camera->uniqueID;
+    }
+
+    QMimeData *mime = new QMimeData;
+    mime->setData(QLatin1String("application/x-bluecherry-dvrcamera"), data);
+    return mime;
 }
 
 void DVRServersModel::serverDataChanged()

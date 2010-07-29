@@ -13,6 +13,8 @@ public:
     DVRServer * const server;
     const int uniqueID;
 
+    static DVRCamera *findByID(int serverID, int cameraID);
+
     explicit DVRCamera(DVRServer *server, int uniqueID);
 
     QString displayName() const;

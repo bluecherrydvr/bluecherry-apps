@@ -21,6 +21,8 @@ public slots:
     void setCamera(DVRCamera *camera);
 
 protected:
+    virtual void dragEnterEvent(QDragEnterEvent *event);
+    virtual void dropEvent(QDropEvent *event);
     virtual void paintEvent(QPaintEvent *event);
 
 private:

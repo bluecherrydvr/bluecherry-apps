@@ -9,6 +9,7 @@ LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::ClickFocus);
     setAttribute(Qt::WA_OpaquePaintEvent);
+    setAcceptDrops(true);
 
     QPalette p = palette();
     p.setColor(QPalette::Window, Qt::black);
@@ -48,4 +49,30 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
         return;
 
     p.drawText(r, Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
+}
+
+void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
+        event->acceptProposedAction();
+}
+
+void LiveFeedWidget::dropEvent(QDropEvent *event)
+{
+    QByteArray data = event->mimeData()->data(QLatin1String("application/x-bluecherry-dvrcamera"));
+    QDataStream stream(&data, QIODevice::ReadOnly);
+
+    /* Ignore everything except the first camera dropped */
+    int serverid, cameraid;
+    stream >> serverid >> cameraid;
+
+    if (stream.status() != QDataStream::Ok)
+        return;
+
+    DVRCamera *camera = DVRCamera::findByID(serverid, cameraid);
+    if (camera)
+    {
+        setCamera(camera);
+        event->acceptProposedAction();
+    }
 }
