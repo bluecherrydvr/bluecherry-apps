@@ -184,7 +184,7 @@ testBoundary:
         }
 
         /* The -- suffix would indicate the last part, but in a neverending stream, that won't
-             * happen. Allow it, but ignore it. */
+         * happen. Allow it, but ignore it. */
         if (m_httpBuffer[boundary] == '-' && m_httpBuffer[boundary+1] == '-')
         {
             boundary += 2;
@@ -211,7 +211,7 @@ testBoundary:
             }
 
             /* We only care about Content-Length */
-            if (qstrnicmp(m_httpBuffer.data()+lnStart, "Content-Length:", qMin(lnEnd-lnStart, 15)) == 0)
+            if ((lnEnd - lnStart) > 15 && qstrnicmp(m_httpBuffer.data()+lnStart, "Content-Length:", 15) == 0)
             {
                 bool ok = false;
                 m_httpBodyLength = m_httpBuffer.mid(lnStart+15, lnEnd-lnStart-15).trimmed().toUInt(&ok);
