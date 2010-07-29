@@ -2,11 +2,12 @@
 #include "DVRServer.h"
 #include <QSettings>
 #include <QStringList>
+#include <QNetworkAccessManager>
 
 BluecherryApp *bcApp = 0;
 
 BluecherryApp::BluecherryApp()
-    : m_maxServerId(-1)
+    : m_maxServerId(-1), nam(new QNetworkAccessManager(this))
 {
     Q_ASSERT(!bcApp);
     bcApp = this;

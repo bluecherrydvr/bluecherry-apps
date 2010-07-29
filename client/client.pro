@@ -18,7 +18,8 @@ SOURCES += src/main.cpp \
     src/ui/OptionsServerPage.cpp \
     src/ui/NumericOffsetWidget.cpp \
     src/core/DVRCamera.cpp \
-    src/ui/LiveFeedWidget.cpp
+    src/ui/LiveFeedWidget.cpp \
+    src/core/MJpegStream.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -31,4 +32,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/OptionsServerPage.h \
     src/ui/NumericOffsetWidget.h \
     src/core/DVRCamera.h \
-    src/ui/LiveFeedWidget.h
+    src/ui/LiveFeedWidget.h \
+    src/core/MJpegStream.h

@@ -5,12 +5,15 @@
 #include <QList>
 
 class DVRServer;
+class QNetworkAccessManager;
 
 class BluecherryApp : public QObject
 {
     Q_OBJECT
 
 public:
+    QNetworkAccessManager * const nam;
+
     explicit BluecherryApp();
 
     QList<DVRServer*> servers() const { return m_servers; }
