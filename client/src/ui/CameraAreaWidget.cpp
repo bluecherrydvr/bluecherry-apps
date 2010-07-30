@@ -3,12 +3,20 @@
 #include <QGridLayout>
 
 CameraAreaWidget::CameraAreaWidget(QWidget *parent)
-    : QWidget(parent), m_rowCount(0), m_columnCount(0)
+    : QFrame(parent), m_rowCount(0), m_columnCount(0)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    setFrameStyle(QFrame::Sunken | QFrame::Panel);
+    setAutoFillBackground(true);
+
+    QPalette p = palette();
+    p.setColor(QPalette::Window, QColor(20, 20, 20));
+    p.setColor(QPalette::WindowText, Qt::white);
+    setPalette(p);
 
     mainLayout = new QGridLayout(this);
     mainLayout->setMargin(0);
+    mainLayout->setSpacing(2);
 
     setGridSize(3, 3);
 }

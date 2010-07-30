@@ -1,12 +1,12 @@
 #ifndef CAMERAAREAWIDGET_H
 #define CAMERAAREAWIDGET_H
 
-#include <QWidget>
+#include <QFrame>
 #include <QList>
 
 class QGridLayout;
 
-class CameraAreaWidget : public QWidget
+class CameraAreaWidget : public QFrame
 {
     Q_OBJECT
 

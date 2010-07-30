@@ -51,10 +51,7 @@ void LiveFeedWidget::updateFrame(const QPixmap &frame)
 
 QSize LiveFeedWidget::sizeHint() const
 {
-    if (!camera())
-        return QSize();
-
-    return QSize(320, 240);
+    return QSize();
 }
 
 void LiveFeedWidget::paintEvent(QPaintEvent *event)
@@ -64,7 +61,16 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
     p.eraseRect(r);
 
     if (!m_camera)
+    {
+        QFont font(p.font());
+        font.setPointSize(14);
+        font.setBold(false);
+        p.setFont(font);
+        p.setPen(QColor(60, 60, 60));
+
+        p.drawText(r, Qt::AlignCenter, tr("No\nCamera"));
         return;
+    }
 
     if (!m_currentFrame.isNull())
     {
@@ -78,7 +84,7 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
         p.drawPixmap(topLeft, m_currentFrame);
     }
 
-    p.drawText(r, Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
+    p.drawText(r.adjusted(4, 4, -4, -4), Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
 }
 
 void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
