@@ -76,13 +76,35 @@ void LiveFeedWidget::setStatusMessage(const QString &message)
     update();
 }
 
-void LiveFeedWidget::openWindow()
+QWidget *LiveFeedWidget::openWindow()
 {
     LiveFeedWidget *widget = new LiveFeedWidget(window());
     widget->setWindowFlags(Qt::Window);
     widget->setAttribute(Qt::WA_DeleteOnClose);
     widget->clone(this);
     widget->show();
+    return widget;
+}
+
+void LiveFeedWidget::closeCamera()
+{
+    if (isWindow())
+        close();
+    else
+        setCamera(0);
+}
+
+void LiveFeedWidget::setFullScreen(bool on)
+{
+    if (on)
+    {
+        if (isWindow())
+            showFullScreen();
+        else
+            openWindow()->showFullScreen();
+    }
+    else if (isWindow())
+        close();
 }
 
 void LiveFeedWidget::updateFrame(const QPixmap &frame)
@@ -218,10 +240,12 @@ void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)
     menu.addAction(tr("Pause"));
     menu.addSeparator();
     menu.addAction(tr("Open in window"), this, SLOT(openWindow()));
+    menu.addAction(!isFullScreen() ? tr("Open as fullscreen") : tr("Exit fullscreen"), this, SLOT(toggleFullScreen()));
     menu.addSeparator();
 
     QActionGroup *group = new QActionGroup(&menu);
     group->setExclusive(true);
+    group->setEnabled(!isFullScreen());
 
     QAction *actSizeFit = group->addAction(tr("Size to fit"));
     actSizeFit->setCheckable(true);
@@ -233,8 +257,27 @@ void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)
     menu.addActions(group->actions());
     menu.addSeparator();
 
-    QAction *actClose = menu.addAction(tr("Close camera"));
+    QAction *actClose = menu.addAction(tr("Close camera"), this, SLOT(closeCamera()));
     actClose->setEnabled(m_camera);
 
     menu.exec(event->globalPos());
+}
+
+void LiveFeedWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key())
+    {
+    case Qt::Key_Escape:
+        if (isWindow())
+            close();
+        break;
+    case Qt::Key_F11:
+        toggleFullScreen();
+        break;
+    default:
+        QWidget::keyPressEvent(event);
+        return;
+    }
+
+    event->accept();
 }

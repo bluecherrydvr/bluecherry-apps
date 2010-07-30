@@ -24,7 +24,10 @@ public:
 public slots:
     void setCamera(DVRCamera *camera);
 
-    void openWindow();
+    QWidget *openWindow();
+    void closeCamera();
+    void setFullScreen(bool on = true);
+    void toggleFullScreen() { setFullScreen(!isFullScreen()); }
 
 private slots:
     void updateFrame(const QPixmap &frame);
@@ -36,6 +39,7 @@ protected:
     virtual void dropEvent(QDropEvent *event);
     virtual void paintEvent(QPaintEvent *event);
     virtual void contextMenuEvent(QContextMenuEvent *event);
+    virtual void keyPressEvent(QKeyEvent *event);
 
 private:
     DVRCamera *m_camera, *m_dragCamera;
