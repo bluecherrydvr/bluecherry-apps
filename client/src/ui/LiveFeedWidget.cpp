@@ -62,6 +62,7 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     m_stream = m_camera->mjpegStream();
     if (m_stream)
     {
+        m_currentFrame = m_stream->currentFrame();
         connect(m_stream.data(), SIGNAL(updateFrame(QPixmap)), SLOT(updateFrame(QPixmap)));
         connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
         m_stream->start();
@@ -162,7 +163,11 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
         renderSize.scale(r.size(), Qt::KeepAspectRatio);
 
         if (renderSize != m_currentFrame.size())
-            m_currentFrame = m_currentFrame.scaled(renderSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+        {
+            if (m_stream)
+                m_currentFrame = m_stream->currentFrame();
+            m_currentFrame = m_currentFrame.scaled(renderSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
 
         QPoint topLeft((r.width() - renderSize.width())/2, (r.height() - renderSize.height())/2);
         p.drawPixmap(topLeft, m_currentFrame);
