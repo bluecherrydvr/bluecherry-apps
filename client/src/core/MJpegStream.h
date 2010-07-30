@@ -36,7 +36,7 @@ public slots:
     void stop();
 
 signals:
-    void stateChanged(State newState);
+    void stateChanged(int newState);
     void streamRunning();
     void streamStopped();
 

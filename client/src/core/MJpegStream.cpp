@@ -118,6 +118,9 @@ bool MJpegStream::processHeaders()
 
 void MJpegStream::readable()
 {
+    if (!m_httpReply)
+        return;
+
     if (m_httpBoundary.isNull())
     {
         if (!processHeaders())
@@ -157,7 +160,7 @@ void MJpegStream::readable()
         if (rd < maxRead)
             m_httpBuffer.truncate(readPos+rd);
 
-        if (!parseBuffer())
+        if (!parseBuffer() || !m_httpReply)
             return;
     }
 }
