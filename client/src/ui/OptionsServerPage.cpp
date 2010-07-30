@@ -119,6 +119,8 @@ void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const 
 void OptionsServerPage::addNewServer()
 {
     DVRServer *server = bcApp->addNewServer(tr("New Server"));
+    if (!m_serversView->currentIndex().isValid())
+        saveChanges(server);
     setCurrentServer(server);
 
     m_nameEdit->setFocus();
