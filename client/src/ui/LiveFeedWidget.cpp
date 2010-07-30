@@ -7,7 +7,7 @@
 #include <QPaintEvent>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
-    : QWidget(parent), m_camera(0)
+    : QWidget(parent), m_camera(0), m_dragCamera(0)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::ClickFocus);
@@ -60,6 +60,18 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
     QRect r = rect();
     p.eraseRect(r);
 
+    if (m_dragCamera)
+    {
+        p.save();
+        p.setPen(QPen(QBrush(Qt::white), 2));
+        p.setRenderHint(QPainter::Antialiasing, true);
+        p.drawRoundedRect(r.adjusted(2, 2, -2, -2), 3, 3);
+        p.restore();
+
+        p.drawText(r.adjusted(6, 6, -6, -6), Qt::AlignTop | Qt::AlignRight, m_dragCamera->displayName());
+        return;
+    }
+
     if (!m_camera)
     {
         QFont font(p.font());
@@ -87,15 +99,9 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
     p.drawText(r.adjusted(4, 4, -4, -4), Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
 }
 
-void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
+DVRCamera *LiveFeedWidget::cameraFromMime(const QMimeData *mimeData)
 {
-    if (event->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
-        event->acceptProposedAction();
-}
-
-void LiveFeedWidget::dropEvent(QDropEvent *event)
-{
-    QByteArray data = event->mimeData()->data(QLatin1String("application/x-bluecherry-dvrcamera"));
+    QByteArray data = mimeData->data(QLatin1String("application/x-bluecherry-dvrcamera"));
     QDataStream stream(&data, QIODevice::ReadOnly);
 
     /* Ignore everything except the first camera dropped */
@@ -103,9 +109,33 @@ void LiveFeedWidget::dropEvent(QDropEvent *event)
     stream >> serverid >> cameraid;
 
     if (stream.status() != QDataStream::Ok)
-        return;
+        return 0;
 
-    DVRCamera *camera = DVRCamera::findByID(serverid, cameraid);
+    return DVRCamera::findByID(serverid, cameraid);
+}
+
+void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
+    {
+        /* This could also be done via an event filter or overlay widget, if it later becomes necessary. */
+        m_dragCamera = cameraFromMime(event->mimeData());
+        event->acceptProposedAction();
+        update();
+    }
+}
+
+void LiveFeedWidget::dragLeaveEvent(QDragLeaveEvent *event)
+{
+    m_dragCamera = 0;
+    update();
+}
+
+void LiveFeedWidget::dropEvent(QDropEvent *event)
+{
+    m_dragCamera = 0;
+
+    DVRCamera *camera = cameraFromMime(event->mimeData());
     if (camera)
     {
         setCamera(camera);

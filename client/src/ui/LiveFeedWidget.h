@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class DVRCamera;
+class QMimeData;
 
 class LiveFeedWidget : public QWidget
 {
@@ -25,12 +26,15 @@ private slots:
 
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *event);
+    virtual void dragLeaveEvent(QDragLeaveEvent *event);
     virtual void dropEvent(QDropEvent *event);
     virtual void paintEvent(QPaintEvent *event);
 
 private:
-    DVRCamera *m_camera;
+    DVRCamera *m_camera, *m_dragCamera;
     QPixmap m_currentFrame;
+
+    DVRCamera *cameraFromMime(const QMimeData *mimeData);
 };
 
 #endif // LIVEFEEDWIDGET_H
