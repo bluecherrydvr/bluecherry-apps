@@ -2,8 +2,11 @@
 #define DVRCAMERA_H
 
 #include <QObject>
+#include <QSharedPointer>
+#include <QWeakPointer>
 
 class DVRServer;
+class MJpegStream;
 
 class DVRCamera : public QObject
 {
@@ -18,6 +21,10 @@ public:
     explicit DVRCamera(DVRServer *server, int uniqueID);
 
     QString displayName() const;
+    QSharedPointer<MJpegStream> mjpegStream();
+
+private:
+    QWeakPointer<MJpegStream> m_mjpegStream;
 };
 
 #endif // DVRCAMERA_H

@@ -2,8 +2,10 @@
 #define LIVEFEEDWIDGET_H
 
 #include <QWidget>
+#include <QSharedPointer>
 
 class DVRCamera;
+class MJpegStream;
 class QMimeData;
 
 class LiveFeedWidget : public QWidget
@@ -37,6 +39,7 @@ protected:
 
 private:
     DVRCamera *m_camera, *m_dragCamera;
+    QSharedPointer<MJpegStream> m_stream;
     QPixmap m_currentFrame;
     QString m_statusMsg;
 

@@ -8,7 +8,7 @@
 #include <QMenu>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
-    : QWidget(parent), m_camera(0), m_dragCamera(0)
+    : QWidget(parent), m_camera(0), m_dragCamera(0), m_stream(0)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::ClickFocus);
@@ -40,6 +40,12 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     if (camera == m_camera)
         return;
 
+    if (m_stream)
+    {
+        m_stream->disconnect(this);
+        m_stream.clear();
+    }
+
     m_camera = camera;
     m_currentFrame = QPixmap();
     m_statusMsg.clear();
@@ -53,15 +59,15 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
         return;
     }
 
-    /* Test feeds; will be replaced by real camera feeds someday.. */
-    QString mjpegTest = camera->server->readSetting("mjpegTest").toString();
-    if (!mjpegTest.isEmpty())
+    m_stream = m_camera->mjpegStream();
+    if (m_stream)
     {
-        MJpegStream *stream = new MJpegStream(QUrl(mjpegTest), this);
-        connect(stream, SIGNAL(updateFrame(QPixmap)), SLOT(updateFrame(QPixmap)));
-        connect(stream, SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
-        stream->start();
+        connect(m_stream.data(), SIGNAL(updateFrame(QPixmap)), SLOT(updateFrame(QPixmap)));
+        connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
+        m_stream->start();
     }
+    else
+        setStatusMessage(tr("No\nVideo"));
 }
 
 void LiveFeedWidget::setStatusMessage(const QString &message)
