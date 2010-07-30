@@ -49,6 +49,7 @@ DVRServer *BluecherryApp::addNewServer(const QString &name)
     settings.setValue(QString::fromLatin1("servers/%1/displayName").arg(id), name);
 
     DVRServer *server = new DVRServer(id, this);
+    m_servers.append(server);
     connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(onServerRemoved(DVRServer*)));
 
     emit serverAdded(server);
