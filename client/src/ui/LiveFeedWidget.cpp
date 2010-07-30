@@ -1,5 +1,8 @@
 #include "LiveFeedWidget.h"
 #include "core/DVRCamera.h"
+#include "core/DVRServer.h"
+#include "core/MJpegStream.h"
+#include <QSettings>
 #include <QPainter>
 #include <QPaintEvent>
 
@@ -29,6 +32,21 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     m_camera = camera;
     updateGeometry();
     update();
+
+    /* Test feeds; will be replaced by real camera feeds someday.. */
+    QString mjpegTest = camera->server->readSetting("mjpegTest").toString();
+    if (!mjpegTest.isEmpty())
+    {
+        MJpegStream *stream = new MJpegStream(QUrl(mjpegTest), this);
+        connect(stream, SIGNAL(updateFrame(QPixmap)), SLOT(updateFrame(QPixmap)));
+        stream->start();
+    }
+}
+
+void LiveFeedWidget::updateFrame(const QPixmap &frame)
+{
+    m_currentFrame = frame;
+    update();
 }
 
 QSize LiveFeedWidget::sizeHint() const
@@ -47,6 +65,18 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
 
     if (!m_camera)
         return;
+
+    if (!m_currentFrame.isNull())
+    {
+        QSize renderSize = m_currentFrame.size();
+        renderSize.scale(r.size(), Qt::KeepAspectRatio);
+
+        if (renderSize != m_currentFrame.size())
+            m_currentFrame = m_currentFrame.scaled(renderSize, Qt::KeepAspectRatio, Qt::FastTransformation);
+
+        QPoint topLeft((r.width() - renderSize.width())/2, (r.height() - renderSize.height())/2);
+        p.drawPixmap(topLeft, m_currentFrame);
+    }
 
     p.drawText(r, Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
 }

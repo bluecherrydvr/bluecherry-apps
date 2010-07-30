@@ -20,6 +20,9 @@ public:
 public slots:
     void setCamera(DVRCamera *camera);
 
+private slots:
+    void updateFrame(const QPixmap &frame);
+
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *event);
     virtual void dropEvent(QDropEvent *event);
@@ -27,6 +30,7 @@ protected:
 
 private:
     DVRCamera *m_camera;
+    QPixmap m_currentFrame;
 };
 
 #endif // LIVEFEEDWIDGET_H

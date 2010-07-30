@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QUrl>
+#include <QPixmap>
 
 class QNetworkReply;
 
@@ -28,6 +29,8 @@ public:
 
     State state() const { return m_state; }
 
+    QPixmap currentFrame() const { return m_currentFrame; }
+
 public slots:
     void start();
     void stop();
@@ -36,6 +39,8 @@ signals:
     void stateChanged(State newState);
     void streamRunning();
     void streamStopped();
+
+    void updateFrame(const QPixmap &frame);
 
 private slots:
     void readable();
@@ -46,6 +51,7 @@ private:
     QByteArray m_httpBoundary;
     QByteArray m_httpBuffer;
     QUrl m_url;
+    QPixmap m_currentFrame;
     int m_httpBodyLength;
     State m_state;
     enum {
@@ -59,6 +65,7 @@ private:
 
     bool processHeaders();
     bool parseBuffer();
+    void decodeFrame(QByteArray &data);
 };
 
 #endif // MJPEGSTREAM_H

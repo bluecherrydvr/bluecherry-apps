@@ -4,6 +4,9 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QDebug>
+#include <QImageReader>
+#include <QBuffer>
+#include <QImage>
 
 MJpegStream::MJpegStream(QObject *parent)
     : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_httpBodyLength(0)
@@ -207,6 +210,8 @@ testBoundary:
             if (lnStart == lnEnd)
             {
                 m_parserState = ParserBody;
+                /* Skip the final \r\n */
+                lnStart += 2;
                 break;
             }
 
@@ -248,6 +253,12 @@ testBoundary:
         /* End of the body; m_httpBodyLength is its length, at the beginning of m_httpBuffer */
         qDebug() << "mjpeg: read body of" << m_httpBodyLength << "bytes";
 
+        /* Create a QByteArray for just the body, without copying */
+        {
+            QByteArray body = QByteArray::fromRawData(m_httpBuffer.data(), m_httpBodyLength);
+            decodeFrame(body);
+        }
+
         m_httpBuffer.remove(0, m_httpBodyLength);
         m_parserState = ParserBoundary;
 
@@ -262,4 +273,26 @@ testBoundary:
 void MJpegStream::requestError()
 {
     setError(tr("HTTP error: %1").arg(m_httpReply->errorString()));
+}
+
+void MJpegStream::decodeFrame(QByteArray &data)
+{
+    QBuffer buffer(&data);
+    QImageReader reader(&buffer, "jpeg");
+    reader.setAutoDetectImageFormat(false);
+
+#if QT_VERSION >= 0040700
+    QPixmap newFrame = QPixmap::fromImageReader(&reader);
+#else
+    QPixmap newFrame = reader.read().toPixmap();
+#endif
+
+    if (newFrame.isNull())
+    {
+        qDebug() << "mjpeg: error while decoding frame:" << reader.errorString();
+        return;
+    }
+
+    m_currentFrame = newFrame;
+    emit updateFrame(m_currentFrame);
 }
