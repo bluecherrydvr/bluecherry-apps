@@ -22,6 +22,8 @@ public:
 public slots:
     void setCamera(DVRCamera *camera);
 
+    void openWindow();
+
 private slots:
     void updateFrame(const QPixmap &frame);
     void mjpegStateChanged(int state);
@@ -31,6 +33,7 @@ protected:
     virtual void dragLeaveEvent(QDragLeaveEvent *event);
     virtual void dropEvent(QDropEvent *event);
     virtual void paintEvent(QPaintEvent *event);
+    virtual void contextMenuEvent(QContextMenuEvent *event);
 
 private:
     DVRCamera *m_camera, *m_dragCamera;
@@ -41,6 +44,8 @@ private:
 
     void setStatusMessage(const QString &message);
     void clearStatusMessage() { setStatusMessage(QString()); }
+
+    void clone(LiveFeedWidget *other);
 };
 
 #endif // LIVEFEEDWIDGET_H

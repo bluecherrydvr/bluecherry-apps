@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QMenu>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     : QWidget(parent), m_camera(0), m_dragCamera(0)
@@ -13,6 +14,7 @@ LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     setFocusPolicy(Qt::ClickFocus);
     setAttribute(Qt::WA_OpaquePaintEvent);
     setAcceptDrops(true);
+    setContextMenuPolicy(Qt::DefaultContextMenu);
 
     QPalette p = palette();
     p.setColor(QPalette::Window, Qt::black);
@@ -24,6 +26,13 @@ LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     setFont(f);
 
     setStatusMessage(tr("No\nCamera"));
+}
+
+void LiveFeedWidget::clone(LiveFeedWidget *other)
+{
+    setCamera(other->camera());
+    m_statusMsg = other->statusMessage();
+    m_currentFrame = other->m_currentFrame;
 }
 
 void LiveFeedWidget::setCamera(DVRCamera *camera)
@@ -59,6 +68,15 @@ void LiveFeedWidget::setStatusMessage(const QString &message)
 {
     m_statusMsg = message;
     update();
+}
+
+void LiveFeedWidget::openWindow()
+{
+    LiveFeedWidget *widget = new LiveFeedWidget(window());
+    widget->setWindowFlags(Qt::Window);
+    widget->setAttribute(Qt::WA_DeleteOnClose);
+    widget->clone(this);
+    widget->show();
 }
 
 void LiveFeedWidget::updateFrame(const QPixmap &frame)
@@ -184,4 +202,33 @@ void LiveFeedWidget::dropEvent(QDropEvent *event)
         setCamera(camera);
         event->acceptProposedAction();
     }
+}
+
+void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)
+{
+    QMenu menu(this);
+
+    menu.addAction(tr("Snapshot"));
+    menu.addAction(tr("Pause"));
+    menu.addSeparator();
+    menu.addAction(tr("Open in window"), this, SLOT(openWindow()));
+    menu.addSeparator();
+
+    QActionGroup *group = new QActionGroup(&menu);
+    group->setExclusive(true);
+
+    QAction *actSizeFit = group->addAction(tr("Size to fit"));
+    actSizeFit->setCheckable(true);
+    actSizeFit->setChecked(true);
+
+    QAction *actSizeFull = group->addAction(tr("Full size"));
+    actSizeFull->setCheckable(true);
+
+    menu.addActions(group->actions());
+    menu.addSeparator();
+
+    QAction *actClose = menu.addAction(tr("Close camera"));
+    actClose->setEnabled(m_camera);
+
+    menu.exec(event->globalPos());
 }
