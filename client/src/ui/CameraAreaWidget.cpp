@@ -45,3 +45,25 @@ void CameraAreaWidget::setGridSize(int rows, int columns)
 
     emit gridSizeChanged(rows, columns);
 }
+
+void CameraAreaWidget::openFullScreen()
+{
+    setWindowFlags(Qt::Window);
+    setFrameStyle(QFrame::NoFrame);
+    showFullScreen();
+}
+
+void CameraAreaWidget::closeFullScreen()
+{
+    setWindowFlags(0);
+    setFrameStyle(QFrame::Sunken | QFrame::Panel);
+    show();
+}
+
+void CameraAreaWidget::toggleFullScreen()
+{
+    if (isFullScreen())
+        closeFullScreen();
+    else
+        openFullScreen();
+}

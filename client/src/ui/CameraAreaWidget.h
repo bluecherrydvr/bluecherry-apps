@@ -26,6 +26,10 @@ public slots:
     void addColumn() { setGridSize(m_rowCount, m_columnCount+1); }
     void removeColumn() { setGridSize(m_rowCount, m_columnCount-1); }
 
+    void openFullScreen();
+    void closeFullScreen();
+    void toggleFullScreen();
+
 signals:
     void gridSizeChanged(int rows, int columns);
 

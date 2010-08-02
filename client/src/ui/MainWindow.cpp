@@ -11,6 +11,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QSettings>
+#include <QShortcut>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -44,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/main/geometry")).toByteArray());
+
+    new QShortcut(QKeySequence(Qt::Key_F11), m_cameraArea, SLOT(toggleFullScreen()));
 }
 
 MainWindow::~MainWindow()
