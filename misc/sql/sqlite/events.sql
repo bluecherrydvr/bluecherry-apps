@@ -71,6 +71,7 @@ INSERT INTO TagNames VALUES (4, 'customer');
 INSERT INTO TagNames VALUES (5, 'employee');
 INSERT INTO TagNames VALUES (6, 'person');
 INSERT INTO TagNames VALUES (7, 'incident');
+INSERT INTO TagNames VALUES (8, 'vandalism');
 
 CREATE TABLE EventTags (
 	id integer PRIMARY KEY NOT NULL,
