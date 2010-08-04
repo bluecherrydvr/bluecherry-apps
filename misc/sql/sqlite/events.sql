@@ -1,61 +1,58 @@
-DROP TABLE IF EXISTS EventLevels;
-CREATE TABLE "EventLevels" (
-   id integer PRIMARY KEY NOT NULL,
-   name varchar
+CREATE TABLE EventLevels (
+	id varchar(10) PRIMARY KEY NOT NULL,
 );
 
-DROP TABLE IF EXISTS EventTypesCam;
-CREATE TABLE "EventTypesCam" (
+CREATE TABLE EventTypesCam (
+	id varchar(10) PRIMARY KEY NOT NULL,
+);
+
+CREATE TABLE EventTypesSys (
+	id varchar(10) PRIMARY KEY NOT NULL,
+);
+
+CREATE TABLE EventsCam (
 	id integer PRIMARY KEY NOT NULL,
-	name varchar
+	date date,
+	level_id varchar(10),
+	device_id integer,
+	type_id varchar(10),
+	length integer,		-- length of event in seconds
+	archive boolean,	-- archive the event's video/audio?
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
+        FOREIGN KEY (device_id) REFERENCES Devices(id),
+        FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
 );
 
-DROP TABLE IF EXISTS EventTypesSys;
-CREATE TABLE "EventTypesSys" (
-	id integer PRIMARY KEY NOT NULL,
-	name varchar
-);
-
-DROP TABLE IF EXISTS EventsCam;
-CREATE TABLE "Events" (
-    id integer PRIMARY KEY NOT NULL,
-    date date,
-    level_id integer, -- references EventLevels id
-    device_id integer, -- references Devices id
-    type_id integer, -- references EventTypesCam id
-    length integer, -- length of event in seconds (motion type or similar)
-    archive boolean -- Whether to archive the events video/audio (if applicable)
-);
-
-DROP TABLE IF EXISTS EventsSystem;
 CREATE TABLE EventsSystem (
 	id integer PRIMARY KEY NOT NULL,
 	date date,
-	level_id integer, -- references EventLevels id
-	type_id integer -- references EventTypesSys id
+	level_id varchar(10),
+	type_id varchar(10),
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
+	FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
 );
 
-DROP TABLE IF EXISTS EventComments;
-CREATE TABLE "EventComments" (
-    id integer PRIMARY KEY NOT NULL,
-    date date,
-    event_id integer, -- references event table
-    user_id integer, -- references users table
-    comment varchar
+CREATE TABLE EventComments (
+	id integer PRIMARY KEY NOT NULL,
+	date date,
+	event_id integer,
+	user_id integer,
+	comment varchar,
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	FOREIGN KEY (users_id) REFERENCES Users(id)
 );
 
-DROP TABLE IF EXISTS EventTags;
-CREATE TABLE "EventTags" (
-    id integer PRIMARY KEY NOT NULL,
-    date date,
-    event_id integer, -- references event table
-    tag_id integer, -- references tag list table
-    user_id integer -- references users table
+CREATE TABLE TagNames (
+	id varchar(10) PRIMARY KEY NOT NULL
 );
 
--- User defined tags
-DROP TABLE IF EXISTS TagList;
-CREATE TABLE "TagList" (
-    id integer PRIMARY KEY NOT NULL,
-    name varchar
+CREATE TABLE EventTags (
+	id integer PRIMARY KEY NOT NULL,
+	date date,
+	event_id integer,
+	tag_id varchar(10),
+	user_id integer,
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	FOREIGN KEY (tag_id) REFERENCES TagNames(id),
+	FOREIGN KEY (users_id) REFERENCES Users(id)
 );
