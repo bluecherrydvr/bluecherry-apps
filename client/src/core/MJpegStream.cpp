@@ -284,10 +284,10 @@ void MJpegStream::decodeFrame(QByteArray &data)
     QImageReader reader(&buffer, "jpeg");
     reader.setAutoDetectImageFormat(false);
 
-#if QT_VERSION >= 0040700
+#if QT_VERSION >= 0x040700
     QPixmap newFrame = QPixmap::fromImageReader(&reader);
 #else
-    QPixmap newFrame = reader.read().toPixmap();
+    QPixmap newFrame = QPixmap::fromImage(reader.read());
 #endif
 
     if (newFrame.isNull())
