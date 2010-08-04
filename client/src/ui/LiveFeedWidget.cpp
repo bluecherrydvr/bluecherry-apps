@@ -6,6 +6,9 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QMenu>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QToolTip>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     : QWidget(parent), m_camera(0), m_dragCamera(0), m_stream(0)
@@ -241,7 +244,7 @@ void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
-    menu.addAction(tr("Snapshot"));
+    menu.addAction(tr("Snapshot"), this, SLOT(saveSnapshot()));
     menu.addAction(tr("Pause"));
     menu.addSeparator();
     menu.addAction(tr("Open in window"), this, SLOT(openWindow()));
@@ -285,4 +288,28 @@ void LiveFeedWidget::keyPressEvent(QKeyEvent *event)
     }
 
     event->accept();
+}
+
+void LiveFeedWidget::saveSnapshot(const QString &ifile)
+{
+    if (m_currentFrame.isNull())
+        return;
+
+    QString file = ifile;
+
+    if (file.isEmpty())
+    {
+        file = QFileDialog::getSaveFileName(this, tr("Save Camera Snapshot"), QString(), tr("Image (*.jpg)"));
+        if (file.isEmpty())
+            return;
+    }
+
+    if (!m_currentFrame.save(file, "jpeg"))
+    {
+        QMessageBox::critical(this, tr("Snapshot Error"), tr("An error occurred while saving the snapshot image."),
+                              QMessageBox::Ok);
+        return;
+    }
+
+    QToolTip::showText(mapToGlobal(QPoint(0,0)), tr("Snapshot Saved"), this);
 }

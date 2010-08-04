@@ -3,9 +3,10 @@
 
 #include <QMainWindow>
 
-class QTreeView;
 class DVRServersView;
 class CameraAreaWidget;
+class RecentEventsView;
+class QSplitter;
 
 class MainWindow : public QMainWindow
 {
@@ -24,6 +25,8 @@ protected:
 private:
     DVRServersView *m_sourcesList;
     CameraAreaWidget *m_cameraArea;
+    RecentEventsView *m_eventsView;
+    QSplitter *m_centerSplit;
 
     void createMenu();
 
@@ -33,6 +36,7 @@ private:
 
     QWidget *createCameraArea();
     QWidget *createCameraControls();
+    QWidget *createRecentEvents();
 };
 
 #endif // MAINWINDOW_H

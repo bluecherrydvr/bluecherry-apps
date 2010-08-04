@@ -4,6 +4,7 @@
 #include "DVRServersView.h"
 #include "OptionsDialog.h"
 #include "NumericOffsetWidget.h"
+#include "RecentEventsView.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -12,6 +13,7 @@
 #include <QCheckBox>
 #include <QSettings>
 #include <QShortcut>
+#include <QSplitter>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -33,18 +35,26 @@ MainWindow::MainWindow(QWidget *parent)
     mainLayout->addLayout(leftLayout);
 
     /* Middle */
-    QBoxLayout *middleLayout = new QVBoxLayout;
+    m_centerSplit = new QSplitter(Qt::Vertical);
+    mainLayout->addWidget(m_centerSplit, 1);
+
+    QWidget *cameraContainer = new QWidget;
+    QBoxLayout *middleLayout = new QVBoxLayout(cameraContainer);
     middleLayout->setMargin(0);
 
-    middleLayout->addWidget(createCameraArea());
+    middleLayout->addWidget(createCameraArea(), 1);
     middleLayout->addWidget(createCameraControls());
-    mainLayout->addLayout(middleLayout, 1);
+    m_centerSplit->addWidget(cameraContainer);
+    m_centerSplit->setStretchFactor(0, 1);
+
+    m_centerSplit->addWidget(createRecentEvents());
 
     /* Set center widget */
     setCentralWidget(centerWidget);
 
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/main/geometry")).toByteArray());
+    m_centerSplit->restoreState(settings.value(QLatin1String("ui/main/centerSplit")).toByteArray());
 
     new QShortcut(QKeySequence(Qt::Key_F11), m_cameraArea, SLOT(toggleFullScreen()));
 }
@@ -57,6 +67,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     QSettings settings;
     settings.setValue(QLatin1String("ui/main/geometry"), saveGeometry());
+    settings.setValue(QLatin1String("ui/main/centerSplit"), m_centerSplit->saveState());
     QMainWindow::closeEvent(event);
 }
 
@@ -131,6 +142,12 @@ QWidget *MainWindow::createCameraControls()
 {
     CameraAreaControls *controls = new CameraAreaControls(m_cameraArea);
     return controls;
+}
+
+QWidget *MainWindow::createRecentEvents()
+{
+    m_eventsView = new RecentEventsView;
+    return m_eventsView;
 }
 
 void MainWindow::showOptionsDialog()

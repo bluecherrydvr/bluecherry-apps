@@ -29,6 +29,8 @@ public slots:
     void setFullScreen(bool on = true);
     void toggleFullScreen() { setFullScreen(!isFullScreen()); }
 
+    void saveSnapshot(const QString &file = QString());
+
 private slots:
     void updateFrame(const QPixmap &frame);
     void mjpegStateChanged(int state);
