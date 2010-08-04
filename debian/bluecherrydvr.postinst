@@ -2,8 +2,8 @@
 
 set -e
 
-sql="/usr/share/doc/bluecherrydvr/sqlite-dump.sql"
-db="/var/lib/bluecherry/bluecherry_db"
+sql="/usr/share/doc/bluecherrydvr/sqlite-base.sql"
+db="/var/lib/bluecherry/bluecherry.sqlite"
 
 case "$!" in
 	configure)
