@@ -21,6 +21,9 @@ static void *bc_db_sqlite_open(struct config_t *cfg)
 		return NULL;
 	}
 
+	/* Enable foreign keys */
+	sqlite3_exec(sqlite, "PRAGMA foreign_keys=ON;", NULL, NULL, NULL);
+
 	return sqlite;
 }
 
