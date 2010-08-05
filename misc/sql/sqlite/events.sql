@@ -26,36 +26,43 @@ INSERT INTO EventTypesSys VALUES ('power-outage');
 -- A separate table for camera events
 CREATE TABLE EventsCam (
 	id integer PRIMARY KEY NOT NULL,
-	date date,
+	time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	level_id varchar(10),
 	device_id integer,
 	type_id varchar(10),
-	length integer,		-- length of event in seconds
-	archive boolean,	-- archive the event's video/audio?
-	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
-        FOREIGN KEY (device_id) REFERENCES Devices(id),
+	length integer NOT NULL DEFAULT 0,	-- length of event in seconds
+	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
+        FOREIGN KEY (device_id) REFERENCES Devices(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
         FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
+		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- A separate table for system events
 CREATE TABLE EventsSystem (
 	id integer PRIMARY KEY NOT NULL,
-	date date,
+	time timestamp DEFAULT CURRENT_TIMESTAMP,
 	level_id varchar(10),
 	type_id varchar(10),
-	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
+		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Comments on an event (Cam only?)
 CREATE TABLE EventComments (
 	id integer PRIMARY KEY NOT NULL,
-	date date,
+	time timestamp DEFAULT CURRENT_TIMESTAMP,
 	event_id integer,
 	user_id integer,
 	comment varchar,
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES Users(id)
+		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Event tags. We start with pre-defined ones and let the user change them
@@ -63,23 +70,26 @@ CREATE TABLE TagNames (
 	id integer PRIMARY KEY NOT NULL,
 	name varchar(10)
 );
-INSERT INTO TagNames VALUES (0, 'suspicious');
-INSERT INTO TagNames VALUES (1, 'burglary');
-INSERT INTO TagNames VALUES (2, 'theft');
-INSERT INTO TagNames VALUES (3, 'shoplifting');
-INSERT INTO TagNames VALUES (4, 'customer');
-INSERT INTO TagNames VALUES (5, 'employee');
-INSERT INTO TagNames VALUES (6, 'person');
-INSERT INTO TagNames VALUES (7, 'incident');
-INSERT INTO TagNames VALUES (8, 'vandalism');
+INSERT INTO TagNames (name) VALUES ('suspicious');
+INSERT INTO TagNames (name) VALUES ('burglary');
+INSERT INTO TagNames (name) VALUES ('theft');
+INSERT INTO TagNames (name) VALUES ('shoplifting');
+INSERT INTO TagNames (name) VALUES ('customer');
+INSERT INTO TagNames (name) VALUES ('employee');
+INSERT INTO TagNames (name) VALUES ('person');
+INSERT INTO TagNames (name) VALUES ('incident');
+INSERT INTO TagNames (name) VALUES ('vandalism');
 
 CREATE TABLE EventTags (
 	id integer PRIMARY KEY NOT NULL,
-	date date,
+	time timestamp DEFAULT CURRENT_TIMESTAMP,
 	event_id integer,
 	tag_id varchar(10),
 	user_id integer,
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
-	FOREIGN KEY (tag_id) REFERENCES TagNames(name),
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (tag_id) REFERENCES TagNames(name)
+		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES Users(id)
+		ON UPDATE CASCADE ON DELETE CASCADE
 );
