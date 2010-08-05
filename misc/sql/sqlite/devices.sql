@@ -42,5 +42,6 @@ CREATE TABLE Devices (
 	preset_type_ID smallint,
 	motion_detection_on boolean,
 	motion_detection_threshold integer,
-	file_chop_interval smallint
+	file_chop_interval smallint,
+	disabled boolean DEFAULT FALSE
 );
