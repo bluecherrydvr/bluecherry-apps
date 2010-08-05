@@ -3,6 +3,7 @@
 #include "CameraAreaControls.h"
 #include "DVRServersView.h"
 #include "OptionsDialog.h"
+#include "EventsWindow.h"
 #include "NumericOffsetWidget.h"
 #include "RecentEventsView.h"
 #include <QBoxLayout>
@@ -14,6 +15,7 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QSplitter>
+#include <QPushButton>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -47,7 +49,15 @@ MainWindow::MainWindow(QWidget *parent)
     m_centerSplit->addWidget(cameraContainer);
     m_centerSplit->setStretchFactor(0, 1);
 
-    m_centerSplit->addWidget(createRecentEvents());
+    QWidget *container = new QWidget;
+    m_centerSplit->addWidget(container);
+    QBoxLayout *containerLayout = new QHBoxLayout(container);
+    containerLayout->setMargin(0);
+
+    containerLayout->addWidget(createRecentEvents());
+    QPushButton *eventsBtn = new QPushButton(tr("Open Events"));
+    connect(eventsBtn, SIGNAL(clicked()), SLOT(showEventsWindow()));
+    containerLayout->addWidget(eventsBtn, 0, Qt::AlignTop);
 
     /* Set center widget */
     setCentralWidget(centerWidget);
@@ -155,4 +165,11 @@ void MainWindow::showOptionsDialog()
     OptionsDialog *dlg = new OptionsDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->show();
+}
+
+void MainWindow::showEventsWindow()
+{
+    EventsWindow *window = new EventsWindow(this);
+    window->setAttribute(Qt::WA_DeleteOnClose);
+    window->show();
 }

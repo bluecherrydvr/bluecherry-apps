@@ -18,6 +18,7 @@ public:
 
 public slots:
     void showOptionsDialog();
+    void showEventsWindow();
 
 protected:
     virtual void closeEvent(QCloseEvent *event);
