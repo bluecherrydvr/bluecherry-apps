@@ -43,5 +43,6 @@ CREATE TABLE Devices (
 	motion_detection_on boolean,
 	motion_detection_threshold integer,
 	file_chop_interval smallint,
-	disabled boolean DEFAULT FALSE
+	disabled boolean DEFAULT FALSE,
+	UNIQUE (device_name)
 );
