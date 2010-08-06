@@ -49,7 +49,7 @@ public:
     bool operator<(const EventLevel &o) const { return level < o.level; }
     bool operator>(const EventLevel &o) const { return level > o.level; }
     bool operator==(const EventLevel &o) const { return level == o.level; }
-    QString EventLevel::uiString() const;
+    QString uiString() const;
 };
 
 class EventsModel : public QAbstractItemModel
