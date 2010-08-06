@@ -21,6 +21,7 @@ protected:
 
 private slots:
     void setStartDateEnabled(bool enabled);
+    void updateResultTitle();
 
 private:
     DVRServersView *m_sourcesView;

@@ -46,9 +46,10 @@ public:
         return *this;
     }
 
-    bool operator<(const EventLevel &o) { return level < o.level; }
-    bool operator>(const EventLevel &o) { return level > o.level; }
-    bool operator==(const EventLevel &o) { return level == o.level; }
+    bool operator<(const EventLevel &o) const { return level < o.level; }
+    bool operator>(const EventLevel &o) const { return level > o.level; }
+    bool operator==(const EventLevel &o) const { return level == o.level; }
+    QString EventLevel::uiString() const;
 };
 
 class EventsModel : public QAbstractItemModel
@@ -74,6 +75,8 @@ public:
     void setFilterDates(const QDateTime &begin, const QDateTime &end);
     void setFilterLevel(EventLevel minimum);
 
+    QString filterDescription() const;
+
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QModelIndex index(int row, int column, const QModelIndex &parent) const;
@@ -86,6 +89,9 @@ public:
 public slots:
     void setFilterBeginDate(const QDateTime &begin) { setFilterDates(begin, filterDateEnd); }
     void setFilterEndDate(const QDateTime &end) { setFilterDates(filterDateBegin, end); }
+
+signals:
+    void filtersChanged();
 
 private slots:
     void serverRemoved(DVRServer *server);
@@ -101,5 +107,17 @@ private:
     void applyFilters(bool fromCache = true);
     bool testFilter(EventData *data);
 };
+
+inline QString EventLevel::uiString() const
+{
+    switch (level)
+    {
+    case Info: return EventsModel::tr("Info");
+    case Warning: return EventsModel::tr("Warning");
+    case Alarm: return EventsModel::tr("Alarm");
+    case Critical: return EventsModel::tr("Critical");
+    default: return EventsModel::tr("Unknown");
+    }
+}
 
 #endif // EVENTSMODEL_H

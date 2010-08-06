@@ -1,6 +1,7 @@
 #include "EventsModel.h"
 #include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
+#include "core/DVRCamera.h"
 
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -195,6 +196,8 @@ void EventsModel::applyFilters(bool fromCache)
             }
         }
     }
+
+    emit filtersChanged();
 }
 
 bool EventsModel::testFilter(EventData *data)
@@ -207,6 +210,34 @@ bool EventsModel::testFilter(EventData *data)
         return false;
 
     return true;
+}
+
+QString EventsModel::filterDescription() const
+{
+    QString re;
+
+    if (filterLevel > EventLevel::Info)
+        re = tr("%1 events").arg(filterLevel.uiString());
+    else if (filterDateBegin.isNull() && filterDateEnd.isNull())
+        re = tr("Recent events");
+    else
+        re = tr("All events");
+
+    if (filterCameras.isEmpty())
+        re += tr(" on all cameras");
+    else if (filterCameras.size() > 1)
+        re += tr(" on selected cameras");
+    else
+        re += tr(" on %1").arg((*filterCameras.begin())->displayName());
+
+    if (!filterDateBegin.isNull() && !filterDateEnd.isNull())
+        re += tr(" from %1 to %2");
+    else if (!filterDateBegin.isNull())
+        re += tr(" starting %1").arg(filterDateBegin.toString());
+    else if (!filterDateEnd.isNull())
+        re += tr(" ending %1").arg(filterDateEnd.toString());
+
+    return re;
 }
 
 void EventsModel::setFilterDates(const QDateTime &begin, const QDateTime &end)

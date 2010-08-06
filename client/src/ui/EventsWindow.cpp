@@ -91,10 +91,14 @@ QWidget *EventsWindow::createTypeFilter()
 
 QWidget *EventsWindow::createResultTitle()
 {
-    m_resultTitle = new QLabel(tr("Most recent events on all cameras"));
+    m_resultTitle = new QLabel;
     QFont font = m_resultTitle->font();
     font.setPointSize(font.pointSize()+4);
     m_resultTitle->setFont(font);
+    m_resultTitle->setWordWrap(true);
+
+    connect(m_resultsView->eventsModel(), SIGNAL(filtersChanged()), SLOT(updateResultTitle()));
+    updateResultTitle();
 
     return m_resultTitle;
 }
@@ -126,4 +130,9 @@ void EventsWindow::setStartDateEnabled(bool enabled)
         m_resultsView->eventsModel()->setFilterBeginDate(m_startDate->dateTime());
     else
         m_resultsView->eventsModel()->setFilterBeginDate(QDateTime());
+}
+
+void EventsWindow::updateResultTitle()
+{
+    m_resultTitle->setText(m_resultsView->eventsModel()->filterDescription());
 }
