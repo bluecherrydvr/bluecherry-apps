@@ -92,19 +92,22 @@ bool MJpegStream::processHeaders()
 {
     Q_ASSERT(m_httpReply);
 
-    QByteArray data = m_httpReply->header(QNetworkRequest::ContentTypeHeader).toByteArray().toLower();
+    QByteArray data = m_httpReply->header(QNetworkRequest::ContentTypeHeader).toByteArray();
+    QByteArray dataL = data.toLower();
 
     /* Get the MIME type */
     QByteArray mimeType;
 
-    int sep = data.indexOf(';');
+    int sep = dataL.indexOf(';');
     if (sep > 0)
-        mimeType = data.left(sep).trimmed();
+        mimeType = dataL.left(sep).trimmed();
 
     m_httpBoundary.clear();
-    sep = data.indexOf("boundary=", sep);
+    sep = dataL.indexOf("boundary=", sep);
     if (sep > 0)
         m_httpBoundary = data.mid(sep+9);
+
+    qDebug() << data << mimeType;
 
     if (mimeType != "multipart/x-mixed-replace" || m_httpBoundary.isEmpty())
     {
@@ -112,7 +115,7 @@ bool MJpegStream::processHeaders()
         return false;
     }
 
-    m_httpBoundary.prepend("\r\n--");
+    m_httpBoundary.prepend("\n--");
     return true;
 }
 
@@ -173,31 +176,44 @@ bool MJpegStream::parseBuffer()
         int boundary = m_httpBuffer.indexOf(m_httpBoundary);
         if (boundary < 0)
         {
-            /* Everything up to the last m_httpBoundary-1 bytes may be safely discarded */
-            m_httpBuffer.remove(0, m_httpBuffer.size() - (m_httpBoundary.size()-1));
+            /* Everything up to the last m_httpBoundary-2 bytes may be safely discarded */
+            m_httpBuffer.remove(0, m_httpBuffer.size() - (m_httpBoundary.size()-2));
             return true;
         }
 
         int boundaryStart = boundary;
-        boundary += m_httpBoundary.size();
+        if (boundaryStart && m_httpBuffer[boundaryStart-1] == '\r')
+            --boundaryStart;
 
-testBoundary:
-        if (m_httpBuffer.size() - boundary < 2)
+        boundary += m_httpBoundary.size();
+        int sz = m_httpBuffer.size() - boundary;
+
+        if (sz >= 2 && m_httpBuffer[boundary] == '-' && m_httpBuffer[boundary+1] == '-')
         {
-            /* Not enough to finish the boundary yet; wait and try again */
+            boundary += 2;
+            sz -= 2;
+        }
+
+        if (sz && m_httpBuffer[boundary] == '\n')
+        {
+            boundary++;
+        }
+        else if (sz >= 2 && m_httpBuffer[boundary] == '\r' && m_httpBuffer[boundary+1] == '\n')
+        {
+            boundary += 2;
+        }
+        else if (sz < 2)
+        {
+            /* Not enough to finish the boundary; remove everything up to the start and wait */
             m_httpBuffer.remove(0, boundaryStart);
             return true;
         }
-
-        /* The -- suffix would indicate the last part, but in a neverending stream, that won't
-         * happen. Allow it, but ignore it. */
-        if (m_httpBuffer[boundary] == '-' && m_httpBuffer[boundary+1] == '-')
+        else
         {
-            boundary += 2;
-            goto testBoundary;
+            /* Invalid characters mean this isn't a boundary. Remove it. */
+            m_httpBuffer.remove(0, boundaryStart + m_httpBoundary.size());
+            return true;
         }
-        else if (m_httpBuffer[boundary] == '\r' && m_httpBuffer[boundary+1] == '\n')
-            boundary += 2;
 
         /* Reached the end of the boundary; headers follow */
         m_httpBuffer.remove(0, boundary);
@@ -208,13 +224,13 @@ testBoundary:
     if (m_parserState == ParserHeaders)
     {
         int lnStart = 0, lnEnd = 0;
-        for (; (lnEnd = m_httpBuffer.indexOf("\r\n", lnStart)) >= 0; lnStart = lnEnd + 2)
+        for (; (lnEnd = m_httpBuffer.indexOf('\n', lnStart)) >= 0; lnStart = lnEnd+1)
         {
-            if (lnStart == lnEnd)
+            if (lnStart == lnEnd || ((lnEnd-lnStart) == 1 && m_httpBuffer[lnStart] == '\r'))
             {
                 m_parserState = ParserBody;
-                /* Skip the final \r\n */
-                lnStart += 2;
+                /* Skip the final \n */
+                lnStart = lnEnd+1;
                 break;
             }
 
