@@ -23,7 +23,8 @@ SOURCES += src/main.cpp \
     src/ui/RecentEventsView.cpp \
     src/ui/EventsModel.cpp \
     src/ui/CameraSourcesModel.cpp \
-    src/ui/EventsWindow.cpp
+    src/ui/EventsWindow.cpp \
+    src/ui/EventResultsView.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -41,4 +42,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/RecentEventsView.h \
     src/ui/EventsModel.h \
     src/ui/CameraSourcesModel.h \
-    src/ui/EventsWindow.h
+    src/ui/EventsWindow.h \
+    src/ui/EventResultsView.h
