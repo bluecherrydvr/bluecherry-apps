@@ -20,6 +20,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    setWindowTitle(tr("Bluecherry DVR"));
     createMenu();
 
     QWidget *centerWidget = new QWidget;
