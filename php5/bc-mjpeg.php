@@ -36,7 +36,7 @@ if (bc_handle_start($bch) == false) {
 if (isset($_GET['multipart'])) {
         $multi = true;
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
-        print "--$boundary\n";
+        print "\r\n--$boundary\r\n";
 } else {
 	header("Content-type: image/jpeg");
 }
@@ -48,14 +48,14 @@ function print_image() {
 		exit;
 
 	if ($multi) {
-		print "Content-type: image/jpeg\n";
-		print "Content-size: " . bc_buf_size($bch) . "\n\n";
+		print "Content-type: image/jpeg\r\n";
+		print "Content-size: " . bc_buf_size($bch) . "\r\n\r\n";
 	}
 
 	print bc_buf_data($bch);
 
 	if ($multi)
-		print "--$boundary\n";
+		print "\r\n--$boundary\r\n";
 }
 
 # For multi, let's do some weird stuff
