@@ -20,6 +20,8 @@ EventsWindow::EventsWindow(QWidget *parent)
     QBoxLayout *filtersLayout = new QVBoxLayout;
     layout->addLayout(filtersLayout);
 
+    createResultsView();
+
     /* Filters */
     m_sourcesView = new DVRServersView;
     m_sourcesView->setModel(new CameraSourcesModel(m_sourcesView));
@@ -42,7 +44,7 @@ EventsWindow::EventsWindow(QWidget *parent)
     QBoxLayout *resultLayout = new QVBoxLayout;
     layout->addLayout(resultLayout, 1);
     resultLayout->addWidget(createResultTitle());
-    resultLayout->addWidget(createResultsView());
+    resultLayout->addWidget(m_resultsView);
     resultLayout->addWidget(createTimeline());
 
     /* Settings */
@@ -56,13 +58,16 @@ void EventsWindow::createDateFilter(QBoxLayout *layout)
     title->setStyleSheet(QLatin1String("font-weight:bold;"));
     layout->addWidget(title);
 
-    QDateTimeEdit *edit = new QDateTimeEdit(QDateTime::currentDateTime());
-    edit->setCalendarPopup(true);
-    layout->addWidget(edit);
+    m_startDate = new QDateTimeEdit(QDateTime::currentDateTime());
+    m_startDate->setCalendarPopup(true);
+    m_startDate->setMaximumDate(QDate::currentDate());
+    layout->addWidget(m_startDate);
 
-    connect(title, SIGNAL(clicked(bool)), edit, SLOT(setEnabled(bool)));
+    connect(m_startDate, SIGNAL(dateTimeChanged(QDateTime)), m_resultsView->eventsModel(),
+            SLOT(setFilterBeginDate(QDateTime)));
+    connect(title, SIGNAL(clicked(bool)), this, SLOT(setStartDateEnabled(bool)));
     title->setChecked(false);
-    edit->setEnabled(false);
+    m_startDate->setEnabled(false);
 }
 
 QWidget *EventsWindow::createLevelFilter()
@@ -96,7 +101,8 @@ QWidget *EventsWindow::createResultTitle()
 
 QWidget *EventsWindow::createResultsView()
 {
-    return new EventResultsView;
+    m_resultsView = new EventResultsView;
+    return m_resultsView;
 }
 
 QWidget *EventsWindow::createTimeline()
@@ -111,4 +117,13 @@ void EventsWindow::closeEvent(QCloseEvent *event)
     QSettings settings;
     settings.setValue(QLatin1String("ui/events/geometry"), saveGeometry());
     QWidget::closeEvent(event);
+}
+
+void EventsWindow::setStartDateEnabled(bool enabled)
+{
+    m_startDate->setEnabled(enabled);
+    if (enabled)
+        m_resultsView->eventsModel()->setFilterBeginDate(m_startDate->dateTime());
+    else
+        m_resultsView->eventsModel()->setFilterBeginDate(QDateTime());
 }

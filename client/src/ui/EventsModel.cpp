@@ -15,11 +15,14 @@ EventsModel::EventsModel(QObject *parent)
         event->type = QLatin1String("motion");
         event->date = QDateTime::currentDateTime().addSecs(-30238);
         event->duration = 320;
-        event->level = EventData::Alarm;
-        events.append(event);
+        event->level = EventLevel::Alarm;
+        cachedEvents.append(event);
 
         connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
     }
+
+    applyFilters();
+    sort(3, Qt::DescendingOrder);
 }
 
 int EventsModel::rowCount(const QModelIndex &parent) const
@@ -27,7 +30,7 @@ int EventsModel::rowCount(const QModelIndex &parent) const
     if (parent.isValid())
         return 0;
 
-    return events.size();
+    return items.size();
 }
 
 int EventsModel::columnCount(const QModelIndex &parent) const
@@ -40,10 +43,10 @@ int EventsModel::columnCount(const QModelIndex &parent) const
 
 QModelIndex EventsModel::index(int row, int column, const QModelIndex &parent) const
 {
-    if (parent.isValid() || row < 0 || column < 0 || row >= events.size() || column >= columnCount())
+    if (parent.isValid() || row < 0 || column < 0 || row >= items.size() || column >= columnCount())
         return QModelIndex();
 
-    return createIndex(row, column, events[row]);
+    return createIndex(row, column, items[row]);
 }
 
 QModelIndex EventsModel::parent(const QModelIndex &child) const
@@ -103,12 +106,12 @@ QVariant EventsModel::headerData(int section, Qt::Orientation orientation, int r
 void EventsModel::serverRemoved(DVRServer *server)
 {
     /* Remove all events from this server; could be much faster */
-    for (int i = 0; i < events.size(); ++i)
+    for (int i = 0; i < items.size(); ++i)
     {
-        if (events[i]->server == server)
+        if (items[i]->server == server)
         {
             beginRemoveRows(QModelIndex(), i, i);
-            events.removeAt(i);
+            items.removeAt(i);
             endRemoveRows();
             --i;
         }
@@ -160,6 +163,60 @@ void EventsModel::sort(int column, Qt::SortOrder order)
 {
     emit layoutAboutToBeChanged();
     bool lessThan = order == Qt::AscendingOrder;
-    qSort(events.begin(), events.end(), EventSort(column, lessThan));
+    qSort(items.begin(), items.end(), EventSort(column, lessThan));
     emit layoutChanged();
+}
+
+void EventsModel::applyFilters(bool fromCache)
+{
+    if (fromCache)
+    {
+        beginResetModel();
+        items.clear();
+
+        for (QList<EventData*>::Iterator it = cachedEvents.begin(); it != cachedEvents.end(); ++it)
+        {
+            if (testFilter(*it))
+                items.append(*it);
+        }
+
+        endResetModel();
+    }
+    else
+    {
+        for (int i = 0; i < items.size(); ++i)
+        {
+            if (!testFilter(items[i]))
+            {
+                emit beginRemoveRows(QModelIndex(), i, i);
+                items.removeAt(i);
+                emit endRemoveRows();
+                --i;
+            }
+        }
+    }
+}
+
+bool EventsModel::testFilter(EventData *data)
+{
+    /* TODO: cameras */
+
+    if (data->level < filterLevel ||
+        (!filterDateBegin.isNull() && data->date < filterDateBegin) ||
+        (!filterDateEnd.isNull() && data->date > filterDateEnd))
+        return false;
+
+    return true;
+}
+
+void EventsModel::setFilterDates(const QDateTime &begin, const QDateTime &end)
+{
+    bool fast = false;
+    if (begin >= filterDateBegin && end <= filterDateEnd)
+        fast = true;
+
+    filterDateBegin = begin;
+    filterDateEnd = end;
+
+    applyFilters(!fast);
 }

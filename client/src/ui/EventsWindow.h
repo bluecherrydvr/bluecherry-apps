@@ -4,8 +4,10 @@
 #include <QWidget>
 
 class DVRServersView;
+class EventResultsView;
 class QLabel;
 class QBoxLayout;
+class QDateTimeEdit;
 
 class EventsWindow : public QWidget
 {
@@ -17,9 +19,14 @@ public:
 protected:
     virtual void closeEvent(QCloseEvent *event);
 
+private slots:
+    void setStartDateEnabled(bool enabled);
+
 private:
     DVRServersView *m_sourcesView;
+    QDateTimeEdit *m_startDate;
     QLabel *m_resultTitle;
+    EventResultsView *m_resultsView;
 
     void createDateFilter(QBoxLayout *layout);
     QWidget *createLevelFilter();
