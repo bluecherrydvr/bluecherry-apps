@@ -114,3 +114,52 @@ void EventsModel::serverRemoved(DVRServer *server)
         }
     }
 }
+
+class EventSort
+{
+public:
+    const int column;
+    const bool lessThan;
+
+    EventSort(int c, bool l)
+        : column(c), lessThan(l)
+    {
+    }
+
+    bool operator()(const EventsModel::EventData *e1, const EventsModel::EventData *e2)
+    {
+        bool re;
+
+        switch (column)
+        {
+        case 0: /* Server */
+            re = QString::localeAwareCompare(e1->server->displayName(), e2->server->displayName()) <= 0;
+            break;
+        case 1: /* Location */
+            re = QString::localeAwareCompare(e1->location, e2->location) <= 0;
+            break;
+        case 2: /* Type */
+            re = QString::localeAwareCompare(e1->type, e2->type) <= 0;
+            break;
+        case 3: /* Date */
+            re = e1->date <= e2->date;
+            break;
+        default:
+            Q_ASSERT_X(false, "EventSort", "sorting not implemented for column");
+            re = true;
+        }
+
+        if (lessThan)
+            return re;
+        else
+            return !re;
+    }
+};
+
+void EventsModel::sort(int column, Qt::SortOrder order)
+{
+    emit layoutAboutToBeChanged();
+    bool lessThan = order == Qt::AscendingOrder;
+    qSort(events.begin(), events.end(), EventSort(column, lessThan));
+    emit layoutChanged();
+}

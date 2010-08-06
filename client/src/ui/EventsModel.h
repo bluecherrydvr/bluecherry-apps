@@ -27,6 +27,8 @@ class EventsModel : public QAbstractItemModel
         } level;
     };
 
+    friend class EventSort;
+
 public:
     explicit EventsModel(QObject *parent = 0);
 
@@ -36,6 +38,8 @@ public:
     virtual QModelIndex parent(const QModelIndex &child) const;
     virtual QVariant data(const QModelIndex &index, int role) const;
     virtual QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+
+    virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
 private slots:
     void serverRemoved(DVRServer *server);
