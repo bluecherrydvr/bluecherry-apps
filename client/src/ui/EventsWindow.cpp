@@ -72,13 +72,15 @@ void EventsWindow::createDateFilter(QBoxLayout *layout)
 
 QWidget *EventsWindow::createLevelFilter()
 {
-    QComboBox *levelFilter = new QComboBox;
-    levelFilter->addItem(tr("Any"));
-    levelFilter->addItem(tr("Info"));
-    levelFilter->addItem(tr("Warning"));
-    levelFilter->addItem(tr("Alarm"));
-    levelFilter->addItem(tr("Critical"));
-    return levelFilter;
+    m_levelFilter = new QComboBox;
+    m_levelFilter->addItem(tr("Any"), -1);
+    m_levelFilter->addItem(tr("Info"), EventLevel::Info);
+    m_levelFilter->addItem(tr("Warning"), EventLevel::Warning);
+    m_levelFilter->addItem(tr("Alarm"), EventLevel::Alarm);
+    m_levelFilter->addItem(tr("Critical"), EventLevel::Critical);
+
+    connect(m_levelFilter, SIGNAL(currentIndexChanged(int)), SLOT(levelFilterChanged()));
+    return m_levelFilter;
 }
 
 QWidget *EventsWindow::createTypeFilter()
@@ -130,6 +132,15 @@ void EventsWindow::setStartDateEnabled(bool enabled)
         m_resultsView->eventsModel()->setFilterBeginDate(m_startDate->dateTime());
     else
         m_resultsView->eventsModel()->setFilterBeginDate(QDateTime());
+}
+
+void EventsWindow::levelFilterChanged()
+{
+    int level = m_levelFilter->itemData(m_levelFilter->currentIndex()).toInt();
+    if (level < 0)
+        level = EventLevel::Minimum;
+
+    m_resultsView->eventsModel()->setFilterLevel((EventLevel::Level)level);
 }
 
 void EventsWindow::updateResultTitle()

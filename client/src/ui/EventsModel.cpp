@@ -251,3 +251,14 @@ void EventsModel::setFilterDates(const QDateTime &begin, const QDateTime &end)
 
     applyFilters(!fast);
 }
+
+void EventsModel::setFilterLevel(EventLevel minimum)
+{
+    if (filterLevel == minimum)
+        return;
+
+    bool fast = minimum > filterLevel;
+    filterLevel = minimum;
+
+    applyFilters(!fast);
+}

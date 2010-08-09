@@ -14,10 +14,11 @@ class EventLevel
 public:
     enum Level
     {
-        Info,
+        Info = 0,
         Warning,
         Alarm,
-        Critical
+        Critical,
+        Minimum = Info
     } level;
 
     EventLevel() : level(Info) { }

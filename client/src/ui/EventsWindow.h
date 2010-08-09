@@ -8,6 +8,7 @@ class EventResultsView;
 class QLabel;
 class QBoxLayout;
 class QDateTimeEdit;
+class QComboBox;
 
 class EventsWindow : public QWidget
 {
@@ -21,11 +22,13 @@ protected:
 
 private slots:
     void setStartDateEnabled(bool enabled);
+    void levelFilterChanged();
     void updateResultTitle();
 
 private:
     DVRServersView *m_sourcesView;
     QDateTimeEdit *m_startDate;
+    QComboBox *m_levelFilter;
     QLabel *m_resultTitle;
     EventResultsView *m_resultsView;
 
