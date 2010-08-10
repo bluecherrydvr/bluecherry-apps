@@ -77,6 +77,17 @@ struct bc_handle {
 	int			gop;
 };
 
+enum bc_key_type {
+	BC_KEY_TYPE_CAMERA,
+};
+
+struct bc_key_data {
+	enum bc_key_type	type;
+	u_int8_t		major;
+	u_int8_t		count;
+	u_int32_t		id;
+};
+
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(const char *dev);
 void bc_handle_free(struct bc_handle *bc);
