@@ -9,18 +9,17 @@
 
 #include <libbluecherry.h>
 
-#define BC_KEY_LEN		8
+#define BC_KEY_LEN		10
 #define BC_KEY_MAGIC		0xBC
 
 struct bc_key_ctx {
 	int idx;
-	unsigned short crc;
 	unsigned char bytes[BC_KEY_LEN];
 };
 
 /* Our super secret passcode, used for license key codec */
 static unsigned char segment_end[BC_KEY_LEN] =
-	{ 0x32, 0x14, 0xfe, 0xed, 0xf0, 0x0c, 0x43, 0x25 };
+	{ 0x32, 0x14, 0xfe, 0xed, 0xf0, 0x0c, 0x43, 0x25, 0xf4, 0x27 };
 
 
 static unsigned short const crc16_table[256] = {
@@ -74,10 +73,12 @@ static unsigned short crc16(unsigned char const *buf, size_t len)
 	return crc;
 }
 
+static unsigned int bc_key_pullbits(struct bc_key_ctx *ctx, int len);
+
 static int bc_key_start(struct bc_key_ctx *ctx, unsigned char *key)
 {
 	int i;
-	unsigned short crc = key[BC_KEY_LEN] << 8 | key[BC_KEY_LEN + 1];
+	unsigned short crc;
 
 	ctx->idx = 0;
 
@@ -96,9 +97,8 @@ static int bc_key_start(struct bc_key_ctx *ctx, unsigned char *key)
 	}
 
 	/* Now check the crc */
-	ctx->crc = crc16(ctx->bytes, BC_KEY_LEN);
-
-	if (ctx->crc != crc)
+	crc = bc_key_pullbits(ctx, 16);
+	if (crc != crc16(ctx->bytes, BC_KEY_LEN))
 		return EINVAL;
 
 	return 0;
@@ -122,7 +122,7 @@ static unsigned int bc_key_pullbits(struct bc_key_ctx *ctx, int len)
 /* Returns errno or 0 for success */
 int bc_key_process(struct bc_key_data *res, char *str)
 {
-	unsigned char key[BC_KEY_LEN + 2];
+	unsigned char key[BC_KEY_LEN];
 	struct bc_key_ctx c;
 	int i;
 	int len;
@@ -133,7 +133,7 @@ int bc_key_process(struct bc_key_data *res, char *str)
 		unsigned char t;
 
 		/* Means incoming string is too long */
-		if (len >= (BC_KEY_LEN + 2) * 2)
+		if (len >= BC_KEY_LEN * 2)
 			return 0;
 
 		/* If it's valid hex, process it */
@@ -157,7 +157,7 @@ int bc_key_process(struct bc_key_data *res, char *str)
 	}
 
 	/* Too few characters */
-	if (len != (BC_KEY_LEN + 2) * 2)
+	if (len != BC_KEY_LEN * 2)
 		return EINVAL;
 
 	if (bc_key_start(&c, key))
