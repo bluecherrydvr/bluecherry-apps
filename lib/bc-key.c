@@ -6,7 +6,7 @@
 
 /*
  * This is a simple obfuscation and passcode transform key checker. The basic
- * principile is that the bits we use are not stored in the 64-bit key in the
+ * principal is that the bits we use are not stored in the 64-bit key in the
  * order we need them. Instead each byte in the key is treated as a FILO, and
  * we round-robin these buckets leaving a bit in each one, and moving to the
  * next. We reverse this procedure to extract the bits.
@@ -15,10 +15,10 @@
  * and shared 8-byte value. The values in each position are added to the same
  * position in the license key buckets, and we carry overflow to the next
  * bucket. We likewise reverse this procedure to decode the license key before
- * extracting bits from the buckets. We assume that if the final byte on decode
- * (the first one being subtracted) is less than the last byte of the pass
- * code, that we dropped the carry over for that addition and add it in
- * place at the time of decode.
+ * extracting bits from the buckets. On subtraction, we assume that if the
+ * passcode value is larger than the key value we are subtracting from, then
+ * we need to carry 1 from the higher bucket (subtract 1 from it, and add it
+ * to the current bucket).
  */
 
 #include <string.h>
@@ -121,12 +121,18 @@ int bc_key_process(struct bc_key_data *res, char *str)
 	if (bc_key_pullbits(&c, 8) != BC_KEY_MAGIC)
 		return EINVAL;
 
+	res->major = bc_key_pullbits(&c, 4);
+	res->minor = bc_key_pullbits(&c, 4);
+
+	/* We don't know this license format yet */
+	if (res->major != 2 || res->minor != 1)
+		return EINVAL;
+
 	/* Padding for now, reserved for later */
-	bc_key_pullbits(&c, 12);
+	bc_key_pullbits(&c, 7);
 
 	res->type = bc_key_pullbits(&c, 4);
-	res->major = bc_key_pullbits(&c, 4);
-	res->count = bc_key_pullbits(&c, 4);
+	res->count = bc_key_pullbits(&c, 5);
 	res->id = bc_key_pullbits(&c, 32);
 
 	return 0;

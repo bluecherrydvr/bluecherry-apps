@@ -84,6 +84,7 @@ enum bc_key_type {
 struct bc_key_data {
 	enum bc_key_type	type;
 	u_int8_t		major;
+	u_int8_t		minor;
 	u_int8_t		count;
 	u_int32_t		id;
 };
@@ -142,5 +143,8 @@ int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
 int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname);
 int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname);
+
+/* Validate and process a license key to get values from it */
+int bc_key_process(struct bc_key_data *res, char *str);
 
 #endif /* __LIBBLUECHERRY_H */
