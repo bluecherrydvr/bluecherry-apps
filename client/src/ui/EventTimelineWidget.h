@@ -67,6 +67,8 @@ private:
     void updateRowsMap(int start = 0);
     void updateTimeRange();
 
+    EventData *eventAt(const QPoint &point) const;
+
     /* Area of the viewport containing items */
     QRect viewportItemArea() const;
     /* X-coordinate offset from the edge of the viewport item area for the given time */

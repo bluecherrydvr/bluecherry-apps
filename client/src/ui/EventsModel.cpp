@@ -2,6 +2,7 @@
 #include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
+#include <QTextDocument>
 
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -66,7 +67,16 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
         return QVariant();
 
     if (role == EventDataPtr)
+    {
         return QVariant::fromValue(data);
+    }
+    else if (role == Qt::ToolTipRole)
+    {
+        return tr("%1 (%2)<br>%3 on %4<br>%5").arg(Qt::escape(data->type),
+                                                   data->level.uiString(), Qt::escape(data->location),
+                                                   Qt::escape(data->server->displayName()),
+                                                   data->date.toString());
+    }
 
     switch (index.column())
     {

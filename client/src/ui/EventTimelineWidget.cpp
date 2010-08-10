@@ -4,6 +4,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QVector>
+#include <QDebug>
 #include <qmath.h>
 
 struct LocationData
@@ -72,9 +73,52 @@ void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
 
 }
 
+EventData *EventTimelineWidget::eventAt(const QPoint &point) const
+{
+    QRect itemArea = viewportItemArea();
+    if (!itemArea.contains(point))
+        return 0;
+
+    /* Iterate servers and locations to the specified y coordinate */
+    int y = itemArea.top();
+    int n = (point.y()-y)/rowHeight();
+
+    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    {
+        if (--n < 0)
+            return 0;
+
+        int count = (*it)->locationsMap.size();
+        if (n >= count)
+        {
+            n -= count;
+            continue;
+        }
+
+        LocationData *location = *((*it)->locationsMap.begin() + n);
+
+        /* This is slow and can likely be improved. */
+        for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
+        {
+            QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+            if (point.x() >= eventRect.left() && point.x() <= eventRect.right())
+                return *evit;
+        }
+
+        break;
+    }
+
+    return 0;
+}
+
 QModelIndex EventTimelineWidget::indexAt(const QPoint &point) const
 {
-    return QModelIndex();
+    EventData *event = eventAt(point);
+    if (!event)
+        return QModelIndex();
+
+    int row = rowsMap[event];
+    return model()->index(row, 0);
 }
 
 QSize EventTimelineWidget::sizeHint() const
