@@ -65,6 +65,46 @@ void EventTimelineWidget::setModel(QAbstractItemModel *newModel)
 
 QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
 {
+    if (!index.isValid())
+        return QRect();
+
+    EventData *event = rowData(index.row());
+    if (!event)
+        return QRect();
+
+    ServerData *serverData;
+    LocationData *locationData;
+    if (!const_cast<EventTimelineWidget*>(this)->findEvent(event, false, &serverData, &locationData, 0))
+        return QRect();
+
+    QRect itemArea = viewportItemArea();
+    int y = itemArea.top();
+    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    {
+        y += rowHeight();
+        if (*it != serverData)
+        {
+            y += rowHeight() * (*it)->locationsMap.size();
+            continue;
+        }
+
+        for (QHash<QString,LocationData*>::ConstIterator locit = serverData->locationsMap.begin();
+             locit != serverData->locationsMap.end(); ++locit)
+        {
+            if (*locit == locationData)
+                break;
+            y += rowHeight();
+        }
+
+        QRect re = timeCellRect(event->date, event->duration);
+        re.translate(itemArea.topLeft());
+        re.moveTop(y);
+        re.setHeight(rowHeight());
+
+        qDebug() << re;
+        return re;
+    }
+
     return QRect();
 }
 
@@ -162,7 +202,8 @@ EventData *EventTimelineWidget::rowData(int row) const
     return idx.data(EventsModel::EventDataPtr).value<EventData*>();
 }
 
-bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **server, LocationData **location, int *position)
+bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **server,
+                                    LocationData **location, int *position)
 {
     if (server)
         *server = 0;
@@ -172,7 +213,7 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         *position = -1;
 
     /* Find associated server */
-    QHash<DVRServer*,ServerData*>::Iterator it = serversMap.find(event->server);
+    QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.find(event->server);
     if (it == serversMap.end())
     {
         if (!create)
@@ -188,7 +229,7 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         *server = serverData;
 
     /* Find associated location (within the server) */
-    QHash<QString,LocationData*>::Iterator lit = serverData->locationsMap.find(event->location);
+    QHash<QString,LocationData*>::ConstIterator lit = serverData->locationsMap.find(event->location);
     if (lit == serverData->locationsMap.end())
     {
         if (!create)
@@ -501,7 +542,7 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
     {
         EventData *data = *it;
 
-        QRect cellRect = timeCellRect(data->date, 0);
+        QRect cellRect = timeCellRect(data->date, data->duration);
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
         p->fillRect(cellRect, Qt::blue);
