@@ -53,23 +53,28 @@ public:
     QString uiString() const;
 };
 
+class EventData
+{
+public:
+    DVRServer *server;
+    QString location, type;
+    QDateTime date;
+    int duration;
+    EventLevel level;
+};
+
+Q_DECLARE_METATYPE(EventData*)
+
 class EventsModel : public QAbstractItemModel
 {
     Q_OBJECT
 
-    class EventData
+public:
+    enum
     {
-    public:
-        DVRServer *server;
-        QString location, type;
-        QDateTime date;
-        int duration;
-        EventLevel level;
+        EventDataPtr = Qt::UserRole
     };
 
-    friend class EventSort;
-
-public:
     explicit EventsModel(QObject *parent = 0);
 
     void setFilterCameras(const QSet<DVRCamera*> &cameras);

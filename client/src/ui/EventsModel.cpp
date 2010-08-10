@@ -14,7 +14,7 @@ EventsModel::EventsModel(QObject *parent)
         event->server = server;
         event->location = QLatin1String("camera-1");
         event->type = QLatin1String("motion");
-        event->date = QDateTime::currentDateTime().addSecs(-30238);
+        event->date = QDateTime::currentDateTime().addSecs(-(qrand() % 86400)).addDays(-(qrand() % 4));
         event->duration = 320;
         event->level = EventLevel::Alarm;
         cachedEvents.append(event);
@@ -65,6 +65,9 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
     if (!data)
         return QVariant();
 
+    if (role == EventDataPtr)
+        return QVariant::fromValue(data);
+
     switch (index.column())
     {
     case 0:
@@ -82,6 +85,8 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
     case 3:
         if (role == Qt::DisplayRole)
             return data->date.toString();
+        else if (role == Qt::EditRole)
+            return data->date;
         break;
     }
 
@@ -130,7 +135,7 @@ public:
     {
     }
 
-    bool operator()(const EventsModel::EventData *e1, const EventsModel::EventData *e2)
+    bool operator()(const EventData *e1, const EventData *e2)
     {
         bool re;
 

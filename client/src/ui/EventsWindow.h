@@ -5,6 +5,7 @@
 
 class DVRServersView;
 class EventResultsView;
+class EventTimelineWidget;
 class QLabel;
 class QBoxLayout;
 class QDateTimeEdit;
@@ -31,6 +32,7 @@ private:
     QComboBox *m_levelFilter;
     QLabel *m_resultTitle;
     EventResultsView *m_resultsView;
+    EventTimelineWidget *m_timeline;
 
     void createDateFilter(QBoxLayout *layout);
     QWidget *createLevelFilter();

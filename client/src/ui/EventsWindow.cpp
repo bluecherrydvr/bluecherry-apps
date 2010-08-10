@@ -2,6 +2,7 @@
 #include "DVRServersView.h"
 #include "CameraSourcesModel.h"
 #include "EventResultsView.h"
+#include "EventTimelineWidget.h"
 #include <QBoxLayout>
 #include <QDateTimeEdit>
 #include <QComboBox>
@@ -113,9 +114,10 @@ QWidget *EventsWindow::createResultsView()
 
 QWidget *EventsWindow::createTimeline()
 {
-    QWidget *placeholder = new QWidget;
-    placeholder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    return placeholder;
+    m_timeline = new EventTimelineWidget;
+    m_timeline->setModel(m_resultsView->eventsModel());
+    m_timeline->setSelectionModel(m_resultsView->selectionModel());
+    return m_timeline;
 }
 
 void EventsWindow::closeEvent(QCloseEvent *event)
