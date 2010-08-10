@@ -4,23 +4,6 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-/*
- * This is a simple obfuscation and passcode transform key checker. The basic
- * principal is that the bits we use are not stored in the 64-bit key in the
- * order we need them. Instead each byte in the key is treated as a FILO, and
- * we round-robin these buckets leaving a bit in each one, and moving to the
- * next. We reverse this procedure to extract the bits.
- *
- * In addition, we munge the 8 bytes using an addition transform with a known
- * and shared 8-byte value. The values in each position are added to the same
- * position in the license key buckets, and we carry overflow to the next
- * bucket. We likewise reverse this procedure to decode the license key before
- * extracting bits from the buckets. On subtraction, we assume that if the
- * passcode value is larger than the key value we are subtracting from, then
- * we need to carry 1 from the higher bucket (subtract 1 from it, and add it
- * to the current bucket).
- */
-
 #include <string.h>
 #include <errno.h>
 
