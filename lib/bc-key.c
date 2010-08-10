@@ -36,7 +36,7 @@ struct bc_key_ctx {
 
 /* Our super secret passcode, used for license key codec */
 static unsigned char segment_end[BC_KEY_LEN] =
-	{ 0x32, 0x14, 0xfe, 0xed, 0xfu, 0xcc, 0x43, 0x25 };
+	{ 0x32, 0x14, 0xfe, 0xed, 0xf0, 0x0c, 0x43, 0x25 };
 
 static void bc_key_start(struct bc_key_ctx *ctx, unsigned char *key)
 {
@@ -52,7 +52,7 @@ static void bc_key_start(struct bc_key_ctx *ctx, unsigned char *key)
 		if (j < segment_end[i]) {
 			j += 0x100;
 			if (i < BC_KEY_LEN - 1)
-				key[i + 1]--;
+				ctx->bytes[i + 1]--;
 		}
 
 		ctx->bytes[i] = j - segment_end[i];
