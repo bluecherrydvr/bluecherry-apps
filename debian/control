@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Ben Collins <bcollins@bluecherry.com>
 Build-Depends: debhelper (>= 7), libsqlite3-dev, libmysqlclient-dev, libpq-dev,
- libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-devm libqt4-dev,
+ libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-dev, libqt4-dev,
  libphonon-dev, qt4-qmake
 Standards-Version: 3.8.4
 
