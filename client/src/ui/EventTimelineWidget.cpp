@@ -651,7 +651,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     tickRect.translate(qRound((double(preAreaSecs)/qMax(viewSeconds,1))*areaWidth),0);
     for (; tickRect.x() <= r.right(); tickRect.translate(tickRect.width(),0), dt = dt.addSecs(primaryTickSecs))
     {
-        lines.append(QLine(tickRect.x(), -5, tickRect.x(), 5));
+        lines.append(QLine(tickRect.x(), 1, tickRect.x(), r.bottom()));
 
         QString text = dt.toString(tr("h:mm"));
         QRect br;
@@ -664,7 +664,10 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     for (QVector<QLine>::Iterator it = lines.begin(); it != lines.end(); ++it)
         it->translate(0, y);
 
+    p.save();
+    p.setPen(QColor(205, 205, 205));
     p.drawLines(lines);
+    p.restore();
 
     /* Loop servers */
     y = topPadding();
@@ -678,6 +681,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
         ServerData *server = *it;
 
         textRect.moveTop(y);
+
         p.save();
         p.setFont(serverFont);
         p.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, server->server->displayName());
@@ -687,8 +691,6 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
         for (QHash<QString,LocationData*>::Iterator lit = server->locationsMap.begin();
              lit != server->locationsMap.end(); ++lit)
         {
-            p.fillRect(QRect(0, y, r.width(), rowHeight()), QColor(230, 230, 230));
-
             textRect.moveTop(y);
             p.drawText(textRect.adjusted(6, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter, (*lit)->location);
 
