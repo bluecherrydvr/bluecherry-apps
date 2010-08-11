@@ -10,6 +10,7 @@ class QLabel;
 class QBoxLayout;
 class QDateTimeEdit;
 class QComboBox;
+class QSlider;
 
 class EventsWindow : public QWidget
 {
@@ -25,6 +26,7 @@ private slots:
     void setStartDateEnabled(bool enabled);
     void levelFilterChanged();
     void updateResultTitle();
+    void timelineZoomChanged(int min, int max);
 
 private:
     DVRServersView *m_sourcesView;
@@ -33,6 +35,7 @@ private:
     QLabel *m_resultTitle;
     EventResultsView *m_resultsView;
     EventTimelineWidget *m_timeline;
+    QSlider *m_timelineZoom;
 
     void createDateFilter(QBoxLayout *layout);
     QWidget *createLevelFilter();

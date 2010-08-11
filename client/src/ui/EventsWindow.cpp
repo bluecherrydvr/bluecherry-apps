@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QTreeView>
 #include <QSettings>
+#include <QSlider>
 
 EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
@@ -114,10 +115,23 @@ QWidget *EventsWindow::createResultsView()
 
 QWidget *EventsWindow::createTimeline()
 {
+    QWidget *container = new QWidget;
+    QBoxLayout *layout = new QVBoxLayout(container);
+
     m_timeline = new EventTimelineWidget;
     m_timeline->setModel(m_resultsView->eventsModel());
     m_timeline->setSelectionModel(m_resultsView->selectionModel());
-    return m_timeline;
+
+    m_timelineZoom = new QSlider(Qt::Horizontal);
+    timelineZoomChanged(m_timeline->minZoomSeconds(), m_timeline->maxZoomSeconds());
+    m_timelineZoom->setValue(m_timeline->zoomSeconds());
+    connect(m_timelineZoom, SIGNAL(valueChanged(int)), m_timeline, SLOT(setZoomSeconds(int)));
+    connect(m_timeline, SIGNAL(zoomSecondsChanged(int)), m_timelineZoom, SLOT(setValue(int)));
+    connect(m_timeline, SIGNAL(zoomRangeChanged(int,int)), SLOT(timelineZoomChanged(int,int)));
+
+    layout->addWidget(m_timelineZoom);
+    layout->addWidget(m_timeline);
+    return container;
 }
 
 void EventsWindow::closeEvent(QCloseEvent *event)
@@ -148,4 +162,9 @@ void EventsWindow::levelFilterChanged()
 void EventsWindow::updateResultTitle()
 {
     m_resultTitle->setText(m_resultsView->eventsModel()->filterDescription());
+}
+
+void EventsWindow::timelineZoomChanged(int min, int max)
+{
+    m_timelineZoom->setRange(min, max);
 }

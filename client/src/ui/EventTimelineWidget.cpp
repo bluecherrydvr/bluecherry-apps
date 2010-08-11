@@ -4,6 +4,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QVector>
+#include <QScrollBar>
 #include <QDebug>
 #include <qmath.h>
 
@@ -21,10 +22,12 @@ struct ServerData
 };
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
-    : QAbstractItemView(parent)
+    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0)
 {
     setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
+
+    connect(horizontalScrollBar(), SIGNAL(valueChanged(int)), SLOT(setViewStartOffset(int)));
 }
 
 EventTimelineWidget::~EventTimelineWidget()
@@ -43,7 +46,12 @@ void EventTimelineWidget::clearData()
     serversMap.clear();
     rowsMap.clear();
     timeStart = timeEnd = QDateTime();
+    viewTimeStart = viewTimeEnd = QDateTime();
+    timeSeconds = viewSeconds = 0;
     viewport()->update();
+
+    emit zoomRangeChanged(0, 0);
+    emit zoomSecondsChanged(0);
 }
 
 void EventTimelineWidget::setModel(QAbstractItemModel *newModel)
@@ -106,6 +114,111 @@ QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
     }
 
     return QRect();
+}
+
+double EventTimelineWidget::zoomLevel() const
+{
+    /* Zoom level of 0 indicates that the entire span of time (timeStart to timeEnd) is
+     * visible; timeStart/viewTimeStart and timeEnd/viewTimeEnd are equal. From there, the
+     * span (by number of seconds) is scaled up to 100, with 100 indicating maximum zoom,
+     * which we define as 1 minute for simplicity. In other words, we scale viewSeconds
+     * between 60 and timeSeconds and use the inverse. */
+    if (viewSeconds == timeSeconds)
+        return 0;
+    return 100-((double(viewSeconds-minZoomSeconds())/double(timeSeconds-minZoomSeconds()))*100);
+}
+
+void EventTimelineWidget::setZoomLevel(double level)
+{
+    level = (100 - qBound(0.0, level, 100.0))/100.0;
+    int seconds = qRound((level*timeSeconds)+minZoomSeconds());
+    setZoomSeconds(seconds);
+}
+
+int EventTimelineWidget::zoomSeconds() const
+{
+    return viewSeconds;
+}
+
+void EventTimelineWidget::setZoomSeconds(int seconds)
+{
+    seconds = qBound(minZoomSeconds(), seconds, maxZoomSeconds());
+    if (viewSeconds == seconds)
+        return;
+
+    Q_ASSERT(!viewTimeStart.isNull());
+    Q_ASSERT(viewTimeStart >= timeStart);
+
+    viewSeconds = seconds;
+    viewTimeEnd = viewTimeStart.addSecs(seconds);
+    if (viewTimeEnd > timeEnd)
+    {
+        viewTimeStart = viewTimeStart.addSecs(viewTimeEnd.secsTo(timeEnd));
+        viewTimeEnd = timeEnd;
+    }
+
+    Q_ASSERT(viewTimeEnd > viewTimeStart);
+    Q_ASSERT(viewTimeStart >= timeStart);
+    Q_ASSERT(viewTimeEnd <= timeEnd);
+    Q_ASSERT(viewTimeStart.secsTo(viewTimeEnd) == viewSeconds);
+
+    updateScrollBars();
+    viewport()->update();
+
+    emit zoomSecondsChanged(seconds);
+}
+
+void EventTimelineWidget::setViewStartOffset(int secs)
+{
+    secs = qBound(0, secs, timeSeconds - viewSeconds);
+
+    viewTimeStart = timeStart.addSecs(secs);
+    viewTimeEnd = viewTimeStart.addSecs(viewSeconds);
+
+    Q_ASSERT(viewSeconds <= timeSeconds);
+    Q_ASSERT(viewSeconds >= minZoomSeconds());
+    Q_ASSERT(viewTimeEnd <= timeEnd);
+    Q_ASSERT(horizontalScrollBar()->maximum() == (timeSeconds - viewSeconds));
+
+    viewport()->update();
+}
+
+void EventTimelineWidget::ensureViewTimeSpan()
+{
+    if (viewTimeStart.isNull())
+        viewTimeStart = timeStart;
+    if (viewTimeEnd.isNull())
+        viewTimeEnd = timeEnd;
+
+    if (viewTimeStart < timeStart)
+    {
+        viewTimeEnd = viewTimeEnd.addSecs(viewTimeStart.secsTo(timeStart));
+        viewTimeStart = timeStart;
+    }
+
+    if (viewTimeEnd > timeEnd)
+    {
+        viewTimeStart = qMax(timeStart, viewTimeStart.addSecs(viewTimeEnd.secsTo(timeEnd)));
+        viewTimeEnd = timeEnd;
+    }
+
+    Q_ASSERT(viewTimeStart >= timeStart);
+    Q_ASSERT(viewTimeEnd <= timeEnd);
+
+    int nvs = viewTimeStart.secsTo(viewTimeEnd);
+    if (nvs != viewSeconds)
+    {
+        viewSeconds = nvs;
+        updateScrollBars();
+        emit zoomSecondsChanged(viewSeconds);
+    }
+}
+
+void EventTimelineWidget::updateScrollBars()
+{
+    horizontalScrollBar()->setRange(0, qMax(timeSeconds-viewSeconds, 0));
+    horizontalScrollBar()->setPageStep(qMin(3600, horizontalScrollBar()->maximum()));
+    horizontalScrollBar()->setSingleStep(horizontalScrollBar()->pageStep());
 }
 
 void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
@@ -276,7 +389,8 @@ void EventTimelineWidget::updateTimeRange()
     }
 
     timeSeconds = timeStart.secsTo(timeEnd);
-    viewport()->update();
+    emit zoomRangeChanged(minZoomSeconds(), maxZoomSeconds());
+    ensureViewTimeSpan();
 }
 
 void EventTimelineWidget::updateRowsMap(int row)
@@ -318,6 +432,8 @@ void EventTimelineWidget::addModelRows(int first, int last)
 
     updateRowsMap(last+1);
     timeSeconds = timeStart.secsTo(timeEnd);
+    emit zoomRangeChanged(minZoomSeconds(), maxZoomSeconds());
+    ensureViewTimeSpan();
     viewport()->update();
 }
 
@@ -433,13 +549,13 @@ QRect EventTimelineWidget::timeCellRect(const QDateTime &time, int duration) con
     Q_ASSERT(time >= timeStart);
     Q_ASSERT(time <= timeEnd);
 
-    double range = qMax(timeSeconds, 1);
+    double range = qMax(viewSeconds, 1);
 
     /* Save enough room for a zero-duration item at timeEnd */
     int width = viewportItemArea().width() - cellMinimum();
 
     QRect r;
-    r.setX(qRound((timeStart.secsTo(time) / range) * width));
+    r.setX(qRound((viewTimeStart.secsTo(time) / range) * width));
     r.setWidth(qMax(cellMinimum(), qRound((duration / range) * width)));
     return r;
 }
@@ -462,9 +578,9 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     /* Dates across the top; first one is fully qualified (space permitting) */
     bool first = true;
     int numDays = 0;
-    for (QDate date = timeStart.date(), last = timeEnd.date(); date <= last; date = date.addDays(1), ++numDays)
+    for (QDate date = viewTimeStart.date(), last = viewTimeEnd.date(); date <= last; date = date.addDays(1), ++numDays)
     {
-        QRect dateRect = timeCellRect(qMax(QDateTime(date), timeStart), 60*60*24);
+        QRect dateRect = timeCellRect(qMax(QDateTime(date), viewTimeStart), 60*60*24);
         dateRect.setHeight(r.height());
         dateRect.translate(50, 0);
         QString dateStr = date.toString(first ? tr("dddd, MMM d yyyy") : tr("dddd, MMM d"));
@@ -478,8 +594,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     /* Hours */
     int ny = y;
     QVector<QLine> lines;
-    lines.reserve(qCeil(double(timeSeconds)/3600));
-    for (QDateTime dt = timeStart; dt <= timeEnd; )
+    lines.reserve(qCeil(double(viewSeconds)/3600));
+    for (QDateTime dt = viewTimeStart; dt <= viewTimeEnd; )
     {
         QTime time = dt.time();
         int secSpan = (60-time.minute()-1)*60 + (60-time.second());
@@ -548,10 +664,14 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
     for (QList<EventData*>::Iterator it = locationData->events.begin(); it != locationData->events.end(); ++it)
     {
         EventData *data = *it;
+        if (data->date.addSecs(data->duration) < viewTimeStart)
+            continue;
 
         QRect cellRect = timeCellRect(data->date, data->duration);
+        cellRect.setX(qMax(cellRect.x(), 0));
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
+
         p->fillRect(cellRect, Qt::blue);
     }
 }

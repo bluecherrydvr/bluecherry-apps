@@ -12,17 +12,34 @@ struct LocationData;
 class EventTimelineWidget : public QAbstractItemView
 {
     Q_OBJECT
+    Q_PROPERTY(double zoomLevel READ zoomLevel WRITE setZoomLevel)
+    Q_PROPERTY(int zoomSeconds READ zoomSeconds WRITE setZoomSeconds NOTIFY zoomSecondsChanged)
 
 public:
     explicit EventTimelineWidget(QWidget *parent = 0);
     ~EventTimelineWidget();
 
-    virtual QSize sizeHint() const;
+    /* Zoom in the number of seconds of time visible on screen */
+    int zoomSeconds() const;
+    int minZoomSeconds() const { return qMin(timeSeconds, 60); }
+    int maxZoomSeconds() const { return timeSeconds; }
 
+    /* Zoom level in the range of 0-100, 0 showing everything with no scroll */
+    double zoomLevel() const;
+
+    virtual QSize sizeHint() const;
     virtual QRect visualRect(const QModelIndex &index) const;
     virtual void scrollTo(const QModelIndex &index, ScrollHint hint);
     virtual QModelIndex indexAt(const QPoint &point) const;
     virtual void setModel(QAbstractItemModel *model);
+
+public slots:
+    void setZoomLevel(double level);
+    void setZoomSeconds(int seconds);
+
+signals:
+    void zoomSecondsChanged(int zoomSeconds);
+    void zoomRangeChanged(int min, int max);
 
 protected:
     virtual void paintEvent(QPaintEvent *event);
@@ -44,14 +61,18 @@ protected:
 private slots:
     void rowsRemoved(const QModelIndex &parent, int start, int end);
     void modelReset();
+    void setViewStartOffset(int secs);
 
 private:
     QHash<DVRServer*,ServerData*> serversMap;
     QHash<EventData*,int> rowsMap;
 
-    /* Time represented in the viewport's item area; defines the x scale */
+    /* Total span of time represented by the data */
     QDateTime timeStart, timeEnd;
     int timeSeconds;
+    /* Span of time shown in the viewport */
+    QDateTime viewTimeStart, viewTimeEnd;
+    int viewSeconds;
 
     int leftPadding() const { return 50; }
     int topPadding() const { return 50; }
@@ -65,7 +86,12 @@ private:
     void clearData();
     /* Update the rowsMap starting with the item at row 'start' and continuing to the end */
     void updateRowsMap(int start = 0);
+    /* Update timeStart, timeEnd, and timeSeconds from the underlying data; will call ensureViewTimeSpan */
     void updateTimeRange();
+    /* Ensure that the view time is within the boundaries of the data, changing it (scrolling or zooming) if necessary */
+    void ensureViewTimeSpan();
+    /* Update the scroll bar position, which is necessary when viewSeconds has changed */
+    void updateScrollBars();
 
     EventData *eventAt(const QPoint &point) const;
 
