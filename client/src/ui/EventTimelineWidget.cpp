@@ -646,7 +646,9 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
                                          * areaWidth), r.height());
 
     /* Round to the first tick */
-    QDateTime dt = viewTimeStart.addSecs(primaryTickSecs - int(viewTimeStart.toTime_t() % primaryTickSecs));
+    int preAreaSecs = primaryTickSecs - int(viewTimeStart.toTime_t() % primaryTickSecs);
+    QDateTime dt = viewTimeStart.addSecs(preAreaSecs);
+    tickRect.translate(qRound((double(preAreaSecs)/qMax(viewSeconds,1))*areaWidth),0);
     for (; tickRect.x() <= r.right(); tickRect.translate(tickRect.width(),0), dt = dt.addSecs(primaryTickSecs))
     {
         lines.append(QLine(tickRect.x(), -5, tickRect.x(), 5));
