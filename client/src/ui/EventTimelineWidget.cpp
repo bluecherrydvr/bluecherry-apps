@@ -43,6 +43,7 @@ void EventTimelineWidget::clearData()
     serversMap.clear();
     rowsMap.clear();
     timeStart = timeEnd = QDateTime();
+    viewport()->update();
 }
 
 void EventTimelineWidget::setModel(QAbstractItemModel *newModel)
@@ -101,7 +102,6 @@ QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
         re.moveTop(y);
         re.setHeight(rowHeight());
 
-        qDebug() << re;
         return re;
     }
 
@@ -276,6 +276,7 @@ void EventTimelineWidget::updateTimeRange()
     }
 
     timeSeconds = timeStart.secsTo(timeEnd);
+    viewport()->update();
 }
 
 void EventTimelineWidget::updateRowsMap(int row)
@@ -317,6 +318,7 @@ void EventTimelineWidget::addModelRows(int first, int last)
 
     updateRowsMap(last+1);
     timeSeconds = timeStart.secsTo(timeEnd);
+    viewport()->update();
 }
 
 void EventTimelineWidget::rowsInserted(const QModelIndex &parent, int start, int end)
@@ -366,6 +368,9 @@ void EventTimelineWidget::rowsRemoved(const QModelIndex &parent, int start, int 
 
     updateRowsMap(start);
     updateTimeRange();
+    viewport()->update();
+
+    Q_ASSERT(rowsMap.size() == model()->rowCount());
 }
 
 void EventTimelineWidget::modelReset()
@@ -414,6 +419,8 @@ void EventTimelineWidget::dataChanged(const QModelIndex &topLeft, const QModelIn
     }
 
     updateTimeRange();
+    QAbstractItemView::dataChanged(topLeft, bottomRight);
+    viewport()->update();
 }
 
 QRect EventTimelineWidget::viewportItemArea() const
@@ -446,7 +453,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     QRect r = viewport()->rect();
 
     QAbstractItemModel *model = this->model();
-    if (!model)
+    if (!model || rowsMap.isEmpty())
         return;
 
     /* Draw timeline (x-axis) */
