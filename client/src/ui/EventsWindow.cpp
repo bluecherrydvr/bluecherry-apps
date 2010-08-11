@@ -166,5 +166,7 @@ void EventsWindow::updateResultTitle()
 
 void EventsWindow::timelineZoomChanged(int min, int max)
 {
+    bool block = m_timelineZoom->blockSignals(true);
     m_timelineZoom->setRange(min, max);
+    m_timelineZoom->blockSignals(block);
 }

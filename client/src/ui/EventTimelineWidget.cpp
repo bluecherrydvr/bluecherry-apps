@@ -602,32 +602,59 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 
         first = false;
     }
-
     p.restore();
 
-    /* Hours */
+    /* Determine the minimum width for the primary tick (the tick with a label), which is then used to determine its
+     * interval. This should be cached, not done on every paint. */
+    QFontMetrics fm(p.font());
+    int minTickWidth = qMax(fm.width(tr("22:22"))+6, 16);
+
+    /* Using the minimum tick width, find the minimum number of seconds per tick, and round up to an even
+     * and user-friendly duration */
+    int areaWidth = viewportItemArea().width() - cellMinimum();
+    int minTickSecs = qMax(int(viewSeconds / (double(areaWidth) / minTickWidth)), 1);
+    int primaryTickSecs = 0;
+
+    if (minTickSecs <= 30)
+        primaryTickSecs = 30;
+    else if (minTickSecs <= 60)
+        primaryTickSecs = 60;
+    else if (minTickSecs <= 300)
+        primaryTickSecs = 300;
+    else if (minTickSecs <= 600)
+        primaryTickSecs = 600;
+    else if (minTickSecs <= 3600)
+        primaryTickSecs = 3600;
+    else if (minTickSecs <= 7200)
+        primaryTickSecs = 7200;
+    else if (minTickSecs <= 21600)
+        primaryTickSecs = 21600;
+    else if (minTickSecs <= 43200)
+        primaryTickSecs = 43200;
+    else if (minTickSecs <= 86400)
+        primaryTickSecs = 86400;
+    else
+        primaryTickSecs = 604800;
+
+    /* Draw primary ticks and text */
     int ny = y;
     QVector<QLine> lines;
-    lines.reserve(qCeil(double(viewSeconds)/3600));
-    for (QDateTime dt = viewTimeStart; dt <= viewTimeEnd; )
+    lines.reserve(qCeil(double(viewSeconds)/primaryTickSecs));
+
+    /* Rectangle for each tick area */
+    QRect tickRect = QRect(50, y, qRound((double(primaryTickSecs) / qMax(viewSeconds,1))
+                                         * areaWidth), r.height());
+
+    /* Round to the first tick */
+    QDateTime dt = viewTimeStart.addSecs(primaryTickSecs - int(viewTimeStart.toTime_t() % primaryTickSecs));
+    for (; tickRect.x() <= r.right(); tickRect.translate(tickRect.width(),0), dt = dt.addSecs(primaryTickSecs))
     {
-        QTime time = dt.time();
-        int secSpan = (60-time.minute()-1)*60 + (60-time.second());
+        lines.append(QLine(tickRect.x(), -5, tickRect.x(), 5));
 
-        QRect hourRect = timeCellRect(dt, secSpan);
-        hourRect.moveTop(y);
-        hourRect.setHeight(r.height());
-        hourRect.translate(50, 0);
-        QString hourStr = time.toString(tr("h:mm"));
-
-        p.drawText(hourRect, 0, hourStr, &hourRect);
-        ny = qMax(ny, hourRect.bottom());
-
-        lines.append(QLine(hourRect.x(), -5, hourRect.x(), 5));
-
-        dt = dt.addSecs(secSpan);
-        Q_ASSERT(dt.time().hour() != time.hour());
-        Q_ASSERT(dt.time().minute() == 0 && dt.time().second() == 0);
+        QString text = dt.toString(tr("h:mm"));
+        QRect br;
+        p.drawText(tickRect.translated(qFloor(tickRect.width()/-2.0),0), Qt::AlignTop | Qt::AlignHCenter, text, &br);
+        ny = qMax(ny, br.bottom());
     }
 
     //y = ny + 8;
