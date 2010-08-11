@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QVector>
 #include <QScrollBar>
+#include <QFontMetrics>
 #include <QDebug>
 #include <qmath.h>
 
@@ -576,20 +577,33 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     int y = 0;
 
     /* Dates across the top; first one is fully qualified (space permitting) */
+    p.save();
+    QFont font = p.font();
+    font.setBold(true);
+    p.setFont(font);
+
     bool first = true;
     int numDays = 0;
     for (QDate date = viewTimeStart.date(), last = viewTimeEnd.date(); date <= last; date = date.addDays(1), ++numDays)
     {
-        QRect dateRect = timeCellRect(qMax(QDateTime(date), viewTimeStart), 60*60*24);
+        QDateTime dt = qMax(QDateTime(date), viewTimeStart);
+        QRect dateRect = timeCellRect(dt, dt.secsTo(QDateTime(date.addDays(1))));
         dateRect.setHeight(r.height());
         dateRect.translate(50, 0);
-        QString dateStr = date.toString(first ? tr("dddd, MMM d yyyy") : tr("dddd, MMM d"));
+        QString dateStr = date.toString(first ? tr("ddd, MMM d yyyy") : tr("ddd, MMM d"));
+
+        /* This is very slow and could be improved dramatically with the use of QTextLayout */
+        QFontMetrics fm(p.font());
+        if (fm.width(dateStr)+10 > dateRect.width())
+            continue;
 
         p.drawText(dateRect, 0, dateStr, &dateRect);
         y = qMax(y, dateRect.bottom());
 
         first = false;
     }
+
+    p.restore();
 
     /* Hours */
     int ny = y;
