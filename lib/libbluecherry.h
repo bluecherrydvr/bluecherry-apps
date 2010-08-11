@@ -78,7 +78,8 @@ struct bc_handle {
 };
 
 enum bc_key_type {
-	BC_KEY_TYPE_CAMERA,
+	BC_KEY_TYPE_CAMERA = 0,
+	BC_KEY_TYPE_CAMERA_EVAL,
 };
 
 struct bc_key_data {
@@ -86,6 +87,7 @@ struct bc_key_data {
 	u_int8_t		major;
 	u_int8_t		minor;
 	u_int8_t		count;
+	u_int8_t		eval_period;
 	u_int32_t		id;
 };
 

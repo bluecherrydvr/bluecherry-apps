@@ -174,10 +174,16 @@ int bc_key_process(struct bc_key_data *res, char *str)
 	if (res->major != 2 || res->minor != 1)
 		return EINVAL;
 
-	/* Padding for now, reserved for later */
-	bc_key_pullbits(&c, 7);
-
 	res->type = bc_key_pullbits(&c, 4);
+	if (res->type == BC_KEY_TYPE_CAMERA) {
+		bc_key_pullbits(&c, 7);
+		res->eval_period = 0;
+	} else if (res->type == BC_KEY_TYPE_CAMERA_EVAL) {
+		res->eval_period = bc_key_pullbits(&c, 7);
+	} else {
+		return EINVAL;
+	}
+
 	res->count = bc_key_pullbits(&c, 5);
 	res->id = bc_key_pullbits(&c, 32);
 

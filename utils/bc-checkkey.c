@@ -41,7 +41,14 @@ int main(int argc, char **argv)
 			printf("  E: Invalid key\n");
 		else {
 			printf("  I: Valid key\n");
-			printf("  I: type: %d\n", res.type);
+			if (res.type == BC_KEY_TYPE_CAMERA)
+				printf("  I: Standard cam\n");
+			else if (res.type == BC_KEY_TYPE_CAMERA_EVAL)
+				printf("  I: Eval cam: %d days\n",
+				       res.eval_period);
+			else
+				printf("  I: Unknown type: %d\n",
+				       res.type);
 			printf("  I: minor: %d\n", res.minor);
 			printf("  I: major: %d\n", res.major);
 			printf("  I: count: %d\n", res.count);
