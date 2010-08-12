@@ -23,7 +23,7 @@ struct ServerData
 };
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
-    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0)
+    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0)
 {
     setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
@@ -582,7 +582,7 @@ void EventTimelineWidget::dataChanged(const QModelIndex &topLeft, const QModelIn
 
 QRect EventTimelineWidget::viewportItemArea() const
 {
-    return viewport()->rect().adjusted(50, 50, 0, 0);
+    return viewport()->rect().adjusted(leftPadding(), topPadding(), 0, 0);
 }
 
 QRect EventTimelineWidget::timeCellRect(const QDateTime &time, int duration) const
@@ -607,10 +607,30 @@ void EventTimelineWidget::resizeEvent(QResizeEvent *event)
     QAbstractItemView::resizeEvent(event);
 }
 
+bool EventTimelineWidget::viewportEvent(QEvent *event)
+{
+    bool re = QAbstractItemView::viewportEvent(event);
+
+    if (event->type() == QEvent::Polish || event->type() == QEvent::FontChange)
+    {
+        /* Top padding for the X-axis label text */
+        QFont f = font();
+        QFontMetrics fm(font());
+        int height = fm.height();
+
+        f.setBold(true);
+        fm = QFontMetrics(f);
+        height += fm.height();
+
+        cachedTopPadding = height;
+    }
+
+    return re;
+}
+
 void EventTimelineWidget::paintEvent(QPaintEvent *event)
 {
     QPainter p(viewport());
-    //p.setBackground(palette().brush(QPalette::Window));
     p.eraseRect(event->rect());
 
     QRect r = viewport()->rect();
@@ -653,7 +673,6 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     Q_ASSERT(primaryTickSecs);
 
     /* Draw primary ticks and text */
-    int ny = y;
     QVector<QLine> lines;
     lines.reserve(qCeil(double(viewSeconds)/primaryTickSecs));
 
@@ -674,10 +693,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 
         QString text = dt.toString(tr("h:mm"));
         QRectF textRect = tickRect.translated(qRound(tickRect.width()/-2.0), 0);
-        QRectF br;
 
-        p.drawText(textRect, Qt::AlignTop | Qt::AlignHCenter, text, &br);
-        ny = qMax(ny, br.toRect().bottom());
+        p.drawText(textRect, Qt::AlignTop | Qt::AlignHCenter, text);
 
         if (textRect.right() >= r.right())
             break;
@@ -694,6 +711,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     p.setPen(QColor(205, 205, 205));
     p.drawLines(lines);
     p.restore();
+
+    p.drawLine(leftPadding(), y, r.width(), y);
 
     /* Loop servers */
     y = topPadding();
@@ -727,7 +746,6 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     }
 
     p.drawLine(leftPadding(), topPadding(), leftPadding(), r.height());
-    p.drawLine(leftPadding(), topPadding(), r.width(), topPadding());
 }
 
 void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationData)

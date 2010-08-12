@@ -44,6 +44,7 @@ signals:
 protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void resizeEvent(QResizeEvent *event);
+    virtual bool viewportEvent(QEvent *event);
 
     virtual QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     virtual bool isIndexHidden(const QModelIndex &index) const;
@@ -82,8 +83,10 @@ private:
      * and a minimum width and rounded up to a user-friendly duration in updateTimeRange */
     int primaryTickSecs;
 
+    int cachedTopPadding;
+
     int leftPadding() const { return 50; }
-    int topPadding() const { return 50; }
+    int topPadding() const { return cachedTopPadding; }
     int rowHeight() const { return 20; }
     int cellMinimum() const { return 8; }
 
