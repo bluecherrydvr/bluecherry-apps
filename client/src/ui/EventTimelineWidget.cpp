@@ -23,7 +23,8 @@ struct ServerData
 };
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
-    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0)
+    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0),
+      mouseRubberBand(0)
 {
     setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
@@ -268,7 +269,49 @@ int EventTimelineWidget::verticalOffset() const
 
 void EventTimelineWidget::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
 {
+    QItemSelection sel;
 
+    QRect itemArea = viewportItemArea();
+    int y = itemArea.top();
+
+    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    {
+        y += rowHeight();
+
+        for (QHash<QString,LocationData*>::ConstIterator locit = (*it)->locationsMap.begin();
+             locit != (*it)->locationsMap.end(); ++locit, y += rowHeight())
+        {
+            if (y < rect.top())
+                continue;
+            if (y > rect.bottom())
+                break;
+
+            LocationData *location = *locit;
+            for (QList<EventData*>::ConstIterator evit = location->events.begin();
+                 evit != location->events.end(); ++evit)
+            {
+                QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+                if (eventRect.x() >= rect.x())
+                {
+                    if (eventRect.x() > rect.right())
+                        break;
+
+                    qDebug() << "Event match" << rect << eventRect;
+
+                    int row = rowsMap[*evit];
+                    sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
+                }
+            }
+        }
+
+        if (y >= rect.bottom())
+            break;
+    }
+
+    if (!sel.isEmpty())
+        selectionModel()->select(sel, command);
+
+    viewport()->update();
 }
 
 QRegion EventTimelineWidget::visualRegionForSelection(const QItemSelection &selection) const
@@ -784,14 +827,48 @@ void EventTimelineWidget::mousePressEvent(QMouseEvent *event)
     }
 
     EventData *data = eventAt(event->pos());
-    if (!data)
-        return;
 
-    Q_ASSERT(rowsMap.contains(data));
-    QModelIndex index = model()->index(rowsMap[data], 0);
-    Q_ASSERT(index.isValid());
+    if (data)
+    {
+        Q_ASSERT(rowsMap.contains(data));
+        QModelIndex index = model()->index(rowsMap[data], 0);
+        Q_ASSERT(index.isValid());
 
-    selectionModel()->select(index, QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
-    viewport()->update();
-    event->accept();
+        selectionModel()->select(index, QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
+        viewport()->update();
+        event->accept();
+    }
+    else if (viewportItemArea().contains(event->pos()))
+    {
+        if (!mouseRubberBand)
+            mouseRubberBand = new QRubberBand(QRubberBand::Rectangle, this);
+        mouseClickPos = event->pos();
+        mouseRubberBand->setGeometry(QRect(mouseClickPos, QSize()));
+        mouseRubberBand->show();
+    }
+}
+
+void EventTimelineWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (mouseRubberBand)
+    {
+        Q_ASSERT(!mouseClickPos.isNull());
+        mouseRubberBand->setGeometry(QRect(mouseClickPos, event->pos()).normalized().intersect(viewportItemArea()));
+    }
+}
+
+void EventTimelineWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    if (mouseRubberBand)
+    {
+        if (event->modifiers() & Qt::AltModifier)
+            setSelection(mouseRubberBand->geometry(), QItemSelectionModel::Deselect);
+        else
+            setSelection(mouseRubberBand->geometry(), QItemSelectionModel::Select);
+        mouseRubberBand->hide();
+        mouseRubberBand->deleteLater();
+        mouseRubberBand = 0;
+    }
+
+    QAbstractItemView::mouseReleaseEvent(event);
 }

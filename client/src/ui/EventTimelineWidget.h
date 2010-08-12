@@ -8,6 +8,7 @@ class DVRServer;
 struct ServerData;
 class EventData;
 struct LocationData;
+class QRubberBand;
 
 class EventTimelineWidget : public QAbstractItemView
 {
@@ -46,6 +47,8 @@ protected:
     virtual void resizeEvent(QResizeEvent *event);
     virtual bool viewportEvent(QEvent *event);
     virtual void mousePressEvent(QMouseEvent *event);
+    virtual void mouseMoveEvent(QMouseEvent *event);
+    virtual void mouseReleaseEvent(QMouseEvent *event);
 
     virtual QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     virtual bool isIndexHidden(const QModelIndex &index) const;
@@ -85,6 +88,10 @@ private:
     int primaryTickSecs;
 
     int cachedTopPadding;
+
+    /* Mouse events */
+    QPoint mouseClickPos;
+    QRubberBand *mouseRubberBand;
 
     int leftPadding() const { return 50; }
     int topPadding() const { return cachedTopPadding; }
