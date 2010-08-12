@@ -45,6 +45,7 @@ protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void resizeEvent(QResizeEvent *event);
     virtual bool viewportEvent(QEvent *event);
+    virtual void mousePressEvent(QMouseEvent *event);
 
     virtual QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     virtual bool isIndexHidden(const QModelIndex &index) const;

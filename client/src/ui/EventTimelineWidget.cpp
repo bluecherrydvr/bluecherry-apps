@@ -750,11 +750,17 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 
 void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationData)
 {
+    p->save();
+    p->setPen(Qt::red);
+
     for (QList<EventData*>::Iterator it = locationData->events.begin(); it != locationData->events.end(); ++it)
     {
         EventData *data = *it;
         if (data->date.addSecs(data->duration) < viewTimeStart)
             continue;
+
+        Q_ASSERT(rowsMap.contains(data));
+        int modelRow = rowsMap[data];
 
         QRect cellRect = timeCellRect(data->date, data->duration);
         cellRect.setX(qMax(cellRect.x(), 0));
@@ -762,5 +768,30 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
         cellRect.setHeight(r.height());
 
         p->fillRect(cellRect, Qt::blue);
+        if (selectionModel()->rowIntersectsSelection(modelRow, QModelIndex()))
+            p->drawRect(cellRect.adjusted(0, 0, -1, -1));
     }
+
+    p->restore();
+}
+
+void EventTimelineWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() != Qt::LeftButton)
+    {
+        QAbstractItemView::mousePressEvent(event);
+        return;
+    }
+
+    EventData *data = eventAt(event->pos());
+    if (!data)
+        return;
+
+    Q_ASSERT(rowsMap.contains(data));
+    QModelIndex index = model()->index(rowsMap[data], 0);
+    Q_ASSERT(index.isValid());
+
+    selectionModel()->select(index, QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
+    viewport()->update();
+    event->accept();
 }
