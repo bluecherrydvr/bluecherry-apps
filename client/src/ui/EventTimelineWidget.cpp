@@ -23,7 +23,7 @@ struct ServerData
 };
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
-    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0)
+    : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0)
 {
     setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
@@ -163,10 +163,7 @@ void EventTimelineWidget::setZoomSeconds(int seconds)
     Q_ASSERT(viewTimeEnd <= timeEnd);
     Q_ASSERT(viewTimeStart.secsTo(viewTimeEnd) == viewSeconds);
 
-    updateScrollBars();
-    viewport()->update();
-
-    emit zoomSecondsChanged(seconds);
+    updateTimeRange(false);
 }
 
 void EventTimelineWidget::setViewStartOffset(int secs)
@@ -184,41 +181,10 @@ void EventTimelineWidget::setViewStartOffset(int secs)
     viewport()->update();
 }
 
-void EventTimelineWidget::ensureViewTimeSpan()
-{
-    if (viewTimeStart.isNull())
-        viewTimeStart = timeStart;
-    if (viewTimeEnd.isNull())
-        viewTimeEnd = timeEnd;
-
-    if (viewTimeStart < timeStart)
-    {
-        viewTimeEnd = viewTimeEnd.addSecs(viewTimeStart.secsTo(timeStart));
-        viewTimeStart = timeStart;
-    }
-
-    if (viewTimeEnd > timeEnd)
-    {
-        viewTimeStart = qMax(timeStart, viewTimeStart.addSecs(viewTimeEnd.secsTo(timeEnd)));
-        viewTimeEnd = timeEnd;
-    }
-
-    Q_ASSERT(viewTimeStart >= timeStart);
-    Q_ASSERT(viewTimeEnd <= timeEnd);
-
-    int nvs = viewTimeStart.secsTo(viewTimeEnd);
-    if (nvs != viewSeconds)
-    {
-        viewSeconds = nvs;
-        updateScrollBars();
-        emit zoomSecondsChanged(viewSeconds);
-    }
-}
-
 void EventTimelineWidget::updateScrollBars()
 {
     horizontalScrollBar()->setRange(0, qMax(timeSeconds-viewSeconds, 0));
-    horizontalScrollBar()->setPageStep(qMin(3600, horizontalScrollBar()->maximum()));
+    horizontalScrollBar()->setPageStep(primaryTickSecs);
     horizontalScrollBar()->setSingleStep(horizontalScrollBar()->pageStep());
 }
 
@@ -376,22 +342,98 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
     return true;
 }
 
-void EventTimelineWidget::updateTimeRange()
+void EventTimelineWidget::updateTimeRange(bool fromData)
 {
-    timeStart = timeEnd = QDateTime();
-
-    for (QHash<EventData*,int>::Iterator it = rowsMap.begin(); it != rowsMap.end(); ++it)
+    if (fromData)
     {
-        QDateTime date = it.key()->date;
-        if (timeStart.isNull() || date < timeStart)
-            timeStart = date;
-        if (timeEnd.isNull() || date > timeEnd)
-            timeEnd = date;
+        /* Refresh dataTimeStart and dataTimeEnd */
+        dataTimeStart = dataTimeEnd = QDateTime();
+
+        for (QHash<EventData*,int>::Iterator it = rowsMap.begin(); it != rowsMap.end(); ++it)
+        {
+            QDateTime date = it.key()->date;
+            if (dataTimeStart.isNull() || date < dataTimeStart)
+                dataTimeStart = date;
+            date = date.addSecs(qMax(it.key()->duration,1));
+            if (dataTimeEnd.isNull() || date > dataTimeEnd)
+                dataTimeEnd = date;
+        }
     }
 
+    /* Approximate viewSeconds for the tick calculations */
+    if (viewTimeStart.isNull() || viewTimeEnd.isNull())
+        viewSeconds = dataTimeStart.secsTo(dataTimeEnd);
+    else
+        viewSeconds = qMin(viewSeconds, dataTimeStart.secsTo(dataTimeEnd));
+
+    /* Determine the minimum width for the primary tick (the tick with a label),
+     * which is then used to determine its interval. */
+    QFontMetrics fm(font());
+    int minTickWidth = qMax(fm.width(tr("22:22"))+6, 16);
+
+    /* Using the minimum tick width, find the minimum number of seconds per tick,
+     * and round up to an even and user-friendly duration */
+    int areaWidth = viewportItemArea().width();
+    int minTickSecs = qMax(int(viewSeconds / (double(areaWidth) / minTickWidth)), 1);
+
+    if (minTickSecs <= 30)
+        primaryTickSecs = 30;
+    else if (minTickSecs <= 60)
+        primaryTickSecs = 60;
+    else if (minTickSecs <= 300)
+        primaryTickSecs = 300;
+    else if (minTickSecs <= 600)
+        primaryTickSecs = 600;
+    else if (minTickSecs <= 3600)
+        primaryTickSecs = 3600;
+    else if (minTickSecs <= 7200)
+        primaryTickSecs = 7200;
+    else if (minTickSecs <= 21600)
+        primaryTickSecs = 21600;
+    else if (minTickSecs <= 43200)
+        primaryTickSecs = 43200;
+    else if (minTickSecs <= 86400)
+        primaryTickSecs = 86400;
+    else
+        primaryTickSecs = 604800;
+
+    /* Set timeStart and timeEnd to rounded values of primaryTickSecs */
+    timeStart = dataTimeStart.addSecs(-int(dataTimeStart.toTime_t()%primaryTickSecs));
+    timeEnd = dataTimeEnd.addSecs(primaryTickSecs-int(dataTimeEnd.toTime_t()%primaryTickSecs));
     timeSeconds = timeStart.secsTo(timeEnd);
+
+    /* Update the view properties */
     emit zoomRangeChanged(minZoomSeconds(), maxZoomSeconds());
     ensureViewTimeSpan();
+    updateScrollBars();
+    emit zoomSecondsChanged(viewSeconds);
+    viewport()->update();
+}
+
+
+void EventTimelineWidget::ensureViewTimeSpan()
+{
+    if (viewTimeStart.isNull())
+        viewTimeStart = timeStart;
+    if (viewTimeEnd.isNull())
+        viewTimeEnd = timeEnd;
+
+    if (viewTimeStart < timeStart)
+    {
+        viewTimeEnd = viewTimeEnd.addSecs(viewTimeStart.secsTo(timeStart));
+        viewTimeStart = timeStart;
+    }
+
+    if (viewTimeEnd > timeEnd)
+    {
+        viewTimeStart = qMax(timeStart, viewTimeStart.addSecs(viewTimeEnd.secsTo(timeEnd)));
+        viewTimeEnd = timeEnd;
+    }
+
+    Q_ASSERT(viewTimeStart >= timeStart);
+    Q_ASSERT(viewTimeEnd <= timeEnd);
+
+    viewSeconds = viewTimeStart.secsTo(viewTimeEnd);
 }
 
 void EventTimelineWidget::updateRowsMap(int row)
@@ -425,17 +467,15 @@ void EventTimelineWidget::addModelRows(int first, int last)
         rowsMap.insert(data, i);
 
         /* Update time span */
-        if (timeStart.isNull() || data->date < timeStart)
-            timeStart = data->date;
-        if (timeEnd.isNull() || data->date > timeEnd)
-            timeEnd = data->date;
+        if (dataTimeStart.isNull() || data->date < dataTimeStart)
+            dataTimeStart = data->date;
+        QDateTime ed = data->date.addSecs(qMax(data->duration,1));
+        if (dataTimeEnd.isNull() || ed > dataTimeEnd)
+            dataTimeEnd = ed;
     }
 
     updateRowsMap(last+1);
-    timeSeconds = timeStart.secsTo(timeEnd);
-    emit zoomRangeChanged(minZoomSeconds(), maxZoomSeconds());
-    ensureViewTimeSpan();
-    viewport()->update();
+    updateTimeRange(false);
 }
 
 void EventTimelineWidget::rowsInserted(const QModelIndex &parent, int start, int end)
@@ -553,12 +593,18 @@ QRect EventTimelineWidget::timeCellRect(const QDateTime &time, int duration) con
     double range = qMax(viewSeconds, 1);
 
     /* Save enough room for a zero-duration item at timeEnd */
-    int width = viewportItemArea().width() - cellMinimum();
+    int width = viewportItemArea().width();
 
     QRect r;
     r.setX(qRound((viewTimeStart.secsTo(time) / range) * width));
     r.setWidth(qMax(cellMinimum(), qRound((duration / range) * width)));
     return r;
+}
+
+void EventTimelineWidget::resizeEvent(QResizeEvent *event)
+{
+    updateTimeRange(false);
+    QAbstractItemView::resizeEvent(event);
 }
 
 void EventTimelineWidget::paintEvent(QPaintEvent *event)
@@ -604,37 +650,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     }
     p.restore();
 
-    /* Determine the minimum width for the primary tick (the tick with a label), which is then used to determine its
-     * interval. This should be cached, not done on every paint. */
-    QFontMetrics fm(p.font());
-    int minTickWidth = qMax(fm.width(tr("22:22"))+6, 16);
-
-    /* Using the minimum tick width, find the minimum number of seconds per tick, and round up to an even
-     * and user-friendly duration */
-    int areaWidth = viewportItemArea().width() - cellMinimum();
-    int minTickSecs = qMax(int(viewSeconds / (double(areaWidth) / minTickWidth)), 1);
-    int primaryTickSecs = 0;
-
-    if (minTickSecs <= 30)
-        primaryTickSecs = 30;
-    else if (minTickSecs <= 60)
-        primaryTickSecs = 60;
-    else if (minTickSecs <= 300)
-        primaryTickSecs = 300;
-    else if (minTickSecs <= 600)
-        primaryTickSecs = 600;
-    else if (minTickSecs <= 3600)
-        primaryTickSecs = 3600;
-    else if (minTickSecs <= 7200)
-        primaryTickSecs = 7200;
-    else if (minTickSecs <= 21600)
-        primaryTickSecs = 21600;
-    else if (minTickSecs <= 43200)
-        primaryTickSecs = 43200;
-    else if (minTickSecs <= 86400)
-        primaryTickSecs = 86400;
-    else
-        primaryTickSecs = 604800;
+    Q_ASSERT(primaryTickSecs);
 
     /* Draw primary ticks and text */
     int ny = y;
@@ -642,23 +658,34 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     lines.reserve(qCeil(double(viewSeconds)/primaryTickSecs));
 
     /* Rectangle for each tick area */
+    int areaWidth = viewportItemArea().width();
     QRectF tickRect(50, y, (double(primaryTickSecs) / qMax(viewSeconds,1)) * areaWidth, r.height());
 
     /* Round to the first tick */
-    int preAreaSecs = primaryTickSecs - int(viewTimeStart.toTime_t() % primaryTickSecs);
+    int preAreaSecs = int(viewTimeStart.toTime_t() % primaryTickSecs);
+    if (preAreaSecs)
+        preAreaSecs = primaryTickSecs - preAreaSecs;
     QDateTime dt = viewTimeStart.addSecs(preAreaSecs);
     tickRect.translate((double(preAreaSecs)/qMax(viewSeconds,1))*areaWidth, 0);
-    for (; tickRect.x() <= r.right(); tickRect.translate(tickRect.width(), 0), dt = dt.addSecs(primaryTickSecs))
+
+    for (;;)
     {
         lines.append(QLine(qRound(tickRect.x()), 1, qRound(tickRect.x()), r.bottom()));
 
         QString text = dt.toString(tr("h:mm"));
+        QRectF textRect = tickRect.translated(qRound(tickRect.width()/-2.0), 0);
         QRectF br;
-        p.drawText(tickRect.translated(qRound(tickRect.width()/-2.0),0), Qt::AlignTop | Qt::AlignHCenter, text, &br);
+
+        p.drawText(textRect, Qt::AlignTop | Qt::AlignHCenter, text, &br);
         ny = qMax(ny, br.toRect().bottom());
+
+        if (textRect.right() >= r.right())
+            break;
+
+        tickRect.translate(tickRect.width(), 0);
+        dt = dt.addSecs(primaryTickSecs);
     }
 
-    //y = ny + 8;
     y = topPadding();
     for (QVector<QLine>::Iterator it = lines.begin(); it != lines.end(); ++it)
         it->translate(0, y);

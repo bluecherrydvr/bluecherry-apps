@@ -43,6 +43,7 @@ signals:
 
 protected:
     virtual void paintEvent(QPaintEvent *event);
+    virtual void resizeEvent(QResizeEvent *event);
 
     virtual QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     virtual bool isIndexHidden(const QModelIndex &index) const;
@@ -67,12 +68,19 @@ private:
     QHash<DVRServer*,ServerData*> serversMap;
     QHash<EventData*,int> rowsMap;
 
-    /* Total span of time represented by the data */
+    /* Total span of time represented by the timeline, rounded from dataTime */
     QDateTime timeStart, timeEnd;
-    int timeSeconds;
+    /* Span of time represented in data; end is inclusive of the duration */
+    QDateTime dataTimeStart, dataTimeEnd;
     /* Span of time shown in the viewport */
     QDateTime viewTimeStart, viewTimeEnd;
+    /* Span of seconds between timeStart and timeEnd */
+    int timeSeconds;
+    /* Span of seconds between viewTimeStart and viewTimeEnd */
     int viewSeconds;
+    /* Seconds of time per primary tick (a x-axis label), derived from the view area
+     * and a minimum width and rounded up to a user-friendly duration in updateTimeRange */
+    int primaryTickSecs;
 
     int leftPadding() const { return 50; }
     int topPadding() const { return 50; }
@@ -86,8 +94,9 @@ private:
     void clearData();
     /* Update the rowsMap starting with the item at row 'start' and continuing to the end */
     void updateRowsMap(int start = 0);
-    /* Update timeStart, timeEnd, and timeSeconds from the underlying data; will call ensureViewTimeSpan */
-    void updateTimeRange();
+    /* Call when the time range in the underlying data may have changed. If fromData is true, dataTimeStart
+     * and dataTimeEnd will be updated. Must be called regardless, to update various other cached data. */
+    void updateTimeRange(bool fromData = true);
     /* Ensure that the view time is within the boundaries of the data, changing it (scrolling or zooming) if necessary */
     void ensureViewTimeSpan();
     /* Update the scroll bar position, which is necessary when viewSeconds has changed */
