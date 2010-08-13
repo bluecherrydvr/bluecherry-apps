@@ -6,6 +6,8 @@
 #include <QPixmap>
 
 class QNetworkReply;
+class ThreadTask;
+class ImageDecodeTask;
 
 class MJpegStream : public QObject
 {
@@ -52,6 +54,7 @@ private:
     QByteArray m_httpBuffer;
     QUrl m_url;
     QPixmap m_currentFrame;
+    ImageDecodeTask *m_decodeTask;
     int m_httpBodyLength;
     State m_state;
     enum {
@@ -65,7 +68,8 @@ private:
 
     bool processHeaders();
     bool parseBuffer();
-    void decodeFrame(QByteArray &data);
+    void decodeFrame(const QByteArray &data);
+    Q_INVOKABLE void decodeFrameResult(ThreadTask *task);
 };
 
 #endif // MJPEGSTREAM_H

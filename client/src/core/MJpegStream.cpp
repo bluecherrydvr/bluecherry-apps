@@ -1,20 +1,22 @@
 #include "BluecherryApp.h"
 #include "MJpegStream.h"
+#include "utils/ImageDecodeTask.h"
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QDebug>
-#include <QImageReader>
-#include <QBuffer>
 #include <QImage>
+#include <QThreadPool>
 
 MJpegStream::MJpegStream(QObject *parent)
-    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_httpBodyLength(0)
+    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_decodeTask(0),
+      m_httpBodyLength(0)
 {
 }
 
 MJpegStream::MJpegStream(const QUrl &url, QObject *parent)
-    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_httpBodyLength(0)
+    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_decodeTask(0),
+      m_httpBodyLength(0)
 {
     setUrl(url);
 }
@@ -273,10 +275,7 @@ bool MJpegStream::parseBuffer()
         qDebug() << "mjpeg: read body of" << m_httpBodyLength << "bytes";
 
         /* Create a QByteArray for just the body, without copying */
-        {
-            QByteArray body = QByteArray::fromRawData(m_httpBuffer.data(), m_httpBodyLength);
-            decodeFrame(body);
-        }
+        decodeFrame(QByteArray(m_httpBuffer.data(), m_httpBodyLength));
 
         m_httpBuffer.remove(0, m_httpBodyLength);
         m_parserState = ParserBoundary;
@@ -294,24 +293,28 @@ void MJpegStream::requestError()
     setError(tr("HTTP error: %1").arg(m_httpReply->errorString()));
 }
 
-void MJpegStream::decodeFrame(QByteArray &data)
+void MJpegStream::decodeFrame(const QByteArray &data)
 {
-    QBuffer buffer(&data);
-    QImageReader reader(&buffer, "jpeg");
-    reader.setAutoDetectImageFormat(false);
+    /* This will cancel the task if it hasn't started yet; in-progress or completed tasks will still
+     * deliver a result */
+    if (m_decodeTask)
+        m_decodeTask->cancel();
 
-#if QT_VERSION >= 0x040700
-    QPixmap newFrame = QPixmap::fromImageReader(&reader);
-#else
-    QPixmap newFrame = QPixmap::fromImage(reader.read());
-#endif
+    m_decodeTask = new ImageDecodeTask(this, "decodeFrameResult");
+    m_decodeTask->setData(data);
 
-    if (newFrame.isNull())
-    {
-        qDebug() << "mjpeg: error while decoding frame:" << reader.errorString();
+    QThreadPool::globalInstance()->start(m_decodeTask);
+}
+
+void MJpegStream::decodeFrameResult(ThreadTask *task)
+{
+    ImageDecodeTask *decodeTask = static_cast<ImageDecodeTask*>(task);
+    if (m_decodeTask == decodeTask)
+        m_decodeTask = 0;
+
+    if (decodeTask->result().isNull())
         return;
-    }
 
-    m_currentFrame = newFrame;
+    m_currentFrame = QPixmap::fromImage(decodeTask->result());
     emit updateFrame(m_currentFrame);
 }
