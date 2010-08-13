@@ -326,6 +326,9 @@ void MJpegStream::decodeFrameResult(ThreadTask *task)
     if (decodeTask->result().isNull())
         return;
 
+    bool sizeChanged = decodeTask->result().size() != m_currentFrame.size();
     m_currentFrame = QPixmap::fromImage(decodeTask->result());
+    if (sizeChanged)
+        emit streamSizeChanged(m_currentFrame.size());
     emit updateFrame(m_currentFrame, decodeTask->scaleResults());
 }

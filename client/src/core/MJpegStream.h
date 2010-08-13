@@ -31,6 +31,7 @@ public:
 
     State state() const { return m_state; }
 
+    QSize streamSize() const { return m_currentFrame.size(); }
     QPixmap currentFrame() const { return m_currentFrame; }
 
 public slots:
@@ -43,6 +44,7 @@ signals:
     void stateChanged(int newState);
     void streamRunning();
     void streamStopped();
+    void streamSizeChanged(const QSize &size);
 
     void buildScaleSizes(QVector<QSize> &sizes);
 
