@@ -31,6 +31,15 @@ LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     setStatusMessage(tr("No\nCamera"));
 }
 
+LiveFeedWidget::~LiveFeedWidget()
+{
+    if (m_stream)
+    {
+        m_stream->disconnect(this);
+        m_stream->updateScaleSizes();
+    }
+}
+
 void LiveFeedWidget::clone(LiveFeedWidget *other)
 {
     setCamera(other->camera());
@@ -46,6 +55,7 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     if (m_stream)
     {
         m_stream->disconnect(this);
+        m_stream->updateScaleSizes();
         m_stream.clear();
     }
 
@@ -66,7 +76,9 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     if (m_stream)
     {
         m_currentFrame = m_stream->currentFrame();
-        connect(m_stream.data(), SIGNAL(updateFrame(QPixmap)), SLOT(updateFrame(QPixmap)));
+        connect(m_stream.data(), SIGNAL(updateFrame(QPixmap,QVector<QImage>)),
+                SLOT(updateFrame(QPixmap,QVector<QImage>)));
+        connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
         connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
         m_stream->start();
     }
@@ -111,9 +123,26 @@ void LiveFeedWidget::setFullScreen(bool on)
         close();
 }
 
-void LiveFeedWidget::updateFrame(const QPixmap &frame)
+void LiveFeedWidget::addScaleSize(QVector<QSize> &sizes)
 {
+    sizes.append(size());
+}
+
+void LiveFeedWidget::updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames)
+{
+    QSize desired = frame.size();
+    desired.scale(size(), Qt::KeepAspectRatio);
+
     m_currentFrame = frame;
+    for (QVector<QImage>::ConstIterator it = scaledFrames.begin(); it != scaledFrames.end(); ++it)
+    {
+        if (it->size() == desired)
+        {
+            m_currentFrame = QPixmap::fromImage(*it);
+            break;
+        }
+    }
+
     m_statusMsg.clear();
     update();
 }
@@ -169,7 +198,7 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
         {
             if (m_stream)
                 m_currentFrame = m_stream->currentFrame();
-            m_currentFrame = m_currentFrame.scaled(renderSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            m_currentFrame = m_currentFrame.scaled(renderSize, Qt::KeepAspectRatio, Qt::FastTransformation);
         }
 
         QPoint topLeft((r.width() - renderSize.width())/2, (r.height() - renderSize.height())/2);
@@ -238,6 +267,13 @@ void LiveFeedWidget::dropEvent(QDropEvent *event)
         setCamera(camera);
         event->acceptProposedAction();
     }
+}
+
+void LiveFeedWidget::resizeEvent(QResizeEvent *event)
+{
+    Q_UNUSED(event);
+    if (m_stream)
+        m_stream->updateScaleSizes();
 }
 
 void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)

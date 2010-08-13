@@ -37,12 +37,16 @@ public slots:
     void start();
     void stop();
 
+    void updateScaleSizes();
+
 signals:
     void stateChanged(int newState);
     void streamRunning();
     void streamStopped();
 
-    void updateFrame(const QPixmap &frame);
+    void buildScaleSizes(QVector<QSize> &sizes);
+
+    void updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames);
 
 private slots:
     void readable();
@@ -55,6 +59,8 @@ private:
     QUrl m_url;
     QPixmap m_currentFrame;
     ImageDecodeTask *m_decodeTask;
+    QVector<QSize> m_scaleSizes;
+
     int m_httpBodyLength;
     State m_state;
     enum {

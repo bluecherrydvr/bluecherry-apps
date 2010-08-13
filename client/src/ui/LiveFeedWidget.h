@@ -15,6 +15,7 @@ class LiveFeedWidget : public QWidget
 
 public:
     explicit LiveFeedWidget(QWidget *parent = 0);
+    virtual ~LiveFeedWidget();
 
     DVRCamera *camera() const { return m_camera; }
     QString statusMessage() const { return m_statusMsg; }
@@ -32,7 +33,8 @@ public slots:
     void saveSnapshot(const QString &file = QString());
 
 private slots:
-    void updateFrame(const QPixmap &frame);
+    void updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames);
+    void addScaleSize(QVector<QSize> &sizes);
     void mjpegStateChanged(int state);
 
 protected:
@@ -42,6 +44,7 @@ protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void contextMenuEvent(QContextMenuEvent *event);
     virtual void keyPressEvent(QKeyEvent *event);
+    virtual void resizeEvent(QResizeEvent *event);
 
 private:
     DVRCamera *m_camera, *m_dragCamera;

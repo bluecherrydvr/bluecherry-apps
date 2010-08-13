@@ -22,6 +22,11 @@ void ImageDecodeTask::runTask()
         qDebug() << "Image decoding error:" << reader.errorString();
         return;
     }
-
     m_data.clear();
+
+    m_scaleResults.resize(m_scaleSizes.size());
+    for (int i = 0; i < m_scaleSizes.size(); ++i)
+    {
+        m_scaleResults[i] = m_result.scaled(m_scaleSizes[i], Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
 }

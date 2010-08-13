@@ -38,7 +38,10 @@ void MJpegStream::setState(State newState)
     emit stateChanged(newState);
 
     if (newState == Streaming)
+    {
         emit streamRunning();
+        updateScaleSizes();
+    }
     else if (oldState == Streaming)
         emit streamStopped();
 }
@@ -293,6 +296,13 @@ void MJpegStream::requestError()
     setError(tr("HTTP error: %1").arg(m_httpReply->errorString()));
 }
 
+void MJpegStream::updateScaleSizes()
+{
+    /* Remove duplicates and such? */
+    m_scaleSizes.clear();
+    emit buildScaleSizes(m_scaleSizes);
+}
+
 void MJpegStream::decodeFrame(const QByteArray &data)
 {
     /* This will cancel the task if it hasn't started yet; in-progress or completed tasks will still
@@ -302,6 +312,7 @@ void MJpegStream::decodeFrame(const QByteArray &data)
 
     m_decodeTask = new ImageDecodeTask(this, "decodeFrameResult");
     m_decodeTask->setData(data);
+    m_decodeTask->setScaleSizes(m_scaleSizes);
 
     QThreadPool::globalInstance()->start(m_decodeTask);
 }
@@ -316,5 +327,5 @@ void MJpegStream::decodeFrameResult(ThreadTask *task)
         return;
 
     m_currentFrame = QPixmap::fromImage(decodeTask->result());
-    emit updateFrame(m_currentFrame);
+    emit updateFrame(m_currentFrame, decodeTask->scaleResults());
 }
