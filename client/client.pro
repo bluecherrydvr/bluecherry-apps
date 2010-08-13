@@ -1,4 +1,5 @@
-QT += core gui network phonon
+QT += core gui network
+QTPLUGIN += qjpeg
 
 TARGET = bluecherry-client
 TEMPLATE = app

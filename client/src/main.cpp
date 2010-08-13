@@ -2,6 +2,11 @@
 #include "ui/MainWindow.h"
 #include <QApplication>
 #include <QSettings>
+#include <QtPlugin>
+
+#ifdef QT_STATIC
+Q_IMPORT_PLUGIN(qjpeg)
+#endif
 
 int main(int argc, char *argv[])
 {
