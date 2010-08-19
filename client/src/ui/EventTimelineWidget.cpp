@@ -24,7 +24,7 @@ struct ServerData
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
     : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0),
-      mouseRubberBand(0)
+      cachedLeftPadding(-1), mouseRubberBand(0)
 {
     setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
@@ -296,8 +296,6 @@ void EventTimelineWidget::setSelection(const QRect &rect, QItemSelectionModel::S
                     if (eventRect.x() > rect.right())
                         break;
 
-                    qDebug() << "Event match" << rect << eventRect;
-
                     int row = rowsMap[*evit];
                     sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
                 }
@@ -345,6 +343,8 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         ServerData *serverData = new ServerData;
         serverData->server = event->server;
         it = serversMap.insert(serverData->server, serverData);
+
+        clearLeftPadding();
     }
 
     ServerData *serverData = *it;
@@ -362,6 +362,8 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         locationData->location = event->location;
         locationData->serverData = serverData;
         lit = serverData->locationsMap.insert(locationData->location, locationData);
+
+        clearLeftPadding();
     }
 
     LocationData *locationData = *lit;
@@ -452,7 +454,6 @@ void EventTimelineWidget::updateTimeRange(bool fromData)
     emit zoomSecondsChanged(viewSeconds);
     viewport()->update();
 }
-
 
 void EventTimelineWidget::ensureViewTimeSpan()
 {
@@ -666,6 +667,9 @@ bool EventTimelineWidget::viewportEvent(QEvent *event)
         height += fm.height();
 
         cachedTopPadding = height;
+
+        clearLeftPadding();
+        updateTimeRange(false);
     }
 
     return re;
@@ -721,7 +725,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 
     /* Rectangle for each tick area */
     int areaWidth = viewportItemArea().width();
-    QRectF tickRect(50, y, (double(primaryTickSecs) / qMax(viewSeconds,1)) * areaWidth, r.height());
+    QRectF tickRect(leftPadding(), y, (double(primaryTickSecs) / qMax(viewSeconds,1)) * areaWidth, r.height());
 
     /* Round to the first tick */
     int preAreaSecs = int(viewTimeStart.toTime_t() % primaryTickSecs);
@@ -816,6 +820,38 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
     }
 
     p->restore();
+}
+
+void EventTimelineWidget::clearLeftPadding()
+{
+    cachedLeftPadding = -1;
+}
+
+int EventTimelineWidget::leftPadding() const
+{
+    if (cachedLeftPadding >= 0)
+        return cachedLeftPadding;
+
+    QFont locationFont(font());
+    QFont serverFont(locationFont);
+    serverFont.setBold(true);
+
+    QFontMetrics locfm(locationFont);
+    QFontMetrics serverfm(serverFont);
+
+    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    {
+        cachedLeftPadding = qMax(cachedLeftPadding, serverfm.width((*it)->server->displayName()));
+
+        for (QHash<QString,LocationData*>::ConstIterator lit = (*it)->locationsMap.begin();
+             lit != (*it)->locationsMap.end(); ++lit)
+        {
+            cachedLeftPadding = qMax(cachedLeftPadding, locfm.width((*lit)->location)+6);
+        }
+    }
+
+    cachedLeftPadding += 4;
+    return cachedLeftPadding;
 }
 
 void EventTimelineWidget::mousePressEvent(QMouseEvent *event)

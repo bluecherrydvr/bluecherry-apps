@@ -88,15 +88,18 @@ private:
     int primaryTickSecs;
 
     int cachedTopPadding;
+    mutable int cachedLeftPadding;
 
     /* Mouse events */
     QPoint mouseClickPos;
     QRubberBand *mouseRubberBand;
 
-    int leftPadding() const { return 50; }
+    int leftPadding() const;
     int topPadding() const { return cachedTopPadding; }
     int rowHeight() const { return 20; }
     int cellMinimum() const { return 8; }
+
+    void clearLeftPadding();
 
     EventData *rowData(int row) const;
     bool findEvent(EventData *event, bool create, ServerData **server, LocationData **location, int *position);
