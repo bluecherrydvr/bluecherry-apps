@@ -26,7 +26,10 @@ private slots:
     void setStartDateEnabled(bool enabled);
     void levelFilterChanged();
     void updateResultTitle();
-    void timelineZoomChanged(int min, int max);
+
+    void timelineZoomChanged(int value);
+    void timelineZoomRangeChanged(int min, int max);
+    void timelineSliderChanged(int value);
 
 private:
     DVRServersView *m_sourcesView;

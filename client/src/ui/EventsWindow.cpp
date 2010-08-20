@@ -4,6 +4,7 @@
 #include "EventResultsView.h"
 #include "EventTimelineWidget.h"
 #include <QBoxLayout>
+#include <QGridLayout>
 #include <QDateTimeEdit>
 #include <QComboBox>
 #include <QLabel>
@@ -116,22 +117,28 @@ QWidget *EventsWindow::createResultsView()
 QWidget *EventsWindow::createTimeline()
 {
     QWidget *container = new QWidget;
-    QBoxLayout *layout = new QHBoxLayout(container);
+    QGridLayout *layout = new QGridLayout(container);
     layout->setMargin(0);
 
     m_timeline = new EventTimelineWidget;
     m_timeline->setModel(m_resultsView->eventsModel());
     m_timeline->setSelectionModel(m_resultsView->selectionModel());
 
-    m_timelineZoom = new QSlider(Qt::Vertical);
-    timelineZoomChanged(m_timeline->minZoomSeconds(), m_timeline->maxZoomSeconds());
-    m_timelineZoom->setValue(m_timeline->zoomSeconds());
-    connect(m_timelineZoom, SIGNAL(valueChanged(int)), m_timeline, SLOT(setZoomSeconds(int)));
-    connect(m_timeline, SIGNAL(zoomSecondsChanged(int)), m_timelineZoom, SLOT(setValue(int)));
-    connect(m_timeline, SIGNAL(zoomRangeChanged(int,int)), SLOT(timelineZoomChanged(int,int)));
+    m_timelineZoom = new QSlider(Qt::Horizontal);
+    timelineZoomRangeChanged(m_timeline->minZoomSeconds(), m_timeline->maxZoomSeconds());
+    timelineZoomChanged(m_timeline->zoomSeconds());
 
-    layout->addWidget(m_timeline);
-    layout->addWidget(m_timelineZoom);
+    connect(m_timeline, SIGNAL(zoomSecondsChanged(int)), SLOT(timelineZoomChanged(int)));
+    connect(m_timeline, SIGNAL(zoomRangeChanged(int,int)), SLOT(timelineZoomRangeChanged(int,int)));
+
+    connect(m_timelineZoom, SIGNAL(valueChanged(int)), SLOT(timelineSliderChanged(int)));
+
+    layout->addWidget(m_timeline, 0, 0, 1, 2);
+
+    QLabel *label = new QLabel(tr("Zoom:"));
+    layout->addWidget(label, 1, 0, 1, 1, Qt::AlignLeft | Qt::AlignVCenter);
+
+    layout->addWidget(m_timelineZoom, 1, 1);
     return container;
 }
 
@@ -165,7 +172,17 @@ void EventsWindow::updateResultTitle()
     m_resultTitle->setText(m_resultsView->eventsModel()->filterDescription());
 }
 
-void EventsWindow::timelineZoomChanged(int min, int max)
+void EventsWindow::timelineZoomChanged(int value)
+{
+    m_timelineZoom->setValue(m_timelineZoom->maximum() - (value - m_timelineZoom->minimum()));
+}
+
+void EventsWindow::timelineSliderChanged(int value)
+{
+    m_timeline->setZoomSeconds(m_timelineZoom->maximum() - (value - m_timelineZoom->minimum()));
+}
+
+void EventsWindow::timelineZoomRangeChanged(int min, int max)
 {
     bool block = m_timelineZoom->blockSignals(true);
     m_timelineZoom->setRange(min, max);
