@@ -116,21 +116,22 @@ QWidget *EventsWindow::createResultsView()
 QWidget *EventsWindow::createTimeline()
 {
     QWidget *container = new QWidget;
-    QBoxLayout *layout = new QVBoxLayout(container);
+    QBoxLayout *layout = new QHBoxLayout(container);
+    layout->setMargin(0);
 
     m_timeline = new EventTimelineWidget;
     m_timeline->setModel(m_resultsView->eventsModel());
     m_timeline->setSelectionModel(m_resultsView->selectionModel());
 
-    m_timelineZoom = new QSlider(Qt::Horizontal);
+    m_timelineZoom = new QSlider(Qt::Vertical);
     timelineZoomChanged(m_timeline->minZoomSeconds(), m_timeline->maxZoomSeconds());
     m_timelineZoom->setValue(m_timeline->zoomSeconds());
     connect(m_timelineZoom, SIGNAL(valueChanged(int)), m_timeline, SLOT(setZoomSeconds(int)));
     connect(m_timeline, SIGNAL(zoomSecondsChanged(int)), m_timelineZoom, SLOT(setValue(int)));
     connect(m_timeline, SIGNAL(zoomRangeChanged(int,int)), SLOT(timelineZoomChanged(int,int)));
 
-    layout->addWidget(m_timelineZoom);
     layout->addWidget(m_timeline);
+    layout->addWidget(m_timelineZoom);
     return container;
 }
 
