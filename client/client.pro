@@ -29,7 +29,8 @@ SOURCES += src/main.cpp \
     src/ui/EventTimelineWidget.cpp \
     src/utils/ThreadTask.cpp \
     src/utils/ThreadTaskCourier.cpp \
-    src/utils/ImageDecodeTask.cpp
+    src/utils/ImageDecodeTask.cpp \
+    src/ui/EventViewWindow.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -52,4 +53,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventTimelineWidget.h \
     src/utils/ThreadTask.h \
     src/utils/ThreadTaskCourier.h \
-    src/utils/ImageDecodeTask.h
+    src/utils/ImageDecodeTask.h \
+    src/ui/EventViewWindow.h

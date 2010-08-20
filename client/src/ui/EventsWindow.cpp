@@ -3,6 +3,7 @@
 #include "CameraSourcesModel.h"
 #include "EventResultsView.h"
 #include "EventTimelineWidget.h"
+#include "EventViewWindow.h"
 #include <QBoxLayout>
 #include <QGridLayout>
 #include <QDateTimeEdit>
@@ -111,6 +112,7 @@ QWidget *EventsWindow::createResultTitle()
 QWidget *EventsWindow::createResultsView()
 {
     m_resultsView = new EventResultsView;
+    connect(m_resultsView, SIGNAL(doubleClicked(QModelIndex)), SLOT(showEvent(QModelIndex)));
     return m_resultsView;
 }
 
@@ -187,4 +189,14 @@ void EventsWindow::timelineZoomRangeChanged(int min, int max)
     bool block = m_timelineZoom->blockSignals(true);
     m_timelineZoom->setRange(min, max);
     m_timelineZoom->blockSignals(block);
+}
+
+void EventsWindow::showEvent(const QModelIndex &index)
+{
+    EventData *data = index.data(EventsModel::EventDataPtr).value<EventData*>();
+
+    EventViewWindow *window = new EventViewWindow(this);
+    window->setAttribute(Qt::WA_DeleteOnClose);
+    window->setEvent(data);
+    window->show();
 }

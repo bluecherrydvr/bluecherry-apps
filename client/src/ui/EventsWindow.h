@@ -11,6 +11,7 @@ class QBoxLayout;
 class QDateTimeEdit;
 class QComboBox;
 class QSlider;
+class QModelIndex;
 
 class EventsWindow : public QWidget
 {
@@ -30,6 +31,8 @@ private slots:
     void timelineZoomChanged(int value);
     void timelineZoomRangeChanged(int min, int max);
     void timelineSliderChanged(int value);
+
+    void showEvent(const QModelIndex &index);
 
 private:
     DVRServersView *m_sourcesView;
