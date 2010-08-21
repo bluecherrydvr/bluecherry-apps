@@ -8,6 +8,7 @@ class QSplitter;
 class QLabel;
 class QListView;
 class QTextEdit;
+class EventTagsView;
 
 class EventViewWindow : public QWidget
 {
@@ -26,7 +27,7 @@ private:
 
     QSplitter *m_splitter;
     QLabel *m_infoLabel;
-    QListView *m_tagsView;
+    EventTagsView *m_tagsView;
     QTextEdit *m_commentsArea, *m_commentInput;
 
     QWidget *createInfoArea();

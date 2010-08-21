@@ -1,5 +1,7 @@
 #include "EventViewWindow.h"
 #include "EventsModel.h"
+#include "EventTagsView.h"
+#include "EventTagsModel.h"
 #include "core/DVRServer.h"
 #include <QBoxLayout>
 #include <QSplitter>
@@ -73,9 +75,10 @@ QWidget *EventViewWindow::createInfoArea()
     title->setStyleSheet(QLatin1String("font-weight:bold"));
     layout->addWidget(title);
 
-    m_tagsView = new QListView;
+    m_tagsView = new EventTagsView;
+    m_tagsView->setModel(new EventTagsModel(m_tagsView));
+    m_tagsView->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     m_tagsView->setFrameStyle(QFrame::NoFrame);
-    m_tagsView->setMinimumHeight(60);
     layout->addWidget(m_tagsView);
 
     line = new QFrame;

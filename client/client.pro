@@ -30,7 +30,10 @@ SOURCES += src/main.cpp \
     src/utils/ThreadTask.cpp \
     src/utils/ThreadTaskCourier.cpp \
     src/utils/ImageDecodeTask.cpp \
-    src/ui/EventViewWindow.cpp
+    src/ui/EventViewWindow.cpp \
+    src/ui/EventTagsView.cpp \
+    src/ui/EventTagsModel.cpp \
+    src/ui/EventTagsDelegate.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -54,4 +57,7 @@ HEADERS  += src/ui/MainWindow.h \
     src/utils/ThreadTask.h \
     src/utils/ThreadTaskCourier.h \
     src/utils/ImageDecodeTask.h \
-    src/ui/EventViewWindow.h
+    src/ui/EventViewWindow.h \
+    src/ui/EventTagsView.h \
+    src/ui/EventTagsModel.h \
+    src/ui/EventTagsDelegate.h
