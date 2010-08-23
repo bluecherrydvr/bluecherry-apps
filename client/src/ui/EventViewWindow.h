@@ -11,6 +11,7 @@ class QTextEdit;
 class QComboBox;
 class EventTagsView;
 class EventCommentsWidget;
+class ExpandingTextEdit;
 
 class EventViewWindow : public QWidget
 {
@@ -32,7 +33,7 @@ private:
     EventTagsView *m_tagsView;
     QComboBox *m_tagsInput;
     EventCommentsWidget *m_commentsArea;
-    QTextEdit *m_commentInput;
+    ExpandingTextEdit *m_commentInput;
 
     QWidget *createInfoArea();
     QWidget *createPlaybackArea();

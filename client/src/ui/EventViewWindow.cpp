@@ -3,6 +3,7 @@
 #include "EventTagsView.h"
 #include "EventTagsModel.h"
 #include "EventCommentsWidget.h"
+#include "ExpandingTextEdit.h"
 #include "core/DVRServer.h"
 #include <QBoxLayout>
 #include <QSplitter>
@@ -105,10 +106,8 @@ QWidget *EventViewWindow::createInfoArea()
     m_commentsArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     layout->addWidget(m_commentsArea);
 
-    m_commentInput = new QTextEdit;
-    m_commentInput->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    m_commentInput = new ExpandingTextEdit;
     m_commentInput->setText(tr("Type a comment here"));
-    m_commentInput->setFixedHeight(25);
     layout->addWidget(m_commentInput);
 
     /* For testing purposes */
