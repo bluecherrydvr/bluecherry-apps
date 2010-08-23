@@ -27,3 +27,14 @@ QVariant EventTagsModel::data(const QModelIndex &index, int role) const
 
     return QVariant();
 }
+
+void EventTagsModel::removeTag(const QModelIndex &index)
+{
+    /* TODO: Actually remove the tag from wherever we got it */
+    if (!index.isValid() || index.row() < 0 || index.row() >= tags.size())
+        return;
+
+    beginRemoveRows(QModelIndex(), index.row(), index.row());
+    tags.removeAt(index.row());
+    endRemoveRows();
+}

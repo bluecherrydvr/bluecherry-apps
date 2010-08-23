@@ -16,9 +16,14 @@ public:
     virtual void setModel(QAbstractItemModel *model);
     virtual void reset();
 
+public slots:
+    void removeTag(const QModelIndex &index);
+
 protected:
     virtual void rowsInserted(const QModelIndex &parent, int start, int end);
     virtual void rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end);
+
+    virtual void mousePressEvent(QMouseEvent *event);
 
 private:
     QSize cachedSizeHint;

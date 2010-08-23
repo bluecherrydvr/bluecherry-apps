@@ -14,6 +14,8 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QToolButton>
+#include <QComboBox>
+#include <QLineEdit>
 
 EventViewWindow::EventViewWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_event(0)
@@ -80,6 +82,11 @@ QWidget *EventViewWindow::createInfoArea()
     m_tagsView->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     m_tagsView->setFrameStyle(QFrame::NoFrame);
     layout->addWidget(m_tagsView);
+
+    m_tagsInput = new QComboBox;
+    m_tagsInput->setEditable(true);
+    m_tagsInput->lineEdit()->setPlaceholderText(tr("Add a tag"));
+    layout->addWidget(m_tagsInput);
 
     line = new QFrame;
     line->setFrameStyle(QFrame::Sunken | QFrame::HLine);
