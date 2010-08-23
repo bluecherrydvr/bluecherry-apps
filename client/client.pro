@@ -33,7 +33,8 @@ SOURCES += src/main.cpp \
     src/ui/EventViewWindow.cpp \
     src/ui/EventTagsView.cpp \
     src/ui/EventTagsModel.cpp \
-    src/ui/EventTagsDelegate.cpp
+    src/ui/EventTagsDelegate.cpp \
+    src/ui/EventCommentsWidget.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -60,4 +61,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventViewWindow.h \
     src/ui/EventTagsView.h \
     src/ui/EventTagsModel.h \
-    src/ui/EventTagsDelegate.h
+    src/ui/EventTagsDelegate.h \
+    src/ui/EventCommentsWidget.h

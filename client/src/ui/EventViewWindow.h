@@ -10,6 +10,7 @@ class QListView;
 class QTextEdit;
 class QComboBox;
 class EventTagsView;
+class EventCommentsWidget;
 
 class EventViewWindow : public QWidget
 {
@@ -30,7 +31,8 @@ private:
     QLabel *m_infoLabel;
     EventTagsView *m_tagsView;
     QComboBox *m_tagsInput;
-    QTextEdit *m_commentsArea, *m_commentInput;
+    EventCommentsWidget *m_commentsArea;
+    QTextEdit *m_commentInput;
 
     QWidget *createInfoArea();
     QWidget *createPlaybackArea();

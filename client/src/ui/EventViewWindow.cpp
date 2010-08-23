@@ -2,6 +2,7 @@
 #include "EventsModel.h"
 #include "EventTagsView.h"
 #include "EventTagsModel.h"
+#include "EventCommentsWidget.h"
 #include "core/DVRServer.h"
 #include <QBoxLayout>
 #include <QSplitter>
@@ -85,6 +86,7 @@ QWidget *EventViewWindow::createInfoArea()
 
     m_tagsInput = new QComboBox;
     m_tagsInput->setEditable(true);
+    m_tagsInput->setInsertPolicy(QComboBox::NoInsert);
 #if QT_VERSION >= 0x040700
     m_tagsInput->lineEdit()->setPlaceholderText(tr("Add a tag"));
 #endif
@@ -98,15 +100,25 @@ QWidget *EventViewWindow::createInfoArea()
     title->setStyleSheet(QLatin1String("font-weight:bold"));
     layout->addWidget(title);
 
-    m_commentsArea = new QTextEdit;
-    m_commentsArea->setReadOnly(true);
+    m_commentsArea = new EventCommentsWidget;
     m_commentsArea->setFrameStyle(QFrame::NoFrame);
+    m_commentsArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     layout->addWidget(m_commentsArea);
 
     m_commentInput = new QTextEdit;
+    m_commentInput->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     m_commentInput->setText(tr("Type a comment here"));
     m_commentInput->setFixedHeight(25);
     layout->addWidget(m_commentInput);
+
+    /* For testing purposes */
+    m_commentsArea->appendComment(QLatin1String("Author"), QDateTime::currentDateTime(),
+                                  QLatin1String("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed in "
+                                                "nisi quis augue ultrices sagittis. Fusce porttitor sagittis urna, "
+                                                "ac facilisis sem aliquet sit amet."));
+
+    m_commentsArea->appendComment(QLatin1String("Second Author"), QDateTime::currentDateTime(),
+                                  QLatin1String("Ok."));
 
     layout->addStretch();
 
