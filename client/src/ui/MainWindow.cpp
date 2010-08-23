@@ -6,6 +6,7 @@
 #include "EventsWindow.h"
 #include "NumericOffsetWidget.h"
 #include "RecentEventsView.h"
+#include "EventsModel.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -158,6 +159,7 @@ QWidget *MainWindow::createCameraControls()
 QWidget *MainWindow::createRecentEvents()
 {
     m_eventsView = new RecentEventsView;
+    m_eventsView->setModel(new EventsModel(m_eventsView));
     return m_eventsView;
 }
 
