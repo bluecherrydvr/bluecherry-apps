@@ -85,7 +85,9 @@ QWidget *EventViewWindow::createInfoArea()
 
     m_tagsInput = new QComboBox;
     m_tagsInput->setEditable(true);
+#if QT_VERSION >= 0x040700
     m_tagsInput->lineEdit()->setPlaceholderText(tr("Add a tag"));
+#endif
     layout->addWidget(m_tagsInput);
 
     line = new QFrame;
