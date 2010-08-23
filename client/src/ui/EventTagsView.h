@@ -24,6 +24,7 @@ protected:
     virtual void rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end);
 
     virtual void mousePressEvent(QMouseEvent *event);
+    virtual void mouseMoveEvent(QMouseEvent *event);
 
 private:
     QSize cachedSizeHint;

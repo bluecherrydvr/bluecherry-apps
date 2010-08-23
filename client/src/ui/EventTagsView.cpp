@@ -8,6 +8,7 @@ EventTagsView::EventTagsView(QWidget *parent)
 {
     setItemDelegate(new EventTagsDelegate(this));
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setMouseTracking(true);
 }
 
 QSize EventTagsView::minimumSizeHint() const
@@ -92,6 +93,15 @@ void EventTagsView::mousePressEvent(QMouseEvent *event)
     }
 
     QListView::mousePressEvent(event);
+}
+
+void EventTagsView::mouseMoveEvent(QMouseEvent *event)
+{
+    QModelIndex idx = indexAt(event->pos());
+    if (idx.isValid())
+        update(idx);
+
+    QListView::mouseMoveEvent(event);
 }
 
 void EventTagsView::removeTag(const QModelIndex &index)

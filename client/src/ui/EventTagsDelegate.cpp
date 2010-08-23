@@ -1,6 +1,8 @@
 #include "EventTagsDelegate.h"
 #include <QPainter>
 #include <QFontMetrics>
+#include <QCursor>
+#include <QStyleOptionViewItemV4>
 
 EventTagsDelegate::EventTagsDelegate(QObject *parent)
     : QStyledItemDelegate(parent)
@@ -11,8 +13,13 @@ void EventTagsDelegate::paint(QPainter *painter, const QStyleOptionViewItem &opt
 {
     QStyledItemDelegate::paint(painter, option, index);
 
+    QStyleOptionViewItemV4 opt4 = option;
+    Q_ASSERT(opt4.widget);
+
+    QRect delRect = QRect(option.rect.right()-16, option.rect.top(), 16, option.rect.height());
+
     painter->save();
-    if (option.state & QStyle::State_MouseOver || (option.state & QStyle::State_Active && option.state & QStyle::State_Selected))
+    if (option.state & QStyle::State_MouseOver && delRect.contains(opt4.widget->mapFromGlobal(QCursor::pos())))
     {
         painter->setPen(Qt::red);
         QFont font = painter->font();
