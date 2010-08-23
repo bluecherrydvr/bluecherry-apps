@@ -9,6 +9,7 @@ class QLabel;
 class QListView;
 class QTextEdit;
 class QComboBox;
+class QPushButton;
 class EventTagsView;
 class EventCommentsWidget;
 class ExpandingTextEdit;
@@ -25,6 +26,10 @@ public:
 protected:
     virtual void closeEvent(QCloseEvent *event);
 
+private slots:
+    void commentInputChanged();
+    void postComment();
+
 private:
     EventData *m_event;
 
@@ -34,6 +39,7 @@ private:
     QComboBox *m_tagsInput;
     EventCommentsWidget *m_commentsArea;
     ExpandingTextEdit *m_commentInput;
+    QPushButton *m_commentBtn;
 
     QWidget *createInfoArea();
     QWidget *createPlaybackArea();

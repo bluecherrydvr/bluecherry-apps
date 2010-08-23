@@ -16,6 +16,7 @@
 #include <QListView>
 #include <QTextEdit>
 #include <QToolButton>
+#include <QPushButton>
 #include <QComboBox>
 #include <QLineEdit>
 
@@ -104,11 +105,19 @@ QWidget *EventViewWindow::createInfoArea()
     m_commentsArea = new EventCommentsWidget;
     m_commentsArea->setFrameStyle(QFrame::NoFrame);
     m_commentsArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    m_commentsArea->setCursor(Qt::ArrowCursor);
     layout->addWidget(m_commentsArea);
 
     m_commentInput = new ExpandingTextEdit;
-    m_commentInput->setText(tr("Type a comment here"));
+    m_commentInput->setTabChangesFocus(true);
+    connect(m_commentInput, SIGNAL(textChanged()), SLOT(commentInputChanged()));
     layout->addWidget(m_commentInput);
+
+    m_commentBtn = new QPushButton(tr("Add comment"));
+    m_commentBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    m_commentBtn->hide();
+    connect(m_commentBtn, SIGNAL(clicked()), SLOT(postComment()));
+    layout->addWidget(m_commentBtn, 0, Qt::AlignRight | Qt::AlignVCenter);
 
     /* For testing purposes */
     m_commentsArea->appendComment(QLatin1String("Author"), QDateTime::currentDateTime(),
@@ -169,4 +178,30 @@ QWidget *EventViewWindow::createPlaybackArea()
 
     btnLayout->addStretch();
     return container;
+}
+
+void EventViewWindow::commentInputChanged()
+{
+    if (m_commentInput->document()->isEmpty())
+    {
+        m_commentBtn->setEnabled(false);
+        m_commentBtn->hide();
+    }
+    else
+    {
+        m_commentBtn->setEnabled(true);
+        m_commentBtn->show();
+    }
+}
+
+void EventViewWindow::postComment()
+{
+    QString text = m_commentInput->toPlainText();
+    if (text.isEmpty())
+        return;
+
+    m_commentsArea->appendComment(QLatin1String("Username"), QDateTime::currentDateTime(),
+                                  text);
+
+    m_commentInput->clear();
 }
