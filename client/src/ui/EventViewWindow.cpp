@@ -32,6 +32,7 @@ EventViewWindow::EventViewWindow(QWidget *parent)
     m_splitter->addWidget(createInfoArea());
     m_splitter->addWidget(createPlaybackArea());
     m_splitter->setStretchFactor(1, 1);
+    m_splitter->setChildrenCollapsible(false);
 
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/eventView/geometry")).toByteArray());
@@ -104,11 +105,13 @@ QWidget *EventViewWindow::createInfoArea()
 
     m_commentsArea = new EventCommentsWidget;
     m_commentsArea->setFrameStyle(QFrame::NoFrame);
-    m_commentsArea->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    m_commentsArea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_commentsArea->setMinimumWidth(160);
     m_commentsArea->setCursor(Qt::ArrowCursor);
     layout->addWidget(m_commentsArea);
 
     m_commentInput = new ExpandingTextEdit;
+    m_commentInput->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
     m_commentInput->setTabChangesFocus(true);
     connect(m_commentInput, SIGNAL(textChanged()), SLOT(commentInputChanged()));
     layout->addWidget(m_commentInput);
