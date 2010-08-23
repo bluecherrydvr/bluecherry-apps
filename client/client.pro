@@ -1,5 +1,5 @@
 QT += core gui network
-QTPLUGIN += qjpeg
+CONFIG(static):QTPLUGIN += qjpeg
 
 TARGET = bluecherry-client
 TEMPLATE = app
