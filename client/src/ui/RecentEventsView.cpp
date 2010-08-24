@@ -1,6 +1,7 @@
 #include "RecentEventsView.h"
 #include "EventsModel.h"
 #include "RecentEventDelegate.h"
+#include "EventViewWindow.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <QScrollBar>
@@ -81,6 +82,7 @@ int RecentEventsView::verticalOffset() const
 
 void RecentEventsView::doFullLayout()
 {
+    ensurePolished();
     m_rowPosition.clear();
 
     int y = 0;
@@ -102,6 +104,57 @@ void RecentEventsView::updateScrollbars()
     verticalScrollBar()->setMaximum(qMax(0, m_rowsBottom - viewport()->height()));
 }
 
+void RecentEventsView::rowsInserted(const QModelIndex &parent, int start, int end)
+{
+    if (parent != rootIndex())
+        return;
+
+    Q_ASSERT(start <= m_rowPosition.size() && start >= 0);
+    Q_ASSERT(end >= start);
+
+    int y = m_rowPosition[qMax(start-1, 0)];
+    for (int r = start; r <= end; ++r)
+    {
+        QSize sz = sizeHintForIndex(model()->index(r, 0, rootIndex()));
+        Q_ASSERT(sz.isValid());
+
+        m_rowPosition.insert(r, y);
+        y += sz.height();
+    }
+
+    for (int r = end+1; r < m_rowPosition.size(); ++r)
+    {
+        int height = ((r+1 < m_rowPosition.size()) ? m_rowPosition[r+1] : m_rowsBottom) - y;
+        m_rowPosition[r] = y;
+        y += height;
+    }
+
+    m_rowsBottom = y;
+    updateScrollbars();
+}
+
+void RecentEventsView::rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end)
+{
+    if (parent != rootIndex())
+        return;
+
+    Q_ASSERT(start <= m_rowPosition.size() && start >= 0);
+    Q_ASSERT(end >= start);
+
+    int y = m_rowPosition[start];
+    m_rowPosition.erase(m_rowPosition.begin()+start, m_rowPosition.begin()+end+1);
+
+    for (int r = start; r < m_rowPosition.size(); ++r)
+    {
+        int height = ((r+1 < m_rowPosition.size()) ? m_rowPosition[r+1] : m_rowsBottom) - y;
+        m_rowPosition[r] = y;
+        y += height;
+    }
+
+    m_rowsBottom = y;
+    updateScrollbars();
+}
+
 void RecentEventsView::paintEvent(QPaintEvent *event)
 {
     QPainter p(viewport());
@@ -109,6 +162,7 @@ void RecentEventsView::paintEvent(QPaintEvent *event)
 
     QStyleOptionViewItemV4 viewOpt = viewOptions();
 
+    Q_ASSERT(m_rowPosition.size() == (model() ? model()->rowCount(rootIndex()) : 0));
     for (int r = 0; r < m_rowPosition.size(); ++r)
     {
         int y = m_rowPosition[r] - verticalScrollBar()->value();
@@ -136,4 +190,38 @@ void RecentEventsView::resizeEvent(QResizeEvent *event)
 {
     QAbstractItemView::resizeEvent(event);
     updateScrollbars();
+}
+
+bool RecentEventsView::viewportEvent(QEvent *event)
+{
+    bool r = QAbstractItemView::viewportEvent(event);
+
+    switch (event->type())
+    {
+    case QEvent::FontChange:
+        doFullLayout();
+        break;
+    }
+
+    return r;
+}
+
+void RecentEventsView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    QModelIndex index;
+    if (event->button() == Qt::LeftButton && (index = indexAt(event->pos())).isValid())
+    {
+        event->accept();
+
+        EventData *data = index.data(EventsModel::EventDataPtr).value<EventData*>();
+        Q_ASSERT(data);
+
+        EventViewWindow *window = new EventViewWindow(this);
+        window->setAttribute(Qt::WA_DeleteOnClose);
+        window->setEvent(data);
+        window->show();
+        return;
+    }
+
+    QAbstractItemView::mouseDoubleClickEvent(event);
 }

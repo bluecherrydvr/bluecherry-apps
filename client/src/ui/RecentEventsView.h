@@ -26,6 +26,11 @@ public:
 protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void resizeEvent(QResizeEvent *event);
+    virtual bool viewportEvent(QEvent *event);
+    virtual void mouseDoubleClickEvent(QMouseEvent *event);
+
+    virtual void rowsInserted(const QModelIndex &parent, int start, int end);
+    virtual void rowsAboutToBeRemoved(const QModelIndex &parent, int start, int end);
 
     virtual QModelIndex moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers);
     virtual int horizontalOffset() const;
