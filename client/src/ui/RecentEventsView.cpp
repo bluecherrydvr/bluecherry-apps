@@ -1,5 +1,6 @@
 #include "RecentEventsView.h"
 #include "EventsModel.h"
+#include "RecentEventDelegate.h"
 #include <QPainter>
 #include <QPaintEvent>
 #include <QScrollBar>
@@ -8,6 +9,7 @@ RecentEventsView::RecentEventsView(QWidget *parent)
     : QAbstractItemView(parent), m_rowsBottom(0)
 {
     setSelectionMode(QAbstractItemView::NoSelection);
+    setItemDelegate(new RecentEventDelegate(this));
 }
 
 void RecentEventsView::setModel(EventsModel *model)
