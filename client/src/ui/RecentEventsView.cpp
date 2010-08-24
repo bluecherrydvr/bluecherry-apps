@@ -53,7 +53,38 @@ bool RecentEventsView::isIndexHidden(const QModelIndex &index) const
 
 void RecentEventsView::scrollTo(const QModelIndex &index, ScrollHint hint)
 {
+    if (!index.isValid())
+        return;
 
+    int row = index.row();
+    Q_ASSERT(row >= 0 && row < m_rowPosition.size());
+    int y = m_rowPosition[row];
+    int height = rowHeight(row);
+
+    int scroll = verticalScrollBar()->value();
+    int scrollBottom = scroll + viewport()->height();
+
+    switch (hint)
+    {
+    case EnsureVisible:
+        if (y >= scroll && (y+height) > scrollBottom)
+        {
+            /* Scroll down to show this at the bottom */
+            verticalScrollBar()->setValue(scroll + ((y+height)-scrollBottom));
+        }
+        else if (y < scroll)
+            verticalScrollBar()->setValue(y);
+        break;
+    case PositionAtTop:
+        verticalScrollBar()->setValue(y);
+        break;
+    case PositionAtBottom:
+        verticalScrollBar()->setValue(y + viewport()->height() - height);
+        break;
+    case PositionAtCenter:
+        verticalScrollBar()->setValue(y + ((viewport()->height() - height)/2));
+        break;
+    }
 }
 
 QRegion RecentEventsView::visualRegionForSelection(const QItemSelection &selection) const
@@ -124,7 +155,7 @@ void RecentEventsView::rowsInserted(const QModelIndex &parent, int start, int en
 
     for (int r = end+1; r < m_rowPosition.size(); ++r)
     {
-        int height = ((r+1 < m_rowPosition.size()) ? m_rowPosition[r+1] : m_rowsBottom) - y;
+        int height = rowHeight(r);
         m_rowPosition[r] = y;
         y += height;
     }
@@ -146,7 +177,7 @@ void RecentEventsView::rowsAboutToBeRemoved(const QModelIndex &parent, int start
 
     for (int r = start; r < m_rowPosition.size(); ++r)
     {
-        int height = ((r+1 < m_rowPosition.size()) ? m_rowPosition[r+1] : m_rowsBottom) - y;
+        int height = rowHeight(r);
         m_rowPosition[r] = y;
         y += height;
     }
@@ -166,7 +197,7 @@ void RecentEventsView::paintEvent(QPaintEvent *event)
     for (int r = 0; r < m_rowPosition.size(); ++r)
     {
         int y = m_rowPosition[r] - verticalScrollBar()->value();
-        int height = ((r+1 < m_rowPosition.size()) ? m_rowPosition[r+1] : m_rowsBottom) - y;
+        int height = rowHeight(r);
 
         if (y >= event->rect().bottom())
             break;

@@ -43,6 +43,13 @@ private:
 
     void doFullLayout();
     void updateScrollbars();
+
+    int rowHeight(int row) const;
 };
+
+inline int RecentEventsView::rowHeight(int row) const
+{
+    return ((row+1 < m_rowPosition.size()) ? m_rowPosition[row+1] : m_rowsBottom) - m_rowPosition[row];
+}
 
 #endif // RECENTEVENTSVIEW_H
