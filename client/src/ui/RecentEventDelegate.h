@@ -3,6 +3,8 @@
 
 #include <QStyledItemDelegate>
 
+class QTextLayout;
+
 class RecentEventDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
@@ -14,7 +16,7 @@ public:
     virtual void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
 
 private:
-    QString displayText(const QModelIndex &index) const;
+    void createText(const QModelIndex &index, const QStyleOptionViewItem &option, QTextLayout *layout) const;
 };
 
 #endif // RECENTEVENTDELEGATE_H
