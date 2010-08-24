@@ -43,23 +43,27 @@ MainWindow::MainWindow(QWidget *parent)
     mainLayout->addWidget(m_centerSplit, 1);
 
     QWidget *cameraContainer = new QWidget;
+    m_centerSplit->addWidget(cameraContainer);
+
     QBoxLayout *middleLayout = new QVBoxLayout(cameraContainer);
     middleLayout->setMargin(0);
 
     middleLayout->addWidget(createCameraArea(), 1);
-    middleLayout->addWidget(createCameraControls());
-    m_centerSplit->addWidget(cameraContainer);
-    m_centerSplit->setStretchFactor(0, 1);
 
-    QWidget *container = new QWidget;
-    m_centerSplit->addWidget(container);
-    QBoxLayout *containerLayout = new QHBoxLayout(container);
-    containerLayout->setMargin(0);
+    /* Controls area */
+    QBoxLayout *controlLayout = new QHBoxLayout;
+    middleLayout->addLayout(controlLayout);
 
-    containerLayout->addWidget(createRecentEvents());
-    QPushButton *eventsBtn = new QPushButton(tr("Open Events"));
+    controlLayout->addWidget(createCameraControls(), 1);
+
+    QPushButton *eventsBtn = new QPushButton(tr("Search Events"));
     connect(eventsBtn, SIGNAL(clicked()), SLOT(showEventsWindow()));
-    containerLayout->addWidget(eventsBtn, 0, Qt::AlignTop);
+    controlLayout->addWidget(eventsBtn);
+
+    /* Recent events */
+    QWidget *eventsWidget = createRecentEvents();
+    m_centerSplit->addWidget(eventsWidget);
+    m_centerSplit->setStretchFactor(0, 1);
 
     /* Set center widget */
     setCentralWidget(centerWidget);
