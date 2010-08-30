@@ -1,0 +1,11 @@
+*.log
+*.status
+*.lo
+*.o
+Makefile
+*.cache
+libtool
+*.la
+*.so
+*.a
+*
