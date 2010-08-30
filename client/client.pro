@@ -1,3 +1,4 @@
+
 QT += core gui network
 CONFIG(static):QTPLUGIN += qjpeg
 
@@ -6,6 +7,24 @@ TEMPLATE = app
 
 DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
 INCLUDEPATH += src
+
+# Qt defaults to setting this, breakpad defaults to not. Qt doesn't use wchar_t in the
+# public API, so we can use a different setting. Otherwise, it would cause linker errors.
+win32-msvc2008|win32-msvc2010:QMAKE_CXXFLAGS -= -Zc:wchar_t-
+
+!CONFIG(no-breakpad) {
+    DEFINES += USE_BREAKPAD
+    INCLUDEPATH += "$$PWD/breakpad/src"
+    SOURCES += src/utils/Breakpad.cpp
+
+    unix:LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+
+    win32 {
+        CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad/src/client/windows/Debug/lib"
+        CONFIG(release, debug|release):LIBS += -L"$$PWD/breakpad/src/client/windows/Release/lib"
+        LIBS += common.lib crash_generation_client.lib exception_handler.lib
+    }
+}
 
 SOURCES += src/main.cpp \
     src/ui/MainWindow.cpp \
