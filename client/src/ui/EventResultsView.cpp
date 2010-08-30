@@ -1,6 +1,6 @@
 #include "EventResultsView.h"
 #include "EventsModel.h"
-#include <QHeaderview>
+#include <QHeaderView>
 
 EventResultsView::EventResultsView(QWidget *parent)
     : QTableView(parent)
