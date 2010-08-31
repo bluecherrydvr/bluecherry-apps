@@ -1,5 +1,6 @@
 #include "core/BluecherryApp.h"
 #include "ui/MainWindow.h"
+#include "ui/CrashReportDialog.h"
 #include <QApplication>
 #include <QSettings>
 #include <QtPlugin>
@@ -22,8 +23,10 @@ int main(int argc, char *argv[])
         args.takeFirst();
         if (args.size() >= 1 && args[0] == QLatin1String("--crash"))
         {
-            QMessageBox::critical(0, QObject::tr("Crash"), QObject::tr("Crash!\n%1").arg((args.size() >= 2) ? args[1] : QString()), QMessageBox::Ok);
-            return 0;
+            CrashReportDialog dlg((args.size() >= 2) ? args[1] : QString());
+            dlg.exec();
+            if (dlg.result() != QDialog::Accepted)
+                return 0;
         }
     }
 

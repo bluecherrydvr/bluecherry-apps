@@ -55,7 +55,8 @@ SOURCES += src/main.cpp \
     src/ui/EventTagsDelegate.cpp \
     src/ui/EventCommentsWidget.cpp \
     src/ui/ExpandingTextEdit.cpp \
-    src/ui/RecentEventDelegate.cpp
+    src/ui/RecentEventDelegate.cpp \
+    src/ui/CrashReportDialog.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -85,4 +86,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventTagsDelegate.h \
     src/ui/EventCommentsWidget.h \
     src/ui/ExpandingTextEdit.h \
-    src/ui/RecentEventDelegate.h
+    src/ui/RecentEventDelegate.h \
+    src/ui/CrashReportDialog.h
