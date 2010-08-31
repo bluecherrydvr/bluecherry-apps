@@ -518,7 +518,7 @@
 		D2F9A4C7121336C7002747C1 /* crash_generation_server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = crash_generation_server.h; path = crash_generation/crash_generation_server.h; sourceTree = "<group>"; };
 		D2F9A4C8121336C7002747C1 /* crash_generation_server.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = crash_generation_server.cc; path = crash_generation/crash_generation_server.cc; sourceTree = "<group>"; };
 		D2F9A4CE121336F7002747C1 /* crash_generation_server_test.cc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = crash_generation_server_test.cc; path = tests/crash_generation_server_test.cc; sourceTree = "<group>"; };
-		D2F9A546121383A1002747C1 /* crash_generation_server_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = crash_generation_server_test; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2F9A546121383A1002747C1 /* handler_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = handler_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		DE43467411C72855004F095F /* da */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = da; path = sender/da.lproj/Localizable.strings; sourceTree = "<group>"; };
 		DE43467511C72857004F095F /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = sender/de.lproj/Localizable.strings; sourceTree = "<group>"; };
 		DE43467611C7285B004F095F /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = sender/es.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -743,7 +743,7 @@
 				F93DE2D10F82A67300608B94 /* minidump_file_writer_unittest */,
 				F93DE32C0F82C55600608B94 /* handler_test */,
 				D2F9A41512131EF0002747C1 /* libgtest.a */,
-				D2F9A546121383A1002747C1 /* crash_generation_server_test */,
+				D2F9A546121383A1002747C1 /* handler_test */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1090,7 +1090,7 @@
 			);
 			name = crash_generation_server_test;
 			productName = handler_test;
-			productReference = D2F9A546121383A1002747C1 /* crash_generation_server_test */;
+			productReference = D2F9A546121383A1002747C1 /* handler_test */;
 			productType = "com.apple.product-type.tool";
 		};
 		F92C53530ECCE349009BE4BA /* Inspector */ = {

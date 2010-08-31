@@ -1,4 +1,3 @@
-
 QT += core gui network
 CONFIG(static):QTPLUGIN += qjpeg
 
@@ -17,7 +16,12 @@ win32-msvc2008|win32-msvc2010:QMAKE_CXXFLAGS -= -Zc:wchar_t-
     INCLUDEPATH += "$$PWD/breakpad/src"
     SOURCES += src/utils/Breakpad.cpp
 
-    unix:LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+    unix:!macx:LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+
+    macx {
+        QMAKE_LFLAGS += -F$$PWD/breakpad-bin
+        LIBS += -framework Breakpad
+    }
 
     win32 {
         CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad/src/client/windows/Debug/lib"

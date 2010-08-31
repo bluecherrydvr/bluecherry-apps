@@ -52,19 +52,9 @@ void initBreakpad()
                          &breakpadDumpCallback, 0, ExceptionHandler::HANDLER_ALL);
 }
 
-#elif defined(Q_OS_MAC)
-/* Platform-specific code for Mac OS X */
-#include "client/mac/handler/exception_handler.h"
-using namespace google_breakpad;
-
-#error Not implemented
-
-#else
-/* Platform-specific code for Linux */
-#include "client/linux/handler/exception_handler.h"
+#elif defined(Q_OS_MAC) || defined(Q_OS_LINUX)
+/* Shared code for Mac OS X and Linux */
 #include <limits.h>
-using namespace google_breakpad;
-
 static QByteArray executablePath;
 
 bool breakpadDumpCallback(const char *dump_path, const char *minidump_id, void *, bool succeeded)
@@ -86,6 +76,28 @@ bool breakpadDumpCallback(const char *dump_path, const char *minidump_id, void *
     return true;
 }
 
+#if defined(Q_OS_MAC)
+/* Platform-specific code for Mac OS X */
+#include "client/mac/handler/exception_handler.h"
+#include <mach-o/dyld.h>
+
+void initBreakpad()
+{
+    quint32 size = 0;
+    _NSGetExecutablePath(0, &size);
+    executablePath.resize(++size);
+    _NSGetExecutablePath(executablePath.data(), &size);
+    executablePath.resize(size);
+
+    QString tmp = QDesktopServices::storageLocation(QDesktopServices::TempLocation);
+    new google_breakpad::ExceptionHandler(tmp.toStdString(), 0, &breakpadDumpCallback, 0, true, 0);
+}
+
+#else
+/* Platform-specific code for Linux */
+#include "client/linux/handler/exception_handler.h"
+using namespace google_breakpad;
+
 void initBreakpad()
 {
     QFileInfo fi(QLatin1String("/proc/self/exe"));
@@ -96,4 +108,5 @@ void initBreakpad()
     new ExceptionHandler(tmp.toStdString(), 0, &breakpadDumpCallback, 0, true);
 }
 
-#endif
+#endif /* !defined(Q_OS_MAC) */
+#endif /* defined(Q_OS_MAC) || defined(Q_OS_LINUX) */
