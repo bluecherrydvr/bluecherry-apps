@@ -7,9 +7,13 @@ TEMPLATE = app
 DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
 INCLUDEPATH += src
 
-# Qt defaults to setting this, breakpad defaults to not. Qt doesn't use wchar_t in the
-# public API, so we can use a different setting. Otherwise, it would cause linker errors.
-win32-msvc2008|win32-msvc2010:QMAKE_CXXFLAGS -= -Zc:wchar_t-
+win32-msvc2008|win32-msvc2010 {
+    # Qt defaults to setting this, breakpad defaults to not. Qt doesn't use wchar_t in the
+    # public API, so we can use a different setting. Otherwise, it would cause linker errors.
+    QMAKE_CXXFLAGS -= -Zc:wchar_t-
+    QMAKE_CXXFLAGS_RELEASE += -Zi
+    QMAKE_LFLAGS_RELEASE += /OPT:REF,ICF
+}
 
 !CONFIG(no-breakpad) {
     DEFINES += USE_BREAKPAD
