@@ -7,24 +7,53 @@
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
-    /* Populate with fake data */
     QList<DVRServer*> servers = bcApp->servers();
     foreach (DVRServer *server, servers)
-    {
-        EventData *event = new EventData;
-        event->server = server;
-        event->location = QLatin1String("camera-1");
-        event->type = QLatin1String("motion");
-        event->date = QDateTime::currentDateTime().addSecs(-(qrand() % 86400)).addDays(-(qrand() % 4));
-        event->duration = 320;
-        event->level = EventLevel::Alarm;
-        cachedEvents.append(event);
-
         connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
-    }
+
+    createTestData();
 
     applyFilters();
     sort(3, Qt::DescendingOrder);
+}
+
+/* Randomized events for testing until real ones are available */
+void EventsModel::createTestData()
+{
+    unsigned seed = QDateTime::currentDateTime().time().msec() * QDateTime::currentDateTime().time().second();
+    qsrand(seed);
+    qDebug("seed: %u", seed);
+
+    QList<DVRServer*> servers = bcApp->servers();
+    QDateTime end = QDateTime::currentDateTime().addSecs(-3600);
+    int duration = 86400 * 7; /* one week */
+
+    int count = (qrand() % 285) + 15;
+    for (int i = 0; i < count; ++i)
+    {
+        EventData *event = new EventData;
+        event->server = servers[qrand() % servers.size()];
+        event->date = end.addSecs(-((qrand() * qrand()) % duration));
+        event->duration = 1 + (qrand() % 1299);
+
+        bool useCamera = qrand() % 6;
+        if (useCamera)
+        {
+            event->location = QString::fromLatin1("camera-%1").arg(qrand() % event->server->cameras().size());
+            event->type = (qrand() % 10) ? QLatin1String("motion") : QLatin1String("offline");
+            event->level = (qrand() % 3) ? EventLevel::Warning : EventLevel::Alarm;
+            if (event->type == QLatin1String("offline"))
+                event->level = EventLevel::Critical;
+        }
+        else
+        {
+            event->location = QString::fromLatin1("system");
+            event->type = (qrand() % 10) ? QLatin1String("disk-full") : QLatin1String("exploded");
+            event->level = (qrand() % 5) ? EventLevel::Info : EventLevel::Critical;
+        }
+
+        cachedEvents.append(event);
+    }
 }
 
 int EventsModel::rowCount(const QModelIndex &parent) const

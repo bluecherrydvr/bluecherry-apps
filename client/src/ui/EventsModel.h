@@ -112,6 +112,8 @@ private:
 
     void applyFilters(bool fromCache = true);
     bool testFilter(EventData *data);
+
+    void createTestData();
 };
 
 inline QString EventLevel::uiString() const
