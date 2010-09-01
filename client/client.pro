@@ -50,7 +50,6 @@ SOURCES += src/main.cpp \
     src/core/MJpegStream.cpp \
     src/ui/RecentEventsView.cpp \
     src/ui/EventsModel.cpp \
-    src/ui/CameraSourcesModel.cpp \
     src/ui/EventsWindow.cpp \
     src/ui/EventResultsView.cpp \
     src/ui/EventTimelineWidget.cpp \
@@ -64,7 +63,8 @@ SOURCES += src/main.cpp \
     src/ui/EventCommentsWidget.cpp \
     src/ui/ExpandingTextEdit.cpp \
     src/ui/RecentEventDelegate.cpp \
-    src/ui/CrashReportDialog.cpp
+    src/ui/CrashReportDialog.cpp \
+    src/ui/EventSourcesModel.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -81,7 +81,6 @@ HEADERS  += src/ui/MainWindow.h \
     src/core/MJpegStream.h \
     src/ui/RecentEventsView.h \
     src/ui/EventsModel.h \
-    src/ui/CameraSourcesModel.h \
     src/ui/EventsWindow.h \
     src/ui/EventResultsView.h \
     src/ui/EventTimelineWidget.h \
@@ -95,4 +94,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventCommentsWidget.h \
     src/ui/ExpandingTextEdit.h \
     src/ui/RecentEventDelegate.h \
-    src/ui/CrashReportDialog.h
+    src/ui/CrashReportDialog.h \
+    src/ui/EventSourcesModel.h

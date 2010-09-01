@@ -1,6 +1,6 @@
 #include "EventsWindow.h"
 #include "DVRServersView.h"
-#include "CameraSourcesModel.h"
+#include "EventSourcesModel.h"
 #include "EventResultsView.h"
 #include "EventTimelineWidget.h"
 #include "EventViewWindow.h"
@@ -28,7 +28,7 @@ EventsWindow::EventsWindow(QWidget *parent)
 
     /* Filters */
     m_sourcesView = new DVRServersView;
-    m_sourcesView->setModel(new CameraSourcesModel(m_sourcesView));
+    m_sourcesView->setModel(new EventSourcesModel(m_sourcesView));
     m_sourcesView->setMaximumWidth(180);
     filtersLayout->addWidget(m_sourcesView);
 
