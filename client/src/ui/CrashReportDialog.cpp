@@ -14,6 +14,7 @@
 #include <QNetworkReply>
 #include <QDialogButtonBox>
 #include <QPropertyAnimation>
+#include <QShowEvent>
 
 static const char * const reportUrl = "???";
 
@@ -104,6 +105,17 @@ CrashReportDialog::~CrashReportDialog()
         m_uploadReply->abort();
         delete m_uploadReply;
     }
+}
+
+void CrashReportDialog::showEvent(QShowEvent *event)
+{
+    if (!event->spontaneous())
+    {
+        activateWindow();
+        raise();
+    }
+
+    QDialog::showEvent(event);
 }
 
 void CrashReportDialog::uploadAndRestart()
