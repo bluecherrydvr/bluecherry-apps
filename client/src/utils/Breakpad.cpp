@@ -35,7 +35,12 @@ bool breakpadDumpCallback(const wchar_t *dump_path, const wchar_t *minidump_id, 
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
+
+#ifndef QT_NO_DEBUG
+    return false;
+#else
     return true;
+#endif
 }
 
 void initBreakpad()
@@ -73,7 +78,11 @@ bool breakpadDumpCallback(const char *dump_path, const char *minidump_id, void *
     char * const args[] = { (char*)executablePath.constData(), param, succeeded ? dumpFile : 0, 0 };
 
     execv(executablePath.constData(), args);
+#ifndef QT_NO_DEBUG
+    return false;
+#else
     return true;
+#endif
 }
 
 #if defined(Q_OS_MAC)
