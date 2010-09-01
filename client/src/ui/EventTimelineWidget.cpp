@@ -798,7 +798,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationData)
 {
     p->save();
-    p->setPen(Qt::red);
+    p->setRenderHint(QPainter::Antialiasing, true);
+    p->setPen(Qt::NoPen);
 
     for (QList<EventData*>::Iterator it = locationData->events.begin(); it != locationData->events.end(); ++it)
     {
@@ -814,9 +815,15 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
 
-        p->fillRect(cellRect, data->level.color());
+        p->setBrush(data->level.color());
+        p->drawRoundedRect(cellRect.adjusted(0, 1, 0, -1), 2, 2);
+
         if (selectionModel()->rowIntersectsSelection(modelRow, QModelIndex()))
+        {
+            p->setPen(Qt::red);
             p->drawRect(cellRect.adjusted(0, 0, -1, -1));
+            p->setPen(Qt::NoPen);
+        }
     }
 
     p->restore();
