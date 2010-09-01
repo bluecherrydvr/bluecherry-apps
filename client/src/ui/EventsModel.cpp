@@ -25,6 +25,9 @@ void EventsModel::createTestData()
     qDebug("seed: %u", seed);
 
     QList<DVRServer*> servers = bcApp->servers();
+    if (servers.isEmpty())
+        return;
+
     QDateTime end = QDateTime::currentDateTime().addSecs(-3600);
     int duration = 86400 * 7; /* one week */
 
@@ -37,7 +40,7 @@ void EventsModel::createTestData()
         event->duration = 1 + (qrand() % 1299);
 
         bool useCamera = qrand() % 6;
-        if (useCamera)
+        if (useCamera && !event->server->cameras().isEmpty())
         {
             event->location = QString::fromLatin1("camera-%1").arg(qrand() % event->server->cameras().size());
             event->type = (qrand() % 10) ? QLatin1String("motion") : QLatin1String("offline");
