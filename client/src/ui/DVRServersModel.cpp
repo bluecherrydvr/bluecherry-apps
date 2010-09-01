@@ -130,6 +130,8 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
                     .arg(Qt::escape(server->hostname()))
                     .arg(Qt::escape(server->username()));
         }
+        else if (role == ServerPtrRole)
+            return QVariant::fromValue(server);
 
         switch (index.column())
         {

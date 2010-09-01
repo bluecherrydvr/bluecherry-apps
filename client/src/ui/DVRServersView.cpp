@@ -2,6 +2,7 @@
 #include "DVRServersModel.h"
 #include "OptionsDialog.h"
 #include "OptionsServerPage.h"
+#include "core/DVRServer.h"
 #include <QHeaderView>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -29,8 +30,12 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
     QAction *aEditServer = 0;
 
     QModelIndex index = indexAt(event->pos());
+    DVRServer *server = index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>();
     if (index.isValid())
     {
+        if (!server)
+            return;
+
         menu.addAction(tr("Connect"))->setEnabled(false);
         aEditServer = menu.addAction(tr("Edit server"));
         menu.addSeparator();
@@ -53,7 +58,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         OptionsServerPage *pg = static_cast<OptionsServerPage*>(dlg->pageWidget(OptionsDialog::ServerPage));
 
         if (action == aEditServer)
-            pg->setCurrentServer(static_cast<DVRServersModel*>(model())->serverForRow(index));
+            pg->setCurrentServer(server);
         else if (action == aAddServer)
             pg->addNewServer();
 

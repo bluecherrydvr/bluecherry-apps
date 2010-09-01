@@ -1,7 +1,9 @@
 #include "EventSourcesModel.h"
+#include "DVRServersModel.h"
 #include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
+#include <QFont>
 
 EventSourcesModel::EventSourcesModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -71,6 +73,12 @@ QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
             {
                 return tr("Everything");
             }
+            else if (role == Qt::FontRole)
+            {
+                QFont f;
+                f.setBold(true);
+                return f;
+            }
             else if (role == Qt::CheckStateRole)
             {
                 foreach (const ServerData &sd, servers)
@@ -99,6 +107,8 @@ QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
                 else
                     return Qt::Unchecked;
             }
+            else if (role == DVRServersModel::ServerPtrRole)
+                return QVariant::fromValue(sd.server);
         }
     }
     else
