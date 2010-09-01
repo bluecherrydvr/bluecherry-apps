@@ -3,6 +3,7 @@
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
 #include <QTextDocument>
+#include <QColor>
 
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -108,6 +109,10 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
                                                    data->level.uiString(), Qt::escape(data->location),
                                                    Qt::escape(data->server->displayName()),
                                                    data->date.toString());
+    }
+    else if (role == Qt::ForegroundRole)
+    {
+        return data->level.color();
     }
 
     switch (index.column())

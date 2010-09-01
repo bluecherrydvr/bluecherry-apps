@@ -814,7 +814,7 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
 
-        p->fillRect(cellRect, Qt::blue);
+        p->fillRect(cellRect, data->level.color());
         if (selectionModel()->rowIntersectsSelection(modelRow, QModelIndex()))
             p->drawRect(cellRect.adjusted(0, 0, -1, -1));
     }

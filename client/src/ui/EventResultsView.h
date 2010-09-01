@@ -1,10 +1,10 @@
 #ifndef EVENTRESULTSVIEW_H
 #define EVENTRESULTSVIEW_H
 
-#include <QTableView>
+#include <QListView>
 #include "EventsModel.h"
 
-class EventResultsView : public QTableView
+class EventResultsView : public QListView
 {
     Q_OBJECT
 
@@ -14,7 +14,7 @@ public:
     EventsModel *eventsModel() const { return static_cast<EventsModel*>(model()); }
 
 private:
-    using QTableView::setModel;
+    using QListView::setModel;
 };
 
 #endif // EVENTRESULTSVIEW_H
