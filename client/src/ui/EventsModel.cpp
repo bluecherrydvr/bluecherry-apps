@@ -277,9 +277,35 @@ QString EventsModel::filterDescription() const
     else
         re = tr("All events");
 
-    if (filterSources.isEmpty())
-        re += tr(" on all cameras");
-    else if (filterSources.size() > 1)
+    bool allCameras = true;
+    for (QHash<DVRServer*,QSet<QString> >::ConstIterator it = filterSources.begin();
+         it != filterSources.end(); ++it)
+    {
+        if (it->count() != it.key()->cameras().size()+1)
+            allCameras = false;
+    }
+
+    if (!filterSources.isEmpty() && filterSources.size() != bcApp->servers().size())
+    {
+        if (filterSources.size() == 1)
+        {
+            /* Single server */
+            if (!allCameras)
+            {
+                if (filterSources.begin()->size() == 1)
+                    re += tr(" on %1").arg(*filterSources.begin()->begin());
+                else
+                    re += tr(" on selected cameras");
+            }
+
+            re += tr(" from %1").arg(filterSources.begin().key()->displayName());
+        }
+        else if (!allCameras)
+            re += tr(" on selected cameras");
+        else
+            re += tr(" from selected servers");
+    }
+    else if (!allCameras)
         re += tr(" on selected cameras");
 
     if (!filterDateBegin.isNull() && !filterDateEnd.isNull())
