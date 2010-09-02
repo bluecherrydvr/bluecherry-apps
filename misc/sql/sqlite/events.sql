@@ -29,7 +29,7 @@ INSERT INTO EventTypesSys VALUES ('power-outage');
 -- A separate table for camera events
 CREATE TABLE EventsCam (
 	id integer PRIMARY KEY NOT NULL,
-	time timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	time integer NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	level_id varchar(10),
 	device_id integer,
 	type_id varchar(10),
@@ -46,7 +46,7 @@ CREATE TABLE EventsCam (
 -- A separate table for system events
 CREATE TABLE EventsSystem (
 	id integer PRIMARY KEY NOT NULL,
-	time timestamp DEFAULT CURRENT_TIMESTAMP,
+	time integer DEFAULT CURRENT_TIMESTAMP,
 	level_id varchar(10),
 	type_id varchar(10),
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
@@ -58,7 +58,7 @@ CREATE TABLE EventsSystem (
 -- Comments on an event (Cam only?)
 CREATE TABLE EventComments (
 	id integer PRIMARY KEY NOT NULL,
-	time timestamp DEFAULT CURRENT_TIMESTAMP,
+	time integer DEFAULT CURRENT_TIMESTAMP,
 	event_id integer,
 	user_id integer,
 	comment varchar,
@@ -85,7 +85,7 @@ INSERT INTO TagNames (name) VALUES ('vandalism');
 
 CREATE TABLE EventTags (
 	id integer PRIMARY KEY NOT NULL,
-	time timestamp DEFAULT CURRENT_TIMESTAMP,
+	time integer DEFAULT CURRENT_TIMESTAMP,
 	event_id integer,
 	tag_id varchar(10),
 	user_id integer,
