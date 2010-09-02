@@ -79,7 +79,6 @@ public:
 
     explicit EventsModel(QObject *parent = 0);
 
-    void setFilterCameras(const QSet<DVRCamera*> &cameras);
     void setFilterDates(const QDateTime &begin, const QDateTime &end);
     void setFilterLevel(EventLevel minimum);
 
@@ -95,6 +94,8 @@ public:
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
 public slots:
+    void setFilterSources(const QMap<DVRServer*,QStringList> &sources);
+
     void setFilterBeginDate(const QDateTime &begin) { setFilterDates(begin, filterDateEnd); }
     void setFilterEndDate(const QDateTime &end) { setFilterDates(filterDateBegin, end); }
 
@@ -108,7 +109,7 @@ private:
     QList<EventData*> items, cachedEvents;
 
     /* Filters */
-    QSet<DVRCamera*> filterCameras;
+    QHash<DVRServer*,QSet<QString> > filterSources;
     QDateTime filterDateBegin, filterDateEnd;
     EventLevel filterLevel;
 

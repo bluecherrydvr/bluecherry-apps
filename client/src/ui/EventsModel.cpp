@@ -254,11 +254,13 @@ void EventsModel::applyFilters(bool fromCache)
 
 bool EventsModel::testFilter(EventData *data)
 {
-    /* TODO: cameras */
-
     if (data->level < filterLevel ||
         (!filterDateBegin.isNull() && data->date < filterDateBegin) ||
         (!filterDateEnd.isNull() && data->date > filterDateEnd))
+        return false;
+
+    QHash<DVRServer*,QSet<QString> >::Iterator it = filterSources.find(data->server);
+    if (!filterSources.isEmpty() && (it == filterSources.end() || !it->contains(data->location)))
         return false;
 
     return true;
@@ -275,12 +277,10 @@ QString EventsModel::filterDescription() const
     else
         re = tr("All events");
 
-    if (filterCameras.isEmpty())
+    if (filterSources.isEmpty())
         re += tr(" on all cameras");
-    else if (filterCameras.size() > 1)
+    else if (filterSources.size() > 1)
         re += tr(" on selected cameras");
-    else
-        re += tr(" on %1").arg((*filterCameras.begin())->displayName());
 
     if (!filterDateBegin.isNull() && !filterDateEnd.isNull())
         re += tr(" from %1 to %2");
@@ -311,6 +311,45 @@ void EventsModel::setFilterLevel(EventLevel minimum)
 
     bool fast = minimum > filterLevel;
     filterLevel = minimum;
+
+    applyFilters(!fast);
+}
+
+void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
+{
+    bool fast = false;
+
+    if (sources.size() <= filterSources.size())
+    {
+        fast = true;
+        /* If the new sources contain any that the old don't, we can't do fast filtering */
+        for (QMap<DVRServer*,QStringList>::Iterator nit = sources.begin(); nit != sources.end(); ++nit)
+        {
+            QHash<DVRServer*,QSet<QString> >::Iterator oit = filterSources.find(nit.key());
+            if (oit == filterSources.end())
+            {
+                fast = false;
+                break;
+            }
+
+            for (QStringList::Iterator it = nit->begin(); it != nit->end(); ++it)
+            {
+                if (!oit->contains(*it))
+                {
+                    fast = false;
+                    break;
+                }
+            }
+
+            if (!fast)
+                break;
+        }
+    }
+
+    filterSources.clear();
+    for (QMap<DVRServer*,QStringList>::Iterator nit = sources.begin(); nit != sources.end(); ++nit)
+        filterSources.insert(nit.key(), nit->toSet());
+
 
     applyFilters(!fast);
 }

@@ -7,6 +7,7 @@
 
 class DVRServer;
 class DVRCamera;
+class QStringList;
 
 class EventSourcesModel : public QAbstractItemModel
 {
@@ -15,6 +16,8 @@ class EventSourcesModel : public QAbstractItemModel
 public:
     explicit EventSourcesModel(QObject *parent = 0);
 
+    virtual QMap<DVRServer*,QStringList> checkedSources() const;
+
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const;
@@ -22,6 +25,9 @@ public:
     virtual Qt::ItemFlags flags(const QModelIndex &index) const;
     virtual QVariant data(const QModelIndex &index, int role) const;
     virtual bool setData(const QModelIndex &index, const QVariant &value, int role);
+
+signals:
+    void checkedSourcesChanged(const QMap<DVRServer*,QStringList> &checkedSources);
 
 private:
     struct ServerData

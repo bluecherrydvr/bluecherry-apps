@@ -4,6 +4,7 @@
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
 #include <QFont>
+#include <QStringList>
 
 EventSourcesModel::EventSourcesModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -18,6 +19,29 @@ EventSourcesModel::EventSourcesModel(QObject *parent)
         sd.checkState.fill(true, sd.cameras.size()+1);
         servers.append(sd);
     }
+}
+
+QMap<DVRServer*,QStringList> EventSourcesModel::checkedSources() const
+{
+    QMap<DVRServer*,QStringList> re;
+
+    for (QVector<ServerData>::ConstIterator it = servers.begin(); it != servers.end(); ++it)
+    {
+        QStringList sl;
+
+        for (int i = 0; i < it->checkState.size(); ++i)
+        {
+            if (!i && it->checkState[i])
+                sl.append(QLatin1String("system"));
+            else if (it->checkState[i])
+                sl.append(QString::fromLatin1("camera-%1").arg(it->cameras[i-1]->uniqueID));
+        }
+
+        if (!sl.isEmpty())
+            re.insert(it->server, sl);
+    }
+
+    return re;
 }
 
 int EventSourcesModel::rowCount(const QModelIndex &parent) const
@@ -60,6 +84,7 @@ QModelIndex EventSourcesModel::parent(const QModelIndex &child) const
 
 Qt::ItemFlags EventSourcesModel::flags(const QModelIndex &index) const
 {
+    Q_UNUSED(index);
     return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
 }
 
@@ -168,5 +193,9 @@ bool EventSourcesModel::setData(const QModelIndex &idx, const QVariant &value, i
     }
 
     emit dataChanged(index(0, 0), index(rowCount()-1, 0));
+
+    if (receivers(SIGNAL(checkedSourcesChanged(QMap<DVRServer*,QStringList>))))
+        emit checkedSourcesChanged(checkedSources());
+
     return true;
 }

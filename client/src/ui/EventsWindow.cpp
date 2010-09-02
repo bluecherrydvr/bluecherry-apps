@@ -28,9 +28,13 @@ EventsWindow::EventsWindow(QWidget *parent)
 
     /* Filters */
     m_sourcesView = new DVRServersView;
-    m_sourcesView->setModel(new EventSourcesModel(m_sourcesView));
+    EventSourcesModel *sourcesModel = new EventSourcesModel(m_sourcesView);
+    m_sourcesView->setModel(sourcesModel);
     m_sourcesView->setMaximumWidth(180);
     filtersLayout->addWidget(m_sourcesView);
+
+    connect(sourcesModel, SIGNAL(checkedSourcesChanged(QMap<DVRServer*,QStringList>)),
+            m_resultsView->eventsModel(), SLOT(setFilterSources(QMap<DVRServer*,QStringList>)));
 
     createDateFilter(filtersLayout);
 
