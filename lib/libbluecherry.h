@@ -9,6 +9,7 @@
 
 #include <sys/types.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <libconfig.h>
 
 #include <linux/videodev2.h>
@@ -77,6 +78,8 @@ struct bc_handle {
 	int			gop;
 };
 
+/* Bluecherry License Key */
+
 enum bc_key_type {
 	BC_KEY_TYPE_CAMERA = 0,
 	BC_KEY_TYPE_CAMERA_EVAL,
@@ -90,6 +93,67 @@ struct bc_key_data {
 	u_int8_t		eval_period;
 	u_int32_t		id;
 };
+
+/* Events */
+
+typedef enum {
+	BC_EVENT_L_INFO = 0,
+	BC_EVENT_L_WARN,
+	BC_EVENT_L_ALRM,
+	BC_EVENT_L_CRIT,
+} bc_event_level_t;
+
+typedef enum {
+	BC_EVENT_CAM_T_MOTION = 0,
+	BC_EVENT_CAM_T_NOT_FOUND,
+	BC_EVENT_CAM_T_VLOSS,
+	BC_EVENT_CAM_T_ALOSS,
+} bc_event_cam_type_t;
+
+typedef enum {
+	BC_EVENT_SYS_T_DISK = 0,
+	BC_EVENT_SYS_T_CRASH,
+	BC_EVENT_SYS_T_BOOT,
+	BC_EVENT_SYS_T_SHUTDOWN,
+	BC_EVENT_SYS_T_REBOOT,
+	BC_EVENT_SYS_T_POWER_OUTAGE,
+} bc_event_sys_type_t;
+
+typedef struct bc_event_cam * bc_event_cam_t;
+#define BC_EVENT_CAM_FAIL ((bc_event_cam_t)NULL)
+
+/* Doubly linked lists */
+
+struct bc_list_struct {
+	struct bc_list_struct *next, *prev;
+};
+
+#define BC_DECLARE_LIST(name) \
+	struct bc_list_struct name = { &(name), &(name) }
+
+#define bc_list_add(item, head) do {		\
+	(head)->next->prev = (item);		\
+	(item)->next = (head)->next;		\
+	(item)->prev = (head);			\
+	(head)->next = (item);			\
+}while(0)
+
+#define bc_list_del(item) do {			\
+	(item)->next->prev = (item)->prev;	\
+	(item)->prev->next = (item)->next;	\
+	(item)->next = NULL;			\
+	(item)->prev = NULL;			\
+}while(0)
+
+#define bc_list_empty(head) ((head)->next == (head))
+
+#define bc_list_entry(item, type, member) ({ \
+	const typeof( ((type *)0)->member ) *__item = (item);    \
+	(type *)((char *)__item - offsetof(type,member)); })
+
+#define bc_list_for_each(item, head) \
+	for (item = (head)->next; item != (head); item = item->next)
+
 
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(const char *dev);
@@ -148,5 +212,22 @@ int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname);
 
 /* Validate and process a license key to get values from it */
 int bc_key_process(struct bc_key_data *res, char *str);
+
+/* ### Handle events ### */
+
+/* Returns an event handle for later passing to _end */
+bc_event_cam_t bc_event_cam_start(int cam_id, bc_event_level_t level,
+				  bc_event_cam_type_t type);
+/* Finished the event and inserts it into the database */
+void bc_event_cam_end(struct bc_db_handle *bcdb, bc_event_cam_t bce);
+/* Insert a cam event in one shot. It will have a 0 length */
+int bc_event_cam(struct bc_db_handle *bcdb, int cam_id, bc_event_level_t level,
+		 bc_event_cam_type_t type);
+/* Insert a system event */
+int bc_event_sys(struct bc_db_handle *bcdb, bc_event_level_t level,
+		 bc_event_sys_type_t type);
+/* Should be called periodically to ensure events that failed to write
+ * to the db are retried. */
+void bc_event_clear(void);
 
 #endif /* __LIBBLUECHERRY_H */

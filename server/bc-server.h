@@ -13,7 +13,6 @@
 #include <libavformat/avformat.h>
 #include <alsa/asoundlib.h>
 
-#include "bc-list.h"
 #include "g723-dec.h"
 
 #define BC_FILE_REC_BASE	"/var/lib/bluecherry/recordings/"
