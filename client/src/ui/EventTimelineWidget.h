@@ -5,10 +5,12 @@
 #include <QDateTime>
 
 class DVRServer;
-struct ServerData;
-class EventData;
-struct LocationData;
 class QRubberBand;
+
+struct RowData;
+struct ServerData;
+struct LocationData;
+class EventData;
 
 class EventTimelineWidget : public QAbstractItemView
 {
@@ -33,6 +35,9 @@ public:
     virtual void scrollTo(const QModelIndex &index, ScrollHint hint);
     virtual QModelIndex indexAt(const QPoint &point) const;
     virtual void setModel(QAbstractItemModel *model);
+
+    /* Internal, do not touch. */
+    virtual void doItemsLayout();
 
 public slots:
     void setZoomLevel(double level);
@@ -90,6 +95,24 @@ private:
     int cachedTopPadding;
     mutable int cachedLeftPadding;
 
+    /* Cached layout information */
+    enum LayoutFlag
+    {
+        DoRowsLayout = 1
+    };
+    Q_DECLARE_FLAGS(LayoutFlags, LayoutFlag)
+    LayoutFlags pendingLayouts;
+    void scheduleDelayedItemsLayout(LayoutFlags flags);
+    void ensureLayout();
+
+    /* Scroll-invariant inner y-position to row data, suitable for vertical painting and hit tests.
+     * First row will be at position 0, which is drawn just below the top padding when scrolled up. */
+    QMap<int, RowData*> layoutRows;
+    int layoutRowsBottom;
+
+    void doRowsLayout();
+    int layoutHeightForRow(const QMap<int,RowData*>::ConstIterator &iterator) const;
+
     /* Mouse events */
     QPoint mouseClickPos;
     QRubberBand *mouseRubberBand;
@@ -126,5 +149,11 @@ private:
 
     void paintRow(QPainter *p, QRect rect, LocationData *locationData);
 };
+
+inline void EventTimelineWidget::ensureLayout()
+{
+    if (pendingLayouts != 0)
+        executeDelayedItemsLayout();
+}
 
 #endif // EVENTTIMELINEWIDGET_H
