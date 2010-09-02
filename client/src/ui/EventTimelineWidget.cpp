@@ -86,6 +86,7 @@ void EventTimelineWidget::clearData()
     layoutRows.clear();
     layoutRowsBottom = 0;
 
+    verticalScrollBar()->setRange(0, 0);
     viewport()->update();
 
     emit zoomRangeChanged(0, 0);
@@ -134,7 +135,7 @@ QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
 
         QRect re = timeCellRect(event->date, event->duration);
         re.translate(itemArea.topLeft());
-        re.moveTop(it.key());
+        re.moveTop(itemArea.top() + (it.key() - verticalScrollBar()->value()));
         re.setHeight(layoutHeightForRow(it));
 
         return re;
@@ -209,13 +210,16 @@ void EventTimelineWidget::setViewStartOffset(int secs)
 
 void EventTimelineWidget::updateScrollBars()
 {
+    ensureLayout();
+
     horizontalScrollBar()->setRange(0, qMax(timeSeconds-viewSeconds, 0));
     horizontalScrollBar()->setPageStep(primaryTickSecs);
     horizontalScrollBar()->setSingleStep(horizontalScrollBar()->pageStep());
 
-    verticalScrollBar()->setRange(0, rowsMap.size()+serversMap.size());
-    verticalScrollBar()->setPageStep(1);
-    verticalScrollBar()->setSingleStep(1);
+    int h = viewportItemArea().height();
+    verticalScrollBar()->setRange(0, qMax(0, layoutRowsBottom-h));
+    verticalScrollBar()->setPageStep(h);
+    verticalScrollBar()->setSingleStep(rowHeight());
 }
 
 void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
@@ -231,7 +235,7 @@ EventData *EventTimelineWidget::eventAt(const QPoint &point) const
     if (!itemArea.contains(point) || point.y() >= layoutRowsBottom || layoutRows.isEmpty())
         return 0;
 
-    int ry = point.y() - itemArea.top();
+    int ry = (point.y() - itemArea.top()) + verticalScrollBar()->value();
 
     QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(ry);
     if (it.key() > ry)
@@ -538,11 +542,13 @@ void EventTimelineWidget::scheduleDelayedItemsLayout(LayoutFlags flags)
 
 void EventTimelineWidget::doItemsLayout()
 {
-    if (pendingLayouts & DoRowsLayout)
+    LayoutFlags layout = pendingLayouts;
+    pendingLayouts = 0;
+
+    if (layout & DoRowsLayout)
         doRowsLayout();
 
     QAbstractItemView::doItemsLayout();
-    pendingLayouts = 0;
 }
 
 void EventTimelineWidget::doRowsLayout()
@@ -571,6 +577,10 @@ void EventTimelineWidget::doRowsLayout()
     }
 
     layoutRowsBottom = y;
+
+    int h = viewportItemArea().height();
+    verticalScrollBar()->setRange(0, qMax(0, layoutRowsBottom-h));
+    verticalScrollBar()->setPageStep(h);
 }
 
 int EventTimelineWidget::layoutHeightForRow(const QMap<int,RowData*>::ConstIterator &it) const
@@ -859,9 +869,19 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     QFont serverFont = p.font();
     serverFont.setBold(true);
 
-    for (QMap<int,RowData*>::ConstIterator it = layoutRows.begin(); it != layoutRows.end(); ++it)
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(verticalScrollBar()->value());
+    if (it.key() > verticalScrollBar()->value())
     {
-        int ry = y + it.key();
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
+
+    p.save();
+    p.setClipRect(0, y+1, r.width(), r.height());
+
+    for (; it != layoutRows.end(); ++it)
+    {
+        int ry = y + (it.key() - verticalScrollBar()->value());
         textRect.moveTop(ry);
 
         if ((*it)->type == RowData::Server)
@@ -880,6 +900,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
             paintRow(&p, rowRect, (*it)->toLocation());
         }
     }
+
+    p.restore();
 
     p.drawLine(leftPadding(), topPadding(), leftPadding(), r.height());
 }
