@@ -295,43 +295,40 @@ int EventTimelineWidget::verticalOffset() const
     return 0;
 }
 
-void EventTimelineWidget::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
+void EventTimelineWidget::setSelection(const QRect &irect, QItemSelectionModel::SelectionFlags command)
 {
     QItemSelection sel;
 
     QRect itemArea = viewportItemArea();
-    int y = itemArea.top();
+    QRect rect = irect.translated(0, (-itemArea.top()) + verticalScrollBar()->value());
 
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    /* The y coordinate of rect is now in scroll-invariant inner y, the same as layoutRows */
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(rect.y());
+    if (it.key() > rect.y())
     {
-        y += rowHeight();
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
 
-        for (QHash<QString,LocationData*>::ConstIterator locit = (*it)->locationsMap.begin();
-             locit != (*it)->locationsMap.end(); ++locit, y += rowHeight())
+    for (; it != layoutRows.end() && it.key() <= rect.bottom(); ++it)
+    {
+        if ((*it)->type != RowData::Location)
+            continue;
+
+        LocationData *location = (*it)->toLocation();
+
+        for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
         {
-            if (y < rect.top())
-                continue;
-            if (y > rect.bottom())
-                break;
-
-            LocationData *location = *locit;
-            for (QList<EventData*>::ConstIterator evit = location->events.begin();
-                 evit != location->events.end(); ++evit)
+            QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+            if (eventRect.x() >= rect.x())
             {
-                QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
-                if (eventRect.x() >= rect.x())
-                {
-                    if (eventRect.x() > rect.right())
-                        break;
+                if (eventRect.x() > rect.right())
+                    break;
 
-                    int row = rowsMap[*evit];
-                    sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
-                }
+                int row = rowsMap[*evit];
+                sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
             }
         }
-
-        if (y >= rect.bottom())
-            break;
     }
 
     if (!sel.isEmpty())
