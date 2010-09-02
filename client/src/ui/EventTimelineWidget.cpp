@@ -124,29 +124,18 @@ QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
     if (!const_cast<EventTimelineWidget*>(this)->findEvent(event, false, &serverData, &locationData, 0))
         return QRect();
 
+    const_cast<EventTimelineWidget*>(this)->ensureLayout();
     QRect itemArea = viewportItemArea();
-    int y = itemArea.top();
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
-    {
-        y += rowHeight();
-        if (*it != serverData)
-        {
-            y += rowHeight() * (*it)->locationsMap.size();
-            continue;
-        }
 
-        for (QHash<QString,LocationData*>::ConstIterator locit = serverData->locationsMap.begin();
-             locit != serverData->locationsMap.end(); ++locit)
-        {
-            if (*locit == locationData)
-                break;
-            y += rowHeight();
-        }
+    for (QMap<int,RowData*>::ConstIterator it = layoutRows.begin(); it != layoutRows.end(); ++it)
+    {
+        if (*it != locationData)
+            continue;
 
         QRect re = timeCellRect(event->date, event->duration);
         re.translate(itemArea.topLeft());
-        re.moveTop(y);
-        re.setHeight(rowHeight());
+        re.moveTop(it.key());
+        re.setHeight(layoutHeightForRow(it));
 
         return re;
     }
@@ -236,37 +225,32 @@ void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
 
 EventData *EventTimelineWidget::eventAt(const QPoint &point) const
 {
+    const_cast<EventTimelineWidget*>(this)->ensureLayout();
+
     QRect itemArea = viewportItemArea();
-    if (!itemArea.contains(point))
+    if (!itemArea.contains(point) || point.y() >= layoutRowsBottom || layoutRows.isEmpty())
         return 0;
 
-    /* Iterate servers and locations to the specified y coordinate */
-    int y = itemArea.top();
-    int n = (point.y()-y)/rowHeight();
+    int ry = point.y() - itemArea.top();
 
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(ry);
+    if (it.key() > ry)
     {
-        if (--n < 0)
-            return 0;
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
 
-        int count = (*it)->locationsMap.size();
-        if (n >= count)
-        {
-            n -= count;
-            continue;
-        }
+    if ((*it)->type != RowData::Location)
+        return 0;
 
-        LocationData *location = *((*it)->locationsMap.begin() + n);
+    LocationData *location = (*it)->toLocation();
 
-        /* This is slow and can likely be improved. */
-        for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
-        {
-            QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
-            if (point.x() >= eventRect.left() && point.x() <= eventRect.right())
-                return *evit;
-        }
-
-        break;
+    /* This is slow and can likely be improved. */
+    for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
+    {
+        QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+        if (point.x() >= eventRect.left() && point.x() <= eventRect.right())
+            return *evit;
     }
 
     return 0;
