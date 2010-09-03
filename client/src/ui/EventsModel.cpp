@@ -349,7 +349,7 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
     {
         fast = true;
         /* If the new sources contain any that the old don't, we can't do fast filtering */
-        for (QMap<DVRServer*,QStringList>::Iterator nit = sources.begin(); nit != sources.end(); ++nit)
+        for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
         {
             QHash<DVRServer*,QSet<QString> >::Iterator oit = filterSources.find(nit.key());
             if (oit == filterSources.end())
@@ -358,7 +358,7 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
                 break;
             }
 
-            for (QStringList::Iterator it = nit->begin(); it != nit->end(); ++it)
+            for (QStringList::ConstIterator it = nit->begin(); it != nit->end(); ++it)
             {
                 if (!oit->contains(*it))
                 {
@@ -373,7 +373,7 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
     }
 
     filterSources.clear();
-    for (QMap<DVRServer*,QStringList>::Iterator nit = sources.begin(); nit != sources.end(); ++nit)
+    for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
         filterSources.insert(nit.key(), nit->toSet());
 
 
