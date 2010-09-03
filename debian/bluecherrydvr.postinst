@@ -3,11 +3,15 @@
 set -e
 
 sql="/usr/share/doc/bluecherrydvr/sqlite-base.sql"
-db="/var/lib/bluecherry/bluecherry.sqlite"
+dbdir="/var/lib/bluecherry"
+db="$dbdir/bluecherry.sqlite"
 
 case "$!" in
 	configure)
-		test -f "$sql" && (test -f "$db" || sqlite3 "$db" < "$sql")
+		if [ -f "$sql" -a ! -f "$db" ]; then
+			test -d $dbdir || mkdir $dbdir
+			sqlite3 "$db" < "$sql"
+		fi
 		;;
 esac
 
