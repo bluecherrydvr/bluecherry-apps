@@ -13,6 +13,7 @@
 #include <QTreeView>
 #include <QSettings>
 #include <QSlider>
+#include <QSplitter>
 
 EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
@@ -51,9 +52,14 @@ EventsWindow::EventsWindow(QWidget *parent)
     /* Results */
     QBoxLayout *resultLayout = new QVBoxLayout;
     layout->addLayout(resultLayout, 1);
+
     resultLayout->addWidget(createResultTitle());
-    resultLayout->addWidget(m_resultsView);
-    resultLayout->addWidget(createTimeline());
+
+    QSplitter *resultSplitter = new QSplitter(Qt::Vertical);
+    resultLayout->addWidget(resultSplitter);
+
+    resultSplitter->addWidget(m_resultsView);
+    resultSplitter->addWidget(createTimeline());
 
     /* Settings */
     QSettings settings;
