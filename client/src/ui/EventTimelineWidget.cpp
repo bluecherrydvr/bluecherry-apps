@@ -58,7 +58,6 @@ EventTimelineWidget::EventTimelineWidget(QWidget *parent)
     : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0),
       cachedLeftPadding(-1), mouseRubberBand(0)
 {
-    setFrameStyle(QFrame::NoFrame);
     setAutoFillBackground(false);
 
     connect(horizontalScrollBar(), SIGNAL(valueChanged(int)), SLOT(setViewStartOffset(int)));
@@ -870,7 +869,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 
     /* Loop servers */
     y = topPadding();
-    QRect textRect(0, 0, leftPadding(), rowHeight());
+    QRect textRect(2, 0, leftPadding(), rowHeight());
     QFont serverFont = p.font();
     serverFont.setBold(true);
 
@@ -964,12 +963,12 @@ int EventTimelineWidget::leftPadding() const
 
     for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
     {
-        cachedLeftPadding = qMax(cachedLeftPadding, serverfm.width((*it)->server->displayName()));
+        cachedLeftPadding = qMax(cachedLeftPadding, serverfm.width((*it)->server->displayName())+2);
 
         for (QHash<QString,LocationData*>::ConstIterator lit = (*it)->locationsMap.begin();
              lit != (*it)->locationsMap.end(); ++lit)
         {
-            cachedLeftPadding = qMax(cachedLeftPadding, locfm.width((*lit)->location)+6);
+            cachedLeftPadding = qMax(cachedLeftPadding, locfm.width((*lit)->location)+8);
         }
     }
 
