@@ -14,8 +14,9 @@ EventsModel::EventsModel(QObject *parent)
 
     createTestData();
 
+    sortColumn = 3;
+    sortOrder = Qt::DescendingOrder;
     applyFilters();
-    sort(3, Qt::DescendingOrder);
 }
 
 /* Randomized events for testing until real ones are available */
@@ -211,6 +212,9 @@ public:
 
 void EventsModel::sort(int column, Qt::SortOrder order)
 {
+    this->sortColumn = column;
+    this->sortOrder = order;
+
     emit layoutAboutToBeChanged();
     bool lessThan = order == Qt::AscendingOrder;
     qSort(items.begin(), items.end(), EventSort(column, lessThan));
@@ -229,6 +233,10 @@ void EventsModel::applyFilters(bool fromCache)
             if (testFilter(*it))
                 items.append(*it);
         }
+
+        bool block = blockSignals(true);
+        resort();
+        blockSignals(block);
 
         endResetModel();
     }

@@ -59,6 +59,12 @@ private:
     QDateTime filterDateBegin, filterDateEnd;
     EventLevel filterLevel;
 
+    /* Sorting */
+    int sortColumn;
+    Qt::SortOrder sortOrder;
+
+    void resort() { sort(sortColumn, sortOrder); }
+
     void applyFilters(bool fromCache = true);
     bool testFilter(EventData *data);
 
