@@ -242,13 +242,13 @@ EventData *EventTimelineWidget::eventAt(const QPoint &point) const
     const_cast<EventTimelineWidget*>(this)->ensureLayout();
 
     QRect itemArea = viewportItemArea();
-    if (!itemArea.contains(point) || point.y() >= layoutRowsBottom || layoutRows.isEmpty())
-        return 0;
-
     int ry = (point.y() - itemArea.top()) + verticalScrollBar()->value();
 
+    if (!itemArea.contains(point) || ry >= layoutRowsBottom || layoutRows.isEmpty())
+        return 0;
+
     QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(ry);
-    if (it.key() > ry)
+    if (it == layoutRows.end() || it.key() > ry)
     {
         Q_ASSERT(it != layoutRows.begin());
         --it;
@@ -314,7 +314,7 @@ void EventTimelineWidget::setSelection(const QRect &irect, QItemSelectionModel::
 
     /* The y coordinate of rect is now in scroll-invariant inner y, the same as layoutRows */
     QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(rect.y());
-    if (it.key() > rect.y())
+    if (it == layoutRows.end() || it.key() > rect.y())
     {
         Q_ASSERT(it != layoutRows.begin());
         --it;
@@ -885,7 +885,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     serverFont.setBold(true);
 
     QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(verticalScrollBar()->value());
-    if (it.key() > verticalScrollBar()->value())
+    if (it == layoutRows.end() || it.key() > verticalScrollBar()->value())
     {
         Q_ASSERT(it != layoutRows.begin());
         --it;
