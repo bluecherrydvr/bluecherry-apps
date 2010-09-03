@@ -801,13 +801,21 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
         QDateTime dt = qMax(QDateTime(date), viewTimeStart);
         QRect dateRect = timeCellRect(dt, dt.secsTo(QDateTime(date.addDays(1))));
         dateRect.setHeight(r.height());
-        dateRect.translate(50, 0);
+        dateRect.translate(leftPadding(), 0);
         QString dateStr = date.toString(first ? tr("ddd, MMM d yyyy") : tr("ddd, MMM d"));
 
         /* This is very slow and could be improved dramatically with the use of QTextLayout */
         QFontMetrics fm(p.font());
-        if (fm.width(dateStr)+10 > dateRect.width())
-            continue;
+        int w = fm.width(dateStr)+10;
+        if (w > dateRect.width())
+        {
+            date = date.addDays(1);
+            dt = QDateTime(date);
+            QRect nr = timeCellRect(dt, dt.secsTo(QDateTime(dt.addDays(1))));
+            nr.setHeight(r.height());
+            nr.translate(leftPadding(), 0);
+            dateRect |= nr;
+        }
 
         p.drawText(dateRect, 0, dateStr, &dateRect);
         y = qMax(y, dateRect.bottom());
