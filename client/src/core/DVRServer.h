@@ -48,6 +48,8 @@ private:
     QString m_displayName;
 };
 
+Q_DECLARE_METATYPE(DVRServer*)
+
 inline QString DVRServer::hostname() const
 {
     return readSetting("hostname").toString();

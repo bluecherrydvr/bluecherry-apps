@@ -9,18 +9,50 @@
 #include <QDebug>
 #include <qmath.h>
 
-struct LocationData
+struct RowData
+{
+    enum Type
+    {
+        Server,
+        Location
+    } const type : 8;
+
+    RowData(Type t) : type(t) { }
+
+    LocationData *toLocation();
+    ServerData *toServer();
+};
+
+struct LocationData : public RowData
 {
     ServerData *serverData;
     QString location;
     QList<EventData*> events;
+
+    LocationData() : RowData(Location)
+    {
+    }
 };
 
-struct ServerData
+struct ServerData : public RowData
 {
     DVRServer *server;
     QHash<QString,LocationData*> locationsMap;
+
+    ServerData() : RowData(Server)
+    {
+    }
 };
+
+inline LocationData *RowData::toLocation()
+{
+    return (type == Location) ? static_cast<LocationData*>(this) : 0;
+}
+
+inline ServerData *RowData::toServer()
+{
+    return (type == Server) ? static_cast<ServerData*>(this) : 0;
+}
 
 EventTimelineWidget::EventTimelineWidget(QWidget *parent)
     : QAbstractItemView(parent), timeSeconds(0), viewSeconds(0), primaryTickSecs(0), cachedTopPadding(0),
@@ -50,6 +82,11 @@ void EventTimelineWidget::clearData()
     timeStart = timeEnd = QDateTime();
     viewTimeStart = viewTimeEnd = QDateTime();
     timeSeconds = viewSeconds = 0;
+
+    layoutRows.clear();
+    layoutRowsBottom = 0;
+
+    verticalScrollBar()->setRange(0, 0);
     viewport()->update();
 
     emit zoomRangeChanged(0, 0);
@@ -88,29 +125,18 @@ QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
     if (!const_cast<EventTimelineWidget*>(this)->findEvent(event, false, &serverData, &locationData, 0))
         return QRect();
 
+    const_cast<EventTimelineWidget*>(this)->ensureLayout();
     QRect itemArea = viewportItemArea();
-    int y = itemArea.top();
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
-    {
-        y += rowHeight();
-        if (*it != serverData)
-        {
-            y += rowHeight() * (*it)->locationsMap.size();
-            continue;
-        }
 
-        for (QHash<QString,LocationData*>::ConstIterator locit = serverData->locationsMap.begin();
-             locit != serverData->locationsMap.end(); ++locit)
-        {
-            if (*locit == locationData)
-                break;
-            y += rowHeight();
-        }
+    for (QMap<int,RowData*>::ConstIterator it = layoutRows.begin(); it != layoutRows.end(); ++it)
+    {
+        if (*it != locationData)
+            continue;
 
         QRect re = timeCellRect(event->date, event->duration);
         re.translate(itemArea.topLeft());
-        re.moveTop(y);
-        re.setHeight(rowHeight());
+        re.moveTop(itemArea.top() + (it.key() - verticalScrollBar()->value()));
+        re.setHeight(layoutHeightForRow(it));
 
         return re;
     }
@@ -184,9 +210,16 @@ void EventTimelineWidget::setViewStartOffset(int secs)
 
 void EventTimelineWidget::updateScrollBars()
 {
+    ensureLayout();
+
     horizontalScrollBar()->setRange(0, qMax(timeSeconds-viewSeconds, 0));
     horizontalScrollBar()->setPageStep(primaryTickSecs);
     horizontalScrollBar()->setSingleStep(horizontalScrollBar()->pageStep());
+
+    int h = viewportItemArea().height();
+    verticalScrollBar()->setRange(0, qMax(0, layoutRowsBottom-h));
+    verticalScrollBar()->setPageStep(h);
+    verticalScrollBar()->setSingleStep(rowHeight());
 }
 
 void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
@@ -196,37 +229,32 @@ void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
 
 EventData *EventTimelineWidget::eventAt(const QPoint &point) const
 {
+    const_cast<EventTimelineWidget*>(this)->ensureLayout();
+
     QRect itemArea = viewportItemArea();
-    if (!itemArea.contains(point))
+    if (!itemArea.contains(point) || point.y() >= layoutRowsBottom || layoutRows.isEmpty())
         return 0;
 
-    /* Iterate servers and locations to the specified y coordinate */
-    int y = itemArea.top();
-    int n = (point.y()-y)/rowHeight();
+    int ry = (point.y() - itemArea.top()) + verticalScrollBar()->value();
 
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(ry);
+    if (it.key() > ry)
     {
-        if (--n < 0)
-            return 0;
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
 
-        int count = (*it)->locationsMap.size();
-        if (n >= count)
-        {
-            n -= count;
-            continue;
-        }
+    if ((*it)->type != RowData::Location)
+        return 0;
 
-        LocationData *location = *((*it)->locationsMap.begin() + n);
+    LocationData *location = (*it)->toLocation();
 
-        /* This is slow and can likely be improved. */
-        for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
-        {
-            QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
-            if (point.x() >= eventRect.left() && point.x() <= eventRect.right())
-                return *evit;
-        }
-
-        break;
+    /* This is slow and can likely be improved. */
+    for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
+    {
+        QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+        if (point.x() >= eventRect.left() && point.x() <= eventRect.right())
+            return *evit;
     }
 
     return 0;
@@ -267,43 +295,40 @@ int EventTimelineWidget::verticalOffset() const
     return 0;
 }
 
-void EventTimelineWidget::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
+void EventTimelineWidget::setSelection(const QRect &irect, QItemSelectionModel::SelectionFlags command)
 {
     QItemSelection sel;
 
     QRect itemArea = viewportItemArea();
-    int y = itemArea.top();
+    QRect rect = irect.translated(0, (-itemArea.top()) + verticalScrollBar()->value());
 
-    for (QHash<DVRServer*,ServerData*>::ConstIterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    /* The y coordinate of rect is now in scroll-invariant inner y, the same as layoutRows */
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(rect.y());
+    if (it.key() > rect.y())
     {
-        y += rowHeight();
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
 
-        for (QHash<QString,LocationData*>::ConstIterator locit = (*it)->locationsMap.begin();
-             locit != (*it)->locationsMap.end(); ++locit, y += rowHeight())
+    for (; it != layoutRows.end() && it.key() <= rect.bottom(); ++it)
+    {
+        if ((*it)->type != RowData::Location)
+            continue;
+
+        LocationData *location = (*it)->toLocation();
+
+        for (QList<EventData*>::ConstIterator evit = location->events.begin(); evit != location->events.end(); ++evit)
         {
-            if (y < rect.top())
-                continue;
-            if (y > rect.bottom())
-                break;
-
-            LocationData *location = *locit;
-            for (QList<EventData*>::ConstIterator evit = location->events.begin();
-                 evit != location->events.end(); ++evit)
+            QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
+            if (eventRect.x() >= rect.x())
             {
-                QRect eventRect = timeCellRect((*evit)->date, (*evit)->duration).translated(itemArea.left(), 0);
-                if (eventRect.x() >= rect.x())
-                {
-                    if (eventRect.x() > rect.right())
-                        break;
+                if (eventRect.x() > rect.right())
+                    break;
 
-                    int row = rowsMap[*evit];
-                    sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
-                }
+                int row = rowsMap[*evit];
+                sel.select(model()->index(row, 0), model()->index(row, model()->columnCount()-1));
             }
         }
-
-        if (y >= rect.bottom())
-            break;
     }
 
     if (!sel.isEmpty())
@@ -344,6 +369,7 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         serverData->server = event->server;
         it = serversMap.insert(serverData->server, serverData);
 
+        scheduleDelayedItemsLayout(DoRowsLayout);
         clearLeftPadding();
     }
 
@@ -363,6 +389,7 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         locationData->serverData = serverData;
         lit = serverData->locationsMap.insert(locationData->location, locationData);
 
+        scheduleDelayedItemsLayout(DoRowsLayout);
         clearLeftPadding();
     }
 
@@ -492,6 +519,73 @@ void EventTimelineWidget::updateRowsMap(int row)
     }
 }
 
+inline static bool serverSort(const ServerData *s1, const ServerData *s2)
+{
+    Q_ASSERT(s1 && s2 && s1->server && s2->server);
+    return QString::localeAwareCompare(s1->server->displayName(), s2->server->displayName()) < 0;
+}
+
+inline static bool locationSort(const LocationData *s1, const LocationData *s2)
+{
+    Q_ASSERT(s1 && s2);
+    return QString::localeAwareCompare(s1->location, s2->location) < 0;
+}
+
+void EventTimelineWidget::scheduleDelayedItemsLayout(LayoutFlags flags)
+{
+    pendingLayouts |= flags;
+    QAbstractItemView::scheduleDelayedItemsLayout();
+}
+
+void EventTimelineWidget::doItemsLayout()
+{
+    LayoutFlags layout = pendingLayouts;
+    pendingLayouts = 0;
+
+    if (layout & DoRowsLayout)
+        doRowsLayout();
+
+    QAbstractItemView::doItemsLayout();
+}
+
+void EventTimelineWidget::doRowsLayout()
+{
+    layoutRows.clear();
+
+    /* Sort servers */
+    QList<ServerData*> sortedServers = serversMap.values();
+    qSort(sortedServers.begin(), sortedServers.end(), serverSort);
+
+    int y = 0;
+
+    foreach (ServerData *sd, sortedServers)
+    {
+        layoutRows.insert(y, sd);
+        y += rowHeight();
+
+        QList<LocationData*> sortedLocations = sd->locationsMap.values();
+        qSort(sortedLocations.begin(), sortedLocations.end(), locationSort);
+
+        foreach (LocationData *ld, sortedLocations)
+        {
+            layoutRows.insert(y, ld);
+            y += rowHeight();
+        }
+    }
+
+    layoutRowsBottom = y;
+
+    int h = viewportItemArea().height();
+    verticalScrollBar()->setRange(0, qMax(0, layoutRowsBottom-h));
+    verticalScrollBar()->setPageStep(h);
+}
+
+int EventTimelineWidget::layoutHeightForRow(const QMap<int,RowData*>::ConstIterator &it) const
+{
+    QMap<int,RowData*>::ConstIterator next = it+1;
+    return ((next == layoutRows.end()) ? layoutRowsBottom : next.key()) - it.key();
+}
+
 void EventTimelineWidget::addModelRows(int first, int last)
 {
     if (last < 0)
@@ -557,6 +651,8 @@ void EventTimelineWidget::rowsAboutToBeRemoved(const QModelIndex &parent, int st
                 serversMap.remove(serverData->server);
                 delete serverData;
             }
+
+            scheduleDelayedItemsLayout(DoRowsLayout);
         }
     }
 
@@ -608,6 +704,7 @@ void EventTimelineWidget::dataChanged(const QModelIndex &topLeft, const QModelIn
             {
                 server->locationsMap.remove(location->location);
                 delete location;
+                scheduleDelayedItemsLayout(DoRowsLayout);
             }
 
             break;
@@ -677,6 +774,8 @@ bool EventTimelineWidget::viewportEvent(QEvent *event)
 
 void EventTimelineWidget::paintEvent(QPaintEvent *event)
 {
+    ensureLayout();
+
     QPainter p(viewport());
     p.eraseRect(event->rect());
 
@@ -767,30 +866,39 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
     QFont serverFont = p.font();
     serverFont.setBold(true);
 
-    /* BUG: No sorting is done here; this shouldn't be looping the hash */
-    for (QHash<DVRServer*,ServerData*>::Iterator it = serversMap.begin(); it != serversMap.end(); ++it)
+    QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(verticalScrollBar()->value());
+    if (it.key() > verticalScrollBar()->value())
     {
-        ServerData *server = *it;
+        Q_ASSERT(it != layoutRows.begin());
+        --it;
+    }
 
-        textRect.moveTop(y);
+    p.save();
+    p.setClipRect(0, y+1, r.width(), r.height());
 
-        p.save();
-        p.setFont(serverFont);
-        p.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, server->server->displayName());
-        p.restore();
-        y += rowHeight();
+    for (; it != layoutRows.end(); ++it)
+    {
+        int ry = y + (it.key() - verticalScrollBar()->value());
+        textRect.moveTop(ry);
 
-        for (QHash<QString,LocationData*>::Iterator lit = server->locationsMap.begin();
-             lit != server->locationsMap.end(); ++lit)
+        if ((*it)->type == RowData::Server)
         {
-            textRect.moveTop(y);
-            p.drawText(textRect.adjusted(6, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter, (*lit)->location);
+            p.save();
+            p.setFont(serverFont);
+            p.drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, (*it)->toServer()->server->displayName());
+            p.restore();
+        }
+        else
+        {
+            p.drawText(textRect.adjusted(6, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter,
+                       (*it)->toLocation()->location);
 
-            QRect rowRect(leftPadding(), y, r.width(), rowHeight());
-            paintRow(&p, rowRect, *lit);
-            y += rowRect.height();
+            QRect rowRect(leftPadding(), ry, r.width(), rowHeight());
+            paintRow(&p, rowRect, (*it)->toLocation());
         }
     }
+
+    p.restore();
 
     p.drawLine(leftPadding(), topPadding(), leftPadding(), r.height());
 }
@@ -798,7 +906,8 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
 void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationData)
 {
     p->save();
-    p->setPen(Qt::red);
+    p->setRenderHint(QPainter::Antialiasing, true);
+    p->setPen(Qt::NoPen);
 
     for (QList<EventData*>::Iterator it = locationData->events.begin(); it != locationData->events.end(); ++it)
     {
@@ -814,9 +923,15 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
 
-        p->fillRect(cellRect, Qt::blue);
+        p->setBrush(data->level.color());
+        p->drawRoundedRect(cellRect.adjusted(0, 1, 0, -1), 2, 2);
+
         if (selectionModel()->rowIntersectsSelection(modelRow, QModelIndex()))
+        {
+            p->setPen(Qt::red);
             p->drawRect(cellRect.adjusted(0, 0, -1, -1));
+            p->setPen(Qt::NoPen);
+        }
     }
 
     p->restore();

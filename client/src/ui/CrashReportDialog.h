@@ -25,6 +25,9 @@ private slots:
     void setUploadProgress(qint64 done);
     void uploadFinished();
 
+protected:
+    virtual void showEvent(QShowEvent *event);
+
 private:
     QFile m_dumpFile;
     QNetworkReply *m_uploadReply;

@@ -11,6 +11,11 @@ class DVRServersModel : public QAbstractItemModel
     Q_OBJECT
 
 public:
+    enum
+    {
+        ServerPtrRole = Qt::UserRole
+    };
+
     explicit DVRServersModel(QObject *parent = 0);
 
     DVRServer *serverForRow(const QModelIndex &index) const;

@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QList>
 #include <QSet>
+#include <QColor>
 
 class DVRServer;
 class DVRCamera;
@@ -51,6 +52,7 @@ public:
     bool operator>(const EventLevel &o) const { return level > o.level; }
     bool operator==(const EventLevel &o) const { return level == o.level; }
     QString uiString() const;
+    QColor color() const;
 };
 
 class EventData
@@ -77,7 +79,6 @@ public:
 
     explicit EventsModel(QObject *parent = 0);
 
-    void setFilterCameras(const QSet<DVRCamera*> &cameras);
     void setFilterDates(const QDateTime &begin, const QDateTime &end);
     void setFilterLevel(EventLevel minimum);
 
@@ -93,6 +94,8 @@ public:
     virtual void sort(int column, Qt::SortOrder order = Qt::AscendingOrder);
 
 public slots:
+    void setFilterSources(const QMap<DVRServer*,QStringList> &sources);
+
     void setFilterBeginDate(const QDateTime &begin) { setFilterDates(begin, filterDateEnd); }
     void setFilterEndDate(const QDateTime &end) { setFilterDates(filterDateBegin, end); }
 
@@ -106,7 +109,7 @@ private:
     QList<EventData*> items, cachedEvents;
 
     /* Filters */
-    QSet<DVRCamera*> filterCameras;
+    QHash<DVRServer*,QSet<QString> > filterSources;
     QDateTime filterDateBegin, filterDateEnd;
     EventLevel filterLevel;
 
@@ -125,6 +128,18 @@ inline QString EventLevel::uiString() const
     case Alarm: return EventsModel::tr("Alarm");
     case Critical: return EventsModel::tr("Critical");
     default: return EventsModel::tr("Unknown");
+    }
+}
+
+inline QColor EventLevel::color() const
+{
+    switch (level)
+    {
+    case Info: return QColor(122, 122, 122);
+    case Warning: return QColor(62, 107, 199);
+    case Alarm: return QColor(204, 120, 10);
+    case Critical: return QColor(175, 0, 0);
+    default: return QColor();
     }
 }
 

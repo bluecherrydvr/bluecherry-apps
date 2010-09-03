@@ -3,6 +3,7 @@
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
 #include <QTextDocument>
+#include <QColor>
 
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -108,6 +109,10 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
                                                    data->level.uiString(), Qt::escape(data->location),
                                                    Qt::escape(data->server->displayName()),
                                                    data->date.toString());
+    }
+    else if (role == Qt::ForegroundRole)
+    {
+        return data->level.color();
     }
 
     switch (index.column())
@@ -249,11 +254,13 @@ void EventsModel::applyFilters(bool fromCache)
 
 bool EventsModel::testFilter(EventData *data)
 {
-    /* TODO: cameras */
-
     if (data->level < filterLevel ||
         (!filterDateBegin.isNull() && data->date < filterDateBegin) ||
         (!filterDateEnd.isNull() && data->date > filterDateEnd))
+        return false;
+
+    QHash<DVRServer*,QSet<QString> >::Iterator it = filterSources.find(data->server);
+    if (!filterSources.isEmpty() && (it == filterSources.end() || !it->contains(data->location)))
         return false;
 
     return true;
@@ -270,12 +277,36 @@ QString EventsModel::filterDescription() const
     else
         re = tr("All events");
 
-    if (filterCameras.isEmpty())
-        re += tr(" on all cameras");
-    else if (filterCameras.size() > 1)
+    bool allCameras = true;
+    for (QHash<DVRServer*,QSet<QString> >::ConstIterator it = filterSources.begin();
+         it != filterSources.end(); ++it)
+    {
+        if (it->count() != it.key()->cameras().size()+1)
+            allCameras = false;
+    }
+
+    if (!filterSources.isEmpty() && filterSources.size() != bcApp->servers().size())
+    {
+        if (filterSources.size() == 1)
+        {
+            /* Single server */
+            if (!allCameras)
+            {
+                if (filterSources.begin()->size() == 1)
+                    re += tr(" on %1").arg(*filterSources.begin()->begin());
+                else
+                    re += tr(" on selected cameras");
+            }
+
+            re += tr(" from %1").arg(filterSources.begin().key()->displayName());
+        }
+        else if (!allCameras)
+            re += tr(" on selected cameras");
+        else
+            re += tr(" from selected servers");
+    }
+    else if (!allCameras)
         re += tr(" on selected cameras");
-    else
-        re += tr(" on %1").arg((*filterCameras.begin())->displayName());
 
     if (!filterDateBegin.isNull() && !filterDateEnd.isNull())
         re += tr(" from %1 to %2");
@@ -306,6 +337,45 @@ void EventsModel::setFilterLevel(EventLevel minimum)
 
     bool fast = minimum > filterLevel;
     filterLevel = minimum;
+
+    applyFilters(!fast);
+}
+
+void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
+{
+    bool fast = false;
+
+    if (sources.size() <= filterSources.size())
+    {
+        fast = true;
+        /* If the new sources contain any that the old don't, we can't do fast filtering */
+        for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
+        {
+            QHash<DVRServer*,QSet<QString> >::Iterator oit = filterSources.find(nit.key());
+            if (oit == filterSources.end())
+            {
+                fast = false;
+                break;
+            }
+
+            for (QStringList::ConstIterator it = nit->begin(); it != nit->end(); ++it)
+            {
+                if (!oit->contains(*it))
+                {
+                    fast = false;
+                    break;
+                }
+            }
+
+            if (!fast)
+                break;
+        }
+    }
+
+    filterSources.clear();
+    for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
+        filterSources.insert(nit.key(), nit->toSet());
+
 
     applyFilters(!fast);
 }
