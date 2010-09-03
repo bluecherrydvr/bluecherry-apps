@@ -52,10 +52,10 @@ void EventViewWindow::setEvent(EventData *event)
     m_event = event;
 
     m_infoLabel->setText(tr("<b>%2</b> (%1)<br><br>%3 (%4)<br>%5")
-                         .arg(Qt::escape(event->server->displayName()))
-                         .arg(Qt::escape(event->location))
-                         .arg(Qt::escape(event->type))
-                         .arg(Qt::escape(event->level.uiString()))
+                         .arg(Qt::escape(event->uiServer()))
+                         .arg(Qt::escape(event->uiLocation()))
+                         .arg(Qt::escape(event->uiType()))
+                         .arg(Qt::escape(event->uiLevel()))
                          .arg(event->date.toString()));
 }
 

@@ -16,7 +16,7 @@ class EventSourcesModel : public QAbstractItemModel
 public:
     explicit EventSourcesModel(QObject *parent = 0);
 
-    virtual QMap<DVRServer*,QStringList> checkedSources() const;
+    virtual QMap<DVRServer*,QList<int> > checkedSources() const;
 
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
@@ -27,7 +27,7 @@ public:
     virtual bool setData(const QModelIndex &index, const QVariant &value, int role);
 
 signals:
-    void checkedSourcesChanged(const QMap<DVRServer*,QStringList> &checkedSources);
+    void checkedSourcesChanged(const QMap<DVRServer*,QList<int> > &checkedSources);
 
 private:
     struct ServerData

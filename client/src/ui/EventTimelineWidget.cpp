@@ -1,5 +1,6 @@
 #include "EventTimelineWidget.h"
 #include "EventsModel.h"
+#include "core/EventData.h"
 #include "core/DVRServer.h"
 #include <QPaintEvent>
 #include <QPainter>
@@ -23,24 +24,34 @@ struct RowData
     ServerData *toServer();
 };
 
-struct LocationData : public RowData
+struct ServerData : public RowData
 {
-    ServerData *serverData;
-    QString location;
-    QList<EventData*> events;
+    DVRServer *server;
+    QHash<int,LocationData*> locationsMap;
 
-    LocationData() : RowData(Location)
+    ServerData() : RowData(Server)
     {
     }
 };
 
-struct ServerData : public RowData
+struct LocationData : public RowData
 {
-    DVRServer *server;
-    QHash<QString,LocationData*> locationsMap;
+    ServerData *serverData;
+    QList<EventData*> events;
+    int locationId;
 
-    ServerData() : RowData(Server)
+    LocationData() : RowData(Location)
     {
+    }
+
+    DVRCamera *locationCamera() const
+    {
+        return EventData::locationCamera(serverData->server, locationId);
+    }
+
+    QString uiLocation() const
+    {
+        return EventData::uiLocation(serverData->server, locationId);
     }
 };
 
@@ -377,16 +388,16 @@ bool EventTimelineWidget::findEvent(EventData *event, bool create, ServerData **
         *server = serverData;
 
     /* Find associated location (within the server) */
-    QHash<QString,LocationData*>::ConstIterator lit = serverData->locationsMap.find(event->location);
+    QHash<int,LocationData*>::ConstIterator lit = serverData->locationsMap.find(event->locationId);
     if (lit == serverData->locationsMap.end())
     {
         if (!create)
             return false;
 
         LocationData *locationData = new LocationData;
-        locationData->location = event->location;
+        locationData->locationId = event->locationId;
         locationData->serverData = serverData;
-        lit = serverData->locationsMap.insert(locationData->location, locationData);
+        lit = serverData->locationsMap.insert(locationData->locationId, locationData);
 
         scheduleDelayedItemsLayout(DoRowsLayout);
         clearLeftPadding();
@@ -527,7 +538,7 @@ inline static bool serverSort(const ServerData *s1, const ServerData *s2)
 inline static bool locationSort(const LocationData *s1, const LocationData *s2)
 {
     Q_ASSERT(s1 && s2);
-    return QString::localeAwareCompare(s1->location, s2->location) < 0;
+    return QString::localeAwareCompare(s1->uiLocation(), s2->uiLocation()) < 0;
 }
 
 void EventTimelineWidget::scheduleDelayedItemsLayout(LayoutFlags flags)
@@ -642,7 +653,7 @@ void EventTimelineWidget::rowsAboutToBeRemoved(const QModelIndex &parent, int st
 
         if (locationData->events.isEmpty())
         {
-            serverData->locationsMap.remove(locationData->location);
+            serverData->locationsMap.remove(locationData->locationId);
             delete locationData;
 
             if (serverData->locationsMap.isEmpty())
@@ -701,7 +712,7 @@ void EventTimelineWidget::dataChanged(const QModelIndex &topLeft, const QModelIn
             location->events.removeAt(pos);
             if (location->events.isEmpty())
             {
-                server->locationsMap.remove(location->location);
+                server->locationsMap.remove(location->locationId);
                 delete location;
                 scheduleDelayedItemsLayout(DoRowsLayout);
             }
@@ -898,7 +909,7 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
         else
         {
             p.drawText(textRect.adjusted(6, 0, 0, 0), Qt::AlignLeft | Qt::AlignVCenter,
-                       (*it)->toLocation()->location);
+                       (*it)->toLocation()->uiLocation());
 
             QRect rowRect(leftPadding(), ry, r.width(), rowHeight());
             paintRow(&p, rowRect, (*it)->toLocation());
@@ -930,7 +941,7 @@ void EventTimelineWidget::paintRow(QPainter *p, QRect r, LocationData *locationD
         cellRect.translate(r.x(), r.y());
         cellRect.setHeight(r.height());
 
-        p->setBrush(data->level.color());
+        p->setBrush(data->uiColor());
         p->drawRoundedRect(cellRect.adjusted(0, 1, 0, -1), 2, 2);
 
         if (selectionModel()->rowIntersectsSelection(modelRow, QModelIndex()))
@@ -965,10 +976,10 @@ int EventTimelineWidget::leftPadding() const
     {
         cachedLeftPadding = qMax(cachedLeftPadding, serverfm.width((*it)->server->displayName())+2);
 
-        for (QHash<QString,LocationData*>::ConstIterator lit = (*it)->locationsMap.begin();
+        for (QHash<int,LocationData*>::ConstIterator lit = (*it)->locationsMap.begin();
              lit != (*it)->locationsMap.end(); ++lit)
         {
-            cachedLeftPadding = qMax(cachedLeftPadding, locfm.width((*lit)->location)+8);
+            cachedLeftPadding = qMax(cachedLeftPadding, locfm.width((*lit)->uiLocation())+8);
         }
     }
 

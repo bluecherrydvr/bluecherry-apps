@@ -35,24 +35,23 @@ void EventsModel::createTestData()
     int count = (qrand() % 285) + 15;
     for (int i = 0; i < count; ++i)
     {
-        EventData *event = new EventData;
-        event->server = servers[qrand() % servers.size()];
+        EventData *event = new EventData(servers[qrand() % servers.size()]);
         event->date = end.addSecs(-((qrand() * qrand()) % duration));
         event->duration = 1 + (qrand() % 1299);
 
         bool useCamera = qrand() % 6;
         if (useCamera && !event->server->cameras().isEmpty())
         {
-            event->location = QString::fromLatin1("camera-%1").arg(qrand() % event->server->cameras().size());
-            event->type = (qrand() % 10) ? QLatin1String("motion") : QLatin1String("offline");
+            event->setLocation(QString::fromLatin1("camera-%1").arg(qrand() % event->server->cameras().size()));
+            event->type = (qrand() % 10) ? QLatin1String("motion") : QLatin1String("video signal loss");
             event->level = (qrand() % 3) ? EventLevel::Warning : EventLevel::Alarm;
-            if (event->type == QLatin1String("offline"))
+            if (event->type == EventType::CameraVideoLost)
                 event->level = EventLevel::Critical;
         }
         else
         {
-            event->location = QString::fromLatin1("system");
-            event->type = (qrand() % 10) ? QLatin1String("disk-full") : QLatin1String("exploded");
+            event->setLocation(QString::fromLatin1("system"));
+            event->type = (qrand() % 10) ? QLatin1String("disk-space") : QLatin1String("crash");
             event->level = (qrand() % 5) ? EventLevel::Info : EventLevel::Critical;
         }
 
@@ -105,14 +104,12 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
     }
     else if (role == Qt::ToolTipRole)
     {
-        return tr("%1 (%2)<br>%3 on %4<br>%5").arg(Qt::escape(data->type),
-                                                   data->level.uiString(), Qt::escape(data->location),
-                                                   Qt::escape(data->server->displayName()),
-                                                   data->date.toString());
+        return tr("%1 (%2)<br>%3 on %4<br>%5").arg(data->uiType(), data->uiLevel(), Qt::escape(data->uiLocation()),
+                                                   Qt::escape(data->uiServer()), data->date.toString());
     }
     else if (role == Qt::ForegroundRole)
     {
-        return data->level.color();
+        return data->uiColor();
     }
 
     switch (index.column())
@@ -123,11 +120,11 @@ QVariant EventsModel::data(const QModelIndex &index, int role) const
         break;
     case 1:
         if (role == Qt::DisplayRole)
-            return data->location;
+            return data->uiLocation();
         break;
     case 2:
         if (role == Qt::DisplayRole)
-            return data->type;
+            return data->uiType();
         break;
     case 3:
         if (role == Qt::DisplayRole)
@@ -192,10 +189,10 @@ public:
             re = QString::localeAwareCompare(e1->server->displayName(), e2->server->displayName()) <= 0;
             break;
         case 1: /* Location */
-            re = QString::localeAwareCompare(e1->location, e2->location) <= 0;
+            re = QString::localeAwareCompare(e1->uiLocation(), e2->uiLocation()) <= 0;
             break;
         case 2: /* Type */
-            re = QString::localeAwareCompare(e1->type, e2->type) <= 0;
+            re = QString::localeAwareCompare(e1->uiType(), e2->uiType()) <= 0;
             break;
         case 3: /* Date */
             re = e1->date <= e2->date;
@@ -259,8 +256,8 @@ bool EventsModel::testFilter(EventData *data)
         (!filterDateEnd.isNull() && data->date > filterDateEnd))
         return false;
 
-    QHash<DVRServer*,QSet<QString> >::Iterator it = filterSources.find(data->server);
-    if (!filterSources.isEmpty() && (it == filterSources.end() || !it->contains(data->location)))
+    QHash<DVRServer*, QSet<int> >::Iterator it = filterSources.find(data->server);
+    if (!filterSources.isEmpty() && (it == filterSources.end() || !it->contains(data->locationId)))
         return false;
 
     return true;
@@ -278,7 +275,7 @@ QString EventsModel::filterDescription() const
         re = tr("All events");
 
     bool allCameras = true;
-    for (QHash<DVRServer*,QSet<QString> >::ConstIterator it = filterSources.begin();
+    for (QHash<DVRServer*, QSet<int> >::ConstIterator it = filterSources.begin();
          it != filterSources.end(); ++it)
     {
         if (it->count() != it.key()->cameras().size()+1)
@@ -341,7 +338,7 @@ void EventsModel::setFilterLevel(EventLevel minimum)
     applyFilters(!fast);
 }
 
-void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
+void EventsModel::setFilterSources(const QMap<DVRServer*, QList<int> > &sources)
 {
     bool fast = false;
 
@@ -349,16 +346,16 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
     {
         fast = true;
         /* If the new sources contain any that the old don't, we can't do fast filtering */
-        for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
+        for (QMap<DVRServer*,QList<int> >::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
         {
-            QHash<DVRServer*,QSet<QString> >::Iterator oit = filterSources.find(nit.key());
+            QHash<DVRServer*, QSet<int> >::Iterator oit = filterSources.find(nit.key());
             if (oit == filterSources.end())
             {
                 fast = false;
                 break;
             }
 
-            for (QStringList::ConstIterator it = nit->begin(); it != nit->end(); ++it)
+            for (QList<int>::ConstIterator it = nit->begin(); it != nit->end(); ++it)
             {
                 if (!oit->contains(*it))
                 {
@@ -373,9 +370,8 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QStringList> &sources)
     }
 
     filterSources.clear();
-    for (QMap<DVRServer*,QStringList>::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
+    for (QMap<DVRServer*, QList<int> >::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
         filterSources.insert(nit.key(), nit->toSet());
-
 
     applyFilters(!fast);
 }

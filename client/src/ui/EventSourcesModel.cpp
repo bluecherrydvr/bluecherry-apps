@@ -21,20 +21,20 @@ EventSourcesModel::EventSourcesModel(QObject *parent)
     }
 }
 
-QMap<DVRServer*,QStringList> EventSourcesModel::checkedSources() const
+QMap<DVRServer*,QList<int> > EventSourcesModel::checkedSources() const
 {
-    QMap<DVRServer*,QStringList> re;
+    QMap<DVRServer*,QList<int> > re;
 
     for (QVector<ServerData>::ConstIterator it = servers.begin(); it != servers.end(); ++it)
     {
-        QStringList sl;
+        QList<int> sl;
 
         for (int i = 0; i < it->checkState.size(); ++i)
         {
             if (!i && it->checkState[i])
-                sl.append(QLatin1String("system"));
+                sl.append(-1);
             else if (it->checkState[i])
-                sl.append(QString::fromLatin1("camera-%1").arg(it->cameras[i-1]->uniqueID));
+                sl.append(it->cameras[i-1]->uniqueID);
         }
 
         if (!sl.isEmpty())
@@ -194,7 +194,7 @@ bool EventSourcesModel::setData(const QModelIndex &idx, const QVariant &value, i
 
     emit dataChanged(index(0, 0), index(rowCount()-1, 0));
 
-    if (receivers(SIGNAL(checkedSourcesChanged(QMap<DVRServer*,QStringList>))))
+    if (receivers(SIGNAL(checkedSourcesChanged(QMap<DVRServer*,QList<int>>))))
         emit checkedSourcesChanged(checkedSources());
 
     return true;

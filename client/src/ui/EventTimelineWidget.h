@@ -10,7 +10,7 @@ class QRubberBand;
 struct RowData;
 struct ServerData;
 struct LocationData;
-class EventData;
+struct EventData;
 
 class EventTimelineWidget : public QAbstractItemView
 {

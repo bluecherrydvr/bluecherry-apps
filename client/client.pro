@@ -64,7 +64,8 @@ SOURCES += src/main.cpp \
     src/ui/ExpandingTextEdit.cpp \
     src/ui/RecentEventDelegate.cpp \
     src/ui/CrashReportDialog.cpp \
-    src/ui/EventSourcesModel.cpp
+    src/ui/EventSourcesModel.cpp \
+    src/core/EventData.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -95,4 +96,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/ExpandingTextEdit.h \
     src/ui/RecentEventDelegate.h \
     src/ui/CrashReportDialog.h \
-    src/ui/EventSourcesModel.h
+    src/ui/EventSourcesModel.h \
+    src/core/EventData.h

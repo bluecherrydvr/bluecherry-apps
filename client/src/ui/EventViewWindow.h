@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-class EventData;
+struct EventData;
 class QSplitter;
 class QLabel;
 class QListView;
