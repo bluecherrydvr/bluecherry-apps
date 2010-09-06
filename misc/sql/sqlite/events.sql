@@ -15,6 +15,7 @@ INSERT INTO EventTypesCam VALUES ('motion');
 INSERT INTO EventTypesCam VALUES ('not found');
 INSERT INTO EventTypesCam VALUES ('video signal loss');
 INSERT INTO EventTypesCam VALUES ('audio signal loss');
+INSERT INTO EventTypesCam VALUES ('user');
 
 CREATE TABLE EventTypesSys (
 	id varchar(10) PRIMARY KEY NOT NULL
