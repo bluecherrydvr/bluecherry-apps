@@ -1,6 +1,6 @@
 <?php
 
-$db = bc_db_open();
+$db = bc_db_open() or die("Could not open database\n");
 
 $events = bc_db_get_table($db, "SELECT * FROM EventsCam ORDER BY time DESC LIMIT 100");
 
@@ -35,10 +35,20 @@ foreach ($events as $item) {
 		" event on device " . $item['device_id'] . "</title>\n";
 	print "    <published>" . date(DATE_ATOM, strtotime($item['time'])) .
 		"</published>\n";
-	print "    <updated>" . date(DATE_ATOM, strtotime($item['time']) +
-		$item['length']) . "</updated>\n";
-#    <id>tag:example.org,2003:3.2397</id>
-#  </entry>
+
+	/* If updated exists and is empty, the event is on-going */
+	if (!empty($item['length'])) {
+		print "    <updated>";
+		if ($item['length'] > 0) {
+			print date(DATE_ATOM, strtotime($item['time']) +
+				   $item['length']);
+		}
+		print "</updated>\n";
+	}
+
+	print "    <category scheme=\"http://www.bluecherrydvr.com/atom.html\" " .
+		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
+		$item['type_id'] . "\"/>\n";
 	print "  </entry>\n";
 }
 
