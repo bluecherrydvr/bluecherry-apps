@@ -12,6 +12,7 @@ public:
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *event);
+    virtual void mouseDoubleClickEvent(QMouseEvent *event);
 };
 
 #endif // DVRSERVERSVIEW_H

@@ -183,12 +183,18 @@ bool EventSourcesModel::setData(const QModelIndex &idx, const QVariant &value, i
         else
         {
             ServerData &sd = servers[idx.row()-1];
+            if (sd.checkState.count(state) == sd.checkState.size())
+                return true;
+
             sd.checkState.fill(state);
         }
     }
     else
     {
         ServerData &sd = servers[idx.internalId()-1];
+        if (sd.checkState[idx.row()] == state)
+            return true;
+
         sd.checkState[idx.row()] = state;
     }
 
