@@ -5,6 +5,8 @@
 #include "EventTimelineWidget.h"
 #include "EventViewWindow.h"
 #include "EventTypesFilter.h"
+#include "EventTagsView.h"
+#include "EventTagsModel.h"
 #include <QBoxLayout>
 #include <QGridLayout>
 #include <QDateTimeEdit>
@@ -15,6 +17,7 @@
 #include <QSettings>
 #include <QSlider>
 #include <QSplitter>
+#include <QLineEdit>
 
 EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
@@ -49,6 +52,12 @@ EventsWindow::EventsWindow(QWidget *parent)
     label->setStyleSheet(QLatin1String("font-weight:bold;"));
     filtersLayout->addWidget(label);
     filtersLayout->addWidget(createTypeFilter());
+
+    label = new QLabel(tr("Tags"));
+    label->setStyleSheet(QLatin1String("font-weight:bold;"));
+    filtersLayout->addWidget(label);
+    filtersLayout->addWidget(createTags());
+    filtersLayout->addWidget(createTagsInput());
 
     /* Results */
     QBoxLayout *resultLayout = new QVBoxLayout;
@@ -106,6 +115,26 @@ QWidget *EventsWindow::createTypeFilter()
     connect(m_typeFilter, SIGNAL(checkedTypesChanged(QBitArray)), m_resultsView->eventsModel(), SLOT(setFilterTypes(QBitArray)));
 
     return m_typeFilter;
+}
+
+QWidget *EventsWindow::createTags()
+{
+    m_tagsView = new EventTagsView;
+    m_tagsView->setModel(new EventTagsModel(m_tagsView));
+    m_tagsView->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    return m_tagsView;
+}
+
+QWidget *EventsWindow::createTagsInput()
+{
+    QComboBox *tagInput = new QComboBox;
+    tagInput->setEditable(true);
+    tagInput->setInsertPolicy(QComboBox::NoInsert);
+#if QT_VERSION >= 0x040700
+    tagInput->lineEdit()->setPlaceholderText(tr("Add a tag"));
+#endif
+
+    return tagInput;
 }
 
 QWidget *EventsWindow::createResultTitle()

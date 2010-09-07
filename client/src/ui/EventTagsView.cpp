@@ -18,7 +18,8 @@ QSize EventTagsView::minimumSizeHint() const
 
 QSize EventTagsView::sizeHint() const
 {
-    return cachedSizeHint;
+    QMargins margin = contentsMargins();
+    return cachedSizeHint + QSize(margin.left() + margin.right(), margin.top() + margin.bottom());
 }
 
 void EventTagsView::setModel(QAbstractItemModel *model)
