@@ -6,6 +6,7 @@
 class DVRServersView;
 class EventResultsView;
 class EventTimelineWidget;
+class EventTypesFilter;
 class QLabel;
 class QBoxLayout;
 class QDateTimeEdit;
@@ -38,6 +39,7 @@ private:
     DVRServersView *m_sourcesView;
     QDateTimeEdit *m_startDate;
     QComboBox *m_levelFilter;
+    EventTypesFilter *m_typeFilter;
     QLabel *m_resultTitle;
     EventResultsView *m_resultsView;
     EventTimelineWidget *m_timeline;

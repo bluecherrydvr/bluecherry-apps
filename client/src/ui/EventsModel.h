@@ -7,6 +7,7 @@
 #include <QList>
 #include <QSet>
 #include <QColor>
+#include <QBitArray>
 
 class DVRServer;
 class DVRCamera;
@@ -26,7 +27,6 @@ public:
     explicit EventsModel(QObject *parent = 0);
 
     void setFilterDates(const QDateTime &begin, const QDateTime &end);
-    void setFilterLevel(EventLevel minimum);
 
     QString filterDescription() const;
 
@@ -41,6 +41,8 @@ public:
 
 public slots:
     void setFilterSources(const QMap<DVRServer*,QList<int> > &sources);
+    void setFilterTypes(const QBitArray &typemap);
+    void setFilterLevel(EventLevel minimum);
 
     void setFilterBeginDate(const QDateTime &begin) { setFilterDates(begin, filterDateEnd); }
     void setFilterEndDate(const QDateTime &end) { setFilterDates(filterDateBegin, end); }
@@ -57,6 +59,7 @@ private:
     /* Filters */
     QHash<DVRServer*, QSet<int> > filterSources;
     QDateTime filterDateBegin, filterDateEnd;
+    QBitArray filterTypes;
     EventLevel filterLevel;
 
     /* Sorting */

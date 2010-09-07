@@ -4,6 +4,7 @@
 #include "EventResultsView.h"
 #include "EventTimelineWidget.h"
 #include "EventViewWindow.h"
+#include "EventTypesFilter.h"
 #include <QBoxLayout>
 #include <QGridLayout>
 #include <QDateTimeEdit>
@@ -99,10 +100,12 @@ QWidget *EventsWindow::createLevelFilter()
 
 QWidget *EventsWindow::createTypeFilter()
 {
-    /* Temporary */
-    QTreeView *tmp = new QTreeView;
-    tmp->setMaximumWidth(180);
-    return tmp;
+    m_typeFilter = new EventTypesFilter;
+    m_typeFilter->setMaximumWidth(180);
+
+    connect(m_typeFilter, SIGNAL(checkedTypesChanged(QBitArray)), m_resultsView->eventsModel(), SLOT(setFilterTypes(QBitArray)));
+
+    return m_typeFilter;
 }
 
 QWidget *EventsWindow::createResultTitle()

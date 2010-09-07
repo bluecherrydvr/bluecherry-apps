@@ -38,15 +38,20 @@ public:
     {
         UnknownType = -1,
         CameraMotion,
+        MinCamera = CameraMotion,
         CameraNotFound,
         CameraVideoLost,
         CameraAudioLost,
+        MaxCamera = CameraAudioLost,
         SystemDiskSpace,
+        MinSystem = SystemDiskSpace,
         SystemCrash,
         SystemBoot,
         SystemShutdown,
         SystemReboot,
-        SystemPowerOutage
+        SystemPowerOutage,
+        MaxSystem = SystemPowerOutage,
+        Max = MaxSystem
     } type : 8;
 
     EventType() : type(UnknownType) { }

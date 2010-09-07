@@ -260,6 +260,7 @@ void EventsModel::applyFilters(bool fromCache)
 bool EventsModel::testFilter(EventData *data)
 {
     if (data->level < filterLevel ||
+        (!filterTypes.isNull() && !filterTypes[data->type]) ||
         (!filterDateBegin.isNull() && data->date < filterDateBegin) ||
         (!filterDateEnd.isNull() && data->date > filterDateEnd))
         return false;
@@ -381,5 +382,25 @@ void EventsModel::setFilterSources(const QMap<DVRServer*, QList<int> > &sources)
     for (QMap<DVRServer*, QList<int> >::ConstIterator nit = sources.begin(); nit != sources.end(); ++nit)
         filterSources.insert(nit.key(), nit->toSet());
 
+    applyFilters(!fast);
+}
+
+void EventsModel::setFilterTypes(const QBitArray &typemap)
+{
+    bool fast = true;
+
+    if (!filterTypes.isNull() && filterTypes.size() == typemap.size())
+    {
+        for (int i = 0; i < typemap.size(); ++i)
+        {
+            if (typemap[i] && !filterTypes[i])
+            {
+                fast = false;
+                break;
+            }
+        }
+    }
+
+    filterTypes = typemap;
     applyFilters(!fast);
 }
