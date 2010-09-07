@@ -23,7 +23,7 @@ EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
 {
     setWindowTitle(tr("Bluecherry DVR - Event Viewer"));
-    resize(QSize(900, 650));
+    resize(QSize(900, 680));
 
     QBoxLayout *layout = new QHBoxLayout(this);
     QBoxLayout *filtersLayout = new QVBoxLayout;
@@ -36,6 +36,7 @@ EventsWindow::EventsWindow(QWidget *parent)
     EventSourcesModel *sourcesModel = new EventSourcesModel(m_sourcesView);
     m_sourcesView->setModel(sourcesModel);
     m_sourcesView->setMaximumWidth(180);
+    m_sourcesView->setMaximumHeight(150);
     filtersLayout->addWidget(m_sourcesView);
 
     connect(sourcesModel, SIGNAL(checkedSourcesChanged(QMap<DVRServer*,QList<int>>)),
@@ -131,7 +132,7 @@ QWidget *EventsWindow::createTagsInput()
     tagInput->setEditable(true);
     tagInput->setInsertPolicy(QComboBox::NoInsert);
 #if QT_VERSION >= 0x040700
-    tagInput->lineEdit()->setPlaceholderText(tr("Add a tag"));
+    tagInput->lineEdit()->setPlaceholderText(tr("Type or select a tag to filter"));
 #endif
 
     return tagInput;

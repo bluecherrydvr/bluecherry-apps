@@ -43,6 +43,9 @@ void EventTagsView::rowsInserted(const QModelIndex &parent, int start, int end)
         cachedSizeHint.rheight() += isz.height();
     }
 
+    if (isHidden())
+        show();
+
     updateGeometry();
 }
 
@@ -53,6 +56,9 @@ void EventTagsView::rowsAboutToBeRemoved(const QModelIndex &parent, int start, i
         QSize isz = sizeHintForIndex(model()->index(i, modelColumn(), parent));
         cachedSizeHint.rheight() -= isz.height();
     }
+
+    if (cachedSizeHint.isEmpty())
+        hide();
 
     updateGeometry();
 }
@@ -71,6 +77,9 @@ void EventTagsView::calculateSizeHint()
     }
 
     cachedSizeHint = size;
+    if (cachedSizeHint.isEmpty())
+        hide();
+
     updateGeometry();
 }
 
