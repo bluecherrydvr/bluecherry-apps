@@ -216,15 +216,15 @@ int bc_key_process(struct bc_key_data *res, char *str);
 /* ### Handle events ### */
 
 /* Returns an event handle for later passing to _end */
-bc_event_cam_t bc_event_cam_start(int cam_id, bc_event_level_t level,
+bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 				  bc_event_cam_type_t type);
 /* Finished the event and inserts it into the database */
-void bc_event_cam_end(struct bc_db_handle *bcdb, bc_event_cam_t bce);
+void bc_event_cam_end(bc_event_cam_t bce);
 /* Insert a cam event in one shot. It will have a 0 length */
-int bc_event_cam(struct bc_db_handle *bcdb, int cam_id, bc_event_level_t level,
+int bc_event_cam(int id, bc_event_level_t level,
 		 bc_event_cam_type_t type);
 /* Insert a system event */
-int bc_event_sys(struct bc_db_handle *bcdb, bc_event_level_t level,
+int bc_event_sys(bc_event_level_t level,
 		 bc_event_sys_type_t type);
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
