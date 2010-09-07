@@ -15,6 +15,7 @@ INSERT INTO EventTypesCam VALUES ('motion');
 INSERT INTO EventTypesCam VALUES ('not found');
 INSERT INTO EventTypesCam VALUES ('video signal loss');
 INSERT INTO EventTypesCam VALUES ('audio signal loss');
+INSERT INTO EventTypesCam VALUES ('user');
 
 CREATE TABLE EventTypesSys (
 	id varchar(10) PRIMARY KEY NOT NULL
@@ -33,7 +34,7 @@ CREATE TABLE EventsCam (
 	level_id varchar(10),
 	device_id integer,
 	type_id varchar(10),
-	length integer NOT NULL DEFAULT 0,	-- length of event in seconds
+	length integer DEFAULT 0,		-- length of event in seconds
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
 		ON UPDATE CASCADE ON DELETE CASCADE,
