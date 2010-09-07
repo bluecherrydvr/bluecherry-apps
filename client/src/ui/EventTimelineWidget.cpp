@@ -234,7 +234,39 @@ void EventTimelineWidget::updateScrollBars()
 
 void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
 {
+    QRect itemArea = viewportItemArea();
+    QRect itemRect = visualRect(index);
+    itemRect.moveTop(itemRect.top() - itemArea.top());
 
+    EventData *event = rowData(index.row());
+
+    switch (hint)
+    {
+    case EnsureVisible:
+        if (itemRect.y() < 0)
+            verticalScrollBar()->setValue(verticalScrollBar()->value() + itemRect.y());
+        else if (itemRect.bottom() > itemArea.height())
+            verticalScrollBar()->setValue(verticalScrollBar()->value() + (itemRect.bottom() - itemArea.height()));
+        break;
+
+    case PositionAtTop:
+        verticalScrollBar()->setValue(verticalScrollBar()->value() + itemRect.y());
+        break;
+
+    case PositionAtBottom:
+        verticalScrollBar()->setValue(verticalScrollBar()->value() + (itemRect.bottom() - itemArea.height()));
+        break;
+
+    case PositionAtCenter:
+        qDebug() << (itemArea.height()-itemRect.height())/2;
+        verticalScrollBar()->setValue((verticalScrollBar()->value() + itemRect.y()) - ((itemArea.height() - itemRect.height())/2));
+        break;
+    }
+
+    if (event->date < viewTimeStart)
+        horizontalScrollBar()->setValue(timeStart.secsTo(event->date));
+    else if (event->date.addSecs(event->duration) > viewTimeEnd)
+        horizontalScrollBar()->setValue(timeStart.secsTo(event->date.addSecs(event->duration)) - viewSeconds);
 }
 
 EventData *EventTimelineWidget::eventAt(const QPoint &point) const
@@ -999,6 +1031,8 @@ void EventTimelineWidget::mousePressEvent(QMouseEvent *event)
 
     if (data)
     {
+        QAbstractItemView::mousePressEvent(event);
+
         Q_ASSERT(rowsMap.contains(data));
         QModelIndex index = model()->index(rowsMap[data], 0);
         Q_ASSERT(index.isValid());
