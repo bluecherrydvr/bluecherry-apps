@@ -19,6 +19,7 @@ public:
     QList<DVRServer*> servers() const { return m_servers; }
     DVRServer *addNewServer(const QString &name);
     DVRServer *findServerID(int id);
+    bool serverExists(DVRServer *server) { return m_servers.contains(server); }
 
 signals:
     void serverAdded(DVRServer *server);

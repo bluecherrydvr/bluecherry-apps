@@ -1,6 +1,8 @@
 #include "DVRServer.h"
 #include "DVRCamera.h"
 #include <QSettings>
+#include <QNetworkRequest>
+#include <QUrl>
 
 DVRServer::DVRServer(int id, QObject *parent)
     : QObject(parent), configId(id)
@@ -67,4 +69,12 @@ void DVRServer::removeServer()
     settings.remove(QString::fromLatin1("servers/%1").arg(configId));
 
     deleteLater();
+}
+
+QNetworkRequest DVRServer::createRequest(const QUrl &relurl)
+{
+    QUrl url(relurl);
+    url.setHost(hostname());
+
+    return QNetworkRequest(url);
 }

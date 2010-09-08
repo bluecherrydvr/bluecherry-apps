@@ -95,6 +95,8 @@ struct EventData
 
     static QString uiLocation(DVRServer *server, int locationId);
     static DVRCamera *locationCamera(DVRServer *server, int locationId);
+
+    static QList<EventData*> parseEvents(DVRServer *server, const QByteArray &input);
 };
 
 #endif // EVENTDATA_H

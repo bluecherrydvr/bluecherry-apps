@@ -5,6 +5,8 @@
 #include <QVariant>
 
 class DVRCamera;
+class QNetworkRequest;
+class QUrl;
 
 class DVRServer : public QObject
 {
@@ -33,6 +35,9 @@ public:
 
     void clearSetting(const char *key) { clearSetting(QLatin1String(key)); }
     void clearSetting(const QString &key);
+
+    /* Network */
+    QNetworkRequest createRequest(const QUrl &url);
 
 public slots:
     void setDisplayName(const QString &displayName);

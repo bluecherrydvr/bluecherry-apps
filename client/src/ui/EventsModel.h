@@ -52,6 +52,7 @@ signals:
 
 private slots:
     void serverRemoved(DVRServer *server);
+    void requestFinished();
 
 private:
     QList<EventData*> items, cachedEvents;
@@ -71,6 +72,7 @@ private:
     void applyFilters(bool fromCache = true);
     bool testFilter(EventData *data);
 
+    void requestData(DVRServer *server);
     void createTestData();
 };
 

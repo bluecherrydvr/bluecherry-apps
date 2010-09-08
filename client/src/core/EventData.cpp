@@ -2,6 +2,7 @@
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
 #include <QApplication>
+#include <QXmlStreamReader>
 #include <QDebug>
 
 QString EventLevel::uiString() const
@@ -135,4 +136,66 @@ QString EventData::uiLocation(DVRServer *server, int locationId)
         return QApplication::translate("EventData", "System");
     else
         return QString::fromLatin1("camera-%1").arg(locationId);
+}
+
+static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader);
+
+QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &input)
+{
+    QXmlStreamReader reader(input);
+    QList<EventData*> re;
+
+    while (reader.readNextStartElement())
+    {
+        if (reader.name() == QLatin1String("feed"))
+        {
+            while (reader.readNextStartElement())
+            {
+                if (reader.name() == QLatin1String("entry"))
+                {
+                    EventData *data = parseEntry(server, reader);
+                    if (data)
+                        re.append(data);
+                }
+            }
+            break;
+        }
+    }
+
+    return re;
+}
+
+static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
+{
+    Q_ASSERT(reader.isStartElement() && reader.name() == QLatin1String("entry"));
+
+    EventData *data = new EventData(server);
+    data->duration = 0;
+
+    while (reader.readNextStartElement())
+    {
+        if (reader.name() == QLatin1String("published"))
+        {
+            data->date = QDateTime::fromString(reader.readElementText(), Qt::ISODate);
+        }
+        else if (reader.name() == QLatin1String("updated"))
+        {
+            QString d = reader.readElementText();
+            if (d.isEmpty())
+                data->duration = -1;
+            else
+                data->duration = data->date.secsTo(QDateTime::fromString(d, Qt::ISODate));
+        }
+        else if (reader.name() == QLatin1String("category"))
+        {
+            QXmlStreamAttributes attrib = reader.attributes();
+            if (attrib.value(QLatin1String("scheme")) == QLatin1String("http://www.bluecherrydvr.com/atom.html"))
+            {
+                QStringRef category = attrib.value(QLatin1String("term"));
+                qDebug() << category;
+            }
+        }
+    }
+
+    return data;
 }

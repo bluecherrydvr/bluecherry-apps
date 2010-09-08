@@ -2,8 +2,12 @@
 #include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
 #include "core/DVRCamera.h"
+#include "core/EventData.h"
 #include <QTextDocument>
 #include <QColor>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QDebug>
 
 EventsModel::EventsModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -403,4 +407,36 @@ void EventsModel::setFilterTypes(const QBitArray &typemap)
 
     filterTypes = typemap;
     applyFilters(!fast);
+}
+
+void EventsModel::requestData(DVRServer *server)
+{
+    QNetworkRequest req = server->createRequest(QUrl(QLatin1String("/events/")));
+    req.setOriginatingObject(server);
+    QNetworkReply *reply = bcApp->nam->get(req);
+    connect(reply, SIGNAL(finished()), SLOT(requestFinished()));
+}
+
+void EventsModel::requestFinished()
+{
+    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply)
+        return;
+
+    reply->deleteLater();
+
+    DVRServer *server = static_cast<DVRServer*>(reply->request().originatingObject());
+    if (!bcApp->serverExists(server))
+        return;
+
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        qWarning() << "Event request error:" << reply->errorString();
+        /* TODO: Handle errors properly */
+        return;
+    }
+
+    QByteArray data = reply->readAll();
+    QList<EventData*> events = EventData::parseEvents(server, data);
+    qDeleteAll(events);
 }
