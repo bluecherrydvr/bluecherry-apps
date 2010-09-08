@@ -260,7 +260,7 @@ void EventsModel::applyFilters(bool fromCache)
 bool EventsModel::testFilter(EventData *data)
 {
     if (data->level < filterLevel ||
-        (!filterTypes.isNull() && !filterTypes[data->type]) ||
+        (!filterTypes.isNull() && !filterTypes[(int)data->type]) ||
         (!filterDateBegin.isNull() && data->date < filterDateBegin) ||
         (!filterDateEnd.isNull() && data->date > filterDateEnd))
         return false;
