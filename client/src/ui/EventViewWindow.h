@@ -12,6 +12,7 @@ class QComboBox;
 class QPushButton;
 class EventTagsView;
 class EventCommentsWidget;
+class EventVideoPlayer;
 class ExpandingTextEdit;
 
 class EventViewWindow : public QWidget
@@ -40,6 +41,8 @@ private:
     EventCommentsWidget *m_commentsArea;
     ExpandingTextEdit *m_commentInput;
     QPushButton *m_commentBtn;
+
+    EventVideoPlayer *m_videoPlayer;
 
     QWidget *createInfoArea();
     QWidget *createPlaybackArea();

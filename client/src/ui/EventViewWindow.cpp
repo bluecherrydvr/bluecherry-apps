@@ -3,6 +3,7 @@
 #include "EventTagsView.h"
 #include "EventTagsModel.h"
 #include "EventCommentsWidget.h"
+#include "EventVideoPlayer.h"
 #include "ExpandingTextEdit.h"
 #include "core/DVRServer.h"
 #include <QBoxLayout>
@@ -138,49 +139,10 @@ QWidget *EventViewWindow::createInfoArea()
 
 QWidget *EventViewWindow::createPlaybackArea()
 {
-    QWidget *container = new QWidget;
-    container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    QBoxLayout *layout = new QVBoxLayout(container);
-    layout->setMargin(0);
-
-    QWidget *videoArea = new QWidget;
-    videoArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    videoArea->setMinimumSize(320, 240);
-    videoArea->setAutoFillBackground(true);
-    videoArea->setStyleSheet(QLatin1String("background-color:black;"));
-    layout->addWidget(videoArea);
-
-    QSlider *videoSlider = new QSlider(Qt::Horizontal);
-    videoSlider->setEnabled(false);
-    layout->addWidget(videoSlider);
-
-    QBoxLayout *btnLayout = new QHBoxLayout;
-    btnLayout->setSpacing(3);
-    layout->addLayout(btnLayout);
-
-    QToolButton *playBtn = new QToolButton;
-    playBtn->setText(QString(QChar(0x25BA)));
-    btnLayout->addWidget(playBtn);
-
-    btnLayout->addSpacing(9);
-
-    QToolButton *slowBtn = new QToolButton;
-    slowBtn->setText(QString(2, QChar(0x25C4)));
-    btnLayout->addWidget(slowBtn);
-
-    QToolButton *fastBtn = new QToolButton;
-    fastBtn->setText(QString(2, QChar(0x25BA)));
-    btnLayout->addWidget(fastBtn);
-
-    btnLayout->addSpacing(9);
-
-    QToolButton *restartBtn = new QToolButton;
-    restartBtn->setText(QString::fromUtf8("|\xe2\x97\x84"));
-    btnLayout->addWidget(restartBtn);
-
-    btnLayout->addStretch();
-    return container;
+    m_videoPlayer = new EventVideoPlayer;
+    //m_videoPlayer->setVideo(QUrl(QLatin1String("http://dereferenced.net/test.mkv")));
+    m_videoPlayer->setVideo(QUrl(QLatin1String("http://lizard.bluecherry.net/~jbrooks/test.mkv")));
+    return m_videoPlayer;
 }
 
 void EventViewWindow::commentInputChanged()

@@ -48,6 +48,13 @@ win32-msvc2008|win32-msvc2010 {
     }
 }
 
+unix:!macx {
+    # GStreamer
+    CONFIG += link_pkgconfig
+    PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10
+    DEFINES += USE_GSTREAMER
+}
+
 SOURCES += src/main.cpp \
     src/ui/MainWindow.cpp \
     src/ui/CameraAreaWidget.cpp \
@@ -80,7 +87,9 @@ SOURCES += src/main.cpp \
     src/ui/CrashReportDialog.cpp \
     src/ui/EventSourcesModel.cpp \
     src/core/EventData.cpp \
-    src/ui/EventTypesFilter.cpp
+    src/ui/EventTypesFilter.cpp \
+    src/ui/EventVideoPlayer.cpp \
+    src/video/VideoPlayerBackend_gst.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -113,4 +122,6 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/CrashReportDialog.h \
     src/ui/EventSourcesModel.h \
     src/core/EventData.h \
-    src/ui/EventTypesFilter.h
+    src/ui/EventTypesFilter.h \
+    src/ui/EventVideoPlayer.h \
+    src/video/VideoPlayerBackend_gst.h
