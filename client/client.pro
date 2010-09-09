@@ -20,11 +20,25 @@ win32-msvc2008|win32-msvc2010 {
     INCLUDEPATH += "$$PWD/breakpad/src"
     SOURCES += src/utils/Breakpad.cpp
 
-    unix:!macx:LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+    unix:QMAKE_POST_LINK = strip $(TARGET)
+    unix:QMAKE_CXXFLAGS_RELEASE += -gstabs
+    
+    unix:!macx {
+        LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+
+        QMAKE_POST_LINK = python "$$PWD/breakpad-bin/symbolstore.py" "$$PWD/breakpad/src/tools/linux/dump_syms/dump_syms" $${TARGET}.symbols $(TARGET); $$QMAKE_POST_LINK
+    }
 
     macx {
-        QMAKE_LFLAGS += -F$$PWD/breakpad-bin
+        QMAKE_LFLAGS += -F$$PWD/breakpad-bin/mac
         LIBS += -framework Breakpad
+
+        CONFIG(x86):ARCH += x86
+        CONFIG(x86_64):ARCH += x86_64
+        CONFIG(ppc):ARCH += ppc
+        CONFIG(ppc64):ARCH += ppc64
+
+        QMAKE_POST_LINK = python "$$PWD/breakpad-bin/symbolstore.py" -a "$$ARCH" "$$PWD/breakpad-bin/mac/dump_syms" $${TARGET}.symbols $(TARGET); $$QMAKE_POST_LINK
     }
 
     win32 {
