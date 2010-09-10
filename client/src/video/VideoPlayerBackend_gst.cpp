@@ -1,11 +1,12 @@
 #include "VideoPlayerBackend_gst.h"
 #include <QUrl>
 #include <QDebug>
+#include <QApplication>
 #include <gst/gst.h>
 #include <gst/interfaces/xoverlay.h>
 
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
-    : QObject(parent), m_play(0), m_sink(0), m_bus(0)
+    : QObject(parent), m_play(0), m_sink(0), m_bus(0), m_surface(0), m_state(Stopped)
 {
     GError *err;
     if (gst_init_check(0, 0, &err) == FALSE)
@@ -19,6 +20,11 @@ static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
     return ((VideoPlayerBackend*)data)->busEvent(bus, msg);
 }
 
+static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
+{
+    return ((VideoPlayerBackend*)data)->busSyncHandler(bus, msg);
+}
+
 void VideoPlayerBackend::start(const QUrl &url, QWidget *surface)
 {
     if (m_play || m_sink || m_bus)
@@ -29,12 +35,16 @@ void VideoPlayerBackend::start(const QUrl &url, QWidget *surface)
 
     m_sink = gst_element_factory_make("xvimagesink", "sink");
     g_object_set(G_OBJECT(m_play), "video-sink", m_sink, NULL);
+    g_object_set(G_OBJECT(m_sink), "force-aspect-ratio", TRUE, NULL);
 
+    m_surface = surface;
     surface->setAttribute(Qt::WA_NativeWindow);
-    gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(m_sink), surface->winId());
+    surface->setAttribute(Qt::WA_PaintOnScreen);
+    surface->setAttribute(Qt::WA_NoSystemBackground);
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_play));
     gst_bus_add_watch(m_bus, bus_callback, this);
+    gst_bus_set_sync_handler(m_bus, bus_handler, this);
     gst_object_unref(m_bus);
 }
 
@@ -48,6 +58,7 @@ void VideoPlayerBackend::clear()
 
     m_play = m_sink = 0;
     m_bus = 0;
+    m_surface = 0;
 }
 
 void VideoPlayerBackend::play()
@@ -56,12 +67,101 @@ void VideoPlayerBackend::play()
     gst_element_set_state(m_play, GST_STATE_PLAYING);
 }
 
+void VideoPlayerBackend::pause()
+{
+    Q_ASSERT(m_play);
+    gst_element_set_state(m_play, GST_STATE_PAUSED);
+}
+
+void VideoPlayerBackend::restart()
+{
+    Q_ASSERT(m_play);
+    gst_element_set_state(m_play, GST_STATE_NULL);
+    seek(0);
+}
+
+qint64 VideoPlayerBackend::duration() const
+{
+    GstFormat fmt = GST_FORMAT_TIME;
+    gint64 re = 0;
+    if (gst_element_query_duration(m_play, &fmt, &re))
+        return re;
+
+    return -1;
+}
+
+qint64 VideoPlayerBackend::position() const
+{
+    GstFormat fmt = GST_FORMAT_TIME;
+    gint64 re = 0;
+    gst_element_query_position(m_play, &fmt, &re);
+    return re;
+}
+
+void VideoPlayerBackend::seek(qint64 position)
+{
+    gboolean re = gst_element_seek_simple(m_play, GST_FORMAT_TIME,
+                            (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
+                            position);
+
+    if (!re)
+        qDebug() << "seek to position" << position << "failed";
+}
+
 gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
 {
     switch (GST_MESSAGE_TYPE(msg))
     {
+    case GST_MESSAGE_BUFFERING:
+        {
+            gint percent = 0;
+            gst_message_parse_buffering(msg, &percent);
+            qDebug() << "buffering" << percent << "%";
+        }
+        break;
+
+    case GST_MESSAGE_STATE_CHANGED:
+        {
+            GstState newState;
+            gst_message_parse_state_changed(msg, 0, &newState, 0);
+            VideoState vpState;
+
+            switch (newState)
+            {
+            case GST_STATE_VOID_PENDING:
+            case GST_STATE_NULL:
+            case GST_STATE_READY:
+                vpState = Stopped;
+                break;
+            case GST_STATE_PAUSED:
+                vpState = Paused;
+                break;
+            case GST_STATE_PLAYING:
+                vpState = Playing;
+            }
+
+            if (vpState != m_state)
+            {
+                VideoState old = m_state;
+                m_state = vpState;
+                emit stateChanged(m_state, old);
+            }
+        }
+        break;
+
+    case GST_MESSAGE_DURATION:
+        qDebug("duration");
+        emit durationChanged(duration());
+        break;
+
     case GST_MESSAGE_EOS:
-        qDebug("end of stream");
+        {
+            qDebug("end of stream");
+            VideoState old = m_state;
+            m_state = Done;
+            emit stateChanged(m_state, old);
+            emit endOfStream();
+        }
         break;
 
     case GST_MESSAGE_ERROR:
@@ -82,4 +182,17 @@ gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
     }
 
     return TRUE;
+}
+
+GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
+{
+    if (GST_MESSAGE_TYPE(msg) != GST_MESSAGE_ELEMENT ||
+        !gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
+        return GST_BUS_PASS;
+
+    gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), m_surface->winId());
+    gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
+
+    gst_message_unref(msg);
+    return GST_BUS_DROP;
 }
