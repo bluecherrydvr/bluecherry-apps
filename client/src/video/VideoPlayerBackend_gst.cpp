@@ -24,6 +24,19 @@ static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
     return ((VideoPlayerBackend*)data)->busSyncHandler(bus, msg);
 }
 
+class VideoSurface : public QWidget
+{
+public:
+    VideoSurface(QWidget *parent = 0) : QWidget(parent)
+    {
+    }
+
+    virtual QPaintEngine *paintEngine() const
+    {
+        return 0;
+    }
+};
+
 QWidget *VideoPlayerBackend::createSurface()
 {
     Q_ASSERT(!m_surface);
@@ -31,15 +44,16 @@ QWidget *VideoPlayerBackend::createSurface()
 #ifdef Q_WS_MAC
     m_surface = new QMacCocoaViewContainer(0);
 #else
-    m_surface = new QWidget;
+    m_surface = new VideoSurface;
 #endif
     QPalette p = m_surface->palette();
-    p.setColor(QPalette::Window, Qt::black);
+    p.setColor(QPalette::Window, Qt::red);
     m_surface->setPalette(p);
-    m_surface->setAutoFillBackground(true);
+    m_surface->setAutoFillBackground(false);
     m_surface->setAttribute(Qt::WA_NativeWindow);
     m_surface->setAttribute(Qt::WA_PaintOnScreen);
     m_surface->setAttribute(Qt::WA_NoSystemBackground);
+    m_surface->setAttribute(Qt::WA_OpaquePaintEvent);
 
     return m_surface;
 }
@@ -225,6 +239,9 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         if (gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
         {
             qDebug("gstreamer: Setting X overlay");
+            if (!m_sink)
+                m_sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
+            Q_ASSERT(m_sink == GST_ELEMENT(GST_MESSAGE_SRC(msg)));
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
             gst_message_unref(msg);

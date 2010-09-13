@@ -3,6 +3,8 @@
 #include <QBoxLayout>
 #include <QSlider>
 #include <QToolButton>
+#include <QApplication>
+#include <QThread>
 #include <QDebug>
 
 EventVideoPlayer::EventVideoPlayer(QWidget *parent)
@@ -90,6 +92,8 @@ void EventVideoPlayer::seek(int position)
 
 void EventVideoPlayer::stateChanged(int state)
 {
+    Q_ASSERT(QThread::currentThread() == qApp->thread());
+
     qDebug("state change %d", state);
     if (state == VideoPlayerBackend::Playing)
     {
@@ -105,6 +109,8 @@ void EventVideoPlayer::stateChanged(int state)
 
 void EventVideoPlayer::durationChanged(qint64 nsDuration)
 {
+    Q_ASSERT(QThread::currentThread() == qApp->thread());
+
     if (nsDuration == -1)
         nsDuration = backend.duration();
 
@@ -119,6 +125,8 @@ void EventVideoPlayer::durationChanged(qint64 nsDuration)
 
 void EventVideoPlayer::updatePosition()
 {
+    Q_ASSERT(QThread::currentThread() == qApp->thread());
+
     if (!m_seekSlider->maximum())
     {
         qint64 nsDuration = backend.duration();

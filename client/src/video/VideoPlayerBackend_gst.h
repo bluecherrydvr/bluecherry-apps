@@ -3,10 +3,7 @@
 
 #include <QObject>
 #include <QWidget>
-extern "C"
-{
 #include <gst/gst.h>
-}
 
 class QUrl;
 
@@ -56,7 +53,7 @@ private:
     GstBus *m_bus;
     QWidget *m_surface;
     VideoState m_state;
-    
+
 #ifdef Q_WS_MAC
     Q_INVOKABLE void setVideoView(void *nsview);
 #endif
