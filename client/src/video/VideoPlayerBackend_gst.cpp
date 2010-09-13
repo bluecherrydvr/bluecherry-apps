@@ -122,6 +122,9 @@ qint64 VideoPlayerBackend::duration() const
 
 qint64 VideoPlayerBackend::position() const
 {
+    if (m_state == Done)
+        return duration();
+
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
     gst_element_query_position(m_play, &fmt, &re);

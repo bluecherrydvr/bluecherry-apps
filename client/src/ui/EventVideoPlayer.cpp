@@ -11,6 +11,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     connect(&backend, SIGNAL(stateChanged(int,int)),
             SLOT(stateChanged(int)));
     connect(&backend, SIGNAL(durationChanged(qint64)), SLOT(durationChanged(qint64)));
+    connect(&backend, SIGNAL(endOfStream()), SLOT(durationChanged()));
 
     connect(&m_posTimer, SIGNAL(timeout()), SLOT(updatePosition()));
 
@@ -104,6 +105,9 @@ void EventVideoPlayer::stateChanged(int state)
 
 void EventVideoPlayer::durationChanged(qint64 nsDuration)
 {
+    if (nsDuration == -1)
+        nsDuration = backend.duration();
+
     /* Time is assumed to be nanoseconds; convert to milliseconds */
     int duration = int(nsDuration / 1000000);
     /* BUG: Shouldn't mindlessly chop to int */

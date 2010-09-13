@@ -28,7 +28,7 @@ public slots:
 
 private slots:
     void stateChanged(int state);
-    void durationChanged(qint64 duration);
+    void durationChanged(qint64 duration = -1);
     void updatePosition();
 
 private:
