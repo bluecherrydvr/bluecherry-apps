@@ -273,10 +273,19 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 }
 
 #ifdef Q_WS_MAC
+#include <QApplication>
+#include <QResizeEvent>
+
 void VideoPlayerBackend::setVideoView(void *nsview)
 {
     qDebug("setting video view");
     Q_ASSERT(qobject_cast<QMacCocoaViewContainer*>(m_surface));
     static_cast<QMacCocoaViewContainer*>(m_surface)->setCocoaView(nsview);
+
+    /* Hack: This is necessary to get QMacCocoaViewContainer to resize the nsview
+     * properly when it's initially set. Bug exists as of Qt 4.7.0 */
+    QSize sz = m_surface->size();
+    m_surface->resize(sz - QSize(1,1));
+    m_surface->resize(sz);
 }
 #endif
