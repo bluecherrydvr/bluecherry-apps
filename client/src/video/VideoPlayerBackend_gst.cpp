@@ -3,7 +3,10 @@
 #include <QDebug>
 #include <QApplication>
 #include <gst/gst.h>
-#include <gst/interfaces/xoverlay.h>
+
+#ifdef Q_WS_MAC
+#include <QMacCocoaViewContainer>
+#endif
 
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     : QObject(parent), m_play(0), m_sink(0), m_bus(0), m_surface(0), m_state(Stopped)
@@ -25,24 +28,51 @@ static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
     return ((VideoPlayerBackend*)data)->busSyncHandler(bus, msg);
 }
 
-void VideoPlayerBackend::start(const QUrl &url, QWidget *surface)
+QWidget *VideoPlayerBackend::createSurface()
+{
+    Q_ASSERT(!m_surface);
+
+#ifdef Q_WS_MAC
+    m_surface = new QMacCocoaViewContainer(0);
+#else
+    m_surface = new QWidget;
+#endif
+    QPalette p = m_surface->palette();
+    p.setColor(QPalette::Window, Qt::black);
+    m_surface->setPalette(p);
+    m_surface->setAutoFillBackground(true);
+    m_surface->setAttribute(Qt::WA_NativeWindow);
+    m_surface->setAttribute(Qt::WA_PaintOnScreen);
+    m_surface->setAttribute(Qt::WA_NoSystemBackground);
+
+    return m_surface;
+}
+
+void VideoPlayerBackend::start(const QUrl &url)
 {
     if (m_play || m_sink || m_bus)
         clear();
 
     m_play = gst_element_factory_make("playbin", "play");
+    Q_ASSERT(m_play);
     g_object_set(G_OBJECT(m_play), "uri", url.toString().toLocal8Bit().constData(), NULL);
 
+#ifdef Q_WS_X11
     m_sink = gst_element_factory_make("xvimagesink", "sink");
+    Q_ASSERT(m_sink);
     g_object_set(G_OBJECT(m_play), "video-sink", m_sink, NULL);
     g_object_set(G_OBJECT(m_sink), "force-aspect-ratio", TRUE, NULL);
+#elif defined(Q_WS_MAC)
+    m_sink = gst_element_factory_make("osxvideosink", "sink");
+    Q_ASSERT(m_sink);
+    g_object_set(G_OBJECT(m_play), "video-sink", m_sink, NULL);
+    g_object_set(G_OBJECT(m_sink), "embed", TRUE, NULL);
+#endif
 
-    m_surface = surface;
-    surface->setAttribute(Qt::WA_NativeWindow);
-    surface->setAttribute(Qt::WA_PaintOnScreen);
-    surface->setAttribute(Qt::WA_NoSystemBackground);
+    Q_ASSERT(m_surface);
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_play));
+    Q_ASSERT(m_bus);
     gst_bus_add_watch(m_bus, bus_callback, this);
     gst_bus_set_sync_handler(m_bus, bus_handler, this);
     gst_object_unref(m_bus);
@@ -184,8 +214,15 @@ gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
     return TRUE;
 }
 
+#ifdef Q_WS_X11
+#include <gst/interfaces/xoverlay.h>
+#elif defined(Q_WS_MAC)
+#include <QMacCocoaViewContainer>
+#endif
+
 GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 {
+#ifdef Q_WS_X11
     if (GST_MESSAGE_TYPE(msg) != GST_MESSAGE_ELEMENT ||
         !gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
         return GST_BUS_PASS;
@@ -195,4 +232,31 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 
     gst_message_unref(msg);
     return GST_BUS_DROP;
+#elif defined(Q_WS_MAC)
+    if (GST_MESSAGE_TYPE(msg) != GST_MESSAGE_ELEMENT ||
+        !gst_structure_has_name(msg->structure, "have-ns-view"))
+        return GST_BUS_PASS;
+    
+    const GstStructure *structure = gst_message_get_structure(msg);
+    void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
+
+    qDebug("have-ns-view: %p", nsview);
+    bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
+                              Q_ARG(void*, nsview));
+    Q_ASSERT(ok);
+    Q_UNUSED(ok);
+
+    return GST_BUS_DROP;
+#else
+    return GST_BUS_PASS;
+#endif
 }
+
+#ifdef Q_WS_MAC
+void VideoPlayerBackend::setVideoView(void *nsview)
+{
+    qDebug("setting video view");
+    Q_ASSERT(qobject_cast<QMacCocoaViewContainer*>(m_surface));
+    static_cast<QMacCocoaViewContainer*>(m_surface)->setCocoaView(nsview);
+}
+#endif

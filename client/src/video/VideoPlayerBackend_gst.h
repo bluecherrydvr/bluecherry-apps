@@ -22,7 +22,9 @@ public:
 
     explicit VideoPlayerBackend(QObject *parent = 0);
 
-    void start(const QUrl &url, QWidget *surface);
+    QWidget *createSurface();
+
+    void start(const QUrl &url);
     void clear();
 
     void play();
@@ -52,6 +54,10 @@ private:
     GstBus *m_bus;
     QWidget *m_surface;
     VideoState m_state;
+    
+#ifdef Q_WS_MAC
+    Q_INVOKABLE void setVideoView(void *nsview);
+#endif
 };
 
 #endif // VIDEOPLAYERBACKEND_GST_H

@@ -19,11 +19,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     QBoxLayout *layout = new QVBoxLayout(this);
     layout->setMargin(0);
 
-    m_videoWidget = new QWidget;
-    QPalette p = m_videoWidget->palette();
-    p.setColor(QPalette::Window, Qt::black);
-    m_videoWidget->setPalette(p);
-    m_videoWidget->setAutoFillBackground(true);
+    m_videoWidget = backend.createSurface();
     m_videoWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_videoWidget->setMinimumSize(320, 240);
     layout->addWidget(m_videoWidget);
@@ -63,7 +59,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
 
 void EventVideoPlayer::setVideo(const QUrl &url)
 {
-    backend.start(url, m_videoWidget);
+    backend.start(url);
 }
 
 void EventVideoPlayer::clearVideo()
