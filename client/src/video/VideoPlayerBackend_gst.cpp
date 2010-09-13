@@ -214,42 +214,44 @@ gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
     return TRUE;
 }
 
-#ifdef Q_WS_X11
 #include <gst/interfaces/xoverlay.h>
-#elif defined(Q_WS_MAC)
+#if defined(Q_WS_MAC)
 #include <QMacCocoaViewContainer>
 #endif
 
 GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 {
-#ifdef Q_WS_X11
-    if (GST_MESSAGE_TYPE(msg) != GST_MESSAGE_ELEMENT ||
-        !gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
-        return GST_BUS_PASS;
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
+        gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
+    {
+        /* Many video sinks support the xoverlay interface, including Windows. */
+        qDebug("gstreamer: set x overlay");
+        gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), (gulong)m_surface->winId());
+        gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
 
-    gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), m_surface->winId());
-    gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
+        gst_message_unref(msg);
+        return GST_BUS_DROP;
+    }
 
-    gst_message_unref(msg);
-    return GST_BUS_DROP;
-#elif defined(Q_WS_MAC)
-    if (GST_MESSAGE_TYPE(msg) != GST_MESSAGE_ELEMENT ||
-        !gst_structure_has_name(msg->structure, "have-ns-view"))
-        return GST_BUS_PASS;
-    
-    const GstStructure *structure = gst_message_get_structure(msg);
-    void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
+#if defined(Q_WS_MAC)
+    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
+        gst_structure_has_name(msg->structure, "have-ns-view"))
+    {
+        const GstStructure *structure = gst_message_get_structure(msg);
+        void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
 
-    qDebug("have-ns-view: %p", nsview);
-    bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
-                              Q_ARG(void*, nsview));
-    Q_ASSERT(ok);
-    Q_UNUSED(ok);
+        qDebug("have-ns-view: %p", nsview);
+        bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
+                                            Q_ARG(void*, nsview));
+        Q_ASSERT(ok);
+        Q_UNUSED(ok);
 
-    return GST_BUS_DROP;
-#else
-    return GST_BUS_PASS;
+        gst_message_unref(msg);
+        return GST_BUS_DROP;
+    }
 #endif
+
+    return GST_BUS_PASS;
 }
 
 #ifdef Q_WS_MAC

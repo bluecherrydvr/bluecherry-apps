@@ -56,6 +56,13 @@ unix {
     DEFINES += USE_GSTREAMER
 }
 
+win32 {
+    isEmpty(GSTREAMER_PATH):error(You must pass GSTREAMER_PATH=path/to/gstreamer/sdk to qmake)
+    INCLUDEPATH += "$${GSTREAMER_PATH}/include" "$${GSTREAMER_PATH}/include/gstreamer-0.10" "$${GSTREAMER_PATH}/include/glib-2.0" "$${GSTREAMER_PATH}/include/libxml2"
+    LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib glib-2.0.lib gobject-2.0.lib
+    DEFINES += USE_GSTREAMER
+}
+
 SOURCES += src/main.cpp \
     src/ui/MainWindow.cpp \
     src/ui/CameraAreaWidget.cpp \

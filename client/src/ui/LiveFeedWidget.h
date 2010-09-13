@@ -11,7 +11,7 @@ class QMimeData;
 class LiveFeedWidget : public QWidget
 {
     Q_OBJECT
-    Q_PROPERTY(DVRCamera* camera READ camera WRITE setCamera NOTIFY cameraChanged)
+    Q_PROPERTY(DVRCamera* camera READ camera WRITE setCamera)
 
 public:
     explicit LiveFeedWidget(QWidget *parent = 0);

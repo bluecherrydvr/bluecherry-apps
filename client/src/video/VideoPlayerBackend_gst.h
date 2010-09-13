@@ -3,7 +3,10 @@
 
 #include <QObject>
 #include <QWidget>
+extern "C"
+{
 #include <gst/gst.h>
+}
 
 class QUrl;
 
