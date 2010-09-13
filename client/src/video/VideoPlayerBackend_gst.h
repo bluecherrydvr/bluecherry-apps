@@ -43,7 +43,6 @@ public:
     VideoState state() const { return m_state; }
 
     /* Internal */
-    gboolean busEvent(GstBus *bus, GstMessage *msg);
     GstBusSyncReply busSyncHandler(GstBus *bus, GstMessage *msg);
 
 signals:

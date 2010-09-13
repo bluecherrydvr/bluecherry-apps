@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QApplication>
 #include <gst/gst.h>
+#include <glib.h>
 
 #ifdef Q_WS_MAC
 #include <QMacCocoaViewContainer>
@@ -16,11 +17,6 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     {
         qWarning() << "GStreamer initialization failed:" << err->message;
     }
-}
-
-static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
-{
-    return ((VideoPlayerBackend*)data)->busEvent(bus, msg);
 }
 
 static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
@@ -73,7 +69,11 @@ void VideoPlayerBackend::start(const QUrl &url)
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_play));
     Q_ASSERT(m_bus);
-    gst_bus_add_watch(m_bus, bus_callback, this);
+
+    /* We handle all messages in the sync handler, because we can't run a glib event loop.
+     * Although linux does use glib's loop (and we can take advantage of that), it's better
+     * to handle everything this way for windows and mac support. */
+    gst_bus_enable_sync_message_emission(m_bus);
     gst_bus_set_sync_handler(m_bus, bus_handler, this);
     gst_object_unref(m_bus);
 }
@@ -138,8 +138,19 @@ void VideoPlayerBackend::seek(qint64 position)
         qDebug() << "seek to position" << position << "failed";
 }
 
-gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
+#include <gst/interfaces/xoverlay.h>
+#if defined(Q_WS_MAC)
+#include <QMacCocoaViewContainer>
+#endif
+
+/* Caution: This function is executed on all sorts of strange threads, which should
+ * not be excessively delayed, deadlocked, or used for anything GUI-related. Primarily,
+ * we want to emit signals (which will result in queued slot calls) or do queued method
+ * invocation to handle GUI updates. */
+GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 {
+    Q_UNUSED(bus);
+
     switch (GST_MESSAGE_TYPE(msg))
     {
     case GST_MESSAGE_BUFFERING:
@@ -204,52 +215,39 @@ gboolean VideoPlayerBackend::busEvent(GstBus *bus, GstMessage *msg)
 
             g_printerr("Error: %s\n", error->message);
             g_error_free(error);
-            break;
         }
+        break;
+
+    case GST_MESSAGE_ELEMENT:
+        if (gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
+        {
+            qDebug("gstreamer: Setting X overlay");
+            gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), (gulong)m_surface->winId());
+            gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
+            gst_message_unref(msg);
+            return GST_BUS_DROP;
+        }
+#ifdef Q_WS_MAC
+        else if (gst_structure_has_name(msg->structure, "have-ns-view"))
+        {
+            const GstStructure *structure = gst_message_get_structure(msg);
+            void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
+
+            qDebug("gstreamer: Received have-ns-view: %p", nsview);
+            bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
+                                                Q_ARG(void*, nsview));
+            Q_ASSERT(ok);
+            Q_UNUSED(ok);
+
+            gst_message_unref(msg);
+            return GST_BUS_DROP;
+        }
+#endif
+        break;
 
     default:
         break;
     }
-
-    return TRUE;
-}
-
-#include <gst/interfaces/xoverlay.h>
-#if defined(Q_WS_MAC)
-#include <QMacCocoaViewContainer>
-#endif
-
-GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
-{
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
-        gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
-    {
-        /* Many video sinks support the xoverlay interface, including Windows. */
-        qDebug("gstreamer: set x overlay");
-        gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), (gulong)m_surface->winId());
-        gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
-
-        gst_message_unref(msg);
-        return GST_BUS_DROP;
-    }
-
-#if defined(Q_WS_MAC)
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ELEMENT &&
-        gst_structure_has_name(msg->structure, "have-ns-view"))
-    {
-        const GstStructure *structure = gst_message_get_structure(msg);
-        void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
-
-        qDebug("have-ns-view: %p", nsview);
-        bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
-                                            Q_ARG(void*, nsview));
-        Q_ASSERT(ok);
-        Q_UNUSED(ok);
-
-        gst_message_unref(msg);
-        return GST_BUS_DROP;
-    }
-#endif
 
     return GST_BUS_PASS;
 }
