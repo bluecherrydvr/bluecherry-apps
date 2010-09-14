@@ -120,12 +120,19 @@ void VideoPlayerBackend::pause()
 void VideoPlayerBackend::restart()
 {
     Q_ASSERT(m_play);
-    gst_element_set_state(m_play, GST_STATE_NULL);
-    seek(0);
+    gst_element_set_state(m_play, GST_STATE_READY);
+
+    /* With autovideosink, the sink will change as a result of this state, which means
+     * that m_sink needs to change. */
+    m_sink = 0;
+
+    VideoState old = m_state;
+    m_state = Stopped;
+    emit stateChanged(m_state, old);
 }
 
 qint64 VideoPlayerBackend::duration() const
-{
+{    
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
     if (gst_element_query_duration(m_play, &fmt, &re))
@@ -136,7 +143,9 @@ qint64 VideoPlayerBackend::duration() const
 
 qint64 VideoPlayerBackend::position() const
 {
-    if (m_state == Done)
+    if (m_state == Stopped)
+        return 0;
+    else if (m_state == Done)
         return duration();
 
     GstFormat fmt = GST_FORMAT_TIME;

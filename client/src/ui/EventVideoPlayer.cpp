@@ -56,6 +56,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     QToolButton *restartBtn = new QToolButton;
     restartBtn->setText(QString::fromUtf8("|\xe2\x97\x84"));
     btnLayout->addWidget(restartBtn);
+    connect(restartBtn, SIGNAL(clicked()), SLOT(restart()));
 
     btnLayout->addStretch();
 }
@@ -85,6 +86,12 @@ void EventVideoPlayer::playPause()
     }
 }
 
+void EventVideoPlayer::restart()
+{
+    backend.restart();
+    backend.play();
+}
+
 void EventVideoPlayer::seek(int position)
 {
     backend.seek(qint64(position) * 1000000);
@@ -104,6 +111,7 @@ void EventVideoPlayer::stateChanged(int state)
     {
         m_playBtn->setText(QString(QChar(0x25BA)));
         m_posTimer.stop();
+        updatePosition();
     }
 }
 

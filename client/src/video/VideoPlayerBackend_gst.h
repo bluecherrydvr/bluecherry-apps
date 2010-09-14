@@ -27,12 +27,6 @@ public:
     void start(const QUrl &url);
     void clear();
 
-    void play();
-    void pause();
-    void stop();
-    void seek(qint64 position);
-    void restart();
-
     qint64 duration() const;
     qint64 position() const;
     bool atEnd() const { return m_state == Done; }
@@ -41,6 +35,12 @@ public:
 
     /* Internal */
     GstBusSyncReply busSyncHandler(GstBus *bus, GstMessage *msg);
+
+public slots:
+    void play();
+    void pause();
+    void seek(qint64 position);
+    void restart();
 
 signals:
     void stateChanged(int newState, int oldState);

@@ -25,6 +25,7 @@ public slots:
 
     void playPause();
     void seek(int position);
+    void restart();
 
 private slots:
     void stateChanged(int state);
