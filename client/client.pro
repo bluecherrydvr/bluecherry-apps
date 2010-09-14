@@ -96,7 +96,8 @@ SOURCES += src/main.cpp \
     src/core/EventData.cpp \
     src/ui/EventTypesFilter.cpp \
     src/ui/EventVideoPlayer.cpp \
-    src/video/VideoPlayerBackend_gst.cpp
+    src/video/VideoPlayerBackend_gst.cpp \
+    src/video/VideoHttpBuffer.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
