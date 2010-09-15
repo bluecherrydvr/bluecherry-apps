@@ -7,15 +7,15 @@
 
 class QNetworkReply;
 
-struct _GstAppSrc;
 typedef struct _GstAppSrc GstAppSrc;
+typedef struct _GstElement GstElement;
 
 class VideoHttpBuffer : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit VideoHttpBuffer(GstAppSrc *element, QObject *parent = 0);
+    explicit VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObject *parent = 0);
     ~VideoHttpBuffer();
 
     QString bufferFileName() const { return m_bufferFile.fileName(); }
@@ -38,6 +38,7 @@ private:
     QNetworkReply *m_networkReply;
     qint64 m_fileSize, m_readPos, m_writePos;
     GstAppSrc *m_element;
+    GstElement *m_pipeline;
     QFile m_readFile;
     bool m_bufferBlocked;
 

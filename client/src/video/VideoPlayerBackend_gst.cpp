@@ -82,7 +82,7 @@ void VideoPlayerBackend::start(const QUrl &url)
     GstElement *source = gst_element_factory_make("appsrc", "source");
     Q_ASSERT(source);
 
-    VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), this);
+    VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
     vhb->start(url);
 
     /* Decoder */

@@ -18,8 +18,9 @@ gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, guint64 offset, gpointer 
     return static_cast<VideoHttpBuffer*>(user_data)->seekData(offset) ? TRUE : FALSE;
 }
 
-VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, QObject *parent)
-    : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_bufferBlocked(false)
+VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObject *parent)
+    : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_bufferBlocked(false),
+      m_pipeline(pipeline)
 {
     m_bufferFile.setFileTemplate(QDir::tempPath() + QLatin1String("/bc_vbuf_XXXXXX.mkv"));
 
@@ -97,6 +98,7 @@ void VideoHttpBuffer::networkRead()
     Q_ASSERT(m_bufferFile.isOpen());
 
     char data[5120];
+    qint64 wrt = 0;
     qint64 r;
     while ((r = m_networkReply->read(data, sizeof(data))) > 0)
     {
@@ -112,7 +114,7 @@ void VideoHttpBuffer::networkRead()
             return;
         }
 
-        m_writePos += wr;
+        wrt += wr;
 
         if (r < sizeof(data))
             break;
@@ -124,15 +126,10 @@ void VideoHttpBuffer::networkRead()
         return;
     }
 
+    /* TODO: This probably needs some better synchronization to prevent issues with the read thread */
     m_bufferFile.flush();
+    m_writePos += wrt;
     m_fileSize = qMax(m_fileSize, m_writePos);
-
-    if (m_bufferBlocked)
-    {
-        qDebug("VideoHttpBuffer: unblocking buffer after write");
-        m_bufferBlocked = false;
-        gst_element_set_state(GST_ELEMENT(m_element), GST_STATE_PLAYING);
-    }
 }
 
 void VideoHttpBuffer::networkFinished()
@@ -148,14 +145,22 @@ void VideoHttpBuffer::networkFinished()
 
 void VideoHttpBuffer::needData(unsigned size)
 {
-    qDebug() << m_fileSize << m_readPos << m_writePos << size;
-    if (unsigned(m_writePos - m_readPos) < size)
+    /* Stop the stream if there is less than twice the amount requested, unless that is the end of the stream.
+     * This gives the pipeline enough buffer to resume from the paused state properly.
+     *
+     * TODO: Calculate this buffer using time rather than bytes */
+
+    if (m_writePos < m_fileSize && unsigned(m_writePos - m_readPos) < size*2)
     {
         qDebug() << "VideoHttpBuffer: buffer is exhausted with" << (m_fileSize - m_readPos) << "bytes remaining in stream";
         m_bufferBlocked = true;
-        gst_element_set_state(GST_ELEMENT(m_element), GST_STATE_PAUSED);
-        return;
+        GstStateChangeReturn re = gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
+
+        /* gst_element_get_state will block until the (asynchronous) state change completes */
+        GstState stateNow, statePending;
+        re = gst_element_get_state(m_pipeline, &stateNow, &statePending, GST_CLOCK_TIME_NONE);
     }
+
     size = qMin(size, unsigned(m_writePos - m_readPos));
 
     /* Refactor to use gst_pad_alloc_buffer? Probably wouldn't provide any benefit. */
@@ -163,6 +168,7 @@ void VideoHttpBuffer::needData(unsigned size)
 
     Q_ASSERT(m_readFile.pos() == m_readPos);
     GST_BUFFER_SIZE(buffer) = m_readFile.read((char*)GST_BUFFER_DATA(buffer), size);
+
     if (GST_BUFFER_SIZE(buffer) < 1)
     {
         gst_buffer_unref(buffer);
