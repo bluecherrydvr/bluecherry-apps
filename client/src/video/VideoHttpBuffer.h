@@ -36,9 +36,10 @@ private slots:
 private:
     QTemporaryFile m_bufferFile;
     QNetworkReply *m_networkReply;
-    qint64 m_fileSize;
+    qint64 m_fileSize, m_readPos, m_writePos;
     GstAppSrc *m_element;
     QFile m_readFile;
+    bool m_bufferBlocked;
 
     static void needDataWrap(GstAppSrc *, unsigned, void*);
     static int seekDataWrap(GstAppSrc *, quint64, void*);

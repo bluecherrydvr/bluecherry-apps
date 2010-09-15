@@ -19,7 +19,7 @@ gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, guint64 offset, gpointer 
 }
 
 VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, QObject *parent)
-    : QObject(parent), m_networkReply(0), m_fileSize(0), m_element(element)
+    : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_bufferBlocked(false)
 {
     m_bufferFile.setFileTemplate(QDir::tempPath() + QLatin1String("/bc_vbuf_XXXXXX.mkv"));
 
@@ -63,6 +63,8 @@ bool VideoHttpBuffer::start(const QUrl &url)
         return false;
     }
 
+    m_readPos = m_writePos = 0;
+
     qDebug("VideoHttpBuffer: started");
     return true;
 }
@@ -99,7 +101,6 @@ void VideoHttpBuffer::networkRead()
     while ((r = m_networkReply->read(data, sizeof(data))) > 0)
     {
         qint64 wr = m_bufferFile.write(data, r);
-        qDebug() << "VideoHttpBuffer: Wrote" << wr << "bytes to buffer file";
         if (wr < 0)
         {
             emit streamError(tr("Write to buffer file failed: %1").arg(m_bufferFile.errorString()));
@@ -111,6 +112,8 @@ void VideoHttpBuffer::networkRead()
             return;
         }
 
+        m_writePos += wr;
+
         if (r < sizeof(data))
             break;
     }
@@ -121,20 +124,44 @@ void VideoHttpBuffer::networkRead()
         return;
     }
 
-    m_fileSize = qMax(m_fileSize, m_bufferFile.pos());
+    m_bufferFile.flush();
+    m_fileSize = qMax(m_fileSize, m_writePos);
+
+    if (m_bufferBlocked)
+    {
+        qDebug("VideoHttpBuffer: unblocking buffer after write");
+        m_bufferBlocked = false;
+        gst_element_set_state(GST_ELEMENT(m_element), GST_STATE_PLAYING);
+    }
 }
 
 void VideoHttpBuffer::networkFinished()
 {
     qDebug("VideoHttpBuffer: Finished download");
+    if (m_fileSize != m_writePos)
+    {
+        qDebug() << "VideoHttpBuffer: Adjusting filesize to match actual downloaded amount";
+        m_fileSize = m_writePos;
+        gst_app_src_set_size(m_element, m_fileSize);
+    }
 }
 
 void VideoHttpBuffer::needData(unsigned size)
 {
-    qDebug() << "VideoHttpBuffer: need" << size;
+    qDebug() << m_fileSize << m_readPos << m_writePos << size;
+    if (unsigned(m_writePos - m_readPos) < size)
+    {
+        qDebug() << "VideoHttpBuffer: buffer is exhausted with" << (m_fileSize - m_readPos) << "bytes remaining in stream";
+        m_bufferBlocked = true;
+        gst_element_set_state(GST_ELEMENT(m_element), GST_STATE_PAUSED);
+        return;
+    }
+    size = qMin(size, unsigned(m_writePos - m_readPos));
+
     /* Refactor to use gst_pad_alloc_buffer? Probably wouldn't provide any benefit. */
     GstBuffer *buffer = gst_buffer_new_and_alloc(size);
 
+    Q_ASSERT(m_readFile.pos() == m_readPos);
     GST_BUFFER_SIZE(buffer) = m_readFile.read((char*)GST_BUFFER_DATA(buffer), size);
     if (GST_BUFFER_SIZE(buffer) < 1)
     {
@@ -152,6 +179,8 @@ void VideoHttpBuffer::needData(unsigned size)
         return;
     }
 
+    m_readPos += size;
+
     GstFlowReturn flow = gst_app_src_push_buffer(m_element, buffer);
     if (flow != GST_FLOW_OK)
         qDebug() << "VideoHttpBuffer: Push result is" << flow;
@@ -160,5 +189,12 @@ void VideoHttpBuffer::needData(unsigned size)
 bool VideoHttpBuffer::seekData(qint64 offset)
 {
     qDebug() << "VideoHttpBuffer: seek to" << offset;
-    return m_readFile.seek(offset);
+    if (!m_readFile.seek(offset))
+    {
+        qDebug() << "VideoHttpBuffer: seek failed";
+        return false;
+    }
+
+    m_readPos = offset;
+    return true;
 }
