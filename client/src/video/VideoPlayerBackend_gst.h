@@ -7,6 +7,8 @@
 
 class QUrl;
 
+typedef struct _GstDecodeBin GstDecodeBin;
+
 class VideoPlayerBackend : public QObject
 {
     Q_OBJECT
@@ -35,6 +37,7 @@ public:
 
     /* Internal */
     GstBusSyncReply busSyncHandler(GstBus *bus, GstMessage *msg);
+    void decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast);
 
 public slots:
     void play();
@@ -48,9 +51,7 @@ signals:
     void endOfStream();
 
 private:
-    GstElement *m_play;
-    GstElement *m_sink;
-    GstBus *m_bus;
+    GstElement *m_pipeline, *m_videoLink;
     QWidget *m_surface;
     VideoState m_state;
 

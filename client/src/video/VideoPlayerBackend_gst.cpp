@@ -1,8 +1,11 @@
 #include "VideoPlayerBackend_gst.h"
+#include "VideoHttpBuffer.h"
 #include <QUrl>
 #include <QDebug>
 #include <QApplication>
 #include <gst/gst.h>
+#include <gst/app/gstappsrc.h>
+#include <gst/interfaces/xoverlay.h>
 #include <glib.h>
 
 #ifdef Q_WS_MAC
@@ -10,7 +13,7 @@
 #endif
 
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
-    : QObject(parent), m_play(0), m_sink(0), m_bus(0), m_surface(0), m_state(Stopped)
+    : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_state(Stopped)
 {
     GError *err;
     if (gst_init_check(0, 0, &err) == FALSE)
@@ -21,7 +24,14 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
 
 static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
 {
+    Q_ASSERT(data);
     return ((VideoPlayerBackend*)data)->busSyncHandler(bus, msg);
+}
+
+static void decodePadReadyWrap(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data)
+{
+    Q_ASSERT(user_data);
+    static_cast<VideoPlayerBackend*>(user_data)->decodePadReady(bin, pad, islast);
 }
 
 class VideoSurface : public QWidget
@@ -60,71 +70,98 @@ QWidget *VideoPlayerBackend::createSurface()
 
 void VideoPlayerBackend::start(const QUrl &url)
 {
-    if (m_play || m_sink || m_bus)
+    if (m_pipeline)
         clear();
-
-    m_play = gst_element_factory_make("playbin", "play");
-    Q_ASSERT(m_play);
-    g_object_set(G_OBJECT(m_play), "uri", url.toString().toLocal8Bit().constData(), NULL);
-
-#ifdef Q_WS_X11
-    m_sink = gst_element_factory_make("xvimagesink", "sink");
-    Q_ASSERT(m_sink);
-    g_object_set(G_OBJECT(m_play), "video-sink", m_sink, NULL);
-    g_object_set(G_OBJECT(m_sink), "force-aspect-ratio", TRUE, NULL);
-#elif defined(Q_WS_MAC)
-    m_sink = gst_element_factory_make("osxvideosink", "sink");
-    Q_ASSERT(m_sink);
-    g_object_set(G_OBJECT(m_play), "video-sink", m_sink, NULL);
-    g_object_set(G_OBJECT(m_sink), "embed", TRUE, NULL);
-#endif
 
     Q_ASSERT(m_surface);
 
-    m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_play));
-    Q_ASSERT(m_bus);
+    m_pipeline = gst_pipeline_new("stream");
+    Q_ASSERT(m_pipeline);
+
+    /* Source */
+    GstElement *source = gst_element_factory_make("appsrc", "source");
+    Q_ASSERT(source);
+
+    VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), this);
+    vhb->start(url);
+
+    /* Decoder */
+    GstElement *decoder = gst_element_factory_make("decodebin", "decoder");
+    g_signal_connect(decoder, "new-decoded-pad", G_CALLBACK(decodePadReadyWrap), this);
+
+    /* Create videoscale and ffmpegcolorspace elements to handle conversion if it's necessary */
+    GstElement *colorspace = gst_element_factory_make("ffmpegcolorspace", "colorspace");
+    Q_ASSERT(colorspace);
+    GstElement *scale = gst_element_factory_make("videoscale", "scale");
+    Q_ASSERT(scale);
+
+#ifdef Q_WS_X11
+    GstElement *sink = gst_element_factory_make("xvimagesink", "sink");
+    g_object_set(G_OBJECT(sink), "force-aspect-ratio", TRUE, NULL);
+#elif defined(Q_WS_MAC)
+    GstElement *sink = gst_element_factory_make("osxvideosink", "sink");
+    g_object_set(G_OBJECT(sink), "embed", TRUE, NULL);
+#else
+    GstElement *sink = gst_element_factory_make("autovideosink", "sink");
+#endif
+    Q_ASSERT(sink);
+
+    gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
+    gboolean ok = gst_element_link(source, decoder);
+    if (!ok)
+    {
+        qWarning() << "gstreamer: Failed to link source to decodebin";
+        return;
+    }
+
+    ok = gst_element_link_many(colorspace, scale, sink, NULL);
+    if (!ok)
+    {
+        qWarning() << "gstreamer: Failed to link video output chain";
+        return;
+    }
+
+    /* This is the element that is linked to the decoder for video output; it will be linked when decodePadReady
+     * gives us the video pad. */
+    m_videoLink = colorspace;
 
     /* We handle all messages in the sync handler, because we can't run a glib event loop.
      * Although linux does use glib's loop (and we can take advantage of that), it's better
      * to handle everything this way for windows and mac support. */
-    gst_bus_enable_sync_message_emission(m_bus);
-    gst_bus_set_sync_handler(m_bus, bus_handler, this);
-    gst_object_unref(m_bus);
+    GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
+    Q_ASSERT(bus);
+    gst_bus_enable_sync_message_emission(bus);
+    gst_bus_set_sync_handler(bus, bus_handler, this);
+    gst_object_unref(bus);
 }
 
 void VideoPlayerBackend::clear()
 {
-    if (!m_play)
+    if (!m_pipeline)
         return;
 
-    gst_element_set_state(m_play, GST_STATE_NULL);
-    gst_object_unref(GST_OBJECT(m_play));
+    gst_element_set_state(m_pipeline, GST_STATE_NULL);
+    gst_object_unref(GST_OBJECT(m_pipeline));
 
-    m_play = m_sink = 0;
-    m_bus = 0;
-    m_surface = 0;
+    m_pipeline = m_videoLink = 0;
 }
 
 void VideoPlayerBackend::play()
 {
-    Q_ASSERT(m_play);
-    gst_element_set_state(m_play, GST_STATE_PLAYING);
+    Q_ASSERT(m_pipeline);
+    gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
 }
 
 void VideoPlayerBackend::pause()
 {
-    Q_ASSERT(m_play);
-    gst_element_set_state(m_play, GST_STATE_PAUSED);
+    Q_ASSERT(m_pipeline);
+    gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
 }
 
 void VideoPlayerBackend::restart()
 {
-    Q_ASSERT(m_play);
-    gst_element_set_state(m_play, GST_STATE_READY);
-
-    /* With autovideosink, the sink will change as a result of this state, which means
-     * that m_sink needs to change. */
-    m_sink = 0;
+    Q_ASSERT(m_pipeline);
+    gst_element_set_state(m_pipeline, GST_STATE_READY);
 
     VideoState old = m_state;
     m_state = Stopped;
@@ -135,7 +172,7 @@ qint64 VideoPlayerBackend::duration() const
 {    
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
-    if (gst_element_query_duration(m_play, &fmt, &re))
+    if (gst_element_query_duration(m_pipeline, &fmt, &re))
         return re;
 
     return -1;
@@ -150,13 +187,13 @@ qint64 VideoPlayerBackend::position() const
 
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
-    gst_element_query_position(m_play, &fmt, &re);
+    gst_element_query_position(m_pipeline, &fmt, &re);
     return re;
 }
 
 void VideoPlayerBackend::seek(qint64 position)
 {
-    gboolean re = gst_element_seek_simple(m_play, GST_FORMAT_TIME,
+    gboolean re = gst_element_seek_simple(m_pipeline, GST_FORMAT_TIME,
                             (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
                             position);
 
@@ -164,10 +201,29 @@ void VideoPlayerBackend::seek(qint64 position)
         qDebug() << "seek to position" << position << "failed";
 }
 
-#include <gst/interfaces/xoverlay.h>
-#if defined(Q_WS_MAC)
-#include <QMacCocoaViewContainer>
-#endif
+void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast)
+{
+    /* TODO: Better cap detection */
+    GstCaps *caps = gst_pad_get_caps_reffed(pad);
+    Q_ASSERT(caps);
+    gchar *capsstr = gst_caps_to_string(caps);
+    gst_caps_unref(caps);
+
+    if (QByteArray(capsstr).contains("video"))
+    {
+        qDebug("creating video");
+        gboolean ok = gst_element_link(GST_ELEMENT(bin), m_videoLink);
+        if (!ok)
+        {
+            qWarning() << "gstreamer: Failed to link decodebin to video chain";
+            return;
+        }
+    }
+
+    /* TODO: Audio */
+
+    //free(capsstr);
+}
 
 /* Caution: This function is executed on all sorts of strange threads, which should
  * not be excessively delayed, deadlocked, or used for anything GUI-related. Primarily,
@@ -232,6 +288,7 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         break;
 
     case GST_MESSAGE_ERROR:
+    case GST_MESSAGE_WARNING:
         {
             gchar *debug;
             GError *error;
@@ -248,11 +305,9 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         if (gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
         {
             qDebug("gstreamer: Setting X overlay");
-            if (!m_sink)
-                m_sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
-            Q_ASSERT(m_sink == GST_ELEMENT(GST_MESSAGE_SRC(msg)));
-            gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)), (gulong)m_surface->winId());
-            gst_x_overlay_expose(GST_X_OVERLAY(GST_MESSAGE_SRC(msg)));
+            GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
+            gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
+            gst_x_overlay_expose(GST_X_OVERLAY(sink));
             gst_message_unref(msg);
             return GST_BUS_DROP;
         }
