@@ -288,15 +288,29 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         break;
 
     case GST_MESSAGE_ERROR:
-    case GST_MESSAGE_WARNING:
         {
             gchar *debug;
             GError *error;
 
             gst_message_parse_error(msg, &error, &debug);
-            g_free(debug);
+            qDebug() << "gstreamer: Error:" << error->message;
+            qDebug() << "gstreamer: Debug:" << debug;
 
-            g_printerr("Error: %s\n", error->message);
+            g_free(debug);
+            g_error_free(error);
+        }
+        break;
+
+    case GST_MESSAGE_WARNING:
+        {
+            gchar *debug;
+            GError *error;
+
+            gst_message_parse_warning(msg, &error, &debug);
+            qDebug() << "gstreamer: Warning:" << error->message;
+            qDebug() << "gstreamer:   Debug:" << debug;
+
+            g_free(debug);
             g_error_free(error);
         }
         break;
