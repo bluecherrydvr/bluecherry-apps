@@ -5,6 +5,7 @@
 #include <QUrl>
 #include <QTemporaryFile>
 #include <QMutex>
+#include <QWaitCondition>
 
 class QNetworkReply;
 
@@ -41,7 +42,8 @@ private:
     GstAppSrc *m_element;
     GstElement *m_pipeline;
     QMutex m_lock;
-    bool m_bufferBlocked;
+    QWaitCondition m_bufferWait;
+    bool m_streamInit, m_bufferBlocked;
 
     /* Rate estimation; circular buffer holding amounts for the last 64 buffer requests */
     static const int rateCount = 64;

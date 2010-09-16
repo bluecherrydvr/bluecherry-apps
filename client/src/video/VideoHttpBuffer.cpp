@@ -20,10 +20,11 @@ gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, guint64 offset, gpointer 
 
 VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObject *parent)
     : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_pipeline(pipeline),
-      m_bufferBlocked(false), ratePos(0), rateMax(0)
+      m_streamInit(true), m_bufferBlocked(false), ratePos(0), rateMax(0)
 {
     m_bufferFile.setFileTemplate(QDir::tempPath() + QLatin1String("/bc_vbuf_XXXXXX.mkv"));
 
+    gst_app_src_set_max_bytes(m_element, 512*1024);
     gst_app_src_set_stream_type(m_element, GST_APP_STREAM_TYPE_SEEKABLE);
 
     GstAppSrcCallbacks callbacks = { needDataWrap, 0, seekDataWrap };
@@ -128,6 +129,27 @@ void VideoHttpBuffer::networkRead()
     }
 
     m_fileSize = qMax(m_fileSize, (qint64)m_writePos);
+    lock.unlock();
+
+    if (m_streamInit && (m_writePos >= 40960 || m_writePos == m_fileSize || true))
+    {
+        /* Attempt to initialize the stream with 40KB in the buffer */
+        GstState stateNow, statePending;
+        GstStateChangeReturn re = gst_element_get_state(m_pipeline, &stateNow, &statePending, GST_CLOCK_TIME_NONE);
+        if (re != GST_STATE_CHANGE_FAILURE && stateNow != GST_STATE_NULL && stateNow != GST_STATE_READY)
+        {
+            m_streamInit = false;
+            return;
+        }
+
+        re = gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
+        if (re == GST_STATE_CHANGE_FAILURE)
+            qWarning() << "VideoHttpBuffer: FAILED to transition pipeline into PAUSED state for initialization";
+
+        m_streamInit = false;
+    }
+
+    m_bufferWait.wakeOne();
 }
 
 void VideoHttpBuffer::networkFinished()
@@ -160,22 +182,29 @@ void VideoHttpBuffer::needData(unsigned size)
 #endif
 
     QMutexLocker lock(&m_lock);
+    unsigned avail = unsigned(m_writePos - m_readPos);
 
-    if (m_writePos < m_fileSize && unsigned(m_writePos - m_readPos) < size*3)
+    if (m_writePos < m_fileSize && avail < size*3)
     {
         qDebug() << "VideoHttpBuffer: buffer is exhausted with" << (m_fileSize - m_readPos) << "bytes remaining in stream";
         m_bufferBlocked = true;
         lock.unlock();
 
-        GstStateChangeReturn re = gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
-        if (re == GST_STATE_CHANGE_FAILURE)
-            qWarning() << "VideoHttpBuffer: FAILED to pause pipeline!";
-
-        if (re == GST_STATE_CHANGE_ASYNC)
+        GstState stateNow;
+        GstStateChangeReturn re = gst_element_get_state(m_pipeline, &stateNow, 0, 0);
+        Q_ASSERT(re != GST_STATE_CHANGE_FAILURE);
+        if (re == GST_STATE_CHANGE_FAILURE || stateNow == GST_STATE_PLAYING)
         {
-            /* gst_element_get_state will block until the asynchronous state change completes */
-            GstState stateNow, statePending;
-            re = gst_element_get_state(m_pipeline, &stateNow, &statePending, GST_CLOCK_TIME_NONE);
+            re = gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
+            if (re == GST_STATE_CHANGE_FAILURE)
+                qWarning() << "VideoHttpBuffer: FAILED to pause pipeline!";
+
+            if (re == GST_STATE_CHANGE_ASYNC)
+            {
+                /* gst_element_get_state will block until the asynchronous state change completes */
+                GstState stateNow, statePending;
+                re = gst_element_get_state(m_pipeline, &stateNow, &statePending, GST_CLOCK_TIME_NONE);
+            }
         }
 
         lock.relock();
@@ -183,9 +212,13 @@ void VideoHttpBuffer::needData(unsigned size)
     else
         m_bufferBlocked = false;
 
-    size = qMin(size, unsigned(m_writePos - m_readPos));
-    if (!size)
-        return;
+    while (avail < size && m_writePos < m_fileSize)
+    {
+        /* This exists mostly for stream initialization. */
+        /* XXX: We could get stuck waiting for a wake that will never happen if the stream breaks; add an exit */
+        m_bufferWait.wait(&m_lock);
+        avail = unsigned(m_writePos - m_readPos);
+    }
 
     /* Refactor to use gst_pad_alloc_buffer? Probably wouldn't provide any benefit. */
     GstBuffer *buffer = gst_buffer_new_and_alloc(size);

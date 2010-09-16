@@ -85,6 +85,9 @@ void VideoPlayerBackend::start(const QUrl &url)
     VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
     vhb->start(url);
 
+    GstElement *queue = gst_element_factory_make("queue", "queue");
+    Q_ASSERT(queue);
+
     /* Decoder */
     GstElement *decoder = gst_element_factory_make("decodebin", "decoder");
     g_signal_connect(decoder, "new-decoded-pad", G_CALLBACK(decodePadReadyWrap), this);
@@ -106,8 +109,8 @@ void VideoPlayerBackend::start(const QUrl &url)
 #endif
     Q_ASSERT(sink);
 
-    gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
-    gboolean ok = gst_element_link(source, decoder);
+    gst_bin_add_many(GST_BIN(m_pipeline), source, queue, decoder, colorspace, scale, sink, NULL);
+    gboolean ok = gst_element_link_many(source, queue, decoder, NULL);
     if (!ok)
     {
         qWarning() << "gstreamer: Failed to link source to decodebin";
@@ -133,6 +136,9 @@ void VideoPlayerBackend::start(const QUrl &url)
     gst_bus_enable_sync_message_emission(bus);
     gst_bus_set_sync_handler(bus, bus_handler, this);
     gst_object_unref(bus);
+
+    /* When VideoHttpBuffer has buffered a reasonable amount of data to facilitate detection and such, it will
+     * move the pipeline into the PAUSED state, which should set everything else up. */
 }
 
 void VideoPlayerBackend::clear()
@@ -200,6 +206,7 @@ void VideoPlayerBackend::seek(qint64 position)
     if (!re)
         qDebug() << "seek to position" << position << "failed";
 }
+
 
 void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast)
 {
