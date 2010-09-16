@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QUrl>
 #include <QTemporaryFile>
+#include <QMutex>
 
 class QNetworkReply;
 
@@ -39,7 +40,7 @@ private:
     qint64 m_fileSize, m_readPos, m_writePos;
     GstAppSrc *m_element;
     GstElement *m_pipeline;
-    QFile m_readFile;
+    QMutex m_lock;
     bool m_bufferBlocked;
 
     /* Rate estimation; circular buffer holding amounts for the last 64 buffer requests */
