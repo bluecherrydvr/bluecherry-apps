@@ -36,6 +36,7 @@ VideoHttpBuffer::~VideoHttpBuffer()
 {
     /* Cleanup callbacks on m_element? */
     /* Deref m_element? */
+    /* m_bufferWait? */
 }
 
 bool VideoHttpBuffer::start(const QUrl &url)
@@ -161,6 +162,8 @@ void VideoHttpBuffer::networkFinished()
         m_fileSize = m_writePos;
         gst_app_src_set_size(m_element, m_fileSize);
     }
+
+    m_bufferWait.wakeAll();
 }
 
 void VideoHttpBuffer::needData(unsigned size)
@@ -259,6 +262,7 @@ bool VideoHttpBuffer::seekData(qint64 offset)
 {
     qDebug() << "VideoHttpBuffer: seek to" << offset;
     m_readPos = offset;
+    m_bufferWait.wakeOne();
     return true;
 }
 
