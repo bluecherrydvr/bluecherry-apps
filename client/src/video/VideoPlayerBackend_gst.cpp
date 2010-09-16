@@ -265,9 +265,12 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
                 break;
             case GST_STATE_PAUSED:
                 vpState = Paused;
+                emit durationChanged(duration());
                 break;
             case GST_STATE_PLAYING:
                 vpState = Playing;
+                emit durationChanged(duration());
+                break;
             }
 
             if (vpState != m_state)

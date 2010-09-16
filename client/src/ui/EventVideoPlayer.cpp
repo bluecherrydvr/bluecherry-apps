@@ -79,7 +79,6 @@ void EventVideoPlayer::playPause()
     }
     else
     {
-        qDebug() << backend.atEnd() << backend.state();
         if (backend.atEnd())
             backend.restart();
         backend.play();
