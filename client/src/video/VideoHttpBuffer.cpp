@@ -13,7 +13,7 @@ void VideoHttpBuffer::needDataWrap(GstAppSrc *src, guint length, gpointer user_d
     static_cast<VideoHttpBuffer*>(user_data)->needData(length);
 }
 
-gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, guint64 offset, gpointer user_data)
+gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, quint64 offset, gpointer user_data)
 {
     return static_cast<VideoHttpBuffer*>(user_data)->seekData(offset) ? TRUE : FALSE;
 }
@@ -27,7 +27,8 @@ VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObje
     gst_app_src_set_max_bytes(m_element, 512*1024);
     gst_app_src_set_stream_type(m_element, GST_APP_STREAM_TYPE_SEEKABLE);
 
-    GstAppSrcCallbacks callbacks = { needDataWrap, 0, seekDataWrap };
+    GstAppSrcCallbacks callbacks = { needDataWrap, 0,
+                                     (gboolean (*)(GstAppSrc*,guint64,void*))seekDataWrap };
     /* Should we grab the DestroyNotify as well? */
     gst_app_src_set_callbacks(m_element, &callbacks, this, 0);
 }
@@ -119,7 +120,7 @@ void VideoHttpBuffer::networkRead()
 
         m_writePos += wr;
 
-        if (r < sizeof(data))
+        if ((unsigned)r < sizeof(data))
             break;
     }
 

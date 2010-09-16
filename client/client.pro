@@ -51,7 +51,7 @@ win32-msvc2008|win32-msvc2010 {
 unix {
     # GStreamer
     CONFIG += link_pkgconfig
-    PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10
+    PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10 gstreamer-app-0.10
     DEFINES += USE_GSTREAMER
 }
 
