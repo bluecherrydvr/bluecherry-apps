@@ -19,8 +19,8 @@ gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, guint64 offset, gpointer 
 }
 
 VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObject *parent)
-    : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_bufferBlocked(false),
-      m_pipeline(pipeline)
+    : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_pipeline(0),
+      m_bufferBlocked(false), ratePos(0), rateMax(0)
 {
     m_bufferFile.setFileTemplate(QDir::tempPath() + QLatin1String("/bc_vbuf_XXXXXX.mkv"));
 
@@ -150,6 +150,17 @@ void VideoHttpBuffer::needData(unsigned size)
      *
      * TODO: Calculate this buffer using time rather than bytes */
 
+#if 0
+    /* Record the request for rate estimation */
+    GstClock *clock = gst_system_clock_obtain();
+    addRateData(gst_clock_get_time(clock), size);
+    gst_object_unref(GST_OBJECT(clock));
+
+    quint64 edur;
+    unsigned esize;
+    getRateEstimation(&edur, &esize);
+#endif
+
     if (m_writePos < m_fileSize && unsigned(m_writePos - m_readPos) < size*2)
     {
         qDebug() << "VideoHttpBuffer: buffer is exhausted with" << (m_fileSize - m_readPos) << "bytes remaining in stream";
@@ -203,4 +214,37 @@ bool VideoHttpBuffer::seekData(qint64 offset)
 
     m_readPos = offset;
     return true;
+}
+
+void VideoHttpBuffer::addRateData(quint64 time, unsigned size)
+{
+    rateData[ratePos].time = time;
+    rateData[ratePos].size = size;
+    rateMax = qMax(rateMax, ++ratePos);
+    if (ratePos == rateCount)
+        ratePos = 0;
+}
+
+void VideoHttpBuffer::getRateEstimation(quint64 *duration, unsigned *size)
+{
+    *size = 0;
+    if (!rateMax)
+    {
+        *duration = 0;
+        return;
+    }
+
+    int end = ratePos ? (ratePos-1) : (rateMax-1);
+    int begin = (ratePos == rateMax) ? 0 : ratePos;
+
+    *duration = rateData[end].time - rateData[begin].time;
+    for (int i = begin; i != end;)
+    {
+        *size += rateData[i].size;
+        if (++i == rateMax)
+            i = 0;
+    }
+    *size += rateData[end].size;
+
+    qDebug() << "Data in" << *duration << "ns was" << *size;
 }

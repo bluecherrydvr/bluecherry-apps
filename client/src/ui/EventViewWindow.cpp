@@ -140,7 +140,6 @@ QWidget *EventViewWindow::createInfoArea()
 QWidget *EventViewWindow::createPlaybackArea()
 {
     m_videoPlayer = new EventVideoPlayer;
-    //m_videoPlayer->setVideo(QUrl(QLatin1String("http://dereferenced.net/test.mkv")));
     m_videoPlayer->setVideo(QUrl(QLatin1String("http://lizard.bluecherry.net/~jbrooks/test.mkv")));
     return m_videoPlayer;
 }
