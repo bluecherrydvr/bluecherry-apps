@@ -194,6 +194,23 @@ qint64 VideoPlayerBackend::position() const
     return re;
 }
 
+bool VideoPlayerBackend::isSeekable() const
+{
+    GstQuery *query = gst_query_new_seeking(GST_FORMAT_TIME);
+    gboolean re = gst_element_query(m_pipeline, query);
+    if (re)
+    {
+        gboolean seekable;
+        gst_query_parse_seeking(query, 0, &seekable, 0, 0);
+        re = seekable;
+    }
+    else
+        qDebug() << "gstreamer: Failed to query seeking properties of the stream";
+
+    gst_query_unref(query);
+    return re;
+}
+
 void VideoPlayerBackend::seek(qint64 position)
 {
     gboolean re = gst_element_seek_simple(m_pipeline, GST_FORMAT_TIME,

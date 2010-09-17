@@ -93,6 +93,7 @@ void EventVideoPlayer::restart()
 
 void EventVideoPlayer::seek(int position)
 {
+    qDebug() << "Backend seekable?" << backend.isSeekable();
     backend.seek(qint64(position) * 1000000);
 }
 

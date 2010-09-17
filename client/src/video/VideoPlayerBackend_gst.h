@@ -31,6 +31,7 @@ public:
 
     qint64 duration() const;
     qint64 position() const;
+    bool isSeekable() const;
     bool atEnd() const { return m_state == Done; }
 
     VideoState state() const { return m_state; }
