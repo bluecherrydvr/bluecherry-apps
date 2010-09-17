@@ -57,9 +57,7 @@ private:
     VideoSurface *m_surface;
     VideoState m_state;
 
-#ifdef Q_WS_MAC
-    Q_INVOKABLE void setVideoView(void *nsview);
-#endif
+    bool updateVideoSize();
 };
 
 #endif // VIDEOPLAYERBACKEND_GST_H

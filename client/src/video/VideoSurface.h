@@ -4,32 +4,21 @@
 #include <QFrame>
 #include <QDebug>
 
-class VideoSurface : public
-#ifdef Q_WS_MAC
-        QMacCocoaViewContainer
-#else
-        QWidget
-#endif
+class VideoSurface : public QWidget
 {
     Q_OBJECT
     Q_PROPERTY(QSize videoSize READ videoSize WRITE setVideoSize NOTIFY videoSizeChanged)
 
 public:
     VideoSurface(QWidget *parent = 0)
-#ifdef Q_WS_MAC
-        : QMacCocoaViewContainer(parent)
-#else
         : QWidget(parent)
-#endif
     {
     }
 
-#ifndef Q_WS_MAC
     virtual QPaintEngine *paintEngine() const
     {
         return 0;
     }
-#endif
 
     QSize videoSize() const { return m_videoSize; }
 

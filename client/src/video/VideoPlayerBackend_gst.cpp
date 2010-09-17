@@ -9,10 +9,6 @@
 #include <gst/interfaces/xoverlay.h>
 #include <glib.h>
 
-#ifdef Q_WS_MAC
-#include <QMacCocoaViewContainer>
-#endif
-
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_state(Stopped)
 {
@@ -223,17 +219,6 @@ void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean
             qWarning() << "gstreamer: Failed to link decodebin to video chain";
             return;
         }
-
-        int width, height;
-        if (gst_video_get_size(pad, &width, &height))
-        {
-            qDebug() << "Determined video size to be" << width << height;
-            bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize", Q_ARG(QSize, QSize(width, height)));
-            Q_ASSERT(ok);
-            Q_UNUSED(ok);
-        }
-        else
-            qDebug() << "Video size is not available when linking pads";
     }
 
     /* TODO: Audio */
@@ -261,8 +246,8 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 
     case GST_MESSAGE_STATE_CHANGED:
         {
-            GstState newState;
-            gst_message_parse_state_changed(msg, 0, &newState, 0);
+            GstState oldState, newState;
+            gst_message_parse_state_changed(msg, &oldState, &newState, 0);
             VideoState vpState;
 
             switch (newState)
@@ -281,6 +266,9 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
                 emit durationChanged(duration());
                 break;
             }
+
+            if (oldState < GST_STATE_PAUSED && newState >= GST_STATE_PAUSED)
+                updateVideoSize();
 
             if (vpState != m_state)
             {
@@ -339,63 +327,12 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         {
             qDebug("gstreamer: Setting X overlay");
             GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
-
-            GstIterator *padit = gst_element_iterate_src_pads(m_videoLink);
-            bool done = false;
-            while (!done)
-            {
-                GstPad *pad;
-                switch (gst_iterator_next(padit, (gpointer*)&pad))
-                {
-                case GST_ITERATOR_OK:
-                    {
-                        int width, height;
-                        if (gst_video_get_size(pad, &width, &height))
-                        {
-                            qDebug() << "Determined video size to be" << width << height;
-                            bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize",
-                                                                Q_ARG(QSize, QSize(width, height)));
-                            Q_ASSERT(ok);
-                            Q_UNUSED(ok);
-                            done = true;
-                        }
-                        else
-                            qDebug() << "Video size not available when setting xwindow id";
-
-                        gst_object_unref(GST_OBJECT(pad));
-                    }
-                    break;
-                case GST_ITERATOR_DONE:
-                    qDebug("iterator done...");
-                    done = true;
-                    break;
-                default:
-                    break;
-                }
-            }
-            gst_iterator_free(padit);
-
+            updateVideoSize();
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(sink));
             gst_message_unref(msg);
             return GST_BUS_DROP;
         }
-#ifdef Q_WS_MAC
-        else if (gst_structure_has_name(msg->structure, "have-ns-view"))
-        {
-            const GstStructure *structure = gst_message_get_structure(msg);
-            void *nsview = g_value_get_pointer(gst_structure_get_value(structure, "nsview"));
-
-            qDebug("gstreamer: Received have-ns-view: %p", nsview);
-            bool ok = QMetaObject::invokeMethod(this, "setVideoView", Qt::QueuedConnection,
-                                                Q_ARG(void*, nsview));
-            Q_ASSERT(ok);
-            Q_UNUSED(ok);
-
-            gst_message_unref(msg);
-            return GST_BUS_DROP;
-        }
-#endif
         break;
 
     default:
@@ -405,20 +342,44 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
     return GST_BUS_PASS;
 }
 
-#ifdef Q_WS_MAC
-#include <QApplication>
-#include <QResizeEvent>
-
-void VideoPlayerBackend::setVideoView(void *nsview)
+bool VideoPlayerBackend::updateVideoSize()
 {
-    qDebug("setting video view");
-    Q_ASSERT(qobject_cast<QMacCocoaViewContainer*>(m_surface));
-    static_cast<QMacCocoaViewContainer*>(m_surface)->setCocoaView(nsview);
+    Q_ASSERT(m_videoLink);
 
-    /* Hack: This is necessary to get QMacCocoaViewContainer to resize the nsview
-     * properly when it's initially set. Bug exists as of Qt 4.7.0 */
-    QSize sz = m_surface->size();
-    m_surface->resize(sz - QSize(1,1));
-    m_surface->resize(sz);
+    GstIterator *padit = gst_element_iterate_src_pads(m_videoLink);
+    bool done = false, success = false;
+    while (!done)
+    {
+        GstPad *pad;
+        switch (gst_iterator_next(padit, (gpointer*)&pad))
+        {
+        case GST_ITERATOR_OK:
+            {
+                int width, height;
+                if (gst_video_get_size(pad, &width, &height))
+                {
+                    qDebug() << "Determined video size to be" << width << height;
+                    bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize",
+                                                        Qt::QueuedConnection,
+                                                        Q_ARG(QSize, QSize(width, height)));
+                    Q_ASSERT(ok);
+                    Q_UNUSED(ok);
+                    done = success = true;
+                }
+                else
+                    qDebug() << "Video size not available on pad";
+
+                gst_object_unref(GST_OBJECT(pad));
+            }
+            break;
+        case GST_ITERATOR_DONE:
+            done = true;
+            break;
+        default:
+            break;
+        }
+    }
+
+    gst_iterator_free(padit);
+    return success;
 }
-#endif
