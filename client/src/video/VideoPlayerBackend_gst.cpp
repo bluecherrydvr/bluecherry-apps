@@ -85,9 +85,6 @@ void VideoPlayerBackend::start(const QUrl &url)
     VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
     vhb->start(url);
 
-    GstElement *queue = gst_element_factory_make("queue", "queue");
-    Q_ASSERT(queue);
-
     /* Decoder */
     GstElement *decoder = gst_element_factory_make("decodebin", "decoder");
     g_signal_connect(decoder, "new-decoded-pad", G_CALLBACK(decodePadReadyWrap), this);
@@ -109,8 +106,8 @@ void VideoPlayerBackend::start(const QUrl &url)
 #endif
     Q_ASSERT(sink);
 
-    gst_bin_add_many(GST_BIN(m_pipeline), source, queue, decoder, colorspace, scale, sink, NULL);
-    gboolean ok = gst_element_link_many(source, queue, decoder, NULL);
+    gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
+    gboolean ok = gst_element_link_many(source, decoder, NULL);
     if (!ok)
     {
         qWarning() << "gstreamer: Failed to link source to decodebin";
