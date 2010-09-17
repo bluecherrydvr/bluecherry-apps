@@ -1,10 +1,12 @@
 #include "EventVideoPlayer.h"
+#include "video/VideoSurface.h"
 #include "core/BluecherryApp.h"
 #include <QBoxLayout>
 #include <QSlider>
 #include <QToolButton>
 #include <QApplication>
 #include <QThread>
+#include <QFrame>
 #include <QDebug>
 
 EventVideoPlayer::EventVideoPlayer(QWidget *parent)
@@ -22,10 +24,8 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     QBoxLayout *layout = new QVBoxLayout(this);
     layout->setMargin(0);
 
-    m_videoWidget = backend.createSurface();
-    m_videoWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    m_videoWidget->setMinimumSize(320, 240);
-    layout->addWidget(m_videoWidget);
+    VideoContainer *container = new VideoContainer(backend.createSurface());
+    layout->addWidget(container, 1);
 
     m_seekSlider = new QSlider(Qt::Horizontal);
     connect(m_seekSlider, SIGNAL(valueChanged(int)), SLOT(seek(int)));

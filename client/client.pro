@@ -51,14 +51,14 @@ win32-msvc2008|win32-msvc2010 {
 unix {
     # GStreamer
     CONFIG += link_pkgconfig
-    PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10 gstreamer-app-0.10
+    PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10 gstreamer-app-0.10 gstreamer-video-0.10
     DEFINES += USE_GSTREAMER
 }
 
 win32 {
     isEmpty(GSTREAMER_PATH):error(You must pass GSTREAMER_PATH=path/to/gstreamer/sdk to qmake)
     INCLUDEPATH += "$${GSTREAMER_PATH}/include" "$${GSTREAMER_PATH}/include/gstreamer-0.10" "$${GSTREAMER_PATH}/include/glib-2.0" "$${GSTREAMER_PATH}/include/libxml2"
-    LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib glib-2.0.lib gobject-2.0.lib
+    LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib gstvideo-0.10.lib glib-2.0.lib gobject-2.0.lib
     DEFINES += USE_GSTREAMER
 }
 
@@ -133,4 +133,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventTypesFilter.h \
     src/ui/EventVideoPlayer.h \
     src/video/VideoPlayerBackend_gst.h \
-    src/video/VideoHttpBuffer.h
+    src/video/VideoHttpBuffer.h \
+    src/video/VideoSurface.h

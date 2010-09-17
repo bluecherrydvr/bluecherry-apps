@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include <gst/video/video.h>
 #include <gst/interfaces/xoverlay.h>
 #include <glib.h>
 
@@ -34,28 +35,11 @@ static void decodePadReadyWrap(GstDecodeBin *bin, GstPad *pad, gboolean islast, 
     static_cast<VideoPlayerBackend*>(user_data)->decodePadReady(bin, pad, islast);
 }
 
-class VideoSurface : public QWidget
-{
-public:
-    VideoSurface(QWidget *parent = 0) : QWidget(parent)
-    {
-    }
-
-    virtual QPaintEngine *paintEngine() const
-    {
-        return 0;
-    }
-};
-
-QWidget *VideoPlayerBackend::createSurface()
+VideoSurface *VideoPlayerBackend::createSurface()
 {
     Q_ASSERT(!m_surface);
 
-#ifdef Q_WS_MAC
-    m_surface = new QMacCocoaViewContainer(0);
-#else
     m_surface = new VideoSurface;
-#endif
     QPalette p = m_surface->palette();
     p.setColor(QPalette::Window, Qt::red);
     m_surface->setPalette(p);
@@ -239,6 +223,17 @@ void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean
             qWarning() << "gstreamer: Failed to link decodebin to video chain";
             return;
         }
+
+        int width, height;
+        if (gst_video_get_size(pad, &width, &height))
+        {
+            qDebug() << "Determined video size to be" << width << height;
+            bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize", Q_ARG(QSize, QSize(width, height)));
+            Q_ASSERT(ok);
+            Q_UNUSED(ok);
+        }
+        else
+            qDebug() << "Video size is not available when linking pads";
     }
 
     /* TODO: Audio */
@@ -344,6 +339,42 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         {
             qDebug("gstreamer: Setting X overlay");
             GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
+
+            GstIterator *padit = gst_element_iterate_src_pads(m_videoLink);
+            bool done = false;
+            while (!done)
+            {
+                GstPad *pad;
+                switch (gst_iterator_next(padit, (gpointer*)&pad))
+                {
+                case GST_ITERATOR_OK:
+                    {
+                        int width, height;
+                        if (gst_video_get_size(pad, &width, &height))
+                        {
+                            qDebug() << "Determined video size to be" << width << height;
+                            bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize",
+                                                                Q_ARG(QSize, QSize(width, height)));
+                            Q_ASSERT(ok);
+                            Q_UNUSED(ok);
+                            done = true;
+                        }
+                        else
+                            qDebug() << "Video size not available when setting xwindow id";
+
+                        gst_object_unref(GST_OBJECT(pad));
+                    }
+                    break;
+                case GST_ITERATOR_DONE:
+                    qDebug("iterator done...");
+                    done = true;
+                    break;
+                default:
+                    break;
+                }
+            }
+            gst_iterator_free(padit);
+
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(sink));
             gst_message_unref(msg);

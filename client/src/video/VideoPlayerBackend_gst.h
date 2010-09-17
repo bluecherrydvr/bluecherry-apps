@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QWidget>
 #include <gst/gst.h>
+#include "VideoSurface.h"
 
 class QUrl;
 
@@ -24,7 +25,7 @@ public:
 
     explicit VideoPlayerBackend(QObject *parent = 0);
 
-    QWidget *createSurface();
+    VideoSurface *createSurface();
 
     void start(const QUrl &url);
     void clear();
@@ -53,7 +54,7 @@ signals:
 
 private:
     GstElement *m_pipeline, *m_videoLink;
-    QWidget *m_surface;
+    VideoSurface *m_surface;
     VideoState m_state;
 
 #ifdef Q_WS_MAC
