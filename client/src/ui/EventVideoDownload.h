@@ -4,9 +4,9 @@
 #include <QObject>
 #include <QPointer>
 #include <QFutureWatcher>
-#include "video/VideoHttpBuffer.h"
 
 class QProgressDialog;
+class VideoHttpBuffer;
 
 class EventVideoDownload : public QObject
 {
@@ -29,7 +29,8 @@ private slots:
 private:
     QProgressDialog *m_dialog;
     QFutureWatcher<bool> *m_futureWatch;
-    QPointer<VideoHttpBuffer> m_videoBuffer;
+    VideoHttpBuffer *m_videoBuffer;
+    QPointer<QObject> m_videoBufferParent;
     QString m_tempFilePath;
     QString m_finalPath;
 };
