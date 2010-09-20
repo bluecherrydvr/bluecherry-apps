@@ -6,6 +6,7 @@
 
 class DVRServer;
 class QNetworkAccessManager;
+class MainWindow;
 
 class BluecherryApp : public QObject
 {
@@ -13,6 +14,7 @@ class BluecherryApp : public QObject
 
 public:
     QNetworkAccessManager * const nam;
+    MainWindow *mainWindow;
 
     explicit BluecherryApp();
 

@@ -1,12 +1,16 @@
 #include "EventVideoPlayer.h"
+#include "EventVideoDownload.h"
 #include "video/VideoSurface.h"
 #include "core/BluecherryApp.h"
+#include "ui/MainWindow.h"
 #include <QBoxLayout>
 #include <QSlider>
 #include <QToolButton>
+#include <QPushButton>
 #include <QApplication>
 #include <QThread>
 #include <QFrame>
+#include <QFileDialog>
 #include <QDebug>
 
 EventVideoPlayer::EventVideoPlayer(QWidget *parent)
@@ -59,6 +63,10 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     connect(restartBtn, SIGNAL(clicked()), SLOT(restart()));
 
     btnLayout->addStretch();
+
+    QPushButton *saveBtn = new QPushButton(tr("Save Video"));
+    btnLayout->addWidget(saveBtn);
+    connect(saveBtn, SIGNAL(clicked()), SLOT(saveVideo()));
 }
 
 void EventVideoPlayer::setVideo(const QUrl &url)
@@ -150,4 +158,22 @@ void EventVideoPlayer::updatePosition()
     m_seekSlider->blockSignals(true);
     m_seekSlider->setValue(position);
     m_seekSlider->blockSignals(false);
+}
+
+void EventVideoPlayer::saveVideo(const QString &path)
+{
+    if (path.isEmpty())
+    {
+        QString upath = QFileDialog::getSaveFileName(this, tr("Save event video"), QString(),
+                                     tr("Matroska Video (*.mkv)"));
+        if (upath.isEmpty())
+            return;
+        saveVideo(upath);
+        return;
+    }
+
+    EventVideoDownload *dl = new EventVideoDownload(bcApp->mainWindow);
+    dl->setFilePath(path);
+    dl->setVideoBuffer(backend.videoBuffer());
+    dl->start(bcApp->mainWindow);
 }

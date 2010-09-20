@@ -7,6 +7,7 @@
 #include "VideoSurface.h"
 
 class QUrl;
+class VideoHttpBuffer;
 
 typedef struct _GstDecodeBin GstDecodeBin;
 
@@ -36,6 +37,7 @@ public:
     bool atEnd() const { return m_state == Done; }
 
     VideoState state() const { return m_state; }
+    VideoHttpBuffer *videoBuffer() const { return m_videoBuffer; }
 
     /* Internal */
     GstBusSyncReply busSyncHandler(GstBus *bus, GstMessage *msg);
@@ -55,6 +57,7 @@ signals:
 private:
     GstElement *m_pipeline, *m_videoLink;
     VideoSurface *m_surface;
+    VideoHttpBuffer *m_videoBuffer;
     VideoState m_state;
 
     bool updateVideoSize();

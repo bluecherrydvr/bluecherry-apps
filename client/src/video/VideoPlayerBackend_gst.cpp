@@ -10,7 +10,7 @@
 #include <glib.h>
 
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
-    : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_state(Stopped)
+    : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_videoBuffer(0), m_state(Stopped)
 {
     GError *err;
     if (gst_init_check(0, 0, &err) == FALSE)
@@ -62,8 +62,8 @@ void VideoPlayerBackend::start(const QUrl &url)
     GstElement *source = gst_element_factory_make("appsrc", "source");
     Q_ASSERT(source);
 
-    VideoHttpBuffer *vhb = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
-    vhb->start(url);
+    m_videoBuffer = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
+    m_videoBuffer->start(url);
 
     /* Decoder */
     GstElement *decoder = gst_element_factory_make("decodebin", "decoder");

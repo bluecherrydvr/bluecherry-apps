@@ -97,7 +97,8 @@ SOURCES += src/main.cpp \
     src/ui/EventTypesFilter.cpp \
     src/ui/EventVideoPlayer.cpp \
     src/video/VideoPlayerBackend_gst.cpp \
-    src/video/VideoHttpBuffer.cpp
+    src/video/VideoHttpBuffer.cpp \
+    src/ui/EventVideoDownload.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -134,4 +135,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/ui/EventVideoPlayer.h \
     src/video/VideoPlayerBackend_gst.h \
     src/video/VideoHttpBuffer.h \
-    src/video/VideoSurface.h
+    src/video/VideoSurface.h \
+    src/ui/EventVideoDownload.h

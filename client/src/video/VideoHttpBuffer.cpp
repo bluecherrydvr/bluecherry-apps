@@ -20,7 +20,7 @@ gboolean VideoHttpBuffer::seekDataWrap(GstAppSrc *src, quint64 offset, gpointer 
 
 VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObject *parent)
     : QObject(parent), m_networkReply(0), m_fileSize(0), m_readPos(0), m_writePos(0), m_element(element), m_pipeline(pipeline),
-      m_streamInit(true), m_bufferBlocked(false), ratePos(0), rateMax(0)
+      m_streamInit(true), m_bufferBlocked(false), m_finished(false), ratePos(0), rateMax(0)
 {
     m_bufferFile.setFileTemplate(QDir::tempPath() + QLatin1String("/bc_vbuf_XXXXXX.mkv"));
 
@@ -35,6 +35,9 @@ VideoHttpBuffer::VideoHttpBuffer(GstAppSrc *element, GstElement *pipeline, QObje
 
 VideoHttpBuffer::~VideoHttpBuffer()
 {
+    if (m_networkReply)
+        delete m_networkReply;
+
     /* Cleanup callbacks on m_element? */
     /* Deref m_element? */
     /* m_bufferWait? */
@@ -89,6 +92,7 @@ void VideoHttpBuffer::networkMetaData()
     lock.unlock();
 
     gst_app_src_set_size(m_element, m_fileSize);
+    emit bufferUpdated();
 }
 
 void VideoHttpBuffer::networkRead()
@@ -152,17 +156,29 @@ void VideoHttpBuffer::networkRead()
     }
 
     m_bufferWait.wakeOne();
+    emit bufferUpdated();
 }
 
 void VideoHttpBuffer::networkFinished()
 {
-    qDebug("VideoHttpBuffer: Finished download");
-    if (m_fileSize != m_writePos)
+    qDebug("VideoHttpBuffer: Download finished");
+    if (m_networkReply->error() == QNetworkReply::NoError)
     {
-        qDebug() << "VideoHttpBuffer: Adjusting filesize to match actual downloaded amount";
-        m_fileSize = m_writePos;
-        gst_app_src_set_size(m_element, m_fileSize);
+        if (m_fileSize != m_writePos)
+        {
+            qDebug() << "VideoHttpBuffer: Adjusting filesize to match actual downloaded amount";
+            m_fileSize = m_writePos;
+            gst_app_src_set_size(m_element, m_fileSize);
+        }
+
+        m_finished = true;
+        emit bufferingFinished();
     }
+    else
+        qDebug() << "VideoHttpBuffer: error is" << m_networkReply->error();
+
+    m_networkReply->deleteLater();
+    m_networkReply = 0;
 
     m_bufferWait.wakeAll();
 }

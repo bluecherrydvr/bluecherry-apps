@@ -45,7 +45,8 @@ int main(int argc, char *argv[])
     bcApp = new BluecherryApp;
 
     MainWindow w;
-    w.show();
+    bcApp->mainWindow = &w;
 
+    w.show();
     return a.exec();
 }

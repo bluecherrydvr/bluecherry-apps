@@ -23,12 +23,17 @@ public:
     QString bufferFileName() const { return m_bufferFile.fileName(); }
     qint64 fileSize() const { return m_fileSize; }
     qint64 bufferedSize() const { return m_bufferFile.pos(); }
+    bool isBufferingFinished() const { return m_finished; }
+
+    void setAutoDelete(bool enabled) { m_bufferFile.setAutoRemove(enabled); }
 
 public slots:
     bool start(const QUrl &url);
 
 signals:
     void streamError(const QString &message);
+    void bufferingFinished();
+    void bufferUpdated();
 
 private slots:
     void networkRead();
@@ -43,7 +48,7 @@ private:
     GstElement *m_pipeline;
     QMutex m_lock;
     QWaitCondition m_bufferWait;
-    bool m_streamInit, m_bufferBlocked;
+    bool m_streamInit, m_bufferBlocked, m_finished;
 
     /* Rate estimation; circular buffer holding amounts for the last 64 buffer requests */
     static const int rateCount = 64;
