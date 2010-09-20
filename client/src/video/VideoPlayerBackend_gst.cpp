@@ -19,6 +19,12 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     }
 }
 
+VideoPlayerBackend::~VideoPlayerBackend()
+{
+    if (m_videoBuffer)
+        m_videoBuffer->clearPlayback();
+}
+
 static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
 {
     Q_ASSERT(data);

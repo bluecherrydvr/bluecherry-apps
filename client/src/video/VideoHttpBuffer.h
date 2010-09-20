@@ -29,6 +29,7 @@ public:
 
 public slots:
     bool start(const QUrl &url);
+    void clearPlayback();
 
 signals:
     void streamError(const QString &message);

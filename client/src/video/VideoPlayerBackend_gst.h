@@ -25,6 +25,7 @@ public:
     };
 
     explicit VideoPlayerBackend(QObject *parent = 0);
+    ~VideoPlayerBackend();
 
     VideoSurface *createSurface();
 

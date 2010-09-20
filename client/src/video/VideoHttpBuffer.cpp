@@ -38,9 +38,10 @@ VideoHttpBuffer::~VideoHttpBuffer()
     if (m_networkReply)
         delete m_networkReply;
 
+    clearPlayback();
+
     /* Cleanup callbacks on m_element? */
     /* Deref m_element? */
-    /* m_bufferWait? */
 }
 
 bool VideoHttpBuffer::start(const QUrl &url)
@@ -66,6 +67,20 @@ bool VideoHttpBuffer::start(const QUrl &url)
 
     qDebug("VideoHttpBuffer: started");
     return true;
+}
+
+void VideoHttpBuffer::clearPlayback()
+{
+    QMutexLocker lock(&m_lock);
+
+    /* XXX: Do these need to be unrefed? */
+    m_element = 0;
+    m_pipeline = 0;
+    m_streamInit = m_bufferBlocked = false;
+
+    lock.unlock();
+
+    m_bufferWait.wakeAll();
 }
 
 void VideoHttpBuffer::networkMetaData()
@@ -208,7 +223,6 @@ void VideoHttpBuffer::needData(unsigned size)
     {
         qDebug() << "VideoHttpBuffer: buffer is exhausted with" << (m_fileSize - m_readPos) << "bytes remaining in stream";
         m_bufferBlocked = true;
-        lock.unlock();
 
         GstState stateNow;
         GstStateChangeReturn re = gst_element_get_state(m_pipeline, &stateNow, 0, 0);
@@ -226,8 +240,6 @@ void VideoHttpBuffer::needData(unsigned size)
                 re = gst_element_get_state(m_pipeline, &stateNow, &statePending, GST_CLOCK_TIME_NONE);
             }
         }
-
-        lock.relock();
     }
     else
         m_bufferBlocked = false;
@@ -237,6 +249,8 @@ void VideoHttpBuffer::needData(unsigned size)
         /* This exists mostly for stream initialization. */
         /* XXX: We could get stuck waiting for a wake that will never happen if the stream breaks; add an exit */
         m_bufferWait.wait(&m_lock);
+        if (!m_element)
+            return;
         avail = unsigned(m_writePos - m_readPos);
     }
 
@@ -268,9 +282,10 @@ void VideoHttpBuffer::needData(unsigned size)
     }
 
     m_readPos += size;
+    GstAppSrc *e = m_element;
     lock.unlock();
 
-    GstFlowReturn flow = gst_app_src_push_buffer(m_element, buffer);
+    GstFlowReturn flow = gst_app_src_push_buffer(e, buffer);
     if (flow != GST_FLOW_OK)
         qDebug() << "VideoHttpBuffer: Push result is" << flow;
 }
