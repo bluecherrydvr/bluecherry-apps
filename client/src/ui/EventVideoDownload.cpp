@@ -24,6 +24,8 @@ void EventVideoDownload::setVideoBuffer(VideoHttpBuffer *buffer)
     {
         m_tempFilePath.clear();
 
+        m_videoBuffer->disconnect(this);
+
         if (m_videoBufferParent)
             m_videoBuffer->setParent(m_videoBufferParent.data());
         else
@@ -61,6 +63,8 @@ void EventVideoDownload::start(QWidget *parentWindow)
     pb->show();
     m_dialog->setBar(pb);
     m_dialog->show();
+
+    connect(m_dialog, SIGNAL(canceled()), SLOT(cancel()));
 
     if (m_videoBuffer->isBufferingFinished())
     {
@@ -113,26 +117,41 @@ void EventVideoDownload::copyFinished()
 {
     Q_ASSERT(m_futureWatch);
 
-    bool success = m_futureWatch->result();
-    if (!success)
+    if (m_dialog)
     {
-        m_dialog->setLabelText(tr("Copy failed!"));
-        m_dialog->setRange(0, 100);
-        m_dialog->setValue(0);
-    }
-    else
-    {
-        m_dialog->setLabelText(tr("Video downloaded successfully"));
-        /* This actually is necessary. QProgressDialog is terrible. */
-        m_dialog->setRange(0, 101);
-        m_dialog->setValue(100);
-        m_dialog->setMaximum(100);
-    }
+        bool success = m_futureWatch->result();
+        if (!success)
+        {
+            m_dialog->setLabelText(tr("Copy failed!"));
+            m_dialog->setRange(0, 100);
+            m_dialog->setValue(0);
+        }
+        else
+        {
+            m_dialog->setLabelText(tr("Video downloaded successfully"));
+            /* This actually is necessary. QProgressDialog is terrible. */
+            m_dialog->setRange(0, 101);
+            m_dialog->setValue(100);
+            m_dialog->setMaximum(100);
+        }
 
-    m_dialog->setCancelButtonText(tr("Close"));
+        m_dialog->setCancelButtonText(tr("Close"));
+    }
 
     m_futureWatch->deleteLater();
     m_futureWatch = 0;
 
     setVideoBuffer(0);
+}
+
+void EventVideoDownload::cancel()
+{
+    if (m_videoBuffer)
+        setVideoBuffer(0);
+
+    m_dialog->close();
+    m_dialog->deleteLater();
+    m_dialog = 0;
+
+    deleteLater();
 }

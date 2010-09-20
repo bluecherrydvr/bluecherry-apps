@@ -25,6 +25,7 @@ private slots:
     void startCopy();
     void copyFinished();
     void updateBufferProgress();
+    void cancel();
 
 private:
     QProgressDialog *m_dialog;
