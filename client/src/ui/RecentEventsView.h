@@ -23,6 +23,8 @@ public:
 
     void setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command);
 
+    virtual void reset();
+
 protected:
     virtual void paintEvent(QPaintEvent *event);
     virtual void resizeEvent(QResizeEvent *event);

@@ -186,6 +186,11 @@ void RecentEventsView::rowsAboutToBeRemoved(const QModelIndex &parent, int start
     updateScrollbars();
 }
 
+void RecentEventsView::reset()
+{
+    doFullLayout();
+}
+
 void RecentEventsView::paintEvent(QPaintEvent *event)
 {
     QPainter p(viewport());
