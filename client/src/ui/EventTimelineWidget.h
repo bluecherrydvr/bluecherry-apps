@@ -36,6 +36,8 @@ public:
     virtual QModelIndex indexAt(const QPoint &point) const;
     virtual void setModel(QAbstractItemModel *model);
 
+    virtual void reset();
+
     /* Internal, do not touch. */
     virtual void doItemsLayout();
 
@@ -71,7 +73,6 @@ protected:
 
 private slots:
     void rowsRemoved(const QModelIndex &parent, int start, int end);
-    void modelReset();
     void setViewStartOffset(int secs);
 
 private:

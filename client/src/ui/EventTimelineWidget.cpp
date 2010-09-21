@@ -91,10 +91,15 @@ void EventTimelineWidget::clearData()
     rowsMap.clear();
     timeStart = timeEnd = QDateTime();
     viewTimeStart = viewTimeEnd = QDateTime();
-    timeSeconds = viewSeconds = 0;
+    dataTimeStart = dataTimeEnd = QDateTime();
+    timeSeconds = viewSeconds = primaryTickSecs = 0;
+
+    clearLeftPadding();
 
     layoutRows.clear();
     layoutRowsBottom = 0;
+
+    pendingLayouts = 0;
 
     verticalScrollBar()->setRange(0, 0);
     viewport()->update();
@@ -115,7 +120,6 @@ void EventTimelineWidget::setModel(QAbstractItemModel *newModel)
     }
 
     connect(newModel, SIGNAL(rowsRemoved(QModelIndex,int,int)), SLOT(rowsRemoved(QModelIndex,int,int)));
-    connect(newModel, SIGNAL(modelReset()), SLOT(modelReset()));
     QAbstractItemView::setModel(newModel);
 
     addModelRows(0);
@@ -258,7 +262,6 @@ void EventTimelineWidget::scrollTo(const QModelIndex &index, ScrollHint hint)
         break;
 
     case PositionAtCenter:
-        qDebug() << (itemArea.height()-itemRect.height())/2;
         verticalScrollBar()->setValue((verticalScrollBar()->value() + itemRect.y()) - ((itemArea.height() - itemRect.height())/2));
         break;
     }
@@ -712,7 +715,7 @@ void EventTimelineWidget::rowsRemoved(const QModelIndex &parent, int start, int 
     Q_ASSERT(rowsMap.size() == model()->rowCount());
 }
 
-void EventTimelineWidget::modelReset()
+void EventTimelineWidget::reset()
 {
     clearData();
     addModelRows(0);
@@ -849,11 +852,11 @@ void EventTimelineWidget::paintEvent(QPaintEvent *event)
         /* This is very slow and could be improved dramatically with the use of QTextLayout */
         QFontMetrics fm(p.font());
         int w = fm.width(dateStr)+10;
-        if (w > dateRect.width())
+        if (w > dateRect.width() && date < last)
         {
             date = date.addDays(1);
             dt = QDateTime(date);
-            QRect nr = timeCellRect(dt, dt.secsTo(QDateTime(dt.addDays(1))));
+            QRect nr = timeCellRect(dt, dt.secsTo(qMin(QDateTime(dt.addDays(1)), viewTimeEnd)));
             nr.setHeight(r.height());
             nr.translate(leftPadding(), 0);
             dateRect |= nr;
