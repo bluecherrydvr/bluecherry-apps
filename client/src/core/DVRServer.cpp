@@ -74,6 +74,7 @@ void DVRServer::removeServer()
 QNetworkRequest DVRServer::createRequest(const QUrl &relurl)
 {
     QUrl url(relurl);
+    url.setScheme(QLatin1String("http"));
     url.setHost(hostname());
 
     return QNetworkRequest(url);

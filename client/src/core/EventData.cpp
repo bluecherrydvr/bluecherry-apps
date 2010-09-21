@@ -145,21 +145,26 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
     QXmlStreamReader reader(input);
     QList<EventData*> re;
 
-    while (reader.readNextStartElement())
+    if (reader.readNextStartElement())
     {
         if (reader.name() == QLatin1String("feed"))
         {
-            while (reader.readNextStartElement())
+            qDebug() << "EventData: found feed";
+            while (reader.readNext() != QXmlStreamReader::Invalid)
             {
+                if (reader.tokenType() != QXmlStreamReader::StartElement)
+                    continue;
+
                 if (reader.name() == QLatin1String("entry"))
                 {
-                    EventData *data = parseEntry(server, reader);
-                    if (data)
-                        re.append(data);
+                    EventData *ev = parseEntry(server, reader);
+                    if (ev)
+                        re.append(ev);
                 }
             }
-            break;
         }
+        else
+            reader.raiseError(QLatin1String("Invalid feed format"));
     }
 
     return re;
@@ -172,8 +177,16 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
     EventData *data = new EventData(server);
     data->duration = 0;
 
-    while (reader.readNextStartElement())
+    while (reader.readNext() != QXmlStreamReader::Invalid)
     {
+        if (reader.tokenType() == QXmlStreamReader::EndElement)
+        {
+            if (reader.name() == QLatin1String("entry"))
+                break;
+        }
+        else if (reader.tokenType() != QXmlStreamReader::StartElement)
+            continue;
+
         if (reader.name() == QLatin1String("published"))
         {
             data->date = QDateTime::fromString(reader.readElementText(), Qt::ISODate);
@@ -181,6 +194,7 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
         else if (reader.name() == QLatin1String("updated"))
         {
             QString d = reader.readElementText();
+            qDebug() << d;
             if (d.isEmpty())
                 data->duration = -1;
             else
@@ -195,6 +209,8 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
                 qDebug() << category;
             }
         }
+        else if (reader.name() == QLatin1String("entry"))
+            reader.raiseError(QLatin1String("Unexpected <entry> element"));
     }
 
     return data;

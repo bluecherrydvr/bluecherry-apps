@@ -21,6 +21,9 @@ EventsModel::EventsModel(QObject *parent)
     sortColumn = 3;
     sortOrder = Qt::DescendingOrder;
     applyFilters();
+
+    foreach (DVRServer *s, bcApp->servers())
+        requestData(s);
 }
 
 /* Randomized events for testing until real ones are available */
@@ -60,7 +63,7 @@ void EventsModel::createTestData()
             event->level = (qrand() % 5) ? EventLevel::Info : EventLevel::Critical;
         }
 
-        cachedEvents.append(event);
+        cachedEvents[event->server].append(event);
     }
 }
 
@@ -232,10 +235,13 @@ void EventsModel::applyFilters(bool fromCache)
         beginResetModel();
         items.clear();
 
-        for (QList<EventData*>::Iterator it = cachedEvents.begin(); it != cachedEvents.end(); ++it)
+        for (QHash<DVRServer*,QList<EventData*> >::Iterator it = cachedEvents.begin(); it != cachedEvents.end(); ++it)
         {
-            if (testFilter(*it))
-                items.append(*it);
+            for (QList<EventData*>::Iterator eit = it->begin(); eit != it->end(); ++eit)
+            {
+                if (testFilter(*eit))
+                    items.append(*eit);
+            }
         }
 
         bool block = blockSignals(true);
@@ -436,7 +442,24 @@ void EventsModel::requestFinished()
         return;
     }
 
+    int statusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    if (statusCode < 200 || statusCode >= 300)
+    {
+        qWarning() << "Event request error: HTTP code" << statusCode;
+        /* TODO: ^ */
+        return;
+    }
+
+    qDebug() << "EventsModel: Have response from" << server->displayName();
+
     QByteArray data = reply->readAll();
+    qDebug() << data;
     QList<EventData*> events = EventData::parseEvents(server, data);
-    qDeleteAll(events);
+    qDebug() << "EventsModel: Parsed event data into" << events.size() << "events";
+
+    QList<EventData*> &cache = cachedEvents[server];
+    qDeleteAll(cache);
+    cache = events;
+
+    applyFilters();
 }

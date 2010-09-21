@@ -8,6 +8,7 @@
 #include <QSet>
 #include <QColor>
 #include <QBitArray>
+#include <QHash>
 
 class DVRServer;
 class DVRCamera;
@@ -55,7 +56,8 @@ private slots:
     void requestFinished();
 
 private:
-    QList<EventData*> items, cachedEvents;
+    QList<EventData*> items;
+    QHash<DVRServer*,QList<EventData*> > cachedEvents;
 
     /* Filters */
     QHash<DVRServer*, QSet<int> > filterSources;
