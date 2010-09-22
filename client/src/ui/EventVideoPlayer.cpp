@@ -33,7 +33,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
 
     m_seekSlider = new QSlider(Qt::Horizontal);
     connect(m_seekSlider, SIGNAL(valueChanged(int)), SLOT(seek(int)));
-    //m_seekSlider->setEnabled(false);
+    m_seekSlider->setEnabled(false);
     layout->addWidget(m_seekSlider);
 
     QBoxLayout *btnLayout = new QHBoxLayout;
