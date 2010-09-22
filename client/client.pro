@@ -99,7 +99,8 @@ SOURCES += src/main.cpp \
     src/video/VideoPlayerBackend_gst.cpp \
     src/video/VideoHttpBuffer.cpp \
     src/ui/EventVideoDownload.cpp \
-    src/ui/ServerConfigWindow.cpp
+    src/ui/ServerConfigWindow.cpp \
+    src/ui/AboutDialog.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -138,4 +139,8 @@ HEADERS  += src/ui/MainWindow.h \
     src/video/VideoHttpBuffer.h \
     src/video/VideoSurface.h \
     src/ui/EventVideoDownload.h \
-    src/ui/ServerConfigWindow.h
+    src/ui/ServerConfigWindow.h \
+    src/ui/AboutDialog.h
+
+RESOURCES += \
+    res/resources.qrc

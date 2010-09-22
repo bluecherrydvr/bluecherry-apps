@@ -7,6 +7,7 @@
 #include "NumericOffsetWidget.h"
 #include "RecentEventsView.h"
 #include "EventsModel.h"
+#include "AboutDialog.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -17,6 +18,10 @@
 #include <QShortcut>
 #include <QSplitter>
 #include <QPushButton>
+#include <QApplication>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -93,6 +98,13 @@ void MainWindow::createMenu()
     appMenu->addAction(tr("&Options"), this, SLOT(showOptionsDialog()));
     appMenu->addSeparator();
     appMenu->addAction(tr("&Quit"), this, SLOT(close()));
+
+    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+    helpMenu->addAction(tr("&Documentation"), this, SLOT(openDocumentation()));
+    helpMenu->addAction(tr("Bluecherry &support"), this, SLOT(openSupport()));
+    helpMenu->addAction(tr("Suggest a &feature"), this, SLOT(openIdeas()));
+    helpMenu->addSeparator();
+    helpMenu->addAction(tr("&About Bluecherry DVR"), this, SLOT(openAbout()));
 }
 
 QWidget *MainWindow::createSourcesList()
@@ -179,4 +191,41 @@ void MainWindow::showEventsWindow()
     EventsWindow *window = EventsWindow::instance();
     window->show();
     window->raise();
+}
+
+void MainWindow::openAbout()
+{
+    foreach (QWidget *w, QApplication::topLevelWidgets())
+    {
+        if (qobject_cast<AboutDialog*>(w))
+        {
+            w->raise();
+            return;
+        }
+    }
+
+    AboutDialog *dlg = new AboutDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->show();
+}
+
+void MainWindow::openDocumentation()
+{
+    /* TODO: Get a link for this */
+}
+
+void MainWindow::openIdeas()
+{
+    QUrl url(QLatin1String("http://ideas.bluecherrydvr.com/"));
+    bool ok = QDesktopServices::openUrl(url);
+    if (!ok)
+        QMessageBox::critical(this, tr("Error"), tr("An error occurred while opening %1").arg(url.toString()));
+}
+
+void MainWindow::openSupport()
+{
+    QUrl url(QLatin1String("http://support.bluecherrydvr.com/tickets/new"));
+    bool ok = QDesktopServices::openUrl(url);
+    if (!ok)
+        QMessageBox::critical(this, tr("Error"), tr("An error occurred while opening %1").arg(url.toString()));
 }

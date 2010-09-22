@@ -20,6 +20,11 @@ public slots:
     void showOptionsDialog();
     void showEventsWindow();
 
+    void openDocumentation();
+    void openSupport();
+    void openIdeas();
+    void openAbout();
+
 protected:
     virtual void closeEvent(QCloseEvent *event);
 

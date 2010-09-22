@@ -1,0 +1,5 @@
+Copyright & license information
+License for Qt
+License for GStreamer
+License for Breakpad
+License for Webkit?
