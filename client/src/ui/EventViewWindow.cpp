@@ -5,7 +5,9 @@
 #include "EventCommentsWidget.h"
 #include "EventVideoPlayer.h"
 #include "ExpandingTextEdit.h"
+#include "ui/MainWindow.h"
 #include "core/DVRServer.h"
+#include "core/BluecherryApp.h"
 #include <QBoxLayout>
 #include <QSplitter>
 #include <QFrame>
@@ -20,6 +22,7 @@
 #include <QPushButton>
 #include <QComboBox>
 #include <QLineEdit>
+#include <QApplication>
 
 EventViewWindow::EventViewWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_event(0)
@@ -38,6 +41,26 @@ EventViewWindow::EventViewWindow(QWidget *parent)
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/eventView/geometry")).toByteArray());
     m_splitter->restoreState(settings.value(QLatin1String("ui/eventView/splitState")).toByteArray());
+}
+
+EventViewWindow *EventViewWindow::open(EventData *event)
+{
+    foreach (QWidget *w, QApplication::topLevelWidgets())
+    {
+        EventViewWindow *evw;
+        if ((evw = qobject_cast<EventViewWindow*>(w)) && evw->m_event == event)
+        {
+            evw->raise();
+            return evw;
+        }
+    }
+
+    EventViewWindow *evw = new EventViewWindow(bcApp->mainWindow);
+    evw->setAttribute(Qt::WA_DeleteOnClose);
+    evw->setEvent(event);
+    evw->show();
+
+    return evw;
 }
 
 void EventViewWindow::closeEvent(QCloseEvent *event)

@@ -252,10 +252,7 @@ void RecentEventsView::mouseDoubleClickEvent(QMouseEvent *event)
         EventData *data = index.data(EventsModel::EventDataPtr).value<EventData*>();
         Q_ASSERT(data);
 
-        EventViewWindow *window = new EventViewWindow(this);
-        window->setAttribute(Qt::WA_DeleteOnClose);
-        window->setEvent(data);
-        window->show();
+        EventViewWindow::open(data);
         return;
     }
 

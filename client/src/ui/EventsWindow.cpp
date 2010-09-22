@@ -239,9 +239,5 @@ void EventsWindow::timelineZoomRangeChanged(int min, int max)
 void EventsWindow::showEvent(const QModelIndex &index)
 {
     EventData *data = index.data(EventsModel::EventDataPtr).value<EventData*>();
-
-    EventViewWindow *window = new EventViewWindow(this);
-    window->setAttribute(Qt::WA_DeleteOnClose);
-    window->setEvent(data);
-    window->show();
+    EventViewWindow::open(data);
 }

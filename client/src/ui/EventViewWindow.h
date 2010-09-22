@@ -22,6 +22,8 @@ class EventViewWindow : public QWidget
 public:
     explicit EventViewWindow(QWidget *parent = 0);
 
+    static EventViewWindow *open(EventData *event);
+
     void setEvent(EventData *event);
 
 protected:
