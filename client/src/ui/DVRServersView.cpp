@@ -2,6 +2,7 @@
 #include "DVRServersModel.h"
 #include "OptionsDialog.h"
 #include "OptionsServerPage.h"
+#include "ServerConfigWindow.h"
 #include "core/DVRServer.h"
 #include <QHeaderView>
 #include <QContextMenuEvent>
@@ -27,7 +28,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
-    QAction *aEditServer = 0, *aOptions = 0, *aAddServer = 0;
+    QAction *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
     QAction *aSelectOnly = 0, *aSelectElse = 0;
 
     QModelIndex index = indexAt(event->pos());
@@ -44,13 +45,15 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         if (server)
         {
             menu.addAction(tr("Connect"))->setEnabled(false);
+            aServerConfig = menu.addAction(tr("Configure server"));
+            menu.addSeparator();
             aEditServer = menu.addAction(tr("Edit server"));
         }
     }
     else
     {
         aAddServer = menu.addAction(tr("Add new server..."));
-        aOptions = menu.addAction(tr("Options"));
+        aOptions = menu.addAction(tr("Client options"));
     }
 
     QAction *action = menu.exec(event->globalPos());
@@ -72,6 +75,12 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
             pg->addNewServer();
 
         dlg->show();
+    }
+    else if (action == aServerConfig)
+    {
+        ServerConfigWindow::instance()->setServer(server);
+        ServerConfigWindow::instance()->show();
+        ServerConfigWindow::instance()->raise();
     }
     else if (action == aSelectOnly)
     {

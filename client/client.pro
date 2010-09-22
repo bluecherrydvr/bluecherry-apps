@@ -1,4 +1,4 @@
-QT += core gui network
+QT += core gui network webkit
 CONFIG(static):QTPLUGIN += qjpeg
 
 TARGET = bluecherry-client
@@ -98,7 +98,8 @@ SOURCES += src/main.cpp \
     src/ui/EventVideoPlayer.cpp \
     src/video/VideoPlayerBackend_gst.cpp \
     src/video/VideoHttpBuffer.cpp \
-    src/ui/EventVideoDownload.cpp
+    src/ui/EventVideoDownload.cpp \
+    src/ui/ServerConfigWindow.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -136,4 +137,5 @@ HEADERS  += src/ui/MainWindow.h \
     src/video/VideoPlayerBackend_gst.h \
     src/video/VideoHttpBuffer.h \
     src/video/VideoSurface.h \
-    src/ui/EventVideoDownload.h
+    src/ui/EventVideoDownload.h \
+    src/ui/ServerConfigWindow.h
