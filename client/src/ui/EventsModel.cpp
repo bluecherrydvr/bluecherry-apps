@@ -174,6 +174,8 @@ void EventsModel::serverRemoved(DVRServer *server)
             --i;
         }
     }
+
+    cachedEvents.remove(server);
 }
 
 class EventSort

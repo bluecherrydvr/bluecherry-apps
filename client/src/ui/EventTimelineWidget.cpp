@@ -120,9 +120,8 @@ void EventTimelineWidget::setModel(QAbstractItemModel *newModel)
     }
 
     connect(newModel, SIGNAL(rowsRemoved(QModelIndex,int,int)), SLOT(rowsRemoved(QModelIndex,int,int)));
+    /* setModel calls reset(), which will set up the new internal state */
     QAbstractItemView::setModel(newModel);
-
-    addModelRows(0);
 }
 
 QRect EventTimelineWidget::visualRect(const QModelIndex &index) const
@@ -659,6 +658,18 @@ void EventTimelineWidget::addModelRows(int first, int last)
 
     updateRowsMap(last+1);
     updateTimeRange(false);
+
+#ifndef QT_NO_DEBUG
+    int count = 0;
+    foreach (ServerData *sd, serversMap)
+    {
+        foreach (LocationData *ld, sd->locationsMap)
+        {
+            count += ld->events.size();
+        }
+    }
+    Q_ASSERT(count == rowsMap.size());
+#endif
 }
 
 void EventTimelineWidget::rowsInserted(const QModelIndex &parent, int start, int end)
@@ -683,7 +694,9 @@ void EventTimelineWidget::rowsAboutToBeRemoved(const QModelIndex &parent, int st
         if (!findEvent(data, false, &serverData, &locationData, 0))
             continue;
 
-        locationData->events.removeOne(data);
+        bool ok = locationData->events.removeOne(data);
+        Q_ASSERT(ok);
+        Q_UNUSED(ok);
         rowsMap.remove(data);
 
         if (locationData->events.isEmpty())
@@ -713,6 +726,17 @@ void EventTimelineWidget::rowsRemoved(const QModelIndex &parent, int start, int 
     viewport()->update();
 
     Q_ASSERT(rowsMap.size() == model()->rowCount());
+#ifndef QT_NO_DEBUG
+    int count = 0;
+    foreach (ServerData *sd, serversMap)
+    {
+        foreach (LocationData *ld, sd->locationsMap)
+        {
+            count += ld->events.size();
+        }
+    }
+    Q_ASSERT(count == rowsMap.size());
+#endif
 }
 
 void EventTimelineWidget::reset()
