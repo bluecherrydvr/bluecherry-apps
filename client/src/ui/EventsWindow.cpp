@@ -7,6 +7,8 @@
 #include "EventTypesFilter.h"
 #include "EventTagsView.h"
 #include "EventTagsModel.h"
+#include "core/BluecherryApp.h"
+#include "ui/MainWindow.h"
 #include <QBoxLayout>
 #include <QGridLayout>
 #include <QDateTimeEdit>
@@ -18,6 +20,8 @@
 #include <QSlider>
 #include <QSplitter>
 #include <QLineEdit>
+
+EventsWindow *EventsWindow::m_instance = 0;
 
 EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
@@ -75,6 +79,23 @@ EventsWindow::EventsWindow(QWidget *parent)
     /* Settings */
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/events/geometry")).toByteArray());
+}
+
+EventsWindow::~EventsWindow()
+{
+    if (m_instance == this)
+        m_instance = 0;
+}
+
+EventsWindow *EventsWindow::instance()
+{
+    if (!m_instance)
+    {
+        m_instance = new EventsWindow(bcApp->mainWindow);
+        m_instance->setAttribute(Qt::WA_DeleteOnClose);
+    }
+
+    return m_instance;
 }
 
 void EventsWindow::createDateFilter(QBoxLayout *layout)

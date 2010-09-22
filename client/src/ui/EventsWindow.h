@@ -21,6 +21,9 @@ class EventsWindow : public QWidget
 
 public:
     explicit EventsWindow(QWidget *parent = 0);
+    ~EventsWindow();
+
+    static EventsWindow *EventsWindow::instance();
 
 protected:
     virtual void closeEvent(QCloseEvent *event);
@@ -37,6 +40,8 @@ private slots:
     void showEvent(const QModelIndex &index);
 
 private:
+    static EventsWindow *m_instance;
+
     DVRServersView *m_sourcesView;
     QDateTimeEdit *m_startDate;
     QComboBox *m_levelFilter;

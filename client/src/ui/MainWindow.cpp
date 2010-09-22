@@ -176,7 +176,7 @@ void MainWindow::showOptionsDialog()
 
 void MainWindow::showEventsWindow()
 {
-    EventsWindow *window = new EventsWindow(this);
-    window->setAttribute(Qt::WA_DeleteOnClose);
+    EventsWindow *window = EventsWindow::instance();
     window->show();
+    window->raise();
 }
