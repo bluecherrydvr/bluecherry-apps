@@ -11,6 +11,7 @@
 
 class QToolButton;
 class QSlider;
+class QLabel;
 
 class EventVideoPlayer : public QWidget
 {
@@ -38,6 +39,7 @@ private:
     QWidget *m_videoWidget;
     QToolButton *m_playBtn;
     QSlider *m_seekSlider;
+    QLabel *m_posText;
     QTimer m_posTimer;
 };
 

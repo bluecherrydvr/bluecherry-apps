@@ -5,6 +5,7 @@
 #include "ui/MainWindow.h"
 #include <QBoxLayout>
 #include <QSlider>
+#include <QLabel>
 #include <QToolButton>
 #include <QPushButton>
 #include <QApplication>
@@ -31,10 +32,16 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     VideoContainer *container = new VideoContainer(backend.createSurface());
     layout->addWidget(container, 1);
 
+    QBoxLayout *sliderLayout = new QHBoxLayout;
+    layout->addLayout(sliderLayout);
+
     m_seekSlider = new QSlider(Qt::Horizontal);
     connect(m_seekSlider, SIGNAL(valueChanged(int)), SLOT(seek(int)));
     m_seekSlider->setEnabled(false);
-    layout->addWidget(m_seekSlider);
+    sliderLayout->addWidget(m_seekSlider);
+
+    m_posText = new QLabel;
+    sliderLayout->addWidget(m_posText);
 
     QBoxLayout *btnLayout = new QHBoxLayout;
     btnLayout->setSpacing(3);
@@ -44,16 +51,6 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     m_playBtn->setText(QString(QChar(0x25BA)));
     btnLayout->addWidget(m_playBtn);
     connect(m_playBtn, SIGNAL(clicked()), SLOT(playPause()));
-
-    btnLayout->addSpacing(9);
-
-    QToolButton *slowBtn = new QToolButton;
-    slowBtn->setText(QString(2, QChar(0x25C4)));
-    btnLayout->addWidget(slowBtn);
-
-    QToolButton *fastBtn = new QToolButton;
-    fastBtn->setText(QString(2, QChar(0x25BA)));
-    btnLayout->addWidget(fastBtn);
 
     btnLayout->addSpacing(9);
 
@@ -158,6 +155,14 @@ void EventVideoPlayer::updatePosition()
     m_seekSlider->blockSignals(true);
     m_seekSlider->setValue(position);
     m_seekSlider->blockSignals(false);
+
+    int secs = nsPosition / 1000000000;
+    int durationSecs = backend.duration() / 1000000000;
+
+    m_posText->setText(QString::fromLatin1("%1:%2 / %3:%4").arg(secs / 60, 2, 10, QLatin1Char('0'))
+                       .arg(secs % 60, 2, 10, QLatin1Char('0'))
+                       .arg(durationSecs / 60, 2, 10, QLatin1Char('0'))
+                       .arg(durationSecs % 60, 2, 10, QLatin1Char('0')));
 }
 
 void EventVideoPlayer::saveVideo(const QString &path)
