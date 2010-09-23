@@ -23,7 +23,7 @@ public:
     explicit EventsWindow(QWidget *parent = 0);
     ~EventsWindow();
 
-    static EventsWindow *EventsWindow::instance();
+    static EventsWindow *instance();
 
 protected:
     virtual void closeEvent(QCloseEvent *event);
