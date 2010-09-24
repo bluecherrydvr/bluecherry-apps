@@ -17,7 +17,6 @@ if [ ! -e gstreamer-bin ]; then
 fi;
 
 EXENAME=`basename "$1" | cut -d '.' -f 1`
-echo $EXENAME
 
 BINPATH=`dirname "$0"`
 
@@ -25,8 +24,25 @@ if [ ! -d $1/Contents/Frameworks ]; then
 	mkdir $1/Contents/Frameworks
 fi
 
+echo "Copying GStreamer libraries..."
 cp gstreamer-bin/mac/lib/* $1/Contents/Frameworks/
+
+echo "Replacing library paths..."
 
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --file $1/Contents/MacOS/$EXENAME
 
-#$2 $1
+echo "Running macdeployqt..."
+
+$2 $1
+
+echo "Running lipo..."
+for I in $1/Contents/Frameworks/*; do
+	FILE=$I;
+	if [ -d $I ]; then
+		FILE=$I/Versions/4/`basename $I | cut -d '.' -f 1`
+		if [ ! -f $FILE ]; then
+			echo "Cannot find file: $FILE";
+		fi
+	fi
+	lipo -thin i386 -output $FILE $FILE
+done
