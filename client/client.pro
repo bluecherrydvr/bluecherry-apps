@@ -48,11 +48,19 @@ win32-msvc2008|win32-msvc2010 {
     }
 }
 
-unix {
+unix:!macx {
     # GStreamer
     CONFIG += link_pkgconfig
     PKGCONFIG += gstreamer-0.10 gstreamer-interfaces-0.10 gstreamer-app-0.10 gstreamer-video-0.10
     DEFINES += USE_GSTREAMER
+}
+
+macx {
+    # Bundled GStreamer
+    DEFINES += USE_GSTREAMER
+    GSTREAMER_PATH = "$$PWD/gstreamer-bin/mac"
+    LIBS += -L"$$GSTREAMER_PATH/lib" -lgstreamer-0.10.0 -lgstapp-0.10.0 -lgstvideo-0.10.0 -lgstinterfaces-0.10.0 -lglib-2.0.0 -lgobject-2.0.0
+    INCLUDEPATH += "$$GSTREAMER_PATH/include"
 }
 
 win32 {
