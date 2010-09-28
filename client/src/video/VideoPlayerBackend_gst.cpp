@@ -352,7 +352,6 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         {
             qDebug("gstreamer: Setting X overlay");
             GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
-            updateVideoSize();
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(sink));
             gst_message_unref(msg);
