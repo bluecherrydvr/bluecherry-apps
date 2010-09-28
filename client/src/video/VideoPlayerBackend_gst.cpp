@@ -24,6 +24,7 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     QString path = QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/");
     const char *plugins[] =
     {
+        "libgsttypefindfunctions.so",
         "libgstapp.so", "libgstdecodebin.so", "libgstmatroska.so", "libgstosxaudio.so",
         "libgstosxvideosink.so", "libgstvideoscale.so", "libgstffmpeg.so", "libgstffmpegcolorspace.so",
         "libgstcoreelements.so", 0

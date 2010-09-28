@@ -17,10 +17,10 @@ cp -R /opt/local/include/gstreamer-0.10/ include/
 cp /opt/local/lib/libgst{riff,audio,tag,pbutils}-0.10.0.dylib lib/
 
 # gstreamer plugins (gst-plugins-base, gst-plugins-good, gst-ffmpeg)
-cp /opt/local/lib/gstreamer-0.10/libgst{coreelements,app,decodebin,matroska,osxaudio,osxvideosink,videoscale,ffmpegcolorspace,ffmpeg}.so plugins/
+cp /opt/local/lib/gstreamer-0.10/libgst{coreelements,app,decodebin,matroska,osxaudio,osxvideosink,videoscale,ffmpegcolorspace,ffmpeg,typefindfunctions}.so plugins/
 
 # glib
-cp /opt/local/lib/{libglib,libgobject,libgthread,libgmodule}-2.0.0.dylib lib/
+cp /opt/local/lib/{libglib,libgobject,libgthread,libgmodule,libgio}-2.0.0.dylib lib/
 cp -R /opt/local/include/glib-2.0/ include/
 cp /opt/local/lib/glib-2.0/include/glibconfig.h include/
 
