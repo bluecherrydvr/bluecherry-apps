@@ -5,6 +5,7 @@
 #include <QList>
 
 class QGridLayout;
+class LiveFeedWidget;
 
 class CameraAreaWidget : public QFrame
 {
@@ -34,9 +35,12 @@ signals:
     void gridSizeChanged(int rows, int columns);
 
 private:
-    QList<QWidget*> m_cameraWidgets;
+    QList<QList<LiveFeedWidget*> > m_cameraWidgets;
     QGridLayout *mainLayout;
     int m_rowCount, m_columnCount;
+
+    void removeColumn(int c);
+    void removeRow(int r);
 };
 
 #endif // CAMERAAREAWIDGET_H
