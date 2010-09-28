@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# Given a path to the application bundle, we need to:
-#   1. Run macdeployqt to get the Qt frameworks
-#   2. Tweak the results from macdeployqt
-#   3. Copy the gstreamer libraries into the bundle
-#   4. Alter the linker paths on the executable to the gstreamer libraries
-
 if [ -z $2 ]; then
 	echo "Usage: ./deploy.sh xxx.app /path/to/macdeployqt"
 	exit 1;
@@ -27,9 +21,13 @@ fi
 echo "Copying GStreamer libraries..."
 cp gstreamer-bin/mac/lib/* $1/Contents/Frameworks/
 
-echo "Replacing library paths..."
+echo "Copying GStreamer plugins..."
+mkdir -p $1/Contents/PlugIns/gstreamer
+cp gstreamer-bin/mac/plugins/* $1/Contents/PlugIns/gstreamer/
 
+echo "Replacing library paths..."
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --file $1/Contents/MacOS/$EXENAME
+$BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --dir $1/Contents/PlugIns/gstreamer/
 
 echo "Running macdeployqt..."
 

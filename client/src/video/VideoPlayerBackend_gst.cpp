@@ -17,6 +17,24 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     {
         qWarning() << "GStreamer initialization failed:" << err->message;
     }
+
+#ifdef Q_OS_MAC
+    /* Directly load the plugins we need from the bundle; this is needed because the gstreamer build
+     * is done without a registry. */
+    QString path = QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/");
+    const char *plugins[] =
+    {
+        "libgstapp.so", "libgstdecodebin.so", "libgstmatroska.so", "libgstosxaudio.so",
+        "libgstosxvideosink.so", "libgstvideoscale.so", "libgstffmpeg.so", "libgstffmpegcolorspace.so",
+        "libgstcoreelements.so", 0
+    };
+    for (const char **p = plugins; *p; ++p)
+    {
+        /* The reference returned by this is probably leaked. This needs to be dealt with.
+         * Should also have error handling. */
+        gst_plugin_load_file((path + QLatin1String(*p)).toLatin1().constData(), 0);
+    }
+#endif
 }
 
 VideoPlayerBackend::~VideoPlayerBackend()
