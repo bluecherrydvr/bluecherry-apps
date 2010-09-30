@@ -10,6 +10,13 @@
 #include <gst/interfaces/xoverlay.h>
 #include <glib.h>
 
+#if defined(Q_OS_MAC) && !defined(QT_MAC_USE_COCOA)
+/* GStreamer's osxvideosink and glimagesink both require Cocoa views (NSView)
+ * to render. As a result, we can't have a Carbon build of Qt and render the video
+ * properly. */
+#error GStreamer requires a Cocoa-based build of Qt
+#endif
+
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_videoBuffer(0), m_state(Stopped)
 {
