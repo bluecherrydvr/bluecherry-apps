@@ -17,9 +17,12 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
     if (gst_init_check(0, 0, &err) == FALSE)
     {
         qWarning() << "GStreamer initialization failed:" << err->message;
+        setError(true, tr("Failed to initialize video playback: %1").arg(QString::fromLatin1(err->message)));
+        return;
     }
 
-    loadPlugins();
+    if (!loadPlugins())
+        setError(true, tr("Failed to load video plugins"));
 }
 
 VideoPlayerBackend::~VideoPlayerBackend()
@@ -120,57 +123,82 @@ VideoSurface *VideoPlayerBackend::createSurface()
     return m_surface;
 }
 
-void VideoPlayerBackend::start(const QUrl &url)
+bool VideoPlayerBackend::start(const QUrl &url)
 {
     if (m_pipeline)
         clear();
 
     Q_ASSERT(m_surface);
 
+    /* Pipeline */
     m_pipeline = gst_pipeline_new("stream");
-    Q_ASSERT(m_pipeline);
+    if (!m_pipeline)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("stream")));
+        return false;
+    }
 
-    /* Source */
+    /* Source element */
     GstElement *source = gst_element_factory_make("appsrc", "source");
-    Q_ASSERT(source);
+    if (!source)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("source")));
+        return false;
+    }
 
+    /* Buffered HTTP source (using source) */
     m_videoBuffer = new VideoHttpBuffer(GST_APP_SRC(source), m_pipeline, this);
     m_videoBuffer->start(url);
 
     /* Decoder */
     GstElement *decoder = gst_element_factory_make("decodebin", "decoder");
+    if (!decoder)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("decoder")));
+        return false;
+    }
     g_signal_connect(decoder, "new-decoded-pad", G_CALLBACK(decodePadReadyWrap), this);
 
-    /* Create videoscale and ffmpegcolorspace elements to handle conversion if it's necessary */
+    /* Colorspace conversion (no-op if unnecessary) */
     GstElement *colorspace = gst_element_factory_make("ffmpegcolorspace", "colorspace");
-    Q_ASSERT(colorspace);
-    GstElement *scale = gst_element_factory_make("videoscale", "scale");
-    Q_ASSERT(scale);
+    if (!colorspace)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("colorspace")));
+        return false;
+    }
 
-#ifdef Q_WS_X11
-    GstElement *sink = gst_element_factory_make("xvimagesink", "sink");
-    g_object_set(G_OBJECT(sink), "force-aspect-ratio", TRUE, NULL);
-#elif defined(Q_WS_MAC)
+    /* Video scaling */
+    GstElement *scale = gst_element_factory_make("videoscale", "scale");
+    if (!scale)
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("scale")));
+        return false;
+    }
+
+#ifdef Q_WS_MAC
     GstElement *sink = gst_element_factory_make("osxvideosink", "sink");
-    g_object_set(G_OBJECT(sink), "embed", TRUE, NULL);
+    if (sink)
+        g_object_set(G_OBJECT(sink), "embed", TRUE, NULL);
 #else
     GstElement *sink = gst_element_factory_make("autovideosink", "sink");
 #endif
-    Q_ASSERT(sink);
-
-    gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
-    gboolean ok = gst_element_link_many(source, decoder, NULL);
-    if (!ok)
+    if (!sink)
     {
-        qWarning() << "gstreamer: Failed to link source to decodebin";
-        return;
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("sink")));
+        return false;
     }
 
-    ok = gst_element_link_many(colorspace, scale, sink, NULL);
-    if (!ok)
+    gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
+    if (!gst_element_link_many(source, decoder, NULL))
     {
-        qWarning() << "gstreamer: Failed to link video output chain";
-        return;
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("link decoder")));
+        return false;
+    }
+
+    if (!gst_element_link_many(colorspace, scale, sink, NULL))
+    {
+        setError(true, tr("Failed to create video pipeline (%1)").arg(QLatin1String("link sink")));
+        return false;
     }
 
     /* This is the element that is linked to the decoder for video output; it will be linked when decodePadReady
@@ -178,7 +206,7 @@ void VideoPlayerBackend::start(const QUrl &url)
     m_videoLink = colorspace;
 
     /* We handle all messages in the sync handler, because we can't run a glib event loop.
-     * Although linux does use glib's loop (and we can take advantage of that), it's better
+     * Although linux does use glib's loop (and we could take advantage of that), it's better
      * to handle everything this way for windows and mac support. */
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(m_pipeline));
     Q_ASSERT(bus);
@@ -188,34 +216,56 @@ void VideoPlayerBackend::start(const QUrl &url)
 
     /* When VideoHttpBuffer has buffered a reasonable amount of data to facilitate detection and such, it will
      * move the pipeline into the PAUSED state, which should set everything else up. */
+    return true;
 }
 
 void VideoPlayerBackend::clear()
 {
-    if (!m_pipeline)
-        return;
-
-    gst_element_set_state(m_pipeline, GST_STATE_NULL);
-    gst_object_unref(GST_OBJECT(m_pipeline));
+    if (m_pipeline)
+    {
+        gst_element_set_state(m_pipeline, GST_STATE_NULL);
+        gst_object_unref(GST_OBJECT(m_pipeline));
+    }
 
     m_pipeline = m_videoLink = 0;
+
+    if (m_videoBuffer)
+    {
+        if (m_videoBuffer->parent() == this)
+            m_videoBuffer->deleteLater();
+        m_videoBuffer = 0;
+    }
+
+    m_state = Stopped;
+    m_errorMessage.clear();
+}
+
+void VideoPlayerBackend::setError(bool permanent, const QString &message)
+{
+    VideoState old = m_state;
+    m_state = permanent ? PermanentError : Error;
+    m_errorMessage = message;
+    emit stateChanged(m_state, old);
 }
 
 void VideoPlayerBackend::play()
 {
-    Q_ASSERT(m_pipeline);
+    if (!m_pipeline)
+        return;
     gst_element_set_state(m_pipeline, GST_STATE_PLAYING);
 }
 
 void VideoPlayerBackend::pause()
 {
-    Q_ASSERT(m_pipeline);
+    if (!m_pipeline)
+        return;
     gst_element_set_state(m_pipeline, GST_STATE_PAUSED);
 }
 
 void VideoPlayerBackend::restart()
 {
-    Q_ASSERT(m_pipeline);
+    if (!m_pipeline)
+        return;
     gst_element_set_state(m_pipeline, GST_STATE_READY);
 
     VideoState old = m_state;
@@ -224,30 +274,39 @@ void VideoPlayerBackend::restart()
 }
 
 qint64 VideoPlayerBackend::duration() const
-{    
-    GstFormat fmt = GST_FORMAT_TIME;
-    gint64 re = 0;
-    if (gst_element_query_duration(m_pipeline, &fmt, &re))
-        return re;
+{
+    if (m_pipeline)
+    {
+        GstFormat fmt = GST_FORMAT_TIME;
+        gint64 re = 0;
+        if (gst_element_query_duration(m_pipeline, &fmt, &re))
+            return re;
+    }
 
     return -1;
 }
 
 qint64 VideoPlayerBackend::position() const
 {
-    if (m_state == Stopped)
+    if (!m_pipeline)
+        return -1;
+    else if (m_state == Stopped)
         return 0;
     else if (m_state == Done)
         return duration();
 
     GstFormat fmt = GST_FORMAT_TIME;
     gint64 re = 0;
-    gst_element_query_position(m_pipeline, &fmt, &re);
+    if (!gst_element_query_position(m_pipeline, &fmt, &re))
+        re = -1;
     return re;
 }
 
 bool VideoPlayerBackend::isSeekable() const
 {
+    if (!m_pipeline)
+        return false;
+
     GstQuery *query = gst_query_new_seeking(GST_FORMAT_TIME);
     gboolean re = gst_element_query(m_pipeline, query);
     if (re)
@@ -263,19 +322,25 @@ bool VideoPlayerBackend::isSeekable() const
     return re;
 }
 
-void VideoPlayerBackend::seek(qint64 position)
+bool VideoPlayerBackend::seek(qint64 position)
 {
+    if (!m_pipeline)
+        return false;
+
     gboolean re = gst_element_seek_simple(m_pipeline, GST_FORMAT_TIME,
                             (GstSeekFlags)(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT),
                             position);
 
     if (!re)
-        qDebug() << "seek to position" << position << "failed";
-}
+        qDebug() << "gstreamer: seek to position" << position << "failed";
 
+    return re ? true : false;
+}
 
 void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast)
 {
+    Q_UNUSED(islast);
+
     /* TODO: Better cap detection */
     GstCaps *caps = gst_pad_get_caps_reffed(pad);
     Q_ASSERT(caps);
@@ -284,11 +349,10 @@ void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean
 
     if (QByteArray(capsstr).contains("video"))
     {
-        qDebug("creating video");
-        gboolean ok = gst_element_link(GST_ELEMENT(bin), m_videoLink);
-        if (!ok)
+        qDebug("gstreamer: linking video decoder to pipeline");
+        if (!gst_element_link(GST_ELEMENT(bin), m_videoLink))
         {
-            qWarning() << "gstreamer: Failed to link decodebin to video chain";
+            setError(false, tr("Building video pipeline failed"));
             return;
         }
     }
@@ -312,12 +376,15 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         {
             gint percent = 0;
             gst_message_parse_buffering(msg, &percent);
-            qDebug() << "buffering" << percent << "%";
+            qDebug() << "gstreamer: buffering" << percent << "%";
         }
         break;
 
     case GST_MESSAGE_STATE_CHANGED:
         {
+            if (m_state == PermanentError)
+                break;
+
             GstState oldState, newState;
             gst_message_parse_state_changed(msg, &oldState, &newState, 0);
             VideoState vpState;
@@ -326,6 +393,8 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
             {
             case GST_STATE_VOID_PENDING:
             case GST_STATE_NULL:
+                if (m_state == Error)
+                    break;
             case GST_STATE_READY:
                 vpState = Stopped;
                 break;
@@ -352,13 +421,12 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         break;
 
     case GST_MESSAGE_DURATION:
-        qDebug("duration");
         emit durationChanged(duration());
         break;
 
     case GST_MESSAGE_EOS:
         {
-            qDebug("end of stream");
+            qDebug("gstreamer: end of stream");
             VideoState old = m_state;
             m_state = Done;
             emit stateChanged(m_state, old);
@@ -374,6 +442,8 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
             gst_message_parse_error(msg, &error, &debug);
             qDebug() << "gstreamer: Error:" << error->message;
             qDebug() << "gstreamer: Debug:" << debug;
+
+            setError(false, tr("Playback error: %1").arg(QString::fromLatin1(error->message)));
 
             g_free(debug);
             g_error_free(error);
@@ -397,7 +467,7 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
     case GST_MESSAGE_ELEMENT:
         if (gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
         {
-            qDebug("gstreamer: Setting X overlay");
+            qDebug("gstreamer: Setting window ID");
             GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(sink));
@@ -429,7 +499,7 @@ bool VideoPlayerBackend::updateVideoSize()
                 int width, height;
                 if (gst_video_get_size(pad, &width, &height))
                 {
-                    qDebug() << "Determined video size to be" << width << height;
+                    qDebug() << "gstreamer: Determined video size to be" << width << height;
                     bool ok = QMetaObject::invokeMethod(m_surface, "setVideoSize",
                                                         Qt::QueuedConnection,
                                                         Q_ARG(QSize, QSize(width, height)));
@@ -437,8 +507,6 @@ bool VideoPlayerBackend::updateVideoSize()
                     Q_UNUSED(ok);
                     done = success = true;
                 }
-                else
-                    qDebug() << "Video size not available on pad";
 
                 gst_object_unref(GST_OBJECT(pad));
             }

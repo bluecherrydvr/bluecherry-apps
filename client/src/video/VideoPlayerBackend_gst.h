@@ -18,6 +18,8 @@ class VideoPlayerBackend : public QObject
 public:
     enum VideoState
     {
+        PermanentError = -2, /* Permanent errors; i.e., playback will not work even if restarted */
+        Error = -1, /* Recoverable errors, generally by stopping and restarting the pipeline */
         Stopped,
         Playing,
         Paused,
@@ -29,15 +31,17 @@ public:
 
     VideoSurface *createSurface();
 
-    void start(const QUrl &url);
+    bool start(const QUrl &url);
     void clear();
 
     qint64 duration() const;
     qint64 position() const;
     bool isSeekable() const;
     bool atEnd() const { return m_state == Done; }
-
     VideoState state() const { return m_state; }
+    bool isError() const { return m_state <= Error; }
+    bool isPermanentError() const { return m_state == PermanentError; }
+    QString errorMessage() const { return m_errorMessage; }
     VideoHttpBuffer *videoBuffer() const { return m_videoBuffer; }
 
     /* Internal */
@@ -47,7 +51,7 @@ public:
 public slots:
     void play();
     void pause();
-    void seek(qint64 position);
+    bool seek(qint64 position);
     void restart();
 
 signals:
@@ -60,8 +64,10 @@ private:
     VideoSurface *m_surface;
     VideoHttpBuffer *m_videoBuffer;
     VideoState m_state;
+    QString m_errorMessage;
 
     bool loadPlugins();
+    void setError(bool permanent, const QString &message);
     bool updateVideoSize();
 };
 
