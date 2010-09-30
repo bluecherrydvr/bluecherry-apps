@@ -3,6 +3,7 @@
 #include <QUrl>
 #include <QDebug>
 #include <QApplication>
+#include <QDir>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/video/video.h>
@@ -34,6 +35,21 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
         /* The reference returned by this is probably leaked. This needs to be dealt with.
          * Should also have error handling. */
         gst_plugin_load_file((path + QLatin1String(*p)).toLatin1().constData(), 0);
+    }
+#endif
+
+#ifdef Q_OS_WIN
+    QString path = QApplication::applicationDirPath() + QLatin1String("/../gstreamer-bin/win/plugins/");
+    qDebug() << path;
+    const char *plugins[] =
+    {
+        "libgsttypefindfunctions.dll", "libgstapp.dll", "libgstdecodebin.dll", "libgstmatroska.dll",
+        "libgstvideoscale.dll", "libgstffmpeg-lgpl.dll", "libgstffmpegcolorspace.dll", "libgstcoreelements.dll",
+        "libgstdshowvideosink.dll", "libgstdirectsound.dll", 0
+    };
+    for (const char **p = plugins; *p; ++p)
+    {
+        gst_plugin_load_file(QDir::toNativeSeparators(path + QLatin1String(*p)).toLatin1().constData(), 0);
     }
 #endif
 }

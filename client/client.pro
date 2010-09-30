@@ -64,7 +64,10 @@ macx {
 }
 
 win32 {
-    isEmpty(GSTREAMER_PATH):error(You must pass GSTREAMER_PATH=path/to/gstreamer/sdk to qmake)
+    isEmpty(GSTREAMER_PATH) {
+        message(Using bundled GStreamer)
+        GSTREAMER_PATH = "$$PWD/gstreamer-bin/win"
+    }
     INCLUDEPATH += "$${GSTREAMER_PATH}/include" "$${GSTREAMER_PATH}/include/gstreamer-0.10" "$${GSTREAMER_PATH}/include/glib-2.0" "$${GSTREAMER_PATH}/include/libxml2"
     LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib gstvideo-0.10.lib glib-2.0.lib gobject-2.0.lib
     DEFINES += USE_GSTREAMER
