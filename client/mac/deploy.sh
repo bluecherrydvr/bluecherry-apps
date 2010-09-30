@@ -25,6 +25,10 @@ echo "Copying GStreamer plugins..."
 mkdir -p $1/Contents/PlugIns/gstreamer
 cp gstreamer-bin/mac/plugins/* $1/Contents/PlugIns/gstreamer/
 
+echo "Copying Breakpad framework..."
+rm -r $1/Contents/Frameworks/Breakpad.framework
+cp -R breakpad-bin/mac/Breakpad.framework $1/Contents/Frameworks/
+
 echo "Replacing library paths..."
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --file $1/Contents/MacOS/$EXENAME
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --dir $1/Contents/PlugIns/gstreamer/
@@ -38,10 +42,15 @@ echo "Running lipo..."
 for I in $1/Contents/Frameworks/*; do
 	FILE=$I;
 	if [ -d $I ]; then
-		FILE=$I/Versions/4/`basename $I | cut -d '.' -f 1`
+		FILE=$I/Versions/Current/`basename $I | cut -d '.' -f 1`
 		if [ ! -f $FILE ]; then
 			echo "Cannot find file: $FILE";
 		fi
 	fi
-	lipo -thin i386 -output $FILE $FILE
+
+        if [ `file $FILE | grep -c 'for architecture'` == "0" ]; then
+		echo "    Skipping $FILE (already thin)"
+        else
+		lipo -thin i386 -output $FILE $FILE
+	fi
 done

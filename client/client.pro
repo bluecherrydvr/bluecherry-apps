@@ -20,7 +20,7 @@ win32-msvc2008|win32-msvc2010 {
     INCLUDEPATH += "$$PWD/breakpad/src"
     SOURCES += src/utils/Breakpad.cpp
 
-    unix:QMAKE_POST_LINK = strip $(TARGET)
+    unix:QMAKE_POST_LINK = strip $(TARGET);
     unix:QMAKE_CXXFLAGS_RELEASE += -gstabs
     
     unix:!macx {
@@ -33,7 +33,7 @@ win32-msvc2008|win32-msvc2010 {
         QMAKE_LFLAGS += -F$$PWD/breakpad-bin/mac
         LIBS += -framework Breakpad
 
-        CONFIG(x86):ARCH += x86
+        CONFIG(x86):ARCH += i386
         CONFIG(x86_64):ARCH += x86_64
         CONFIG(ppc):ARCH += ppc
         CONFIG(ppc64):ARCH += ppc64
