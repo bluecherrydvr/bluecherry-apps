@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ -z $2 ]; then
-	echo "Usage: ./deploy.sh xxx.app /path/to/macdeployqt"
+if [ -z $1 ]; then
+	echo "Usage: ./deploy.sh xxx.app [/path/to/macdeployqt]"
 	exit 1;
 fi;
 
@@ -29,9 +29,10 @@ echo "Replacing library paths..."
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --file $1/Contents/MacOS/$EXENAME
 $BINPATH/replacepath.py --old @loader_path/ --new @executable_path/../Frameworks/ --dir $1/Contents/PlugIns/gstreamer/
 
-echo "Running macdeployqt..."
-
-$2 $1
+if [ ! -z $2 ]; then
+	echo "Running macdeployqt..."
+	$2 $1
+fi
 
 echo "Running lipo..."
 for I in $1/Contents/Frameworks/*; do
