@@ -61,6 +61,7 @@ private:
     VideoHttpBuffer *m_videoBuffer;
     VideoState m_state;
 
+    bool loadPlugins();
     bool updateVideoSize();
 };
 

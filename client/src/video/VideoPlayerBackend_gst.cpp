@@ -19,45 +19,76 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
         qWarning() << "GStreamer initialization failed:" << err->message;
     }
 
-#ifdef Q_OS_MAC
-    /* Directly load the plugins we need from the bundle; this is needed because the gstreamer build
-     * is done without a registry. */
-    QString path = QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/");
-    const char *plugins[] =
-    {
-        "libgsttypefindfunctions.so",
-        "libgstapp.so", "libgstdecodebin.so", "libgstmatroska.so", "libgstosxaudio.so",
-        "libgstosxvideosink.so", "libgstvideoscale.so", "libgstffmpeg.so", "libgstffmpegcolorspace.so",
-        "libgstcoreelements.so", 0
-    };
-    for (const char **p = plugins; *p; ++p)
-    {
-        /* The reference returned by this is probably leaked. This needs to be dealt with.
-         * Should also have error handling. */
-        gst_plugin_load_file((path + QLatin1String(*p)).toLatin1().constData(), 0);
-    }
-#endif
-
-#ifdef Q_OS_WIN
-    QString path = QApplication::applicationDirPath() + QLatin1String("/../gstreamer-bin/win/plugins/");
-    qDebug() << path;
-    const char *plugins[] =
-    {
-        "libgsttypefindfunctions.dll", "libgstapp.dll", "libgstdecodebin.dll", "libgstmatroska.dll",
-        "libgstvideoscale.dll", "libgstffmpeg-lgpl.dll", "libgstffmpegcolorspace.dll", "libgstcoreelements.dll",
-        "libgstdshowvideosink.dll", "libgstdirectsound.dll", 0
-    };
-    for (const char **p = plugins; *p; ++p)
-    {
-        gst_plugin_load_file(QDir::toNativeSeparators(path + QLatin1String(*p)).toLatin1().constData(), 0);
-    }
-#endif
+    loadPlugins();
 }
 
 VideoPlayerBackend::~VideoPlayerBackend()
 {
     if (m_videoBuffer)
         m_videoBuffer->clearPlayback();
+}
+
+bool VideoPlayerBackend::loadPlugins()
+{
+#ifdef Q_OS_WIN
+#define EXT ".dll"
+#else
+#define EXT ".so"
+#endif
+
+    const char *plugins[] =
+    {
+        "libgsttypefindfunctions"EXT, "libgstapp"EXT, "libgstdecodebin"EXT, "libgstmatroska"EXT,
+        "libgstvideoscale"EXT, "libgstffmpegcolorspace"EXT, "libgstcoreelements"EXT,
+#ifndef Q_OS_WIN
+        "libgstffmpeg"EXT,
+#endif
+#ifdef Q_OS_WIN
+        "libgstffmpeg-lgpl"EXT, "libgstautodetect"EXT, "libgstdshowvideosink"EXT, "libgstdirectsound"EXT,
+#elif defined(Q_OS_MAC)
+        "libgstosxaudio"EXT, "libgstosxvideosink"EXT,
+#else
+        "libgstxvimagesink"EXT,
+#endif
+        0
+    };
+
+#undef EXT
+#ifdef GSTREAMER_PLUGINS
+    QByteArray pluginPath = QDir::toNativeSeparators(QString::fromLocal8Bit(GSTREAMER_PLUGINS "/")).toLocal8Bit();
+#elif defined(Q_OS_MAC)
+    QByteArray pluginPath = (QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/")).toLocal8Bit();
+#else
+    QByteArray pluginPath = QDir::toNativeSeparators(QApplication::applicationDirPath() + QLatin1String("/")).toLocal8Bit();
+#endif
+
+    if (!QFile::exists(QString::fromLocal8Bit(pluginPath)))
+    {
+        qWarning() << "gstreamer: Plugin path" << pluginPath << "does not exist";
+        return false;
+    }
+
+    bool success = true;
+
+    for (const char **p = plugins; *p; ++p)
+    {
+        GError *err = 0;
+        GstPlugin *plugin = gst_plugin_load_file(pluginPath + QByteArray::fromRawData(*p, qstrlen(*p)), &err);
+        if (!plugin)
+        {
+            Q_ASSERT(err);
+            qWarning() << "gstreamer: Failed to load plugin" << *p << ":" << err->message;
+            g_error_free(err);
+            success = false;
+        }
+        else
+        {
+            Q_ASSERT(!err);
+            gst_object_unref(plugin);
+        }
+    }
+
+    return success;
 }
 
 static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)

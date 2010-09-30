@@ -71,6 +71,7 @@ win32 {
     INCLUDEPATH += "$${GSTREAMER_PATH}/include" "$${GSTREAMER_PATH}/include/gstreamer-0.10" "$${GSTREAMER_PATH}/include/glib-2.0" "$${GSTREAMER_PATH}/include/libxml2"
     LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib gstvideo-0.10.lib glib-2.0.lib gobject-2.0.lib
     DEFINES += USE_GSTREAMER
+    CONFIG(debug, debug|release):DEFINES += GSTREAMER_PLUGINS=\\\"$$PWD/gstreamer-bin/win/plugins\\\"
 }
 
 SOURCES += src/main.cpp \
