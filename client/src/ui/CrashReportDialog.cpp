@@ -15,6 +15,9 @@
 #include <QDialogButtonBox>
 #include <QPropertyAnimation>
 #include <QShowEvent>
+#include <QMenu>
+#include <QFileDialog>
+#include <QMessageBox>
 
 static const char * const reportUrl = "???";
 
@@ -49,6 +52,8 @@ CrashReportDialog::CrashReportDialog(const QString &dumpFile, QWidget *parent)
 
     m_allowReport = new QCheckBox(tr("Send an automatic crash report"));
     m_allowReport->setChecked(true);
+    m_allowReport->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_allowReport, SIGNAL(customContextMenuRequested(QPoint)), SLOT(reportContextMenu(QPoint)));
     layout->addWidget(m_allowReport, 0, Qt::AlignCenter);
 
     QBoxLayout *emailLayout = new QHBoxLayout;
@@ -67,6 +72,7 @@ CrashReportDialog::CrashReportDialog(const QString &dumpFile, QWidget *parent)
     layout->addWidget(label);
 
     layout->addStretch();
+    layout->addSpacing(15);
 
     QCommandLinkButton *restartBtn = new QCommandLinkButton(tr("Restart Client"));
     restartBtn->setDefault(true);
@@ -116,6 +122,30 @@ void CrashReportDialog::showEvent(QShowEvent *event)
     }
 
     QDialog::showEvent(event);
+}
+
+void CrashReportDialog::reportContextMenu(const QPoint &point)
+{
+    QWidget *from = qobject_cast<QWidget*>(sender());
+    if (!from)
+        return;
+
+    QMenu menu;
+    menu.addAction(tr("Save crash report"), this, SLOT(saveCrashReport()));
+    menu.exec(from->mapToGlobal(point));
+}
+
+void CrashReportDialog::saveCrashReport()
+{
+    QString path = QFileDialog::getSaveFileName(this, tr("Save crash report"), QString(), tr("Crash report (*.dmp)"));
+    if (path.isEmpty())
+        return;
+
+    if (QFile::exists(path))
+        QFile::remove(path);
+
+    if (!m_dumpFile.copy(path))
+        QMessageBox::critical(this, tr("Error"), tr("An error occurred while saving the crash report:\n\n%1").arg(m_dumpFile.errorString()));
 }
 
 void CrashReportDialog::uploadAndRestart()

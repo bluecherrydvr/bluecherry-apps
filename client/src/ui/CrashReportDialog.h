@@ -25,6 +25,9 @@ private slots:
     void setUploadProgress(qint64 done);
     void uploadFinished();
 
+    void reportContextMenu(const QPoint &point);
+    void saveCrashReport();
+
 protected:
     virtual void showEvent(QShowEvent *event);
 
