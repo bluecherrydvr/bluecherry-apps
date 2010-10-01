@@ -42,8 +42,8 @@ win32-msvc2008|win32-msvc2010 {
     }
 
     win32 {
-        CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad/src/client/windows/Debug/lib"
-        CONFIG(release, debug|release):LIBS += -L"$$PWD/breakpad/src/client/windows/Release/lib"
+        CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-debug"
+        CONFIG(release, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-release"
         LIBS += common.lib crash_generation_client.lib exception_handler.lib
     }
 }
