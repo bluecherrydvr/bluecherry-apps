@@ -15,39 +15,6 @@ win32-msvc2008|win32-msvc2010 {
     QMAKE_LFLAGS_RELEASE += /OPT:REF,ICF
 }
 
-!CONFIG(no-breakpad) {
-    DEFINES += USE_BREAKPAD
-    INCLUDEPATH += "$$PWD/breakpad/src"
-    SOURCES += src/utils/Breakpad.cpp
-
-    unix:QMAKE_POST_LINK = strip $(TARGET);
-    unix:QMAKE_CXXFLAGS_RELEASE += -gstabs
-    
-    unix:!macx {
-        LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
-
-        QMAKE_POST_LINK = python "$$PWD/breakpad-bin/symbolstore.py" "$$PWD/breakpad/src/tools/linux/dump_syms/dump_syms" $${TARGET}.symbols $(TARGET); $$QMAKE_POST_LINK
-    }
-
-    macx {
-        QMAKE_LFLAGS += -F$$PWD/breakpad-bin/mac
-        LIBS += -framework Breakpad
-
-        CONFIG(x86):ARCH += i386
-        CONFIG(x86_64):ARCH += x86_64
-        CONFIG(ppc):ARCH += ppc
-        CONFIG(ppc64):ARCH += ppc64
-
-        QMAKE_POST_LINK = python "$$PWD/breakpad-bin/symbolstore.py" -a "$$ARCH" "$$PWD/breakpad-bin/mac/dump_syms" $${TARGET}.symbols $(TARGET); $$QMAKE_POST_LINK
-    }
-
-    win32 {
-        CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-debug"
-        CONFIG(release, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-release"
-        LIBS += common.lib crash_generation_client.lib exception_handler.lib
-    }
-}
-
 unix:!macx {
     # GStreamer
     CONFIG += link_pkgconfig
@@ -76,6 +43,33 @@ win32 {
     LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib gstvideo-0.10.lib glib-2.0.lib gobject-2.0.lib
     DEFINES += USE_GSTREAMER
     CONFIG(debug, debug|release):DEFINES += GSTREAMER_PLUGINS=\\\"$$PWD/gstreamer-bin/win/plugins\\\"
+}
+
+!CONFIG(no-breakpad) {
+    DEFINES += USE_BREAKPAD
+    INCLUDEPATH += "$$PWD/breakpad/src"
+    SOURCES += src/utils/Breakpad.cpp
+
+    unix:QMAKE_CXXFLAGS_RELEASE += -gstabs
+    
+    unix:!macx {
+        LIBS += "$$PWD/breakpad/src/client/linux/.libs/libbreakpad_client.a"
+
+        QMAKE_POST_LINK = python "$$PWD/breakpad-bin/symbolstore.py" "$$PWD/breakpad/src/tools/linux/dump_syms/dump_syms" $${TARGET}.symbols $(TARGET); $$QMAKE_POST_LINK
+    }
+
+    macx {
+        QMAKE_LFLAGS += -F$$PWD/breakpad-bin/mac
+        LIBS += -framework Breakpad
+
+        QMAKE_POST_LINK += cd "$$PWD"; breakpad-bin/mac/gather_symbols.sh $${OUT_PWD}/$${TARGET}; cd - >/dev/null;
+    }
+
+    win32 {
+        CONFIG(debug, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-debug"
+        CONFIG(release, debug|release):LIBS += -L"$$PWD/breakpad-bin/win/lib-release"
+        LIBS += common.lib crash_generation_client.lib exception_handler.lib
+    }
 }
 
 SOURCES += src/main.cpp \

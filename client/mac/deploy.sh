@@ -39,18 +39,19 @@ if [ ! -z $2 ]; then
 fi
 
 echo "Running lipo..."
-for I in $1/Contents/Frameworks/*; do
+for I in $1/Contents/Frameworks/*.dylib; do
 	FILE=$I;
-	if [ -d $I ]; then
-		FILE=$I/Versions/Current/`basename $I | cut -d '.' -f 1`
-		if [ ! -f $FILE ]; then
-			echo "Cannot find file: $FILE";
-		fi
-	fi
-
         if [ `file $FILE | grep -c 'for architecture'` == "0" ]; then
 		echo "    Skipping $FILE (already thin)"
         else
 		lipo -thin i386 -output $FILE $FILE
 	fi
+done
+
+for I in `find $1/Contents/Frameworks/*.framework/Versions -type f -maxdepth 2`; do
+    if [ `file $I | grep -c 'for architecture'` == "0" ]; then
+        echo "    Skipping $I (already thin)"
+    else
+        lipo -thin i386 -output $I $I
+    fi
 done
