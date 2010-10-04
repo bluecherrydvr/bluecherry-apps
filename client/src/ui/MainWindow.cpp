@@ -8,6 +8,7 @@
 #include "RecentEventsView.h"
 #include "EventsModel.h"
 #include "AboutDialog.h"
+#include "OptionsServerPage.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -95,6 +96,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::createMenu()
 {
     QMenu *appMenu = menuBar()->addMenu(tr("&Application"));
+    appMenu->addAction(tr("Add new &server..."), this, SLOT(addServer()));
     appMenu->addAction(tr("&Options"), this, SLOT(showOptionsDialog()));
     appMenu->addSeparator();
     appMenu->addAction(tr("&Quit"), this, SLOT(close()));
@@ -228,4 +230,16 @@ void MainWindow::openSupport()
     bool ok = QDesktopServices::openUrl(url);
     if (!ok)
         QMessageBox::critical(this, tr("Error"), tr("An error occurred while opening %1").arg(url.toString()));
+}
+
+void MainWindow::addServer()
+{
+    OptionsDialog *dlg = new OptionsDialog(this);
+    dlg->showPage(OptionsDialog::ServerPage);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+    OptionsServerPage *pg = static_cast<OptionsServerPage*>(dlg->pageWidget(OptionsDialog::ServerPage));
+    pg->addNewServer();
+
+    dlg->show();
 }

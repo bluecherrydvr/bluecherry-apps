@@ -20,6 +20,8 @@ public slots:
     void showOptionsDialog();
     void showEventsWindow();
 
+    void addServer();
+
     void openDocumentation();
     void openSupport();
     void openIdeas();
