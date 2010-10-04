@@ -9,6 +9,8 @@
 #include "EventsModel.h"
 #include "AboutDialog.h"
 #include "OptionsServerPage.h"
+#include "ServerConfigWindow.h"
+#include "core/DVRServer.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -101,12 +103,29 @@ void MainWindow::createMenu()
     appMenu->addSeparator();
     appMenu->addAction(tr("&Quit"), this, SLOT(close()));
 
+    QMenu *serverMenu = menuBar()->addMenu(tr("&Server"));
+    menuServerName = serverMenu->addAction(QString());
+    QFont f;
+    f.setBold(true);
+    menuServerName->setFont(f);
+    serverMenu->addAction(tr("Configuration"), this, SLOT(openServerConfig()));
+    serverMenu->addSeparator();
+    serverMenu->addAction(tr("Edit Server"), this, SLOT(editCurrentServer()));
+
+    connect(serverMenu, SIGNAL(aboutToShow()), SLOT(showServersMenu()));
+
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(tr("&Documentation"), this, SLOT(openDocumentation()));
     helpMenu->addAction(tr("Bluecherry &support"), this, SLOT(openSupport()));
     helpMenu->addAction(tr("Suggest a &feature"), this, SLOT(openIdeas()));
     helpMenu->addSeparator();
     helpMenu->addAction(tr("&About Bluecherry DVR"), this, SLOT(openAbout()));
+}
+
+void MainWindow::showServersMenu()
+{
+    DVRServer *server = m_sourcesList->currentServer();
+    menuServerName->setText(server ? server->displayName() : tr("No Server"));
 }
 
 QWidget *MainWindow::createSourcesList()
@@ -242,4 +261,31 @@ void MainWindow::addServer()
     pg->addNewServer();
 
     dlg->show();
+}
+
+void MainWindow::editCurrentServer()
+{
+    DVRServer *server = m_sourcesList->currentServer();
+    if (!server)
+        return;
+
+    OptionsDialog *dlg = new OptionsDialog(this);
+    dlg->showPage(OptionsDialog::ServerPage);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+    OptionsServerPage *pg = static_cast<OptionsServerPage*>(dlg->pageWidget(OptionsDialog::ServerPage));
+    pg->setCurrentServer(server);
+
+    dlg->show();
+}
+
+void MainWindow::openServerConfig()
+{
+    DVRServer *server = m_sourcesList->currentServer();
+    if (!server)
+        return;
+
+    ServerConfigWindow::instance()->setServer(server);
+    ServerConfigWindow::instance()->show();
+    ServerConfigWindow::instance()->raise();
 }

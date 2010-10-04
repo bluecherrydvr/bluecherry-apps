@@ -21,11 +21,16 @@ public slots:
     void showEventsWindow();
 
     void addServer();
+    void openServerConfig();
+    void editCurrentServer();
 
     void openDocumentation();
     void openSupport();
     void openIdeas();
     void openAbout();
+
+private slots:
+    void showServersMenu();
 
 protected:
     virtual void closeEvent(QCloseEvent *event);
@@ -35,6 +40,7 @@ private:
     CameraAreaWidget *m_cameraArea;
     RecentEventsView *m_eventsView;
     QSplitter *m_centerSplit;
+    QAction *menuServerName;
 
     void createMenu();
 

@@ -3,12 +3,16 @@
 
 #include <QTreeView>
 
+class DVRServer;
+
 class DVRServersView : public QTreeView
 {
     Q_OBJECT
 
 public:
     explicit DVRServersView(QWidget *parent = 0);
+
+    DVRServer *currentServer() const;
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *event);

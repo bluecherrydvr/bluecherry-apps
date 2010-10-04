@@ -24,6 +24,22 @@ DVRServersView::DVRServersView(QWidget *parent)
         header()->setSectionHidden(i, true);
 }
 
+DVRServer *DVRServersView::currentServer() const
+{
+    QModelIndex c = currentIndex();
+    DVRServer *re = 0;
+
+    while (c.isValid())
+    {
+        re = c.data(DVRServersModel::ServerPtrRole).value<DVRServer*>();
+        if (re)
+            break;
+        c = c.parent();
+    }
+
+    return re;
+}
+
 void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
