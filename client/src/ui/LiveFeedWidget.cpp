@@ -9,6 +9,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QToolTip>
+#include <QDataStream>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     : QWidget(parent), m_camera(0), m_dragCamera(0), m_stream(0)
@@ -349,4 +350,30 @@ void LiveFeedWidget::saveSnapshot(const QString &ifile)
     }
 
     QToolTip::showText(mapToGlobal(QPoint(0,0)), tr("Snapshot Saved"), this);
+}
+
+QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget)
+{
+    DVRCamera *camera = widget.camera();
+    if (!camera)
+        stream << -1;
+    else
+        stream << camera->server->configId << camera->uniqueID;
+    return stream;
+}
+
+QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget)
+{
+    int serverId = -1, cameraId = -1;
+    stream >> serverId;
+
+    if (stream.status() != QDataStream::Ok || serverId < 0)
+    {
+        widget.setCamera(0);
+        return stream;
+    }
+
+    stream >> cameraId;
+    widget.setCamera(DVRCamera::findByID(serverId, cameraId));
+    return stream;
 }

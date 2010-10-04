@@ -60,4 +60,9 @@ private:
     void clone(LiveFeedWidget *other);
 };
 
+class QDataStream;
+
+QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget);
+QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget);
+
 #endif // LIVEFEEDWIDGET_H

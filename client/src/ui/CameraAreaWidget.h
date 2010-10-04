@@ -18,6 +18,9 @@ public:
     int columns() const { return m_columnCount; }
     void setGridSize(int rows, int columns);
 
+    QByteArray saveLayout() const;
+    bool loadLayout(const QByteArray &data);
+
 public slots:
     void setRows(int rows) { setGridSize(rows, m_columnCount); }
     void addRow() { setGridSize(m_rowCount+1, m_columnCount); }

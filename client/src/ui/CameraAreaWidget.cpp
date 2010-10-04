@@ -1,6 +1,7 @@
 #include "CameraAreaWidget.h"
 #include "LiveFeedWidget.h"
 #include <QGridLayout>
+#include <QDataStream>
 
 CameraAreaWidget::CameraAreaWidget(QWidget *parent)
     : QFrame(parent), m_rowCount(0), m_columnCount(0)
@@ -156,6 +157,42 @@ void CameraAreaWidget::removeRow(int r)
     }
 
     m_rowCount--;
+}
+
+QByteArray CameraAreaWidget::saveLayout() const
+{
+    QByteArray re;
+    QDataStream data(&re, QIODevice::WriteOnly);
+    data.setVersion(QDataStream::Qt_4_5);
+
+    data << m_rowCount << m_columnCount;
+    for (int r = 0; r < m_rowCount; ++r)
+        for (int c = 0; c < m_columnCount; ++c)
+            data << *m_cameraWidgets[r][c];
+
+    return re;
+}
+
+bool CameraAreaWidget::loadLayout(const QByteArray &buf)
+{
+    if (buf.isEmpty())
+        return false;
+
+    QDataStream data(buf);
+    data.setVersion(QDataStream::Qt_4_5);
+
+    int rc, cc;
+    data >> rc >> cc;
+    if (data.status() != QDataStream::Ok)
+        return false;
+
+    setGridSize(rc, cc);
+
+    for (int r = 0; r < m_rowCount; ++r)
+        for (int c = 0; c < m_columnCount; ++c)
+            data >> *m_cameraWidgets[r][c];
+
+    return (data.status() == QDataStream::Ok);
 }
 
 void CameraAreaWidget::openFullScreen()
