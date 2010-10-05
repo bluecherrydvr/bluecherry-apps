@@ -36,6 +36,9 @@ CREATE TABLE EventsCam (
 	type_id varchar(10),
 	length integer DEFAULT 0,		-- length of event in seconds
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
+	media_id integer NOT NULL,
+	FOREIGN KEY (media_id) REFERENCES Media(id)
+		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
 		ON UPDATE CASCADE ON DELETE CASCADE,
         FOREIGN KEY (device_id) REFERENCES Devices(id)
