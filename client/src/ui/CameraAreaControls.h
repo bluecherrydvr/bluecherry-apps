@@ -21,6 +21,7 @@ public slots:
 
 private slots:
     void savedLayoutChanged(int index);
+    void showLayoutMenu(const QPoint &pos, int index = -1);
 
 private:
     QComboBox *m_savedLayouts;

@@ -88,6 +88,33 @@ bool SavedLayoutsModel::insertRows(int row, int count, const QModelIndex &parent
     return true;
 }
 
+bool SavedLayoutsModel::removeRows(int row, int count, const QModelIndex &parent)
+{
+    if (row < 0 || row+count > items.size() || parent.isValid() || !count)
+        return false;
+
+    /* You can't remove the 'New layout' item (which is the last one) */
+    if (row+count == items.size())
+        return false;
+
+    /* You also must have at least one layout */
+    if (items.size()-count < 2)
+        return false;
+
+    beginRemoveRows(QModelIndex(), row, row+count-1);
+
+    QSettings settings;
+    settings.beginGroup(QLatin1String("cameraLayouts"));
+
+    for (int i = row; i < row+count; ++i)
+        settings.remove(items[i].name);
+    items.remove(row, count);
+
+    endRemoveRows();
+
+    return true;
+}
+
 bool SavedLayoutsModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= items.size())
