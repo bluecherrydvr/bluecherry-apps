@@ -16,9 +16,15 @@ public:
 
     explicit CameraAreaControls(CameraAreaWidget *cameraArea, QWidget *parent = 0);
 
+public slots:
+    void saveLayout();
+
+private slots:
+    void savedLayoutChanged(int index);
+
 private:
     QComboBox *m_savedLayouts;
-    QPushButton *m_gridButtons[6];
+    int m_lastLayoutIndex;
 };
 
 #endif // CAMERAAREACONTROLS_H

@@ -110,7 +110,8 @@ SOURCES += src/main.cpp \
     src/video/VideoHttpBuffer.cpp \
     src/ui/EventVideoDownload.cpp \
     src/ui/ServerConfigWindow.cpp \
-    src/ui/AboutDialog.cpp
+    src/ui/AboutDialog.cpp \
+    src/ui/SavedLayoutsModel.cpp
 
 HEADERS  += src/ui/MainWindow.h \
     src/ui/CameraAreaWidget.h \
@@ -150,7 +151,8 @@ HEADERS  += src/ui/MainWindow.h \
     src/video/VideoSurface.h \
     src/ui/EventVideoDownload.h \
     src/ui/ServerConfigWindow.h \
-    src/ui/AboutDialog.h
+    src/ui/AboutDialog.h \
+    src/ui/SavedLayoutsModel.h
 
 RESOURCES += \
     res/resources.qrc

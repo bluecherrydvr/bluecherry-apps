@@ -32,6 +32,9 @@ public slots:
 private slots:
     void showServersMenu();
 
+signals:
+    void closing();
+
 protected:
     virtual void closeEvent(QCloseEvent *event);
 

@@ -79,7 +79,6 @@ MainWindow::MainWindow(QWidget *parent)
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/main/geometry")).toByteArray());
     m_centerSplit->restoreState(settings.value(QLatin1String("ui/main/centerSplit")).toByteArray());
-    m_cameraArea->loadLayout(settings.value(QLatin1String("ui/main/liveViewLayout")).toByteArray());
 
     new QShortcut(QKeySequence(Qt::Key_F11), m_cameraArea, SLOT(toggleFullScreen()));
 }
@@ -90,10 +89,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    emit closing();
+
     QSettings settings;
     settings.setValue(QLatin1String("ui/main/geometry"), saveGeometry());
     settings.setValue(QLatin1String("ui/main/centerSplit"), m_centerSplit->saveState());
-    settings.setValue(QLatin1String("ui/main/liveViewLayout"), m_cameraArea->saveLayout());
     QMainWindow::closeEvent(event);
 }
 
@@ -192,6 +192,7 @@ QWidget *MainWindow::createCameraArea()
 QWidget *MainWindow::createCameraControls()
 {
     CameraAreaControls *controls = new CameraAreaControls(m_cameraArea);
+    connect(this, SIGNAL(closing()), controls, SLOT(saveLayout()));
     return controls;
 }
 

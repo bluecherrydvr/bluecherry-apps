@@ -1,24 +1,31 @@
 #include "CameraAreaControls.h"
 #include "CameraAreaWidget.h"
+#include "SavedLayoutsModel.h"
 #include <QBoxLayout>
 #include <QComboBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QInputDialog>
+#include <QSettings>
+#include <QDebug>
 
 CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
-    : QWidget(parent), cameraArea(area)
+    : QWidget(parent), cameraArea(area), m_lastLayoutIndex(-1)
 {
     QBoxLayout *layout = new QHBoxLayout(this);
     layout->setMargin(0);
 
     /* Saved layouts box */
     m_savedLayouts = new QComboBox;
-    m_savedLayouts->addItem(tr("Unsaved Layout"));
-    m_savedLayouts->addItem(QLatin1String("My Saved Layout"));
-    m_savedLayouts->addItem(QLatin1String("Another Layout"));
+    m_savedLayouts->setModel(new SavedLayoutsModel(m_savedLayouts));
+    m_savedLayouts->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+    m_savedLayouts->setInsertPolicy(QComboBox::NoInsert);
+    m_savedLayouts->setMinimumWidth(100);
     layout->addWidget(m_savedLayouts);
 
-    QPushButton *saveLayoutBtn = new QPushButton(tr("Save"));
+    connect(m_savedLayouts, SIGNAL(currentIndexChanged(int)), SLOT(savedLayoutChanged(int)));
+
+    QPushButton *saveLayoutBtn = new QPushButton(tr("Save Layout"));
     layout->addWidget(saveLayoutBtn);
     layout->addSpacing(20);
 
@@ -50,4 +57,59 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     layout->addWidget(delColBtn);
 
     layout->addStretch();
+
+    QSettings settings;
+    QString lastLayout = settings.value(QLatin1String("ui/cameraArea/lastLayout")).toString();
+    if (!lastLayout.isEmpty())
+    {
+        int index = m_savedLayouts->findText(lastLayout);
+        if (index >= 0 && index != m_savedLayouts->currentIndex())
+            m_savedLayouts->setCurrentIndex(index);
+        else
+            savedLayoutChanged(m_savedLayouts->currentIndex());
+    }
+    else
+        savedLayoutChanged(m_savedLayouts->currentIndex());
+}
+
+void CameraAreaControls::savedLayoutChanged(int index)
+{
+    if (static_cast<SavedLayoutsModel*>(m_savedLayouts->model())->isNewLayoutItem(index))
+    {
+        static bool recursing = false;
+        if (recursing)
+            return;
+
+        QString re = QInputDialog::getText(window(), tr("Create camera layout"), tr("Enter a name for the new camera layout:"));
+        if (re.isEmpty())
+            return;
+
+        recursing = true;
+
+        index = m_savedLayouts->count() - 1;
+        m_savedLayouts->insertItem(index, re, cameraArea->saveLayout());
+        m_savedLayouts->setCurrentIndex(index);
+
+        recursing = false;
+        return;
+    }
+
+    saveLayout();
+
+    QByteArray data = m_savedLayouts->itemData(index, SavedLayoutsModel::LayoutDataRole).toByteArray();
+    if (!data.isEmpty() && !cameraArea->loadLayout(data))
+        qDebug() << "Failed to load camera layout" << m_savedLayouts->itemText(index);
+
+    m_lastLayoutIndex = index;
+    QSettings settings;
+    settings.setValue(QLatin1String("ui/cameraArea/lastLayout"), m_savedLayouts->itemText(index));
+}
+
+void CameraAreaControls::saveLayout()
+{
+    if (m_lastLayoutIndex < 0)
+        return;
+
+    QByteArray data = cameraArea->saveLayout();
+    m_savedLayouts->setItemData(m_lastLayoutIndex, data, SavedLayoutsModel::LayoutDataRole);
 }
