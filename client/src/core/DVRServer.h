@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QVariant>
+#include "ServerRequestManager.h"
 
 class DVRCamera;
 class QNetworkRequest;
@@ -13,6 +14,7 @@ class DVRServer : public QObject
     Q_OBJECT
 
 public:
+    ServerRequestManager *api;
     const int configId;
 
     explicit DVRServer(int configId, QObject *parent = 0);
@@ -43,6 +45,8 @@ public slots:
     void setDisplayName(const QString &displayName);
     /* Permanently remove from config and delete */
     void removeServer();
+
+    void login();
 
 signals:
     void changed();

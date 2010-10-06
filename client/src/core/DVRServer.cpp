@@ -8,6 +8,7 @@ DVRServer::DVRServer(int id, QObject *parent)
     : QObject(parent), configId(id)
 {
     m_displayName = readSetting("displayName").toString();
+    api = new ServerRequestManager(this);
 
     /* Create some fake cameras for testing */
     for (int i = 0; i < configId+2; ++i)
@@ -69,6 +70,11 @@ void DVRServer::removeServer()
     settings.remove(QString::fromLatin1("servers/%1").arg(configId));
 
     deleteLater();
+}
+
+void DVRServer::login()
+{
+    api->login(username(), password());
 }
 
 QNetworkRequest DVRServer::createRequest(const QUrl &relurl)

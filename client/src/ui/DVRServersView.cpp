@@ -44,7 +44,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
-    QAction *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
+    QAction *aConnect = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
     QAction *aSelectOnly = 0, *aSelectElse = 0;
 
     QModelIndex index = indexAt(event->pos());
@@ -60,7 +60,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 
         if (server)
         {
-            menu.addAction(tr("Connect"))->setEnabled(false);
+            aConnect = server->api->isOnline() ? menu.addAction(tr("Disconnect")) : menu.addAction(tr("Connect"));
             aServerConfig = menu.addAction(tr("Configure server"));
             menu.addSeparator();
             aEditServer = menu.addAction(tr("Edit server"));
@@ -76,7 +76,11 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
     if (!action)
         return;
 
-    if (action == aEditServer || action == aAddServer || action == aOptions)
+    if (action == aConnect)
+    {
+        server->login();
+    }
+    else if (action == aEditServer || action == aAddServer || action == aOptions)
     {
         /* Open the options dialog and modify appropriately */
         OptionsDialog *dlg = new OptionsDialog(this);
