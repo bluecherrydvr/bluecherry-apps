@@ -29,8 +29,8 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     QBoxLayout *layout = new QVBoxLayout(this);
     layout->setMargin(0);
 
-    VideoContainer *container = new VideoContainer(backend.createSurface());
-    layout->addWidget(container, 1);
+    m_videoWidget = new VideoContainer(backend.createSurface());
+    layout->addWidget(m_videoWidget, 1);
 
     QBoxLayout *sliderLayout = new QHBoxLayout;
     layout->addLayout(sliderLayout);

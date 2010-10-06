@@ -36,7 +36,7 @@ private slots:
 
 private:
     VideoPlayerBackend backend;
-    QWidget *m_videoWidget;
+    VideoContainer *m_videoWidget;
     QToolButton *m_playBtn;
     QSlider *m_seekSlider;
     QLabel *m_posText;

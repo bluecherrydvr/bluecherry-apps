@@ -3,6 +3,7 @@
 
 #include <QFrame>
 #include <QDebug>
+#include <QMouseEvent>
 
 class VideoSurface : public QWidget
 {
@@ -82,11 +83,56 @@ public slots:
         videoSurface->setGeometry(QRect(pos + contentsRect().topLeft(), sz));
     }
 
+    void setFullScreen(bool on)
+    {
+        if (on)
+        {
+            setWindowFlags(windowFlags() | Qt::Window);
+            setFrameStyle(QFrame::NoFrame);
+            showFullScreen();
+        }
+        else
+        {
+            setWindowFlags(windowFlags() & ~Qt::Window);
+            setFrameStyle(QFrame::Sunken | QFrame::Panel);
+            show();
+        }
+    }
+
+    void toggleFullScreen()
+    {
+        setFullScreen(!isFullScreen());
+    }
+
 protected:
     virtual void resizeEvent(QResizeEvent *ev)
     {
         updateSurface();
         QFrame::resizeEvent(ev);
+    }
+
+    virtual void mouseDoubleClickEvent(QMouseEvent *ev)
+    {
+        ev->accept();
+        toggleFullScreen();
+    }
+
+    virtual void keyPressEvent(QKeyEvent *ev)
+    {
+        if (ev->modifiers() != 0)
+            return;
+
+        switch (ev->key())
+        {
+        case Qt::Key_Escape:
+            setFullScreen(false);
+            break;
+
+        default:
+            return;
+        }
+
+        ev->accept();
     }
 };
 
