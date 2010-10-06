@@ -24,6 +24,8 @@ unix:!macx {
 
 macx {
     # Bundled GStreamer
+    CONFIG(x86_64):error(GStreamer cannot currently be built for x86_64 on OS X)
+
     DEFINES += USE_GSTREAMER
     GSTREAMER_PATH = "$$PWD/gstreamer-bin/mac"
     LIBS += -L"$$GSTREAMER_PATH/lib" -lgstreamer-0.10.0 -lgstapp-0.10.0 -lgstvideo-0.10.0 -lgstinterfaces-0.10.0 -lglib-2.0.0 -lgobject-2.0.0
