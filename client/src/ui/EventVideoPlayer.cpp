@@ -12,6 +12,7 @@
 #include <QThread>
 #include <QFrame>
 #include <QFileDialog>
+#include <QShortcut>
 #include <QDebug>
 
 EventVideoPlayer::EventVideoPlayer(QWidget *parent)
@@ -64,6 +65,18 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     QPushButton *saveBtn = new QPushButton(tr("Save Video"));
     btnLayout->addWidget(saveBtn);
     connect(saveBtn, SIGNAL(clicked()), SLOT(saveVideo()));
+
+    QShortcut *sc = new QShortcut(QKeySequence(Qt::Key_Space), m_videoWidget);
+    connect(sc, SIGNAL(activated()), SLOT(playPause()));
+
+    sc = new QShortcut(QKeySequence(Qt::Key_F), m_videoWidget);
+    connect(sc, SIGNAL(activated()), m_videoWidget, SLOT(toggleFullScreen()));
+
+    sc = new QShortcut(QKeySequence(Qt::Key_R), m_videoWidget);
+    connect(sc, SIGNAL(activated()), SLOT(restart()));
+
+    sc = new QShortcut(QKeySequence::Save, m_videoWidget);
+    connect(sc, SIGNAL(activated()), SLOT(saveVideo()));
 }
 
 void EventVideoPlayer::setVideo(const QUrl &url)
@@ -169,11 +182,20 @@ void EventVideoPlayer::saveVideo(const QString &path)
 {
     if (path.isEmpty())
     {
+        bool restart = false;
+        if (backend.state() == VideoPlayerBackend::Playing)
+        {
+            backend.pause();
+            restart = true;
+        }
+
         QString upath = QFileDialog::getSaveFileName(this, tr("Save event video"), QString(),
                                      tr("Matroska Video (*.mkv)"));
-        if (upath.isEmpty())
-            return;
-        saveVideo(upath);
+        if (!upath.isEmpty())
+            saveVideo(upath);
+
+        if (restart)
+            backend.play();
         return;
     }
 
