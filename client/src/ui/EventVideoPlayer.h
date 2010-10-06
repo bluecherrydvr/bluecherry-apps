@@ -34,6 +34,8 @@ private slots:
     void durationChanged(qint64 duration = -1);
     void updatePosition();
 
+    void videoContextMenu(const QPoint &pos);
+
 private:
     VideoPlayerBackend backend;
     VideoContainer *m_videoWidget;

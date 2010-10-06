@@ -13,6 +13,7 @@
 #include <QFrame>
 #include <QFileDialog>
 #include <QShortcut>
+#include <QMenu>
 #include <QDebug>
 
 EventVideoPlayer::EventVideoPlayer(QWidget *parent)
@@ -31,6 +32,8 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     layout->setMargin(0);
 
     m_videoWidget = new VideoContainer(backend.createSurface());
+    m_videoWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_videoWidget, SIGNAL(customContextMenuRequested(QPoint)), SLOT(videoContextMenu(QPoint)));
     layout->addWidget(m_videoWidget, 1);
 
     QBoxLayout *sliderLayout = new QHBoxLayout;
@@ -203,4 +206,33 @@ void EventVideoPlayer::saveVideo(const QString &path)
     dl->setFilePath(path);
     dl->setVideoBuffer(backend.videoBuffer());
     dl->start(bcApp->mainWindow);
+}
+
+void EventVideoPlayer::videoContextMenu(const QPoint &rpos)
+{
+    QPoint pos = rpos;
+    if (qobject_cast<QWidget*>(sender()))
+        pos = static_cast<QWidget*>(sender())->mapToGlobal(pos);
+
+    QMenu menu(qobject_cast<QWidget*>(sender()));
+
+    if (backend.state() == VideoPlayerBackend::Playing)
+        menu.addAction(tr("&Pause"), this, SLOT(playPause()));
+    else
+        menu.addAction(tr("&Play"), this, SLOT(playPause()));
+
+    menu.addAction(tr("&Restart"), this, SLOT(restart()));
+
+    menu.addSeparator();
+
+    if (m_videoWidget->isFullScreen())
+        menu.addAction(tr("Exit &full screen"), m_videoWidget, SLOT(toggleFullScreen()));
+    else
+        menu.addAction(tr("&Full screen"), m_videoWidget, SLOT(toggleFullScreen()));
+
+    menu.addSeparator();
+
+    menu.addAction(tr("Save video"), this, SLOT(saveVideo()));
+
+    menu.exec(pos);
 }
