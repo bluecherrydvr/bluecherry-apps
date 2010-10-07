@@ -9,8 +9,11 @@
 #include <QDataStream>
 
 DVRServersModel::DVRServersModel(QObject *parent)
-    : QAbstractItemModel(parent)
+    : QAbstractItemModel(parent), m_offlineDisabled(false)
 {
+    statusIcon = QIcon(QLatin1String(":/icons/status.png"));
+    statusIcon.addFile(QLatin1String(":/icons/status-offline.png"), QSize(), QIcon::Disabled, QIcon::Off);
+
     connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
     connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
 
@@ -19,6 +22,7 @@ DVRServersModel::DVRServersModel(QObject *parent)
     foreach (DVRServer *server, servers)
     {
         connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
+        connect(server->api, SIGNAL(statusChanged(int)), SLOT(serverDataChanged()));
     }
 }
 
@@ -47,6 +51,15 @@ QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
         return QModelIndex();
 
     return index(row, 0);
+}
+
+void DVRServersModel::setOfflineDisabled(bool offlineDisabled)
+{
+    if (m_offlineDisabled == offlineDisabled)
+        return;
+
+    m_offlineDisabled = offlineDisabled;
+    emit dataChanged(index(0, 0), index(rowCount()-1, columnCount()-1));
 }
 
 int DVRServersModel::rowCount(const QModelIndex &parent) const
@@ -106,7 +119,20 @@ Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
     if (!index.isValid())
         return 0;
 
-    Qt::ItemFlags re = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    Qt::ItemFlags re = Qt::ItemIsSelectable;
+    DVRServer *s;
+    DVRCamera *c;
+
+    if ((c = cameraForRow(index)))
+        s = c->server;
+    else
+        s = serverForRow(index);
+
+    if (!m_offlineDisabled || s && s->api->isOnline())
+        re |= Qt::ItemIsEnabled;
+    else
+        return re;
+
     if (!index.parent().isValid())
         re |= Qt::ItemIsEditable;
     else
@@ -138,6 +164,13 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
         case 0:
             if (role == Qt::DisplayRole || role == Qt::EditRole)
                 return server->displayName();
+            else if (role == Qt::DecorationRole)
+            {
+                if (m_offlineDisabled)
+                    return statusIcon;
+                else
+                    return statusIcon.pixmap(16, server->api->isOnline() ? QIcon::Normal : QIcon::Disabled);
+            }
             break;
         case 1:
             if (role == Qt::DisplayRole || role == Qt::EditRole)

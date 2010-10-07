@@ -17,6 +17,7 @@ DVRServersView::DVRServersView(QWidget *parent)
     setDragEnabled(true);
 
     DVRServersModel *model = new DVRServersModel(this);
+    model->setOfflineDisabled(true);
     setModel(model);
 
     /* We only show the server name in this list; hide other columns */

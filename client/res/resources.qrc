@@ -5,4 +5,8 @@
     <qresource prefix="/images">
         <file>logo.png</file>
     </qresource>
+    <qresource prefix="/icons">
+        <file>status.png</file>
+        <file>status-offline.png</file>
+    </qresource>
 </RCC>

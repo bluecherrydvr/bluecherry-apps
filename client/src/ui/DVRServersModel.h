@@ -2,6 +2,7 @@
 #define DVRSERVERSMODEL_H
 
 #include <QAbstractItemModel>
+#include <QIcon>
 
 class DVRServer;
 class DVRCamera;
@@ -20,6 +21,8 @@ public:
 
     DVRServer *serverForRow(const QModelIndex &index) const;
     DVRCamera *cameraForRow(const QModelIndex &index) const;
+
+    void setOfflineDisabled(bool offlineDisabled);
 
     QModelIndex indexForServer(DVRServer *server) const;
 
@@ -41,6 +44,8 @@ private slots:
 
 private:
     QList<DVRServer*> servers;
+    QIcon statusIcon;
+    bool m_offlineDisabled;
 };
 
 #endif // DVRSERVERSMODEL_H
