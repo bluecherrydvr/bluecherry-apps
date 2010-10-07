@@ -27,7 +27,9 @@ INSERT INTO EventTypesSys VALUES ('shutdown');
 INSERT INTO EventTypesSys VALUES ('reboot');
 INSERT INTO EventTypesSys VALUES ('power-outage');
 
--- A separate table for camera events
+-- A separate table for camera events. If length is -1, it means
+-- this event is still going. If length is 0, it means the event
+-- Did not take up any time (singular events).
 CREATE TABLE EventsCam (
 	id integer PRIMARY KEY NOT NULL,
 	time integer NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -36,7 +38,7 @@ CREATE TABLE EventsCam (
 	type_id varchar(10),
 	length integer DEFAULT 0,		-- length of event in seconds
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
-	media_id integer NOT NULL,
+	media_id integer,
 	FOREIGN KEY (media_id) REFERENCES Media(id)
 		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
