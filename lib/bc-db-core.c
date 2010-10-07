@@ -122,3 +122,8 @@ int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname)
 
 	return val ? (atoi(val) ? 1 : 0) : 0;
 }
+
+long unsigned bc_db_last_insert_rowid(struct bc_db_handle *bc_db)
+{
+	return bc_db->db_ops->last_insert_rowid(bc_db->dbh);
+}

@@ -48,6 +48,7 @@ struct bc_db_ops {
 			 const char *fmt, va_list ap);
 	void (*free_table)(void *handle, char **res);
 	int (*query)(void *handle, const char *sql, va_list ap);
+	unsigned long (*last_insert_rowid)(void *handle);
 };
 
 struct bc_db_handle {
@@ -94,7 +95,7 @@ struct bc_key_data {
 	u_int32_t		id;
 };
 
-/* Events */
+/* Events and Media */
 
 typedef enum {
 	BC_EVENT_L_INFO = 0,
@@ -121,6 +122,31 @@ typedef enum {
 
 typedef struct bc_event_cam * bc_event_cam_t;
 #define BC_EVENT_CAM_FAIL ((bc_event_cam_t)NULL)
+
+typedef enum {
+	BC_MEDIA_VIDEO_H264 = 0,
+	BC_MEDIA_VIDEO_M4V,
+	BC_MEDIA_VIDEO_M2V,
+} bc_media_video_type_t;
+
+typedef enum {
+	BC_MEDIA_AUDIO_NONE = 0,
+	BC_MEDIA_AUDIO_MP2,
+	BC_MEDIA_AUDIO_MP3,
+	BC_MEDIA_AUDIO_WAV,
+} bc_media_audio_type_t;
+
+typedef enum {
+	BC_MEDIA_CONT_NONE = 0, // Means no audio, and video format raw
+	BC_MEDIA_CONT_MKV,
+	BC_MEDIA_CONT_MP4,
+	BC_MEDIA_CONT_MPEG2_PS,
+	BC_MEDIA_CONT_MPEG2_TS,
+	BC_MEDIA_CONT_AVI,
+} bc_media_cont_type_t;
+
+typedef struct bc_media_entry * bc_media_entry_t;
+#define BC_MEDIA_FAIL ((bc_media_entry_t)NULL)
 
 /* Doubly linked lists */
 
@@ -204,6 +230,7 @@ int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
 void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
 int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
 	__attribute__ ((format (printf, 2, 3)));
+unsigned long bc_db_last_insert_rowid(struct bc_db_handle *bc_db);
 
 /* Used to get specific values from a table result */
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
@@ -217,8 +244,9 @@ int bc_key_process(struct bc_key_data *res, char *str);
 
 /* Returns an event handle for later passing to _end */
 bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
-				  bc_event_cam_type_t type);
-/* Finished the event and inserts it into the database */
+				  bc_event_cam_type_t type,
+				  bc_media_entry_t media);
+/* Finish the event and inserts it into the database */
 void bc_event_cam_end(bc_event_cam_t bce);
 /* Insert a cam event in one shot. It will have a 0 length */
 int bc_event_cam(int id, bc_event_level_t level,
@@ -226,8 +254,19 @@ int bc_event_cam(int id, bc_event_level_t level,
 /* Insert a system event */
 int bc_event_sys(bc_event_level_t level,
 		 bc_event_sys_type_t type);
+
+/* ### Handle media entries ### */
+
+/* Returns a media entry handle for later passing to _end */
+bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
+				bc_media_audio_type_t audio,
+				bc_media_cont_type_t cont);
+/* Called at the end of the media to mark end time. If this returns
+ * non-zero, you cannot end the media. */
+int bc_media_end(bc_media_entry_t bcm);
+
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
-void bc_event_clear(void);
+void bc_media_event_clear(void);
 
 #endif /* __LIBBLUECHERRY_H */
