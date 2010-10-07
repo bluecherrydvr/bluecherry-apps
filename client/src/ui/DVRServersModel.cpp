@@ -128,7 +128,7 @@ Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
     else
         s = serverForRow(index);
 
-    if (!m_offlineDisabled || s && s->api->isOnline())
+    if (!m_offlineDisabled || (s && s->api->isOnline()))
         re |= Qt::ItemIsEnabled;
     else
         return re;
@@ -282,7 +282,12 @@ void DVRServersModel::serverDataChanged()
 {
     DVRServer *server = qobject_cast<DVRServer*>(sender());
     if (!server)
-        return;
+    {
+        ServerRequestManager *srm = qobject_cast<ServerRequestManager*>(sender());
+        if (!srm)
+            return;
+        server = srm->server;
+    }
 
     int row = servers.indexOf(server);
     if (row < 0)

@@ -3,6 +3,7 @@
 #include <QSettings>
 #include <QNetworkRequest>
 #include <QUrl>
+#include <QTimer>
 
 DVRServer::DVRServer(int id, QObject *parent)
     : QObject(parent), configId(id)
@@ -16,6 +17,9 @@ DVRServer::DVRServer(int id, QObject *parent)
         DVRCamera *camera = new DVRCamera(this, i);
         m_cameras.append(camera);
     }
+
+    if (!hostname().isEmpty() && !username().isEmpty())
+        QTimer::singleShot(0, this, SLOT(login()));
 }
 
 QVariant DVRServer::readSetting(const QString &key) const
