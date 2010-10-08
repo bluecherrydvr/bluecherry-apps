@@ -2,6 +2,7 @@
 #include "DVRServer.h"
 #include "BluecherryApp.h"
 #include "MJpegStream.h"
+#include <QXmlStreamReader>
 
 DVRCamera::DVRCamera(DVRServer *s, int id)
     : QObject(s), server(s), uniqueID(id)
@@ -17,10 +18,50 @@ DVRCamera *DVRCamera::findByID(int serverID, int cameraID)
     return server->findCamera(cameraID);
 }
 
-QString DVRCamera::displayName() const
+DVRCamera *DVRCamera::parseFromXML(DVRServer *server, QXmlStreamReader &xml)
 {
-    /* This will eventually be known via the server */
-    return QString::fromLatin1("%1 No.%2").arg(server->displayName()).arg(uniqueID);
+    Q_ASSERT(xml.isStartElement() && xml.name() == QLatin1String("device"));
+
+    bool ok = false;
+    int deviceId = (int)xml.attributes().value(QLatin1String("id")).toString().toUInt(&ok);
+
+    if (!ok)
+    {
+        xml.raiseError(QLatin1String("Invalid device ID"));
+        return 0;
+    }
+
+    DVRCamera *camera = new DVRCamera(server, deviceId);
+
+    while (xml.readNext() != QXmlStreamReader::Invalid)
+    {
+        if (xml.tokenType() == QXmlStreamReader::EndElement && xml.name() == QLatin1String("device"))
+            break;
+        else if (xml.tokenType() != QXmlStreamReader::StartElement)
+            continue;
+
+        if (xml.name() == QLatin1String("name"))
+        {
+            camera->m_displayName = xml.readElementText();
+        }
+        else if (xml.name() == QLatin1String("streamUrl"))
+        {
+            if (xml.attributes().value(QLatin1String("type")) != QLatin1String("mjpeg"))
+            {
+                xml.skipCurrentElement();
+                continue;
+            }
+
+            camera->m_streamUrl = xml.readElementText().toLatin1();
+        }
+        else
+            xml.skipCurrentElement();
+    }
+
+    if (camera->m_displayName.isEmpty())
+        camera->m_displayName = QString::fromLatin1("#%2").arg(deviceId);
+
+    return camera;
 }
 
 QSharedPointer<MJpegStream> DVRCamera::mjpegStream()

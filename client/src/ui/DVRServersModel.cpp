@@ -17,13 +17,72 @@ DVRServersModel::DVRServersModel(QObject *parent)
     connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
     connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
 
-    servers = bcApp->servers();
+    QList<DVRServer*> servers = bcApp->servers();
+    items.reserve(servers.size());
 
-    foreach (DVRServer *server, servers)
-    {
-        connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
-        connect(server->api, SIGNAL(statusChanged(int)), SLOT(serverDataChanged()));
-    }
+    blockSignals(true);
+    for (int i = 0; i < servers.size(); ++i)
+        serverAdded(servers[i]);
+    blockSignals(false);
+}
+
+void DVRServersModel::serverAdded(DVRServer *server)
+{
+    Item i;
+    i.server = server;
+    i.cameras = server->cameras();
+
+    beginInsertRows(QModelIndex(), items.size(), items.size());
+    items.append(i);
+    endInsertRows();
+
+    connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
+    connect(server->api, SIGNAL(statusChanged(int)), SLOT(serverDataChanged()));
+    connect(server, SIGNAL(cameraAdded(DVRCamera*)), SLOT(cameraAdded(DVRCamera*)));
+    connect(server, SIGNAL(cameraRemoved(DVRCamera*)), SLOT(cameraRemoved(DVRCamera*)));
+}
+
+void DVRServersModel::serverRemoved(DVRServer *server)
+{
+    int row = indexForServer(server).row();
+    if (row < 0)
+        return;
+
+    beginRemoveRows(QModelIndex(), row, row);
+    items.remove(row);
+    endRemoveRows();
+
+    server->disconnect(this);
+}
+
+void DVRServersModel::cameraAdded(DVRCamera *camera)
+{
+    QModelIndex parent = indexForServer(camera->server);
+    if (!parent.isValid())
+        return;
+
+    Item &it = items[parent.row()];
+
+    qDebug("add camera");
+
+    beginInsertRows(parent, it.cameras.size(), it.cameras.size());
+    it.cameras.append(camera);
+    endInsertRows();
+}
+
+void DVRServersModel::cameraRemoved(DVRCamera *camera)
+{
+    QModelIndex parent = indexForServer(camera->server);
+    if (!parent.isValid())
+        return;
+
+    int row = items[parent.row()].cameras.indexOf(camera);
+    if (row < 0)
+        return;
+
+    beginRemoveRows(parent, row, row);
+    items[parent.row()].cameras.removeAt(row);
+    endRemoveRows();
 }
 
 DVRServer *DVRServersModel::serverForRow(const QModelIndex &index) const
@@ -46,11 +105,13 @@ DVRCamera *DVRServersModel::cameraForRow(const QModelIndex &index) const
 
 QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
 {
-    int row = servers.indexOf(server);
-    if (row < 0)
-        return QModelIndex();
+    for (int i = 0; i < items.size(); ++i)
+    {
+        if (items[i].server == server)
+            return index(i, 0);
+    }
 
-    return index(row, 0);
+    return QModelIndex();
 }
 
 void DVRServersModel::setOfflineDisabled(bool offlineDisabled)
@@ -65,43 +126,39 @@ void DVRServersModel::setOfflineDisabled(bool offlineDisabled)
 int DVRServersModel::rowCount(const QModelIndex &parent) const
 {
     if (!parent.isValid())
-        return servers.size();
+        return items.size();
 
-    DVRServer *server = serverForRow(parent);
-    if (server)
-        return server->cameras().size();
+    int row = parent.row();
+    if (row < 0 || row >= items.size() || !serverForRow(parent))
+        return 0;
 
-    return 0;
+    return items[row].cameras.size();
 }
 
 int DVRServersModel::columnCount(const QModelIndex &parent) const
 {
-    if (!parent.isValid())
-        return 3;
-    else
-        return 3;
+    Q_UNUSED(parent);
+    return 3;
 }
 
 QModelIndex DVRServersModel::index(int row, int column, const QModelIndex &parent) const
 {
     if (!parent.isValid())
     {
-        if (row < 0 || column < 0 || row >= servers.size() || column >= columnCount())
+        if (row < 0 || column < 0 || row >= items.size() || column >= columnCount())
             return QModelIndex();
 
-        return createIndex(row, column, (QObject*)servers[row]);
+        return createIndex(row, column, (QObject*)items[row].server);
     }
     else
     {
-        DVRServer *server = serverForRow(parent);
-        if (!server || row < 0 || column < 0 || column >= columnCount(parent))
+        if (!serverForRow(parent) || row < 0 || column < 0 || column >= columnCount(parent))
             return QModelIndex();
 
-        QList<DVRCamera*> cameras = server->cameras();
-        if (row >= cameras.size())
+        if (row >= items[parent.row()].cameras.size())
             return QModelIndex();
 
-        return createIndex(row, column, (QObject*)cameras[row]);
+        return createIndex(row, column, (QObject*)items[parent.row()].cameras[row]);
     }
 }
 
@@ -289,29 +346,9 @@ void DVRServersModel::serverDataChanged()
         server = srm->server;
     }
 
-    int row = servers.indexOf(server);
+    int row = indexForServer(server).row();
     if (row < 0)
         return;
 
     emit dataChanged(index(row, 0), index(row, columnCount()-1));
-}
-
-void DVRServersModel::serverAdded(DVRServer *server)
-{
-    beginInsertRows(QModelIndex(), servers.size(), servers.size());
-    servers.append(server);
-    endInsertRows();
-
-    connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
-}
-
-void DVRServersModel::serverRemoved(DVRServer *server)
-{
-    int row = servers.indexOf(server);
-    if (row < 0)
-        return;
-
-    beginRemoveRows(QModelIndex(), row, row);
-    servers.removeAt(row);
-    endRemoveRows();
 }

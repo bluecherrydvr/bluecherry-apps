@@ -47,10 +47,17 @@ public slots:
     void removeServer();
 
     void login();
+    void updateCameras();
 
 signals:
     void changed();
     void serverRemoved(DVRServer *server);
+
+    void cameraAdded(DVRCamera *camera);
+    void cameraRemoved(DVRCamera *camera);
+
+private slots:
+    void updateCamerasReply();
 
 private:
     QList<DVRCamera*> m_cameras;

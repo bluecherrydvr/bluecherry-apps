@@ -41,9 +41,17 @@ private slots:
     void serverDataChanged();
     void serverAdded(DVRServer *server);
     void serverRemoved(DVRServer *server);
+    void cameraAdded(DVRCamera *camera);
+    void cameraRemoved(DVRCamera *camera);
 
 private:
-    QList<DVRServer*> servers;
+    struct Item
+    {
+        DVRServer *server;
+        QList<DVRCamera*> cameras;
+    };
+
+    QVector<Item> items;
     QIcon statusIcon;
     bool m_offlineDisabled;
 };
