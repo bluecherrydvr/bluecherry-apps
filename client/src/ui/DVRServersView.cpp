@@ -56,6 +56,11 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         {
             aSelectOnly = menu.addAction(tr("Select only this"));
             aSelectElse = menu.addAction(tr("Select everything else"));
+            if (!(index.flags() & Qt::ItemIsEnabled))
+            {
+                aSelectOnly->setEnabled(false);
+                aSelectElse->setEnabled(false);
+            }
             menu.addSeparator();
         }
 

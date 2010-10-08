@@ -85,7 +85,16 @@ QModelIndex EventSourcesModel::parent(const QModelIndex &child) const
 Qt::ItemFlags EventSourcesModel::flags(const QModelIndex &index) const
 {
     Q_UNUSED(index);
-    return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
+    Qt::ItemFlags re = Qt::ItemIsUserCheckable;
+
+    QModelIndex server = index.parent();
+    if (!server.isValid())
+        server = index;
+
+    if (!server.row() || servers[server.row()-1].server->api->isOnline())
+        re |= Qt::ItemIsEnabled;
+
+    return re;
 }
 
 QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
@@ -125,12 +134,12 @@ QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
             else if (role == Qt::CheckStateRole)
             {
                 int c = sd.checkState.count(true);
-                if (c == sd.cameras.size()+1)
-                    return Qt::Checked;
-                else if (c)
-                    return Qt::PartiallyChecked;
-                else
+                if (!c || !sd.server->api->isOnline())
                     return Qt::Unchecked;
+                else if (c == sd.cameras.size()+1)
+                    return Qt::Checked;
+                else
+                    return Qt::PartiallyChecked;
             }
             else if (role == DVRServersModel::ServerPtrRole)
                 return QVariant::fromValue(sd.server);
@@ -158,7 +167,7 @@ QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
         switch (role)
         {
         case Qt::CheckStateRole:
-            return sd.checkState[index.row()] ? Qt::Checked : Qt::Unchecked;
+            return (sd.checkState[index.row()] && sd.server->api->isOnline()) ? Qt::Checked : Qt::Unchecked;
         }
     }
 
