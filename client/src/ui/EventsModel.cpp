@@ -23,7 +23,10 @@ EventsModel::EventsModel(QObject *parent)
     applyFilters();
 
     foreach (DVRServer *s, bcApp->servers())
-        requestData(s);
+    {
+        connect(s->api, SIGNAL(loginSuccessful()), SLOT(updateServer()));
+        updateServer(s);
+    }
 }
 
 /* Randomized events for testing until real ones are available */
@@ -417,9 +420,21 @@ void EventsModel::setFilterTypes(const QBitArray &typemap)
     applyFilters(!fast);
 }
 
-void EventsModel::requestData(DVRServer *server)
+void EventsModel::updateServer(DVRServer *server)
 {
-    QNetworkRequest req = server->createRequest(QUrl(QLatin1String("/events/")));
+    if (!server && !(server = qobject_cast<DVRServer*>(sender())))
+    {
+        ServerRequestManager *srm = qobject_cast<ServerRequestManager*>(sender());
+        if (srm)
+            server = srm->server;
+        else
+            return;
+    }
+
+    if (!server->api->isOnline())
+        return;
+
+    QNetworkRequest req = server->api->buildRequest(QLatin1String("/events/"));
     req.setOriginatingObject(server);
     QNetworkReply *reply = bcApp->nam->get(req);
     connect(reply, SIGNAL(finished()), SLOT(requestFinished()));

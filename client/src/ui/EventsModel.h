@@ -48,6 +48,10 @@ public slots:
     void setFilterBeginDate(const QDateTime &begin) { setFilterDates(begin, filterDateEnd); }
     void setFilterEndDate(const QDateTime &end) { setFilterDates(filterDateBegin, end); }
 
+    /* Request the most recent events from the given server, the DVRServer* source, or the
+     * DVRServer represented by the ServerRequestManager* source */
+    void updateServer(DVRServer *server = 0);
+
 signals:
     void filtersChanged();
 
@@ -74,7 +78,6 @@ private:
     void applyFilters(bool fromCache = true);
     bool testFilter(EventData *data);
 
-    void requestData(DVRServer *server);
     void createTestData();
 };
 
