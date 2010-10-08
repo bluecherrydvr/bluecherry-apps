@@ -36,6 +36,14 @@ void ServerRequestManager::setStatus(Status s, const QString &errmsg)
     }
 }
 
+QUrl ServerRequestManager::serverUrl() const
+{
+    QUrl url;
+    url.setScheme(QLatin1String("http"));
+    url.setHost(server->hostname());
+    return url;
+}
+
 QNetworkRequest ServerRequestManager::buildRequest(const QUrl &relativeUrl)
 {
     Q_ASSERT(relativeUrl.isRelative());

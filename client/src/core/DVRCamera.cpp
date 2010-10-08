@@ -52,7 +52,8 @@ DVRCamera *DVRCamera::parseFromXML(DVRServer *server, QXmlStreamReader &xml)
                 continue;
             }
 
-            camera->m_streamUrl = xml.readElementText().toLatin1();
+            camera->m_streamUrl = server->api->serverUrl().resolved(QUrl(xml.readElementText()))
+                                  .toString().toLatin1();
         }
         else
             xml.skipCurrentElement();
@@ -70,13 +71,11 @@ QSharedPointer<MJpegStream> DVRCamera::mjpegStream()
 
     if (m_mjpegStream.isNull())
     {
-         /* Test feeds; will be replaced by real camera feeds someday.. */
-         QString mjpegTest = server->readSetting("mjpegTest").toString();
-         if (!mjpegTest.isEmpty())
-         {
-             re = QSharedPointer<MJpegStream>(new MJpegStream(QUrl(mjpegTest)));
-             m_mjpegStream = re;
-         }
+        if (!m_streamUrl.isEmpty())
+        {
+            re = QSharedPointer<MJpegStream>(new MJpegStream(QUrl(QString::fromLatin1(m_streamUrl))));
+            m_mjpegStream = re;
+        }
     }
     else
         re = m_mjpegStream.toStrongRef();
