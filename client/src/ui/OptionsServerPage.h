@@ -3,7 +3,7 @@
 
 #include "OptionsDialog.h"
 
-class QTableView;
+class QTreeView;
 class QLineEdit;
 class DVRServer;
 class QModelIndex;
@@ -29,7 +29,7 @@ private slots:
     void deleteServer();
 
 private:
-    QTableView *m_serversView;
+    QTreeView *m_serversView;
     QLineEdit *m_nameEdit, *m_hostnameEdit, *m_usernameEdit, *m_passwordEdit;
 };
 

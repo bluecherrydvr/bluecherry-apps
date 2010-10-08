@@ -2,7 +2,7 @@
 #include "DVRServersModel.h"
 #include "core/BluecherryApp.h"
 #include "core/DVRServer.h"
-#include <QTableView>
+#include <QTreeView>
 #include <QHeaderView>
 #include <QBoxLayout>
 #include <QLabel>
@@ -17,16 +17,18 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     mainLayout->addLayout(topLayout);
 
     /* Servers list */
-    m_serversView = new QTableView;
+    m_serversView = new QTreeView;
     m_serversView->setModel(new DVRServersModel(m_serversView));
-    m_serversView->verticalHeader()->hide();
-    m_serversView->horizontalHeader()->setHighlightSections(false);
-    m_serversView->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
-    m_serversView->horizontalHeader()->setResizeMode(0, QHeaderView::Stretch);
+    m_serversView->header()->setHighlightSections(false);
+    m_serversView->header()->setResizeMode(QHeaderView::ResizeToContents);
+    m_serversView->header()->setResizeMode(0, QHeaderView::Stretch);
+    m_serversView->header()->setStretchLastSection(false);
     m_serversView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_serversView->setMinimumSize(480, 150);
     m_serversView->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_serversView->setSelectionMode(QAbstractItemView::SingleSelection);
+    m_serversView->setItemsExpandable(false);
+    m_serversView->setRootIsDecorated(false);
     topLayout->addWidget(m_serversView);
 
     connect(m_serversView->selectionModel(), SIGNAL(currentChanged(QModelIndex,QModelIndex)),
