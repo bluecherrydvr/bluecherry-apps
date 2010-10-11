@@ -70,6 +70,7 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     if (!m_camera)
     {
         setStatusMessage(tr("No\nCamera"));
+        emit cameraChanged(0);
         return;
     }
 
@@ -85,6 +86,8 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     }
     else
         setStatusMessage(tr("No\nVideo"));
+
+    emit cameraChanged(m_camera);
 }
 
 void LiveFeedWidget::setStatusMessage(const QString &message)

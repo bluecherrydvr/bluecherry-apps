@@ -32,6 +32,9 @@ public slots:
 
     void saveSnapshot(const QString &file = QString());
 
+signals:
+    void cameraChanged(DVRCamera *camera);
+
 private slots:
     void updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames);
     void addScaleSize(QVector<QSize> &sizes);

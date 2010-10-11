@@ -36,6 +36,10 @@ public slots:
 
 signals:
     void gridSizeChanged(int rows, int columns);
+    void cameraChanged(LiveFeedWidget *widget);
+
+private slots:
+    void onCameraChanged();
 
 private:
     QList<QList<LiveFeedWidget*> > m_cameraWidgets;
