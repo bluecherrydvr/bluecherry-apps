@@ -238,8 +238,15 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	return bcm;
 }
 
-int bc_media_end(bc_media_entry_t bcm)
+int bc_media_end(bc_media_entry_t *__bcm)
 {
+	bc_media_entry_t bcm = *__bcm;
+
+	if (!bcm)
+		return -1;
+
+	*__bcm = NULL;
+
 	/* If we have no end time, set it here */
 	if (!bcm->end)
 		bcm->end = time(NULL);
@@ -249,6 +256,7 @@ int bc_media_end(bc_media_entry_t bcm)
 		return -1;
 
 	free(bcm);
+
 	return 0;
 }
 
@@ -267,8 +275,15 @@ bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 	return bce;
 }
 
-void bc_event_cam_end(bc_event_cam_t bce)
+void bc_event_cam_end(bc_event_cam_t *__bce)
 {
+	bc_event_cam_t bce = *__bce;
+
+	if (!bce)
+		return;
+
+	*__bce = NULL;
+
 	/* If we have no end time, set it here */
 	if (!bce->end_time)
 		bce->end_time = time(NULL);
@@ -291,7 +306,7 @@ int bc_event_cam(int id, bc_event_level_t level,
 
 	bce->end_time = bce->start_time;
 
-	bc_event_cam_end(bce);
+	bc_event_cam_end(&bce);
 
 	return 0;
 }

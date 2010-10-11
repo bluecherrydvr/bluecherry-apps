@@ -247,7 +247,7 @@ bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 				  bc_event_cam_type_t type,
 				  bc_media_entry_t media);
 /* Finish the event and inserts it into the database */
-void bc_event_cam_end(bc_event_cam_t bce);
+void bc_event_cam_end(bc_event_cam_t *bce);
 /* Insert a cam event in one shot. It will have a 0 length */
 int bc_event_cam(int id, bc_event_level_t level,
 		 bc_event_cam_type_t type);
@@ -263,7 +263,7 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 				bc_media_cont_type_t cont);
 /* Called at the end of the media to mark end time. If this returns
  * non-zero, you cannot end the media. */
-int bc_media_end(bc_media_entry_t bcm);
+int bc_media_end(bc_media_entry_t *bcm);
 
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
