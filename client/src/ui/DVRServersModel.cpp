@@ -14,6 +14,9 @@ DVRServersModel::DVRServersModel(QObject *parent)
     statusIcon = QIcon(QLatin1String(":/icons/status.png"));
     statusIcon.addFile(QLatin1String(":/icons/status-offline.png"), QSize(), QIcon::Disabled, QIcon::Off);
 
+    statusErrorIcon = QIcon(QLatin1String(":/icons/status-error.png"));
+    statusErrorIcon.addPixmap(statusErrorIcon.pixmap(16), QIcon::Disabled);
+
     connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
     connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
 
@@ -223,6 +226,9 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
                 return server->displayName();
             else if (role == Qt::DecorationRole)
             {
+                if (server->api->status() == ServerRequestManager::LoginError)
+                    return statusErrorIcon;
+
                 if (m_offlineDisabled)
                     return statusIcon;
                 else

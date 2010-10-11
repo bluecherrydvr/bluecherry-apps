@@ -52,7 +52,7 @@ private:
     };
 
     QVector<Item> items;
-    QIcon statusIcon;
+    QIcon statusIcon, statusErrorIcon;
     bool m_offlineDisabled;
 };
 

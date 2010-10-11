@@ -136,10 +136,31 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
 {
     QModelIndex index;
-    if (event->button() == Qt::LeftButton && (index = indexAt(event->pos())).isValid() && (index.flags() & Qt::ItemIsUserCheckable))
+    if (event->button() == Qt::LeftButton && (index = indexAt(event->pos())).isValid())
     {
-        Qt::CheckState state = (index.data(Qt::CheckStateRole).toInt() == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
-        model()->setData(index, state, Qt::CheckStateRole);
+        if (index.flags() & Qt::ItemIsUserCheckable)
+        {
+            Qt::CheckState state = (index.data(Qt::CheckStateRole).toInt() == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
+            model()->setData(index, state, Qt::CheckStateRole);
+
+            event->accept();
+        }
+        else if (!(index.flags() & Qt::ItemIsEnabled))
+        {
+            OptionsDialog *dlg = new OptionsDialog(this);
+            dlg->showPage(OptionsDialog::ServerPage);
+            dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+            OptionsServerPage *pg = static_cast<OptionsServerPage*>(dlg->pageWidget(OptionsDialog::ServerPage));
+            pg->setCurrentServer(index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>());
+            dlg->show();
+        }
+        else
+        {
+            ServerConfigWindow::instance()->setServer(index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>());
+            ServerConfigWindow::instance()->show();
+            ServerConfigWindow::instance()->raise();
+        }
 
         event->accept();
         return;

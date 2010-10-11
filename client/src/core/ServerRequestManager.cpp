@@ -92,7 +92,7 @@ void ServerRequestManager::loginReplyReady()
 
     if (reply->error() != QNetworkReply::NoError)
     {
-        setStatus(LoginError, tr("Request failed: %1").arg(reply->errorString()));
+        setStatus(ServerError, tr("Request failed: %1").arg(reply->errorString()));
         return;
     }
 

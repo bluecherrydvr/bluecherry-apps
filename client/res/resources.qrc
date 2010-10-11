@@ -8,5 +8,6 @@
     <qresource prefix="/icons">
         <file>status.png</file>
         <file>status-offline.png</file>
+        <file>status-error.png</file>
     </qresource>
 </RCC>
