@@ -75,6 +75,8 @@ void ServerRequestManager::login(const QString &username, const QString &passwor
     queryData.addQueryItem(QLatin1String("login"), username);
     queryData.addQueryItem(QLatin1String("password"), password);
 
+    emit loginRequestStarted();
+
     m_loginReply = bcApp->nam->post(req, queryData.encodedQuery());
     connect(m_loginReply, SIGNAL(finished()), SLOT(loginReplyReady()));
 }

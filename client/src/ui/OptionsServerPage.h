@@ -7,6 +7,7 @@ class QTreeView;
 class QLineEdit;
 class DVRServer;
 class QModelIndex;
+class QLabel;
 
 class OptionsServerPage : public OptionsDialogPage
 {
@@ -28,8 +29,13 @@ private slots:
 
     void deleteServer();
 
+    void setLoginSuccessful();
+    void setLoginConnecting();
+    void setLoginError(const QString &message);
+
 private:
     QTreeView *m_serversView;
+    QLabel *m_connectionStatus;
     QLineEdit *m_nameEdit, *m_hostnameEdit, *m_usernameEdit, *m_passwordEdit;
 };
 

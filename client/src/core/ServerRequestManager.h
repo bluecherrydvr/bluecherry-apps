@@ -25,6 +25,7 @@ public:
     explicit ServerRequestManager(DVRServer *server);
 
     bool isOnline() const { return m_status == Online; }
+    bool isLoginPending() const { return !isOnline() && m_loginReply; }
     Status status() const { return m_status; }
     QString errorMessage() const { return m_errorMessage; }
 
@@ -36,6 +37,7 @@ public:
     QNetworkReply *sendRequest(const QUrl &relativeUrl);
 
 signals:
+    void loginRequestStarted();
     void loginSuccessful();
     void serverError(const QString &message);
     void loginError(const QString &message);

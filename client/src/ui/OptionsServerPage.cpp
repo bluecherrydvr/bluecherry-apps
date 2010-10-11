@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QTextDocument>
 
 OptionsServerPage::OptionsServerPage(QWidget *parent)
     : OptionsDialogPage(parent)
@@ -63,6 +64,13 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     m_passwordEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
     editsLayout->addWidget(m_passwordEdit, 1, 3);
 
+    /* Errors */
+    m_connectionStatus = new QLabel;
+    m_connectionStatus->setAlignment(Qt::AlignCenter);
+    m_connectionStatus->setContentsMargins(4, 4, 4, 4);
+    m_connectionStatus->setVisible(false);
+    mainLayout->addWidget(m_connectionStatus);
+
     /* Buttons */
     QFrame *line = new QFrame;
     line->setFrameStyle(QFrame::HLine | QFrame::Sunken);
@@ -100,7 +108,11 @@ void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const 
     DVRServer *server = static_cast<DVRServersModel*>(m_serversView->model())->
                         serverForRow(oldIndex);
     if (server)
+    {
         saveChanges(server);
+        server->api->disconnect(this);
+        m_connectionStatus->setVisible(false);
+    }
 
     server = static_cast<DVRServersModel*>(m_serversView->model())->serverForRow(newIndex);
     if (!server)
@@ -116,6 +128,17 @@ void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const 
     m_hostnameEdit->setText(server->readSetting("hostname").toString());
     m_usernameEdit->setText(server->readSetting("username").toString());
     m_passwordEdit->setText(server->readSetting("password").toString());
+
+    connect(server->api, SIGNAL(loginSuccessful()), SLOT(setLoginSuccessful()));
+    connect(server->api, SIGNAL(loginError(QString)), SLOT(setLoginError(QString)));
+    connect(server->api, SIGNAL(loginRequestStarted()), SLOT(setLoginConnecting()));
+
+    if (server->api->isOnline())
+        setLoginSuccessful();
+    else if (server->api->isLoginPending())
+        setLoginConnecting();
+    else if (!server->api->errorMessage().isEmpty())
+        setLoginError(server->api->errorMessage());
 }
 
 void OptionsServerPage::addNewServer()
@@ -161,6 +184,8 @@ void OptionsServerPage::saveChanges(DVRServer *server)
             return;
     }
 
+    bool connectionModified = false;
+
     if (m_nameEdit->isModified())
     {
         server->setDisplayName(m_nameEdit->text().trimmed());
@@ -170,15 +195,38 @@ void OptionsServerPage::saveChanges(DVRServer *server)
     {
         server->writeSetting("hostname", m_hostnameEdit->text());
         m_hostnameEdit->setModified(false);
+        connectionModified = true;
     }
     if (m_usernameEdit->isModified())
     {
         server->writeSetting("username", m_usernameEdit->text());
         m_usernameEdit->setModified(false);
+        connectionModified = true;
     }
     if (m_passwordEdit->isModified())
     {
         server->writeSetting("password", m_passwordEdit->text());
         m_passwordEdit->setModified(false);
+        connectionModified = true;
     }
+
+    if (connectionModified)
+        server->login();
+}
+
+void OptionsServerPage::setLoginSuccessful()
+{
+    m_connectionStatus->setVisible(false);
+}
+
+void OptionsServerPage::setLoginConnecting()
+{
+    m_connectionStatus->setText(tr("Connecting to server..."));
+    m_connectionStatus->setVisible(true);
+}
+
+void OptionsServerPage::setLoginError(const QString &message)
+{
+    m_connectionStatus->setText(tr("<b>Login error:</b> %1").arg(Qt::escape(message)));
+    m_connectionStatus->setVisible(true);
 }
