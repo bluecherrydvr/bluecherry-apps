@@ -2,7 +2,7 @@
 
 $db = bc_db_open() or die("Could not open database\n");
 
-$events = bc_db_get_table($db, "SELECT * FROM Media ORDER BY time DESC");
+$events = bc_db_get_table($db, "SELECT * FROM Media ORDER BY start DESC");
 
 # Output header for this feed
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
