@@ -260,7 +260,8 @@ int bc_event_sys(bc_event_level_t level,
 /* Returns a media entry handle for later passing to _end */
 bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 				bc_media_audio_type_t audio,
-				bc_media_cont_type_t cont);
+				bc_media_cont_type_t cont,
+				const char *filepath);
 /* Called at the end of the media to mark end time. If this returns
  * non-zero, you cannot end the media. */
 int bc_media_end(bc_media_entry_t *bcm);

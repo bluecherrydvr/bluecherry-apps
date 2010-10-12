@@ -7,6 +7,7 @@ CREATE TABLE Media (
 	container varchar(10) NOT NULL,
 	video varchar(10) NOT NULL, -- e.g. m4v
 	audio varchar(10) NOT NULL, -- e.g. mp3
+	filepath varchar(1024) NOT NULL,
 	archive boolean NOT NULL DEFAULT FALSE,
 	FOREIGN KEY (device_id) REFERENCES Devices(id)
                 ON UPDATE CASCADE ON DELETE CASCADE

@@ -256,7 +256,8 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	if (bc_rec->pcm)
 		audio = BC_MEDIA_AUDIO_MP2;
 
-	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont);
+	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
+				       bc_rec->outfile);
 }
 
 int bc_open_avcodec(struct bc_record *bc_rec)

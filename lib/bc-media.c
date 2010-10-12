@@ -65,6 +65,7 @@ struct bc_media_entry {
 	unsigned long table_id;
 	time_t start, end;
 	const char *video, *audio, *cont;
+	const char *filepath;
 	struct bc_list_struct list;
 };
 
@@ -116,20 +117,21 @@ static int __do_media(struct bc_media_entry *bcm)
 		bcm->start = time(NULL);
 		pthread_mutex_lock(&db_lock);
 		res = bc_db_query(bcdb, "INSERT INTO Media (start,device_id,"
-				  "container,video,audio) VALUES('%lu',%d,'%s',"
-				  "'%s','%s')", bcm->start, bcm->cam_id,
-				  bcm->cont, bcm->video, bcm->audio);
+				  "container,video,audio,filepath) "
+				  "VALUES('%lu',%d,'%s','%s','%s','%s')",
+				  bcm->start, bcm->cam_id, bcm->cont,
+				  bcm->video, bcm->audio, bcm->filepath);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid(bcdb);
 		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert fully. Usually means there was a failure */
 		pthread_mutex_lock(&db_lock);
-		res = bc_db_query(bcdb, "INSERT INTO Media (start,end,device_id,"
-				  "container,video,audio) VALUES('%lu','%lu',"
-				  "'%d','%s','%s','%s')", bcm->start, time(NULL),
-				  bcm->cam_id, bcm->cont, bcm->video,
-				  bcm->audio);
+		res = bc_db_query(bcdb, "INSERT INTO Media (start,end,"
+				  "device_id,container,video,audio,filepath) "
+				  "VALUES('%lu','%lu','%d','%s','%s','%s','%s')",
+				  bcm->start, time(NULL), bcm->cam_id, bcm->cont,
+				  bcm->video, bcm->audio, bcm->filepath);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid(bcdb);
 		pthread_mutex_unlock(&db_lock);
@@ -219,7 +221,8 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 
 bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 				bc_media_audio_type_t audio,
-				bc_media_cont_type_t cont)
+				bc_media_cont_type_t cont,
+				const char *filepath)
 {
 	struct bc_media_entry *bcm = malloc(sizeof(*bcm));
 
@@ -232,6 +235,7 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
         bcm->video = video_type_to_str[video];
         bcm->audio = audio_type_to_str[audio];
         bcm->cont = cont_type_to_str[cont];
+	bcm->filepath = filepath;
 
 	__do_media(bcm);
 
