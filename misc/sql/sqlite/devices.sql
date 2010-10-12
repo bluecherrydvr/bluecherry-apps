@@ -12,6 +12,7 @@ CREATE TABLE Devices (
 	device_name varchar(100),
 	resolutionX smallint,
 	resolutionY smallint,
+	framerate smallint,
 	contol_path varchar(255),
 	protocol varchar(50),
 	remote_host varchar(255),
