@@ -8,6 +8,9 @@
 #include <time.h>
 #include <string.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <libbluecherry.h>
 
@@ -66,6 +69,7 @@ struct bc_media_entry {
 	time_t start, end;
 	const char *video, *audio, *cont;
 	const char *filepath;
+	unsigned long bytes;
 	struct bc_list_struct list;
 };
 
@@ -101,6 +105,16 @@ static int bce_open_db(void)
 	return 0;
 }
 
+static void __update_stat(struct bc_media_entry *bcm)
+{
+	struct stat st;
+
+	if (stat(bcm->filepath, &st))
+		return;
+
+	bcm->bytes = st.st_size;
+}
+
 static int __do_media(struct bc_media_entry *bcm)
 {
 	int res;
@@ -109,9 +123,11 @@ static int __do_media(struct bc_media_entry *bcm)
 		return -1;
 
 	if (bcm->table_id) {
+		__update_stat(bcm);
 		/* This is the common case to end a call */
-		res = bc_db_query(bcdb, "UPDATE Media (end) VALUES('%lu')"
-				  " WHERE id=%lu", time(NULL), bcm->table_id);
+		res = bc_db_query(bcdb, "UPDATE Media (end,size) VALUES("
+				  "'%lu',%lu) WHERE id=%lu", time(NULL),
+				  bcm->table_id, bcm->bytes);
 	} else if (!bcm->start) {
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
@@ -126,12 +142,14 @@ static int __do_media(struct bc_media_entry *bcm)
 		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert fully. Usually means there was a failure */
+		__update_stat(bcm);
 		pthread_mutex_lock(&db_lock);
 		res = bc_db_query(bcdb, "INSERT INTO Media (start,end,"
-				  "device_id,container,video,audio,filepath) "
-				  "VALUES('%lu','%lu','%d','%s','%s','%s','%s')",
-				  bcm->start, time(NULL), bcm->cam_id, bcm->cont,
-				  bcm->video, bcm->audio, bcm->filepath);
+				  "device_id,container,video,audio,filepath,"
+				  "size) VALUES('%lu','%lu','%d','%s','%s',"
+				  "'%s','%s',%lu)", bcm->start, time(NULL),
+				  bcm->cam_id, bcm->cont, bcm->video,
+				  bcm->audio, bcm->filepath, bcm->bytes);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid(bcdb);
 		pthread_mutex_unlock(&db_lock);
