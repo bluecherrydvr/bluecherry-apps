@@ -4,9 +4,9 @@
 #include <QAbstractItemModel>
 #include <QVector>
 #include <QBitArray>
+#include "core/DVRCamera.h"
 
 class DVRServer;
-class DVRCamera;
 class QStringList;
 
 class EventSourcesModel : public QAbstractItemModel

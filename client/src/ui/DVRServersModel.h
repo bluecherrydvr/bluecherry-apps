@@ -3,9 +3,9 @@
 
 #include <QAbstractItemModel>
 #include <QIcon>
+#include "core/DVRCamera.h"
 
 class DVRServer;
-class DVRCamera;
 
 class DVRServersModel : public QAbstractItemModel
 {

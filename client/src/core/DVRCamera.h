@@ -5,10 +5,10 @@
 #include <QSharedPointer>
 #include <QWeakPointer>
 #include <QHash>
+#include <QXmlStreamReader>
 
 class DVRServer;
 class MJpegStream;
-class QXmlStreamReader;
 
 /* There is one DVRCameraData per server+ID; it is shared among many instances of
  * DVRCamera by reference count. This may be created before we've actually queried
@@ -40,10 +40,8 @@ private:
     static QHash<QPair<int,int>,DVRCameraData*> instances;
 };
 
-class DVRCamera : public QObject
+class DVRCamera
 {
-    Q_OBJECT
-
 public:
     static DVRCamera getCamera(int serverID, int cameraID);
     static DVRCamera getCamera(DVRServer *server, int cameraID);
