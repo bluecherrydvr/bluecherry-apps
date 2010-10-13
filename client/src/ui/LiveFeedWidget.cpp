@@ -356,7 +356,9 @@ void LiveFeedWidget::keyPressEvent(QKeyEvent *event)
 
 void LiveFeedWidget::saveSnapshot(const QString &ifile)
 {
-    if (m_currentFrame.isNull())
+    /* Grab the current frame, so the user gets what they expect regardless of the time taken by the dialog */
+    QPixmap frame = m_currentFrame;
+    if (frame.isNull())
         return;
 
     QString file = ifile;
@@ -368,7 +370,7 @@ void LiveFeedWidget::saveSnapshot(const QString &ifile)
             return;
     }
 
-    if (!m_currentFrame.save(file, "jpeg"))
+    if (!frame.save(file, "jpeg"))
     {
         QMessageBox::critical(this, tr("Snapshot Error"), tr("An error occurred while saving the snapshot image."),
                               QMessageBox::Ok);
