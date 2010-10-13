@@ -200,6 +200,8 @@ QSize LiveFeedWidget::sizeHint() const
 
 void LiveFeedWidget::paintEvent(QPaintEvent *event)
 {
+    Q_UNUSED(event);
+
     QPainter p(this);
     QRect r = rect();
     p.eraseRect(r);
@@ -280,6 +282,7 @@ void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
 
 void LiveFeedWidget::dragLeaveEvent(QDragLeaveEvent *event)
 {
+    Q_UNUSED(event);
     m_dragCamera = DVRCamera();
     update();
 }

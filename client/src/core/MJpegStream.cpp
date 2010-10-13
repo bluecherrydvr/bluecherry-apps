@@ -9,14 +9,14 @@
 #include <QThreadPool>
 
 MJpegStream::MJpegStream(QObject *parent)
-    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_decodeTask(0),
-      m_httpBodyLength(0)
+    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_httpBodyLength(0), m_state(NotConnected),
+      m_parserState(ParserBoundary)
 {
 }
 
 MJpegStream::MJpegStream(const QUrl &url, QObject *parent)
-    : QObject(parent), m_httpReply(0), m_state(NotConnected), m_parserState(ParserBoundary), m_decodeTask(0),
-      m_httpBodyLength(0)
+    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_httpBodyLength(0), m_state(NotConnected),
+      m_parserState(ParserBoundary)
 {
     setUrl(url);
 }

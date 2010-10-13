@@ -195,6 +195,7 @@ void CrashReportDialog::sendReport()
 
     connect(m_uploadReply, SIGNAL(finished()), SLOT(uploadFinished()));
     bool ok = connect(m_uploadReply, SIGNAL(uploadProgress(qint64,qint64)), SLOT(setUploadProgress(qint64)));
+    Q_UNUSED(ok);
     Q_ASSERT(ok);
     m_uploadProgress->setMaximum((int)m_dumpFile.size());
 

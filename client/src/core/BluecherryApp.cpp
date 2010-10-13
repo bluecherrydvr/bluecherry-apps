@@ -7,7 +7,7 @@
 BluecherryApp *bcApp = 0;
 
 BluecherryApp::BluecherryApp()
-    : m_maxServerId(-1), nam(new QNetworkAccessManager(this))
+    : nam(new QNetworkAccessManager(this)), m_maxServerId(-1)
 {
     Q_ASSERT(!bcApp);
     bcApp = this;

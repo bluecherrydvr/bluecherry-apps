@@ -11,6 +11,7 @@ RecentEventDelegate::RecentEventDelegate(QObject *parent)
 
 QSize RecentEventDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
+    Q_UNUSED(index);
     return QSize(option.rect.width(), option.fontMetrics.height()+3);
 }
 

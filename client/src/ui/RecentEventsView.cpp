@@ -48,6 +48,7 @@ QRect RecentEventsView::visualRect(const QModelIndex &index) const
 
 bool RecentEventsView::isIndexHidden(const QModelIndex &index) const
 {
+    Q_UNUSED(index);
     return false;
 }
 
@@ -89,15 +90,20 @@ void RecentEventsView::scrollTo(const QModelIndex &index, ScrollHint hint)
 
 QRegion RecentEventsView::visualRegionForSelection(const QItemSelection &selection) const
 {
+    Q_UNUSED(selection);
     return QRegion();
 }
 
 void RecentEventsView::setSelection(const QRect &rect, QItemSelectionModel::SelectionFlags command)
 {
+    Q_UNUSED(rect);
+    Q_UNUSED(command);
 }
 
 QModelIndex RecentEventsView::moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
+    Q_UNUSED(cursorAction);
+    Q_UNUSED(modifiers);
     return QModelIndex();
 }
 
@@ -236,6 +242,8 @@ bool RecentEventsView::viewportEvent(QEvent *event)
     {
     case QEvent::FontChange:
         doFullLayout();
+        break;
+    default:
         break;
     }
 

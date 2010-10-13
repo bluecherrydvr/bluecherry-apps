@@ -394,7 +394,7 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
 
             GstState oldState, newState;
             gst_message_parse_state_changed(msg, &oldState, &newState, 0);
-            VideoState vpState;
+            VideoState vpState = m_state;
 
             switch (newState)
             {

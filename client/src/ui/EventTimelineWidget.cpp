@@ -321,11 +321,14 @@ QSize EventTimelineWidget::sizeHint() const
 
 QModelIndex EventTimelineWidget::moveCursor(CursorAction cursorAction, Qt::KeyboardModifiers modifiers)
 {
+    Q_UNUSED(cursorAction);
+    Q_UNUSED(modifiers);
     return QModelIndex();
 }
 
 bool EventTimelineWidget::isIndexHidden(const QModelIndex &index) const
 {
+    Q_UNUSED(index);
     return false;
 }
 
@@ -383,6 +386,7 @@ void EventTimelineWidget::setSelection(const QRect &irect, QItemSelectionModel::
 
 QRegion EventTimelineWidget::visualRegionForSelection(const QItemSelection &selection) const
 {
+    Q_UNUSED(selection);
     return QRegion();
 }
 
@@ -719,6 +723,8 @@ void EventTimelineWidget::rowsAboutToBeRemoved(const QModelIndex &parent, int st
 
 void EventTimelineWidget::rowsRemoved(const QModelIndex &parent, int start, int end)
 {
+    Q_UNUSED(parent);
+    Q_UNUSED(end);
     Q_ASSERT(!parent.isValid());
 
     updateRowsMap(start);

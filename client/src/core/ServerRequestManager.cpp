@@ -33,6 +33,8 @@ void ServerRequestManager::setStatus(Status s, const QString &errmsg)
     case Online:
         emit loginSuccessful();
         break;
+    default:
+        break;
     }
 }
 
