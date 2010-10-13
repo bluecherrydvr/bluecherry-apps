@@ -40,6 +40,7 @@ private slots:
     void updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames);
     void addScaleSize(QVector<QSize> &sizes);
     void mjpegStateChanged(int state);
+    void cameraDataUpdated();
 
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *event);
@@ -57,6 +58,8 @@ private:
     QString m_statusMsg;
 
     DVRCamera cameraFromMime(const QMimeData *mimeData);
+
+    void setStream(const QSharedPointer<MJpegStream> &stream);
 
     void setStatusMessage(const QString &message);
     void clearStatusMessage() { setStatusMessage(QString()); }

@@ -53,6 +53,9 @@ void LiveFeedWidget::setCamera(const DVRCamera &camera)
     if (camera == m_camera)
         return;
 
+    if (m_camera)
+        disconnect(m_camera, 0, this, 0);
+
     if (m_stream)
     {
         m_stream->disconnect(this);
@@ -73,21 +76,41 @@ void LiveFeedWidget::setCamera(const DVRCamera &camera)
     }
     else
     {
-        m_stream = m_camera.mjpegStream();
-        if (m_stream)
-        {
-            m_currentFrame = m_stream->currentFrame();
-            connect(m_stream.data(), SIGNAL(updateFrame(QPixmap,QVector<QImage>)),
-                    SLOT(updateFrame(QPixmap,QVector<QImage>)));
-            connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
-            connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
-            m_stream->start();
-        }
-        else
-            setStatusMessage(tr("No\nVideo"));
+        connect(m_camera, SIGNAL(dataUpdated()), SLOT(cameraDataUpdated()));
+        setStream(m_camera.mjpegStream());
     }
 
     emit cameraChanged(m_camera);
+}
+
+void LiveFeedWidget::cameraDataUpdated()
+{
+    QSharedPointer<MJpegStream> nstream = m_camera.mjpegStream();
+    if (m_stream != nstream)
+        setStream(nstream);
+
+    update();
+}
+
+void LiveFeedWidget::setStream(const QSharedPointer<MJpegStream> &stream)
+{
+    if (m_stream)
+        m_stream.data()->disconnect(this);
+
+    clearStatusMessage();
+    m_stream = stream;
+
+    if (m_stream)
+    {
+        m_currentFrame = m_stream->currentFrame();
+        connect(m_stream.data(), SIGNAL(updateFrame(QPixmap,QVector<QImage>)),
+                SLOT(updateFrame(QPixmap,QVector<QImage>)));
+        connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
+        connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
+        m_stream->start();
+    }
+    else
+        setStatusMessage(tr("No\nVideo"));
 }
 
 void LiveFeedWidget::setStatusMessage(const QString &message)
