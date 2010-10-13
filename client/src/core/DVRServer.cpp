@@ -50,17 +50,6 @@ void DVRServer::setDisplayName(const QString &name)
     writeSetting("displayName", name);
 }
 
-DVRCamera *DVRServer::findCamera(int id) const
-{
-    for (QList<DVRCamera*>::ConstIterator it = m_cameras.begin(); it != m_cameras.end(); ++it)
-    {
-        if ((*it)->uniqueID == id)
-            return *it;
-    }
-
-    return 0;
-}
-
 void DVRServer::removeServer()
 {
     qDebug("Deleting DVR server %d", configId);
@@ -113,7 +102,6 @@ void DVRServer::updateCamerasReply()
 
     QByteArray data = reply->readAll();
     QXmlStreamReader xml(data);
-    QList<DVRCamera*> cameras;
 
     while (xml.readNextStartElement())
     {
@@ -128,15 +116,27 @@ void DVRServer::updateCamerasReply()
 
                 if (xml.name() == QLatin1String("device"))
                 {
-                    DVRCamera *camera = DVRCamera::parseFromXML(this, xml);
-                    if (!camera)
+                    bool ok = false;
+                    int deviceId = (int)xml.attributes().value(QLatin1String("id")).toString().toUInt(&ok);
+                    if (!ok)
                     {
-                        qDebug() << "DVRServer: Parsing <device> tag failed:" << xml.errorString();
-                        xml.skipCurrentElement();
+                        xml.raiseError(QLatin1String("Invalid device ID"));
                         continue;
                     }
 
-                    cameras.append(camera);
+                    DVRCamera camera = DVRCamera::getCamera(this, deviceId);
+                    if (!camera.parseXML(xml))
+                    {
+                        if (!xml.hasError())
+                            xml.raiseError(QLatin1String("Device parsing failed"));
+                        continue;
+                    }
+
+                    if (!m_cameras.contains(camera))
+                    {
+                        m_cameras.append(camera);
+                        emit cameraAdded(camera);
+                    }
                 }
             }
             break;
@@ -148,13 +148,6 @@ void DVRServer::updateCamerasReply()
     if (xml.hasError())
     {
         qWarning() << "DVRServer: Error while parsing camera list:" << xml.errorString();
-        qDeleteAll(cameras);
         return;
-    }
-
-    foreach (DVRCamera *c, cameras)
-    {
-        m_cameras.append(c);
-        emit cameraAdded(c);
     }
 }

@@ -4,8 +4,8 @@
 #include <QObject>
 #include <QVariant>
 #include "ServerRequestManager.h"
+#include "DVRCamera.h"
 
-class DVRCamera;
 class QNetworkRequest;
 class QUrl;
 
@@ -25,8 +25,8 @@ public:
     QString username() const;
     QString password() const;
 
-    QList<DVRCamera*> cameras() const { return m_cameras; }
-    DVRCamera *findCamera(int id) const;
+    QList<DVRCamera> cameras() const { return m_cameras; }
+    DVRCamera findCamera(int id) { return DVRCamera::getCamera(this, id); }
 
     /* Settings */
     QVariant readSetting(const QString &key) const;
@@ -53,14 +53,14 @@ signals:
     void changed();
     void serverRemoved(DVRServer *server);
 
-    void cameraAdded(DVRCamera *camera);
-    void cameraRemoved(DVRCamera *camera);
+    void cameraAdded(const DVRCamera &camera);
+    void cameraRemoved(const DVRCamera &camera);
 
 private slots:
     void updateCamerasReply();
 
 private:
-    QList<DVRCamera*> m_cameras;
+    QList<DVRCamera> m_cameras;
     QString m_displayName;
 };
 

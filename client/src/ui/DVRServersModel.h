@@ -20,7 +20,7 @@ public:
     explicit DVRServersModel(QObject *parent = 0);
 
     DVRServer *serverForRow(const QModelIndex &index) const;
-    DVRCamera *cameraForRow(const QModelIndex &index) const;
+    DVRCamera cameraForRow(const QModelIndex &index) const;
 
     void setOfflineDisabled(bool offlineDisabled);
 
@@ -41,14 +41,14 @@ private slots:
     void serverDataChanged();
     void serverAdded(DVRServer *server);
     void serverRemoved(DVRServer *server);
-    void cameraAdded(DVRCamera *camera);
-    void cameraRemoved(DVRCamera *camera);
+    void cameraAdded(const DVRCamera &camera);
+    void cameraRemoved(const DVRCamera &camera);
 
 private:
     struct Item
     {
         DVRServer *server;
-        QList<DVRCamera*> cameras;
+        QList<DVRCamera> cameras;
     };
 
     QVector<Item> items;

@@ -44,7 +44,7 @@ struct LocationData : public RowData
     {
     }
 
-    DVRCamera *locationCamera() const
+    DVRCamera locationCamera() const
     {
         return EventData::locationCamera(serverData->server, locationId);
     }

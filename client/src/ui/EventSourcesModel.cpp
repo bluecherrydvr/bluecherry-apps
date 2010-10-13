@@ -15,7 +15,7 @@ EventSourcesModel::EventSourcesModel(QObject *parent)
     {
         ServerData sd;
         sd.server = s;
-        sd.cameras = QVector<DVRCamera*>::fromList(s->cameras());
+        sd.cameras = QVector<DVRCamera>::fromList(s->cameras());
         sd.checkState.fill(true, sd.cameras.size()+1);
         servers.append(sd);
     }
@@ -34,7 +34,7 @@ QMap<DVRServer*,QList<int> > EventSourcesModel::checkedSources() const
             if (!i && it->checkState[i])
                 sl.append(-1);
             else if (it->checkState[i])
-                sl.append(it->cameras[i-1]->uniqueID);
+                sl.append(it->cameras[i-1].uniqueId());
         }
 
         if (!sl.isEmpty())
@@ -157,10 +157,10 @@ QVariant EventSourcesModel::data(const QModelIndex &index, int role) const
         }
         else
         {
-            DVRCamera *camera = sd.cameras[index.row()-1];
+            const DVRCamera &camera = sd.cameras[index.row()-1];
             switch (role)
             {
-            case Qt::DisplayRole: return camera->displayName();
+            case Qt::DisplayRole: return camera.displayName();
             }
         }
 

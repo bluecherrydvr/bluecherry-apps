@@ -4,9 +4,9 @@
 #include <QString>
 #include <QDateTime>
 #include <QColor>
+#include "DVRCamera.h"
 
 class DVRServer;
-class DVRCamera;
 
 class EventLevel
 {
@@ -91,10 +91,10 @@ struct EventData
     QString uiServer() const;
     QString uiLocation() const { return uiLocation(server, locationId); }
 
-    DVRCamera *locationCamera() const { return locationCamera(server, locationId); }
+    DVRCamera locationCamera() const { return locationCamera(server, locationId); }
 
     static QString uiLocation(DVRServer *server, int locationId);
-    static DVRCamera *locationCamera(DVRServer *server, int locationId);
+    static DVRCamera locationCamera(DVRServer *server, int locationId);
 
     static QList<EventData*> parseEvents(DVRServer *server, const QByteArray &input);
 };

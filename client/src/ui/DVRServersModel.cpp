@@ -41,8 +41,8 @@ void DVRServersModel::serverAdded(DVRServer *server)
 
     connect(server, SIGNAL(changed()), SLOT(serverDataChanged()));
     connect(server->api, SIGNAL(statusChanged(int)), SLOT(serverDataChanged()));
-    connect(server, SIGNAL(cameraAdded(DVRCamera*)), SLOT(cameraAdded(DVRCamera*)));
-    connect(server, SIGNAL(cameraRemoved(DVRCamera*)), SLOT(cameraRemoved(DVRCamera*)));
+    connect(server, SIGNAL(cameraAdded(DVRCamera)), SLOT(cameraAdded(DVRCamera)));
+    connect(server, SIGNAL(cameraRemoved(DVRCamera)), SLOT(cameraRemoved(DVRCamera)));
 }
 
 void DVRServersModel::serverRemoved(DVRServer *server)
@@ -58,24 +58,22 @@ void DVRServersModel::serverRemoved(DVRServer *server)
     server->disconnect(this);
 }
 
-void DVRServersModel::cameraAdded(DVRCamera *camera)
+void DVRServersModel::cameraAdded(const DVRCamera &camera)
 {
-    QModelIndex parent = indexForServer(camera->server);
+    QModelIndex parent = indexForServer(camera.server());
     if (!parent.isValid())
         return;
 
     Item &it = items[parent.row()];
-
-    qDebug("add camera");
 
     beginInsertRows(parent, it.cameras.size(), it.cameras.size());
     it.cameras.append(camera);
     endInsertRows();
 }
 
-void DVRServersModel::cameraRemoved(DVRCamera *camera)
+void DVRServersModel::cameraRemoved(const DVRCamera &camera)
 {
-    QModelIndex parent = indexForServer(camera->server);
+    QModelIndex parent = indexForServer(camera.server());
     if (!parent.isValid())
         return;
 
@@ -90,20 +88,21 @@ void DVRServersModel::cameraRemoved(DVRCamera *camera)
 
 DVRServer *DVRServersModel::serverForRow(const QModelIndex &index) const
 {
-    DVRServer *server = qobject_cast<DVRServer*>((QObject*)index.internalPointer());
-    if (server)
-        return server;
+    if (index.internalPointer() || index.row() < 0 || index.row() >= items.size())
+        return 0;
 
-    return 0;
+    return items[index.row()].server;
 }
 
-DVRCamera *DVRServersModel::cameraForRow(const QModelIndex &index) const
+DVRCamera DVRServersModel::cameraForRow(const QModelIndex &index) const
 {
-    DVRCamera *camera = qobject_cast<DVRCamera*>((QObject*)index.internalPointer());
-    if (camera)
-        return camera;
+    DVRServer *server = static_cast<DVRServer*>(index.internalPointer());
+    QModelIndex serverIndex;
+    if (!server || !(serverIndex = indexForServer(server)).isValid() || serverIndex.row() >= items.size()
+        || index.row() < 0 || index.row() >= items[serverIndex.row()].cameras.size())
+        return DVRCamera();
 
-    return 0;
+    return items[serverIndex.row()].cameras[index.row()];
 }
 
 QModelIndex DVRServersModel::indexForServer(DVRServer *server) const
@@ -151,27 +150,25 @@ QModelIndex DVRServersModel::index(int row, int column, const QModelIndex &paren
         if (row < 0 || column < 0 || row >= items.size() || column >= columnCount())
             return QModelIndex();
 
-        return createIndex(row, column, (QObject*)items[row].server);
+        return createIndex(row, column, 0);
     }
     else
     {
-        if (!serverForRow(parent) || row < 0 || column < 0 || column >= columnCount(parent))
+        DVRServer *s;
+        if (!(s = serverForRow(parent)) || row < 0 || column < 0 || column >= columnCount(parent))
             return QModelIndex();
 
         if (row >= items[parent.row()].cameras.size())
             return QModelIndex();
 
-        return createIndex(row, column, (QObject*)items[parent.row()].cameras[row]);
+        return createIndex(row, column, s);
     }
 }
 
 QModelIndex DVRServersModel::parent(const QModelIndex &child) const
 {
-    DVRCamera *camera = cameraForRow(child);
-    if (!camera)
-        return QModelIndex();
-
-    return indexForServer(camera->server);
+    DVRServer *server = static_cast<DVRServer*>(child.internalPointer());
+    return server ? indexForServer(server) : QModelIndex();
 }
 
 Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
@@ -181,10 +178,9 @@ Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
 
     Qt::ItemFlags re = Qt::ItemIsSelectable;
     DVRServer *s;
-    DVRCamera *c;
 
-    if ((c = cameraForRow(index)))
-        s = c->server;
+    if (index.internalPointer())
+        s = static_cast<DVRServer*>(index.internalPointer());
     else
         s = serverForRow(index);
 
@@ -246,13 +242,13 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
         }
     }
 
-    DVRCamera *camera = cameraForRow(index);
+    const DVRCamera &camera = cameraForRow(index);
     if (camera)
     {
         switch (role)
         {
         case Qt::DisplayRole:
-            return camera->displayName();
+            return camera.displayName();
         }
     }
 
@@ -329,11 +325,11 @@ QMimeData *DVRServersModel::mimeData(const QModelIndexList &indexes) const
 
     foreach (QModelIndex index, indexes)
     {
-        DVRCamera *camera;
+        DVRCamera camera;
         if (!index.isValid() || !(camera = cameraForRow(index)))
             continue;
 
-        stream << camera->server->configId << camera->uniqueID;
+        stream << camera.server()->configId << camera.uniqueId();
     }
 
     QMimeData *mime = new QMimeData;

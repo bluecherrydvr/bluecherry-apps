@@ -12,7 +12,7 @@
 #include <QDataStream>
 
 LiveFeedWidget::LiveFeedWidget(QWidget *parent)
-    : QWidget(parent), m_camera(0), m_dragCamera(0), m_stream(0)
+    : QWidget(parent), m_stream(0)
 {
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::ClickFocus);
@@ -48,7 +48,7 @@ void LiveFeedWidget::clone(LiveFeedWidget *other)
     m_currentFrame = other->m_currentFrame;
 }
 
-void LiveFeedWidget::setCamera(DVRCamera *camera)
+void LiveFeedWidget::setCamera(const DVRCamera &camera)
 {
     if (camera == m_camera)
         return;
@@ -70,22 +70,22 @@ void LiveFeedWidget::setCamera(DVRCamera *camera)
     if (!m_camera)
     {
         setStatusMessage(tr("No\nCamera"));
-        emit cameraChanged(0);
-        return;
-    }
-
-    m_stream = m_camera->mjpegStream();
-    if (m_stream)
-    {
-        m_currentFrame = m_stream->currentFrame();
-        connect(m_stream.data(), SIGNAL(updateFrame(QPixmap,QVector<QImage>)),
-                SLOT(updateFrame(QPixmap,QVector<QImage>)));
-        connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
-        connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
-        m_stream->start();
     }
     else
-        setStatusMessage(tr("No\nVideo"));
+    {
+        m_stream = m_camera.mjpegStream();
+        if (m_stream)
+        {
+            m_currentFrame = m_stream->currentFrame();
+            connect(m_stream.data(), SIGNAL(updateFrame(QPixmap,QVector<QImage>)),
+                    SLOT(updateFrame(QPixmap,QVector<QImage>)));
+            connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
+            connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
+            m_stream->start();
+        }
+        else
+            setStatusMessage(tr("No\nVideo"));
+    }
 
     emit cameraChanged(m_camera);
 }
@@ -111,7 +111,7 @@ void LiveFeedWidget::closeCamera()
     if (isWindow())
         close();
     else
-        setCamera(0);
+        clearCamera();
 }
 
 void LiveFeedWidget::setFullScreen(bool on)
@@ -189,7 +189,7 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
         p.drawRoundedRect(r.adjusted(2, 2, -2, -2), 3, 3);
         p.restore();
 
-        p.drawText(r.adjusted(6, 6, -6, -6), Qt::AlignTop | Qt::AlignRight, m_dragCamera->displayName());
+        p.drawText(r.adjusted(6, 6, -6, -6), Qt::AlignTop | Qt::AlignRight, m_dragCamera.displayName());
         return;
     }
 
@@ -226,10 +226,10 @@ void LiveFeedWidget::paintEvent(QPaintEvent *event)
     }
 
     if (m_camera)
-        p.drawText(r.adjusted(4, 4, -4, -4), Qt::AlignTop | Qt::AlignRight, m_camera->displayName());
+        p.drawText(r.adjusted(4, 4, -4, -4), Qt::AlignTop | Qt::AlignRight, m_camera.displayName());
 }
 
-DVRCamera *LiveFeedWidget::cameraFromMime(const QMimeData *mimeData)
+DVRCamera LiveFeedWidget::cameraFromMime(const QMimeData *mimeData)
 {
     QByteArray data = mimeData->data(QLatin1String("application/x-bluecherry-dvrcamera"));
     QDataStream stream(&data, QIODevice::ReadOnly);
@@ -239,9 +239,9 @@ DVRCamera *LiveFeedWidget::cameraFromMime(const QMimeData *mimeData)
     stream >> serverid >> cameraid;
 
     if (stream.status() != QDataStream::Ok)
-        return 0;
+        return DVRCamera();
 
-    return DVRCamera::findByID(serverid, cameraid);
+    return DVRCamera::getCamera(serverid, cameraid);
 }
 
 void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
@@ -257,15 +257,15 @@ void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
 
 void LiveFeedWidget::dragLeaveEvent(QDragLeaveEvent *event)
 {
-    m_dragCamera = 0;
+    m_dragCamera = DVRCamera();
     update();
 }
 
 void LiveFeedWidget::dropEvent(QDropEvent *event)
 {
-    m_dragCamera = 0;
+    m_dragCamera = DVRCamera();
 
-    DVRCamera *camera = cameraFromMime(event->mimeData());
+    DVRCamera camera = cameraFromMime(event->mimeData());
     if (camera)
     {
         setCamera(camera);
@@ -357,11 +357,11 @@ void LiveFeedWidget::saveSnapshot(const QString &ifile)
 
 QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget)
 {
-    DVRCamera *camera = widget.camera();
+    const DVRCamera &camera = widget.camera();
     if (!camera)
         stream << -1;
     else
-        stream << camera->server->configId << camera->uniqueID;
+        stream << camera.server()->configId << camera.uniqueId();
     return stream;
 }
 
@@ -372,11 +372,11 @@ QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget)
 
     if (stream.status() != QDataStream::Ok || serverId < 0)
     {
-        widget.setCamera(0);
+        widget.clearCamera();
         return stream;
     }
 
     stream >> cameraId;
-    widget.setCamera(DVRCamera::findByID(serverId, cameraId));
+    widget.setCamera(DVRCamera::getCamera(serverId, cameraId));
     return stream;
 }

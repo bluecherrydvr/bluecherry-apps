@@ -104,7 +104,7 @@ void CameraAreaWidget::setGridSize(int rows, int columns)
         for (int r = 0; r < m_cameraWidgets.size(); ++r)
         {
             LiveFeedWidget *widget = new LiveFeedWidget;
-            connect(widget, SIGNAL(cameraChanged(DVRCamera*)), SLOT(onCameraChanged()));
+            connect(widget, SIGNAL(cameraChanged(DVRCamera)), SLOT(onCameraChanged()));
             m_cameraWidgets[r].append(widget);
             mainLayout->addWidget(widget, r, m_columnCount);
         }
@@ -118,7 +118,7 @@ void CameraAreaWidget::setGridSize(int rows, int columns)
         for (int c = 0; c < m_columnCount; ++c)
         {
             LiveFeedWidget *widget = new LiveFeedWidget;
-            connect(widget, SIGNAL(cameraChanged(DVRCamera*)), SLOT(onCameraChanged()));
+            connect(widget, SIGNAL(cameraChanged(DVRCamera)), SLOT(onCameraChanged()));
             row.append(widget);
             mainLayout->addWidget(widget, m_rowCount, c);
         }

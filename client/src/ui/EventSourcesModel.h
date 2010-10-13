@@ -33,7 +33,7 @@ private:
     struct ServerData
     {
         DVRServer *server;
-        QVector<DVRCamera*> cameras;
+        QVector<DVRCamera> cameras;
         /* Note that the indexes are +1 from cameras */
         QBitArray checkState;
     };

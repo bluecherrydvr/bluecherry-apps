@@ -4,34 +4,34 @@
 #include "MJpegStream.h"
 #include <QXmlStreamReader>
 
-DVRCamera::DVRCamera(DVRServer *s, int id)
-    : QObject(s), server(s), uniqueID(id)
-{
-}
+QHash<QPair<int,int>,DVRCameraData*> DVRCameraData::instances;
 
-DVRCamera *DVRCamera::findByID(int serverID, int cameraID)
+DVRCamera DVRCamera::getCamera(int serverID, int cameraID)
 {
     DVRServer *server = bcApp->findServerID(serverID);
     if (!server)
         return 0;
 
-    return server->findCamera(cameraID);
+    return getCamera(server, cameraID);
 }
 
-DVRCamera *DVRCamera::parseFromXML(DVRServer *server, QXmlStreamReader &xml)
+DVRCamera DVRCamera::getCamera(DVRServer *server, int cameraID)
 {
+    DVRCameraData *data = DVRCameraData::instances.value(qMakePair(server->configId, cameraID), 0);
+    if (!data)
+        data = new DVRCameraData(server, cameraID);
+
+    return DVRCamera(data);
+}
+
+bool DVRCamera::parseXML(QXmlStreamReader &xml)
+{
+    if (!isValid())
+        return false;
+
     Q_ASSERT(xml.isStartElement() && xml.name() == QLatin1String("device"));
 
-    bool ok = false;
-    int deviceId = (int)xml.attributes().value(QLatin1String("id")).toString().toUInt(&ok);
-
-    if (!ok)
-    {
-        xml.raiseError(QLatin1String("Invalid device ID"));
-        return 0;
-    }
-
-    DVRCamera *camera = new DVRCamera(server, deviceId);
+    QString name, streamUrl;
 
     while (xml.readNext() != QXmlStreamReader::Invalid)
     {
@@ -42,7 +42,7 @@ DVRCamera *DVRCamera::parseFromXML(DVRServer *server, QXmlStreamReader &xml)
 
         if (xml.name() == QLatin1String("name"))
         {
-            camera->m_displayName = xml.readElementText();
+            name = xml.readElementText();
         }
         else if (xml.name() == QLatin1String("streamUrl"))
         {
@@ -52,33 +52,49 @@ DVRCamera *DVRCamera::parseFromXML(DVRServer *server, QXmlStreamReader &xml)
                 continue;
             }
 
-            camera->m_streamUrl = server->api->serverUrl().resolved(QUrl(xml.readElementText()))
-                                  .toString().toLatin1();
+            streamUrl = server()->api->serverUrl().resolved(QUrl(xml.readElementText())).toString();
         }
         else
             xml.skipCurrentElement();
     }
 
-    if (camera->m_displayName.isEmpty())
-        camera->m_displayName = QString::fromLatin1("#%2").arg(deviceId);
+    if (name.isEmpty())
+        name = QString::fromLatin1("#%2").arg(uniqueId());
 
-    return camera;
+    d->displayName = name;
+    d->streamUrl = streamUrl.toLatin1();
+    d->isLoaded = true;
+
+    emit d->dataUpdated();
+    return true;
 }
 
 QSharedPointer<MJpegStream> DVRCamera::mjpegStream()
 {
     QSharedPointer<MJpegStream> re;
 
-    if (m_mjpegStream.isNull())
+    if (!d || d->mjpegStream.isNull())
     {
-        if (!m_streamUrl.isEmpty())
+        if (d && !d->streamUrl.isEmpty())
         {
-            re = QSharedPointer<MJpegStream>(new MJpegStream(QUrl(QString::fromLatin1(m_streamUrl))));
-            m_mjpegStream = re;
+            re = QSharedPointer<MJpegStream>(new MJpegStream(QUrl(QString::fromLatin1(d->streamUrl))));
+            d->mjpegStream = re;
         }
     }
     else
-        re = m_mjpegStream.toStrongRef();
+        re = d->mjpegStream.toStrongRef();
 
     return re;
+}
+
+DVRCameraData::DVRCameraData(DVRServer *s, int i)
+    : server(s), uniqueID(i), isLoaded(false)
+{
+    Q_ASSERT(instances.find(qMakePair(s->configId, i)) == instances.end());
+    instances.insert(qMakePair(server->configId, uniqueID), this);
+}
+
+DVRCameraData::~DVRCameraData()
+{
+    instances.remove(qMakePair(server->configId, uniqueID));
 }

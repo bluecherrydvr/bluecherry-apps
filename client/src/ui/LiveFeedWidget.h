@@ -3,27 +3,28 @@
 
 #include <QWidget>
 #include <QSharedPointer>
+#include "core/DVRCamera.h"
 
-class DVRCamera;
 class MJpegStream;
 class QMimeData;
 
 class LiveFeedWidget : public QWidget
 {
     Q_OBJECT
-    Q_PROPERTY(DVRCamera* camera READ camera WRITE setCamera)
+    Q_PROPERTY(DVRCamera camera READ camera WRITE setCamera)
 
 public:
     explicit LiveFeedWidget(QWidget *parent = 0);
     virtual ~LiveFeedWidget();
 
-    DVRCamera *camera() const { return m_camera; }
+    const DVRCamera &camera() const { return m_camera; }
     QString statusMessage() const { return m_statusMsg; }
 
     virtual QSize sizeHint() const;
 
 public slots:
-    void setCamera(DVRCamera *camera);
+    void setCamera(const DVRCamera &camera);
+    void clearCamera() { setCamera(DVRCamera()); }
 
     QWidget *openWindow();
     void closeCamera();
@@ -33,7 +34,7 @@ public slots:
     void saveSnapshot(const QString &file = QString());
 
 signals:
-    void cameraChanged(DVRCamera *camera);
+    void cameraChanged(const DVRCamera &camera);
 
 private slots:
     void updateFrame(const QPixmap &frame, const QVector<QImage> &scaledFrames);
@@ -50,12 +51,12 @@ protected:
     virtual void resizeEvent(QResizeEvent *event);
 
 private:
-    DVRCamera *m_camera, *m_dragCamera;
+    DVRCamera m_camera, m_dragCamera;
     QSharedPointer<MJpegStream> m_stream;
     QPixmap m_currentFrame;
     QString m_statusMsg;
 
-    DVRCamera *cameraFromMime(const QMimeData *mimeData);
+    DVRCamera cameraFromMime(const QMimeData *mimeData);
 
     void setStatusMessage(const QString &message);
     void clearStatusMessage() { setStatusMessage(QString()); }
