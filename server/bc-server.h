@@ -47,6 +47,10 @@ struct bc_record {
 
 	/* Video setup */
 	int			vid_interval;
+
+	/* Event/Media handling */
+	bc_media_entry_t	media;
+	bc_event_cam_t		event;
 };
 
 /* Types for aud_format */

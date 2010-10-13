@@ -221,6 +221,10 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	url_fclose(bc_rec->oc->pb);
 	av_free(bc_rec->oc);
 
+	/* Close the media entry in the db */
+	bc_event_cam_end(&bc_rec->event);
+	bc_media_end(&bc_rec->media);
+
 	pthread_mutex_unlock(&av_lock);
 }
 
@@ -241,6 +245,19 @@ static void mkdir_recursive(char *path)
 	*t = '/';
 
 	mkdir(path, 0755);
+}
+
+static void bc_start_media_entry(struct bc_record *bc_rec)
+{
+	bc_media_video_type_t video = BC_MEDIA_VIDEO_M4V;
+	bc_media_audio_type_t audio = BC_MEDIA_AUDIO_NONE;
+	bc_media_cont_type_t cont = BC_MEDIA_CONT_MKV;
+
+	if (bc_rec->pcm)
+		audio = BC_MEDIA_AUDIO_MP2;
+
+	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
+				       bc_rec->outfile);
 }
 
 int bc_open_avcodec(struct bc_record *bc_rec)
@@ -354,6 +371,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 
 	av_write_header(oc);
+
+	bc_start_media_entry(bc_rec);
 
 	pthread_mutex_unlock(&av_lock);
 

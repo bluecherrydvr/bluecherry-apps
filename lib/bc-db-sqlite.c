@@ -66,6 +66,11 @@ static void bc_db_sqlite_free_table(void *handle, char **res)
 	sqlite3_free_table(res);
 }
 
+static unsigned long bc_db_sqlite_last_insert_rowid(void *handle)
+{
+	return (unsigned long)sqlite3_last_insert_rowid(handle);
+}
+
 struct bc_db_ops bc_db_sqlite = {
 	.type		= BC_DB_SQLITE,
 	.open		= bc_db_sqlite_open,
@@ -73,4 +78,5 @@ struct bc_db_ops bc_db_sqlite = {
 	.get_table	= bc_db_sqlite_get_table,
 	.free_table	= bc_db_sqlite_free_table,
 	.query		= bc_db_sqlite_query,
+	.last_insert_rowid = bc_db_sqlite_last_insert_rowid,
 };
