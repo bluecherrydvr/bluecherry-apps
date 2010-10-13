@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QtPlugin>
 #include <QMessageBox>
+#include <QDateTime>
 
 #ifdef QT_STATIC
 Q_IMPORT_PLUGIN(qjpeg)
@@ -43,11 +44,33 @@ int main(int argc, char *argv[])
     QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
 
+#ifdef BC_CUTOFF_DATE
+    if (QDateTime::currentDateTime() >= QDateTime::fromTime_t(BC_CUTOFF_DATE))
+    {
+        QMessageBox::critical(0, a.tr("Bluecherry DVR - Beta Expired"), a.tr("This beta release of the Bluecherry DVR software "
+                                                                             "has expired.\n\nPlease download the latest update from "
+                                                                             "www.bluecherrydvr.com"));
+        return 1;
+    }
+#endif
+
     bcApp = new BluecherryApp;
 
     MainWindow w;
     bcApp->mainWindow = &w;
 
     w.show();
+
+#ifdef BC_CUTOFF_DATE
+    if (QDateTime::currentDateTime().addDays(7) >= QDateTime::fromTime_t(BC_CUTOFF_DATE))
+    {
+        QMessageBox::critical(&w, a.tr("Bluecherry DVR - Beta Expiration"), a.tr("This beta release of the Bluecherry DVR software "
+                                                                                 "will expire in %1 days.\nAfter this date, the software "
+                                                                                 "will no longer run.\n\nPlease download the latest "
+                                                                                 "update from www.bluecherrydvr.com")
+                              .arg(QDateTime::currentDateTime().daysTo(QDateTime::fromTime_t(BC_CUTOFF_DATE))));
+    }
+#endif
+
     return a.exec();
 }
