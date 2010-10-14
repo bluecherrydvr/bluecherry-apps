@@ -95,7 +95,7 @@ public slots:
         {
             setWindowFlags(windowFlags() & ~Qt::Window);
             setFrameStyle(QFrame::Sunken | QFrame::Panel);
-            show();
+            showNormal();
         }
     }
 
