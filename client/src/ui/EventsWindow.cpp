@@ -58,11 +58,13 @@ EventsWindow::EventsWindow(QWidget *parent)
     filtersLayout->addWidget(label);
     filtersLayout->addWidget(createTypeFilter());
 
+#if 0 /* Tags are not fully implemented yet */
     label = new QLabel(tr("Tags"));
     label->setStyleSheet(QLatin1String("font-weight:bold;"));
     filtersLayout->addWidget(label);
     filtersLayout->addWidget(createTags());
     filtersLayout->addWidget(createTagsInput());
+#endif
 
     /* Results */
     QBoxLayout *resultLayout = new QVBoxLayout;

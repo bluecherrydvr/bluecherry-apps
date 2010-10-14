@@ -101,6 +101,7 @@ QWidget *EventViewWindow::createInfoArea()
     line->setFrameStyle(QFrame::Sunken | QFrame::HLine);
     layout->addWidget(line);
 
+#if 0 /* Comments and tags are not fully implemented yet */
     QLabel *title = new QLabel(tr("Tags:"));
     title->setStyleSheet(QLatin1String("font-weight:bold"));
     layout->addWidget(title);
@@ -154,6 +155,7 @@ QWidget *EventViewWindow::createInfoArea()
 
     m_commentsArea->appendComment(QLatin1String("Second Author"), QDateTime::currentDateTime(),
                                   QLatin1String("Ok."));
+#endif
 
     layout->addStretch();
 
