@@ -22,13 +22,14 @@ ServerConfigWindow::ServerConfigWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_server(0)
 {
     setWindowTitle(tr("Bluecherry DVR - Server Configuration"));
-    setMinimumSize(640, 550);
+    setMinimumSize(970, 600);
     resize(minimumSize());
 
     QBoxLayout *layout = new QVBoxLayout(this);
     layout->setMargin(0);
 
     m_webView = new QWebView;
+    m_webView->page()->setNetworkAccessManager(bcApp->nam);
     layout->addWidget(m_webView);
 }
 
