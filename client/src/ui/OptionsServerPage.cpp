@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QTextDocument>
+#include <QMessageBox>
 
 OptionsServerPage::OptionsServerPage(QWidget *parent)
     : OptionsDialogPage(parent)
@@ -158,6 +159,15 @@ void OptionsServerPage::deleteServer()
                         serverForRow(m_serversView->currentIndex());
 
     if (!server)
+        return;
+
+    QMessageBox dlg(QMessageBox::Question, tr("Delete DVR Server"), tr("Are you sure you want to delete <b>%1</b>?")
+                    .arg(Qt::escape(server->displayName())), QMessageBox::NoButton, this);
+    QPushButton *delBtn = dlg.addButton(tr("Delete"), QMessageBox::DestructiveRole);
+    dlg.addButton(QMessageBox::Cancel);
+    dlg.exec();
+
+    if (dlg.clickedButton() != delBtn)
         return;
 
     server->removeServer();
