@@ -40,6 +40,7 @@ enum bc_db_type {
 	BC_DB_MYSQL = 2,
 };
 
+/* Should really be opaque and not in this file */
 struct bc_db_ops {
 	enum bc_db_type type;
 	void *(*open)(struct config_t *cfg);
@@ -77,6 +78,9 @@ struct bc_handle {
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;
+
+	/* For private data */
+	void			*__data;
 };
 
 /* Bluecherry License Key */
@@ -269,5 +273,9 @@ int bc_media_end(bc_media_entry_t *bcm);
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
 void bc_media_event_clear(void);
+
+/* Handlers for motion events */
+extern void (*bc_handle_motion_start)(struct bc_handle *bc);
+extern void (*bc_handle_motion_end)(struct bc_handle *bc);
 
 #endif /* __LIBBLUECHERRY_H */

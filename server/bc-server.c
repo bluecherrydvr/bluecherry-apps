@@ -20,6 +20,21 @@ static int record_id = -1;
 
 extern char *__progname;
 
+static void __handle_motion_start(struct bc_handle *bc)
+{
+	struct bc_record *bc_rec = bc->__data;
+
+	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
+}
+
+static void __handle_motion_end(struct bc_handle *bc)
+{
+	struct bc_record *bc_rec = bc->__data;
+
+	bc_event_cam_end(&bc_rec->event);
+}
+
 static void check_threads(void)
 {
 	struct bc_record *bc_rec;
@@ -177,6 +192,10 @@ int main(int argc, char **argv)
 		case 'h': default: usage();
 		}
 	}
+
+	/* Setup our motion event handlers */
+	bc_handle_motion_start = __handle_motion_start;
+	bc_handle_motion_end = __handle_motion_end;
 
 	pthread_mutex_init(&av_lock, NULL);
         avcodec_init();
