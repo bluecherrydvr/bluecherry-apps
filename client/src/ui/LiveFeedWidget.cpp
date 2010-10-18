@@ -343,8 +343,11 @@ void LiveFeedWidget::keyPressEvent(QKeyEvent *event)
 
 void LiveFeedWidget::saveSnapshot(const QString &ifile)
 {
+    if (!m_stream)
+        return;
+
     /* Grab the current frame, so the user gets what they expect regardless of the time taken by the dialog */
-    QPixmap frame = m_currentFrame;
+    QPixmap frame = m_stream->currentFrame();
     if (frame.isNull())
         return;
 
