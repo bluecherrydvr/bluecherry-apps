@@ -311,25 +311,9 @@ void LiveFeedWidget::contextMenuEvent(QContextMenuEvent *event)
     QMenu menu(this);
 
     menu.addAction(tr("Snapshot"), this, SLOT(saveSnapshot()))->setEnabled(m_camera);
-    menu.addAction(tr("Pause"))->setEnabled(m_camera);
     menu.addSeparator();
     menu.addAction(tr("Open in window"), this, SLOT(openWindow()));
     menu.addAction(!isFullScreen() ? tr("Open as fullscreen") : tr("Exit fullscreen"), this, SLOT(toggleFullScreen()));
-    menu.addSeparator();
-
-    QActionGroup *group = new QActionGroup(&menu);
-    group->setExclusive(true);
-    group->setEnabled(!isFullScreen());
-
-    QAction *actSizeFit = group->addAction(tr("Size to fit"));
-    actSizeFit->setCheckable(true);
-    actSizeFit->setChecked(true);
-
-    QAction *actSizeFull = group->addAction(tr("Full size"));
-    actSizeFull->setCheckable(true);
-    actSizeFull->setEnabled(m_camera);
-
-    menu.addActions(group->actions());
     menu.addSeparator();
 
     QAction *actClose = menu.addAction(tr("Close camera"), this, SLOT(closeCamera()));
