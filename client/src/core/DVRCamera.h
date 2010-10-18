@@ -9,6 +9,7 @@
 
 class DVRServer;
 class MJpegStream;
+class QMimeData;
 
 /* There is one DVRCameraData per server+ID; it is shared among many instances of
  * DVRCamera by reference count. This may be created before we've actually queried
@@ -73,10 +74,15 @@ public:
 
     bool parseXML(QXmlStreamReader &xml);
 
+    static QList<DVRCamera> fromMimeData(const QMimeData *mimeData);
+
 private:
     QExplicitlySharedDataPointer<DVRCameraData> d;
 
     DVRCamera(DVRCameraData *dt) : d(dt) { }
 };
+
+QDataStream &operator<<(QDataStream &s, const DVRCamera &camera);
+QDataStream &operator>>(QDataStream &s, DVRCamera &camera);
 
 #endif // DVRCAMERA_H

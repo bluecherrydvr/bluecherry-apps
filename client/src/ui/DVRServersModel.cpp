@@ -191,8 +191,7 @@ Qt::ItemFlags DVRServersModel::flags(const QModelIndex &index) const
 
     if (!index.parent().isValid())
         re |= Qt::ItemIsEditable;
-    else
-        re |= Qt::ItemIsDragEnabled;
+    re |= Qt::ItemIsDragEnabled;
 
     return re;
 }
@@ -323,13 +322,19 @@ QMimeData *DVRServersModel::mimeData(const QModelIndexList &indexes) const
     QByteArray data;
     QDataStream stream(&data, QIODevice::WriteOnly);
 
+    DVRCamera camera;
     foreach (QModelIndex index, indexes)
     {
-        DVRCamera camera;
-        if (!index.isValid() || !(camera = cameraForRow(index)))
-            continue;
-
-        stream << camera.server()->configId << camera.uniqueId();
+        DVRServer *server = serverForRow(index);
+        if (server)
+        {
+            foreach (const DVRCamera &c, server->cameras())
+                stream << c;
+        }
+        else if ((camera = cameraForRow(index)))
+        {
+            stream << camera;
+        }
     }
 
     QMimeData *mime = new QMimeData;

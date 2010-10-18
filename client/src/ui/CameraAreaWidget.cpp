@@ -2,6 +2,8 @@
 #include "LiveFeedWidget.h"
 #include <QGridLayout>
 #include <QDataStream>
+#include <QDragEnterEvent>
+#include <QMimeData>
 
 CameraAreaWidget::CameraAreaWidget(QWidget *parent)
     : QFrame(parent), m_rowCount(0), m_columnCount(0)
@@ -9,6 +11,7 @@ CameraAreaWidget::CameraAreaWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFrameStyle(QFrame::Sunken | QFrame::Panel);
     setAutoFillBackground(true);
+    setAcceptDrops(true);
 
     QPalette p = palette();
     p.setColor(QPalette::Window, QColor(20, 20, 20));
@@ -132,6 +135,8 @@ void CameraAreaWidget::setGridSize(int rows, int columns)
     Q_ASSERT(m_cameraWidgets.size() == m_rowCount);
     Q_ASSERT(m_cameraWidgets.isEmpty() || m_cameraWidgets[0].size() == m_columnCount);
 
+    m_dragWidgets.clear();
+
     emit gridSizeChanged(rows, columns);
 }
 
@@ -222,4 +227,56 @@ void CameraAreaWidget::toggleFullScreen()
 void CameraAreaWidget::onCameraChanged()
 {
     emit cameraChanged(qobject_cast<LiveFeedWidget*>(sender()));
+}
+
+void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
+{
+    if (!ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
+        return;
+
+    QList<DVRCamera> cameras = DVRCamera::fromMimeData(ev->mimeData());
+    if (cameras.isEmpty())
+        return;
+
+    LiveFeedWidget *fw = qobject_cast<LiveFeedWidget*>(childAt(ev->pos()));
+    if (!fw)
+        return;
+
+    bool found = false;
+    foreach (const QList<LiveFeedWidget*> &row, m_cameraWidgets)
+    {
+        foreach (LiveFeedWidget *w, row)
+        {
+            if (w == fw)
+                found = true;
+
+            if (found)
+            {
+                w->beginDrag(cameras.takeFirst());
+                m_dragWidgets.append(w);
+                if (cameras.isEmpty())
+                goto end;
+            }
+        }
+    }
+
+end:
+    ev->acceptProposedAction();
+}
+
+void CameraAreaWidget::dragLeaveEvent(QDragLeaveEvent *ev)
+{
+    Q_UNUSED(ev);
+
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag();
+    m_dragWidgets.clear();
+}
+
+void CameraAreaWidget::dropEvent(QDropEvent *ev)
+{
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag(true);
+    m_dragWidgets.clear();
+    ev->acceptProposedAction();
 }

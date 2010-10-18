@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QSharedPointer>
+#include <QDataStream>
 #include "core/DVRCamera.h"
 
 class MJpegStream;
@@ -21,6 +22,9 @@ public:
     QString statusMessage() const { return m_statusMsg; }
 
     virtual QSize sizeHint() const;
+
+    void beginDrag(const DVRCamera &camera);
+    void endDrag(bool keep = false);
 
 public slots:
     void setCamera(const DVRCamera &camera);
@@ -67,9 +71,17 @@ private:
     void clone(LiveFeedWidget *other);
 };
 
-class QDataStream;
+inline QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget)
+{
+    return stream << widget.camera();
+}
 
-QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget);
-QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget);
+inline QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget)
+{
+    DVRCamera c;
+    stream >> c;
+    widget.setCamera(c);
+    return stream;
+}
 
 #endif // LIVEFEEDWIDGET_H

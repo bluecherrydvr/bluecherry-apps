@@ -3,6 +3,7 @@
 #include "BluecherryApp.h"
 #include "MJpegStream.h"
 #include <QXmlStreamReader>
+#include <QMimeData>
 
 QHash<QPair<int,int>,DVRCameraData*> DVRCameraData::instances;
 
@@ -97,4 +98,46 @@ DVRCameraData::DVRCameraData(DVRServer *s, int i)
 DVRCameraData::~DVRCameraData()
 {
     instances.remove(qMakePair(server->configId, uniqueID));
+}
+
+QDataStream &operator<<(QDataStream &s, const DVRCamera &camera)
+{
+    if (!camera.isValid())
+        s << -1;
+    else
+        s << camera.server()->configId << camera.uniqueId();
+    return s;
+}
+
+QDataStream &operator>>(QDataStream &s, DVRCamera &camera)
+{
+    int serverId = -1, cameraId = -1;
+    s >> serverId;
+
+    if (s.status() != QDataStream::Ok || serverId < 0)
+    {
+        camera = DVRCamera();
+        return s;
+    }
+
+    s >> cameraId;
+    camera = DVRCamera::getCamera(serverId, cameraId);
+    return s;
+}
+
+QList<DVRCamera> DVRCamera::fromMimeData(const QMimeData *mimeData)
+{
+    QByteArray data = mimeData->data(QLatin1String("application/x-bluecherry-dvrcamera"));
+    QDataStream stream(&data, QIODevice::ReadOnly);
+
+    QList<DVRCamera> re;
+    while (!stream.atEnd() && stream.status() == QDataStream::Ok)
+    {
+        DVRCamera c;
+        stream >> c;
+        if (c)
+            re.append(c);
+    }
+
+    return re;
 }

@@ -17,7 +17,6 @@ LiveFeedWidget::LiveFeedWidget(QWidget *parent)
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setFocusPolicy(Qt::ClickFocus);
     setAttribute(Qt::WA_OpaquePaintEvent);
-    setAcceptDrops(true);
     setContextMenuPolicy(Qt::DefaultContextMenu);
 
     QPalette p = palette();
@@ -122,6 +121,7 @@ void LiveFeedWidget::setStatusMessage(const QString &message)
 QWidget *LiveFeedWidget::openWindow()
 {
     LiveFeedWidget *widget = new LiveFeedWidget(window());
+    widget->setAcceptDrops(true);
     widget->setWindowFlags(Qt::Window);
     widget->setAttribute(Qt::WA_DeleteOnClose);
     widget->clone(this);
@@ -269,34 +269,40 @@ DVRCamera LiveFeedWidget::cameraFromMime(const QMimeData *mimeData)
     return DVRCamera::getCamera(serverid, cameraid);
 }
 
+void LiveFeedWidget::beginDrag(const DVRCamera &c)
+{
+    m_dragCamera = c;
+    update();
+}
+
+void LiveFeedWidget::endDrag(bool keep)
+{
+    if (keep)
+        setCamera(m_dragCamera);
+
+    m_dragCamera = DVRCamera();
+    update();
+}
+
 void LiveFeedWidget::dragEnterEvent(QDragEnterEvent *event)
 {
     if (event->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
     {
-        /* This could also be done via an event filter or overlay widget, if it later becomes necessary. */
-        m_dragCamera = cameraFromMime(event->mimeData());
+        beginDrag(cameraFromMime(event->mimeData()));
         event->acceptProposedAction();
-        update();
     }
 }
 
 void LiveFeedWidget::dragLeaveEvent(QDragLeaveEvent *event)
 {
     Q_UNUSED(event);
-    m_dragCamera = DVRCamera();
-    update();
+    endDrag();
 }
 
 void LiveFeedWidget::dropEvent(QDropEvent *event)
 {
-    m_dragCamera = DVRCamera();
-
-    DVRCamera camera = cameraFromMime(event->mimeData());
-    if (camera)
-    {
-        setCamera(camera);
-        event->acceptProposedAction();
-    }
+    endDrag(true);
+    event->acceptProposedAction();
 }
 
 void LiveFeedWidget::resizeEvent(QResizeEvent *event)
@@ -368,30 +374,4 @@ void LiveFeedWidget::saveSnapshot(const QString &ifile)
     }
 
     QToolTip::showText(mapToGlobal(QPoint(0,0)), tr("Snapshot Saved"), this);
-}
-
-QDataStream &operator<<(QDataStream &stream, const LiveFeedWidget &widget)
-{
-    const DVRCamera &camera = widget.camera();
-    if (!camera)
-        stream << -1;
-    else
-        stream << camera.server()->configId << camera.uniqueId();
-    return stream;
-}
-
-QDataStream &operator>>(QDataStream &stream, LiveFeedWidget &widget)
-{
-    int serverId = -1, cameraId = -1;
-    stream >> serverId;
-
-    if (stream.status() != QDataStream::Ok || serverId < 0)
-    {
-        widget.clearCamera();
-        return stream;
-    }
-
-    stream >> cameraId;
-    widget.setCamera(DVRCamera::getCamera(serverId, cameraId));
-    return stream;
 }

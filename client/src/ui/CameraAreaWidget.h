@@ -41,8 +41,14 @@ signals:
 private slots:
     void onCameraChanged();
 
+protected:
+    virtual void dragEnterEvent(QDragEnterEvent *ev);
+    virtual void dragLeaveEvent(QDragLeaveEvent *ev);
+    virtual void dropEvent(QDropEvent *ev);
+
 private:
     QList<QList<LiveFeedWidget*> > m_cameraWidgets;
+    QList<LiveFeedWidget*> m_dragWidgets;
     QGridLayout *mainLayout;
     int m_rowCount, m_columnCount;
 
