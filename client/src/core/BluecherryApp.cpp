@@ -3,6 +3,9 @@
 #include <QSettings>
 #include <QStringList>
 #include <QNetworkAccessManager>
+#include <QHostAddress>
+#include <QTimer>
+#include <QFile>
 
 BluecherryApp *bcApp = 0;
 
@@ -39,6 +42,20 @@ void BluecherryApp::loadServers()
         m_servers.append(server);
         m_maxServerId = qMax(m_maxServerId, id);
     }
+
+#ifdef Q_OS_LINUX
+    /* If there are no servers configured, and the server application is installed here, automatically
+     * configure a local server. */
+    if (groups.isEmpty() && QFile::exists(QLatin1String("/etc/bluecherry/bluecherry.conf")))
+    {
+        DVRServer *s = addNewServer(tr("Local"));
+        s->writeSetting("hostname", QHostAddress(QHostAddress::LocalHost).toString());
+        /* This must match the default username and password for the server */
+        s->writeSetting("username", QLatin1String("admin"));
+        s->writeSetting("password", QLatin1String("bluecherry"));
+        QTimer::singleShot(0, s, SLOT(login()));
+    }
+#endif
 }
 
 DVRServer *BluecherryApp::addNewServer(const QString &name)
