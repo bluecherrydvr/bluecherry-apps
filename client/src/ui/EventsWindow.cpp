@@ -27,7 +27,7 @@ EventsWindow::EventsWindow(QWidget *parent)
     : QWidget(parent, Qt::Window)
 {
     setWindowTitle(tr("Bluecherry DVR - Event Viewer"));
-    resize(QSize(900, 680));
+    resize(QSize(900, 600));
 
     QBoxLayout *layout = new QHBoxLayout(this);
     QBoxLayout *filtersLayout = new QVBoxLayout;

@@ -30,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(tr("Bluecherry DVR"));
+    resize(1100, 750);
     createMenu();
 
     QWidget *centerWidget = new QWidget;
@@ -78,7 +79,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/main/geometry")).toByteArray());
-    m_centerSplit->restoreState(settings.value(QLatin1String("ui/main/centerSplit")).toByteArray());
+    if (!m_centerSplit->restoreState(settings.value(QLatin1String("ui/main/centerSplit")).toByteArray()))
+    {
+        m_centerSplit->setSizes(QList<int>() << 1000 << 100);
+    }
 
     new QShortcut(QKeySequence(Qt::Key_F11), m_cameraArea, SLOT(toggleFullScreen()));
 }

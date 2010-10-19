@@ -28,6 +28,7 @@ EventViewWindow::EventViewWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_event(0)
 {
     setWindowTitle(tr("Bluecherry DVR - Event Playback"));
+    resize(590, 380);
 
     QBoxLayout *layout = new QVBoxLayout(this);
     m_splitter = new QSplitter(Qt::Horizontal, this);
@@ -40,7 +41,8 @@ EventViewWindow::EventViewWindow(QWidget *parent)
 
     QSettings settings;
     restoreGeometry(settings.value(QLatin1String("ui/eventView/geometry")).toByteArray());
-    m_splitter->restoreState(settings.value(QLatin1String("ui/eventView/splitState")).toByteArray());
+    if (!m_splitter->restoreState(settings.value(QLatin1String("ui/eventView/splitState")).toByteArray()))
+        m_splitter->setSizes(QList<int>() << 160 << 1000);
 }
 
 EventViewWindow *EventViewWindow::open(EventData *event)
