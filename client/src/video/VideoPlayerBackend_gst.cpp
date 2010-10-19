@@ -64,15 +64,22 @@ bool VideoPlayerBackend::loadPlugins()
     };
 
 #undef EXT
-#ifdef GSTREAMER_PLUGINS
-    QByteArray pluginPath = QDir::toNativeSeparators(QString::fromLocal8Bit(GSTREAMER_PLUGINS "/")).toLocal8Bit();
-#elif defined(Q_OS_MAC)
-    QByteArray pluginPath = (QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/")).toLocal8Bit();
+#if defined(Q_OS_MAC)
+    QByteArray pluginPath = QFile::encodeName(QApplication::applicationDirPath() + QLatin1String("/../PlugIns/gstreamer/"));
 #else
-    QByteArray pluginPath = QDir::toNativeSeparators(QApplication::applicationDirPath() + QLatin1String("/")).toLocal8Bit();
+    QByteArray pluginPath = QFile::encodeName(QDir::toNativeSeparators(QApplication::applicationDirPath() +
+                                                                       QLatin1String("/")));
 #endif
 
-    if (!QFile::exists(QString::fromLocal8Bit(pluginPath)))
+#ifdef GSTREAMER_PLUGINS
+    QString ppx = QDir::toNativeSeparators(QString::fromLatin1(GSTREAMER_PLUGINS "/"));
+    if (QDir::isAbsolutePath(ppx))
+        pluginPath = QFile::encodeName(ppx);
+    else
+        pluginPath = pluginPath + QFile::encodeName(QString(QDir::separator())) + QFile::encodeName(ppx);
+#endif
+
+    if (!QFile::exists(QFile::decodeName(pluginPath)))
     {
         qWarning() << "gstreamer: Plugin path" << pluginPath << "does not exist";
         return false;

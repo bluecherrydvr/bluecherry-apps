@@ -45,6 +45,7 @@ win32 {
     LIBS += -L"$${GSTREAMER_PATH}/lib" gstreamer-0.10.lib gstinterfaces-0.10.lib gstapp-0.10.lib gstvideo-0.10.lib glib-2.0.lib gobject-2.0.lib
     DEFINES += USE_GSTREAMER
     CONFIG(debug, debug|release):DEFINES += GSTREAMER_PLUGINS=\\\"$$PWD/gstreamer-bin/win/plugins\\\"
+    CONFIG(release, debug|release):DEFINES += GSTREAMER_PLUGINS=\\\"plugins\\\"
 }
 
 !CONFIG(no-breakpad) {
