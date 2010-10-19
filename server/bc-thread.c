@@ -109,6 +109,7 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 	}
 
 	bc_rec->bc = bc;
+	bc->__data = bc_rec;
 
 	if (bc_rec->vid_interval > 0 && bc_set_interval(bc,
 					bc_rec->vid_interval) != 0) {
