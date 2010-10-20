@@ -43,6 +43,7 @@ QUrl ServerRequestManager::serverUrl() const
     QUrl url;
     url.setScheme(QLatin1String("http"));
     url.setHost(server->hostname());
+    url.setPort(server->serverPort());
     return url;
 }
 
@@ -52,6 +53,7 @@ QNetworkRequest ServerRequestManager::buildRequest(const QUrl &relativeUrl)
     QUrl url = relativeUrl;
     url.setScheme(QLatin1String("http"));
     url.setHost(server->hostname());
+    url.setPort(server->serverPort());
 
     return QNetworkRequest(url);
 }

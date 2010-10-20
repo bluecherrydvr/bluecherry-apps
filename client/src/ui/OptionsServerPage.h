@@ -36,7 +36,7 @@ private slots:
 private:
     QTreeView *m_serversView;
     QLabel *m_connectionStatus;
-    QLineEdit *m_nameEdit, *m_hostnameEdit, *m_usernameEdit, *m_passwordEdit;
+    QLineEdit *m_nameEdit, *m_hostnameEdit, *m_portEdit, *m_usernameEdit, *m_passwordEdit;
 };
 
 #endif // OPTIONSSERVERPAGE_H

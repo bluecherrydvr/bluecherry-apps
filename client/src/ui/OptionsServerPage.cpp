@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QTextDocument>
 #include <QMessageBox>
+#include <QIntValidator>
 
 OptionsServerPage::OptionsServerPage(QWidget *parent)
     : OptionsDialogPage(parent)
@@ -41,25 +42,33 @@ OptionsServerPage::OptionsServerPage(QWidget *parent)
     mainLayout->addLayout(editsLayout);
 
     QLabel *label = new QLabel(tr("Name:"));
-    editsLayout->addWidget(label, 0, 0);
+    editsLayout->addWidget(label, 0, 0, Qt::AlignRight);
 
     m_nameEdit = new QLineEdit;
     editsLayout->addWidget(m_nameEdit, 0, 1);
 
     label = new QLabel(tr("Hostname:"));
-    editsLayout->addWidget(label, 0, 2);
+    editsLayout->addWidget(label, 1, 0, Qt::AlignRight);
 
+    QBoxLayout *hnLayout = new QBoxLayout(QBoxLayout::LeftToRight);
     m_hostnameEdit = new QLineEdit;
-    editsLayout->addWidget(m_hostnameEdit, 0, 3);
+    hnLayout->addWidget(m_hostnameEdit);
+
+    m_portEdit = new QLineEdit;
+    m_portEdit->setValidator(new QIntValidator(1, 65535, m_portEdit));
+    m_portEdit->setFixedWidth(50);
+    hnLayout->addWidget(m_portEdit);
+
+    editsLayout->addLayout(hnLayout, 1, 1);
 
     label = new QLabel(tr("Username:"));
-    editsLayout->addWidget(label, 1, 0);
+    editsLayout->addWidget(label, 0, 2, Qt::AlignRight);
 
     m_usernameEdit = new QLineEdit;
-    editsLayout->addWidget(m_usernameEdit, 1, 1);
+    editsLayout->addWidget(m_usernameEdit, 0, 3);
 
     label = new QLabel(tr("Password:"));
-    editsLayout->addWidget(label, 1, 2);
+    editsLayout->addWidget(label, 1, 2, Qt::AlignRight);
 
     m_passwordEdit = new QLineEdit;
     m_passwordEdit->setEchoMode(QLineEdit::PasswordEchoOnEdit);
@@ -120,6 +129,7 @@ void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const 
     {
         m_nameEdit->clear();
         m_hostnameEdit->clear();
+        m_portEdit->clear();
         m_usernameEdit->clear();
         m_passwordEdit->clear();
         return;
@@ -127,6 +137,7 @@ void OptionsServerPage::currentServerChanged(const QModelIndex &newIndex, const 
 
     m_nameEdit->setText(server->displayName());
     m_hostnameEdit->setText(server->readSetting("hostname").toString());
+    m_portEdit->setText(QString::number(server->serverPort()));
     m_usernameEdit->setText(server->readSetting("username").toString());
     m_passwordEdit->setText(server->readSetting("password").toString());
 
@@ -205,6 +216,12 @@ void OptionsServerPage::saveChanges(DVRServer *server)
     {
         server->writeSetting("hostname", m_hostnameEdit->text());
         m_hostnameEdit->setModified(false);
+        connectionModified = true;
+    }
+    if (m_portEdit->isModified())
+    {
+        server->writeSetting("port", m_portEdit->text());
+        m_portEdit->setModified(false);
         connectionModified = true;
     }
     if (m_usernameEdit->isModified())

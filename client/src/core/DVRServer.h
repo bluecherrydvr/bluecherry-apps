@@ -22,6 +22,7 @@ public:
     const QString &displayName() const { return m_displayName; }
 
     QString hostname() const;
+    int serverPort() const;
     QString username() const;
     QString password() const;
 
@@ -69,6 +70,13 @@ Q_DECLARE_METATYPE(DVRServer*)
 inline QString DVRServer::hostname() const
 {
     return readSetting("hostname").toString();
+}
+
+inline int DVRServer::serverPort() const
+{
+    bool ok = false;
+    int r = readSetting("port").toInt(&ok);
+    return ok ? r : 80;
 }
 
 inline QString DVRServer::username() const
