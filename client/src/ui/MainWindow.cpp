@@ -148,7 +148,7 @@ QWidget *MainWindow::createSourcesList()
 
 QWidget *MainWindow::createServerBox()
 {
-    QGroupBox *box = new QGroupBox(tr("DVR Server Stats"));
+    QGroupBox *box = new QGroupBox(tr("Server Information"));
 
     /* Placeholder */
     box->setMinimumHeight(200);

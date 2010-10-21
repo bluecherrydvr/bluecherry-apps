@@ -9,5 +9,9 @@
         <file>status.png</file>
         <file>status-offline.png</file>
         <file>status-error.png</file>
+        <file>layout-join.png</file>
+        <file>layout-join-vertical.png</file>
+        <file>layout-split.png</file>
+        <file>layout-split-vertical.png</file>
     </qresource>
 </RCC>

@@ -5,17 +5,34 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QInputDialog>
 #include <QSettings>
 #include <QDebug>
 #include <QMenu>
 #include <QMacStyle>
 
+static QToolButton *createGridButton(const char *icon, const QString &text, QWidget *target, const char *slot)
+{
+    QToolButton *btn = new QToolButton;
+    btn->setIcon(QIcon(QLatin1String(icon)));
+    btn->setText(text);
+    btn->setToolTip(text);
+    btn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    btn->setAutoRaise(true);
+
+    if (target && slot)
+        QObject::connect(btn, SIGNAL(clicked()), target, slot);
+
+    return btn;
+}
+
 CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     : QWidget(parent), cameraArea(area), m_lastLayoutIndex(-1)
 {
     QBoxLayout *layout = new QHBoxLayout(this);
     layout->setMargin(0);
+    layout->setSpacing(2);
 
     /* Saved layouts box */
     m_savedLayouts = new QComboBox;
@@ -30,39 +47,11 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     connect(m_savedLayouts, SIGNAL(customContextMenuRequested(QPoint)), SLOT(showLayoutMenu(QPoint)));
 
     layout->addSpacing(20);
-
-    /* Rows */
-    QLabel *rowsLabel = new QLabel(tr("Rows:"));
-    layout->addWidget(rowsLabel);
-
-    QPushButton *addRowBtn = new QPushButton(tr("+"));
-    connect(addRowBtn, SIGNAL(clicked()), area, SLOT(addRow()));
-    layout->addWidget(addRowBtn);
-    QPushButton *delRowBtn = new QPushButton(tr("-"));
-    connect(delRowBtn, SIGNAL(clicked()), area, SLOT(removeRow()));
-    layout->addWidget(delRowBtn);
+    layout->addWidget(createGridButton(":/icons/layout-split-vertical.png", tr("Add Row"), area, SLOT(addRow())));
+    layout->addWidget(createGridButton(":/icons/layout-join-vertical.png", tr("Remove Row"), area, SLOT(removeRow())));
     layout->addSpacing(20);
-
-    /* Columns */
-    QLabel *colsLabel = new QLabel(tr("Columns:"));
-    layout->addWidget(colsLabel);
-
-    QPushButton *addColBtn = new QPushButton(tr("+"));
-    connect(addColBtn, SIGNAL(clicked()), area, SLOT(addColumn()));
-    layout->addWidget(addColBtn);
-    QPushButton *delColBtn = new QPushButton(tr("-"));
-    connect(delColBtn, SIGNAL(clicked()), area, SLOT(removeColumn()));
-    layout->addWidget(delColBtn);
-
-#ifdef Q_OS_MAC
-    if (!qobject_cast<QMacStyle*>(style()))
-#endif
-    {
-        addRowBtn->setFixedWidth(26);
-        delRowBtn->setFixedWidth(26);
-        addColBtn->setFixedWidth(26);
-        delColBtn->setFixedWidth(26);
-    }
+    layout->addWidget(createGridButton(":/icons/layout-split.png", tr("Add Column"), area, SLOT(addColumn())));
+    layout->addWidget(createGridButton(":/icons/layout-join.png", tr("Remove Column"), area, SLOT(removeColumn())));
 
     layout->addStretch();
 
