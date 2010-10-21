@@ -7,6 +7,15 @@ CREATE TABLE AvailableSources (
 	alsasounddev varchar(255)
 );
 
+CREATE TABLE MotionThreshold (
+	id varchar(10) PRIMARY KEY NOT NULL
+);
+INSERT INTO MotionThreshold VALUES ('very-low');
+INSERT INTO MotionThreshold VALUES ('low');
+INSERT INTO MotionThreshold VALUES ('medium');
+INSERT INTO MotionThreshold VALUES ('high');
+INSERT INTO MotionThreshold VALUES ('very-high');
+
 CREATE TABLE Devices (
 	id integer PRIMARY KEY NOT NULL,	-- Unique ID for this device
 	device_name varchar(100),		-- User given name
@@ -47,10 +56,11 @@ CREATE TABLE Devices (
 	ip_ptz_control_type smallint,		-- Control type of IP PTZ
 	preset_type_ID smallint,		-- ??
 	motion_detection_on boolean,		-- If motion detection is enabled
-	motion_detection_threshold integer,	-- Global threshold for motion
-						--   default 768, range (0-0xffff)
+	motion_detection_threshold varchar,	-- Device default motion threshold
 	file_chop_interval smallint,		-- How often in hours to chop video
 						--   when using continuous record
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
+	FOREIGN KEY (motion_detection_threshold) REFERENCES MotionThreshold(id)
+                ON UPDATE CASCADE ON DELETE CASCADE
 	UNIQUE (device_name)
 );

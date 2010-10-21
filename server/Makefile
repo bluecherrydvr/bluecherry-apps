@@ -5,7 +5,7 @@ CFLAGS		+= -pthread
 LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry -lasound
 
 TARGETS		= bc-server bc-detect
-SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o
+SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-motion-tables.o
 DETECT_OBJS	= bc-detect.o
 
 all: $(TARGETS)

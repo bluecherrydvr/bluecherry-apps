@@ -74,4 +74,10 @@ int bc_open_avcodec(struct bc_record *bc_rec);
 
 int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row);
 
+typedef enum {
+	BC_MOTION_TYPE_SOLO = 0,
+} bc_motion_type_t;
+
+int bc_motion_val(bc_motion_type_t type, const char *str);
+
 #endif /* __BC_SERVER_H */
