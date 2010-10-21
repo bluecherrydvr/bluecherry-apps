@@ -48,7 +48,6 @@ private:
     void createMenu();
 
     QWidget *createSourcesList();
-    QWidget *createPtzBox();
     QWidget *createServerBox();
 
     QWidget *createCameraArea();

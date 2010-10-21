@@ -42,7 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     leftLayout->addWidget(createSourcesList());
 
-    leftLayout->addWidget(createPtzBox());
     leftLayout->addWidget(createServerBox());
 
     mainLayout->addLayout(leftLayout);
@@ -141,40 +140,6 @@ QWidget *MainWindow::createSourcesList()
     m_sourcesList->setFixedWidth(170);
 
     return m_sourcesList;
-}
-
-QWidget *MainWindow::createPtzBox()
-{
-    QGroupBox *box = new QGroupBox(tr("Controls"));
-    QGridLayout *layout = new QGridLayout(box);
-    layout->setColumnStretch(1, 1);
-
-    int row = 0;
-
-    const QString labels[] = { tr("Brightness:"), tr("Contrast:"), tr("Saturation:"), tr("Hue:") };
-    for (int i = 0; i < 4; ++i)
-    {
-        QLabel *label = new QLabel(labels[i]);
-        label->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-        layout->addWidget(label, row+i, 0);
-    }
-
-    NumericOffsetWidget *brightness = new NumericOffsetWidget;
-    layout->addWidget(brightness, row++, 1);
-
-    NumericOffsetWidget *contrast = new NumericOffsetWidget;
-    layout->addWidget(contrast, row++, 1);
-
-    NumericOffsetWidget *saturation = new NumericOffsetWidget;
-    layout->addWidget(saturation, row++, 1);
-
-    NumericOffsetWidget *hue = new NumericOffsetWidget;
-    layout->addWidget(hue, row++, 1);
-
-    QCheckBox *allChk = new QCheckBox(tr("Apply to all cameras"));
-    layout->addWidget(allChk, row++, 0, 1, 2, Qt::AlignCenter);
-
-    return box;
 }
 
 QWidget *MainWindow::createServerBox()
