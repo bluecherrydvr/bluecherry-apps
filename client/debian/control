@@ -1,0 +1,14 @@
+Source: bluecherry-client
+Section: admin
+Priority: optional
+Maintainer: Bluecherry <support@bluecherry.net>
+Build-Depends: cdbs, debhelper (>= 7), libqt4-dev, qt4-qmake, libgstreamer0.10-dev, libgstreamer-plugins-base0.10-dev
+Standards-Version: 3.8.3
+Homepage: http://www.bluecherrydvr.com/
+
+Package: bluecherry-client
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Bluecherry DVR Client
+ This package contains the client for the Bluecherry DVR system. It can
+ also be used to connect to remote instances of the Bluecherry DVR server.

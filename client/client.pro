@@ -4,6 +4,11 @@ CONFIG(static):QTPLUGIN += qjpeg
 TARGET = bluecherry-client
 TEMPLATE = app
 
+unix:!macx {
+    target.path = /usr/bin
+    INSTALLS += target
+}
+
 DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
 INCLUDEPATH += src
 
