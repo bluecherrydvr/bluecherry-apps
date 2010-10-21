@@ -54,19 +54,23 @@ MainWindow::MainWindow(QWidget *parent)
     m_centerSplit->addWidget(cameraContainer);
 
     QBoxLayout *middleLayout = new QVBoxLayout(cameraContainer);
+    middleLayout->setSpacing(0);
     middleLayout->setMargin(0);
 
     middleLayout->addWidget(createCameraArea(), 1);
 
     /* Controls area */
     QBoxLayout *controlLayout = new QHBoxLayout;
+    controlLayout->setMargin(0);
+    controlLayout->setSpacing(0);
+    middleLayout->addSpacing(6);
     middleLayout->addLayout(controlLayout);
 
     controlLayout->addWidget(createCameraControls(), 1);
 
     QPushButton *eventsBtn = new QPushButton(tr("Search Events"));
     connect(eventsBtn, SIGNAL(clicked()), SLOT(showEventsWindow()));
-    controlLayout->addWidget(eventsBtn);
+    leftLayout->addWidget(eventsBtn, 0, Qt::AlignCenter);
 
     /* Recent events */
     QWidget *eventsWidget = createRecentEvents();

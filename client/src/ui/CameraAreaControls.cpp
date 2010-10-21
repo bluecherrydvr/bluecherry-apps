@@ -9,6 +9,7 @@
 #include <QSettings>
 #include <QDebug>
 #include <QMenu>
+#include <QMacStyle>
 
 CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     : QWidget(parent), cameraArea(area), m_lastLayoutIndex(-1)
@@ -36,11 +37,9 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
 
     QPushButton *addRowBtn = new QPushButton(tr("+"));
     connect(addRowBtn, SIGNAL(clicked()), area, SLOT(addRow()));
-    addRowBtn->setFixedWidth(26);
     layout->addWidget(addRowBtn);
     QPushButton *delRowBtn = new QPushButton(tr("-"));
     connect(delRowBtn, SIGNAL(clicked()), area, SLOT(removeRow()));
-    delRowBtn->setFixedWidth(26);
     layout->addWidget(delRowBtn);
     layout->addSpacing(20);
 
@@ -50,12 +49,20 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
 
     QPushButton *addColBtn = new QPushButton(tr("+"));
     connect(addColBtn, SIGNAL(clicked()), area, SLOT(addColumn()));
-    addColBtn->setFixedWidth(26);
     layout->addWidget(addColBtn);
     QPushButton *delColBtn = new QPushButton(tr("-"));
     connect(delColBtn, SIGNAL(clicked()), area, SLOT(removeColumn()));
-    delColBtn->setFixedWidth(26);
     layout->addWidget(delColBtn);
+
+#ifdef Q_OS_MAC
+    if (!qobject_cast<QMacStyle*>(style()))
+#endif
+    {
+        addRowBtn->setFixedWidth(26);
+        delRowBtn->setFixedWidth(26);
+        addColBtn->setFixedWidth(26);
+        delColBtn->setFixedWidth(26);
+    }
 
     layout->addStretch();
 
