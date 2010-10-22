@@ -28,11 +28,9 @@ static QToolButton *createGridButton(const char *icon, const QString &text, QWid
 }
 
 CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
-    : QWidget(parent), cameraArea(area), m_lastLayoutIndex(-1)
+    : QToolBar(parent), cameraArea(area), m_lastLayoutIndex(-1)
 {
-    QBoxLayout *layout = new QHBoxLayout(this);
-    layout->setMargin(0);
-    layout->setSpacing(2);
+    setIconSize(QSize(16, 16));
 
     /* Saved layouts box */
     m_savedLayouts = new QComboBox;
@@ -41,19 +39,24 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     m_savedLayouts->setInsertPolicy(QComboBox::NoInsert);
     m_savedLayouts->setMinimumWidth(100);
     m_savedLayouts->setContextMenuPolicy(Qt::CustomContextMenu);
-    layout->addWidget(m_savedLayouts);
+    addWidget(m_savedLayouts);
+
+    QWidget *spacer = new QWidget;
+    spacer->setFixedWidth(20);
+    addWidget(spacer);
 
     connect(m_savedLayouts, SIGNAL(currentIndexChanged(int)), SLOT(savedLayoutChanged(int)));
     connect(m_savedLayouts, SIGNAL(customContextMenuRequested(QPoint)), SLOT(showLayoutMenu(QPoint)));
 
-    layout->addSpacing(20);
-    layout->addWidget(createGridButton(":/icons/layout-split-vertical.png", tr("Add Row"), area, SLOT(addRow())));
-    layout->addWidget(createGridButton(":/icons/layout-join-vertical.png", tr("Remove Row"), area, SLOT(removeRow())));
-    layout->addSpacing(20);
-    layout->addWidget(createGridButton(":/icons/layout-split.png", tr("Add Column"), area, SLOT(addColumn())));
-    layout->addWidget(createGridButton(":/icons/layout-join.png", tr("Remove Column"), area, SLOT(removeColumn())));
+    addAction(QIcon(QLatin1String(":/icons/layout-split-vertical.png")), tr("Add Row"), area, SLOT(addRow()));
+    addAction(QIcon(QLatin1String(":/icons/layout-join-vertical.png")), tr("Remove Row"), area, SLOT(removeRow()));
 
-    layout->addStretch();
+    spacer = new QWidget;
+    spacer->setFixedWidth(16);
+    addWidget(spacer);
+
+    addAction(QIcon(QLatin1String(":/icons/layout-split.png")), tr("Add Column"), area, SLOT(addColumn()));
+    addAction(QIcon(QLatin1String(":/icons/layout-join.png")), tr("Remove Column"), area, SLOT(removeColumn()));
 
     QSettings settings;
     QString lastLayout = settings.value(QLatin1String("ui/cameraArea/lastLayout")).toString();

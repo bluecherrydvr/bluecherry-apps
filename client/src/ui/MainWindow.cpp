@@ -25,6 +25,7 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QMessageBox>
+#include <QMacStyle>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -35,6 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QWidget *centerWidget = new QWidget;
     QBoxLayout *mainLayout = new QHBoxLayout(centerWidget);
+    mainLayout->setSpacing(5);
 
     /* Create left side */
     QBoxLayout *leftLayout = new QVBoxLayout;
@@ -50,23 +52,34 @@ MainWindow::MainWindow(QWidget *parent)
     m_centerSplit = new QSplitter(Qt::Vertical);
     mainLayout->addWidget(m_centerSplit, 1);
 
-    QWidget *cameraContainer = new QWidget;
+    QFrame *cameraContainer = new QFrame;
     m_centerSplit->addWidget(cameraContainer);
 
     QBoxLayout *middleLayout = new QVBoxLayout(cameraContainer);
     middleLayout->setSpacing(0);
     middleLayout->setMargin(0);
 
-    middleLayout->addWidget(createCameraArea(), 1);
+    createCameraArea();
 
     /* Controls area */
     QBoxLayout *controlLayout = new QHBoxLayout;
     controlLayout->setMargin(0);
     controlLayout->setSpacing(0);
-    middleLayout->addSpacing(6);
     middleLayout->addLayout(controlLayout);
+    middleLayout->addWidget(m_cameraArea, 1);
 
-    controlLayout->addWidget(createCameraControls(), 1);
+    QWidget *controls = createCameraControls();
+    controlLayout->addWidget(controls, 1);
+
+#ifdef Q_OS_MAC
+    if (qobject_cast<QMacStyle*>(style()))
+    {
+        m_cameraArea->setFrameStyle(QFrame::NoFrame);
+        cameraContainer->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    }
+#else
+    controls->setStyleSheet(QLatin1String("QToolBar { border: none; }"));
+#endif
 
     QPushButton *eventsBtn = new QPushButton(tr("Search Events"));
     connect(eventsBtn, SIGNAL(clicked()), SLOT(showEventsWindow()));
