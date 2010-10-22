@@ -33,6 +33,9 @@ static int device_exists(const char *dev)
 {
         int i;
 
+	/* Put all devices in place */
+	return 0;
+
 	for (i = 0; i < enabled_nrows; i++) {
 		char *name = bc_db_get_val(enabled_rows, enabled_ncols, i,
 					   "source_video");
