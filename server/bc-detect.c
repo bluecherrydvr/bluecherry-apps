@@ -23,37 +23,7 @@ static struct bc_db_handle *bc_db;
 static int enabled_nrows, enabled_ncols;
 static char **enabled_rows;
 
-/* Table for available devices */
-static int avail_nrows, avail_ncols;
-static char **avail_rows;
-
 extern char *__progname;
-
-static int device_exists(const char *dev)
-{
-        int i;
-
-	/* Put all devices in place */
-	return 0;
-
-	for (i = 0; i < enabled_nrows; i++) {
-		char *name = bc_db_get_val(enabled_rows, enabled_ncols, i,
-					   "source_video");
-		/* Skip '/dev/' part */
-		if (name != NULL && !strcmp(name + 5, dev))
-			return 1;
-	}
-
-	for (i = 0; i < avail_nrows; i++) {
-                char *name = bc_db_get_val(avail_rows, avail_ncols, i,
-					   "devicepath");
-		/* Skip '/dev/' part */
-		if (name != NULL && !strcmp(name + 5, dev))
-			return 1;
-	}
-
-	return 0;
-}
 
 static const char *get_v4l2_card_name(const char *dev)
 {
@@ -157,11 +127,12 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/* Truncate the table to clear all entries */
+	bc_db_query(bc_db, "DELETE FROM AvailableSources");
+
 	/* Cache the db data we need */
 	res = bc_db_get_table(bc_db, &enabled_nrows, &enabled_ncols,
 			      &enabled_rows, "SELECT * from Devices;");
-	res |= bc_db_get_table(bc_db, &avail_nrows, &avail_ncols,
-			       &avail_rows, "SELECT * from AvailableSources;");
 
 	if (res != 0) {
 		bc_log("Error reading tables from database");
@@ -181,10 +152,6 @@ int main(int argc, char **argv)
 		const char *driver = NULL, *alsadev = NULL;
 
 		if (strncmp(dev, "video", 5))
-			continue;
-
-		/* Already in the database? */
-		if (device_exists(dev))
 			continue;
 
 		/* Find the driver */
@@ -211,7 +178,6 @@ int main(int argc, char **argv)
 	bc_log("Detection of available sources completed");
 
 	bc_db_free_table(bc_db, enabled_rows);
-	bc_db_free_table(bc_db, avail_rows);
 	bc_db_close(bc_db);
 
 	exit(0);
