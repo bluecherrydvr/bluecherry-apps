@@ -149,7 +149,6 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
     {
         if (reader.name() == QLatin1String("feed"))
         {
-            qDebug() << "EventData: found feed";
             while (reader.readNext() != QXmlStreamReader::Invalid)
             {
                 if (reader.tokenType() != QXmlStreamReader::StartElement)
@@ -194,7 +193,6 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
         else if (reader.name() == QLatin1String("updated"))
         {
             QString d = reader.readElementText();
-            qDebug() << d;
             if (d.isEmpty())
                 data->duration = -1;
             else
@@ -206,7 +204,7 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
             if (attrib.value(QLatin1String("scheme")) == QLatin1String("http://www.bluecherrydvr.com/atom.html"))
             {
                 QStringRef category = attrib.value(QLatin1String("term"));
-                qDebug() << category;
+                Q_UNUSED(category);
             }
         }
         else if (reader.name() == QLatin1String("entry"))
