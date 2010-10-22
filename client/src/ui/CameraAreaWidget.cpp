@@ -231,15 +231,39 @@ void CameraAreaWidget::onCameraChanged()
 
 void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
 {
-    if (!ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
-        return;
+    if (ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
+    {
+        ev->acceptProposedAction();
+    }
+}
 
-    QList<DVRCamera> cameras = DVRCamera::fromMimeData(ev->mimeData());
-    if (cameras.isEmpty())
+void CameraAreaWidget::dragLeaveEvent(QDragLeaveEvent *ev)
+{
+    Q_UNUSED(ev);
+
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag();
+    m_dragWidgets.clear();
+}
+
+void CameraAreaWidget::dragMoveEvent(QDragMoveEvent *ev)
+{
+    if (!ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
         return;
 
     LiveFeedWidget *fw = qobject_cast<LiveFeedWidget*>(childAt(ev->pos()));
     if (!fw)
+        return;
+
+    if (!m_dragWidgets.isEmpty() && m_dragWidgets[0] == fw)
+        return;
+
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag();
+    m_dragWidgets.clear();
+
+    QList<DVRCamera> cameras = DVRCamera::fromMimeData(ev->mimeData());
+    if (cameras.isEmpty())
         return;
 
     bool found = false;
@@ -261,16 +285,7 @@ void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
     }
 
 end:
-    ev->acceptProposedAction();
-}
-
-void CameraAreaWidget::dragLeaveEvent(QDragLeaveEvent *ev)
-{
-    Q_UNUSED(ev);
-
-    foreach (LiveFeedWidget *w, m_dragWidgets)
-        w->endDrag();
-    m_dragWidgets.clear();
+    ev->accept(fw->geometry());
 }
 
 void CameraAreaWidget::dropEvent(QDropEvent *ev)

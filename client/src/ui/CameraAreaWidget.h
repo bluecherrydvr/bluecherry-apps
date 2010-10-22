@@ -44,6 +44,7 @@ private slots:
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *ev);
     virtual void dragLeaveEvent(QDragLeaveEvent *ev);
+    virtual void dragMoveEvent(QDragMoveEvent *ev);
     virtual void dropEvent(QDropEvent *ev);
 
 private:
