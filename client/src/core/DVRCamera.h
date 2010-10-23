@@ -6,6 +6,7 @@
 #include <QWeakPointer>
 #include <QHash>
 #include <QXmlStreamReader>
+#include <QMetaType>
 
 class DVRServer;
 class MJpegStream;
@@ -81,6 +82,8 @@ private:
 
     DVRCamera(DVRCameraData *dt) : d(dt) { }
 };
+
+Q_DECLARE_METATYPE(DVRCamera)
 
 QDataStream &operator<<(QDataStream &s, const DVRCamera &camera);
 QDataStream &operator>>(QDataStream &s, DVRCamera &camera);

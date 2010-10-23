@@ -229,6 +229,40 @@ void CameraAreaWidget::onCameraChanged()
     emit cameraChanged(qobject_cast<LiveFeedWidget*>(sender()));
 }
 
+void CameraAreaWidget::addCamera(const DVRCamera &camera)
+{
+    /* Set the camera in the first unused space. Add a row/column if necessary. */
+    foreach (const QList<LiveFeedWidget*> &row, m_cameraWidgets)
+    {
+        foreach (LiveFeedWidget *w, row)
+        {
+            if (!w->camera())
+            {
+                w->setCamera(camera);
+                return;
+            }
+        }
+    }
+
+    /* Add a row or a column to make space */
+    if (m_columnCount < m_rowCount)
+    {
+        /* Add column */
+        addColumn();
+        if (m_rowCount < 1)
+            addRow();
+        m_cameraWidgets[0][m_columnCount-1]->setCamera(camera);
+    }
+    else
+    {
+        /* Add row */
+        addRow();
+        if (m_columnCount < 1)
+            addColumn();
+        m_cameraWidgets[m_rowCount-1][0]->setCamera(camera);
+    }
+}
+
 void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
 {
     if (ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))

@@ -16,6 +16,8 @@ public:
     MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    CameraAreaWidget *cameraArea() const { return m_cameraArea; }
+
 public slots:
     void showOptionsDialog();
     void showEventsWindow();

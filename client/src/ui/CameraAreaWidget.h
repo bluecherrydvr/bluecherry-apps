@@ -6,6 +6,7 @@
 
 class QGridLayout;
 class LiveFeedWidget;
+class DVRCamera;
 
 class CameraAreaWidget : public QFrame
 {
@@ -20,6 +21,8 @@ public:
 
     QByteArray saveLayout() const;
     bool loadLayout(const QByteArray &data);
+
+    void addCamera(const DVRCamera &camera);
 
 public slots:
     void setRows(int rows) { setGridSize(rows, m_columnCount); }

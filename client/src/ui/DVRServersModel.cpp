@@ -246,6 +246,8 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
     {
         switch (role)
         {
+        case DVRCameraRole:
+            return QVariant::fromValue(camera);
         case Qt::DisplayRole:
             return camera.displayName();
         }

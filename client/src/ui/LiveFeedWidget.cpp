@@ -118,11 +118,16 @@ void LiveFeedWidget::setStatusMessage(const QString &message)
     update();
 }
 
+void LiveFeedWidget::setWindow()
+{
+    setAcceptDrops(true);
+    setWindowFlags(Qt::Window);
+}
+
 QWidget *LiveFeedWidget::openWindow()
 {
     LiveFeedWidget *widget = new LiveFeedWidget(window());
-    widget->setAcceptDrops(true);
-    widget->setWindowFlags(Qt::Window);
+    widget->setWindow();
     widget->setAttribute(Qt::WA_DeleteOnClose);
     widget->clone(this);
     widget->show();

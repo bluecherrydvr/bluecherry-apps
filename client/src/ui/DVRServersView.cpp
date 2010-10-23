@@ -4,6 +4,10 @@
 #include "OptionsServerPage.h"
 #include "ServerConfigWindow.h"
 #include "core/DVRServer.h"
+#include "LiveFeedWidget.h"
+#include "core/BluecherryApp.h"
+#include "MainWindow.h"
+#include "CameraAreaWidget.h"
 #include <QHeaderView>
 #include <QContextMenuEvent>
 #include <QMenu>
@@ -47,9 +51,11 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 
     QAction *aConnect = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
     QAction *aSelectOnly = 0, *aSelectElse = 0;
+    QAction *aAddFeed = 0, *aOpenWin = 0, *aOpenFull = 0, *aCamRename = 0;
 
     QModelIndex index = indexAt(event->pos());
     DVRServer *server = index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>();
+    DVRCamera camera = index.data(DVRServersModel::DVRCameraRole).value<DVRCamera>();
     if (index.isValid())
     {
         if (index.flags() & Qt::ItemIsUserCheckable)
@@ -70,6 +76,16 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
             aServerConfig = menu.addAction(tr("Configure server"));
             menu.addSeparator();
             aEditServer = menu.addAction(tr("Edit server"));
+        }
+        else if (camera)
+        {
+            aAddFeed = menu.addAction(tr("Add to view"));
+            menu.addSeparator();
+            aOpenWin = menu.addAction(tr("Open in window"));
+            aOpenFull = menu.addAction(tr("Open as fullscreen"));
+            menu.addSeparator();
+            aCamRename = menu.addAction(tr("Rename device"));
+            aCamRename->setEnabled(false);
         }
     }
     else
@@ -107,6 +123,21 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         ServerConfigWindow::instance()->setServer(server);
         ServerConfigWindow::instance()->show();
         ServerConfigWindow::instance()->raise();
+    }
+    else if (action == aAddFeed)
+    {
+        bcApp->mainWindow->cameraArea()->addCamera(camera);
+    }
+    else if (action == aOpenWin || action == aOpenFull)
+    {
+        LiveFeedWidget *w = new LiveFeedWidget;
+        w->setWindow();
+        w->setAttribute(Qt::WA_DeleteOnClose);
+        w->setCamera(camera);
+        if (action == aOpenFull)
+            w->showFullScreen();
+        else
+            w->show();
     }
     else if (action == aSelectOnly)
     {
