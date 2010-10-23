@@ -13,3 +13,4 @@ override_dh_auto_install:
 
 override_dh_installinit:
 	dh_installinit -o --name=bc-server --upstart-only
+	dh_installinit -o --name=bc-detect --upstart-only

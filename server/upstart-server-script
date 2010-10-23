@@ -1,0 +1,15 @@
+# bc-server - Bluecherry, LLC DVR Server
+#
+# bc-server manages recording of cameras to disk based on rules setup in the db
+
+description	"Bluecherry DVR Server"
+author		"Ben Collins <bcollins@bluecherry.net>"
+
+start on runlevel [23]
+stop on runlevel [016]
+
+expect fork
+respawn
+umask 027
+
+exec /usr/sbin/bc-server

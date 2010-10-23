@@ -18,8 +18,11 @@ bc-detect: $(LIB) $(DETECT_OBJS)
 
 install: all upstart-script rsyslog.conf logrotate.conf
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
-	$(INSTALL_DATA) -D upstart-script \
+	$(INSTALL_PROG) -D bc-detect $(DESTDIR)$(sbin_dir)/bc-detect
+	$(INSTALL_DATA) -D upstart-server-script \
 		$(DESTDIR)$(etc_dir)/init/bc-server.conf
+	$(INSTALL_DATA) -D upstart-detect-script \
+		$(DESTDIR)$(etc_dir)/init/bc-detect.conf
 	$(INSTALL_DATA) -D rsyslog.conf \
 		$(DESTDIR)$(etc_dir)/rsyslog.d/99-bluecherry.conf
 	$(INSTALL_DATA) -D logrotate.conf \

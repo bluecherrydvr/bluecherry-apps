@@ -5,11 +5,9 @@
 description	"Bluecherry DVR Server"
 author		"Ben Collins <bcollins@bluecherry.net>"
 
-start on filesystem
+start on runlevel[23]
 stop on runlevel [016]
 
-expect fork
-respawn
 umask 027
 
-exec /usr/sbin/bc-server
+exec /usr/sbin/bc-detect
