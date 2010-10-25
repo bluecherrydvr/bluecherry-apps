@@ -170,6 +170,7 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton && (index = indexAt(event->pos())).isValid())
     {
         DVRServer *server = index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>();
+        DVRCamera camera = index.data(DVRServersModel::DVRCameraRole).value<DVRCamera>();
         if (index.flags() & Qt::ItemIsUserCheckable)
         {
             Qt::CheckState state = (index.data(Qt::CheckStateRole).toInt() == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
@@ -192,6 +193,10 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
             ServerConfigWindow::instance()->setServer(server);
             ServerConfigWindow::instance()->show();
             ServerConfigWindow::instance()->raise();
+        }
+        else if (camera)
+        {
+            bcApp->mainWindow->cameraArea()->addCamera(camera);
         }
 
         event->accept();
