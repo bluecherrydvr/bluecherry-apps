@@ -13,5 +13,6 @@
         <file>layout-join-vertical.png</file>
         <file>layout-split.png</file>
         <file>layout-split-vertical.png</file>
+        <file>webcam.png</file>
     </qresource>
 </RCC>
