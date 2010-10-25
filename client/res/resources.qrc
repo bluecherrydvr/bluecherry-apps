@@ -14,5 +14,8 @@
         <file>layout-split.png</file>
         <file>layout-split-vertical.png</file>
         <file>webcam.png</file>
+        <file>control.png</file>
+        <file>control-pause.png</file>
+        <file>control-stop-180.png</file>
     </qresource>
 </RCC>

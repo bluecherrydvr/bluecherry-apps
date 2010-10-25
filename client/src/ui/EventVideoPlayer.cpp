@@ -52,14 +52,14 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
     layout->addLayout(btnLayout);
 
     m_playBtn = new QToolButton;
-    m_playBtn->setText(QString(QChar(0x25BA)));
+    m_playBtn->setIcon(QIcon(QLatin1String(":/icons/control.png")));
     btnLayout->addWidget(m_playBtn);
     connect(m_playBtn, SIGNAL(clicked()), SLOT(playPause()));
 
     btnLayout->addSpacing(9);
 
     QToolButton *restartBtn = new QToolButton;
-    restartBtn->setText(QString::fromUtf8("|\xe2\x97\x84"));
+    restartBtn->setIcon(QIcon(QLatin1String(":/icons/control-stop-180.png")));
     btnLayout->addWidget(restartBtn);
     connect(restartBtn, SIGNAL(clicked()), SLOT(restart()));
 
@@ -125,12 +125,12 @@ void EventVideoPlayer::stateChanged(int state)
     qDebug("state change %d", state);
     if (state == VideoPlayerBackend::Playing)
     {
-        m_playBtn->setText(QLatin1String("||"));
+        m_playBtn->setIcon(QIcon(QLatin1String(":/icons/control-pause.png")));
         m_posTimer.start(30);
     }
     else
     {
-        m_playBtn->setText(QString(QChar(0x25BA)));
+        m_playBtn->setIcon(QIcon(QLatin1String(":/icons/control.png")));
         m_posTimer.stop();
         updatePosition();
     }
