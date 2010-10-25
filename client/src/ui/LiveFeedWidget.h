@@ -46,6 +46,7 @@ private slots:
     void addScaleSize(QVector<QSize> &sizes);
     void mjpegStateChanged(int state);
     void cameraDataUpdated();
+    void streamSizeChanged(const QSize &size);
 
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *event);

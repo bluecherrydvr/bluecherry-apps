@@ -106,7 +106,11 @@ void LiveFeedWidget::setStream(const QSharedPointer<MJpegStream> &stream)
                 SLOT(updateFrame(QPixmap,QVector<QImage>)));
         connect(m_stream.data(), SIGNAL(buildScaleSizes(QVector<QSize>&)), SLOT(addScaleSize(QVector<QSize>&)));
         connect(m_stream.data(), SIGNAL(stateChanged(int)), SLOT(mjpegStateChanged(int)));
+        connect(m_stream.data(), SIGNAL(streamSizeChanged(QSize)), SLOT(streamSizeChanged(QSize)));
         m_stream->start();
+
+        if (!m_stream->streamSize().isEmpty())
+            streamSizeChanged(m_stream->streamSize());
     }
     else
         setStatusMessage(tr("No\nVideo"));
@@ -196,6 +200,12 @@ void LiveFeedWidget::mjpegStateChanged(int state)
         setStatusMessage(tr("Buffering..."));
         break;
     }
+}
+
+void LiveFeedWidget::streamSizeChanged(const QSize &size)
+{
+    if (!size.isEmpty() && isWindow() && !isFullScreen() && !testAttribute(Qt::WA_Resized))
+        resize(size);
 }
 
 QSize LiveFeedWidget::sizeHint() const
