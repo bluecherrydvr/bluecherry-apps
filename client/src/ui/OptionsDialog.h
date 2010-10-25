@@ -12,8 +12,7 @@ class OptionsDialog : public QDialog
 public:
     enum OptionsPage
     {
-        GeneralPage = 0,
-        ServerPage
+        ServerPage = 0
     };
 
     explicit OptionsDialog(QWidget *parent = 0);

@@ -17,7 +17,6 @@ OptionsDialog::OptionsDialog(QWidget *parent)
     m_tabWidget->setDocumentMode(true);
     layout->addWidget(m_tabWidget);
 
-    m_tabWidget->addTab(new QWidget, tr("General"));
     m_tabWidget->addTab(new OptionsServerPage(this), tr("DVR Servers"));
 }
 
