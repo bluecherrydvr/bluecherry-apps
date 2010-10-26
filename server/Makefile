@@ -16,7 +16,7 @@ bc-server: $(LIB) $(SERVER_OBJS)
 bc-detect: $(LIB) $(DETECT_OBJS)
 	$(LD) $(LDFLAGS) $(DETECT_OBJS) -o $@
 
-install: all upstart-script rsyslog.conf logrotate.conf
+install: all upstart-server-script upstart-detect-script rsyslog.conf logrotate.conf
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_PROG) -D bc-detect $(DESTDIR)$(sbin_dir)/bc-detect
 	$(INSTALL_DATA) -D upstart-server-script \
