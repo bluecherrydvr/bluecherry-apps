@@ -46,7 +46,7 @@ void BluecherryApp::loadServers()
 #ifdef Q_OS_LINUX
     /* If there are no servers configured, and the server application is installed here, automatically
      * configure a local server. */
-    if (groups.isEmpty() && QFile::exists(QLatin1String("/etc/bluecherry/bluecherry.conf")))
+    if (groups.isEmpty() && QFile::exists(QLatin1String("/etc/bluecherry.conf")))
     {
         DVRServer *s = addNewServer(tr("Local"));
         s->writeSetting("hostname", QHostAddress(QHostAddress::LocalHost).toString());

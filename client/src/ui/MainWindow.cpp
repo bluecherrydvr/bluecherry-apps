@@ -25,6 +25,7 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QMessageBox>
+#include <QMacStyle>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -35,6 +36,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     QWidget *centerWidget = new QWidget;
     QBoxLayout *mainLayout = new QHBoxLayout(centerWidget);
+    mainLayout->setSpacing(5);
 
     /* Create left side */
     QBoxLayout *leftLayout = new QVBoxLayout;
@@ -42,7 +44,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     leftLayout->addWidget(createSourcesList());
 
-    leftLayout->addWidget(createPtzBox());
     leftLayout->addWidget(createServerBox());
 
     mainLayout->addLayout(leftLayout);
@@ -51,23 +52,38 @@ MainWindow::MainWindow(QWidget *parent)
     m_centerSplit = new QSplitter(Qt::Vertical);
     mainLayout->addWidget(m_centerSplit, 1);
 
-    QWidget *cameraContainer = new QWidget;
+    QFrame *cameraContainer = new QFrame;
     m_centerSplit->addWidget(cameraContainer);
 
     QBoxLayout *middleLayout = new QVBoxLayout(cameraContainer);
+    middleLayout->setSpacing(0);
     middleLayout->setMargin(0);
 
-    middleLayout->addWidget(createCameraArea(), 1);
+    createCameraArea();
 
     /* Controls area */
     QBoxLayout *controlLayout = new QHBoxLayout;
+    controlLayout->setMargin(0);
+    controlLayout->setSpacing(0);
     middleLayout->addLayout(controlLayout);
+    middleLayout->addWidget(m_cameraArea, 1);
 
-    controlLayout->addWidget(createCameraControls(), 1);
+    QWidget *controls = createCameraControls();
+    controlLayout->addWidget(controls, 1);
+
+#ifdef Q_OS_MAC
+    if (qobject_cast<QMacStyle*>(style()))
+    {
+        m_cameraArea->setFrameStyle(QFrame::NoFrame);
+        cameraContainer->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    }
+#else
+    controls->setStyleSheet(QLatin1String("QToolBar { border: none; }"));
+#endif
 
     QPushButton *eventsBtn = new QPushButton(tr("Search Events"));
     connect(eventsBtn, SIGNAL(clicked()), SLOT(showEventsWindow()));
-    controlLayout->addWidget(eventsBtn);
+    leftLayout->addWidget(eventsBtn, 0, Qt::AlignCenter);
 
     /* Recent events */
     QWidget *eventsWidget = createRecentEvents();
@@ -143,43 +159,9 @@ QWidget *MainWindow::createSourcesList()
     return m_sourcesList;
 }
 
-QWidget *MainWindow::createPtzBox()
-{
-    QGroupBox *box = new QGroupBox(tr("Controls"));
-    QGridLayout *layout = new QGridLayout(box);
-    layout->setColumnStretch(1, 1);
-
-    int row = 0;
-
-    const QString labels[] = { tr("Brightness:"), tr("Contrast:"), tr("Saturation:"), tr("Hue:") };
-    for (int i = 0; i < 4; ++i)
-    {
-        QLabel *label = new QLabel(labels[i]);
-        label->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-        layout->addWidget(label, row+i, 0);
-    }
-
-    NumericOffsetWidget *brightness = new NumericOffsetWidget;
-    layout->addWidget(brightness, row++, 1);
-
-    NumericOffsetWidget *contrast = new NumericOffsetWidget;
-    layout->addWidget(contrast, row++, 1);
-
-    NumericOffsetWidget *saturation = new NumericOffsetWidget;
-    layout->addWidget(saturation, row++, 1);
-
-    NumericOffsetWidget *hue = new NumericOffsetWidget;
-    layout->addWidget(hue, row++, 1);
-
-    QCheckBox *allChk = new QCheckBox(tr("Apply to all cameras"));
-    layout->addWidget(allChk, row++, 0, 1, 2, Qt::AlignCenter);
-
-    return box;
-}
-
 QWidget *MainWindow::createServerBox()
 {
-    QGroupBox *box = new QGroupBox(tr("DVR Server Stats"));
+    QGroupBox *box = new QGroupBox(tr("Server Information"));
 
     /* Placeholder */
     box->setMinimumHeight(200);

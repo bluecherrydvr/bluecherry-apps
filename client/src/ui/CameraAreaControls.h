@@ -1,13 +1,13 @@
 #ifndef CAMERAAREACONTROLS_H
 #define CAMERAAREACONTROLS_H
 
-#include <QWidget>
+#include <QToolBar>
 
 class CameraAreaWidget;
 class QComboBox;
 class QPushButton;
 
-class CameraAreaControls : public QWidget
+class CameraAreaControls : public QToolBar
 {
     Q_OBJECT
 

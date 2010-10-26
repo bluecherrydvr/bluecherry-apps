@@ -79,7 +79,7 @@ QNetworkRequest DVRServer::createRequest(const QUrl &relurl)
 void DVRServer::updateCameras()
 {
     qDebug() << "DVRServer: Requesting cameras list";
-    QNetworkReply *reply = api->sendRequest(QUrl(QLatin1String("/ajax/list-devices.php")));
+    QNetworkReply *reply = api->sendRequest(QUrl(QLatin1String("/ajax/devices.php?XML=1")));
     connect(reply, SIGNAL(finished()), SLOT(updateCamerasReply()));
 }
 
@@ -117,7 +117,10 @@ void DVRServer::updateCamerasReply()
                 if (xml.name() == QLatin1String("device"))
                 {
                     bool ok = false;
-                    int deviceId = (int)xml.attributes().value(QLatin1String("id")).toString().toUInt(&ok);
+                    QString idv = xml.attributes().value(QLatin1String("id")).toString();
+                    if (idv.isNull())
+                        continue;
+                    int deviceId = (int)idv.toUInt(&ok);
                     if (!ok)
                     {
                         xml.raiseError(QLatin1String("Invalid device ID"));

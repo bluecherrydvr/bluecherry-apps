@@ -4,6 +4,7 @@
 #include "MJpegStream.h"
 #include <QXmlStreamReader>
 #include <QMimeData>
+#include <QDebug>
 
 QHash<QPair<int,int>,DVRCameraData*> DVRCameraData::instances;
 
@@ -41,19 +42,28 @@ bool DVRCamera::parseXML(QXmlStreamReader &xml)
         else if (xml.tokenType() != QXmlStreamReader::StartElement)
             continue;
 
-        if (xml.name() == QLatin1String("name"))
+        if (xml.name() == QLatin1String("device_name"))
         {
             name = xml.readElementText();
         }
-        else if (xml.name() == QLatin1String("streamUrl"))
+        else if (xml.name() == QLatin1String("source_video"))
         {
-            if (xml.attributes().value(QLatin1String("type")) != QLatin1String("mjpeg"))
+            QString source = xml.readElementText();
+            if (source.startsWith(QLatin1String("/dev/video")))
             {
-                xml.skipCurrentElement();
-                continue;
-            }
+                QUrl url(QLatin1String("/bc-mjpeg.php?multipart"));
 
-            streamUrl = server()->api->serverUrl().resolved(QUrl(xml.readElementText())).toString();
+                bool ok = false;
+                url.addQueryItem(QLatin1String("channel"), QString::number(source.mid(10).toInt(&ok)-1));
+                if (!ok)
+                {
+                    qWarning() << "DVRCamera::parseXML: invalid source_video for camera";
+                    xml.skipCurrentElement();
+                    continue;
+                }
+
+                streamUrl = server()->api->serverUrl().resolved(url).toString();
+            }
         }
         else
             xml.skipCurrentElement();

@@ -14,7 +14,8 @@ class DVRServersModel : public QAbstractItemModel
 public:
     enum
     {
-        ServerPtrRole = Qt::UserRole
+        ServerPtrRole = Qt::UserRole,
+        DVRCameraRole
     };
 
     explicit DVRServersModel(QObject *parent = 0);

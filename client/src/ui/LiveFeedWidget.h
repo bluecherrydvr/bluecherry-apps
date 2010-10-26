@@ -30,6 +30,7 @@ public slots:
     void setCamera(const DVRCamera &camera);
     void clearCamera() { setCamera(DVRCamera()); }
 
+    void setWindow();
     QWidget *openWindow();
     void closeCamera();
     void setFullScreen(bool on = true);

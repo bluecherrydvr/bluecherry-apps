@@ -5,16 +5,32 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QPushButton>
+#include <QToolButton>
 #include <QInputDialog>
 #include <QSettings>
 #include <QDebug>
 #include <QMenu>
+#include <QMacStyle>
+
+static QToolButton *createGridButton(const char *icon, const QString &text, QWidget *target, const char *slot)
+{
+    QToolButton *btn = new QToolButton;
+    btn->setIcon(QIcon(QLatin1String(icon)));
+    btn->setText(text);
+    btn->setToolTip(text);
+    btn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    btn->setAutoRaise(true);
+
+    if (target && slot)
+        QObject::connect(btn, SIGNAL(clicked()), target, slot);
+
+    return btn;
+}
 
 CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
-    : QWidget(parent), cameraArea(area), m_lastLayoutIndex(-1)
+    : QToolBar(parent), cameraArea(area), m_lastLayoutIndex(-1)
 {
-    QBoxLayout *layout = new QHBoxLayout(this);
-    layout->setMargin(0);
+    setIconSize(QSize(16, 16));
 
     /* Saved layouts box */
     m_savedLayouts = new QComboBox;
@@ -23,41 +39,24 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
     m_savedLayouts->setInsertPolicy(QComboBox::NoInsert);
     m_savedLayouts->setMinimumWidth(100);
     m_savedLayouts->setContextMenuPolicy(Qt::CustomContextMenu);
-    layout->addWidget(m_savedLayouts);
+    addWidget(m_savedLayouts);
+
+    QWidget *spacer = new QWidget;
+    spacer->setFixedWidth(20);
+    addWidget(spacer);
 
     connect(m_savedLayouts, SIGNAL(currentIndexChanged(int)), SLOT(savedLayoutChanged(int)));
     connect(m_savedLayouts, SIGNAL(customContextMenuRequested(QPoint)), SLOT(showLayoutMenu(QPoint)));
 
-    layout->addSpacing(20);
+    addAction(QIcon(QLatin1String(":/icons/layout-split-vertical.png")), tr("Add Row"), area, SLOT(addRow()));
+    addAction(QIcon(QLatin1String(":/icons/layout-join-vertical.png")), tr("Remove Row"), area, SLOT(removeRow()));
 
-    /* Rows */
-    QLabel *rowsLabel = new QLabel(tr("Rows:"));
-    layout->addWidget(rowsLabel);
+    spacer = new QWidget;
+    spacer->setFixedWidth(16);
+    addWidget(spacer);
 
-    QPushButton *addRowBtn = new QPushButton(tr("+"));
-    connect(addRowBtn, SIGNAL(clicked()), area, SLOT(addRow()));
-    addRowBtn->setFixedWidth(26);
-    layout->addWidget(addRowBtn);
-    QPushButton *delRowBtn = new QPushButton(tr("-"));
-    connect(delRowBtn, SIGNAL(clicked()), area, SLOT(removeRow()));
-    delRowBtn->setFixedWidth(26);
-    layout->addWidget(delRowBtn);
-    layout->addSpacing(20);
-
-    /* Columns */
-    QLabel *colsLabel = new QLabel(tr("Columns:"));
-    layout->addWidget(colsLabel);
-
-    QPushButton *addColBtn = new QPushButton(tr("+"));
-    connect(addColBtn, SIGNAL(clicked()), area, SLOT(addColumn()));
-    addColBtn->setFixedWidth(26);
-    layout->addWidget(addColBtn);
-    QPushButton *delColBtn = new QPushButton(tr("-"));
-    connect(delColBtn, SIGNAL(clicked()), area, SLOT(removeColumn()));
-    delColBtn->setFixedWidth(26);
-    layout->addWidget(delColBtn);
-
-    layout->addStretch();
+    addAction(QIcon(QLatin1String(":/icons/layout-split.png")), tr("Add Column"), area, SLOT(addColumn()));
+    addAction(QIcon(QLatin1String(":/icons/layout-join.png")), tr("Remove Column"), area, SLOT(removeColumn()));
 
     QSettings settings;
     QString lastLayout = settings.value(QLatin1String("ui/cameraArea/lastLayout")).toString();

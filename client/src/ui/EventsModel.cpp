@@ -467,10 +467,7 @@ void EventsModel::requestFinished()
         return;
     }
 
-    qDebug() << "EventsModel: Have response from" << server->displayName();
-
     QByteArray data = reply->readAll();
-    qDebug() << data;
     QList<EventData*> events = EventData::parseEvents(server, data);
     qDebug() << "EventsModel: Parsed event data into" << events.size() << "events";
 

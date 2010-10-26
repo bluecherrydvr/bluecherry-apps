@@ -229,17 +229,75 @@ void CameraAreaWidget::onCameraChanged()
     emit cameraChanged(qobject_cast<LiveFeedWidget*>(sender()));
 }
 
+void CameraAreaWidget::addCamera(const DVRCamera &camera)
+{
+    /* Set the camera in the first unused space. Add a row/column if necessary. */
+    foreach (const QList<LiveFeedWidget*> &row, m_cameraWidgets)
+    {
+        foreach (LiveFeedWidget *w, row)
+        {
+            if (!w->camera())
+            {
+                w->setCamera(camera);
+                return;
+            }
+        }
+    }
+
+    /* Add a row or a column to make space */
+    if (m_columnCount < m_rowCount)
+    {
+        /* Add column */
+        addColumn();
+        if (m_rowCount < 1)
+            addRow();
+        m_cameraWidgets[0][m_columnCount-1]->setCamera(camera);
+    }
+    else
+    {
+        /* Add row */
+        addRow();
+        if (m_columnCount < 1)
+            addColumn();
+        m_cameraWidgets[m_rowCount-1][0]->setCamera(camera);
+    }
+}
+
 void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
+{
+    if (ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
+    {
+        ev->acceptProposedAction();
+    }
+}
+
+void CameraAreaWidget::dragLeaveEvent(QDragLeaveEvent *ev)
+{
+    Q_UNUSED(ev);
+
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag();
+    m_dragWidgets.clear();
+}
+
+void CameraAreaWidget::dragMoveEvent(QDragMoveEvent *ev)
 {
     if (!ev->mimeData()->hasFormat(QLatin1String("application/x-bluecherry-dvrcamera")))
         return;
 
-    QList<DVRCamera> cameras = DVRCamera::fromMimeData(ev->mimeData());
-    if (cameras.isEmpty())
-        return;
-
     LiveFeedWidget *fw = qobject_cast<LiveFeedWidget*>(childAt(ev->pos()));
     if (!fw)
+        return;
+
+    if (!m_dragWidgets.isEmpty() && m_dragWidgets[0] == fw)
+        return;
+
+    foreach (LiveFeedWidget *w, m_dragWidgets)
+        w->endDrag();
+    m_dragWidgets.clear();
+
+    QList<DVRCamera> cameras = DVRCamera::fromMimeData(ev->mimeData());
+    if (cameras.isEmpty())
         return;
 
     bool found = false;
@@ -261,16 +319,7 @@ void CameraAreaWidget::dragEnterEvent(QDragEnterEvent *ev)
     }
 
 end:
-    ev->acceptProposedAction();
-}
-
-void CameraAreaWidget::dragLeaveEvent(QDragLeaveEvent *ev)
-{
-    Q_UNUSED(ev);
-
-    foreach (LiveFeedWidget *w, m_dragWidgets)
-        w->endDrag();
-    m_dragWidgets.clear();
+    ev->accept(fw->geometry());
 }
 
 void CameraAreaWidget::dropEvent(QDropEvent *ev)
