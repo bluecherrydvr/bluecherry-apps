@@ -132,13 +132,13 @@ static int bc_buf_return(struct bc_handle *bc)
 void (*bc_handle_motion_start)(struct bc_handle *bc) = NULL;
 void (*bc_handle_motion_end)(struct bc_handle *bc) = NULL;
 
-static void bc_start_motion_event(struct bc_handle *bc)
+static void __bc_start_motion_event(struct bc_handle *bc)
 {
 	if (bc_handle_motion_start)
 		bc_handle_motion_start(bc);
 }
 
-static void bc_stop_motion_event(struct bc_handle *bc)
+static void __bc_stop_motion_event(struct bc_handle *bc)
 {
 	if (bc_handle_motion_end)
 		bc_handle_motion_end(bc);
@@ -168,6 +168,8 @@ int bc_buf_get(struct bc_handle *bc)
 	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
 		/* Reset this counter in case motion gets turned back on */
 		bc->mot_cnt = 0;
+		/* Call this just in case we have an event in progress. */
+		__bc_stop_motion_event(bc);
 
 		/* Skip frames until the first key frame */
 		if (!bc->got_vop) {
@@ -181,19 +183,19 @@ int bc_buf_get(struct bc_handle *bc)
 
 	/* Motion flag resets counter */
 	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
-		if (bc->mot_cnt == 0)
+		if (bc->mot_cnt == 0) {
 			bc->got_vop = 0;
-		else
 			// First time, send event
-			bc_start_motion_event(bc);
+			__bc_start_motion_event(bc);
+		}
 
 		bc->mot_cnt = 60;
 	}
 
 	/* If motion count is 0, signal EOF */
 	if (bc->mot_cnt == 0) {
-		/* Send final of event */
-		bc_stop_motion_event(bc);
+		/* Send end of event */
+		__bc_stop_motion_event(bc);
 		return ERESTART;
 	}
 
