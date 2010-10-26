@@ -24,6 +24,9 @@ static void __handle_motion_start(struct bc_handle *bc)
 {
 	struct bc_record *bc_rec = bc->__data;
 
+	/* Just in case it's still around */
+	bc_event_cam_end(&bc_rec->event);
+
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
 }
