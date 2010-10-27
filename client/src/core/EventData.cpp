@@ -33,7 +33,7 @@ EventLevel &EventLevel::operator=(const QString &str)
 {
     if (str == QLatin1String("info"))
         level = Info;
-    else if (str == QLatin1String("warning"))
+    else if (str == QLatin1String("warn"))
         level = Warning;
     else if (str == QLatin1String("alarm"))
         level = Alarm;
@@ -204,7 +204,16 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
             if (attrib.value(QLatin1String("scheme")) == QLatin1String("http://www.bluecherrydvr.com/atom.html"))
             {
                 QStringRef category = attrib.value(QLatin1String("term"));
-                Q_UNUSED(category);
+                QStringList cd = category.toString().split(QLatin1Char('/'));
+                if (cd.size() != 3)
+                {
+                    reader.raiseError(QLatin1String("Invalid format for category element"));
+                    continue;
+                }
+
+                data->locationId = cd[0].toInt();
+                data->level = cd[1];
+                data->type = cd[2];
             }
         }
         else if (reader.name() == QLatin1String("entry"))
