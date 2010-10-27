@@ -125,9 +125,9 @@ static int __do_media(struct bc_media_entry *bcm)
 	if (bcm->table_id) {
 		__update_stat(bcm);
 		/* This is the common case to end a call */
-		res = bc_db_query(bcdb, "UPDATE Media (end,size) VALUES("
-				  "'%lu',%lu) WHERE id=%lu", time(NULL),
-				  bcm->table_id, bcm->bytes);
+		res = bc_db_query(bcdb, "UPDATE Media SET end='%lu',size=%lu "
+				  "WHERE id=%lu", time(NULL),
+				  bcm->bytes, bcm->table_id);
 	} else if (!bcm->start) {
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
@@ -171,7 +171,7 @@ static int __do_cam(struct bc_event_cam *bce)
 
 	if (bce->inserted) {
 		/* This is the common route to end a call */
-		res = bc_db_query(bcdb, "UPDATE EventsCam (length) VALUES('%lu')"
+		res = bc_db_query(bcdb, "UPDATE EventsCam SET length='%lu'"
 				  " WHERE id=%lu", bce->end_time - bce->start_time,
 				  bce->inserted);
 	} else if (bce->end_time) {
@@ -197,12 +197,24 @@ static int __do_cam(struct bc_event_cam *bce)
 	}
 
 	/* If we have a media reference, update with that info */
-	if (bce->inserted && bce->media) {
-		bc_db_query(bcdb, "UPDATE EventsCam (media_id) VALUES(%lu)"
+	if (bce->inserted && bce->media)
+		bc_db_query(bcdb, "UPDATE EventsCam SET media_id=%lu"
 			    " WHERE id=%lu", bce->media->table_id, bce->inserted);
-	}
 
 	return res;
+}
+
+void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm)
+{
+	if (bce == NULL || bcm == NULL)
+		return;
+	bce->media = bcm;
+
+	if (!bce->inserted || !bcm->table_id)
+		return;
+
+	bc_db_query(bcdb, "UPDATE EventsCam SET media_id=%lu"
+		    " WHERE id=%lu", bcm->table_id, bce->inserted);
 }
 
 static int __do_sys_insert(struct bc_event_sys *bce)
