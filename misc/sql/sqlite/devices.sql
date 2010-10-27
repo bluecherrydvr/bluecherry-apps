@@ -4,7 +4,8 @@ CREATE TABLE AvailableSources (
 	name varchar(255),
 	driver varchar(255),
 	status boolean,
-	alsasounddev varchar(255)
+	alsasounddev varchar(255),
+	card_id INT(2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE MotionThreshold (
