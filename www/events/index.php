@@ -2,7 +2,19 @@
 
 $db = bc_db_open() or die("Could not open database\n");
 
-$events = bc_db_get_table($db, "SELECT * FROM EventsCam ORDER BY time DESC LIMIT 100");
+$query = "SELECT * FROM EventsCam WHERE ";
+if (isset($_GET['startDate']))
+	$query .= "time >= ".((int)$_GET['startDate'])." AND ";
+if (isset($_GET['endDate']))
+	$query .= "time <= ".((int)$_GET['endDate'])." AND ";
+if (isset($_GET['beforeId']))
+	$query .= "id < ".((int)$_GET['beforeId'])." AND ";
+$query .= "1 ORDER BY time DESC ";
+$limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
+if ($limit > 0)
+	$query .= "LIMIT ".$limit;
+
+$events = bc_db_get_table($db, $query);
 
 # Output header for this feed
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
@@ -12,7 +24,7 @@ print "  <title type=\"text\">Bluecherry Events for " .
 
 if ($events) {
 	$curevent = current($events);
-	$lastupdate = date(DATE_ATOM, strtotime($curevent['time']));
+	$lastupdate = date(DATE_ATOM, $curevent['time']);
 } else {
 	$lastupdate = date(DATE_ATOM);
 }
@@ -33,14 +45,14 @@ foreach ($events as $item) {
 	print "  <entry>\n";
 	print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
 		" event on device " . $item['device_id'] . "</title>\n";
-	print "    <published>" . date(DATE_ATOM, strtotime($item['time'])) .
+	print "    <published>" . date(DATE_ATOM, $item['time']) .
 		"</published>\n";
 
 	/* If updated exists and is empty, the event is on-going */
 	if (!empty($item['length'])) {
 		print "    <updated>";
 		if ($item['length'] > 0) {
-			print date(DATE_ATOM, strtotime($item['time']) +
+			print date(DATE_ATOM, $item['time'] +
 				   $item['length']);
 		}
 		print "</updated>\n";
