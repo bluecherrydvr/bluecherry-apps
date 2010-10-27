@@ -61,6 +61,5 @@ CREATE TABLE Devices (
 						--   when using continuous record
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
 	FOREIGN KEY (motion_detection_threshold) REFERENCES MotionThreshold(id)
-                ON UPDATE CASCADE ON DELETE CASCADE
 	UNIQUE (device_name)
 );

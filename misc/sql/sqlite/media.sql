@@ -11,5 +11,4 @@ CREATE TABLE Media (
 	filepath varchar(1024) NOT NULL,
 	archive boolean NOT NULL DEFAULT FALSE,
 	FOREIGN KEY (device_id) REFERENCES Devices(id)
-                ON UPDATE CASCADE ON DELETE CASCADE
 );
