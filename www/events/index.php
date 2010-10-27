@@ -9,6 +9,8 @@ if (isset($_GET['endDate']))
 	$query .= "time <= ".((int)$_GET['endDate'])." AND ";
 if (isset($_GET['beforeId']))
 	$query .= "id < ".((int)$_GET['beforeId'])." AND ";
+if (isset($_GET['id']))
+	$query .= "id = ".((int)$_GET['id'])." AND ";
 $query .= "1 ORDER BY time DESC ";
 $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
 if ($limit > 0)
@@ -43,6 +45,7 @@ print "  </generator>\n";
 # Output one item for each event
 foreach ($events as $item) {
 	print "  <entry>\n";
+	print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
 	print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
 		" event on device " . $item['device_id'] . "</title>\n";
 	print "    <published>" . date(DATE_ATOM, $item['time']) .
