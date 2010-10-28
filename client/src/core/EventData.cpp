@@ -145,7 +145,7 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
     QXmlStreamReader reader(input);
     QList<EventData*> re;
 
-    if (reader.readNextStartElement())
+    if (!reader.hasError() && reader.readNextStartElement())
     {
         if (reader.name() == QLatin1String("feed"))
         {
@@ -164,6 +164,11 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
         }
         else
             reader.raiseError(QLatin1String("Invalid feed format"));
+    }
+
+    if (reader.hasError())
+    {
+        qWarning() << "EventData::parseEvents error:" << reader.errorString();
     }
 
     return re;
@@ -186,7 +191,20 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
         else if (reader.tokenType() != QXmlStreamReader::StartElement)
             continue;
 
-        if (reader.name() == QLatin1String("published"))
+        if (reader.name() == QLatin1String("id"))
+        {
+            bool ok = false;
+            qint64 id = reader.attributes().value(QLatin1String("raw")).toString().toLongLong(&ok);
+            qDebug() << reader.readElementText();
+            if (!ok || id < 0)
+            {
+                reader.raiseError(QLatin1String("Invalid format for id element"));
+                continue;
+            }
+
+            data->eventId = id;
+        }
+        else if (reader.name() == QLatin1String("published"))
         {
             data->date = QDateTime::fromString(reader.readElementText(), Qt::ISODate);
         }
@@ -219,6 +237,9 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
         else if (reader.name() == QLatin1String("entry"))
             reader.raiseError(QLatin1String("Unexpected <entry> element"));
     }
+
+    if (!reader.hasError() && (data->eventId < 0 || !data->date.isValid()))
+        reader.raiseError(QLatin1String("Missing required elements for entry"));
 
     return data;
 }

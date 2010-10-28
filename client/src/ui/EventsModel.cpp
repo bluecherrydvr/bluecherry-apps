@@ -434,6 +434,15 @@ void EventsModel::updateServer(DVRServer *server)
     if (!server->api->isOnline())
         return;
 
+    QUrl url(QLatin1String("/events/"));
+    url.addQueryItem(QLatin1String("limit"), QLatin1String("-1"));
+#if 0
+    if (!filterDateBegin.isNull())
+        url.addQueryItem(QLatin1String("startDate"), QString::number(filterDateBegin.toTime_t()));
+    if (!filterDateEnd.isNull())
+        url.addQueryItem(QLatin1String("endDate"), QString::number(filterDateEnd.toTime_t()));
+#endif
+
     QNetworkRequest req = server->api->buildRequest(QLatin1String("/events/"));
     req.setOriginatingObject(server);
     QNetworkReply *reply = bcApp->nam->get(req);
