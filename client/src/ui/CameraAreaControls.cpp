@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QMenu>
 #include <QMacStyle>
+#include <QSignalMapper>
 
 static QToolButton *createGridButton(const char *icon, const QString &text, QWidget *target, const char *slot)
 {
@@ -57,6 +58,22 @@ CameraAreaControls::CameraAreaControls(CameraAreaWidget *area, QWidget *parent)
 
     addAction(QIcon(QLatin1String(":/icons/layout-split.png")), tr("Add Column"), area, SLOT(addColumn()));
     addAction(QIcon(QLatin1String(":/icons/layout-join.png")), tr("Remove Column"), area, SLOT(removeColumn()));
+
+    spacer = new QWidget;
+    spacer->setFixedWidth(16);
+    addWidget(spacer);
+
+    QSignalMapper *mapper = new QSignalMapper(this);
+    connect(mapper, SIGNAL(mapped(int)), area, SLOT(setGridSize(int)));
+
+    QAction *a = addAction(QIcon(QLatin1String(":/icons/layout.png")), tr("Single"), mapper, SLOT(map()));
+    mapper->setMapping(a, 1);
+    a = addAction(QIcon(QLatin1String(":/icons/layout-4.png")), tr("2x2"), mapper, SLOT(map()));
+    mapper->setMapping(a, 2);
+    a = addAction(QIcon(QLatin1String(":/icons/layout-9.png")), tr("3x3"), mapper, SLOT(map()));
+    mapper->setMapping(a, 3);
+    a = addAction(QIcon(QLatin1String(":/icons/layout-16.png")), tr("4x4"), mapper, SLOT(map()));
+    mapper->setMapping(a, 4);
 
     QSettings settings;
     QString lastLayout = settings.value(QLatin1String("ui/cameraArea/lastLayout")).toString();

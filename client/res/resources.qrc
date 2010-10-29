@@ -17,5 +17,9 @@
         <file>control.png</file>
         <file>control-pause.png</file>
         <file>control-stop-180.png</file>
+        <file>layout.png</file>
+        <file>layout-4.png</file>
+        <file>layout-9.png</file>
+        <file>layout-16.png</file>
     </qresource>
 </RCC>
