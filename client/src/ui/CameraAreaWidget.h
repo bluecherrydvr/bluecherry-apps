@@ -33,7 +33,8 @@ public slots:
     void addColumn() { setGridSize(m_rowCount, m_columnCount+1); }
     void removeColumn() { setGridSize(m_rowCount, m_columnCount-1); }
 
-    void setGridSize(int size) { setGridSize(size, size); }
+    void setGridSize(int size) { setGridSize(size, size); autoFill(); }
+    void autoFill();
 
     void openFullScreen();
     void closeFullScreen();
