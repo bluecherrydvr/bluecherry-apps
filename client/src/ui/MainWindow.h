@@ -25,6 +25,7 @@ public slots:
     void addServer();
     void openServerConfig();
     void editCurrentServer();
+    void refreshServerDevices();
 
     void openDocumentation();
     void openSupport();

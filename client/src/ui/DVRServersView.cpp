@@ -49,7 +49,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
-    QAction *aConnect = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
+    QAction *aConnect = 0, *aRefreshDevices = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
     QAction *aSelectOnly = 0, *aSelectElse = 0;
     QAction *aAddFeed = 0, *aOpenWin = 0, *aOpenFull = 0, *aCamRename = 0;
 
@@ -73,8 +73,10 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         if (server)
         {
             aConnect = server->api->isOnline() ? menu.addAction(tr("Disconnect")) : menu.addAction(tr("Connect"));
-            aServerConfig = menu.addAction(tr("Configure server"));
             menu.addSeparator();
+            aRefreshDevices = menu.addAction(tr("Refresh devices"));
+            menu.addSeparator();
+            aServerConfig = menu.addAction(tr("Configure server"));
             aEditServer = menu.addAction(tr("Edit server"));
         }
         else if (camera)
@@ -101,6 +103,10 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
     if (action == aConnect)
     {
         server->login();
+    }
+    else if (action == aRefreshDevices)
+    {
+        server->updateCameras();
     }
     else if (action == aEditServer || action == aAddServer || action == aOptions)
     {
