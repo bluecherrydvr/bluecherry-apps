@@ -17,6 +17,8 @@ DVRServer::DVRServer(int id, QObject *parent)
 
     if (!hostname().isEmpty() && !username().isEmpty())
         QTimer::singleShot(0, this, SLOT(login()));
+
+    connect(&m_refreshTimer, SIGNAL(timeout()), SLOT(updateCameras()));
 }
 
 QVariant DVRServer::readSetting(const QString &key) const
@@ -78,6 +80,15 @@ QNetworkRequest DVRServer::createRequest(const QUrl &relurl)
 
 void DVRServer::updateCameras()
 {
+    if (!api->isOnline())
+    {
+        m_refreshTimer.stop();
+        return;
+    }
+
+    if (!m_refreshTimer.isActive())
+        m_refreshTimer.start(60000);
+
     qDebug() << "DVRServer: Requesting cameras list";
     QNetworkReply *reply = api->sendRequest(QUrl(QLatin1String("/ajax/devices.php?XML=1")));
     connect(reply, SIGNAL(finished()), SLOT(updateCamerasReply()));
@@ -103,6 +114,8 @@ void DVRServer::updateCamerasReply()
     QByteArray data = reply->readAll();
     QXmlStreamReader xml(data);
 
+    QSet<int> idSet;
+
     while (xml.readNextStartElement())
     {
         if (xml.name() == QLatin1String("devices"))
@@ -127,6 +140,7 @@ void DVRServer::updateCamerasReply()
                         continue;
                     }
 
+                    idSet.insert(deviceId);
                     DVRCamera camera = DVRCamera::getCamera(this, deviceId);
                     if (!camera.parseXML(xml))
                     {
@@ -152,5 +166,18 @@ void DVRServer::updateCamerasReply()
     {
         qWarning() << "DVRServer: Error while parsing camera list:" << xml.errorString();
         return;
+    }
+
+    for (int i = 0; i < m_cameras.size(); ++i)
+    {
+        if (!idSet.contains(m_cameras[i].uniqueId()))
+        {
+            DVRCamera c = m_cameras[i];
+            m_cameras.removeAt(i);
+            qDebug("DVRServer: camera %d removed", c.uniqueId());
+            emit cameraRemoved(c);
+            c.removed();
+            --i;
+        }
     }
 }

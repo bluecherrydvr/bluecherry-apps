@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QVariant>
+#include <QTimer>
 #include "ServerRequestManager.h"
 #include "DVRCamera.h"
 
@@ -63,6 +64,7 @@ private slots:
 private:
     QList<DVRCamera> m_cameras;
     QString m_displayName;
+    QTimer m_refreshTimer;
 };
 
 Q_DECLARE_METATYPE(DVRServer*)

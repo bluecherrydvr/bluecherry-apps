@@ -76,10 +76,16 @@ void LiveFeedWidget::setCamera(const DVRCamera &camera)
     else
     {
         connect(m_camera, SIGNAL(dataUpdated()), SLOT(cameraDataUpdated()));
+        connect(m_camera, SIGNAL(removed()), SLOT(cameraRemoved()));
         setStream(m_camera.mjpegStream());
     }
 
     emit cameraChanged(m_camera);
+}
+
+void LiveFeedWidget::cameraRemoved()
+{
+    setStream(QSharedPointer<MJpegStream>());
 }
 
 void LiveFeedWidget::cameraDataUpdated()
