@@ -39,14 +39,10 @@ CREATE TABLE EventsCam (
 	length integer DEFAULT 0,		-- length of event in seconds
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
 	media_id integer,
-	FOREIGN KEY (media_id) REFERENCES Media(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
-	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
-        FOREIGN KEY (device_id) REFERENCES Devices(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (media_id) REFERENCES Media(id),
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
+        FOREIGN KEY (device_id) REFERENCES Devices(id),
         FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
-		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- A separate table for system events
@@ -55,10 +51,8 @@ CREATE TABLE EventsSystem (
 	time integer DEFAULT CURRENT_TIMESTAMP,
 	level_id varchar(10),
 	type_id varchar(10),
-	FOREIGN KEY (level_id) REFERENCES EventLevels(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
 	FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
-		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Comments on an event (Cam only?)
@@ -68,10 +62,8 @@ CREATE TABLE EventComments (
 	event_id integer,
 	user_id integer,
 	comment varchar,
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
 	FOREIGN KEY (user_id) REFERENCES Users(id)
-		ON UPDATE CASCADE ON DELETE CASCADE
 );
 
 -- Event tags. We start with pre-defined ones and let the user change them
@@ -95,10 +87,7 @@ CREATE TABLE EventTags (
 	event_id integer,
 	tag_id varchar(10),
 	user_id integer,
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
-		ON UPDATE CASCADE ON DELETE CASCADE,
-	FOREIGN KEY (tag_id) REFERENCES TagNames(name)
-		ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	FOREIGN KEY (tag_id) REFERENCES TagNames(name),
 	FOREIGN KEY (user_id) REFERENCES Users(id)
-		ON UPDATE CASCADE ON DELETE CASCADE
 );

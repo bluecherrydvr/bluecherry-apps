@@ -4,7 +4,8 @@ CREATE TABLE AvailableSources (
 	name varchar(255),
 	driver varchar(255),
 	status boolean,
-	alsasounddev varchar(255)
+	alsasounddev varchar(255),
+	card_id INT(2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE MotionThreshold (
@@ -61,6 +62,5 @@ CREATE TABLE Devices (
 						--   when using continuous record
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
 	FOREIGN KEY (motion_detection_threshold) REFERENCES MotionThreshold(id)
-                ON UPDATE CASCADE ON DELETE CASCADE
 	UNIQUE (device_name)
 );

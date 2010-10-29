@@ -274,6 +274,9 @@ int bc_media_end(bc_media_entry_t *bcm);
  * to the db are retried. */
 void bc_media_event_clear(void);
 
+/* Update an event's media pointer */
+void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm);
+
 /* Handlers for motion events */
 extern void (*bc_handle_motion_start)(struct bc_handle *bc);
 extern void (*bc_handle_motion_end)(struct bc_handle *bc);

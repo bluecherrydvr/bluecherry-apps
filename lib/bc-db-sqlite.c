@@ -36,12 +36,18 @@ static int bc_db_sqlite_query(void *handle, const char *sql, va_list ap)
 {
 	int ret;
 	char *query = sqlite3_vmprintf(sql, ap);
+	char *err;
 
 	if (query == NULL)
 		return -1;
 
-	ret = sqlite3_exec(handle, query, NULL, NULL, NULL);
+	ret = sqlite3_exec(handle, query, NULL, NULL, &err);
+
+	if (ret)
+		bc_log("(SQL ERROR): '%s' => '%s'", query, err);
+
 	sqlite3_free(query);
+	sqlite3_free(err);
 
 	return ret;
 }
@@ -50,13 +56,19 @@ static int bc_db_sqlite_get_table(void *handle, int *nrows, int *ncols,
 				  char ***res, const char *fmt, va_list ap)
 {
 	int ret;
+	char *err = NULL;
 	char *query = sqlite3_vmprintf(fmt, ap);
 
 	if (query == NULL)
 		return -1;
 
-	ret = sqlite3_get_table(handle, query, res, nrows, ncols, NULL);
+	ret = sqlite3_get_table(handle, query, res, nrows, ncols, &err);
+
+	if (ret)
+		bc_log("(SQL ERROR): '%s' => '%s'", query, err);
+
 	sqlite3_free(query);
+	sqlite3_free(err);
 
 	return ret;
 }
