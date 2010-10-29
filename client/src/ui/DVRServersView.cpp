@@ -19,6 +19,7 @@ DVRServersView::DVRServersView(QWidget *parent)
     setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::DoubleClicked);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     setDragEnabled(true);
+    setAnimated(true);
 
     DVRServersModel *model = new DVRServersModel(this);
     model->setOfflineDisabled(true);
@@ -27,6 +28,16 @@ DVRServersView::DVRServersView(QWidget *parent)
     /* We only show the server name in this list; hide other columns */
     for (int i = 1, n = model->columnCount(); i < n; ++i)
         header()->setSectionHidden(i, true);
+}
+
+void DVRServersView::setModel(QAbstractItemModel *m)
+{
+    if (model())
+        model()->disconnect(this);
+
+    QTreeView::setModel(m);
+
+    connect(m, SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)), SLOT(rowsAboutToBeInserted(QModelIndex,int,int)));
 }
 
 DVRServer *DVRServersView::currentServer() const
@@ -210,4 +221,10 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
     }
 
     QAbstractItemView::mouseDoubleClickEvent(event);
+}
+
+void DVRServersView::rowsAboutToBeInserted(const QModelIndex &parent, int start, int end)
+{
+    if (!model()->hasChildren(parent))
+        setExpanded(parent, true);
 }

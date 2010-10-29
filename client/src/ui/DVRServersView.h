@@ -14,9 +14,14 @@ public:
 
     DVRServer *currentServer() const;
 
+    virtual void setModel(QAbstractItemModel *model);
+
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *event);
     virtual void mouseDoubleClickEvent(QMouseEvent *event);
+
+private slots:
+    void rowsAboutToBeInserted(const QModelIndex &parent, int start, int end);
 };
 
 #endif // DVRSERVERSVIEW_H
