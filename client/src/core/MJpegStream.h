@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QUrl>
 #include <QPixmap>
+#include <QTimer>
 
 class QNetworkReply;
 class ThreadTask;
@@ -53,6 +54,7 @@ signals:
 private slots:
     void readable();
     void requestError();
+    void checkActivity();
 
 private:
     QNetworkReply *m_httpReply;
@@ -62,6 +64,8 @@ private:
     QPixmap m_currentFrame;
     ImageDecodeTask *m_decodeTask;
     QVector<QSize> m_scaleSizes;
+    QTimer m_activityTimer;
+    uint m_lastActivity;
 
     int m_httpBodyLength;
     State m_state;
