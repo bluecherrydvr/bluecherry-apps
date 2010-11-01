@@ -39,6 +39,9 @@ void MJpegStream::setState(State newState)
     State oldState = m_state;
     m_state = newState;
 
+    if (m_state != Error)
+        m_errorMessage.clear();
+
     emit stateChanged(newState);
 
     if (newState == Streaming)
@@ -52,6 +55,7 @@ void MJpegStream::setState(State newState)
 
 void MJpegStream::setError(const QString &message)
 {
+    m_errorMessage = message;
     qDebug() << "mjpeg: error:" << message;
     setState(Error);
     stop();

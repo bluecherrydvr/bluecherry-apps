@@ -191,10 +191,14 @@ void LiveFeedWidget::updateFrame(const QPixmap &frame, const QVector<QImage> &sc
 
 void LiveFeedWidget::mjpegStateChanged(int state)
 {
+    Q_ASSERT(m_stream);
+    setToolTip(QString());
+
     switch (state)
     {
     case MJpegStream::Error:
         setStatusMessage(tr("Stream Error"));
+        setToolTip(m_stream->errorMessage());
         break;
     case MJpegStream::NotConnected:
         setStatusMessage(tr("Disconnected"));

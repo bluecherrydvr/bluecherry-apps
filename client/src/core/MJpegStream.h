@@ -31,6 +31,7 @@ public:
     void setUrl(const QUrl &url);
 
     State state() const { return m_state; }
+    QString errorMessage() const { return m_errorMessage; }
 
     QSize streamSize() const { return m_currentFrame.size(); }
     QPixmap currentFrame() const { return m_currentFrame; }
@@ -57,6 +58,7 @@ private slots:
     void checkActivity();
 
 private:
+    QString m_errorMessage;
     QNetworkReply *m_httpReply;
     QByteArray m_httpBoundary;
     QByteArray m_httpBuffer;
