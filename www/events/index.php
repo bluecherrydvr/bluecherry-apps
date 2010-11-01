@@ -75,6 +75,13 @@ foreach ($events as $item) {
 	print "    <category scheme=\"http://www.bluecherrydvr.com/atom.html\" " .
 		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
 		$item['type_id'] . "\"/>\n";
+
+	if (!empty($item['media_id'])) {
+		print "    <content media_id=\"".$item['media_id']."\">";
+		print "http://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
+		print "</content>\n";
+	}
+
 	print "  </entry>\n";
 }
 
