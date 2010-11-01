@@ -14,11 +14,14 @@
 static void update_osd(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
+	time_t t = time(NULL);
 	char buf[20];
 	struct tm tm;
-	time_t t;
 
-	t = time(NULL);
+	if (t == bc_rec->osd_time)
+		return;
+
+	bc_rec->osd_time = t;
 	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
 	bc_set_osd(bc, "%s %s", bc_rec->name, buf);
 }
@@ -34,6 +37,8 @@ static void *bc_device_thread(void *data)
 
 	for (;;) {
 		double audio_pts, video_pts;
+
+		update_osd(bc_rec);
 
 		if ((ret = bc_buf_get(bc)) == EAGAIN) {
 			continue;
@@ -57,9 +62,6 @@ static void *bc_device_thread(void *data)
 			}
 			file_started = 1;
 		}
-
-		if (bc_buf_key_frame(bc))
-			update_osd(bc_rec);
 
 		if (bc_rec->audio_st) {
 			AVStream *st;

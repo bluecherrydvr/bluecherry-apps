@@ -24,6 +24,7 @@ struct bc_record {
 	AVStream		*audio_st;
 	AVFormatContext		*oc;
 	snd_pcm_t		*pcm;
+	time_t			osd_time;
 
 	/* mp2 encoding accounting */
 	short			pcm_buf[4096];
