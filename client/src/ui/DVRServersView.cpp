@@ -19,6 +19,7 @@ DVRServersView::DVRServersView(QWidget *parent)
     setEditTriggers(QAbstractItemView::EditKeyPressed | QAbstractItemView::DoubleClicked);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     setDragEnabled(true);
+    setAnimated(true);
 
     DVRServersModel *model = new DVRServersModel(this);
     model->setOfflineDisabled(true);
@@ -27,6 +28,16 @@ DVRServersView::DVRServersView(QWidget *parent)
     /* We only show the server name in this list; hide other columns */
     for (int i = 1, n = model->columnCount(); i < n; ++i)
         header()->setSectionHidden(i, true);
+}
+
+void DVRServersView::setModel(QAbstractItemModel *m)
+{
+    if (model())
+        model()->disconnect(this);
+
+    QTreeView::setModel(m);
+
+    connect(m, SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)), SLOT(rowsAboutToBeInserted(QModelIndex,int,int)));
 }
 
 DVRServer *DVRServersView::currentServer() const
@@ -49,7 +60,7 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 {
     QMenu menu(this);
 
-    QAction *aConnect = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
+    QAction *aConnect = 0, *aRefreshDevices = 0, *aEditServer = 0, *aServerConfig = 0, *aOptions = 0, *aAddServer = 0;
     QAction *aSelectOnly = 0, *aSelectElse = 0;
     QAction *aAddFeed = 0, *aOpenWin = 0, *aOpenFull = 0, *aCamRename = 0;
 
@@ -73,8 +84,10 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
         if (server)
         {
             aConnect = server->api->isOnline() ? menu.addAction(tr("Disconnect")) : menu.addAction(tr("Connect"));
-            aServerConfig = menu.addAction(tr("Configure server"));
             menu.addSeparator();
+            aRefreshDevices = menu.addAction(tr("Refresh devices"));
+            menu.addSeparator();
+            aServerConfig = menu.addAction(tr("Configure server"));
             aEditServer = menu.addAction(tr("Edit server"));
         }
         else if (camera)
@@ -101,6 +114,10 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
     if (action == aConnect)
     {
         server->login();
+    }
+    else if (action == aRefreshDevices)
+    {
+        server->updateCameras();
     }
     else if (action == aEditServer || action == aAddServer || action == aOptions)
     {
@@ -170,6 +187,7 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton && (index = indexAt(event->pos())).isValid())
     {
         DVRServer *server = index.data(DVRServersModel::ServerPtrRole).value<DVRServer*>();
+        DVRCamera camera = index.data(DVRServersModel::DVRCameraRole).value<DVRCamera>();
         if (index.flags() & Qt::ItemIsUserCheckable)
         {
             Qt::CheckState state = (index.data(Qt::CheckStateRole).toInt() == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
@@ -193,10 +211,20 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
             ServerConfigWindow::instance()->show();
             ServerConfigWindow::instance()->raise();
         }
+        else if (camera)
+        {
+            bcApp->mainWindow->cameraArea()->addCamera(camera);
+        }
 
         event->accept();
         return;
     }
 
     QAbstractItemView::mouseDoubleClickEvent(event);
+}
+
+void DVRServersView::rowsAboutToBeInserted(const QModelIndex &parent, int start, int end)
+{
+    if (!model()->hasChildren(parent))
+        setExpanded(parent, true);
 }

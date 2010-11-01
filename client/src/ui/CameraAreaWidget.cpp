@@ -1,5 +1,7 @@
 #include "CameraAreaWidget.h"
 #include "LiveFeedWidget.h"
+#include "core/BluecherryApp.h"
+#include "core/DVRServer.h"
 #include <QGridLayout>
 #include <QDataStream>
 #include <QDragEnterEvent>
@@ -260,6 +262,59 @@ void CameraAreaWidget::addCamera(const DVRCamera &camera)
         if (m_columnCount < 1)
             addColumn();
         m_cameraWidgets[m_rowCount-1][0]->setCamera(camera);
+    }
+}
+
+void CameraAreaWidget::autoFill()
+{
+    QSet<DVRCamera> existing;
+    int available = 0;
+    foreach (const QList<LiveFeedWidget*> &row, m_cameraWidgets)
+    {
+        foreach (LiveFeedWidget *w, row)
+        {
+            if (w->camera())
+                existing.insert(w->camera());
+            else
+                ++available;
+        }
+    }
+
+    if (!available)
+        return;
+
+    int pRow = 0, pCol = 0;
+
+    foreach (DVRServer *server, bcApp->servers())
+    {
+        if (!server->api->isOnline())
+            continue;
+
+        foreach (const DVRCamera &camera, server->cameras())
+        {
+            if (!existing.contains(camera) && camera.canStream())
+            {
+                for (; pRow < m_rowCount; pRow++)
+                {
+                    for (; pCol < m_columnCount; pCol++)
+                    {
+                        if (!m_cameraWidgets[pRow][pCol]->camera())
+                        {
+                            m_cameraWidgets[pRow][pCol]->setCamera(camera);
+                            pCol++;
+                            if (!--available)
+                                return;
+                            goto nextCamera;
+                        }
+                    }
+
+                    pCol = 0;
+                }
+            }
+
+nextCamera:
+            ;
+        }
     }
 }
 

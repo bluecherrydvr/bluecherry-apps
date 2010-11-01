@@ -37,6 +37,7 @@ public:
 
 signals:
     void dataUpdated();
+    void removed();
 
 private:
     static QHash<QPair<int,int>,DVRCameraData*> instances;
@@ -44,6 +45,8 @@ private:
 
 class DVRCamera
 {
+    friend class DVRServer;
+
 public:
     static DVRCamera getCamera(int serverID, int cameraID);
     static DVRCamera getCamera(DVRServer *server, int cameraID);
@@ -81,6 +84,8 @@ private:
     QExplicitlySharedDataPointer<DVRCameraData> d;
 
     DVRCamera(DVRCameraData *dt) : d(dt) { }
+
+    void removed() { emit d->removed(); }
 };
 
 Q_DECLARE_METATYPE(DVRCamera)

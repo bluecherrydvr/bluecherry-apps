@@ -250,6 +250,8 @@ QVariant DVRServersModel::data(const QModelIndex &index, int role) const
             return QVariant::fromValue(camera);
         case Qt::DisplayRole:
             return camera.displayName();
+        case Qt::DecorationRole:
+            return QIcon(QLatin1String(":/icons/webcam.png"));
         }
     }
 

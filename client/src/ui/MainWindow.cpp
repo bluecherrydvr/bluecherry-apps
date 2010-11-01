@@ -130,9 +130,11 @@ void MainWindow::createMenu()
     QFont f;
     f.setBold(true);
     menuServerName->setFont(f);
-    serverMenu->addAction(tr("Configuration"), this, SLOT(openServerConfig()));
     serverMenu->addSeparator();
-    serverMenu->addAction(tr("Edit Server"), this, SLOT(editCurrentServer()));
+    serverMenu->addAction(tr("&Configuration"), this, SLOT(openServerConfig()));
+    serverMenu->addAction(tr("&Refresh devices"), this, SLOT(refreshServerDevices()));
+    serverMenu->addSeparator();
+    serverMenu->addAction(tr("&Edit Server"), this, SLOT(editCurrentServer()));
 
     connect(serverMenu, SIGNAL(aboutToShow()), SLOT(showServersMenu()));
 
@@ -277,4 +279,13 @@ void MainWindow::openServerConfig()
     ServerConfigWindow::instance()->setServer(server);
     ServerConfigWindow::instance()->show();
     ServerConfigWindow::instance()->raise();
+}
+
+void MainWindow::refreshServerDevices()
+{
+    DVRServer *server = m_sourcesList->currentServer();
+    if (!server)
+        return;
+
+    server->updateCameras();
 }

@@ -4,7 +4,8 @@ CREATE TABLE AvailableSources (
 	name varchar(255),
 	driver varchar(255),
 	status boolean,
-	alsasounddev varchar(255)
+	alsasounddev varchar(255),
+	card_id INT(2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE MotionThreshold (
@@ -55,6 +56,7 @@ CREATE TABLE Devices (
 	ptz_baud_rate varchar(6),		-- Baudrate and such for PTZ (8,n,1)
 	ip_ptz_control_type smallint,		-- Control type of IP PTZ
 	preset_type_ID smallint,		-- ??
+	motion_map CHAR(400) NOT NULL,		-- motion map
 	motion_detection_on boolean,		-- If motion detection is enabled
 	motion_detection_threshold varchar,	-- Device default motion threshold
 	file_chop_interval smallint,		-- How often in hours to chop video

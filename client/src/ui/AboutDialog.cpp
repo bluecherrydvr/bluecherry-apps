@@ -1,6 +1,6 @@
 #include "AboutDialog.h"
 #include <QGridLayout>
-#include <QPlainTextEdit>
+#include <QTextBrowser>
 #include <QLabel>
 #include <QFile>
 #include <QApplication>
@@ -31,8 +31,11 @@ AboutDialog::AboutDialog(QWidget *parent)
     layout->addWidget(text, 0, 1);
     layout->setColumnStretch(1, 1);
 
-    QPlainTextEdit *license = new QPlainTextEdit(getLicenseText());
+    QTextBrowser *license = new QTextBrowser;
+    license->setHtml(getLicenseText());
+    license->setStyleSheet(QLatin1String("font-size: 12px"));
     license->setReadOnly(true);
+    license->setOpenExternalLinks(true);
     license->setTabChangesFocus(true);
     layout->addWidget(license, 1, 0, 1, 2);
 
