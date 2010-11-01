@@ -2,6 +2,7 @@ CREATE TABLE Users (
 	id integer PRIMARY KEY NOT NULL,
 	username varchar(40),
 	password varchar(64),
+	salt CHAR(4),
 	name varchar(60),
 	email varchar(60),
 	phone varchar(15),
