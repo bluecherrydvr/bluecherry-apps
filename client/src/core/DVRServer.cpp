@@ -14,6 +14,7 @@ DVRServer::DVRServer(int id, QObject *parent)
     api = new ServerRequestManager(this);
 
     connect(api, SIGNAL(loginSuccessful()), SLOT(updateCameras()));
+    connect(api, SIGNAL(disconnected()), SLOT(disconnected()));
 
     if (!hostname().isEmpty() && !username().isEmpty())
         QTimer::singleShot(0, this, SLOT(login()));
@@ -179,5 +180,15 @@ void DVRServer::updateCamerasReply()
             c.removed();
             --i;
         }
+    }
+}
+
+void DVRServer::disconnected()
+{
+    while (!m_cameras.isEmpty())
+    {
+        DVRCamera c = m_cameras.takeFirst();
+        emit cameraRemoved(c);
+        c.removed();
     }
 }

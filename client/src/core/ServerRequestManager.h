@@ -41,7 +41,11 @@ signals:
     void loginSuccessful();
     void serverError(const QString &message);
     void loginError(const QString &message);
+    void disconnected();
     void statusChanged(int status);
+
+public slots:
+    void logout();
 
 private slots:
     void loginReplyReady();

@@ -113,7 +113,10 @@ void DVRServersView::contextMenuEvent(QContextMenuEvent *event)
 
     if (action == aConnect)
     {
-        server->login();
+        if (!server->api->isOnline())
+            server->login();
+        else
+            server->api->logout();
     }
     else if (action == aRefreshDevices)
     {
@@ -221,6 +224,18 @@ void DVRServersView::mouseDoubleClickEvent(QMouseEvent *event)
     }
 
     QAbstractItemView::mouseDoubleClickEvent(event);
+}
+
+void DVRServersView::dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+{
+    QModelIndex current = currentIndex();
+    if (current.isValid() && (current == topLeft || topLeft < current) &&
+        (current == bottomRight || current < bottomRight) && !(current.flags() & Qt::ItemIsEnabled))
+    {
+        setCurrentIndex(QModelIndex());
+    }
+
+    QTreeView::dataChanged(topLeft, bottomRight);
 }
 
 void DVRServersView::rowsAboutToBeInserted(const QModelIndex &parent, int start, int end)
