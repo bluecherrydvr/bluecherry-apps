@@ -84,6 +84,7 @@ EventVideoPlayer::EventVideoPlayer(QWidget *parent)
 
 void EventVideoPlayer::setVideo(const QUrl &url)
 {
+    qDebug() << url;
     backend.start(url);
 }
 

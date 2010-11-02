@@ -151,6 +151,8 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
         {
             while (reader.readNext() != QXmlStreamReader::Invalid)
             {
+                if (reader.tokenType() == QXmlStreamReader::EndDocument)
+                    break;
                 if (reader.tokenType() != QXmlStreamReader::StartElement)
                     continue;
 
@@ -188,14 +190,13 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
             if (reader.name() == QLatin1String("entry"))
                 break;
         }
-        else if (reader.tokenType() != QXmlStreamReader::StartElement)
+        if (reader.tokenType() != QXmlStreamReader::StartElement)
             continue;
 
         if (reader.name() == QLatin1String("id"))
         {
             bool ok = false;
             qint64 id = reader.attributes().value(QLatin1String("raw")).toString().toLongLong(&ok);
-            qDebug() << reader.readElementText();
             if (!ok || id < 0)
             {
                 reader.raiseError(QLatin1String("Invalid format for id element"));
@@ -215,6 +216,13 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
                 data->duration = -1;
             else
                 data->duration = data->date.secsTo(QDateTime::fromString(d, Qt::ISODate));
+        }
+        else if (reader.name() == QLatin1String("content"))
+        {
+            bool ok = false;
+            data->mediaId = reader.attributes().value(QLatin1String("media_id")).toString().toLongLong(&ok);
+            if (!ok)
+                data->mediaId = -1;
         }
         else if (reader.name() == QLatin1String("category"))
         {
