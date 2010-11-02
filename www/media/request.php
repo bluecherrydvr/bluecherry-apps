@@ -65,12 +65,12 @@ function dl_file_resumable($file)
 	exit;
 }
 
-if (empty($_POST['id'])) {
+if (empty($_GET['id'])) {
 	print "<error>No ID sent</error>\n";
 	exit;
 }
 
-$id = $_POST['id'];
+$id = $_GET['id'];
 
 mb_http_output("pass");
 
