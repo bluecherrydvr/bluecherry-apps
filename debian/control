@@ -9,7 +9,7 @@ Standards-Version: 3.8.4
 
 Package: bluecherrydvr
 Architecture: any
-Pre-Depends: sqlite3
+Pre-Depends: sqlite3, adduser
 Depends: ${shlibs:Depends}
 Suggests: solo6010-dkms
 Description: Bluecherry DVR Server

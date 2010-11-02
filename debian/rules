@@ -8,7 +8,7 @@ override_dh_auto_install:
 	install -m755 -d debian/bluecherrydvr/usr/share/doc/bluecherrydvr
 	cat misc/sql/sqlite/*.sql > \
 		debian/bluecherrydvr/usr/share/doc/bluecherrydvr/sqlite-base.sql
-	install -m644 -D misc/bluecherry.conf \
+	install -m640 -D misc/bluecherry.conf \
 		debian/bluecherrydvr/etc/bluecherry.conf
 
 override_dh_installinit:

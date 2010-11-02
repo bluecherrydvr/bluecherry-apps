@@ -12,4 +12,4 @@ expect fork
 respawn
 umask 027
 
-exec /usr/sbin/bc-server
+exec /usr/bin/sudo -u bcdvr /usr/sbin/bc-server

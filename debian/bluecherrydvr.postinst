@@ -2,16 +2,19 @@
 
 set -e
 
-sql="/usr/share/doc/bluecherrydvr/sqlite-base.sql"
+sql="/usr/share/doc/bluecherrydvr/sqlite-base.sql.gz"
 dbdir="/var/lib/bluecherry"
 db="$dbdir/bluecherry.sqlite"
 
-case "$!" in
-	configure)
+case "$1" in
+	configure|reconfigure)
 		if [ -f "$sql" -a ! -f "$db" ]; then
 			test -d $dbdir || mkdir $dbdir
-			sqlite3 "$db" < "$sql"
+			zcat "$sql" | sqlite3 "$db"
+			chmod 640 "$db"
+			chown bcdvr:www-data "$dbdir" -R
 		fi
+		chown bcdvr:www-data /etc/bluecherry.conf
 		;;
 esac
 

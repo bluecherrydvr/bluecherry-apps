@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+dbdir="/var/lib/bluecherry"
+db="$dbdir/bluecherry.sqlite"
+
+case "$1" in
+	purge)
+		rm -f "$db"
+		rmdir --ignore-fail-on-non-empty "$dbdir"
+		userdel bcdvr
+		;;
+esac
+
+#DEBHELPER#
