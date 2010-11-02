@@ -9,8 +9,8 @@ Standards-Version: 3.8.4
 
 Package: bluecherrydvr
 Architecture: any
-Pre-Depends: sqlite3, adduser
-Depends: ${shlibs:Depends}
+Pre-Depends: adduser
+Depends: ${shlibs:Depends}, ssl-cert, sqlite3
 Suggests: solo6010-dkms
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.

@@ -10,6 +10,8 @@ override_dh_auto_install:
 		debian/bluecherrydvr/usr/share/doc/bluecherrydvr/sqlite-base.sql
 	install -m640 -D misc/bluecherry.conf \
 		debian/bluecherrydvr/etc/bluecherry.conf
+	install -m644 -D debian/apache.conf \
+		debian/bluecherrydvr/etc/apache2/sites-available/bluecherry
 
 override_dh_installinit:
 	dh_installinit -o --name=bc-server --upstart-only

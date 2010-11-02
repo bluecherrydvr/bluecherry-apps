@@ -15,6 +15,10 @@ case "$1" in
 			chown bcdvr:bcdvr "$dbdir" -R
 		fi
 		chown bcdvr:bcdvr /etc/bluecherry.conf
+		# Apache modules
+		a2ensite bluecherry
+		a2enmod ssl
+		a2enmod php5
 		;;
 esac
 
