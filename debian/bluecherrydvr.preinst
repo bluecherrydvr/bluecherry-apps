@@ -6,9 +6,9 @@ case "$1" in
 	install|upgrade)
 		if ! id bcdvr > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-				-G audio,video -g www-data -M -N -r bcdvr
+				-G audio,video -M -U -r bcdvr
 			# And www-data will need it too
-			usermod -a -G video,audio www-data
+			usermod -a -G video,audio,bcdvr www-data
 		fi
 		;;
 esac

@@ -11,10 +11,10 @@ case "$1" in
 		if [ -f "$sql" -a ! -f "$db" ]; then
 			test -d $dbdir || mkdir $dbdir
 			zcat "$sql" | sqlite3 "$db"
-			chmod 640 "$db"
-			chown bcdvr:www-data "$dbdir" -R
+			chmod 660 "$db"
+			chown bcdvr:bcdvr "$dbdir" -R
 		fi
-		chown bcdvr:www-data /etc/bluecherry.conf
+		chown bcdvr:bcdvr /etc/bluecherry.conf
 		;;
 esac
 
