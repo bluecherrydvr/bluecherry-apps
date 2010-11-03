@@ -12,6 +12,8 @@ override_dh_auto_install:
 		debian/bluecherrydvr/etc/bluecherry.conf
 	install -m644 -D debian/apache.conf \
 		debian/bluecherrydvr/etc/apache2/sites-available/bluecherry
+	install -d -m755 debian/bluecherrydvr/usr/share/bluecherry/www
+	cp -a www/* debian/bluecherrydvr/usr/share/bluecherry/www
 
 override_dh_installinit:
 	dh_installinit -o --name=bc-server --upstart-only
