@@ -15,6 +15,7 @@ void ServerRequestManager::setStatus(Status s, const QString &errmsg)
     if (s == m_status && (errmsg.isEmpty() || errmsg == m_errorMessage))
         return;
 
+    Status old = m_status;
     m_status = s;
     m_errorMessage = errmsg;
 
@@ -36,6 +37,9 @@ void ServerRequestManager::setStatus(Status s, const QString &errmsg)
     default:
         break;
     }
+
+    if (old == Online && m_status < Online)
+        emit disconnected();
 }
 
 QUrl ServerRequestManager::serverUrl() const
@@ -114,4 +118,12 @@ void ServerRequestManager::loginReplyReady()
     }
 
     setStatus(Online);
+}
+
+void ServerRequestManager::logout()
+{
+    if (m_status < Online)
+        return;
+
+    setStatus(Offline);
 }

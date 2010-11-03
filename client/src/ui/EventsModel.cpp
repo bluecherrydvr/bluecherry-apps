@@ -16,7 +16,7 @@ EventsModel::EventsModel(QObject *parent)
     foreach (DVRServer *server, servers)
         connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
 
-    createTestData();
+    //createTestData();
 
     sortColumn = 3;
     sortOrder = Qt::DescendingOrder;
@@ -29,6 +29,7 @@ EventsModel::EventsModel(QObject *parent)
     }
 }
 
+#if 0
 /* Randomized events for testing until real ones are available */
 void EventsModel::createTestData()
 {
@@ -69,6 +70,7 @@ void EventsModel::createTestData()
         cachedEvents[event->server].append(event);
     }
 }
+#endif
 
 int EventsModel::rowCount(const QModelIndex &parent) const
 {
@@ -443,7 +445,7 @@ void EventsModel::updateServer(DVRServer *server)
         url.addQueryItem(QLatin1String("endDate"), QString::number(filterDateEnd.toTime_t()));
 #endif
 
-    QNetworkRequest req = server->api->buildRequest(QLatin1String("/events/"));
+    QNetworkRequest req = server->api->buildRequest(url);
     req.setOriginatingObject(server);
     QNetworkReply *reply = bcApp->nam->get(req);
     connect(reply, SIGNAL(finished()), SLOT(requestFinished()));

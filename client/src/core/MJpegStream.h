@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QUrl>
 #include <QPixmap>
+#include <QTimer>
 
 class QNetworkReply;
 class ThreadTask;
@@ -30,6 +31,7 @@ public:
     void setUrl(const QUrl &url);
 
     State state() const { return m_state; }
+    QString errorMessage() const { return m_errorMessage; }
 
     QSize streamSize() const { return m_currentFrame.size(); }
     QPixmap currentFrame() const { return m_currentFrame; }
@@ -53,8 +55,10 @@ signals:
 private slots:
     void readable();
     void requestError();
+    void checkActivity();
 
 private:
+    QString m_errorMessage;
     QNetworkReply *m_httpReply;
     QByteArray m_httpBoundary;
     QByteArray m_httpBuffer;
@@ -62,6 +66,8 @@ private:
     QPixmap m_currentFrame;
     ImageDecodeTask *m_decodeTask;
     QVector<QSize> m_scaleSizes;
+    QTimer m_activityTimer;
+    uint m_lastActivity;
 
     int m_httpBodyLength;
     State m_state;

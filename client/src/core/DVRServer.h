@@ -60,6 +60,7 @@ signals:
 
 private slots:
     void updateCamerasReply();
+    void disconnected();
 
 private:
     QList<DVRCamera> m_cameras;

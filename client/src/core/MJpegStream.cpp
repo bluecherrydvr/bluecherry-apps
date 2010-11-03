@@ -7,18 +7,22 @@
 #include <QDebug>
 #include <QImage>
 #include <QThreadPool>
+#include <QTimer>
+#include <QDateTime>
 
 MJpegStream::MJpegStream(QObject *parent)
-    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_httpBodyLength(0), m_state(NotConnected),
+    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_lastActivity(0), m_httpBodyLength(0), m_state(NotConnected),
       m_parserState(ParserBoundary)
 {
+    connect(&m_activityTimer, SIGNAL(timeout()), SLOT(checkActivity()));
 }
 
 MJpegStream::MJpegStream(const QUrl &url, QObject *parent)
-    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_httpBodyLength(0), m_state(NotConnected),
+    : QObject(parent), m_httpReply(0), m_decodeTask(0), m_lastActivity(0), m_httpBodyLength(0), m_state(NotConnected),
       m_parserState(ParserBoundary)
 {
     setUrl(url);
+    connect(&m_activityTimer, SIGNAL(timeout()), SLOT(checkActivity()));
 }
 
 MJpegStream::~MJpegStream()
@@ -35,6 +39,9 @@ void MJpegStream::setState(State newState)
     State oldState = m_state;
     m_state = newState;
 
+    if (m_state != Error)
+        m_errorMessage.clear();
+
     emit stateChanged(newState);
 
     if (newState == Streaming)
@@ -48,9 +55,12 @@ void MJpegStream::setState(State newState)
 
 void MJpegStream::setError(const QString &message)
 {
+    m_errorMessage = message;
     qDebug() << "mjpeg: error:" << message;
     setState(Error);
     stop();
+
+    QTimer::singleShot(15000, this, SLOT(start()));
 }
 
 void MJpegStream::setUrl(const QUrl &url)
@@ -65,7 +75,7 @@ void MJpegStream::start()
 
     if (!url().isValid())
     {
-        setError(tr("Internal Error"));
+        setError(QLatin1String("Internal Error"));
         return;
     }
 
@@ -74,6 +84,8 @@ void MJpegStream::start()
     m_httpReply = bcApp->nam->get(QNetworkRequest(url()));
     connect(m_httpReply, SIGNAL(error(QNetworkReply::NetworkError)), SLOT(requestError()));
     connect(m_httpReply, SIGNAL(readyRead()), SLOT(readable()));
+
+    m_activityTimer.start(30000);
 }
 
 void MJpegStream::stop()
@@ -91,6 +103,8 @@ void MJpegStream::stop()
 
     if (state() > NotConnected)
         setState(NotConnected);
+
+    m_activityTimer.stop();
 }
 
 bool MJpegStream::processHeaders()
@@ -112,11 +126,9 @@ bool MJpegStream::processHeaders()
     if (sep > 0)
         m_httpBoundary = data.mid(sep+9);
 
-    qDebug() << data << mimeType;
-
     if (mimeType != "multipart/x-mixed-replace" || m_httpBoundary.isEmpty())
     {
-        setError(tr("Invalid content type"));
+        setError(QLatin1String("Invalid content type"));
         return false;
     }
 
@@ -128,6 +140,8 @@ void MJpegStream::readable()
 {
     if (!m_httpReply)
         return;
+
+    m_lastActivity = QDateTime::currentDateTime().toTime_t();
 
     if (m_httpBoundary.isNull())
     {
@@ -150,7 +164,7 @@ void MJpegStream::readable()
 
         if (m_httpBuffer.size() >= maxBuffer)
         {
-            setError(tr("Exceeded maximum buffer size"));
+            setError(QLatin1String("Exceeded maximum buffer size"));
             return;
         }
 
@@ -161,7 +175,7 @@ void MJpegStream::readable()
         int rd = m_httpReply->read(m_httpBuffer.data()+readPos, maxRead);
         if (rd < 0)
         {
-            setError(tr("Read error"));
+            setError(QLatin1String("Read error"));
             return;
         }
 
@@ -291,9 +305,15 @@ bool MJpegStream::parseBuffer()
     return true;
 }
 
+void MJpegStream::checkActivity()
+{
+    if (QDateTime::currentDateTime().toTime_t() - m_lastActivity > 30)
+        setError(QLatin1String("Stream timeout"));
+}
+
 void MJpegStream::requestError()
 {
-    setError(tr("HTTP error: %1").arg(m_httpReply->errorString()));
+    setError(QString::fromLatin1("HTTP error: %1").arg(m_httpReply->errorString()));
 }
 
 void MJpegStream::updateScaleSizes()

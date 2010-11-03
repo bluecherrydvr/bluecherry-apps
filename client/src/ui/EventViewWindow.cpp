@@ -83,6 +83,15 @@ void EventViewWindow::setEvent(EventData *event)
                          .arg(Qt::escape(event->uiType()))
                          .arg(Qt::escape(event->uiLevel()))
                          .arg(event->date.toString()));
+
+    if (m_event->mediaId >= 0)
+    {
+        QUrl url = m_event->server->api->serverUrl().resolved(QUrl(QLatin1String("/media/request.php")));
+        url.addQueryItem(QLatin1String("id"), QString::number(m_event->mediaId));
+        m_videoPlayer->setVideo(url);
+    }
+    else
+        m_videoPlayer->setVideo(QUrl());
 }
 
 QWidget *EventViewWindow::createInfoArea()
@@ -167,7 +176,6 @@ QWidget *EventViewWindow::createInfoArea()
 QWidget *EventViewWindow::createPlaybackArea()
 {
     m_videoPlayer = new EventVideoPlayer;
-    m_videoPlayer->setVideo(QUrl(QLatin1String("http://lizard.bluecherry.net/~jbrooks/test.mkv")));
     return m_videoPlayer;
 }
 

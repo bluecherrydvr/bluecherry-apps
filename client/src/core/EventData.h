@@ -69,14 +69,14 @@ struct EventData
 {
     QDateTime date;
     DVRServer * const server;
-    qint64 eventId;
+    qint64 eventId, mediaId;
     int duration;
     int locationId;
     EventLevel level;
     EventType type;
 
     EventData(DVRServer *s)
-        : server(s), eventId(-1), duration(0), locationId(-1)
+        : server(s), eventId(-1), mediaId(-1), duration(0), locationId(-1)
     {
     }
 

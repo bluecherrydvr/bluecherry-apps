@@ -20,6 +20,8 @@ protected:
     virtual void contextMenuEvent(QContextMenuEvent *event);
     virtual void mouseDoubleClickEvent(QMouseEvent *event);
 
+    virtual void dataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
+
 private slots:
     void rowsAboutToBeInserted(const QModelIndex &parent, int start, int end);
 };
