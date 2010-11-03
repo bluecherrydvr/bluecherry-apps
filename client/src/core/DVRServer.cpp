@@ -70,15 +70,6 @@ void DVRServer::login()
     api->login(username(), password());
 }
 
-QNetworkRequest DVRServer::createRequest(const QUrl &relurl)
-{
-    QUrl url(relurl);
-    url.setScheme(QLatin1String("http"));
-    url.setHost(hostname());
-
-    return QNetworkRequest(url);
-}
-
 void DVRServer::updateCameras()
 {
     if (!api->isOnline())

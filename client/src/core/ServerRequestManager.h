@@ -34,6 +34,7 @@ public:
     QUrl serverUrl() const;
     QNetworkRequest buildRequest(const QUrl &relativeUrl);
     QNetworkRequest buildRequest(const QString &relativeUrl) { return buildRequest(QUrl(relativeUrl)); }
+    QNetworkReply *sendRequest(const QNetworkRequest &request);
     QNetworkReply *sendRequest(const QUrl &relativeUrl);
 
 signals:

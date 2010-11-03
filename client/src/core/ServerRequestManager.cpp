@@ -3,6 +3,7 @@
 #include "BluecherryApp.h"
 #include <QNetworkAccessManager>
 #include <QNetworkCookieJar>
+#include <QSslSocket>
 #include <QDebug>
 
 ServerRequestManager::ServerRequestManager(DVRServer *s)
@@ -45,7 +46,7 @@ void ServerRequestManager::setStatus(Status s, const QString &errmsg)
 QUrl ServerRequestManager::serverUrl() const
 {
     QUrl url;
-    url.setScheme(QLatin1String("http"));
+    url.setScheme(QLatin1String("https"));
     url.setHost(server->hostname());
     url.setPort(server->serverPort());
     return url;
@@ -54,12 +55,12 @@ QUrl ServerRequestManager::serverUrl() const
 QNetworkRequest ServerRequestManager::buildRequest(const QUrl &relativeUrl)
 {
     Q_ASSERT(relativeUrl.isRelative());
-    QUrl url = relativeUrl;
-    url.setScheme(QLatin1String("http"));
-    url.setHost(server->hostname());
-    url.setPort(server->serverPort());
+    return QNetworkRequest(serverUrl().resolved(relativeUrl));
+}
 
-    return QNetworkRequest(url);
+QNetworkReply *ServerRequestManager::sendRequest(const QNetworkRequest &request)
+{
+    return bcApp->nam->get(request);
 }
 
 QNetworkReply *ServerRequestManager::sendRequest(const QUrl &relativeUrl)
@@ -78,6 +79,11 @@ void ServerRequestManager::login(const QString &username, const QString &passwor
     }
 
     QNetworkRequest req = buildRequest(QLatin1String("/ajax/login.php"));
+    if (req.url().scheme() == QLatin1String("https") && !QSslSocket::supportsSsl())
+    {
+        setStatus(ServerError, QLatin1String("SSL support is not enabled"));
+        return;
+    }
 
     QUrl queryData;
     queryData.addQueryItem(QLatin1String("login"), username);

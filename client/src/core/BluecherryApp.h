@@ -7,6 +7,8 @@
 class DVRServer;
 class QNetworkAccessManager;
 class MainWindow;
+class QNetworkReply;
+class QSslError;
 
 class BluecherryApp : public QObject
 {
@@ -29,6 +31,7 @@ signals:
 
 private slots:
     void onServerRemoved(DVRServer *server);
+    void sslErrors(QNetworkReply *reply, const QList<QSslError> &errors);
 
 private:
     QList<DVRServer*> m_servers;

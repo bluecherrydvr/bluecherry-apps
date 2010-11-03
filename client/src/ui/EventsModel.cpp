@@ -447,7 +447,7 @@ void EventsModel::updateServer(DVRServer *server)
 
     QNetworkRequest req = server->api->buildRequest(url);
     req.setOriginatingObject(server);
-    QNetworkReply *reply = bcApp->nam->get(req);
+    QNetworkReply *reply = server->api->sendRequest(req);
     connect(reply, SIGNAL(finished()), SLOT(requestFinished()));
 }
 

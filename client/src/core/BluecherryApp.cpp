@@ -6,6 +6,7 @@
 #include <QHostAddress>
 #include <QTimer>
 #include <QFile>
+#include <QSslError>
 
 BluecherryApp *bcApp = 0;
 
@@ -14,6 +15,8 @@ BluecherryApp::BluecherryApp()
 {
     Q_ASSERT(!bcApp);
     bcApp = this;
+
+    connect(nam, SIGNAL(sslErrors(QNetworkReply*,QList<QSslError>)), SLOT(sslErrors(QNetworkReply*,QList<QSslError>)));
 
     loadServers();
 }
@@ -88,4 +91,14 @@ void BluecherryApp::onServerRemoved(DVRServer *server)
 {
     if (m_servers.removeOne(server))
         emit serverRemoved(server);
+}
+
+void BluecherryApp::sslErrors(QNetworkReply *reply, const QList<QSslError> &errors)
+{
+    foreach (const QSslError &err, errors)
+    {
+        qDebug() << "SSL Error (ignored):" << err.errorString();
+    }
+
+    reply->ignoreSslErrors();
 }
