@@ -36,6 +36,7 @@ VideoPlayerBackend::~VideoPlayerBackend()
 {
     if (m_videoBuffer)
         m_videoBuffer->clearPlayback();
+    clear();
 }
 
 bool VideoPlayerBackend::loadPlugins()
@@ -238,6 +239,8 @@ void VideoPlayerBackend::clear()
     if (m_pipeline)
     {
         gst_element_set_state(m_pipeline, GST_STATE_NULL);
+        /* Ensure the transition to NULL completes */
+        gst_element_get_state(m_pipeline, 0, 0, GST_CLOCK_TIME_NONE);
         gst_object_unref(GST_OBJECT(m_pipeline));
     }
 
