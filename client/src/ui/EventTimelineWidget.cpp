@@ -349,6 +349,9 @@ void EventTimelineWidget::setSelection(const QRect &irect, QItemSelectionModel::
     QRect itemArea = viewportItemArea();
     QRect rect = irect.translated(0, (-itemArea.top()) + verticalScrollBar()->value());
 
+    if (layoutRows.isEmpty())
+        return;
+
     /* The y coordinate of rect is now in scroll-invariant inner y, the same as layoutRows */
     QMap<int,RowData*>::ConstIterator it = layoutRows.lowerBound(rect.y());
     if (it == layoutRows.end() || it.key() > rect.y())
