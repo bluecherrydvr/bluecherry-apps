@@ -7,6 +7,8 @@
 #include <QTimer>
 #include <QFile>
 #include <QSslError>
+#include <QSslConfiguration>
+#include <QSslCertificate>
 
 BluecherryApp *bcApp = 0;
 
@@ -17,6 +19,11 @@ BluecherryApp::BluecherryApp()
     bcApp = this;
 
     connect(nam, SIGNAL(sslErrors(QNetworkReply*,QList<QSslError>)), SLOT(sslErrors(QNetworkReply*,QList<QSslError>)));
+
+    /* Don't use the system CAs to verify certificates */
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setCaCertificates(QList<QSslCertificate>());
+    QSslConfiguration::setDefaultConfiguration(sslConfig);
 
     loadServers();
 }
@@ -97,7 +104,56 @@ void BluecherryApp::sslErrors(QNetworkReply *reply, const QList<QSslError> &erro
 {
     foreach (const QSslError &err, errors)
     {
-        qDebug() << "SSL Error (ignored):" << err.errorString();
+        switch (err.error())
+        {
+        case QSslError::CertificateNotYetValid:
+        case QSslError::CertificateExpired:
+            qDebug() << "BluecherryApp: Ignoring expired SSL certificate";
+            break;
+        case QSslError::SelfSignedCertificate:
+        case QSslError::SelfSignedCertificateInChain:
+        case QSslError::HostNameMismatch:
+            break;
+        default:
+            qWarning() << "SSL Error:" << err.errorString() <<(int) err.error();
+            return;
+        }
+    }
+
+    /* Figure out which server is associated with this request */
+    DVRServer *server = reply->property("DVRServer").value<DVRServer*>();
+    if (!server)
+    {
+        server = qobject_cast<DVRServer*>(reply->request().originatingObject());
+        if (!server)
+        {
+            QUrl requestUrl = reply->request().url();
+            foreach (DVRServer *s, servers())
+            {
+                QUrl serverUrl = s->api->serverUrl();
+                if (QString::compare(serverUrl.authority(), requestUrl.authority(), Qt::CaseInsensitive) == 0
+                    && QString::compare(serverUrl.scheme(), requestUrl.scheme(), Qt::CaseInsensitive) == 0)
+                {
+                    server = s;
+                    break;
+                }
+            }
+
+            if (!server)
+            {
+                qWarning() << "BluecherryApp: Unable to determine server associated with request for" << requestUrl;
+                return;
+            }
+        }
+    }
+
+    if (!server->isKnownCertificate(reply->sslConfiguration().peerCertificate()))
+    {
+        qDebug("BluecherryApp: Prompting user to accept different SSL certificate");
+        emit sslConfirmRequired(server, errors, reply->sslConfiguration());
+        /* If the user accepted, this should now be a known certificate */
+        if (!server->isKnownCertificate(reply->sslConfiguration().peerCertificate()))
+            return;
     }
 
     reply->ignoreSslErrors();

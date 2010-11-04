@@ -9,6 +9,7 @@ class QNetworkAccessManager;
 class MainWindow;
 class QNetworkReply;
 class QSslError;
+class QSslConfiguration;
 
 class BluecherryApp : public QObject
 {
@@ -28,6 +29,8 @@ public:
 signals:
     void serverAdded(DVRServer *server);
     void serverRemoved(DVRServer *server);
+
+    void sslConfirmRequired(DVRServer *server, const QList<QSslError> &errors, const QSslConfiguration &config);
 
 private slots:
     void onServerRemoved(DVRServer *server);

@@ -5,6 +5,7 @@
 #include <QUrl>
 #include <QTimer>
 #include <QXmlStreamReader>
+#include <QSslCertificate>
 #include <QDebug>
 
 DVRServer::DVRServer(int id, QObject *parent)
@@ -182,4 +183,24 @@ void DVRServer::disconnected()
         emit cameraRemoved(c);
         c.removed();
     }
+}
+
+bool DVRServer::isKnownCertificate(const QSslCertificate &certificate) const
+{
+    QByteArray knownDigest = readSetting("sslDigest").toByteArray();
+    if (knownDigest.isEmpty())
+    {
+        /* If we don't know a certificate yet, we treat the first one we see as
+         * correct. This is insecure, obviously, but it's a much nicer way to behave
+         * for what we're doing here. */
+        const_cast<DVRServer*>(this)->setKnownCertificate(certificate);
+        return true;
+    }
+
+    return (certificate.digest(QCryptographicHash::Sha1) == knownDigest);
+}
+
+void DVRServer::setKnownCertificate(const QSslCertificate &certificate)
+{
+    writeSetting("sslDigest", certificate.digest(QCryptographicHash::Sha1));
 }

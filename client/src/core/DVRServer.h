@@ -9,6 +9,7 @@
 
 class QNetworkRequest;
 class QUrl;
+class QSslCertificate;
 
 class DVRServer : public QObject
 {
@@ -40,8 +41,9 @@ public:
     void clearSetting(const char *key) { clearSetting(QLatin1String(key)); }
     void clearSetting(const QString &key);
 
-    /* Network */
-    QNetworkRequest createRequest(const QUrl &url);
+    /* SSL */
+    bool isKnownCertificate(const QSslCertificate &certificate) const;
+    void setKnownCertificate(const QSslCertificate &certificate);
 
 public slots:
     void setDisplayName(const QString &displayName);
