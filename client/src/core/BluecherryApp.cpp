@@ -120,6 +120,13 @@ void BluecherryApp::sslErrors(QNetworkReply *reply, const QList<QSslError> &erro
         }
     }
 
+    QSslCertificate cert = reply->sslConfiguration().peerCertificate();
+    if (cert.isNull())
+    {
+        qWarning() << "SSL Error: No certificate from peer";
+        return;
+    }
+
     /* Figure out which server is associated with this request */
     DVRServer *server = reply->property("DVRServer").value<DVRServer*>();
     if (!server)
@@ -147,7 +154,7 @@ void BluecherryApp::sslErrors(QNetworkReply *reply, const QList<QSslError> &erro
         }
     }
 
-    if (!server->isKnownCertificate(reply->sslConfiguration().peerCertificate()))
+    if (!server->isKnownCertificate(cert))
     {
         qDebug("BluecherryApp: Prompting user to accept different SSL certificate");
         emit sslConfirmRequired(server, errors, reply->sslConfiguration());

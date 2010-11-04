@@ -7,6 +7,9 @@ class DVRServersView;
 class CameraAreaWidget;
 class RecentEventsView;
 class QSplitter;
+class DVRServer;
+class QSslError;
+class QSslConfiguration;
 
 class MainWindow : public QMainWindow
 {
@@ -34,6 +37,7 @@ public slots:
 
 private slots:
     void showServersMenu();
+    void sslConfirmRequired(DVRServer *server, const QList<QSslError> &errors, const QSslConfiguration &config);
 
 signals:
     void closing();

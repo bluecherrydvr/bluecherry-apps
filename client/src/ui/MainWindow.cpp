@@ -11,6 +11,7 @@
 #include "OptionsServerPage.h"
 #include "ServerConfigWindow.h"
 #include "core/DVRServer.h"
+#include "core/BluecherryApp.h"
 #include <QBoxLayout>
 #include <QTreeView>
 #include <QGroupBox>
@@ -26,6 +27,9 @@
 #include <QUrl>
 #include <QMessageBox>
 #include <QMacStyle>
+#include <QSslConfiguration>
+#include <QSslCertificate>
+#include <QTextDocument>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -101,6 +105,9 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     new QShortcut(QKeySequence(Qt::Key_F11), m_cameraArea, SLOT(toggleFullScreen()));
+
+    connect(bcApp, SIGNAL(sslConfirmRequired(DVRServer*,QList<QSslError>,QSslConfiguration)),
+            SLOT(sslConfirmRequired(DVRServer*,QList<QSslError>,QSslConfiguration)));
 }
 
 MainWindow::~MainWindow()
@@ -288,4 +295,35 @@ void MainWindow::refreshServerDevices()
         return;
 
     server->updateCameras();
+}
+
+void MainWindow::sslConfirmRequired(DVRServer *server, const QList<QSslError> &errors, const QSslConfiguration &config)
+{
+    Q_UNUSED(errors);
+    Q_ASSERT(server);
+    Q_ASSERT(!config.peerCertificate().isNull());
+
+    QByteArray digest = config.peerCertificate().digest(QCryptographicHash::Sha1);
+    QString fingerprint = QString::fromLatin1(digest.toHex()).toUpper();
+    for (int i = 4; i < fingerprint.size(); i += 5)
+        fingerprint.insert(i, QLatin1Char(' '));
+
+    QMessageBox *dlg = new QMessageBox(QMessageBox::Warning, tr("Security warning"),
+                                       tr("The SSL certificate for <b>%1</b> has changed! This could indicate an "
+                                          "attack on the secure connection, or that the server has recently been "
+                                          "reinstalled.<br><br><b>Server:</b> %1<br><b>URL:</b> %2<br>"
+                                          "<b>Fingerprint:</b> %3<br><br>Do you want to connect anyway, and trust "
+                                          "this certificate in the future?")
+                                       .arg(Qt::escape(server->displayName()), server->api->serverUrl().toString(),
+                                            fingerprint));
+    QPushButton *ab = dlg->addButton(tr("Accept Certificate"), QMessageBox::AcceptRole);
+    dlg->setDefaultButton(dlg->addButton(QMessageBox::Cancel));
+    dlg->setParent(this);
+    dlg->setWindowModality(Qt::WindowModal);
+
+    dlg->exec();
+    if (dlg->clickedButton() != ab)
+        return;
+
+    server->setKnownCertificate(config.peerCertificate());
 }
