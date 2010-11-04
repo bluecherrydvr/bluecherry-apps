@@ -12,9 +12,9 @@ case "$1" in
 			test -d $dbdir || mkdir $dbdir
 			zcat "$sql" | sqlite3 "$db"
 			chmod 660 "$db"
-			chown bcdvr:bcdvr "$dbdir" -R
+			chown bluecherry:bluecherry "$dbdir" -R
 		fi
-		chown bcdvr:bcdvr /etc/bluecherry.conf
+		chown bluecherry:bluecherry /etc/bluecherry.conf
 		# Apache modules
 		a2ensite bluecherry
 		a2enmod ssl

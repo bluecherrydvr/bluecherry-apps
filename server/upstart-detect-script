@@ -10,4 +10,4 @@ stop on runlevel [016]
 
 umask 027
 
-exec /usr/bin/sudo -u bcdvr /usr/sbin/bc-detect
+exec /usr/bin/sudo -u bluecherry /usr/sbin/bc-detect

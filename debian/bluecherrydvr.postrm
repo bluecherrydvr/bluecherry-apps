@@ -9,7 +9,7 @@ case "$1" in
 	purge)
 		rm -f "$db"
 		rmdir --ignore-fail-on-non-empty "$dbdir"
-		userdel bcdvr
+		userdel bluecherry
 		;;
 esac
 
