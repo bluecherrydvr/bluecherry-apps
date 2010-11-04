@@ -81,7 +81,7 @@ inline int DVRServer::serverPort() const
 {
     bool ok = false;
     int r = readSetting("port").toInt(&ok);
-    return ok ? r : 80;
+    return ok ? r : 7001;
 }
 
 inline QString DVRServer::username() const
