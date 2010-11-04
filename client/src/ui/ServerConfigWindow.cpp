@@ -48,11 +48,7 @@ void ServerConfigWindow::setServer(DVRServer *server)
 
     if (server)
     {
-        QUrl url(QLatin1String("/"));
-        url.setHost(server->hostname());
-        url.setScheme(QLatin1String("http"));
-
-        m_webView->load(url);
+        m_webView->load(server->api->serverUrl());
         setWindowTitle(tr("Bluecherry DVR - %1").arg(server->displayName()));
     }
 
