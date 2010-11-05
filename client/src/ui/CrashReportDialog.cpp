@@ -18,6 +18,7 @@
 #include <QMenu>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QNetworkRequest>
 
 static const char * const reportUrl = "???";
 
@@ -191,7 +192,25 @@ void CrashReportDialog::sendReport()
         m_uploadReply = nam->get(QNetworkRequest(url));
     }
     else
-        m_uploadReply = nam->post(QNetworkRequest(url), &m_dumpFile);
+    {
+        QNetworkRequest req(url);
+        const char *boundary = "UPLOADDUMP";
+        req.setHeader(QNetworkRequest::ContentTypeHeader, QByteArray("multipart/form-data; boundary=") + boundary);
+
+        QByteArray data;
+        data.append("--");
+        data.append(boundary);
+        data.append("\r\ncontent-disposition: form-data; name=\"dump\"; filename=\"temp.dmp\"\r\nContent-Transfer-Encoding: binary\r\nContent-Length: ");
+        data.append(m_dumpFile.size());
+        data.append("\r\nContent-type: application/x-octet-stream\r\n\r\n");
+        data.append(m_dumpFile.readAll());
+        data.append("\r\n--");
+        data.append(boundary);
+        data.append("--\r\n");
+        m_dumpFile.close();
+
+        m_uploadReply = nam->post(req, data);
+    }
 
     connect(m_uploadReply, SIGNAL(finished()), SLOT(uploadFinished()));
     bool ok = connect(m_uploadReply, SIGNAL(uploadProgress(qint64,qint64)), SLOT(setUploadProgress(qint64)));
