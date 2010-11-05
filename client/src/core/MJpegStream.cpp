@@ -289,8 +289,6 @@ bool MJpegStream::parseBuffer()
         }
 
         /* End of the body; m_httpBodyLength is its length, at the beginning of m_httpBuffer */
-        qDebug() << "mjpeg: read body of" << m_httpBodyLength << "bytes";
-
         /* Create a QByteArray for just the body, without copying */
         decodeFrame(QByteArray(m_httpBuffer.data(), m_httpBodyLength));
 

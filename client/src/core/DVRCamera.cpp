@@ -46,25 +46,6 @@ bool DVRCamera::parseXML(QXmlStreamReader &xml)
         {
             name = xml.readElementText();
         }
-        else if (xml.name() == QLatin1String("source_video"))
-        {
-            QString source = xml.readElementText();
-            if (source.startsWith(QLatin1String("/dev/video")))
-            {
-                QUrl url(QLatin1String("/bc-mjpeg.php?multipart"));
-
-                bool ok = false;
-                url.addQueryItem(QLatin1String("channel"), QString::number(source.mid(10).toInt(&ok)-1));
-                if (!ok)
-                {
-                    qWarning() << "DVRCamera::parseXML: invalid source_video for camera";
-                    xml.skipCurrentElement();
-                    continue;
-                }
-
-                streamUrl = server()->api->serverUrl().resolved(url).toString();
-            }
-        }
         else
             xml.skipCurrentElement();
     }
@@ -73,7 +54,9 @@ bool DVRCamera::parseXML(QXmlStreamReader &xml)
         name = QString::fromLatin1("#%2").arg(uniqueId());
 
     d->displayName = name;
-    d->streamUrl = streamUrl.toLatin1();
+    QUrl url(QLatin1String("/media/mjpeg.php?multipart"));
+    url.addQueryItem(QLatin1String("id"), QString::number(d->uniqueID));
+    d->streamUrl = server()->api->serverUrl().resolved(url).toString().toLatin1();
     d->isLoaded = true;
 
     emit d->dataUpdated();
