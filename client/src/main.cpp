@@ -35,23 +35,15 @@ int main(int argc, char *argv[])
     initBreakpad();
 #endif
 
+    /* These are used for the configuration file - do not change! */
     a.setOrganizationName(QLatin1String("bluecherry"));
     a.setOrganizationDomain(QLatin1String("bluecherrydvr.com"));
     a.setApplicationName(QLatin1String("bluecherry"));
+
     a.setApplicationVersion(QLatin1String("2.0.0"));
 
 #ifdef Q_OS_WIN
     QSettings::setDefaultFormat(QSettings::IniFormat);
-#endif
-
-#ifdef BC_CUTOFF_DATE
-    if (QDateTime::currentDateTime() >= QDateTime::fromTime_t(BC_CUTOFF_DATE))
-    {
-        QMessageBox::critical(0, a.tr("Bluecherry DVR - Beta Expired"), a.tr("This beta release of the Bluecherry DVR software "
-                                                                             "has expired.\n\nPlease download the latest update from "
-                                                                             "www.bluecherrydvr.com"));
-        return 1;
-    }
 #endif
 
     bcApp = new BluecherryApp;
@@ -62,13 +54,17 @@ int main(int argc, char *argv[])
     w.show();
 
 #ifdef BC_CUTOFF_DATE
-    if (QDateTime::currentDateTime().addDays(7) >= QDateTime::fromTime_t(BC_CUTOFF_DATE))
+    if (QDateTime::currentDateTime().addDays(3) >= QDateTime::fromTime_t(BC_CUTOFF_DATE))
     {
-        QMessageBox::critical(&w, a.tr("Bluecherry DVR - Beta Expiration"), a.tr("This beta release of the Bluecherry DVR software "
-                                                                                 "will expire in %1 days.\nAfter this date, the software "
-                                                                                 "will no longer run.\n\nPlease download the latest "
-                                                                                 "update from www.bluecherrydvr.com")
-                              .arg(QDateTime::currentDateTime().daysTo(QDateTime::fromTime_t(BC_CUTOFF_DATE))));
+        int days = QDateTime::currentDateTime().daysTo(QDateTime::fromTime_t(BC_CUTOFF_DATE));
+        QMessageBox::critical(&w, a.tr("Bluecherry - Beta Expiration"),
+                              (days > 0) ? a.tr("This beta release of the Bluecherry DVR software will expire in %1 days.\n"
+                                                "After this date, the software will function fully.\n\nPlease download the latest "
+                                                "update from www.bluecherrydvr.com").arg(days)
+                                         :
+                                           a.tr("This beta release of the Bluecherry DVR software has expired.\n\nPlease download "
+                                                "the latest update from www.bluecherrydvr.com")
+                              );
     }
 #endif
 
