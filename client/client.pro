@@ -1,7 +1,7 @@
 QT += core gui network webkit
 CONFIG(static):QTPLUGIN += qjpeg
 
-TARGET = bluecherry-client
+TARGET = BluecherryClient
 TEMPLATE = app
 
 unix:!macx {
