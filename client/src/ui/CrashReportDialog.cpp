@@ -20,7 +20,7 @@
 #include <QMessageBox>
 #include <QNetworkRequest>
 
-static const char * const reportUrl = "???";
+static const char * const reportUrl = "http://crashdump.bluecherrydvr.com/report.php";
 
 CrashReportDialog::CrashReportDialog(const QString &dumpFile, QWidget *parent)
     : QDialog(parent), m_dumpFile(dumpFile), m_uploadReply(0), m_finalResult(QDialog::Accepted)
