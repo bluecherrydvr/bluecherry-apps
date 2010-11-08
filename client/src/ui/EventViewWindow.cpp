@@ -27,7 +27,7 @@
 EventViewWindow::EventViewWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_event(0)
 {
-    setWindowTitle(tr("Bluecherry DVR - Event Playback"));
+    setWindowTitle(tr("Bluecherry - Event Playback"));
     resize(590, 380);
 
     QBoxLayout *layout = new QVBoxLayout(this);

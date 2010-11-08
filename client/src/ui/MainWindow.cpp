@@ -34,7 +34,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(tr("Bluecherry DVR"));
+    setWindowTitle(tr("Bluecherry"));
     resize(1100, 750);
     createMenu();
 

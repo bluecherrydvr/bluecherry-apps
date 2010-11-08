@@ -8,7 +8,7 @@
 AboutDialog::AboutDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(tr("Bluecherry DVR - About"));
+    setWindowTitle(tr("Bluecherry Client - About"));
     setFixedSize(500, 400);
     setModal(true);
 
@@ -21,7 +21,7 @@ AboutDialog::AboutDialog(QWidget *parent)
     layout->addWidget(logo, 0, 0);
 
     QLabel *text = new QLabel;
-    text->setText(tr("Bluecherry DVR<br>Version %1").arg(QApplication::applicationVersion()));
+    text->setText(tr("Bluecherry DVR Client<br>Version %1").arg(QApplication::applicationVersion()));
     text->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
 
     QFont font = text->font();

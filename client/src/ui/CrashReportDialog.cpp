@@ -25,7 +25,7 @@ static const char * const reportUrl = "http://crashdump.bluecherrydvr.com/report
 CrashReportDialog::CrashReportDialog(const QString &dumpFile, QWidget *parent)
     : QDialog(parent), m_dumpFile(dumpFile), m_uploadReply(0), m_finalResult(QDialog::Accepted)
 {
-    setWindowTitle(tr("Bluecherry DVR - Report Crash"));
+    setWindowTitle(tr("Bluecherry - Report Crash"));
     setFixedSize(430, 270);
 
     QBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -37,7 +37,7 @@ CrashReportDialog::CrashReportDialog(const QString &dumpFile, QWidget *parent)
     icon->setPixmap(style()->standardPixmap(QStyle::SP_MessageBoxCritical));
     topLayout->addWidget(icon, 0, Qt::AlignLeft | Qt::AlignVCenter);
 
-    QLabel *title = new QLabel(tr("The Bluecherry DVR client crashed!"));
+    QLabel *title = new QLabel(tr("The Bluecherry client crashed!"));
     title->setStyleSheet(QLatin1String("font-size:16px;color:#003399;"));
     title->setAlignment(Qt::AlignCenter);
     topLayout->addWidget(title, 1, Qt::AlignCenter);

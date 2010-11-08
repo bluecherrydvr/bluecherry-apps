@@ -21,7 +21,7 @@ ServerConfigWindow *ServerConfigWindow::instance()
 ServerConfigWindow::ServerConfigWindow(QWidget *parent)
     : QWidget(parent, Qt::Window), m_server(0)
 {
-    setWindowTitle(tr("Bluecherry DVR - Server Configuration"));
+    setWindowTitle(tr("Bluecherry - Server Configuration"));
     setMinimumSize(970, 600);
     resize(minimumSize());
 
@@ -49,7 +49,7 @@ void ServerConfigWindow::setServer(DVRServer *server)
     if (server)
     {
         m_webView->load(server->api->serverUrl());
-        setWindowTitle(tr("Bluecherry DVR - %1").arg(server->displayName()));
+        setWindowTitle(tr("Bluecherry - %1").arg(server->displayName()));
     }
 
     emit serverChanged(m_server);
