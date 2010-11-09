@@ -5,8 +5,11 @@ TARGET = BluecherryClient
 TEMPLATE = app
 
 unix:!macx {
+    TARGET = bluecherry-client
     target.path = /usr/bin
-    INSTALLS += target
+    shortcut.path = /usr/share/applications
+    shortcut.files = "linux/Bluecherry Client.desktop"
+    INSTALLS += target shortcut
 }
 
 macx:QMAKE_POST_LINK += cp $${_PRO_FILE_PWD_}/mac/Info.plist $${OUT_PWD}/$${TARGET}.app/Contents/;
@@ -170,3 +173,4 @@ RESOURCES += \
     res/resources.qrc
 
 macx:OTHER_FILES += mac/Info.plist
+unix:!macx:OTHER_FILES += "linux/Bluecherry Client.desktop"
