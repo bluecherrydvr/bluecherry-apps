@@ -9,6 +9,8 @@ unix:!macx {
     INSTALLS += target
 }
 
+macx:QMAKE_POST_LINK += cp $${_PRO_FILE_PWD_}/mac/Info.plist $${OUT_PWD}/$${TARGET}.app/Contents/;
+
 DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
 INCLUDEPATH += src
 
@@ -166,3 +168,5 @@ HEADERS  += src/ui/MainWindow.h \
 
 RESOURCES += \
     res/resources.qrc
+
+macx:OTHER_FILES += mac/Info.plist

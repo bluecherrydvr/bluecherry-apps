@@ -5,10 +5,10 @@ if [ -z $1 ]; then
 	exit
 fi
 
-if [ ! -e $1/bluecherry-client.app ]; then
-	echo "$1/bluecherry-client.app does not exist"
+if [ ! -e $1/BluecherryClient.app ]; then
+	echo "$1/BluecherryClient.app does not exist"
 	exit
 fi
 
-hdiutil create -srcfolder $1/bluecherry-client.app bluecherry-client.dmg
-hdiutil internet-enable -yes bluecherry-client.dmg
+hdiutil create -srcfolder $1/BluecherryClient.app BluecherryClient.dmg
+hdiutil internet-enable -yes BluecherryClient.dmg
