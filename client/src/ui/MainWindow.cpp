@@ -48,7 +48,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     leftLayout->addWidget(createSourcesList());
 
-    leftLayout->addWidget(createServerBox());
+    //leftLayout->addWidget(createServerBox());
 
     mainLayout->addLayout(leftLayout);
 
