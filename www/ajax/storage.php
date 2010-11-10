@@ -1,0 +1,1 @@
+<div id="message" class="INFO">This feature is currely in development.<br />Please check 'Announcements' for any available updates.</div>

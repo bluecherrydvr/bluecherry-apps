@@ -1,21 +1,36 @@
-<?php
+<?php DEFINE(INDVR, true);
 
-$multi = false;
-$dev = 1;
+#lib
+include("../lib/lib.php");  #common functions
+
+
+#auth check
+$current_user = new DVRUser();
+$current_user->CheckStatus();
+$current_user->StatusAction('viewer');
+#/auth check
+	
+	Class LocalMonitor extends DVRData{
+	public $data;
+	
+	public function __construct(){
+		$id = intval($_GET['id']);
+		$this->data = $this->GetObjectData('Devices', 'id', $id);
+	}
+}
+
+$monitor = new LocalMonitor;
+
+$multi = ($_GET['multi']) ? true : false;
 $bch = false;
 $boundary = "MJPEGBOUNDARY";
-
-if (isset($_GET['channel']))
-	$dev += intval($_GET['channel']);
-
-if (isset($_GET['video']))
-	$dev += intval($_GET['video']);
-
-$dev = "/dev/video$dev";
+$dev = $monitor->data[0]['source_video'];
 
 header("Cache-Control: no-cache");
 header("Cache-Control: private");
 header("Pragma: no-cache");
+
+session_write_close();
 
 $bch = bc_handle_get("$dev");
 if ($bch == false) {
@@ -75,3 +90,4 @@ do {
 
 bc_handle_free($bch);
 ?>
+
