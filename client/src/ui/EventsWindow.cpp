@@ -53,10 +53,14 @@ EventsWindow::EventsWindow(QWidget *parent)
     filtersLayout->addWidget(label);
     filtersLayout->addWidget(createLevelFilter());
 
+#if 0 /* The server currently only implements Motion events, so this is just confusing. */
     label = new QLabel(tr("Type"));
     label->setStyleSheet(QLatin1String("font-weight:bold;"));
     filtersLayout->addWidget(label);
     filtersLayout->addWidget(createTypeFilter());
+#else
+    filtersLayout->addStretch();
+#endif
 
 #if 0 /* Tags are not fully implemented yet */
     label = new QLabel(tr("Tags"));

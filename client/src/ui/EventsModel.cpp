@@ -10,11 +10,11 @@
 #include <QDebug>
 
 EventsModel::EventsModel(QObject *parent)
-    : QAbstractItemModel(parent)
+    : QAbstractItemModel(parent), serverEventsLimit(-1)
 {
-    QList<DVRServer*> servers = bcApp->servers();
-    foreach (DVRServer *server, servers)
-        connect(server, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
+    connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
+    connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
+    connect(&updateTimer, SIGNAL(timeout()), SLOT(updateServers()));
 
     //createTestData();
 
@@ -23,10 +23,13 @@ EventsModel::EventsModel(QObject *parent)
     applyFilters();
 
     foreach (DVRServer *s, bcApp->servers())
-    {
-        connect(s->api, SIGNAL(loginSuccessful()), SLOT(updateServer()));
-        updateServer(s);
-    }
+        serverAdded(s);
+}
+
+void EventsModel::serverAdded(DVRServer *server)
+{
+    connect(server->api, SIGNAL(loginSuccessful()), SLOT(updateServer()));
+    updateServer(server);
 }
 
 #if 0
@@ -422,6 +425,23 @@ void EventsModel::setFilterTypes(const QBitArray &typemap)
     applyFilters(!fast);
 }
 
+void EventsModel::setUpdateInterval(int ms)
+{
+    if (ms > 0)
+    {
+        updateTimer.setInterval(ms);
+        updateTimer.start();
+    }
+    else
+        updateTimer.stop();
+}
+
+void EventsModel::updateServers()
+{
+    foreach (DVRServer *s, bcApp->servers())
+        updateServer(s);
+}
+
 void EventsModel::updateServer(DVRServer *server)
 {
     if (!server && !(server = qobject_cast<DVRServer*>(sender())))
@@ -437,7 +457,7 @@ void EventsModel::updateServer(DVRServer *server)
         return;
 
     QUrl url(QLatin1String("/events/"));
-    url.addQueryItem(QLatin1String("limit"), QLatin1String("-1"));
+    url.addQueryItem(QLatin1String("limit"), QString::number(serverEventsLimit));
 #if 0
     if (!filterDateBegin.isNull())
         url.addQueryItem(QLatin1String("startDate"), QString::number(filterDateBegin.toTime_t()));
