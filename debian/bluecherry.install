@@ -7,4 +7,3 @@ etc/init/bc-detect.conf
 etc/rsyslog.d/99-bluecherry.conf
 etc/php5/conf.d/bluecherry.ini
 etc/logrotate.d/bluecherry
-usr/share/bluecherry/www
