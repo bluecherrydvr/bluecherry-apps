@@ -19,6 +19,17 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    /* These are used for the configuration file - do not change! */
+    a.setOrganizationName(QLatin1String("bluecherry"));
+    a.setOrganizationDomain(QLatin1String("bluecherrydvr.com"));
+    a.setApplicationName(QLatin1String("bluecherry"));
+
+    a.setApplicationVersion(QLatin1String("2.0.0"));
+
+#ifdef Q_OS_WIN
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+#endif
+
     {
         QStringList args = a.arguments();
         args.takeFirst();
@@ -33,17 +44,6 @@ int main(int argc, char *argv[])
 
 #ifdef USE_BREAKPAD
     initBreakpad();
-#endif
-
-    /* These are used for the configuration file - do not change! */
-    a.setOrganizationName(QLatin1String("bluecherry"));
-    a.setOrganizationDomain(QLatin1String("bluecherrydvr.com"));
-    a.setApplicationName(QLatin1String("bluecherry"));
-
-    a.setApplicationVersion(QLatin1String("2.0.0"));
-
-#ifdef Q_OS_WIN
-    QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
 
     bcApp = new BluecherryApp;
