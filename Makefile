@@ -14,4 +14,4 @@ clean:
 	-$(MAKE) -C client distclean
 
 client/Makefile: client/client.pro
-	cd && qmake
+	cd client && qmake client.pro
