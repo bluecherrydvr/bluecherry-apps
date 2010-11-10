@@ -1,19 +1,24 @@
 <?php
 
-function requestError($message)
-{
-	header('HTTP/1.1 550 Media request error');
-	die('<error>'.$message.'</error>');
-}
+DEFINE(INDVR, true);
+#lib
+
+include("../lib/lib.php");  #common functions
+
+#auth check
+$current_user = new DVRUser();
+$current_user->CheckStatus();
+$current_user->StatusAction('viewer');
+#/auth check
 
 function dl_file_resumable($file)
 {
 	if (!is_file($file))
-		requestError('File does not exist!');
+		die("<error>File does not exist!</error>");
 
 	$size = filesize($file);
 	$fileinfo = pathinfo($file);
-
+    
 	$filename = $fileinfo['basename'];
 	$file_extension = strtolower($path_info['extension']);
 	$ctype = 'video/mpeg';
@@ -71,20 +76,26 @@ function dl_file_resumable($file)
 	exit;
 }
 
-if (empty($_GET['id']))
-	requestError('No ID sent');
+if (empty($_POST['id'])) {
+	print "<error>No ID sent</error>\n";
+	exit;
+}
 
-$id = $_GET['id'];
+$id = $_POST['id'];
 
 mb_http_output("pass");
 
 $db = bc_db_open();
-if (!$db)
-	requestError('Could not open database');
+if (!$db) {
+	print "<error>Could not open database</error>\n";
+	exit;
+}
 
 $events = bc_db_get_table($db, "SELECT * FROM Media WHERE id=" . intval($id));
-if (empty($events))
-	requestError('Could not retrieve media for '.$id);
+if (empty($events)) {
+	print "<error>Could not retrieve media for $id</error>\n";
+	exit;
+}
 
 $item = $events[0];
 dl_file_resumable($item['filepath']);
