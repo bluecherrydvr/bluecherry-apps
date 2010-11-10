@@ -28,8 +28,10 @@ VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
         return;
     }
 
+#if !defined(Q_OS_LINUX) || defined(GSTREAMER_PLUGINS)
     if (!loadPlugins())
         setError(true, tr("Failed to load video plugins"));
+#endif
 }
 
 VideoPlayerBackend::~VideoPlayerBackend()
