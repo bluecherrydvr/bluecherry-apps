@@ -29,6 +29,7 @@ public:
     explicit EventsModel(QObject *parent = 0);
 
     void setFilterDates(const QDateTime &begin, const QDateTime &end);
+    void setEventLimit(int limit) { serverEventsLimit = limit; }
 
     QString filterDescription() const;
 
@@ -77,6 +78,7 @@ private:
     EventLevel filterLevel;
 
     /* Sorting */
+    int serverEventsLimit;
     int sortColumn;
     Qt::SortOrder sortOrder;
 

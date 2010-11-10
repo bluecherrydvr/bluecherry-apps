@@ -199,6 +199,7 @@ QWidget *MainWindow::createRecentEvents()
 
     QSettings settings;
     model->setUpdateInterval(settings.value(QLatin1String("ui/main/eventRefreshInterval"), 10000).toInt());
+    model->setEventLimit(50);
 
     return m_eventsView;
 }

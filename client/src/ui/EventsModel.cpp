@@ -10,7 +10,7 @@
 #include <QDebug>
 
 EventsModel::EventsModel(QObject *parent)
-    : QAbstractItemModel(parent)
+    : QAbstractItemModel(parent), serverEventsLimit(-1)
 {
     connect(bcApp, SIGNAL(serverAdded(DVRServer*)), SLOT(serverAdded(DVRServer*)));
     connect(bcApp, SIGNAL(serverRemoved(DVRServer*)), SLOT(serverRemoved(DVRServer*)));
@@ -457,7 +457,7 @@ void EventsModel::updateServer(DVRServer *server)
         return;
 
     QUrl url(QLatin1String("/events/"));
-    url.addQueryItem(QLatin1String("limit"), QLatin1String("-1"));
+    url.addQueryItem(QLatin1String("limit"), QString::number(serverEventsLimit));
 #if 0
     if (!filterDateBegin.isNull())
         url.addQueryItem(QLatin1String("startDate"), QString::number(filterDateBegin.toTime_t()));
