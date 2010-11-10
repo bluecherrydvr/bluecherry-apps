@@ -9,6 +9,7 @@
 #include <QColor>
 #include <QBitArray>
 #include <QHash>
+#include <QTimer>
 
 class DVRServer;
 class DVRCamera;
@@ -51,17 +52,23 @@ public slots:
     /* Request the most recent events from the given server, the DVRServer* source, or the
      * DVRServer represented by the ServerRequestManager* source */
     void updateServer(DVRServer *server = 0);
+    void updateServers();
+
+    void setUpdateInterval(int ms);
+    void stopUpdates() { setUpdateInterval(-1); }
 
 signals:
     void filtersChanged();
 
 private slots:
+    void serverAdded(DVRServer *server);
     void serverRemoved(DVRServer *server);
     void requestFinished();
 
 private:
     QList<EventData*> items;
     QHash<DVRServer*,QList<EventData*> > cachedEvents;
+    QTimer updateTimer;
 
     /* Filters */
     QHash<DVRServer*, QSet<int> > filterSources;

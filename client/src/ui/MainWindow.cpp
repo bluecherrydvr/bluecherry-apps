@@ -194,7 +194,12 @@ QWidget *MainWindow::createCameraControls()
 QWidget *MainWindow::createRecentEvents()
 {
     m_eventsView = new RecentEventsView;
-    m_eventsView->setModel(new EventsModel(m_eventsView));
+    EventsModel *model = new EventsModel(m_eventsView);
+    m_eventsView->setModel(model);
+
+    QSettings settings;
+    model->setUpdateInterval(settings.value(QLatin1String("ui/main/eventRefreshInterval"), 10000).toInt());
+
     return m_eventsView;
 }
 
