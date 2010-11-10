@@ -16,3 +16,5 @@ CREATE TABLE Users (
 	access_ptz_list varchar(255),
 	access_schedule varchar(168)
 );
+
+INSERT INTO Users VALUES (1, 'Admin', 'b22dec1d6cfa580962f3a3796a5dc6b3', '1234', 'Bluecherry Admin', NULL, NULL, NULL, 1, 1, 1, 1, 1, 1, 1, 1);
