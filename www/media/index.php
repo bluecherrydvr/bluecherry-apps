@@ -1,5 +1,16 @@
 <?php
 
+DEFINE(INDVR, true);
+#lib
+
+include("../lib/lib.php");  #common functions
+
+#auth check
+$current_user = new DVRUser();
+$current_user->CheckStatus();
+$current_user->StatusAction('viewer');
+#/auth check
+
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
 
 $db = bc_db_open();
