@@ -18,7 +18,7 @@
 #endif
 
 VideoPlayerBackend::VideoPlayerBackend(QObject *parent)
-    : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_videoBuffer(0), m_state(Stopped)
+    : QObject(parent), m_pipeline(0), m_videoLink(0), m_surface(0), m_videoBuffer(0), m_state(Stopped), m_sinkReady(false)
 {
     GError *err;
     if (gst_init_check(0, 0, &err) == FALSE)
@@ -212,6 +212,8 @@ bool VideoPlayerBackend::start(const QUrl &url)
         return false;
     }
 
+    m_sinkReady = false;
+
     gst_bin_add_many(GST_BIN(m_pipeline), source, decoder, colorspace, scale, sink, NULL);
     if (!gst_element_link_many(source, decoder, NULL))
     {
@@ -267,6 +269,7 @@ void VideoPlayerBackend::clear()
 
     m_state = Stopped;
     m_errorMessage.clear();
+    m_sinkReady = false;
 }
 
 void VideoPlayerBackend::setError(bool permanent, const QString &message)
@@ -437,8 +440,11 @@ GstBusSyncReply VideoPlayerBackend::busHandler(GstBus *bus, GstMessage *msg, boo
                 break;
             }
 
-            if (oldState < GST_STATE_PAUSED && newState >= GST_STATE_PAUSED)
+            if (m_sinkReady && oldState < GST_STATE_PAUSED && newState >= GST_STATE_PAUSED)
                 updateVideoSize();
+
+            if (m_sinkReady && newState < GST_STATE_PAUSED)
+                m_sinkReady = false;
 
             if (vpState != m_state)
             {
@@ -501,6 +507,9 @@ GstBusSyncReply VideoPlayerBackend::busHandler(GstBus *bus, GstMessage *msg, boo
             gst_x_overlay_set_xwindow_id(GST_X_OVERLAY(sink), (gulong)m_surface->winId());
             gst_x_overlay_expose(GST_X_OVERLAY(sink));
             gst_message_unref(msg);
+
+            m_sinkReady = true;
+
             return GST_BUS_DROP;
         }
         break;

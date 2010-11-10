@@ -65,6 +65,7 @@ private:
     VideoHttpBuffer *m_videoBuffer;
     VideoState m_state;
     QString m_errorMessage;
+    bool m_sinkReady;
 
     bool loadPlugins();
     void setError(bool permanent, const QString &message);
