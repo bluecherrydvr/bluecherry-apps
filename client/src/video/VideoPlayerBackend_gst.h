@@ -45,7 +45,7 @@ public:
     VideoHttpBuffer *videoBuffer() const { return m_videoBuffer; }
 
     /* Internal */
-    GstBusSyncReply busSyncHandler(GstBus *bus, GstMessage *msg);
+    GstBusSyncReply busHandler(GstBus *bus, GstMessage *msg, bool isSynchronous);
     void decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean islast);
 
 public slots:

@@ -114,7 +114,14 @@ bool VideoPlayerBackend::loadPlugins()
 static GstBusSyncReply bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
 {
     Q_ASSERT(data);
-    return ((VideoPlayerBackend*)data)->busSyncHandler(bus, msg);
+    return ((VideoPlayerBackend*)data)->busHandler(bus, msg, true);
+}
+
+static gboolean async_bus_handler(GstBus *bus, GstMessage *msg, gpointer data)
+{
+    Q_ASSERT(data);
+    ((VideoPlayerBackend*)data)->busHandler(bus, msg, false);
+    return TRUE;
 }
 
 static void decodePadReadyWrap(GstDecodeBin *bin, GstPad *pad, gboolean islast, gpointer user_data)
@@ -229,6 +236,9 @@ bool VideoPlayerBackend::start(const QUrl &url)
     Q_ASSERT(bus);
     gst_bus_enable_sync_message_emission(bus);
     gst_bus_set_sync_handler(bus, bus_handler, this);
+#ifdef Q_OS_LINUX
+    gst_bus_add_watch(bus, async_bus_handler, this);
+#endif
     gst_object_unref(bus);
 
     /* When VideoHttpBuffer has buffered a reasonable amount of data to facilitate detection and such, it will
@@ -385,7 +395,7 @@ void VideoPlayerBackend::decodePadReady(GstDecodeBin *bin, GstPad *pad, gboolean
  * not be excessively delayed, deadlocked, or used for anything GUI-related. Primarily,
  * we want to emit signals (which will result in queued slot calls) or do queued method
  * invocation to handle GUI updates. */
-GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
+GstBusSyncReply VideoPlayerBackend::busHandler(GstBus *bus, GstMessage *msg, bool isSynchronous)
 {
     Q_UNUSED(bus);
 
@@ -484,7 +494,7 @@ GstBusSyncReply VideoPlayerBackend::busSyncHandler(GstBus *bus, GstMessage *msg)
         break;
 
     case GST_MESSAGE_ELEMENT:
-        if (gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
+        if (isSynchronous && gst_structure_has_name(msg->structure, "prepare-xwindow-id"))
         {
             qDebug("gstreamer: Setting window ID");
             GstElement *sink = GST_ELEMENT(GST_MESSAGE_SRC(msg));
