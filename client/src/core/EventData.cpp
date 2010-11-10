@@ -176,6 +176,15 @@ QList<EventData*> EventData::parseEvents(DVRServer *server, const QByteArray &in
     return re;
 }
 
+static QDateTime isoToDateTime(const QString &str)
+{
+    /* If there is a - or a + after the T portion, it indicates timezone, and should be removed */
+    int end = str.indexOf(QLatin1Char('T'));
+    if (end >= 0)
+        end = qMax(str.indexOf(QLatin1Char('-'), end+1), str.indexOf(QLatin1Char('+'), end+1));
+    return QDateTime::fromString(str.mid(0, end), Qt::ISODate);
+}
+
 static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
 {
     Q_ASSERT(reader.isStartElement() && reader.name() == QLatin1String("entry"));
@@ -207,7 +216,7 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
         }
         else if (reader.name() == QLatin1String("published"))
         {
-            data->date = QDateTime::fromString(reader.readElementText(), Qt::ISODate);
+            data->date = isoToDateTime(reader.readElementText());
         }
         else if (reader.name() == QLatin1String("updated"))
         {
@@ -215,7 +224,7 @@ static EventData *parseEntry(DVRServer *server, QXmlStreamReader &reader)
             if (d.isEmpty())
                 data->duration = -1;
             else
-                data->duration = data->date.secsTo(QDateTime::fromString(d, Qt::ISODate));
+                data->duration = data->date.secsTo(isoToDateTime(d));
         }
         else if (reader.name() == QLatin1String("content"))
         {
