@@ -12,7 +12,7 @@ configure: config.m4
 Makefile: configure
 	./configure --with-php-config=php-config
 
-modules/$(MODULE).so: Makefile FORCE
+modules/$(MODULE).so: Makefile $(LIB) FORCE
 	$(MAKE) -f Makefile
 
 install: modules/$(MODULE).so $(MODULE).ini
