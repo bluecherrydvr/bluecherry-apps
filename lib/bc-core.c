@@ -147,6 +147,7 @@ static void __bc_stop_motion_event(struct bc_handle *bc)
 int bc_buf_get(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
+	int ret;
 
 	if (bc_buf_return(bc))
 		return errno;
@@ -154,15 +155,11 @@ int bc_buf_get(struct bc_handle *bc)
 	vb = &bc->q_buf[bc->rd_idx];
 	reset_vbuf(vb);
 
-	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, vb) < 0) {
-		if (errno == EIO) {
-			increment_idx(&bc->rd_idx);
-			errno = EAGAIN;
-		}
-		return errno;
-	}
-
+	ret = ioctl(bc->dev_fd, VIDIOC_DQBUF, vb);
 	increment_idx(&bc->rd_idx);
+
+	if (ret < 0)
+		return EAGAIN;
 
 	/* If no motion detection, then carry on normally */
 	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
@@ -282,13 +279,34 @@ error_fail:
 
 void bc_handle_free(struct bc_handle *bc)
 {
+	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	/* Don't want this call to change errno at all */
 	int save_err = errno;
+	int i;
 
 	if (!bc)
 		return;
-	if (bc->dev_fd >= 0)
-		close(bc->dev_fd);
+
+	if (bc->dev_fd < 0) {
+		free(bc);
+		return;
+	}
+
+	/* Dequeue all buffers. bc_local_bufs goes to zero when all are local */
+	while (bc_local_bufs(bc)) {
+		ioctl(bc->dev_fd, VIDIOC_DQBUF, &bc->q_buf[bc->rd_idx]);
+		increment_idx(&bc->rd_idx);
+	}
+
+	/* Stop the stream */
+	ioctl(bc->dev_fd, VIDIOC_STREAMOFF, &type);
+
+	/* Unmap all buffers */
+	for (i = 0; i < BC_BUFFERS; i++)
+		munmap(bc->p_buf[i].data, bc->p_buf[i].size);
+
+	close(bc->dev_fd);
+
 	free(bc);
 
 	errno = save_err;
