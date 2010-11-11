@@ -44,6 +44,11 @@ PHP_MINIT_FUNCTION(bluecherry)
 	bcdb_id = zend_register_list_destructors_ex(bcdb_destructor, NULL,
 						    BCDB_NAME, module_number);
 
+	REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
+	REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
+	REGISTER_LONG_CONSTANT("BC_CID_BRIGHTNESS", V4L2_CID_BRIGHTNESS, 0);
+	REGISTER_LONG_CONSTANT("BC_CID_SATURATION", V4L2_CID_SATURATION, 0);
+
 	return SUCCESS;
 }
 
@@ -173,6 +178,29 @@ PHP_FUNCTION(bc_handle_get)
 	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
 }
 
+PHP_FUNCTION(bc_set_control)
+{
+	zval *z_ctx;
+	struct bc_handle *bch;
+	long ctrl, val;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rll", &z_ctx,
+				  &ctrl, &val) == FAILURE)
+		RETURN_FALSE;
+	ZEND_FETCH_RESOURCE(bch, struct bc_handle *, &z_ctx, -1,
+			    BCH_NAME, bch_id);
+	if (bch == NULL) {
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,
+				 "bc_set_control: invalid context");
+		RETURN_FALSE;
+	}
+
+	if (bc_set_control(bch, ctrl, val))
+		RETURN_FALSE;
+
+	RETURN_TRUE;
+}
+
 PHP_FUNCTION(bc_handle_free)
 {
 	struct bc_handle *bch;
@@ -251,6 +279,7 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_size, NULL)
 	PHP_FE(bc_buf_data, NULL)
 	PHP_FE(bc_set_mjpeg, NULL)
+	PHP_FE(bc_set_control, NULL)
 	{NULL, NULL, NULL}
 };
 
