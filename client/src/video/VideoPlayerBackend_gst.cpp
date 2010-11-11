@@ -238,7 +238,7 @@ bool VideoPlayerBackend::start(const QUrl &url)
     Q_ASSERT(bus);
     gst_bus_enable_sync_message_emission(bus);
     gst_bus_set_sync_handler(bus, bus_handler, this);
-#ifdef Q_OS_LINUX
+#if defined(Q_OS_LINUX) && !defined(Q_OS_MAC)
     gst_bus_add_watch(bus, async_bus_handler, this);
 #endif
     gst_object_unref(bus);
@@ -440,7 +440,7 @@ GstBusSyncReply VideoPlayerBackend::busHandler(GstBus *bus, GstMessage *msg, boo
                 break;
             }
 
-            if (m_sinkReady && oldState < GST_STATE_PAUSED && newState >= GST_STATE_PAUSED)
+            if (oldState < GST_STATE_PAUSED && newState >= GST_STATE_PAUSED)
                 updateVideoSize();
 
             if (m_sinkReady && newState < GST_STATE_PAUSED)
