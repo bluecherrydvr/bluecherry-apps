@@ -8,15 +8,6 @@ CREATE TABLE AvailableSources (
 	card_id INT(2) NOT NULL DEFAULT 0
 );
 
-CREATE TABLE MotionThreshold (
-	id varchar(10) PRIMARY KEY NOT NULL
-);
-INSERT INTO MotionThreshold VALUES ('very-low');
-INSERT INTO MotionThreshold VALUES ('low');
-INSERT INTO MotionThreshold VALUES ('medium');
-INSERT INTO MotionThreshold VALUES ('high');
-INSERT INTO MotionThreshold VALUES ('very-high');
-
 CREATE TABLE Devices (
 	id integer PRIMARY KEY NOT NULL,	-- Unique ID for this device
 	device_name varchar(100),		-- User given name
@@ -61,6 +52,5 @@ CREATE TABLE Devices (
 	schedule_override_global BOOLEAN NOT NULL DEFAULT 0,
 						-- Whether to override the glibal
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
-	FOREIGN KEY (motion_detection_threshold) REFERENCES MotionThreshold(id)
 	UNIQUE (device_name)
 );
