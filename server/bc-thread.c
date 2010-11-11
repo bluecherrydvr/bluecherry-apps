@@ -174,6 +174,15 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 		return -1;
 	}
 
+	bc_set_control(bc, V4L2_CID_HUE,
+			bc_db_get_val_int(rows, ncols, row, "hue"));
+	bc_set_control(bc, V4L2_CID_CONTRAST,
+			bc_db_get_val_int(rows, ncols, row, "contrast"));
+	bc_set_control(bc, V4L2_CID_SATURATION,
+			bc_db_get_val_int(rows, ncols, row, "saturation"));
+	bc_set_control(bc, V4L2_CID_BRIGHTNESS,
+			bc_db_get_val_int(rows, ncols, row, "brightness"));
+
 	if (bc_handle_start(bc)) {
 		bc_log("E(%d): error starting stream: %m", bc_rec->id);
 		bc_handle_free(bc);
