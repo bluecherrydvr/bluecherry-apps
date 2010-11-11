@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     a.setOrganizationDomain(QLatin1String("bluecherrydvr.com"));
     a.setApplicationName(QLatin1String("bluecherry"));
 
-    a.setApplicationVersion(QLatin1String("2.0.0"));
+    a.setApplicationVersion(QLatin1String("2.0.0-beta1"));
 
 #ifdef Q_OS_WIN
     QSettings::setDefaultFormat(QSettings::IniFormat);

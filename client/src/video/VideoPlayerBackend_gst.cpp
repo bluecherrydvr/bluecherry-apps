@@ -509,6 +509,7 @@ GstBusSyncReply VideoPlayerBackend::busHandler(GstBus *bus, GstMessage *msg, boo
             gst_message_unref(msg);
 
             m_sinkReady = true;
+            updateVideoSize();
 
             return GST_BUS_DROP;
         }
