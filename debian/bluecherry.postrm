@@ -8,8 +8,11 @@ db="$dbdir/bluecherry.sqlite"
 case "$1" in
 	purge)
 		rm -f "$db"
-		rmdir --ignore-fail-on-non-empty "$dbdir"
-		userdel bluecherry
+		if test -d "$dbdir"; then
+			 rmdir --ignore-fail-on-non-empty "$dbdir"
+		fi
+		userdel bluecherry || true
+		groupdel bluecherry || true
 		;;
 esac
 

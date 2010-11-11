@@ -2,7 +2,7 @@
 
 set -e
 
-sql="/usr/share/doc/bluecherrydvr/sqlite-base.sql.gz"
+sql="/usr/share/doc/bluecherry/sqlite-base.sql.gz"
 dbdir="/var/lib/bluecherry"
 db="$dbdir/bluecherry.sqlite"
 
