@@ -143,7 +143,8 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 	else
 		vh = 18;
 	if (strlen(motion_map) != vh * 22) {
-		bc_log("W(%d): motion map is wrong length", bc_rec->id);
+		bc_log("W(%d): motion map is wrong length (%d, but expecting %d)",
+		       bc_rec->id, (int)strlen(motion_map), vh * 22);
 	} else {
 		int i, ret = 0;
 
