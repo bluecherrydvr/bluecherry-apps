@@ -16,6 +16,7 @@
 #include <stdarg.h>
 #include <syslog.h>
 #include <stdio.h>
+#include <math.h>
 
 #include <libbluecherry.h>
 
@@ -25,9 +26,8 @@ int bc_set_motion(struct bc_handle *bc, int on)
 
 	vc.id = V4L2_CID_MOTION_ENABLE;
 	vc.value = on ? 1 : 0;
-	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-		return -1;
-	return 0;
+
+	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
 int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
@@ -38,9 +38,28 @@ int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 	vc.value = val;
 	vc.value |= (unsigned int)block << 16;
-	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+
+	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
+}
+
+/* Check range and convert our 0-100 to valid ranges in the hardware */
+int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
+{
+	struct v4l2_queryctrl qctrl;
+	struct v4l2_control vc;
+	float step;
+
+	qctrl.id = ctrl;
+	if (ioctl(bc->dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
 		return -1;
-	return 0;
+
+	step = (float)(qctrl.maximum - qctrl.minimum) / (float)101;
+	val = roundf(((float)val * step) + qctrl.minimum);
+
+	vc.id = ctrl;
+	vc.value = val;
+
+	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
 static inline int bc_current_buf(struct bc_handle *bc)
