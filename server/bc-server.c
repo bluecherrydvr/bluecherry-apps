@@ -42,16 +42,14 @@ static void __handle_motion_end(struct bc_handle *bc)
 
 static void check_threads(void)
 {
-	struct bc_record *bc_rec;
-	struct bc_list_struct *lh;
+	struct bc_record *bc_rec, *__t;
 	int ret;
 	char *errmsg = NULL;
 
 	if (bc_list_empty(&bc_rec_list))
 		return;
 
-	bc_list_for_each(lh, &bc_rec_list) {
-		bc_rec = bc_list_entry(lh, struct bc_record, list);
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
 		ret = pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg);
 		if (!ret) {
 			bc_log("I(%d): Record thread stopped: %s: %s",
@@ -62,8 +60,6 @@ static void check_threads(void)
 			free(bc_rec->dev);
 			free(bc_rec->name);
 			free(bc_rec);
-			if (bc_rec->aud_dev)
-				free(bc_rec->aud_dev);
 			cur_threads--;
 		}
 	}
@@ -223,7 +219,7 @@ int main(int argc, char **argv)
 			sleep(1);
 			continue;
 		}
-		loops = 60;
+		loops = 10;
 
 		check_db();
 	}

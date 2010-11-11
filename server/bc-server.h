@@ -55,6 +55,7 @@ struct bc_record {
 
 	/* Scheduling, 24x7 */
 	char			sched_cur;
+	char			*thread_should_die;
 
 	/* Notify thread to restart with new format */
 	int			reset_vid;

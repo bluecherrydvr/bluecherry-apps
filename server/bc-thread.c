@@ -56,6 +56,9 @@ static void *bc_device_thread(void *data)
 	for (;;) {
 		double audio_pts, video_pts;
 
+		if (bc_rec->thread_should_die)
+			break;
+
 		update_osd(bc_rec);
 
 		if (bc_rec->sched_cur == 'N' || bc_rec->reset_vid) {
@@ -142,8 +145,9 @@ static void *bc_device_thread(void *data)
 
 	if (file_started)
 		bc_close_avcodec(bc_rec);
+	bc_set_osd(bc, " ");
 
-	return NULL;
+	return bc_rec->thread_should_die;
 }
 
 struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
@@ -155,6 +159,9 @@ struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 	char *name = bc_db_get_val(rows, ncols, row, "device_name");
 
 	if (!dev || !name)
+		return NULL;
+
+	if (bc_db_get_val_int(rows, ncols, row, "disabled") > 0)
 		return NULL;
 
 	bc_rec = malloc(sizeof(*bc_rec));
@@ -279,6 +286,11 @@ void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	char *sched = NULL;
+
+	if (bc_db_get_val_int(rows, ncols, row, "disabled") > 0) {
+		bc_rec->thread_should_die = "Disabled in config";
+		return;
+	}
 
 	bc_rec->interval = bc_db_get_val_int(rows, ncols, row,
 					     "video_interval");
