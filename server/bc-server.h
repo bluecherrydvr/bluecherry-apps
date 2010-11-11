@@ -74,6 +74,7 @@ struct bc_record {
 #define AUD_FMT_FLAG_G723_24	0x01000000
 
 extern pthread_mutex_t av_lock;
+extern char global_sched[7 * 24];
 
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);

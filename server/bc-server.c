@@ -18,6 +18,8 @@ static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 
+char global_sched[7 * 24];
+
 extern char *__progname;
 
 static void __handle_motion_start(struct bc_handle *bc)
@@ -159,6 +161,9 @@ int main(int argc, char **argv)
 	int opt;
 	int loops;
 	int bg = 1;
+	int nrows, ncols;
+	char **rows;
+	int res;
 
 	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
 		switch (opt) {
@@ -191,6 +196,22 @@ int main(int argc, char **argv)
 	}
 
 	bc_log("Started");
+
+	/* Get some global settings */
+	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+			      "SELECT * from GlobalSettings WHERE "
+			      "parameter='G_DEV_SCED';");
+
+	if (res == 0 || nrows == 1) {
+		char *sched = bc_db_get_val(rows, ncols, 0, "value");
+		if (sched && strlen(sched) == sizeof(global_sched))
+			memcpy(global_sched, sched, sizeof(global_sched));
+	} else {
+		/* Default to continuous record */
+		memset(global_sched, 'C', sizeof(global_sched));
+	}
+	if (res == 0)
+		bc_db_free_table(bc_db, rows);
 
 	/* Main loop */
 	loops = 0;

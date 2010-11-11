@@ -264,9 +264,21 @@ static void check_motion_map(struct bc_record *bc_rec, char *signal,
 	}
 }
 
+static void check_schedule(struct bc_record *bc_rec, char *sched)
+{
+	time_t t;
+	struct tm tm_time;
+
+	t = time(NULL);
+	gmtime_r(&t, &tm_time);
+
+	bc_rec->sched_cur = sched[tm_time.tm_hour + (tm_time.tm_wday * 7)];
+}
+
 void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc = bc_rec->bc;
+	char *sched = NULL;
 
 	bc_rec->interval = bc_db_get_val_int(rows, ncols, row,
 					     "video_interval");
@@ -290,7 +302,12 @@ void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 	bc_set_control(bc, V4L2_CID_BRIGHTNESS,
 			bc_db_get_val_int(rows, ncols, row, "brightness"));
 
-	bc_rec->sched_cur = 'M';
+	if (bc_db_get_val_int(rows, ncols, row, "schedule_override_global") > 0)
+		sched = bc_db_get_val(rows, ncols, row, "schedule");
+	if (sched == NULL)
+		sched = global_sched;
+
+	check_schedule(bc_rec, sched);
 
 	return;
 }
