@@ -102,12 +102,19 @@ struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)
 {
-	if (fmt)
-		bc->vfmt.fmt.pix.pixelformat = fmt;
-	if (width)
-		bc->vfmt.fmt.pix.width = width;
-	if (height)
-		bc->vfmt.fmt.pix.height = height;
+	if (bc->vfmt.fmt.pix.pixelformat == fmt &&
+	    bc->vfmt.fmt.pix.width == width &&
+	    bc->vfmt.fmt.pix.height == height)
+		return 0;
+
+	if (bc->started) {
+		errno = EAGAIN;
+		return -1;
+	}
+
+	bc->vfmt.fmt.pix.pixelformat = fmt;
+	bc->vfmt.fmt.pix.width = width;
+	bc->vfmt.fmt.pix.height = height;
 
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
 		return -1;

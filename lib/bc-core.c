@@ -63,8 +63,6 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 		return -1;
 	}
 
-	bc->rd_idx = bc->wr_idx = 0;
-
 	for (i = 0; i < BC_BUFFERS; i++) {
 		struct v4l2_buffer *vb = &bc->q_buf[i];
 
@@ -91,6 +89,12 @@ int bc_handle_start(struct bc_handle *bc)
 	int ret;
 	int i;
 
+	if (bc->started)
+		return 0;
+
+	if (bc_bufs_prepare(bc))
+		return -1;
+
 	if (ioctl(bc->dev_fd, VIDIOC_STREAMON, &type) < 0)
 		return -1;
 
@@ -100,6 +104,9 @@ int bc_handle_start(struct bc_handle *bc)
 		if (ret < 0)
 			return -1;
 	}
+
+	bc->rd_idx = bc->wr_idx = 0;
+	bc->started = 1;
 
 	return 0;
 }
@@ -214,6 +221,17 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	double den = bc->vparm.parm.capture.timeperframe.denominator;
 	double num = interval;
 
+	if (!interval)
+		return 0;
+
+	if (bc->vparm.parm.capture.timeperframe.numerator == interval)
+		return 0;
+
+	if (bc->started) {
+		errno = EAGAIN;
+		return -1;
+	}
+
 	bc->vparm.parm.capture.timeperframe.numerator = interval;
 	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
 		return -1;
@@ -267,9 +285,6 @@ struct bc_handle *bc_handle_get(const char *dev)
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
 		goto error_fail;
 
-	if (bc_bufs_prepare(bc))
-		goto error_fail;
-
 	return bc;
 
 error_fail:
@@ -277,20 +292,15 @@ error_fail:
 	return NULL;
 }
 
-void bc_handle_free(struct bc_handle *bc)
+void bc_handle_stop(struct bc_handle *bc)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	/* Don't want this call to change errno at all */
 	int save_err = errno;
 	int i;
 
-	if (!bc)
+	if (!bc || bc->dev_fd < 0 || !bc->started)
 		return;
-
-	if (bc->dev_fd < 0) {
-		free(bc);
-		return;
-	}
 
 	/* Dequeue all buffers. bc_local_bufs goes to zero when all are local */
 	while (bc_local_bufs(bc)) {
@@ -305,8 +315,22 @@ void bc_handle_free(struct bc_handle *bc)
 	for (i = 0; i < BC_BUFFERS; i++)
 		munmap(bc->p_buf[i].data, bc->p_buf[i].size);
 
-	close(bc->dev_fd);
+	bc->started = 0;
 
+	errno = save_err;
+}
+
+void bc_handle_free(struct bc_handle *bc)
+{
+	/* Don't want this call to change errno at all */
+	int save_err = errno;
+
+	if (!bc)
+		return;
+
+	bc_handle_stop(bc);
+
+	close(bc->dev_fd);
 	free(bc);
 
 	errno = save_err;

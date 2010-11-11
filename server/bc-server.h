@@ -46,12 +46,20 @@ struct bc_record {
 	int			aud_channels;
 	unsigned int		aud_format;
 
-	/* Video setup */
-	int			vid_interval;
-
 	/* Event/Media handling */
 	bc_media_entry_t	media;
 	bc_event_cam_t		event;
+
+	/* Motion, max 22 * 18 */
+	char			motion_map[400];
+
+	/* Scheduling, 24x7 */
+	char			sched_cur;
+
+	/* Notify thread to restart with new format */
+	int			reset_vid;
+	int			width, height, fmt;
+	int			interval;
 };
 
 /* Types for aud_format */
@@ -73,7 +81,8 @@ int bc_aud_out(struct bc_record *bc_rec);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
 
-int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row);
+struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row);
+void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row);
 
 typedef enum {
 	BC_MOTION_TYPE_SOLO = 0,

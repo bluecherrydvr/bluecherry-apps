@@ -11,6 +11,24 @@
 
 #include "bc-server.h"
 
+static void try_formats(struct bc_record *bc_rec)
+{
+	struct bc_handle *bc = bc_rec->bc;
+
+	if (bc_set_interval(bc, bc_rec->interval)) {
+		bc_rec->reset_vid = 1;
+		if (errno != EAGAIN)
+			bc_log("W(%d): failed to set video interval: %m",
+			       bc_rec->id);
+	}
+
+	if (bc_set_format(bc, bc_rec->fmt, bc_rec->width, bc_rec->height)) {
+		bc_rec->reset_vid = 1;
+		if (errno != EAGAIN)
+			bc_log("W(%d): error setting format: %m", bc_rec->id);
+	}
+}
+
 static void update_osd(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
@@ -39,6 +57,36 @@ static void *bc_device_thread(void *data)
 		double audio_pts, video_pts;
 
 		update_osd(bc_rec);
+
+		if (bc_rec->sched_cur == 'N' || bc_rec->reset_vid) {
+			if (file_started) {
+				bc_close_avcodec(bc_rec);
+				file_started = 0;
+			}
+			bc_handle_stop(bc);
+
+			if (bc_rec->sched_cur == 'N') {
+				sleep(1);
+				continue;
+			}
+
+			bc_rec->reset_vid = 0;
+			try_formats(bc_rec);
+			if (bc_rec->reset_vid) {
+				sleep(1);
+				continue;
+			}
+		} else if (bc_rec->sched_cur == 'C') {
+			bc_set_motion(bc, 0);
+		} else if (bc_rec->sched_cur == 'M') {
+			bc_set_motion(bc, 1);
+		}
+
+		if (bc_handle_start(bc)) {
+			bc_log("E(%d): error starting stream: %m", bc_rec->id);
+			sleep(1);
+			continue;
+		}
 
 		if ((ret = bc_buf_get(bc)) == EAGAIN) {
 			continue;
@@ -98,82 +146,141 @@ static void *bc_device_thread(void *data)
 	return NULL;
 }
 
-int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
+struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc;
-	char *motion_map;
-	char *signal;
-	int width, height;
-	int vh;
-	int ret;
+	struct bc_record *bc_rec;
+	char *dev = bc_db_get_val(rows, ncols, row, "source_video");
+	char *aud_dev = bc_db_get_val(rows, ncols, row, "source_audio_in");
+	char *name = bc_db_get_val(rows, ncols, row, "device_name");
 
-	/* Open the device */
-	if ((bc = bc_handle_get(bc_rec->dev)) == NULL) {
+	if (!dev || !name)
+		return NULL;
+
+	bc_rec = malloc(sizeof(*bc_rec));
+	if (bc_rec == NULL) {
+		bc_log("E(%d): out of memory trying to start record", id);
+		return NULL;
+	}
+	memset(bc_rec, 0, sizeof(*bc_rec));
+	memset(bc_rec->motion_map, '3', 22 * 18);
+
+	bc = bc_handle_get(dev);
+	if (bc == NULL) {
 		bc_log("E(%d): error opening device: %m", bc_rec->id);
-		return -1;
+		free(bc_rec);
+		return NULL;
 	}
 
-	bc_rec->bc = bc;
 	bc->__data = bc_rec;
 
-	if (bc_rec->vid_interval > 0 && bc_set_interval(bc,
-					bc_rec->vid_interval) != 0) {
-		bc_log("E(%d): failed to set video interval", bc_rec->id);
-		bc_handle_free(bc);
-		return -1;
+	bc_rec->bc = bc;
+	bc_rec->id = id;
+
+	bc_rec->dev = strdup(dev);
+	bc_rec->name = strdup(name);
+
+	if (!bc_rec->dev || !bc_rec->name) {
+		bc_log("E(%d): out of memory trying to start record", id);
+		goto record_fail;
 	}
 
-	/* Set the format */
-	width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
-	height = bc_db_get_val_int(rows, ncols, row, "resolutionY");
-
-	ret = bc_set_format(bc, V4L2_PIX_FMT_MPEG, width, height);
-
-	if (ret) {
-		bc_log("E(%d): error setting format: %m", bc_rec->id);
-		bc_handle_free(bc);
-		return -1;
+	if (aud_dev) {
+		bc_rec->aud_dev = strdup(aud_dev);
+		if (!bc_rec->aud_dev) {
+			bc_log("E(%d): out of memory trying to start record", id);
+			goto record_fail;
+		}
+		bc_rec->aud_rate = bc_db_get_val_int(rows, ncols, row,
+						     "audio_rate");
+		bc_rec->aud_channels = bc_db_get_val_int(rows, ncols, row,
+							 "audio_channels");
+		bc_rec->aud_format = bc_db_get_val_int(rows, ncols, row,
+						       "audio_format");
 	}
 
-	/* Set the motion threshold blocks */
-	signal = bc_db_get_val(rows, ncols, row, "signal_type");
-	motion_map = bc_db_get_val(rows, ncols, row, "motion_map");
-	if (!strcasecmp(signal, "NTSC"))
-		vh = 15;
-	else
-		vh = 18;
-	if (strlen(motion_map) != vh * 22) {
-		bc_log("W(%d): motion map is wrong length (%d, but expecting %d)",
-		       bc_rec->id, (int)strlen(motion_map), vh * 22);
-	} else {
-		int i, ret = 0;
+	bc_update_record(bc_rec, rows, ncols, row);
 
+	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
+			   bc_rec) != 0) {
+		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
+		goto record_fail;
+	}
+
+	return bc_rec;
+
+record_fail:
+	bc_handle_free(bc);
+
+	free(bc_rec->dev);
+	free(bc_rec->name);
+	free(bc_rec->aud_dev);
+	free(bc_rec);
+
+	return NULL;
+}
+
+static void check_motion_map(struct bc_record *bc_rec, char *signal,
+			     char *motion_map)
+{
+	int vh = strcasecmp(signal, "NTSC") ? 18 : 15;
+	struct bc_handle *bc = bc_rec->bc;
+	int i;
+
+	if (!motion_map) {
 		for (i = 0; i < vh; i++) {
 			int j;
 			for (j = 0; j < 22; j++) {
-				int pos = (j * 22) + i;
-				int val = bc_motion_val(BC_MOTION_TYPE_SOLO,
-							motion_map[pos]);
-
-				ret |= bc_set_motion_thresh(bc, val,
-						(j * 64) + i);
+				int pos = (i * 22) + j;
+				int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
+				if (bc_rec->motion_map[pos] == '3')
+					continue;
+				bc_set_motion_thresh(bc, val, (i * 64) + j);
+				bc_rec->motion_map[pos] = '3';
 			}
 		}
-
-		if (ret)
-			bc_log("W(%d): errors were encountered setting motion thresh",
-			       bc_rec->id);
+		return;
 	}
 
-	/* Check motion detection */
-	ret = bc_db_get_val_bool(rows, ncols, row, "motion_detection_on");
-	ret = bc_set_motion(bc, ret);
-	if (ret) {
-		bc_log("E(%d): error setting motion: %m", bc_rec->id);
-		bc_handle_free(bc);
-		return -1;
+	if (strlen(motion_map) < 22 * vh) {
+		bc_log("W(%d): motion map is too short", bc_rec->id);
+		return;
 	}
 
+	if (!memcmp(bc_rec->motion_map, motion_map, strlen(motion_map)))
+		return;
+
+	for (i = 0; i < vh; i++) {
+		int j;
+		for (j = 0; j < 22; j++) {
+			int pos = (i * 22) + j;
+			int val = bc_motion_val(BC_MOTION_TYPE_SOLO,
+						motion_map[pos]);
+			if (bc_rec->motion_map[pos] == motion_map[pos])
+				continue;
+			bc_set_motion_thresh(bc, val, (i * 64) + j);
+			bc_rec->motion_map[pos] = motion_map[pos];
+		}
+	}
+}
+
+void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
+{
+	struct bc_handle *bc = bc_rec->bc;
+
+	bc_rec->interval = bc_db_get_val_int(rows, ncols, row,
+					     "video_interval");
+	bc_rec->width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
+	bc_rec->height = bc_db_get_val_int(rows, ncols, row, "resolutionY");
+	bc_rec->fmt = V4L2_PIX_FMT_MPEG;
+
+	try_formats(bc_rec);
+
+	/* Set the motion threshold blocks */
+	check_motion_map(bc_rec, bc_db_get_val(rows, ncols, row, "signal_type"),
+			 bc_db_get_val(rows, ncols, row, "motion_map"));
+
+	/* Update standard controls */
 	bc_set_control(bc, V4L2_CID_HUE,
 			bc_db_get_val_int(rows, ncols, row, "hue"));
 	bc_set_control(bc, V4L2_CID_CONTRAST,
@@ -183,18 +290,7 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 	bc_set_control(bc, V4L2_CID_BRIGHTNESS,
 			bc_db_get_val_int(rows, ncols, row, "brightness"));
 
-	if (bc_handle_start(bc)) {
-		bc_log("E(%d): error starting stream: %m", bc_rec->id);
-		bc_handle_free(bc);
-		return -1;
-	}
+	bc_rec->sched_cur = 'M';
 
-	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
-			   bc_rec) != 0) {
-		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
-		bc_handle_free(bc);
-		return -1;
-	}
-
-	return 0;
+	return;
 }

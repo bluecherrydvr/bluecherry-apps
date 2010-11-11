@@ -71,7 +71,8 @@ struct bc_handle {
 		size_t		size;
 	}			p_buf[BC_BUFFERS];
 	struct v4l2_buffer	q_buf[BC_BUFFERS];
-	
+
+	int			started;
 	int			rd_idx;
 	int			wr_idx;
 	int			mot_idx;
@@ -189,8 +190,9 @@ struct bc_list_struct {
 struct bc_handle *bc_handle_get(const char *dev);
 void bc_handle_free(struct bc_handle *bc);
 
-/* Called to start the stream */
+/* Called to start and stop the stream */
 int bc_handle_start(struct bc_handle *bc);
+void bc_handle_stop(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */
 void bc_log(const char *msg, ...)
