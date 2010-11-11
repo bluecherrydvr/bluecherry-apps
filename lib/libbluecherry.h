@@ -185,6 +185,12 @@ struct bc_list_struct {
 #define bc_list_for_each(item, head) \
 	for (item = (head)->next; item != (head); item = item->next)
 
+#define bc_list_for_each_entry_safe(pos, n, head, member)			\
+        for (pos = bc_list_entry((head)->next, typeof(*pos), member),		\
+                n = bc_list_entry(pos->member.next, typeof(*pos), member);	\
+             &pos->member != (head);						\
+             pos = n, n = bc_list_entry(n->member.next, typeof(*n), member))
+
 
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(const char *dev);
