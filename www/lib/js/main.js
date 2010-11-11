@@ -185,27 +185,31 @@ DVRPageScript = new Class({
 				$$('.slider').each(function(el){
 					var id = el.get('id').toString();		
 					slider[id] = new Slider(el, el.getElement('.knob'), {
-						steps: (id=='audio_volume') ? 100 : 255,
+						steps: 100,
 						wheel: true,
 						onChange: function(){
 							switch (id){
-								case 'hue': ajaxUpdateField('update', 'devices', { 'hue' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'brightness': ajaxUpdateField('update', 'devices', { 'brightness' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'saturation': ajaxUpdateField('update', 'devices', { 'saturation' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'hue': ajaxUpdateField('update_control', 'devices', { 'hue' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'brightness': ajaxUpdateField('update_control', 'devices', { 'brightness' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'saturation': ajaxUpdateField('update_control', 'devices', { 'saturation' : this.step }, $('device_id').get('value'), 'none'); break;
 								case 'audio_volume': ajaxUpdateField('update', 'devices', { 'audio_volume' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'contrast': ajaxUpdateField('update_control', 'devices', { 'contrast' : this.step }, $('device_id').get('value'), 'none'); break;
 							}
 						}
 					}).set($(id+'_value').get('value'));			
 				});
 				$('setToDefault').addEvent('click', function(){ 
-					slider['hue'].set(128);
-					slider['saturation'].set(128);
-					slider['brightness'].set(128); 
+					slider['hue'].set(50);
+					slider['saturation'].set(50);
+					slider['brightness'].set(50); 
 					slider['audio_volume'].set(50); 
+					slider['contrast'].set(50); 
 				});
 				$('liveViewImg').addEvent('load', function(){
 					renewImg = function(){
-						$('liveViewImg').set('src', ('/media/mjpeg.php?id='+$('device_id').get('value')+'&rnd='+new Date().getTime()));
+						if ($('liveViewImg')){
+							$('liveViewImg').set('src', ('/media/mjpeg.php?id='+$('device_id').get('value')+'&rnd='+new Date().getTime()));
+						}
 					}
 					setTimeout("renewImg();", 500);
 				});
@@ -514,8 +518,12 @@ var localMotionGrid = new Class({
 			switch(type){
 				case 'mmap': ajaxUpdateField('update', 'devices', {'motion_map' : output}, $('cameraID').get('value'), 'button'); break;
 				case 'deviceSchedule':
-					if ($('overrideGlobal')) { ajaxUpdateField('update', 'deviceSchedule', {'schedule' : output, 'override_global' : $('overrideGlobal').get('checked')}, $('cameraID').get('value'), 'button'); }
-					 else { ajaxUpdateField('update', 'deviceSchedule', {'schedule' : output}, $('cameraID').get('value'), 'button'); }
+					if ($('cameraID').get('value')!='global'){
+						if ($('overrideGlobal')) { ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : $('overrideGlobal').get('checked')}, $('cameraID').get('value'), 'button'); }
+						 else { ajaxUpdateField('update', 'Devices', {'schedule' : output}, $('cameraID').get('value'), 'button'); }
+					} else {
+						ajaxUpdateField('global', '', {'G_DEV_SCED' : output}, $('cameraID').get('value'), 'button');
+					}
 				break;
 			};
 		}

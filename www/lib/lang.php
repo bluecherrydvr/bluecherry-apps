@@ -143,6 +143,7 @@ define(VA_BRIGHTNESS, 'Brightness');
 define(VA_HUE, 'Hue');
 define(VA_AUDIO, 'Audio gain');
 define(VA_SATURATION, 'Staruration');
+define(VA_CONTRAST, 'Contrast');
 define(VA_SETDEFAULT, 'Reset values to default');
 
 define(DEVICE_ENCODING_UPDATED, 'Video standard changed.');
