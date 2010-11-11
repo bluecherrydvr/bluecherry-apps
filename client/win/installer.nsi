@@ -39,6 +39,9 @@ Section
         # MSVC 2010 CRT
         File "$%PROGRAMFILES(X86)%\Microsoft Visual Studio 10.0\VC\redist\x86\Microsoft.VC100.CRT\*.*"
         
+        SetOutPath "$INSTDIR\imageformats"
+        File "${QT_PATH}\..\plugins\imageformats\qjpeg4.dll"
+        
         CreateDirectory "$SMPROGRAMS\Bluecherry"
         CreateShortCut "$SMPROGRAMS\Bluecherry\Bluecherry Client.lnk" "$INSTDIR\BluecherryClient.exe"
         
