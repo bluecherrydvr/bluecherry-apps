@@ -30,6 +30,19 @@ int bc_set_motion(struct bc_handle *bc, int on)
 	return 0;
 }
 
+int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
+			 unsigned short block)
+{
+	struct v4l2_control vc;
+
+	vc.id = V4L2_CID_MOTION_THRESHOLD;
+	vc.value = val;
+	vc.value |= (unsigned int)block << 16;
+	if (ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+		return -1;
+	return 0;
+}
+
 static inline int bc_current_buf(struct bc_handle *bc)
 {
 	if (bc->rd_idx == bc->wr_idx)

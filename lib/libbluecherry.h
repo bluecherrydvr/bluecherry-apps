@@ -220,6 +220,8 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
+int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
+			 unsigned short block);
 
 /* Set the text of the OSD */
 int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
