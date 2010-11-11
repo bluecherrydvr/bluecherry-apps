@@ -79,6 +79,6 @@ typedef enum {
 	BC_MOTION_TYPE_SOLO = 0,
 } bc_motion_type_t;
 
-int bc_motion_val(bc_motion_type_t type, const char *str);
+int bc_motion_val(bc_motion_type_t type, const char v);
 
 #endif /* __BC_SERVER_H */

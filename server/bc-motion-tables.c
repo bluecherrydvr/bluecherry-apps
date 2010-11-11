@@ -10,30 +10,24 @@
 
 #include "bc-server.h"
 
+/* Convert between known character values and real ranges for the hardware */
 struct motion_table {
-	unsigned int    levels[5];
+	unsigned int    levels[6];
 };
 
 /* Order needs to match the bc_motion_type_t vals */
 struct motion_table mts[] = {
-	/* Solo6x10 - Range 0 lowest, 0xffff highest */
-	{ { 64, 384, 768, 2048, 4096 } },
+	/* Solo6x10 - Range 0 highest, 0xffff lowest */
+	{ { 0xffff, 4096, 2048, 768, 384, 64 } },
 };
 
-int bc_motion_val(bc_motion_type_t type, const char *str)
+/* Takes a character from '0' (off) to '5' (high sen) */
+int bc_motion_val(bc_motion_type_t type, const char v)
 {
 	struct motion_table *mt = &mts[type];
 
-	if (!strcasecmp(str, "very-low"))
-		return mt->levels[0];
-	else if (!strcasecmp(str, "low"))
-		return mt->levels[1];
-	else if (!strcasecmp(str, "medium"))
-		return mt->levels[2];
-	else if (!strcasecmp(str, "high"))
-		return mt->levels[3];
-	else if (!strcasecmp(str, "very-high"))
-		return mt->levels[4];
+	if (v < '0' || v > '5')
+		return -1;
 
-	return -1;
+	return mt->levels[v - '0'];
 }

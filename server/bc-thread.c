@@ -101,7 +101,10 @@ static void *bc_device_thread(void *data)
 int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc;
+	char *motion_map;
+	char *signal;
 	int width, height;
+	int vh;
 	int ret;
 
 	/* Open the device */
@@ -130,6 +133,35 @@ int bc_start_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 		bc_log("E(%d): error setting format: %m", bc_rec->id);
 		bc_handle_free(bc);
 		return -1;
+	}
+
+	/* Set the motion threshold blocks */
+	signal = bc_db_get_val(rows, ncols, row, "signal_type");
+	motion_map = bc_db_get_val(rows, ncols, row, "motion_map");
+	if (!strcasecmp(signal, "NTSC"))
+		vh = 15;
+	else
+		vh = 18;
+	if (strlen(motion_map) != vh * 22) {
+		bc_log("W(%d): motion map is wrong length", bc_rec->id);
+	} else {
+		int i, ret = 0;
+
+		for (i = 0; i < vh; i++) {
+			int j;
+			for (j = 0; j < 22; j++) {
+				int pos = (j * 22) + i;
+				int val = bc_motion_val(BC_MOTION_TYPE_SOLO,
+							motion_map[pos]);
+
+				ret |= bc_set_motion_thresh(bc, val,
+						(j * 64) + i);
+			}
+		}
+
+		if (ret)
+			bc_log("W(%d): errors were encountered setting motion thresh",
+			       bc_rec->id);
 	}
 
 	/* Check motion detection */
