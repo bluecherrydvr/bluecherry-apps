@@ -152,6 +152,17 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	bc_vlog(msg, ap);
 }
 
+static void check_expire(void)
+{
+	time_t t = time(NULL);
+
+	if (t < 1293858000)
+		return;
+
+	fprintf(stderr, "This beta expires Jan 1, 2011 00:00:00\n");
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -160,6 +171,8 @@ int main(int argc, char **argv)
 	int nrows, ncols;
 	char **rows;
 	int res;
+
+	check_expire();
 
 	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
 		switch (opt) {
@@ -219,7 +232,7 @@ int main(int argc, char **argv)
 			sleep(1);
 			continue;
 		}
-		loops = 10;
+		loops = 60;
 
 		check_db();
 	}
