@@ -22,6 +22,8 @@ case "$1" in
 		a2enmod php5
 		a2ensite bluecherry
 		apache2ctl restart
+
+		reload rsyslog
 		;;
 esac
 
