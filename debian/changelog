@@ -4,6 +4,7 @@ bluecherry (2.0.0-0beta1-1) lucid; urgency=low
   * lib: Reduce buffers to 16 for mpeg and 2 for mjpeg
   * update.php: show device name to set a unique name
   * Recommend solo6010-dkms (#467)
+  * log: Create log files as syslog.bluecherry (#469)
 
  -- Ben Collins <bcollins@bluecherry.net>  Fri, 12 Nov 2010 11:30:50 -0500
 
