@@ -8,6 +8,8 @@
 #include "config.h"
 #endif
 
+#include <sys/ioctl.h>
+
 #include "libbluecherry.h"
 #include "php.h"
 
