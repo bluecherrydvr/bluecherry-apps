@@ -1,9 +1,0 @@
-usr/sbin/bc-detect
-usr/sbin/bc-server
-usr/lib/php5
-usr/lib/libbluecherry.so.0
-etc/init/bc-server.conf
-etc/init/bc-detect.conf
-etc/rsyslog.d/99-bluecherry.conf
-etc/php5/conf.d/bluecherry.ini
-etc/logrotate.d/bluecherry
