@@ -18,9 +18,8 @@
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 
-#define BC_BUFFERS		32
-#define BC_BUFFERS_LOCAL	15
-#define BC_BUFFERS_THRESH	((BC_BUFFERS - BC_BUFFERS_LOCAL) / 2)
+#define BC_BUFFERS		16
+#define BC_BUFFERS_JPEG		2
 
 /* Some things that are driver specific */
 #ifndef V4L2_BUF_FLAG_MOTION_ON
@@ -79,6 +78,8 @@ struct bc_handle {
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;
+	int			buffers;
+	int			buffers_local;
 
 	/* For private data */
 	void			*__data;

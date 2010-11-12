@@ -23,14 +23,14 @@
 	(__vb)->memory = V4L2_MEMORY_MMAP;		\
 } while(0)
 
-#define increment_idx(_x) ({ *_x = (*_x + 1) % BC_BUFFERS; *_x; })
+#define increment_idx(_bc, _x) ({ *_x = (*_x + 1) % bc->buffers; *_x; })
 
 static inline int bc_local_bufs(struct bc_handle *bc)
 {
 	if (bc->rd_idx > bc->wr_idx)
 		return bc->rd_idx - bc->wr_idx;
 	else
-		return ((bc->rd_idx + BC_BUFFERS) - bc->wr_idx) % BC_BUFFERS;
+		return ((bc->rd_idx + bc->buffers) - bc->wr_idx) % bc->buffers;
 }
 
 int bc_buf_key_frame(struct bc_handle *bc)
@@ -53,17 +53,17 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 	int i;
 
 	reset_vbuf(&req);
-	req.count = BC_BUFFERS;
+	req.count = bc->buffers;
 
 	if (ioctl(bc->dev_fd, VIDIOC_REQBUFS, &req) < 0)
 		return -1;
 
-	if (req.count != BC_BUFFERS) {
+	if (req.count != bc->buffers) {
 		errno = EINVAL;
 		return -1;
 	}
 
-	for (i = 0; i < BC_BUFFERS; i++) {
+	for (i = 0; i < bc->buffers; i++) {
 		struct v4l2_buffer *vb = &bc->q_buf[i];
 
 		reset_vbuf(vb);
@@ -92,6 +92,12 @@ int bc_handle_start(struct bc_handle *bc)
 	if (bc->started)
 		return 0;
 
+	/* For mpeg, we get the max, and for mjpeg the min */
+	if (bc->vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
+		bc->buffers = BC_BUFFERS;
+	else
+		bc->buffers = BC_BUFFERS_JPEG;
+
 	if (bc_bufs_prepare(bc))
 		return -1;
 
@@ -99,7 +105,7 @@ int bc_handle_start(struct bc_handle *bc)
 		return -1;
 
 	/* Queue all buffers */
-	for (i = 0; i < BC_BUFFERS; i++) {
+	for (i = 0; i < bc->buffers; i++) {
 		ret = ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[i]);
 		if (ret < 0)
 			return -1;
@@ -113,24 +119,26 @@ int bc_handle_start(struct bc_handle *bc)
 
 static int bc_buf_return(struct bc_handle *bc)
 {
+	int local = (bc->buffers / 2) - 1;
+	int thresh = (bc->buffers - local) / 2;
 #if 0
 	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
 
 	/* For motion control, only allow two buffers to be queued */
 	if (vb && vb->flags & V4L2_BUF_FLAG_MOTION_ON) {
-		if ((bc_local_bufs(bc) + 1) < BC_BUFFERS)
+		if ((bc_local_bufs(bc) + 1) < bc->buffers)
 			return 0;
 		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
-		increment_idx(&bc->wr_idx);
+		increment_idx(bc, &bc->wr_idx);
 	}
 #endif
 	/* Maintain a balance of queued and dequeued buffers */
-	if (bc_local_bufs(bc) < (BC_BUFFERS_LOCAL + BC_BUFFERS_THRESH))
+	if (bc_local_bufs(bc) < (local + thresh))
 		return 0;
 
-	while (bc_local_bufs(bc) > BC_BUFFERS_LOCAL) {
+	while (bc_local_bufs(bc) > local) {
 		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
-		increment_idx(&bc->wr_idx);
+		increment_idx(bc, &bc->wr_idx);
 	}
 
 	return 0;
@@ -163,7 +171,7 @@ int bc_buf_get(struct bc_handle *bc)
 	reset_vbuf(vb);
 
 	ret = ioctl(bc->dev_fd, VIDIOC_DQBUF, vb);
-	increment_idx(&bc->rd_idx);
+	increment_idx(bc, &bc->rd_idx);
 
 	if (ret < 0)
 		return EAGAIN;
@@ -305,14 +313,14 @@ void bc_handle_stop(struct bc_handle *bc)
 	/* Dequeue all buffers. bc_local_bufs goes to zero when all are local */
 	while (bc_local_bufs(bc)) {
 		ioctl(bc->dev_fd, VIDIOC_DQBUF, &bc->q_buf[bc->rd_idx]);
-		increment_idx(&bc->rd_idx);
+		increment_idx(bc, &bc->rd_idx);
 	}
 
 	/* Stop the stream */
 	ioctl(bc->dev_fd, VIDIOC_STREAMOFF, &type);
 
 	/* Unmap all buffers */
-	for (i = 0; i < BC_BUFFERS; i++)
+	for (i = 0; i < bc->buffers; i++)
 		munmap(bc->p_buf[i].data, bc->p_buf[i].size);
 
 	bc->started = 0;

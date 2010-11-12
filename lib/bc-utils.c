@@ -66,7 +66,7 @@ static inline int bc_current_buf(struct bc_handle *bc)
 {
 	if (bc->rd_idx == bc->wr_idx)
 		return -1;
-	return (bc->rd_idx + (BC_BUFFERS - 1)) % BC_BUFFERS;
+	return (bc->rd_idx + (bc->buffers - 1)) % bc->buffers;
 }
 
 void *bc_buf_data(struct bc_handle *bc)
