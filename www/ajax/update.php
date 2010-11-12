@@ -99,7 +99,7 @@ class updateDB extends DVRData{
 				$res['y'] = '288';
 				$enc = 'PAL';
 			}
-			$this->status = $db->DBQuery("INSERT INTO Devices (resolutionX, resolutionY, source_video, video_interval, signal_type, disabled) VALUES ('352', '{$res['y']}', '{$this_device[0]['devicepath']}', '30', '{$enc}', '$ds')") ? true : false;
+			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled) VALUES ('Unnamed', '352', '{$res['y']}', 'V4L2', '{$this_device[0]['devicepath']}', '30', '{$enc}', '$ds')") ? true : false;
 			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
@@ -107,7 +107,6 @@ class updateDB extends DVRData{
 		
 	}
 	function newUser(){
-		//$this->message = 'Coooooooool';
 		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
 		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if (!isset($_POST['password']) || $_POST['password']=='') { $this->status = false; $this->message = NO_PASS; return false; }
