@@ -23,7 +23,7 @@ CREATE TABLE Devices (
 	channel varchar(255),			-- ?? Channel if camera supports it
 	source_audio_in varchar(255),		-- Alsa device name for audio capt
 	source_audio_out varchar(255),		-- Alsa device name for audio out
-	audio_volume smallint,			-- Audio gain (0 - 100)
+	audio_volume smallint DEFAULT 50,	-- Audio gain (0 - 100)
 	audio_rate integer,			-- Sample rate of audio from device
 	audio_format integer,			-- Bit field (bc-server.h)
 						-- AUD_FMT_PCM_U8          0x00000001
@@ -33,10 +33,10 @@ CREATE TABLE Devices (
 						-- AUD_FMT_PCM_U16_BE      0x00000010
 						-- AUD_FMT_PCM_S16_BE      0x00000020
 	audio_channels smallint,		-- 1/2 (mono/stereo)
-	saturation smallint,			-- 0 - 255 (128 default)
-	brightness smallint,			-- ditto
-	hue smallint,				-- ditto
-	contrast smallint,			-- ditto
+	saturation smallint  DEFAULT 50,	-- 0 - 100 (50 default)
+	brightness smallint  DEFAULT 50,	-- 0 - 100 (50 default)
+	hue smallint  DEFAULT 50,		-- 0 - 100 (50 default)
+	contrast smallint  DEFAULT 50,		-- 0 - 100 (50 default)
 	video_quality smallint DEFAULT 2,	-- 2 default (range 1-3, l/m/h))
 	video_interval smallint,		-- Interval of encoding (fps-ish)
 	signal_type varchar(6),			-- NTSC or PAL
