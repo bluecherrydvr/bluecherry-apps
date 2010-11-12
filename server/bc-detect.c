@@ -53,7 +53,8 @@ static const char *get_v4l2_card_name(const char *dev)
 #define SOLO6110_CARD_DISP		"Softlogic 6110"
 #define SOLO6110_CARD_PREFIX_ENC	SOLO6110_CARD_DISP " Enc "
 
-static void check_solo(const char *dev, const char **driver, const char **alsa)
+static void check_solo(const char *dev, const char **driver, const char **alsa,
+		       int *card_id)
 {
 	const char *card = get_v4l2_card_name(dev);
 	int devnum = atoi(dev + 5); /* The X in videoX */
@@ -96,6 +97,7 @@ static void check_solo(const char *dev, const char **driver, const char **alsa)
 		sprintf(alsadev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
 			i, (devnum - 1) - i);
 		*alsa = alsadev;
+		*card_id = i;
 	}
 
 	bc_log("Got %s and %s", *driver, *alsa ?: "none");
@@ -150,13 +152,14 @@ int main(int argc, char **argv)
 	while ((dent = readdir(dir)) != NULL) {
 		const char *dev = dent->d_name;
 		const char *driver = NULL, *alsadev = NULL;
+		int card_id = 0;
 
 		if (strncmp(dev, "video", 5))
 			continue;
 
 		/* Find the driver */
 		if (driver == NULL)
-			check_solo(dev, &driver, &alsadev);
+			check_solo(dev, &driver, &alsadev, &card_id);
 
 		if (driver == NULL)
 			continue;
@@ -166,9 +169,9 @@ int main(int argc, char **argv)
 		       alsadev ?: "");
 
 		res = bc_db_query(bc_db, "INSERT INTO AvailableSources "
-				  "(devicepath, driver, alsasounddev) "
-				  "VALUES('/dev/%s', '%s', '%s');", dev,
-				  driver, alsadev ?: "");
+				  "(devicepath, driver, alsasounddev,card_id) "
+				  "VALUES('/dev/%s', '%s', '%s',%d);", dev,
+				  driver, alsadev ?: "", card_id);
 		if (res)
 			bc_log("/dev/%s: Error inserting into database", dev);
 	}
