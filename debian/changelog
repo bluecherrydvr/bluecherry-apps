@@ -5,6 +5,7 @@ bluecherry (2.0.0-0beta1-1) lucid; urgency=low
   * update.php: show device name to set a unique name
   * Recommend solo6010-dkms (#467)
   * log: Create log files as syslog.bluecherry (#469)
+  * Add udev rules to automatically run bc-detect on solo module load (#470)
 
  -- Ben Collins <bcollins@bluecherry.net>  Fri, 12 Nov 2010 11:30:50 -0500
 
