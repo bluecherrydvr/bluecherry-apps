@@ -61,7 +61,7 @@ void BluecherryApp::loadServers()
         DVRServer *s = addNewServer(tr("Local"));
         s->writeSetting("hostname", QHostAddress(QHostAddress::LocalHost).toString());
         /* This must match the default username and password for the server */
-        s->writeSetting("username", QLatin1String("admin"));
+        s->writeSetting("username", QLatin1String("Admin"));
         s->writeSetting("password", QLatin1String("bluecherry"));
         QTimer::singleShot(0, s, SLOT(login()));
     }
