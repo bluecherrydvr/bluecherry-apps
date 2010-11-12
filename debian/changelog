@@ -1,3 +1,11 @@
+bluecherry (2.0.0-0beta1-1) lucid; urgency=low
+
+  * bc-detect: Insert card_id into AvailableSources
+  * lib: Reduce buffers to 16 for mpeg and 2 for mjpeg
+  * update.php: show device name to set a unique name
+
+ -- Ben Collins <bcollins@bluecherry.net>  Fri, 12 Nov 2010 11:30:50 -0500
+
 bluecherry (2.0.0-0beta1) unstable; urgency=low
 
   * Initial packaging
