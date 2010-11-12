@@ -2,7 +2,7 @@
 
 set -e
 
-sql="/usr/share/doc/bluecherry/sqlite-base.sql.gz"
+sql="/usr/share/bluecherry/sqlite-base.sql"
 dbdir="/var/lib/bluecherry"
 db="$dbdir/bluecherry.sqlite"
 
@@ -14,9 +14,13 @@ case "$1" in
 			chmod 660 "$db"
 			chown bluecherry:bluecherry "$dbdir" -R
 		fi
+
+		# Fixup some persm
 		chown bluecherry:bluecherry /etc/bluecherry.conf
 		chown bluecherry:bluecherry /var/lib/bluecherry
 		chmod 770 /var/lib/bluecherry
+		chmod 640 /etc/bluecherry.conf
+
 		# Apache modules
 		a2enmod ssl
 		a2enmod php5
@@ -24,6 +28,7 @@ case "$1" in
 		apache2ctl restart
 
 		reload rsyslog
+		reload udev
 		;;
 esac
 

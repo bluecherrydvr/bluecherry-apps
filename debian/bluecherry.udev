@@ -1,0 +1,6 @@
+ACTION!="add", GOTO="bc_detect_end"
+
+DRIVERS=="solo6x10", RUN+="/usr/sbin/bc-detect"
+DRIVERS=="solo6010", RUN+="/usr/sbin/bc-detect"
+
+LABEL="bc_detect_end"

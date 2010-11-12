@@ -4,17 +4,13 @@
 	dh $@
 
 override_dh_auto_install:
-	dh_auto_install -- INSTALL_ROOT="$(shell pwd)/debian/tmp"
+	dh_auto_install
 	install -m755 -d debian/bluecherry/usr/share/doc/bluecherry
 	cat misc/sql/sqlite/*.sql > \
-		debian/bluecherry/usr/share/doc/bluecherry/sqlite-base.sql
+		debian/bluecherry/usr/share/bluecherry/sqlite-base.sql
 	install -m640 -D misc/bluecherry.conf \
 		debian/bluecherry/etc/bluecherry.conf
 	install -m644 -D debian/apache.conf \
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
 	install -d -m755 debian/bluecherry/usr/share/bluecherry/www
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www
-
-override_dh_installinit:
-	dh_installinit -o --name=bc-server --upstart-only
-	dh_installinit -o --name=bc-detect --upstart-only
