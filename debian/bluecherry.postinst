@@ -29,6 +29,10 @@ case "$1" in
 
 		reload rsyslog
 		reload udev
+
+		# Remove old conf files
+		rm -f /etc/init/bc-server.conf
+		rm -f /etc/init/bc-detect.conf
 		;;
 esac
 
