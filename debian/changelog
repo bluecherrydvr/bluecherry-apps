@@ -1,6 +1,7 @@
 bluecherry (2.0.0-0beta1-2) lucid; urgency=low
 
   * Remove old init scripts
+  * Added defaults for audio volume and video controls
 
  -- Ben Collins <bcollins@bluecherry.net>  Fri, 12 Nov 2010 16:02:50 -0500
 
