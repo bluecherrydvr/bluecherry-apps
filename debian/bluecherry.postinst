@@ -15,10 +15,13 @@ case "$1" in
 			chown bluecherry:bluecherry "$dbdir" -R
 		fi
 		chown bluecherry:bluecherry /etc/bluecherry.conf
+		chown bluecherry:bluecherry /var/lib/bluecherry
+		chmod 770 /var/lib/bluecherry
 		# Apache modules
-		a2ensite bluecherry
 		a2enmod ssl
 		a2enmod php5
+		a2ensite bluecherry
+		apache2ctl restart
 		;;
 esac
 
