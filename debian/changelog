@@ -1,4 +1,4 @@
-bluecherry (2.0.0-0beta1-2) lucid; urgency=low
+bluecherry (2.0.0-0beta1-3) lucid; urgency=low
 
   * debian: Stop old bc-server init script on preinst
   * debian: Use cat, not zcat
