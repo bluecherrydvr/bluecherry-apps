@@ -10,7 +10,7 @@ case "$1" in
 	configure|reconfigure)
 		if [ -f "$sql" -a ! -f "$db" ]; then
 			test -d $dbdir || mkdir $dbdir
-			zcat "$sql" | sqlite3 "$db"
+			cat "$sql" | sqlite3 "$db"
 			chmod 660 "$db"
 			chown bluecherry:bluecherry "$dbdir" -R
 		fi
