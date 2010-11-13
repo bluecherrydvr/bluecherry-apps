@@ -1,5 +1,12 @@
 bluecherry (2.0.0-0beta1-2) lucid; urgency=low
 
+  * debian: Stop old bc-server init script on preinst
+  * debian: Use cat, not zcat
+
+ -- Ben Collins <bcollins@bluecherry.net>  Sat, 13 Nov 2010 16:02:50 -0500
+
+bluecherry (2.0.0-0beta1-2) lucid; urgency=low
+
   * Remove old init scripts
   * Added defaults for audio volume and video controls
 
