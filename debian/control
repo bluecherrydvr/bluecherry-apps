@@ -1,9 +1,9 @@
 Source: bluecherry
 Section: admin
 Priority: optional
-Maintainer: Ben Collins <bcollins@bluecherry.com>
+Maintainer: Ben Collins <bcollins@bluecherry.net>
 Build-Depends: debhelper (>= 7), libsqlite3-dev, libmysqlclient-dev, libpq-dev,
- libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-dev
+ libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-dev, libconfig8-dev, libasound2-dev
 Standards-Version: 3.8.4
 
 Package: bluecherry
