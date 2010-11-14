@@ -68,8 +68,10 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 					 SND_PCM_ACCESS_RW_INTERLEAVED) < 0)
 		return -1;
 
-	if (snd_pcm_hw_params_set_format(pcm, params,
-				bc_to_alsa_fmt(bc_rec->aud_format)) < 0)
+	err = bc_to_alsa_fmt(bc_rec->aud_format);
+	if (err == -1)
+		return -1;
+	if (snd_pcm_hw_params_set_format(pcm, params, err) < 0)
 		return -1;
 
 	if (snd_pcm_hw_params_set_channels(pcm, params,
