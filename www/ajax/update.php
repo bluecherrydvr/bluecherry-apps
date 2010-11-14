@@ -99,7 +99,7 @@ class updateDB extends DVRData{
 				$res['y'] = '288';
 				$enc = 'PAL';
 			}
-			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', '352', '{$res['y']}', 'V4L2', '{$this_device[0]['devicepath']}', '30', '{$enc}', '$ds', '8000', '0x00000002', '{$this_device[0]['alsasounddev']}')") ? true : false;
+			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', '352', '{$res['y']}', 'V4L2', '{$this_device[0]['devicepath']}', '30', '{$enc}', '$ds', '8000', 0x00000002, '{$this_device[0]['alsasounddev']}')") ? true : false;
 			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
