@@ -1,3 +1,10 @@
+bluecherry (2.0.0-0beta1-4) lucid; urgency=low
+
+  * server: Detect invalid audio_format in db
+  * Web: Use integer value, not string literal value when setting audio_format
+
+ -- Curtis Hall <curt@bluecherry.net>  Sun, 14 Nov 2010 09:39:48 -0600
+
 bluecherry (2.0.0-0beta1-3) lucid; urgency=low
 
   * debian: Stop old bc-server init script on preinst
