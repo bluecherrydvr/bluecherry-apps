@@ -10,7 +10,7 @@ case "$1" in
 			# And www-data will need it too
 			usermod -a -G video,audio,bluecherry www-data
 		fi
-		stop bc-server || true
+		stop bluecherry || true
 		;;
 esac
 

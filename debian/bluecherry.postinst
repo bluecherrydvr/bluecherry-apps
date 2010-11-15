@@ -15,7 +15,7 @@ case "$1" in
 			chown bluecherry:bluecherry "$dbdir" -R
 		fi
 
-		# Fixup some persm
+		# Fixup some permissions
 		chown bluecherry:bluecherry /etc/bluecherry.conf
 		chown bluecherry:bluecherry /var/lib/bluecherry
 		chmod 770 /var/lib/bluecherry
