@@ -78,7 +78,7 @@ foreach ($events as $item) {
 
 	if (!empty($item['media_id'])) {
 		print "    <content media_id=\"".$item['media_id']."\">";
-		print "http://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
+		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
 		print "</content>\n";
 	}
 
