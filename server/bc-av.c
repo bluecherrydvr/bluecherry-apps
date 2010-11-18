@@ -133,6 +133,7 @@ static int pcm_dupe(short *in, int in_size, short *out)
 	return in_size * 2;
 }
 
+// XXX Is c needed here?
 int bc_aud_out(struct bc_record *bc_rec)
 {
 	AVCodecContext *c;
@@ -143,10 +144,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	int size;
 
 	/* This would be due to not being able to open the alsa dev */
-	if (!bc_rec->pcm || !bc_rec->audio_st)
+	if (!bc_rec->pcm)
 		return 0;
-
-	c = bc_rec->audio_st->codec;
 
 	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
 	    != sizeof(g723_data)) {
@@ -175,6 +174,9 @@ int bc_aud_out(struct bc_record *bc_rec)
 		return 0;
 
 	av_init_packet(&pkt);
+
+	c = bc_rec->audio_st->codec;
+
 	pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
 					bc_rec->pcm_buf);
 
@@ -379,7 +381,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		snprintf(st->language, sizeof(st->language), "eng");
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-                	st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 		st = NULL;
 	}
