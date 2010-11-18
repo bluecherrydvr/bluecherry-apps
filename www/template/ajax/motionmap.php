@@ -7,7 +7,7 @@
 <INPUT type="Hidden" id="valueString" value="<?php echo $motion_map->data[0]['motion_map']; ?>" />
 <div id="mmapContainer">
 <div id="cameraOutputContainer">
-	<img id="cameraOutput" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>">
+	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>">
 </div>
 <div id="lvlSelect">
 	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div>
