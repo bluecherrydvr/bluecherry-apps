@@ -47,7 +47,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 {
 	snd_pcm_hw_params_t *params = NULL;
 	snd_pcm_t *pcm = NULL;
-	int err;
+	int err, fmt;
 
 	/* No alsa device for this record */
 	if (bc_rec->aud_dev == NULL)
@@ -77,7 +77,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	if ((err = bc_to_alsa_fmt(bc_rec->aud_format)) == -1) {
+	if ((fmt = bc_to_alsa_fmt(bc_rec->aud_format)) == -1) {
 		bc_log("E(%d): bc_to_alsa_fmt failed", bc_rec->id);
 		return -1;
 	}
@@ -136,16 +136,21 @@ static int pcm_dupe(short *in, int in_size, short *out)
 // XXX Is c needed here?
 int bc_aud_out(struct bc_record *bc_rec)
 {
-	AVCodecContext *c;
+	AVCodecContext *c = NULL;
 	AVPacket pkt;
 	unsigned char g723_data[96];
 	short pcm_in[512];
 	unsigned char mp2_out[1024];
 	int size;
 
-	/* This would be due to not being able to open the alsa dev */
+	/* pcm can be null due to not being able to open the alsa dev. */
 	if (!bc_rec->pcm)
 		return 0;
+
+	if (!bc_rec->audio_st) {
+		bc_log("E(%d): audio stream not initialized", bc_rec->id);
+		return 0;
+	}
 
 	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
 	    != sizeof(g723_data)) {
@@ -154,8 +159,14 @@ int bc_aud_out(struct bc_record *bc_rec)
 			bc_rec->snd_err = 1;
 			if (bc_alsa_open(bc_rec)) {
 				bc_log("E(%d): asoundlib failed", bc_rec->id);
-				avcodec_close(bc_rec->audio_st->codec);
-				bc_rec->audio_st = NULL;
+				if (bc_rec->audio_st) {
+					avcodec_close(bc_rec->audio_st->codec);
+					bc_rec->audio_st = NULL;
+				}
+				/* We cannot call bc_aud_out again in this
+				 * situation; it will cause an infinite loop.
+				 */
+				return 0;
 			}
 			return bc_aud_out(bc_rec);
 		}
@@ -169,13 +180,13 @@ int bc_aud_out(struct bc_record *bc_rec)
 					 bc_rec->pcm_buf +
 					 bc_rec->pcm_buf_size);
 
+	c = bc_rec->audio_st->codec;
+
 	/* We need enough data to encode first... */
 	if (bc_rec->pcm_buf_size < c->frame_size)
 		return 0;
 
 	av_init_packet(&pkt);
-
-	c = bc_rec->audio_st->codec;
 
 	pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
 					bc_rec->pcm_buf);
