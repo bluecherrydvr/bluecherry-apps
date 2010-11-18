@@ -123,7 +123,11 @@ class updateDB extends DVRData{
 	}
 	
 	function editUser(){
-		if ($_POST['password']=='__default__') { unset($_POST['password']); };
+		if ($_POST['password']=='__default__') { unset($_POST['password']); }
+		 else { 
+		 	$tmp = $db->DBFetchAll($db->DBQuery("SELECT salt FROM Users WHERE id='$id'"));
+			$_POST['password'] = md5($_POST['password'].$tmp[0]['salt']);
+		};
 		$_POST['type'] = 'Users';
 		$_POST['access_setup'] = ($_POST['access_setup']=='on') ? '1' : '0';
 		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
