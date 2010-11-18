@@ -108,7 +108,7 @@ static int pcm_dupe(short *in, int in_size, short *out)
 
 int bc_aud_out(struct bc_record *bc_rec)
 {
-	AVCodecContext *c = bc_rec->audio_st->codec;
+	AVCodecContext *c;
 	AVPacket pkt;
 	unsigned char g723_data[96];
 	short pcm_in[512];
@@ -116,8 +116,10 @@ int bc_aud_out(struct bc_record *bc_rec)
 	int size;
 
 	/* This would be due to not being able to open the alsa dev */
-	if (!bc_rec->pcm)
+	if (!bc_rec->pcm || !bc_rec->audio_st)
 		return 0;
+
+	c = bc_rec->audio_st->codec;
 
 	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
 	    != sizeof(g723_data)) {
