@@ -74,8 +74,8 @@ static void check_solo(const char *dev, const char **driver, const char **alsa,
 		    strlen(SOLO6010_CARD_PREFIX_ENC))) {
 		*driver = "solo6010";
 		prefix = SOLO6010_CARD_DISP;
-	} else if (strncmp(SOLO6110_CARD_PREFIX_ENC, card,
-			   strlen(SOLO6110_CARD_PREFIX_ENC))) {
+	} else if (!strncmp(SOLO6110_CARD_PREFIX_ENC, card,
+			    strlen(SOLO6110_CARD_PREFIX_ENC))) {
                 *driver = "solo6110";
 		prefix = SOLO6110_CARD_DISP;
 	}
