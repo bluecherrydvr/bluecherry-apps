@@ -129,7 +129,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 				avcodec_close(bc_rec->audio_st->codec);
 				bc_rec->audio_st = NULL;
 			}
-			return bc_aud_out(bc_rec);
+			else
+				return bc_aud_out(bc_rec);
 		}
 		errno = -size;
 		return -1;
