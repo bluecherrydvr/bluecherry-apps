@@ -4,10 +4,10 @@
 
 Class LiveViewDevices{
 	public $devices;
-	
+	 
 	public function __construct(){
 		$db = DVRDatabase::getInstance();
-		$this->devices = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE disabled='0'"));
+		$this->devices = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.disabled='0' "));
 	}
 }
 
