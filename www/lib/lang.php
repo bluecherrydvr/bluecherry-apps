@@ -173,4 +173,11 @@ define(NO_PASS, 'Password field can not be empty.');
 define(CANT_REMOVE_ADMIN, 'You can not remove your own admin priveleges.');
 define(USER_CREATED, 'New user record created.');
 define(USER_DELETED, 'User record deleted.');
+
+
+#stats
+define(STATS_HEARDER, 'Server statistics:');
+define(STATS_CPU, 'CPU usage:');
+define(STATS_MEM, 'Memory usage:');
+define(STATS_UPT, 'Server uptime:');
 ?>

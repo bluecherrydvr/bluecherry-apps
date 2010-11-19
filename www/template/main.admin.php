@@ -32,19 +32,18 @@
 			</ul>
 		</div>
 		<div id="serverStats">
-			<div class="label">CPU usage:</div>
-			<div id="progressBar">
-				<div id="CPUUseBar" class="bar">&nbsp;</div>
-				<div id="CPUUseText" class="text">0</div>
-			</div><br />
-			<div class="label"><br /><br />Memory usage:</div>
-			<div id="progressBar">
-				<div id="memUseText" class="text">0</div>
-				<div id="memUseBar" class="bar">&nbsp;</div>
+			<div><?php echo STATS_HEARDER; ?></div><HR>
+			<div class="label"><?php echo STATS_CPU; ?></div>
+			<div class="progressBar" id='cpu'>
+				<div class="text">0</div>
 			</div>
-			<div class="label" id="meminfo"></div>
-			<div class="label"><br />Server uptime:</div>
-			<div id="serverUptime"></div>
+			<div class="label"><?php echo STATS_MEM; ?></div>
+			<div class="progressBar" id='mem'>
+				<div class="text">0</div>
+			</div>
+			<div class="label" id="meminfo">&nbsp;</div>
+			<div class="label"><?php echo STATS_UPT ?></div>
+			<div id="serverUptime">&nbsp;</div>
 		</div>
 	</div>
 	<div id="centerColumn">

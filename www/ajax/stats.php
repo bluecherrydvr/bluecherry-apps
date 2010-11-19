@@ -9,7 +9,7 @@ $current_user->CheckStatus();
 $current_user->StatusAction('admin');
 #/auth check
 
-
+session_write_close();
 
 #server stats: CPU/memusage
 

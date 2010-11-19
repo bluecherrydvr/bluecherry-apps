@@ -74,11 +74,11 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #messageDiv.green  { border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
 /*server stats styles*/
-#serverStats { padding-top:3px; opacity:0; filter:alpha(opacity = 0); zoom:1; margin-top:20px; display:block; border:1px solid gray; background:#fefefe;  padding-top:5px; text-align:center; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#serverStats div.label { font-size:12px; display:block; color:#aaa; }
-#serverStats #progressBar { margin-top:3px; width:90%; border:1px #ccc solid; position:relative; display:block;  float:left; text-align:center; margin-left:8px; z-order:-1;}
-#serverStats #progressBar div.bar{ background-color:#0d0;  display:block; top:0px; left:0px; float:left; z-index:0; width:60px; }
-#serverStats #progressBar div.text{ float:left; position:absolute; width:100%; top:0px; left:0px; z-index:2; }
+#serverStats { padding-top:3px; zoom:1; margin-top:20px; display:none; border:1px solid gray; background:#fefefe;  padding-top:5px; text-align:center; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#serverStats div.label 	{ font-size:1em;  color:#666; margin-top:15px; }
+#serverStats #meminfo	{ margin-top:0px; font-size:0.8em; }
+#serverStats .progressBar { background:url('/img/pbar-green.png'); margin:3px 0 0 50px; width:100px; height:13px; border:1px #ccc solid; position:relative; display:block;  text-align:center; z-order:1;}
+#serverStats .progressBar div.text{ float:left; position:absolute; width:100%; font-size:10px; top:0px; left:0px; z-index:2; font-weight:bold; }
 
 /*loading failed*/
 #onLoadFailureContainer { visibility:hidden; }

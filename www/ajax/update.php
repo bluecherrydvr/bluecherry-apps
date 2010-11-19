@@ -91,7 +91,7 @@ class updateDB extends DVRData{
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
 		} else {
-			$ds = ($container_card->fps_available<30) ? 1 : 0;
+			$ds = ($container_card->fps_available<2) ? 1 : 0;
 			if ($container_card->signal_type == 'notconfigured' || $container_card->signal_type == 'NTSC'){
 				$res['y']='240';
 				$enc = 'NTSC';
@@ -99,7 +99,7 @@ class updateDB extends DVRData{
 				$res['y'] = '288';
 				$enc = 'PAL';
 			}
-			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, audio_channels, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['devicepath']}', 30, '{$enc}', '$ds', 8000, " . 0x01000001 . ", 1, '{$this_device[0]['alsasounddev']}')") ? true : false;
+			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, audio_channels, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['devicepath']}', 15, '{$enc}', '$ds', 8000, " . 0x01000001 . ", 1, '{$this_device[0]['alsasounddev']}')") ? true : false;
 			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}

@@ -31,6 +31,7 @@ DVRPage = new Class({
 				$(containerDivID).set('html', html).fade('in');
 				pageScript = new DVRPageScript(page);
 				if (status) { var showMessage = new DVRMessage(status, msg); };
+				Cookie.write('currentPage', page);
 			}
 		}).send();
 	}
@@ -433,7 +434,7 @@ var localMotionGrid = new Class({
 				hourCol = new Element('td', {'id' : col, 'class' : 'gridColEx', 'html' : text, 'width': '25px'});
 				hourCol.inject(hoursRow, 'bottom');
 			}
-			var weekDays = new Array('', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+			var weekDays = new Array('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
 			hoursRow.inject($('gridTable'), 'top');
 			$$('.gridRow').each(function(el){
 				var text = weekDays[el.get('id')];
@@ -532,7 +533,7 @@ var localMotionGrid = new Class({
 
 
 //serverstat
-function updateStatData(){
+updateStatData = function(){
 		var statReq = new Request({
 			url: 'ajax/stats.php',
 			method: 'get',
@@ -542,19 +543,29 @@ function updateStatData(){
 				var memTotal = xml.getElementsByTagName("memory-total")[0].childNodes[0].nodeValue;
 				var memPertg = xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue;
 				var serverUp = xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue;
-				$('serverStats').fade('in');
-				$('CPUUseText').set('html', cpuUsage+'%');
-				$('CPUUseBar').setStyle('width', Math.round(cpuUsage)+'%');
+				$('serverStats').setStyle('display', 'block');
+				updateStatBar('cpu', cpuUsage);
+				updateStatBar('mem', memPertg);
 				$('meminfo').set('html', Math.round(memInUse/1024) + "MB / " + Math.round(memTotal/1024)+ "MB");
-				$('memUseText').set('html', memPertg+'%');
-				$('memUseBar').setStyle('width', Math.round(memPertg)+'%');
 				$('serverUptime').set('html', serverUp);
 
 			}
 		}).send();
-		
-		setTimeout("updateStatData();", 5000);
+		setTimeout("updateStatData();", 2000);
 };
+
+updateStatBar = function(barId, val, y, r){
+	var yb = (y || 50);
+	var rb = (r || 80);
+	var el = $(barId);
+	el.setStyle('background-position', (val-100));
+	var pBarColor = 'green';
+	if (val>=yb && val<rb){ pBarColor = 'yellow'; }
+		else if(val>=rb) { pBarColor = 'red'; }
+	el.setStyle('background-image', 'url("/img/pbar-'+pBarColor+'.png")');
+	el.getChildren('.text').set('html', val+'%');
+}
+
 
 
 
@@ -562,7 +573,7 @@ window.addEvent('domready', function(){
 	containerDivID = 'pageContainer';
 	
 	var mainMenu = new DVRmainMenu();
-	
-	openPage = new DVRPage('news');
-	//updateStatData();
+	var pageToOpen = (Cookie.read('currentPage') || 'news')
+	openPage = new DVRPage(pageToOpen);
+	updateStatData();
 });
