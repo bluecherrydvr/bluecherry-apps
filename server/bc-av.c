@@ -144,13 +144,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	int size;
 
 	/* pcm can be null due to not being able to open the alsa dev. */
-	if (!bc_rec->pcm)
+	if (!bc_rec->pcm || !bc_rec->audio_st)
 		return 0;
-
-	if (!bc_rec->audio_st) {
-		bc_log("E(%d): audio stream not initialized", bc_rec->id);
-		return 0;
-	}
 
 	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
 	    != sizeof(g723_data)) {
