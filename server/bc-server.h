@@ -54,8 +54,10 @@ struct bc_record {
 	char			motion_map[400];
 
 	/* Scheduling, 24x7 */
-	char			sched_cur;
+	char			sched_cur, sched_last;
 	char			*thread_should_die;
+	pthread_mutex_t		sched_mutex;
+	int			file_started;
 
 	/* Notify thread to restart with new format */
 	int			reset_vid;

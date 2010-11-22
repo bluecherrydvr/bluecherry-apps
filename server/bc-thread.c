@@ -44,11 +44,46 @@ static void update_osd(struct bc_record *bc_rec)
 	bc_set_osd(bc, "%s %s", bc_rec->name, buf);
 }
 
+static int process_schedule(struct bc_record *bc_rec)
+{
+	struct bc_handle *bc = bc_rec->bc;
+	int ret = 0;
+
+	pthread_mutex_lock(&bc_rec->sched_mutex);
+
+	if (bc_rec->reset_vid || bc_media_length(&bc_rec->media) > 3600) {
+		bc_close_avcodec(bc_rec);
+		bc_handle_stop(bc);
+		bc_rec->reset_vid = 0;
+		try_formats(bc_rec);
+		if (bc_rec->reset_vid)
+			ret = 1;
+		bc_log("I(%d): Reset media file", bc_rec->id);
+	} else if (bc_rec->sched_last) {
+		bc_close_avcodec(bc_rec);
+		bc_handle_stop(bc);
+		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
+		bc_rec->sched_last = 0;
+		bc_log("I(%d): Switching to new schedule '%s'", bc_rec->id,
+		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
+		       == 'N' ? "stopped" : "continuous"));
+	}
+
+	if (bc_rec->sched_cur == 'N')
+		ret = 1;
+
+	pthread_mutex_unlock(&bc_rec->sched_mutex);
+
+	if (ret)
+		sleep(1);
+
+	return ret;
+}
+
 static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = data;
 	struct bc_handle *bc = bc_rec->bc;
-	int file_started = 0;
 	int ret;
 
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
@@ -61,29 +96,8 @@ static void *bc_device_thread(void *data)
 
 		update_osd(bc_rec);
 
-		if (bc_rec->sched_cur == 'N' || bc_rec->reset_vid) {
-			if (file_started) {
-				bc_close_avcodec(bc_rec);
-				file_started = 0;
-			}
-			bc_handle_stop(bc);
-
-			if (bc_rec->sched_cur == 'N') {
-				sleep(1);
-				continue;
-			}
-
-			bc_rec->reset_vid = 0;
-			try_formats(bc_rec);
-			if (bc_rec->reset_vid) {
-				sleep(1);
-				continue;
-			}
-		} else if (bc_rec->sched_cur == 'C') {
-			bc_set_motion(bc, 0);
-		} else if (bc_rec->sched_cur == 'M') {
-			bc_set_motion(bc, 1);
-		}
+		if (process_schedule(bc_rec))
+			continue;
 
 		if (bc_handle_start(bc)) {
 			bc_log("E(%d): error starting stream: %m", bc_rec->id);
@@ -94,10 +108,7 @@ static void *bc_device_thread(void *data)
 		if ((ret = bc_buf_get(bc)) == EAGAIN) {
 			continue;
 		} else if (ret == ERESTART) {
-			if (file_started) {
-				file_started = 0;
-				bc_close_avcodec(bc_rec);
-			}
+			bc_close_avcodec(bc_rec);
 			continue;
 		} else if (ret) {
 			bc_log("E(%d): Failed to get vid buf", bc_rec->id);
@@ -105,13 +116,9 @@ static void *bc_device_thread(void *data)
 			/* XXX Do something */
 		}
 
-		if (!file_started) {
-			if (bc_open_avcodec(bc_rec)) {
-				bc_log("E(%d): error opening avcodec",
-				       bc_rec->id);
-				continue;
-			}
-			file_started = 1;
+		if (bc_open_avcodec(bc_rec)) {
+			bc_log("E(%d): error opening avcodec", bc_rec->id);
+			continue;
 		}
 
 		if (bc_rec->audio_st) {
@@ -143,8 +150,7 @@ static void *bc_device_thread(void *data)
 		}
 	}
 
-	if (file_started)
-		bc_close_avcodec(bc_rec);
+	bc_close_avcodec(bc_rec);
 	bc_set_osd(bc, " ");
 
 	return bc_rec->thread_should_die;
@@ -171,6 +177,7 @@ struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 	}
 	memset(bc_rec, 0, sizeof(*bc_rec));
 	memset(bc_rec->motion_map, '3', 22 * 18);
+	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
 	bc = bc_handle_get(dev);
 	if (bc == NULL) {
@@ -273,19 +280,29 @@ static void check_motion_map(struct bc_record *bc_rec, char *signal,
 
 static void check_schedule(struct bc_record *bc_rec, char *sched)
 {
-	time_t t;
-	struct tm tm_time;
+	time_t t;;
+	struct tm tm;
+	char new;
 
-	t = time(NULL);
-	gmtime_r(&t, &tm_time);
+	pthread_mutex_lock(&bc_rec->sched_mutex);
 
-	bc_rec->sched_cur = sched[tm_time.tm_hour + (tm_time.tm_wday * 7)];
+	time(&t);
+	localtime_r(&t, &tm);
+
+	new = sched[tm.tm_hour + (tm.tm_wday * 24)];
+	if (bc_rec->sched_cur != new) {
+		if (!bc_rec->sched_last)
+			bc_rec->sched_last = bc_rec->sched_cur;
+		bc_rec->sched_cur = new;
+	}
+
+	pthread_mutex_unlock(&bc_rec->sched_mutex);
 }
 
 void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	char *sched = NULL;
+	char *sched;
 
 	if (bc_db_get_val_int(rows, ncols, row, "disabled") > 0) {
 		bc_rec->thread_should_die = "Disabled in config";
@@ -316,9 +333,10 @@ void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 
 	if (bc_db_get_val_int(rows, ncols, row, "schedule_override_global") > 0)
 		sched = bc_db_get_val(rows, ncols, row, "schedule");
-	if (sched == NULL)
+	else
 		sched = global_sched;
 
+	bc_rec->sched_cur = 'N';
 	check_schedule(bc_rec, sched);
 
 	return;

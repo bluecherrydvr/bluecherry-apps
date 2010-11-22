@@ -249,6 +249,11 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 
 	pthread_mutex_lock(&av_lock);
 
+	if (bc_rec->media == BC_MEDIA_FAIL) {
+		pthread_mutex_unlock(&av_lock);
+		return;
+	}
+
 	bc_alsa_close(bc_rec);
 
 	avcodec_close(bc_rec->video_st->codec);
@@ -312,7 +317,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	bc_event_cam_update_media(bc_rec->event, bc_rec->media);
 }
 
-int bc_open_avcodec(struct bc_record *bc_rec)
+static int __bc_open_avcodec(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	AVCodec *codec;
@@ -322,7 +327,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
 
-	pthread_mutex_lock(&av_lock);
+	if (bc_rec->media != BC_MEDIA_FAIL)
+		return 0;
 
 	bc_alsa_open(bc_rec);
 
@@ -426,7 +432,19 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 
 	bc_start_media_entry(bc_rec);
 
+	return 0;
+}
+
+int bc_open_avcodec(struct bc_record *bc_rec)
+{
+	int ret;
+
+	if (bc_rec->media != BC_MEDIA_FAIL)
+		return 0;
+
+	pthread_mutex_lock(&av_lock);
+	ret = __bc_open_avcodec(bc_rec);
 	pthread_mutex_unlock(&av_lock);
 
-	return 0;
+	return ret;
 }

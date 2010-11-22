@@ -281,6 +281,8 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 /* Called at the end of the media to mark end time. If this returns
  * non-zero, you cannot end the media. */
 int bc_media_end(bc_media_entry_t *bcm);
+/* Get the length of the current media object */
+time_t bc_media_length(bc_media_entry_t *bcm);
 
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */

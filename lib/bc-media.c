@@ -272,6 +272,19 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	return bcm;
 }
 
+time_t bc_media_length(bc_media_entry_t *__bcm)
+{
+	bc_media_entry_t bcm = *__bcm;
+
+	if (!bcm)
+		return 0;
+
+	if (!bcm->end)
+		return time(NULL) - bcm->start;
+
+	return bcm->end - bcm->start;
+}
+
 int bc_media_end(bc_media_entry_t *__bcm)
 {
 	bc_media_entry_t bcm = *__bcm;

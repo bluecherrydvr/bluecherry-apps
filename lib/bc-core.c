@@ -243,6 +243,7 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	bc->vparm.parm.capture.timeperframe.numerator = interval;
 	if (ioctl(bc->dev_fd, VIDIOC_S_PARM, &bc->vparm) < 0)
 		return -1;
+	ioctl(bc->dev_fd, VIDIOC_G_PARM, &bc->vparm);
 
 	/* Reset GOP */
 	bc->gop = lround(den / num);

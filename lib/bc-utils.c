@@ -118,6 +118,7 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
 		return -1;
+	ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt);
 
 	return 0;
 }
