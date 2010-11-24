@@ -1,3 +1,38 @@
+bluecherry (2.0.0-0beta1-6) lucid; urgency=low
+
+  * Bug #476: Configured cameras show up in liveview after number of ports is reduced
+  * Bug #523: Motion mapping doesn't work if only the current day is selected
+  * Bug #525: Remove the option for 1FPS from device page
+  * Bug #528: Server does not detect schedule change between continuous and motion recording
+  * Bug #531: Video files are not chopped every hour
+  * Feature #463: Implement 'Server Information' in the web interface
+  * Feature #497: Log the type of recording into /var/log/bluecherry.log
+  * Feature #527: Change scheduling date to start on Sunday
+
+ -- Curtis Hall <curt@bluecherry.net>  Wed, 24 Nov 2010 14:58:26 -0600
+
+bluecherry (2.0.0-0beta1-5) lucid; urgency=low
+
+  * This release incorporates beta1-4 changes (which was accidently made public, so some customers downloaded it - this the reason for the bump) along with these issues:
+
+  * Bug #498: Server respawning in an endless loop
+  * Bug #500: PHP Warning: SQLite3::query(): Unable to prepare statement: 1, unrecognized token: "0x00000002" in /usr/share/bluecherry/www/lib/lib.php on line 66
+  * Bug #501: bc-detect showing other V4L devices
+  * Bug #507: [Critical] Unable to playback events
+  * Bug #509: [Critical] bc-server generating 584byte video files
+  * Bug #510: MJPEG feed breaks, causing video weirdness on random ports
+  * Bug #511: Error writing frame to outfile: Input/output error
+  * Bug #513: bc-server segfaults and CPU soft locks
+  * Bug #516: Web: Password changes do not take affect
+  * Bug #518: Limit image width for motion mapping
+  * Bug #519: bc-server crashes with E(1): asoundlib failed
+  * Bug #520: audio_channels are not being added to the database
+  * Feature #521: Add error logging for bc_alsa_open
+
+  * Full list: http://improve.bluecherrydvr.com/versions/show/51
+
+ -- Curtis Hall <curt@bluecherry.net>  Thu, 18 Nov 2010 16:56:50 -0600
+
 bluecherry (2.0.0-0beta1-4) lucid; urgency=low
 
   * server: Detect invalid audio_format in db
