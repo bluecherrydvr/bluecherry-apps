@@ -22,13 +22,13 @@ class ServerStats{
 				$file = fopen("/proc/stat", "r");
 				$tmp = fgets($file, 4096);				
 				$tmp = explode(" ", $tmp);
-				for ($j=2; $j<=5; $j++){
+				for ($j=1; $j<=4; $j++){
 					$reading[$i][$j-1]=$tmp[$j];	
 				};
 				sleep(1);
 			}
-			$tmp = ($reading[2][1]-$reading[1][1]+$reading[2][2]-$reading[1][2]+$reading[2][3]-$reading[1][3]);
-			return round($tmp/($tmp+$reading[2][4]-$reading[1][4])*100, 2);
+			$tmp = ($reading[1][0]-$reading[0][0]+$reading[1][1]-$reading[0][1]+$reading[1][2]-$reading[0][2]);
+			return round($tmp/($tmp+$reading[1][3]-$reading[0][3])*100, 2);
 		}
 		function GetMemUse(){
 			$file = fopen("/proc/meminfo", "r");
