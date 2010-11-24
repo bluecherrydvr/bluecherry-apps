@@ -25,18 +25,18 @@ class ServerStats{
 				for ($j=1; $j<=4; $j++){
 					$reading[$i][$j-1]=$tmp[$j];	
 				};
-				sleep(1);
+				sleep(2);
 			}
 			$tmp = ($reading[1][0]-$reading[0][0]+$reading[1][1]-$reading[0][1]+$reading[1][2]-$reading[0][2]);
 			return round($tmp/($tmp+$reading[1][3]-$reading[0][3])*100, 2);
 		}
 		function GetMemUse(){
 			$file = fopen("/proc/meminfo", "r");
-			for ($i=1; $i<=2; $i++){
+			for ($i=1; $i<=4; $i++){
 				$tmp = fgets($file, 4096); $tmp = preg_replace("/[^(0-9)]/", "", $tmp);
 				$memstat[$i] = $tmp;
 			};
-			$memstat[2] = $memstat[1] - $memstat[2];
+			$memstat[2] = $memstat[1] - ($memstat[2]+$memstat[3]+$memstat[4]);
 			$memstat[3] = round($memstat[2]/$memstat[1]*100, 2);
 			return $memstat;
 		}
