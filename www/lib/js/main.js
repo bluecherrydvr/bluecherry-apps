@@ -32,6 +32,7 @@ DVRPage = new Class({
 				pageScript = new DVRPageScript(page);
 				if (status) { var showMessage = new DVRMessage(status, msg); };
 				Cookie.write('currentPage', page);
+				Cookie.write('currentPageData', data);
 			}
 		}).send();
 	}
@@ -178,6 +179,14 @@ DVRPageScript = new Class({
 					}
 				});
 			break; //end devices
+			case 'activeusers':
+				$$(".kick").addEvent('click', function(){
+					ajaxUpdateField('kick', 'ActiveUsers', { 'kick' : '1' }, this.get('id'));
+				});
+				$$(".ban").addEvent('click', function(){
+					ajaxUpdateField('ban', 'ActiveUsers', { 'ban' : '1' }, this.get('id'));
+				});
+			break; //end activeusers
 			case 'videoadj':
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
@@ -196,6 +205,7 @@ DVRPageScript = new Class({
 								case 'audio_volume': ajaxUpdateField('update', 'devices', { 'audio_volume' : this.step }, $('device_id').get('value'), 'none'); break;
 								case 'contrast': ajaxUpdateField('update_control', 'devices', { 'contrast' : this.step }, $('device_id').get('value'), 'none'); break;
 							}
+							$(id+'_value').set('value', this.step)
 						}
 					}).set($(id+'_value').get('value'));			
 				});
@@ -419,7 +429,6 @@ var localMotionGrid = new Class({
 					self.drawGrid($(el), $(value).get('value'), 24, 7);
 					self.addScheduleFields();
 					self.sensitivitySelector();
-					//something scedule
 				break;
 			};
 			$('saveButton').addEvent('click', function(){
@@ -573,7 +582,8 @@ window.addEvent('domready', function(){
 	containerDivID = 'pageContainer';
 	
 	var mainMenu = new DVRmainMenu();
-	var pageToOpen = (Cookie.read('currentPage') || 'news')
-	openPage = new DVRPage(pageToOpen);
-	updateStatData();
+	var pageToOpen = (Cookie.read('currentPage') || 'news');
+	var pageToOpenData = (Cookie.read('currentPageData') || '');
+	openPage = new DVRPage(pageToOpen, pageToOpenData);
+	//updateStatData();
 });

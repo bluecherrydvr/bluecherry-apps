@@ -1,5 +1,8 @@
 var loginPage = new Class({
 	initialize: function(){
+		if ($('login-message').get('html')!=''){
+			$('login-message').fade('in');
+		}
 		$('login-button').addEvent('click', function(ev){
 			ev.stop();
 			$('login-form').set('send', {

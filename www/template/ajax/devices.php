@@ -2,7 +2,7 @@
 #template common functions
 require('../template/template.lib.php');
 
-echo "<div id='header'>&nbsp;</div><div id='devicesGroup'>";
+echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></div><div id='devicesGroup'>";
 
 if (!$devices->cards){
 	echo NO_CARDS;
@@ -14,7 +14,7 @@ foreach($devices->cards as $key => $card){
 foreach ($card->devices as $key =>$device){
 	if (!$device['device_name']) { $device['device_name'] = ($device['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
 	echo "<div id='localDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}&nbsp;</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['as_id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div><div id='port'>{$device['port']}</div>";
-	if ($device['status'] != 'notconfigured') {
+	if ($device['status'] != 'notconfigured' && !$device['disabled']) {
 		echo "
 				<hr>
 				<div id='resolutionFps'>

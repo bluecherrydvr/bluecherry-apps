@@ -37,7 +37,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm input 			{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
 #settingsForm input:focus 		{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]	{ background:#ccc; color:#333; }
-#settingsForm textarea			{ font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; height:100px; margin:2px 20px 10px; }
+#settingsForm textarea			{ font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; height:200px; margin:2px 20px 10px; }
 
 /*access denied according to schedule*/
 #dschedule-window { padding:20px; border:1px dotted red; background-color:#fcc; width:600px; z-index:10; vertical-align:middle; text-align:center; position:absolute; top:50; left:50%; margin:30px 0 0 -300px; }
@@ -66,6 +66,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #menuButtons .devices 		  { background-image:url("/img/icons/device.png"); }
 #menuButtons .globalschedule  { background-image:url("/img/icons/schedule.png"); }
 #menuButtons .liveView		  { background-image:url("/img/icons/liveview.png"); }
+#menuButtons .activeUsers	  { background-image:url("/img/icons/activeusers.png"); }
 
 /*message div*/
 #messageDiv { width:90%; padding:5px; font-size:1em; margin:10px; position:relative; float:left; display:inline; padding-left:35px; }
@@ -91,11 +92,19 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #user-table table			{ border-collapse:collapse; width:100%; }
 #user-table th				{ text-align:left; padding:2px; }
 #user-table td				{ border:1px solid #eee; padding:2px; cursor:pointer; }
-#user-table tr.low:hover, tr.high:hover		{ background-color:#ff8c00; }
+#user-table tr.low:hover, #user-table tr.high:hover		{ background-color:#ff8c00; }
 #user-table td.edit 		{ border:0px; background-color:#fff; padding-left:5px; }
 #user-table tr.low			{ background-color:#eee; }
 #newUser				 	{ float:right; margin-bottom:10px; width:130px; padding-left:30px; height:30px; line-height:30px; background:url("/img/icons/users_new.png") no-repeat; background-position:left; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #user-table .deleteUser 	{ background-image:url("/img/icons/cross.png"); background-position: center center; background-repeat:no-repeat; width:20px; }
+
+/*active (connected) users*/
+#active-user-table tr.low { background-color:#eee; }
+#active-user-table td.kick { background-color:#ffd1a4; padding:3px; }
+#active-user-table td.kick:hover { background-color:#ff8000; cursor:pointer; }
+#active-user-table td.kicked { background-color:#ff8000; }
+#active-user-table td.ban { background-color:#ff9191; padding:3px; }
+#active-user-table td.ban:hover { background-color:#ff5555; cursor:pointer; }
 
 /*news*/
 #dvrNews 			  				{ width:auto; }
@@ -134,7 +143,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #localDevice .OK					{ color: green;	  	}	
 #localDevice .notconfigured			{ color: gray;	 	}
 #localDevice #status a 				{ display:inline; 	}
-#localDevice #port					{ padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:0px; right:0px; display:block; background: url("/img/icons/port.png") no-repeat center top; width:50px; height:50px; }
+#localDevice #port					{ padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; background: url("/img/icons/port.png") no-repeat center top; width:50px; height:50px; }
 
 
 /*motion|devices*/
@@ -194,3 +203,15 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #liveViewContainer .lvImg { border:none; }
 #liveViewContainer #lvGridTable { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; }
 #liveViewContainer #lvGridTable td { border:1px solid #eee; }
+
+/*videoadj*/
+#liveViewContainer 				{ position:relative; display:inline; }
+#videoAdjSliders				{ display: block; width:370px; }
+#videoAdjSliders .control		{ float:left; height:1em; padding:5px 0 5px 0; display:block; margin:5px 0 5px 0; display: block; }
+#videoAdjSliders .control input { width:30px; display:inline; margin:0px 5px 0 10px; text-align:center;}
+#videoAdjSliders label			{ float: left; text-align:right; display:block; width:130px; margin:5px 5px 5px 0; font-size:1em; }
+#videoAdjSliders .slider		{ float: left; width:200px; background: url("/img/icons/ln.png") 0 center repeat-x; height:1em; margin:10px; }
+#videoAdjSliders .slider .knob	{ height:1em; width:1em;  background: url("/img/icons/knob.png") no-repeat center center; }
+#videoAdjSliders #audio_volume.control { margin-bottom:30px; }
+#setToDefault { display: block; float:left; font-size:1.2em; background-color:#ddffdd; padding:5px; border:1px dotted #afa; margin-left:120px; margin-top:20px;}
+#setToDefault:hover { cursor:pointer; background-color:#bbffbb; }

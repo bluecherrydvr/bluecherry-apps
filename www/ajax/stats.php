@@ -25,7 +25,7 @@ class ServerStats{
 				for ($j=1; $j<=4; $j++){
 					$reading[$i][$j-1]=$tmp[$j];	
 				};
-				sleep(2);
+				sleep(1);
 			}
 			$tmp = ($reading[1][0]-$reading[0][0]+$reading[1][1]-$reading[0][1]+$reading[1][2]-$reading[0][2]);
 			return round($tmp/($tmp+$reading[1][3]-$reading[0][3])*100, 2);

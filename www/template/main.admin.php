@@ -24,6 +24,7 @@
 				<li id="general" class="settingsGeneral"><? echo MMENU_GS; ?></li>
 				<li id="storage" class="settingsStorage"><? echo MMENU_STORAGE; ?></li>
 				<li id="users" class="settingsUsers"><? echo MMENU_USERS; ?></li>
+				<li id="activeusers" class="activeUsers"><? echo MMENU_ACTIVE_USERS; ?></li>
 				<hr>
 				<li id="devices" class="devices"><? echo MMENU_DEVICES; ?></li>
 				<li id="deviceschedule" class="globalschedule"><? echo MMENU_SCHED; ?></li>

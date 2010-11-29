@@ -28,19 +28,45 @@ class updateDB extends DVRData{
 			case 'FPS': $this->changeFPSRES('FPS'); break;
 			case 'RES': $this->changeFPSRES('RES'); break;
 			case 'update_control' : $this->update_control(); break;
+			case 'ban': $this->BanUser(); break;
+			case 'kick': $this->KickUser(); break;
 		}
 	}
-	
+	private function KickUser(){
+		$ip = preg_replace("/[^(0-9)\.]/", "", $_POST['id']);
+		$db = DVRDatabase::getInstance();
+		if ($_SERVER['REMOTE_ADDR']!=$ip){
+			$this->status = ($db->DBQuery("UPDATE ActiveUsers SET kick = 1 WHERE ip='$ip'")) ? true : false;
+			$this->message = ($this->status) ? AU_KICKED : CHANGES_FAIL;
+		} else {
+			$this->status = false;
+			$this->message = AU_CANT_EOS;
+		}
+	}
+	private function BanUser(){
+		$id = intval($_POST['id']);
+		$user = new DVRUser('id', $id);
+		if ($_SESSION['id']!=$id){
+			$user->ban();
+			$this->status = true;
+			$this->message = AU_BANNED;
+		} else {
+			$this->status = false;
+			$this->message = AU_CANT_SB;
+		}
+	}
 	function update_control(){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
 		$this_device = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE id='$id' "));
+		/*
 		$bch = bc_handle_get($this_device[0]['source_video']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
 		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
+		*/
 		$this->updateField();
 	}
 	

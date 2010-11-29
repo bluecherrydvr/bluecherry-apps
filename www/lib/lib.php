@@ -106,22 +106,63 @@ class DVRUser extends DVRData{
 		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
 	}
 	public function CheckStatus(){
-		switch ($_SESSION['l']) {
-			case 'admin':  $this->status = 'admin';  break;
-			case 'viewer': $this->status = ($this->ScheduleCheck()) ? 'viewer' : 'schedule'; break;
-			default: $this->status = 'new';
-		};		
+		if ($_SESSION['l']){
+			$kicked = $this->ActiveUsersUpdate();
+			switch ($_SESSION['l']) {
+				case 'admin':  $this->status = 'admin';  break;
+				case 'viewer': $this->status = ($this->ScheduleCheck()) ? 'viewer' : 'schedule'; break;
+				default: $this->status = 'new';
+			};
+			if ($kicked){ $this->status = 'kicked'; };
+		}
 	}
 	
 	public function StatusAction($l){
-		if (($l='admin' && $this->status!='admin') || ($l=='viewer' && (!$this->status || $this->status=='schedule'))) die('403');
+			$message = false;
+			switch($l){
+				case 'admin' :
+					if ($this->status!='admin') $message = USER_NACCESS;
+				break;
+				case 'viewer': 
+					if ($this->status=='schedule') $message = DSCED_MSG;
+				break;
+				case 'mjpeg' :
+					$this->CheckStatus();
+					if ($this->status != 'admin' && $this->status != 'viewer') return false;
+					return true;
+				break;
+			}
+			switch ($this->status){
+				case 'new': $message = USER_RELOGIN; break;
+				case 'kicked': session_unset(); $_SESSION['message'] = $message = USER_KICKED; $message .= "<script>setTimeout('window.location.reload(true);', 2000)</script>"; break;
+			};
+			
+			if ($message) die("<div class='INFO' id='message'>{$message}</div>");
 	}
 	
+	private function ActiveUsersUpdate(){
+		$db = DVRDatabase::getInstance(); 
+		$db->DBQuery("DELETE FROM ActiveUsers WHERE time <".(time()-300));
+		$tmp = $db->DBFetchAll($db->DBQuery("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}'"));
+		if (count($tmp) == 0){ 
+			 $db->DBQuery("INSERT INTO ActiveUsers VALUES ({$_SESSION['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)");
+		} else {
+			if ($tmp[0]['kick']) return true;
+			$db->DBQuery("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
+		}
+		return false;
+	}
 	public function ValidatePassword($entered_password){
 		return ($entered_password===md5($this->data['password'])) ? true : false;
 	}
 	private function ScheduleCheck(){
 		return (substr($this->data['schedule'], date('N')*(date('G')+1), 1)=='1')  ? true : false;
+	}
+	
+	public function ban($v = 0){
+		$db = DVRDatabase::getInstance();
+		$db->DBQuery("UPDATE Users SET access_setup = $v, access_remote = $v, access_web = $v, access_backup = $v, access_relay = $v WHERE id={$this->data[0]['id']}");
+		
 	}
 }
 
@@ -179,6 +220,7 @@ class DVRData{
 
 class DVRDevices extends DVRData{
 	public $number_of_card;
+	public $total_devices;
 	public $cards;
 	public $ip_cameras;
 	public function __construct(){
@@ -194,12 +236,13 @@ class DVRDevices extends DVRData{
 		if (!tmp) { return false; };
 		foreach ($tmp as $key => $card){
 			$this->cards[$card['card_id']] = new BCDVRCard($card['card_id']);
-			
+			$this->total_devices += count($this->cards[$card['card_id']]->devices);
 		}
 	}
 	private function getIpCameras(){
 		$db = DVRDatabase::getInstance();
 		$this->ip_cameras = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE source_video NOT LIKE '/dev/video%'"));
+		$this->total_devices += count($this->ip_cameras);
 	}
 	public function MakeXML(){
 		$xml = '<?xml version="1.0" encoding="UTF-8" ?><devices>';
