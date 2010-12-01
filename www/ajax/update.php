@@ -59,14 +59,12 @@ class updateDB extends DVRData{
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
 		$this_device = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE id='$id' "));
-		/*
 		$bch = bc_handle_get($this_device[0]['source_video']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
 		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
-		*/
 		$this->updateField();
 	}
 	

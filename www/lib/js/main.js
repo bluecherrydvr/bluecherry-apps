@@ -585,5 +585,5 @@ window.addEvent('domready', function(){
 	var pageToOpen = (Cookie.read('currentPage') || 'news');
 	var pageToOpenData = (Cookie.read('currentPageData') || '');
 	openPage = new DVRPage(pageToOpen, pageToOpenData);
-	//updateStatData();
+	updateStatData();
 });
