@@ -21,6 +21,7 @@ define(MMENU_LOG, 'System Log');
 define(MMENU_DEVICES, 'Devices');
 define(MMENU_SCHED, 'Recording schedule');
 define(MMENU_LIVEVIEW, 'LiveView');
+define(MMENU_ACTIVE_USERS, 'Connected users');
 #main
 define(COUND_NOT_OPEN_PAGE, 'Page could not be loaded');
 define(COUND_NOT_OPEN_PAGE_EX, 'The page requested could not be loaded at this time. Please make sure you are able to connect to the DVR server and that the server is running.');
@@ -51,6 +52,8 @@ define(G_DVR_NAME, 'DVR Name');
 define(G_DVR_NAME_EX, 'You can name you dvr after its location or usage');
 define(G_DVR_EMAIL, 'Email address');
 define(G_DVR_EMAIL_EX, 'Email for notifications');
+define(G_DEV_NOTES, 'Notes');
+define(G_DEV_NOTES_EX, 'dvr memos');
 
 #users page
 define(USERS_ALL_TABLE_HEADER, 'DVR Users');
@@ -137,6 +140,7 @@ define(DEVICE_EDIT_VIDADJ, 'Video/Audio adjustment settings');
 define(DEVICE_EDIT_SCHED, 'Schedule');
 define(VIDEO_ADJ, 'Video adjustments for');
 define(DEVICE_UNNAMED, 'Unnamed');
+define(TOTAL_DEVICES, 'Total devices: ');
 
 define(VA_HEADER, 'Video adjustments');
 define(VA_BRIGHTNESS, 'Brightness');
@@ -180,4 +184,27 @@ define(STATS_HEARDER, 'Server statistics:');
 define(STATS_CPU, 'CPU usage:');
 define(STATS_MEM, 'Memory usage:');
 define(STATS_UPT, 'Server uptime:');
+
+#messages general
+define(USER_KICKED, 'Your session was terminated by an Administrator.');
+define(USER_NACCESS, 'You need administrator priveleges to access this page.');
+define(USER_RELOGIN, 'Your session has expired, please <a htef="/">relogin</a>. ');
+
+#active users 
+define(ACTIVE_USERS_HEADER, 'Connected users');
+define(ACTIVE_USERS_SUBHEADER, 'Users currently using this DVR server');
+define(AU_IP, 'IP address');
+define(AU_KICK, 'Kick (IP)');
+define(AU_BAN, 'Ban user');
+define(AU_CANT_EOS, 'You can not terminate your own session.');
+define(AU_KICKED, 'User session terminated');
+define(AU_CANT_SB, 'You can not ban yourself');
+define(AU_BANNED, 'User is banned.');
+define(AU_INFO, 'Kicking user will end session from that IP address, ban user for 5 minutes and require re-login. Banning user will remove all access priveleges (can be restored on user page).');
+define(RCLIENT, 'Remote Client');
+define(WEB, 'Web');
+define(AC_ACCESS, '');
+
+#login
+define(PLEASE_LOGIN, 'You need');
 ?>
