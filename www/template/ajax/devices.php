@@ -2,7 +2,7 @@
 #template common functions
 require('../template/template.lib.php');
 
-echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></div><div id='devicesGroup'>";
+echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
 
 if (!$devices->cards){
 	echo NO_CARDS;
