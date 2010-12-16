@@ -21,7 +21,8 @@ class ServerStats{
 			for ($i=0; $i<=1; $i++){
 				$file = fopen("/proc/stat", "r");
 				$tmp = fgets($file, 4096);				
-				$tmp = explode(" ", $tmp);
+				$tmp = preg_split("/[\s]+/", $tmp);
+				var_dump_pre($tmp);
 				for ($j=1; $j<=4; $j++){
 					$reading[$i][$j-1]=$tmp[$j];	
 				};
@@ -50,19 +51,24 @@ class ServerStats{
  			$m = str_pad(intval($tmp[0]/60), 2, '0', STR_PAD_LEFT); $tmp[0] -= $m*60;
   			return $d.' day(s), '.$h.':'.$m.':'.str_pad(intval($tmp[0]), 2, '0', STR_PAD_LEFT);
 		}
+		private function IsServerRunning(){
+			return (shell_exec('pidof bc-server')) ? true : false;
+		}
 		function MakeXML(){
 			//getdata
 			$loadavg = $this->GetLoadAvg();
 			$memstat = $this->GetMemUse();
 			$uptime  = $this->GetUpTime();
+			$server  = $this->IsServerRunning();
 			//simple XML output
-			header('Content-type: text/xml');
+			//header('Content-type: text/xml');
 			echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
 				  	<server-status>
 						<cpu-usage>$loadavg</cpu-usage>
 						<memory-total>".$memstat['1']."</memory-total>
 						<memory-inuse>".$memstat['2']."</memory-inuse>
 						<memory-used-percentage>".$memstat['3']."</memory-used-percentage>
+						<bc-server>".(($server)? 'up' : 'down')."</bc-server-running>
 						<server-uptime>$uptime</server-uptime>
 				  	</server-status>
 			";

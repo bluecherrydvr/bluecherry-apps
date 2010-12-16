@@ -55,7 +55,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #mainMenu { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0;}
 #menuButtons { margin:0px; padding:0px; list-style-type:none; }
 #menuButtons hr { color:#bbb; height:1px; display:block; margin: 3px 0 3px 0; width:100%; }
-#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:1.1em; display:block; margin-top:5px; position:relative; height: 27px; width: 150px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
+#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:18px; display:block; margin-top:5px; position:relative; height: 27px; width: 150px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
 #menuButtons p { vertical-align:center; }
 #menuButtons li { background-repeat: no-repeat; background-position:2px center; }
 #menuButtons .news			  { background-image:url("/img/icons/news.png");   }
@@ -180,7 +180,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #lvlSelect ul #liN 				{ background-color:#000; color:#fff; }
 
 /*liveView*/
-#leftColumn #lvControls, #lvCameras, #backToAdmin { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
+#leftColumn #lvControls, #lvCameras, #backToAdmin, #logout { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
 #backToAdmin { text-align:center; }
 #backToAdmin a { text-decoration:none; font-size:1.1em; }
 #backToAdmin:hover { background-color:#efe; }
@@ -215,3 +215,9 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #videoAdjSliders #audio_volume.control { margin-bottom:30px; }
 #setToDefault { display: block; float:left; font-size:1.2em; background-color:#ddffdd; padding:5px; border:1px dotted #afa; margin-left:120px; margin-top:20px;}
 #setToDefault:hover { cursor:pointer; background-color:#bbffbb; }
+
+
+#addIPCamera		{ zoom:1; float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#logout { text-align:center; }
+#logout:hover { background-color:#f99; cursor:pointer; }
+#logout a { text-decoration:none; font-size:1.1em; color:#933; }
