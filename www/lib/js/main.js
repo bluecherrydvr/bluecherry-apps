@@ -113,6 +113,10 @@ DVRPageScript = new Class({
 				});
 			break; //end log
 			case 'devices' :
+				$('addIPCamera').addEvent('click', function(){
+					openPage = new DVRPage('addip');
+				});
+				$('addIPCamera').buttonAnimate("#aca")
 				initNames = function(){
 					$$('.name').each(function(el){
 						el.addEvent('click', function(){

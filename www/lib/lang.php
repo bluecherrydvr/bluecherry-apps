@@ -187,7 +187,7 @@ define(STATS_UPT, 'Server uptime:');
 
 #messages general
 define(USER_KICKED, 'Your session was terminated by an Administrator.');
-define(USER_NACCESS, 'You need administrator priveleges to access this page.');
+define(USER_NACCESS, 'You need administrator priveleges to access this page. Please <a href="/">login again</a>.');
 define(USER_RELOGIN, 'Your session has expired, please <a htef="/">relogin</a>. ');
 
 #active users 
@@ -204,6 +204,9 @@ define(AU_INFO, 'Kicking user will end session from that IP address, ban user fo
 define(RCLIENT, 'Remote Client');
 define(WEB, 'Web');
 define(AC_ACCESS, '');
+
+define(AIP_HEADER, 'Add an IP Camera');
+define(AIP_SUBHEADER, '');
 
 #login
 define(PLEASE_LOGIN, 'You need');
