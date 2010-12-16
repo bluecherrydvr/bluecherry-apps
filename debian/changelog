@@ -1,6 +1,7 @@
 bluecherry (2.0.0-0beta2-1) lucid; urgency=low
 
-  * Move bc-detect functionality into bc-server
+  * #581: Move bc-detect functionality into bc-server
+  * #524: Log start/stop of camera events
 
  -- Ben Collins <bcollins@bluecherry.net>  Thu, 16 Dec 2010 13:47:20 -0500
 
