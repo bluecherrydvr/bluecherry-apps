@@ -106,7 +106,8 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		if ((ret = bc_buf_get(bc)) == EAGAIN) {
+		ret = bc_buf_get(bc);
+		if (ret == EAGAIN) {
 			continue;
 		} else if (ret == ERESTART) {
 			bc_close_avcodec(bc_rec);

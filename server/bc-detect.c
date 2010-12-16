@@ -17,14 +17,6 @@
 
 #include <libbluecherry.h>
 
-static struct bc_db_handle *bc_db;
-
-/* Table for enabled devices */
-static int enabled_nrows, enabled_ncols;
-static char **enabled_rows;
-
-extern char *__progname;
-
 static const char *get_v4l2_card_name(const char *dev)
 {
 	char fulldev[128];
@@ -100,48 +92,17 @@ static void check_solo(const char *dev, const char **driver, const char **alsa,
 		*card_id = i;
 	}
 
-	bc_log("Got %s and %s", *driver, *alsa ?: "none");
-
 	return;
 }
 
-static void usage(void)
+void bc_check_avail(struct bc_db_handle *bc_db)
 {
-	fprintf(stderr, "Usage: %s\n", __progname);
-	exit(1);
-}
-
-int main(int argc, char **argv)
-{
-	int opt, res;
+	int res;
 	DIR *dir;
 	struct dirent *dent;
 
-	while ((opt = getopt(argc, argv, "h")) != -1) {
-		switch (opt) {
-		case 'h': default: usage();
-		}
-	}
-
-	bc_db = bc_db_open();
-	if (bc_db == NULL) {
-		bc_log("E: Could not open SQL database");
-		exit(1);
-	}
-
 	/* Truncate the table to clear all entries */
 	bc_db_query(bc_db, "DELETE FROM AvailableSources");
-
-	/* Cache the db data we need */
-	res = bc_db_get_table(bc_db, &enabled_nrows, &enabled_ncols,
-			      &enabled_rows, "SELECT * from Devices;");
-
-	if (res != 0) {
-		bc_log("Error reading tables from database");
-		exit(1);
-	}
-
-	bc_log("Starting detection of available sources...");
 
 	dir = opendir("/dev");
 	if (dir == NULL) {
@@ -177,11 +138,4 @@ int main(int argc, char **argv)
 	}
 
 	closedir(dir);
-
-	bc_log("Detection of available sources completed");
-
-	bc_db_free_table(bc_db, enabled_rows);
-	bc_db_close(bc_db);
-
-	exit(0);
 }

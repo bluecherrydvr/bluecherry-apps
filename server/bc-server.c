@@ -239,6 +239,7 @@ int main(int argc, char **argv)
 		}
 		loops = 60;
 
+		bc_check_avail(bc_db);
 		check_db();
 	}
 

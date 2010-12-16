@@ -1,3 +1,9 @@
+bluecherry (2.0.0-0beta2-1) lucid; urgency=low
+
+  * Move bc-detect functionality into bc-server
+
+ -- Ben Collins <bcollins@bluecherry.net>  Thu, 16 Dec 2010 13:47:20 -0500
+
 bluecherry (2.0.0-0beta1-6) lucid; urgency=low
 
   * Bug #476: Configured cameras show up in liveview after number of ports is reduced

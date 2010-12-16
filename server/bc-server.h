@@ -94,4 +94,6 @@ typedef enum {
 
 int bc_motion_val(bc_motion_type_t type, const char v);
 
+void bc_check_avail(struct bc_db_handle *bc_db);
+
 #endif /* __BC_SERVER_H */
