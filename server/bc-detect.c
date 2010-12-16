@@ -97,7 +97,6 @@ static void check_solo(const char *dev, const char **driver, const char **alsa,
 
 void bc_check_avail(struct bc_db_handle *bc_db)
 {
-	int res;
 	DIR *dir;
 	struct dirent *dent;
 
@@ -125,16 +124,10 @@ void bc_check_avail(struct bc_db_handle *bc_db)
 		if (driver == NULL)
 			continue;
 
-		bc_log("/dev/%s: Driver %s%s%s detected", dev, driver,
-		       alsadev ? ", AlsaDevice " : "",
-		       alsadev ?: "");
-
-		res = bc_db_query(bc_db, "INSERT INTO AvailableSources "
-				  "(devicepath, driver, alsasounddev,card_id) "
-				  "VALUES('/dev/%s', '%s', '%s',%d);", dev,
-				  driver, alsadev ?: "", card_id);
-		if (res)
-			bc_log("/dev/%s: Error inserting into database", dev);
+		bc_db_query(bc_db, "INSERT INTO AvailableSources "
+			    "(devicepath, driver, alsasounddev,card_id) "
+			    "VALUES('/dev/%s', '%s', '%s',%d);", dev,
+			    driver, alsadev ?: "", card_id);
 	}
 
 	closedir(dir);
