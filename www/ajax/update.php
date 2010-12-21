@@ -14,8 +14,6 @@ class updateDB extends DVRData{
 	public $status;
 	public $data;
 	function __construct(){
-		$this->message = ' ';
-		$this->data = ' ';
 		$mode = $_POST['mode']; unset($_POST['mode']);
 		switch ($mode) {
 			case 'global': $this->status = $this->Edit('global'); $this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL; break;
@@ -65,6 +63,7 @@ class updateDB extends DVRData{
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
 		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
+	
 		$this->updateField();
 	}
 	
@@ -147,6 +146,8 @@ class updateDB extends DVRData{
 	}
 	
 	function editUser(){
+		$id = intval($_POST['id']);
+		$db = DVRDatabase::getInstance();
 		if ($_POST['password']=='__default__') { unset($_POST['password']); }
 		 else { 
 		 	$tmp = $db->DBFetchAll($db->DBQuery("SELECT salt FROM Users WHERE id='$id'"));
@@ -160,7 +161,6 @@ class updateDB extends DVRData{
 		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
 		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if ($_SESSION['id']==$_POST['id'] && $_POST['access_setup']==0) { $this->message = CANT_REMOVE_ADMIN; return false; }
-		$db = DVRDatabase::getInstance();
 		$this->status = ($db->DBQuery($this->FormQueryFromPOST('update'))) ? true : false;
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}

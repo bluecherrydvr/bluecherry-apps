@@ -121,7 +121,7 @@ class DVRUser extends DVRData{
 			$message = false;
 			switch($l){
 				case 'admin' :
-					if ($this->status!='admin') $message = USER_NACCESS;
+					if ($this->status!='admin') $message = JS_RELOAD.USER_NACCESS;
 				break;
 				case 'viewer': 
 					if ($this->status=='schedule') $message = DSCED_MSG;
@@ -297,11 +297,10 @@ class BCDVRCard{
 			 	else {
 					$this->devices[$key] = array_merge($this->devices[$key], $tmp);
 					$this->devices[$key]['status'] = ($this->devices[$key]['disabled']) ? 'disabled' : 'OK';
-					
+					$this->signal_type = ($this->devices[$key]['signal_type']) ? $this->devices[$key]['signal_type'] : 'notconfigured' ; //NTSC is the default
 				}
 			(!$this->devices[$key]['video_interval'] || $this->devices[$key]['disabled']) or $this->fps_available -= (30/$this->devices[$key]['video_interval']) * (($this->devices[$key]['resolutionX']>=704) ? 4 : 1);
 		}
-		$this->signal_type = ($this->devices[0]['signal_type']) ? $this->devices[0]['signal_type'] : 'notconfigured' ; //NTSC is the default
 	}
 }
 
