@@ -19,6 +19,7 @@ static int cur_threads;
 static int record_id = -1;
 
 char global_sched[7 * 24];
+char media_storage[256];
 
 extern char *__progname;
 
@@ -27,7 +28,10 @@ static void __handle_motion_start(struct bc_handle *bc)
 	struct bc_record *bc_rec = bc->__data;
 
 	/* Just in case it's still around */
-	bc_event_cam_end(&bc_rec->event);
+	if (bc_rec->event != BC_EVENT_CAM_FAIL) {
+		bc_event_cam_end(&bc_rec->event);
+		bc_log("I(%d): motion event stopped", bc_rec->id);
+	}
 
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
@@ -51,6 +55,7 @@ static void check_globals(void)
 	char **rows;
 	int res;
 
+	/* Get global schedul, default to continuous */
         res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
 			      "SELECT * from GlobalSettings WHERE "
 			      "parameter='G_DEV_SCED';");
@@ -62,6 +67,21 @@ static void check_globals(void)
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
+	}
+	if (res == 0)
+		bc_db_free_table(bc_db, rows);
+
+	/* Get path to media storage location, or use default */
+	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+			      "SELECT * from GlobalSettings WHERE "
+			      "parameter='G_DVR_MEDIA_STORE';");
+
+	if (res == 0 && nrows == 1) {
+		char *stor = bc_db_get_val(rows, ncols, 0, "value");
+		if (stor)
+			strcpy(media_storage, stor);
+	} else {
+		strcpy(media_storage, "/var/lib/bluecherry/recordings");
 	}
 	if (res == 0)
 		bc_db_free_table(bc_db, rows);

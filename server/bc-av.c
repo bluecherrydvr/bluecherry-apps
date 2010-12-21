@@ -330,7 +330,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	t = time(NULL);
 	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
 	strftime(mytime, sizeof(mytime), "%T", &tm);
-	sprintf(dir, "%s/%s/%06d", BC_FILE_REC_BASE, date, bc_rec->id);
+	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 

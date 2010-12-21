@@ -15,8 +15,6 @@
 
 #include "g723-dec.h"
 
-#define BC_FILE_REC_BASE	"/var/lib/bluecherry/recordings/"
-
 struct bc_record {
 	struct bc_handle	*bc;
 	AVOutputFormat		*fmt_out;
@@ -78,6 +76,7 @@ struct bc_record {
 
 extern pthread_mutex_t av_lock;
 extern char global_sched[7 * 24];
+extern char media_storage[256];
 
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);
