@@ -54,6 +54,8 @@ define(G_DVR_EMAIL, 'Email address');
 define(G_DVR_EMAIL_EX, 'Email for notifications');
 define(G_DEV_NOTES, 'Notes');
 define(G_DEV_NOTES_EX, 'dvr memos');
+define(G_DVR_MEDIA_STORE, 'Storage location');
+define(G_DVR_MEDIA_STORE_EX, 'storage for videos');
 
 #users page
 define(USERS_ALL_TABLE_HEADER, 'DVR Users');
@@ -207,6 +209,12 @@ define(AC_ACCESS, '');
 
 define(AIP_HEADER, 'Add an IP Camera');
 define(AIP_SUBHEADER, '');
+define(AIP_CHOOSE_MANUF, 'Please choose manufacturer');
+define(AIP_CHOOSE_MODEL, 'Please choose model');
+define(AIP_CH_MAN_FIRST, 'Choose manufacturer first');
+define(AIP_IP_ADDR, 'Camera IP address');
+define(AIP_CHOOSE_RES, 'Please choose framerate/resolution');
+
 
 #login
 define(PLEASE_LOGIN, 'You need');
