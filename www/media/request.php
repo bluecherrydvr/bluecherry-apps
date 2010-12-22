@@ -9,7 +9,9 @@ include("../lib/lib.php");  #common functions
 $current_user = new DVRUser();
 $current_user->CheckStatus();
 $current_user->StatusAction('viewer');
+session_write_close();
 #/auth check
+
 
 function requestError($message)
 {
