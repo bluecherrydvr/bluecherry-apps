@@ -27,26 +27,26 @@ static void __handle_motion_start(struct bc_handle *bc)
 {
 	struct bc_record *bc_rec = bc->__data;
 
-	/* Just in case it's still around */
-	if (bc_rec->event != BC_EVENT_CAM_FAIL) {
-		bc_event_cam_end(&bc_rec->event);
-		bc_log("I(%d): motion event stopped", bc_rec->id);
-	}
+	/* If we already have an event in progress, keep it going */
+	if (bc_rec->event != BC_EVENT_CAM_FAIL)
+		return;
 
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
 
-	bc_log("I(%d): motion event started", bc_rec->id);
+	bc_log("I(%d): Motion event started", bc_rec->id);
 }
 
 static void __handle_motion_end(struct bc_handle *bc)
 {
 	struct bc_record *bc_rec = bc->__data;
 
-	if (bc_rec->event != BC_EVENT_CAM_FAIL) {
-		bc_event_cam_end(&bc_rec->event);
-		bc_log("I(%d): motion event stopped", bc_rec->id);
-	}
+	/* Ignore when no event is in progress */
+	if (bc_rec->event == BC_EVENT_CAM_FAIL)
+		return;
+
+	bc_event_cam_end(&bc_rec->event);
+	bc_log("I(%d): Motion event stopped", bc_rec->id);
 }
 
 static void check_globals(void)
