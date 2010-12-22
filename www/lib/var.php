@@ -13,7 +13,7 @@ define(VAR_SESSION_NAME, 'bluecherrydvr');
 
 
 #local card props
-$local_device_fps = array(30, 15, 10, 5, 3, 2);
+$local_device_fps = array(30, 15, 10, 7.5, 5, 3, 2);
 $resolutions['NTSC'] = array('704x480', '352x240');
 $resolutions['PAL']  = array('704x576', '352x288');
 
