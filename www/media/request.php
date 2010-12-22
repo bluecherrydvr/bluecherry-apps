@@ -98,8 +98,9 @@ if (empty($events))
 	requestError('Could not retrieve media for '.$id);
 
 $item = $events[0];
-dl_file_resumable($item['filepath']);
 
 bc_db_close($db);
+
+dl_file_resumable($item['filepath']);
 
 ?>
