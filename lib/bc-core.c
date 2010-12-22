@@ -183,44 +183,46 @@ int bc_buf_get(struct bc_handle *bc)
 		/* Call this just in case we have an event in progress. */
 		__bc_stop_motion_event(bc);
 
-		/* Skip frames until the first key frame */
 		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc))
+			if (!bc_buf_key_frame(bc)) 
 				return EAGAIN;
 			bc->got_vop = 1;
 		}
-
 		return 0;
-	}
+        }
 
-	/* Motion flag resets counter */
+	/* Normally for motion, we return EAGAIN, which means skip this,
+	 * frame. This can be 0 for "motion in progress, record frame" or
+	 * ERESTART for "motion just ended, stop this recording". */
+        ret = EAGAIN;
+
 	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
 		if (bc->mot_cnt == 0) {
 			bc->got_vop = 0;
 			// First time, send event
 			__bc_start_motion_event(bc);
 		}
-
+		/* Reset this counter every time we get a new event */
 		bc->mot_cnt = 60;
 	}
 
-	/* If motion count is 0, signal EOF */
-	if (bc->mot_cnt == 0) {
-		/* Send end of event */
-		__bc_stop_motion_event(bc);
-		return ERESTART;
-	}
-
-	/* Skip frames until the first key frame */
-	if (!bc->got_vop) {
+	if (bc->mot_cnt && !bc->got_vop) {
 		if (!bc_buf_key_frame(bc))
-			return EAGAIN; 
+			return EAGAIN;
 		bc->got_vop = 1;
 	}
 
-	bc->mot_cnt--;
+	if (bc->mot_cnt == 1) {
+		/* End of event */
+		bc->mot_cnt = 0;
+		ret = ERESTART;
+		__bc_stop_motion_event(bc);
+	} else if (bc->mot_cnt) {
+		bc->mot_cnt--;
+		ret = 0;
+	}
 
-	return bc->mot_cnt ? 0 : ERESTART;
+	return ret;
 }
 
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
