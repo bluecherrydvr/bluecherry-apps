@@ -18,6 +18,7 @@ static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 static float max_used = 95.00;
+static float min_used = 90.00;
 
 char global_sched[7 * 24];
 char media_storage[256];
@@ -132,10 +133,10 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-/* Check if our media directory is getting full and delete old events until
- * there's less than max_used% used. Do not delete archived events. If we've
- * deleted everything we can and we are still using more than or equal to
- * max_used%, then complain....LOUDLY! */
+/* Check if our media directory is getting full (max_used) and delete old
+ * events until there's less than min_used% used. Do not delete archived
+ * events. If we've deleted everything we can and we are still using more
+ * than or equal to max_used%, then complain....LOUDLY! */
 static void bc_check_media(void)
 {
 	struct statvfs st;
@@ -168,7 +169,7 @@ static void bc_check_media(void)
 		return;
 	}
 
-	for (i = 0; i < nrows && used >= max_used; i++) {
+	for (i = 0; i < nrows && used >= min_used; i++) {
 		char *filepath = bc_db_get_val(rows, ncols, i, "filepath");
 		int id = bc_db_get_val_int(rows, ncols, i, "id");
 
