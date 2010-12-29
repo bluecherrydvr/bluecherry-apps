@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <stdarg.h>
+#include <sys/statvfs.h>
 
 #include <libavutil/log.h>
 
@@ -16,6 +17,7 @@ static BC_DECLARE_LIST(bc_rec_list);
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
+static float max_used = 95.00;
 
 char global_sched[7 * 24];
 char media_storage[256];
@@ -48,7 +50,8 @@ static void __handle_motion_end(struct bc_handle *bc)
 	bc_log("I(%d): Motion event stopped", bc_rec->id);
 }
 
-static void check_globals(void)
+/* Update our global settings */
+static void bc_check_globals(void)
 {
 	int nrows, ncols;
 	char **rows;
@@ -86,7 +89,8 @@ static void check_globals(void)
 		bc_db_free_table(rows);
 }
 
-static void check_threads(void)
+/* Check for threads that have quit */
+static void bc_check_threads(void)
 {
 	struct bc_record *bc_rec, *__t;
 	int ret;
@@ -111,7 +115,7 @@ static void check_threads(void)
 	}
 }
 
-static struct bc_record *record_exists(const int id)
+static struct bc_record *bc_record_exists(const int id)
 {
 	struct bc_record *bc_rec;
 	struct bc_list_struct *lh;
@@ -128,7 +132,73 @@ static struct bc_record *record_exists(const int id)
 	return NULL;
 }
 
-static void check_db(void)
+/* Check if our media directory is getting full and delete old events until
+ * there's less than max_used% used. Do not delete archived events. If we've
+ * deleted everything we can and we are still using more than or equal to
+ * max_used%, then complain....LOUDLY! */
+static void bc_check_media(void)
+{
+	struct statvfs st;
+	float used;
+	int nrows, ncols;
+	char **rows;
+	int res, i;
+
+	if (statvfs(media_storage, &st)) {
+		bc_log("E: Could not stat filesystem for %s: %m",
+		       media_storage);
+		return;
+	}
+
+	used = (float)st.f_bavail / (float)st.f_blocks;
+	if (used < max_used)
+		return;
+
+	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
+	       media_storage, used);
+
+	pthread_mutex_lock(&db_lock);
+
+	res = bc_db_get_table(&nrows, &ncols, &rows,
+			      "SELECT * from Media WHERE archive=FALSE AND "
+			      "end!=0 ORDER BY start ASC;");
+
+	if (res != 0) {
+		pthread_mutex_unlock(&db_lock);
+		return;
+	}
+
+	for (i = 0; i < nrows && used >= max_used; i++) {
+		char *filepath = bc_db_get_val(rows, ncols, i, "filepath");
+		int id = bc_db_get_val_int(rows, ncols, i, "id");
+
+		unlink(filepath);
+		bc_db_query("UPDATE Media SET filepath='',size=0 "
+			    "WHERE id=%d", id);
+
+		bc_log("W: Removed media %d, file %s to make space", id,
+		       filepath);
+
+		if (statvfs(media_storage, &st)) {
+			bc_log("E: Could not stat filesystem for %s: %m",
+			       media_storage);
+			break;
+		}
+
+		used = (float)st.f_bavail / (float)st.f_blocks;
+        }
+
+	bc_db_free_table(rows);
+	pthread_mutex_unlock(&db_lock);
+
+	if (used >= max_used) {
+		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
+		       "any more old media!", used);
+		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
+	}
+}
+
+static void bc_check_db(void)
 {
 	struct bc_record *bc_rec;
 	int nrows, ncols;
@@ -136,17 +206,14 @@ static void check_db(void)
 	int i;
 	int res;
 
-	check_globals();
-
-	pthread_mutex_lock(&db_lock);
+	bc_check_globals();
+	bc_check_media();
 
 	res = bc_db_get_table(&nrows, &ncols, &rows,
 			      "SELECT * from Devices;");
 
-	if (res != 0 || nrows == 0) {
-		pthread_mutex_unlock(&db_lock);
+	if (res != 0 || nrows == 0)
 		return;
-	}
 
 	for (i = 0; i < nrows; i++) {
 		char *proto = bc_db_get_val(rows, ncols, i, "protocol");
@@ -155,7 +222,7 @@ static void check_db(void)
 		if ((id < 0) || !proto)
 			continue;
 
-		bc_rec = record_exists(id);
+		bc_rec = bc_record_exists(id);
 		if (bc_rec) {
 			bc_update_record(bc_rec, rows, ncols, i);
 			continue;
@@ -182,8 +249,6 @@ static void check_db(void)
 	}
 
 	bc_db_free_table(rows);
-
-	pthread_mutex_unlock(&db_lock);
 }
 
 static void usage(void)
@@ -259,7 +324,7 @@ int main(int argc, char **argv)
 	/* Main loop */
 	loops = 0;
 	for (;;) {
-		check_threads();
+		bc_check_threads();
 
 		/* Check the db every minute */
 		if (loops-- > 0) {
@@ -269,7 +334,7 @@ int main(int argc, char **argv)
 		loops = 60;
 
 		bc_check_avail();
-		check_db();
+		bc_check_db();
 	}
 
 	exit(0);
