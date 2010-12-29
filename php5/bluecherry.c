@@ -73,6 +73,8 @@ PHP_FUNCTION(bc_db_open)
 {
 	if (bc_db_open())
 		RETURN_FALSE;
+
+	RETURN_TRUE;
 }
 
 PHP_FUNCTION(bc_db_close)

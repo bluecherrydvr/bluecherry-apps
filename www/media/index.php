@@ -13,13 +13,12 @@ $current_user->StatusAction('viewer');
 
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
 
-$db = bc_db_open();
-if (!$db) {
+if (!bc_db_open()) {
 	print "<error>Could not open database</error>\n";
 	exit;
 }
 
-$events = bc_db_get_table($db, "SELECT * FROM Media ORDER BY start DESC");
+$events = bc_db_get_table("SELECT * FROM Media ORDER BY start DESC");
 
 # Output one item for each media entry
 foreach ($events as $item) {
@@ -34,5 +33,5 @@ foreach ($events as $item) {
 	print "  </item>\n";
 }
 
-bc_db_close($db);
+bc_db_close();
 ?>

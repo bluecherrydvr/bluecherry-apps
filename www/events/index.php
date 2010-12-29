@@ -11,7 +11,7 @@ $current_user->CheckStatus();
 $current_user->StatusAction('viewer');
 #/auth check
 
-$db = bc_db_open() or die("Could not open database\n");
+bc_db_open() or die("Could not open database\n");
 
 $query = "SELECT * FROM EventsCam WHERE ";
 if (isset($_GET['startDate']))
@@ -27,7 +27,7 @@ $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
 if ($limit > 0)
 	$query .= "LIMIT ".$limit;
 
-$events = bc_db_get_table($db, $query);
+$events = bc_db_get_table($query);
 
 # Output header for this feed
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
@@ -88,5 +88,5 @@ foreach ($events as $item) {
 # Close it out
 print "</feed>\n";
 
-bc_db_close($db);
+bc_db_close();
 ?>
