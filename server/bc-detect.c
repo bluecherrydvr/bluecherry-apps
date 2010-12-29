@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <pthread.h>
 
 #include <libbluecherry.h>
 
@@ -95,18 +96,21 @@ static void check_solo(const char *dev, const char **driver, const char **alsa,
 	return;
 }
 
-void bc_check_avail(struct bc_db_handle *bc_db)
+void bc_check_avail(void)
 {
 	DIR *dir;
 	struct dirent *dent;
 
+	pthread_mutex_lock(&db_lock);
+
 	/* Truncate the table to clear all entries */
-	bc_db_query(bc_db, "DELETE FROM AvailableSources");
+	bc_db_query("DELETE FROM AvailableSources");
 
 	dir = opendir("/dev");
 	if (dir == NULL) {
 		bc_log("Could not open /dev: %m");
-		exit(1);
+		pthread_mutex_unlock(&db_lock);
+		return;
 	}
 
 	while ((dent = readdir(dir)) != NULL) {
@@ -124,11 +128,13 @@ void bc_check_avail(struct bc_db_handle *bc_db)
 		if (driver == NULL)
 			continue;
 
-		bc_db_query(bc_db, "INSERT INTO AvailableSources "
+		bc_db_query("INSERT INTO AvailableSources "
 			    "(devicepath, driver, alsasounddev,card_id) "
 			    "VALUES('/dev/%s', '%s', '%s',%d);", dev,
 			    driver, alsadev ?: "", card_id);
 	}
 
 	closedir(dir);
+
+	pthread_mutex_unlock(&db_lock);
 }

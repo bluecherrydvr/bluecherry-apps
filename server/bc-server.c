@@ -12,7 +12,6 @@
 #include "bc-server.h"
 
 static BC_DECLARE_LIST(bc_rec_list);
-static struct bc_db_handle *bc_db;
 
 static int max_threads;
 static int cur_threads;
@@ -56,7 +55,7 @@ static void check_globals(void)
 	int res;
 
 	/* Get global schedul, default to continuous */
-        res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+        res = bc_db_get_table(&nrows, &ncols, &rows,
 			      "SELECT * from GlobalSettings WHERE "
 			      "parameter='G_DEV_SCED';");
 
@@ -69,10 +68,10 @@ static void check_globals(void)
 		memset(global_sched, 'C', sizeof(global_sched));
 	}
 	if (res == 0)
-		bc_db_free_table(bc_db, rows);
+		bc_db_free_table(rows);
 
 	/* Get path to media storage location, or use default */
-	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+	res = bc_db_get_table(&nrows, &ncols, &rows,
 			      "SELECT * from GlobalSettings WHERE "
 			      "parameter='G_DVR_MEDIA_STORE';");
 
@@ -84,7 +83,7 @@ static void check_globals(void)
 		strcpy(media_storage, "/var/lib/bluecherry/recordings");
 	}
 	if (res == 0)
-		bc_db_free_table(bc_db, rows);
+		bc_db_free_table(rows);
 }
 
 static void check_threads(void)
@@ -139,11 +138,15 @@ static void check_db(void)
 
 	check_globals();
 
-	res = bc_db_get_table(bc_db, &nrows, &ncols, &rows,
+	pthread_mutex_lock(&db_lock);
+
+	res = bc_db_get_table(&nrows, &ncols, &rows,
 			      "SELECT * from Devices;");
 
-	if (res != 0 || nrows == 0)
+	if (res != 0 || nrows == 0) {
+		pthread_mutex_unlock(&db_lock);
 		return;
+	}
 
 	for (i = 0; i < nrows; i++) {
 		char *proto = bc_db_get_val(rows, ncols, i, "protocol");
@@ -178,7 +181,9 @@ static void check_db(void)
 		bc_list_add(&bc_rec->list, &bc_rec_list);
 	}
 
-	bc_db_free_table(bc_db, rows);
+	bc_db_free_table(rows);
+
+	pthread_mutex_unlock(&db_lock);
 }
 
 static void usage(void)
@@ -239,8 +244,7 @@ int main(int argc, char **argv)
 	/* Help pipe av* log to our log */
 	av_log_set_callback(av_log_cb);
 
-	bc_db = bc_db_open();
-	if (bc_db == NULL) {
+	if (bc_db_open()) {
 		bc_log("E: Could not open SQL database");
 		exit(1);
 	}
@@ -264,7 +268,7 @@ int main(int argc, char **argv)
 		}
 		loops = 60;
 
-		bc_check_avail(bc_db);
+		bc_check_avail();
 		check_db();
 	}
 

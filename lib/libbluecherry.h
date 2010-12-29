@@ -238,15 +238,14 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	__attribute__ ((format (printf, 2, 3)));
 
 /* Database functions */
-struct bc_db_handle *bc_db_open(void);
-void bc_db_close(struct bc_db_handle *bc_db);
-int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
-		    char ***res, const char *fmt, ...)
-	__attribute__ ((format (printf, 5, 6)));
-void bc_db_free_table(struct bc_db_handle *bc_db, char **res);
-int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
-	__attribute__ ((format (printf, 2, 3)));
-unsigned long bc_db_last_insert_rowid(struct bc_db_handle *bc_db);
+int bc_db_open(void);
+void bc_db_close(void);
+int bc_db_get_table(int *nrows, int *ncols, char ***res, const char *fmt, ...)
+	__attribute__ ((format (printf, 4, 5)));
+void bc_db_free_table(char **res);
+int bc_db_query(const char *sql, ...)
+	__attribute__ ((format (printf, 1, 2)));
+unsigned long bc_db_last_insert_rowid(void);
 
 /* Used to get specific values from a table result */
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
@@ -294,5 +293,9 @@ void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm);
 /* Handlers for motion events */
 extern void (*bc_handle_motion_start)(struct bc_handle *bc);
 extern void (*bc_handle_motion_end)(struct bc_handle *bc);
+
+/* Global database handle */
+extern struct bc_db_handle bcdb;
+extern pthread_mutex_t db_lock;
 
 #endif /* __LIBBLUECHERRY_H */

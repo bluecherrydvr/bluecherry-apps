@@ -14,23 +14,32 @@ extern struct bc_db_ops bc_db_sqlite;
 extern struct bc_db_ops bc_db_psql;
 extern struct bc_db_ops bc_db_mysql;
 
-void bc_db_close(struct bc_db_handle *bc_db)
-{
-	if (bc_db->db_ops)
-		bc_db->db_ops->close(bc_db->dbh);
+pthread_mutex_t db_lock;
 
-	bc_db->dbh = NULL;
+struct bc_db_handle bcdb = {
+	.db_type	= BC_DB_SQLITE,
+	.dbh		= NULL,
+	.db_ops		= NULL,
+};
+
+void bc_db_close(void)
+{
+	if (bcdb.db_ops)
+		bcdb.db_ops->close(bcdb.dbh);
+	bcdb.dbh = NULL;
+	bcdb.db_ops = NULL;
 }
 
-struct bc_db_handle *bc_db_open(void)
+int bc_db_open(void)
 {
-	struct bc_db_handle *bc_db = malloc(sizeof(*bc_db));
 	struct config_t cfg;
 	long type;
+	int ret = 0;
 
-	if (bc_db == NULL)
-		return NULL;
-	memset(bc_db, 0, sizeof(*bc_db));
+	if (bcdb.dbh != NULL)
+		return 0;
+
+	pthread_mutex_init(&db_lock, NULL);
 
 	config_init(&cfg);
 	if (!config_read_file(&cfg, BC_CONFIG)) {
@@ -46,9 +55,9 @@ struct bc_db_handle *bc_db_open(void)
 
 	switch (type) {
 	case BC_DB_SQLITE:
-		bc_db->db_type = BC_DB_SQLITE;
-		bc_db->db_ops = &bc_db_sqlite;
-		bc_db->dbh = bc_db->db_ops->open(&cfg);
+		bcdb.db_type = BC_DB_SQLITE;
+		bcdb.db_ops = &bc_db_sqlite;
+		bcdb.dbh = bcdb.db_ops->open(&cfg);
 		break;
 	case BC_DB_PSQL:
 	case BC_DB_MYSQL:
@@ -57,44 +66,43 @@ struct bc_db_handle *bc_db_open(void)
 	}
 
 db_error:
-	if (bc_db && !bc_db->dbh) {
-		free(bc_db);
-		bc_db = NULL;
+	if (!bcdb.dbh) {
+		bcdb.db_ops = NULL;
+		ret = -1;
 	}
 
 	config_destroy(&cfg);
 
-	return bc_db;
+	return ret;
 }
 
-int bc_db_query(struct bc_db_handle *bc_db, const char *sql, ...)
+int bc_db_query(const char *sql, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, sql);
-	ret = bc_db->db_ops->query(bc_db->dbh, sql, ap);
+	ret = bcdb.db_ops->query(bcdb.dbh, sql, ap);
 	va_end(ap);
 
 	return ret;
 }
 
-int bc_db_get_table(struct bc_db_handle *bc_db, int *nrows, int *ncols,
-		    char ***res, const char *fmt, ...)
+int bc_db_get_table(int *nrows, int *ncols, char ***res, const char *fmt, ...)
 {
 	va_list ap;
 	int ret;
 
 	va_start(ap, fmt);
-	ret = bc_db->db_ops->get_table(bc_db->dbh, nrows, ncols, res, fmt, ap);
+	ret = bcdb.db_ops->get_table(bcdb.dbh, nrows, ncols, res, fmt, ap);
 	va_end(ap);
 
 	return ret;
 }
 
-void bc_db_free_table(struct bc_db_handle *bc_db, char **res)
+void bc_db_free_table(char **res)
 {
-	bc_db->db_ops->free_table(bc_db->dbh, res);
+	bcdb.db_ops->free_table(bcdb.dbh, res);
 }
 
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname)
@@ -123,7 +131,7 @@ int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname)
 	return val ? (atoi(val) ? 1 : 0) : 0;
 }
 
-long unsigned bc_db_last_insert_rowid(struct bc_db_handle *bc_db)
+long unsigned bc_db_last_insert_rowid(void)
 {
-	return bc_db->db_ops->last_insert_rowid(bc_db->dbh);
+	return bcdb.db_ops->last_insert_rowid(bcdb.dbh);
 }

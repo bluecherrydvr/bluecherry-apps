@@ -42,8 +42,6 @@ static const char *cont_type_to_str[] = {
 /* Linked list if events that failed to write */
 static BC_DECLARE_LIST(cam_event_queue);
 static BC_DECLARE_LIST(sys_event_queue);
-static struct bc_db_handle *bcdb;
-static pthread_mutex_t db_lock;
 
 struct bc_event_cam {
 	int id;
@@ -94,13 +92,8 @@ static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
 
 static int bce_open_db(void)
 {
-	if (bcdb)
-		return 0;
-
-	if ((bcdb = bc_db_open()) == NULL)
+	if (bc_db_open())
 		return -1;
-
-	pthread_mutex_init(&db_lock, NULL);
 
 	return 0;
 }
@@ -125,33 +118,33 @@ static int __do_media(struct bc_media_entry *bcm)
 	if (bcm->table_id) {
 		__update_stat(bcm);
 		/* This is the common case to end a call */
-		res = bc_db_query(bcdb, "UPDATE Media SET end='%lu',size=%lu "
+		res = bc_db_query("UPDATE Media SET end='%lu',size=%lu "
 				  "WHERE id=%lu", time(NULL),
 				  bcm->bytes, bcm->table_id);
 	} else if (!bcm->start) {
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
 		pthread_mutex_lock(&db_lock);
-		res = bc_db_query(bcdb, "INSERT INTO Media (start,device_id,"
+		res = bc_db_query("INSERT INTO Media (start,device_id,"
 				  "container,video,audio,filepath) "
 				  "VALUES('%lu',%d,'%s','%s','%s','%s')",
 				  bcm->start, bcm->cam_id, bcm->cont,
 				  bcm->video, bcm->audio, bcm->filepath);
 		if (!res)
-			bcm->table_id = bc_db_last_insert_rowid(bcdb);
+			bcm->table_id = bc_db_last_insert_rowid();
 		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert fully. Usually means there was a failure */
 		__update_stat(bcm);
 		pthread_mutex_lock(&db_lock);
-		res = bc_db_query(bcdb, "INSERT INTO Media (start,end,"
+		res = bc_db_query("INSERT INTO Media (start,end,"
 				  "device_id,container,video,audio,filepath,"
 				  "size) VALUES('%lu','%lu','%d','%s','%s',"
 				  "'%s','%s',%lu)", bcm->start, time(NULL),
 				  bcm->cam_id, bcm->cont, bcm->video,
 				  bcm->audio, bcm->filepath, bcm->bytes);
 		if (!res)
-			bcm->table_id = bc_db_last_insert_rowid(bcdb);
+			bcm->table_id = bc_db_last_insert_rowid();
 		pthread_mutex_unlock(&db_lock);
 	}
 
@@ -171,34 +164,34 @@ static int __do_cam(struct bc_event_cam *bce)
 
 	if (bce->inserted) {
 		/* This is the common route to end a call */
-		res = bc_db_query(bcdb, "UPDATE EventsCam SET length='%lu'"
+		res = bc_db_query("UPDATE EventsCam SET length='%lu'"
 				  " WHERE id=%lu", bce->end_time - bce->start_time,
 				  bce->inserted);
 	} else if (bce->end_time) {
 		/* Insert with length, usually happens on failure, or singular */
 		pthread_mutex_lock(&db_lock);
-		res = bc_db_query(bcdb, "INSERT INTO EventsCam (time,level_id,"
+		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s','%lu')", bce->start_time, bce->level,
 				bce->id, bce->type, bce->end_time - bce->start_time);
 		if (!res)
-			bce->inserted = bc_db_last_insert_rowid(bcdb);
+			bce->inserted = bc_db_last_insert_rowid();
 		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert open ended (for later update), common start point */
 		pthread_mutex_lock(&db_lock);
-		res = bc_db_query(bcdb, "INSERT INTO EventsCam (time,level_id,"
+		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s',-1)", bce->start_time, bce->level,
 				bce->id, bce->type);
 		if (!res)
-			bce->inserted = bc_db_last_insert_rowid(bcdb);
+			bce->inserted = bc_db_last_insert_rowid();
 		pthread_mutex_unlock(&db_lock);
 	}
 
 	/* If we have a media reference, update with that info */
 	if (bce->inserted && bce->media)
-		bc_db_query(bcdb, "UPDATE EventsCam SET media_id=%lu"
+		bc_db_query("UPDATE EventsCam SET media_id=%lu"
 			    " WHERE id=%lu", bce->media->table_id, bce->inserted);
 
 	return res;
@@ -213,7 +206,7 @@ void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm)
 	if (!bce->inserted || !bcm->table_id)
 		return;
 
-	bc_db_query(bcdb, "UPDATE EventsCam SET media_id=%lu"
+	bc_db_query("UPDATE EventsCam SET media_id=%lu"
 		    " WHERE id=%lu", bcm->table_id, bce->inserted);
 }
 
@@ -222,7 +215,7 @@ static int __do_sys_insert(struct bc_event_sys *bce)
 	if (bce_open_db())
 		return -1;
 
-	return bc_db_query(bcdb, "INSERT INTO EventsSystem (time,level_id,"
+	return bc_db_query("INSERT INTO EventsSystem (time,level_id,"
                            "type_id) VALUES('%lu','%s','%s')", bce->time,
 			   bce->level, bce->type);
 }

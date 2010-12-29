@@ -335,7 +335,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	/* Get the output format */
-	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);
+	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
 	if (!bc_rec->fmt_out) {
 		errno = EINVAL;
 		return -1;
