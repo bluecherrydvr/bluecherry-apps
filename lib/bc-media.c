@@ -124,7 +124,6 @@ static int __do_media(struct bc_media_entry *bcm)
 	} else if (!bcm->start) {
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
-		pthread_mutex_lock(&db_lock);
 		res = bc_db_query("INSERT INTO Media (start,device_id,"
 				  "container,video,audio,filepath) "
 				  "VALUES('%lu',%d,'%s','%s','%s','%s')",
@@ -132,11 +131,9 @@ static int __do_media(struct bc_media_entry *bcm)
 				  bcm->video, bcm->audio, bcm->filepath);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid();
-		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert fully. Usually means there was a failure */
 		__update_stat(bcm);
-		pthread_mutex_lock(&db_lock);
 		res = bc_db_query("INSERT INTO Media (start,end,"
 				  "device_id,container,video,audio,filepath,"
 				  "size) VALUES('%lu','%lu','%d','%s','%s',"
@@ -145,10 +142,20 @@ static int __do_media(struct bc_media_entry *bcm)
 				  bcm->audio, bcm->filepath, bcm->bytes);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid();
-		pthread_mutex_unlock(&db_lock);
 	}
 
 	return res;
+}
+
+static int do_media(struct bc_media_entry *bcm)
+{
+	int ret;
+
+	pthread_mutex_lock(&db_lock);
+	ret = __do_media(bcm);
+	pthread_mutex_unlock(&db_lock);
+
+	return ret;
 }
 
 static int __do_cam(struct bc_event_cam *bce)
@@ -169,24 +176,20 @@ static int __do_cam(struct bc_event_cam *bce)
 				  bce->inserted);
 	} else if (bce->end_time) {
 		/* Insert with length, usually happens on failure, or singular */
-		pthread_mutex_lock(&db_lock);
 		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s','%lu')", bce->start_time, bce->level,
 				bce->id, bce->type, bce->end_time - bce->start_time);
 		if (!res)
 			bce->inserted = bc_db_last_insert_rowid();
-		pthread_mutex_unlock(&db_lock);
 	} else {
 		/* Insert open ended (for later update), common start point */
-		pthread_mutex_lock(&db_lock);
 		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s',-1)", bce->start_time, bce->level,
 				bce->id, bce->type);
 		if (!res)
 			bce->inserted = bc_db_last_insert_rowid();
-		pthread_mutex_unlock(&db_lock);
 	}
 
 	/* If we have a media reference, update with that info */
@@ -195,6 +198,17 @@ static int __do_cam(struct bc_event_cam *bce)
 			    " WHERE id=%lu", bce->media->table_id, bce->inserted);
 
 	return res;
+}
+
+static int do_cam(struct bc_event_cam *bce)
+{
+	int ret;
+
+	pthread_mutex_lock(&db_lock);
+	ret = __do_cam(bce);
+	pthread_mutex_unlock(&db_lock);
+
+	return ret;
 }
 
 void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm)
@@ -260,7 +274,7 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
         bcm->cont = cont_type_to_str[cont];
 	bcm->filepath = filepath;
 
-	__do_media(bcm);
+	do_media(bcm);
 
 	return bcm;
 }
@@ -292,7 +306,7 @@ int bc_media_end(bc_media_entry_t *__bcm)
 		bcm->end = time(NULL);
 
 	/* On failure, we add it to the event_queue to try later */
-	if (__do_media(bcm))
+	if (do_media(bcm))
 		return -1;
 
 	free(bcm);
@@ -310,7 +324,7 @@ bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 	if (bce == NULL)
 		return BC_EVENT_CAM_FAIL;
 
-	__do_cam(bce);
+	do_cam(bce);
 
 	return bce;
 }
@@ -329,7 +343,7 @@ void bc_event_cam_end(bc_event_cam_t *__bce)
 		bce->end_time = time(NULL);
 
 	/* On failure, we add it to the event_queue to try later */
-	if (__do_cam(bce))
+	if (do_cam(bce))
 		bc_list_add(&bce->list, &cam_event_queue);
 	else
 		free(bce);
@@ -361,7 +375,7 @@ void bc_media_event_clear(void)
 	bc_list_for_each(lh, &cam_event_queue) {
 		bcec = bc_list_entry(lh, struct bc_event_cam, list);
 		/* On error, do nothing */
-		if (__do_cam(bcec))
+		if (do_cam(bcec))
 			continue;
 
 		/* Finally, get this event out of the queue */
