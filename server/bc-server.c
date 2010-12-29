@@ -275,10 +275,10 @@ static void check_expire(void)
 {
 	time_t t = time(NULL);
 
-	if (t < 1293858000)
+	if (t < 1296536400)
 		return;
 
-	fprintf(stderr, "This beta expires Jan 1, 2011 00:00:00\n");
+	fprintf(stderr, "This beta expires Feb 1, 2011 00:00:00\n");
 	exit(1);
 }
 
