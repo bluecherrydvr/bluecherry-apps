@@ -1,9 +1,33 @@
-bluecherry (2.0.0-0beta2-1) lucid; urgency=low
+bluecherry (2.0.0-0beta2) lucid; urgency=low
 
-  * #581: Move bc-detect functionality into bc-server
-  * #524: Log start/stop of camera events
+  * Bug #474: Web: Device settings open after camera is disabled
+  * Bug #490: Timestamp is scrambled in latest driver release
+  * Bug #510: MJPEG feed breaks, causing video weirdness on random ports
+  * Bug #512: database is locked errors on startup running bc-detect
+  * Bug #555: Slight formatting issue with left column when using Qt Webkit
+    on OS X
+  * Bug #566: Web: Unable to change password
+  * Bug #567: Server requests can get stuck behind long requests, such as
+    video downloads
+  * Bug #572: Webview uses AvailableSources.id instead of Devices.id
+  * Bug #581: Resolve race condition in bc-detect
+  * Feature #385: Delete oldest events when disk usage reaches 95%
+  * Feature #407: Web: Add total devices found on 'Devices' page
+  * Feature #479: Add numerical value to video controls
+  * Feature #482: Web: Add text for 'Drag camera into layout'
+  * Feature #491: Add 'notes' area in the web setup interface
+  * Feature #506: Show logged in users
+  * Feature #524: Add motion start|stop information to bluecherry.log
+  * Feature #532: Allow storage location to be changed
+  * Feature #533: Changing between NTSC and PAL should perform an update on
+    already configured devices
+  * Feature #584: Web: Add 7.5FPS option for analog card drop down menu
+  * Feature #585: Web: Notify user that command line changes are required
+    when switching to PAL
+  * Feature #590: Resolve potential locking problem between bc-server and
+    event writer
 
- -- Ben Collins <bcollins@bluecherry.net>  Thu, 16 Dec 2010 13:47:20 -0500
+ -- Ben Collins <bcollins@bluecherry.net>  Wed, 29 Dec 2010 12:03:39 -0500
 
 bluecherry (2.0.0-0beta1-6) lucid; urgency=low
 
