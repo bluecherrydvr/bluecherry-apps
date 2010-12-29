@@ -17,7 +17,6 @@
 #define BCDB_NAME	"BC-DB Handle"
 
 static int bch_id;
-static int bcdb_id;
 
 static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 {
@@ -29,22 +28,10 @@ static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 	return;
 }
 
-static void bcdb_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
-{
-	struct bc_db_handle *bcdb;
-
-	if (bcdb)
-		bc_db_close(bcdb);
-
-	return;
-}
-
 PHP_MINIT_FUNCTION(bluecherry)
 {
 	bch_id = zend_register_list_destructors_ex(bch_destructor, NULL,
 						   BCH_NAME, module_number);
-	bcdb_id = zend_register_list_destructors_ex(bcdb_destructor, NULL,
-						    BCDB_NAME, module_number);
 
 	REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
 	REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
@@ -82,44 +69,20 @@ PHP_MINFO_FUNCTION(bluecherry)
 	}								\
 } while(0)
 
-#define BCDB_GET_RES(__func) do {					\
-	zval *z_ctx;							\
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",	\
-				  &z_ctx) == FAILURE)			\
-		RETURN_FALSE;						\
-	ZEND_FETCH_RESOURCE(bcdb, struct bc_db_handle *, &z_ctx, -1,	\
-			    BCDB_NAME, bcdb_id);			\
-	if (bcdb == NULL) {						\
-		php_error_docref(NULL TSRMLS_CC, E_WARNING,		\
-			__func ": invalid context");			\
-		RETURN_FALSE;						\
-	}								\
-} while(0)
-
 PHP_FUNCTION(bc_db_open)
 {
-	struct bc_db_handle *bcdb;
-
-	if ((bcdb = bc_db_open()) == NULL)
+	if (bc_db_open())
 		RETURN_FALSE;
-
-	ZEND_REGISTER_RESOURCE(return_value, bcdb, bcdb_id);
 }
 
 PHP_FUNCTION(bc_db_close)
 {
-	struct bc_db_handle *bcdb;
-
-	BCDB_GET_RES("bc_db_close");
-
-	zend_list_delete((long)bcdb);
-
+	bc_db_close();
 	RETURN_TRUE;
 }
 
 PHP_FUNCTION(bc_db_get_table)
 {
-	struct bc_db_handle *bcdb;
 	zval *z_ctx;
 	int nrows, ncols;
 	char *sql;
@@ -127,18 +90,11 @@ PHP_FUNCTION(bc_db_get_table)
 	char **rows;
 	int i;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rs", &z_ctx,
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
 				  &sql, &sql_len) == FAILURE)
 		RETURN_FALSE;
-	ZEND_FETCH_RESOURCE(bcdb, struct bc_db_handle *, &z_ctx, -1,
-			    BCDB_NAME, bcdb_id);
-	if (bcdb == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING,
-				 "bc_db_get_table: invalid context");
-		RETURN_FALSE;
-	}
 
-	i = bc_db_get_table(bcdb, &nrows, &ncols, &rows, sql);
+	i = bc_db_get_table(&nrows, &ncols, &rows, "%s", sql);
 	if (i || !nrows)
 		RETURN_FALSE;
 
@@ -161,7 +117,7 @@ PHP_FUNCTION(bc_db_get_table)
 		add_next_index_zval(return_value, row_arr);
 	}
 
-	bc_db_free_table(bcdb, rows);
+	bc_db_free_table(rows);
 }
 
 PHP_FUNCTION(bc_handle_get)
