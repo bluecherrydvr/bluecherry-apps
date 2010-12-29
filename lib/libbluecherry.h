@@ -246,6 +246,8 @@ void bc_db_free_table(char **res);
 int bc_db_query(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
 unsigned long bc_db_last_insert_rowid(void);
+void bc_db_lock(void);
+void bc_db_unlock(void);
 
 /* Used to get specific values from a table result */
 char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
@@ -296,6 +298,5 @@ extern void (*bc_handle_motion_end)(struct bc_handle *bc);
 
 /* Global database handle */
 extern struct bc_db_handle bcdb;
-extern pthread_mutex_t db_lock;
 
 #endif /* __LIBBLUECHERRY_H */

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <pthread.h>
 
 #include <libbluecherry.h>
 
@@ -14,7 +15,7 @@ extern struct bc_db_ops bc_db_sqlite;
 extern struct bc_db_ops bc_db_psql;
 extern struct bc_db_ops bc_db_mysql;
 
-pthread_mutex_t db_lock;
+static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct bc_db_handle bcdb = {
 	.db_type	= BC_DB_SQLITE,
@@ -22,12 +23,26 @@ struct bc_db_handle bcdb = {
 	.db_ops		= NULL,
 };
 
+void bc_db_lock(void)
+{
+	pthread_mutex_lock(&db_lock);
+}
+
+void bc_db_unlock(void)
+{
+	pthread_mutex_unlock(&db_lock);
+}
+
 void bc_db_close(void)
 {
+	bc_db_lock();
+
 	if (bcdb.db_ops)
 		bcdb.db_ops->close(bcdb.dbh);
 	bcdb.dbh = NULL;
 	bcdb.db_ops = NULL;
+
+	bc_db_unlock();
 }
 
 int bc_db_open(void)
@@ -36,10 +51,12 @@ int bc_db_open(void)
 	long type;
 	int ret = 0;
 
-	if (bcdb.dbh != NULL)
-		return 0;
+	bc_db_lock();
 
-	pthread_mutex_init(&db_lock, NULL);
+	if (bcdb.dbh != NULL) {
+		bc_db_unlock();
+		return 0;
+	}
 
 	config_init(&cfg);
 	if (!config_read_file(&cfg, BC_CONFIG)) {
@@ -72,6 +89,8 @@ db_error:
 	}
 
 	config_destroy(&cfg);
+
+	bc_db_unlock();
 
 	return ret;
 }

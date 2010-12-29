@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -151,9 +150,9 @@ static int do_media(struct bc_media_entry *bcm)
 {
 	int ret;
 
-	pthread_mutex_lock(&db_lock);
+	bc_db_lock();
 	ret = __do_media(bcm);
-	pthread_mutex_unlock(&db_lock);
+	bc_db_unlock();
 
 	return ret;
 }
@@ -204,9 +203,9 @@ static int do_cam(struct bc_event_cam *bce)
 {
 	int ret;
 
-	pthread_mutex_lock(&db_lock);
+	bc_db_lock();
 	ret = __do_cam(bce);
-	pthread_mutex_unlock(&db_lock);
+	bc_db_unlock();
 
 	return ret;
 }

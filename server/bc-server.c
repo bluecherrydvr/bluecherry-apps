@@ -158,20 +158,23 @@ static void bc_check_media(void)
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
 	       media_storage, used);
 
-	pthread_mutex_lock(&db_lock);
+	bc_db_lock();
 
 	res = bc_db_get_table(&nrows, &ncols, &rows,
 			      "SELECT * from Media WHERE archive=FALSE AND "
 			      "end!=0 ORDER BY start ASC;");
 
 	if (res != 0) {
-		pthread_mutex_unlock(&db_lock);
+		bc_db_unlock();
 		return;
 	}
 
 	for (i = 0; i < nrows && used >= min_used; i++) {
 		char *filepath = bc_db_get_val(rows, ncols, i, "filepath");
 		int id = bc_db_get_val_int(rows, ncols, i, "id");
+
+		if (filepath == NULL)
+			continue;
 
 		unlink(filepath);
 		bc_db_query("UPDATE Media SET filepath='',size=0 "
@@ -190,7 +193,7 @@ static void bc_check_media(void)
         }
 
 	bc_db_free_table(rows);
-	pthread_mutex_unlock(&db_lock);
+	bc_db_unlock();
 
 	if (used >= max_used) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "

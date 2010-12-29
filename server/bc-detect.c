@@ -101,7 +101,7 @@ void bc_check_avail(void)
 	DIR *dir;
 	struct dirent *dent;
 
-	pthread_mutex_lock(&db_lock);
+	bc_db_lock();
 
 	/* Truncate the table to clear all entries */
 	bc_db_query("DELETE FROM AvailableSources");
@@ -109,7 +109,7 @@ void bc_check_avail(void)
 	dir = opendir("/dev");
 	if (dir == NULL) {
 		bc_log("Could not open /dev: %m");
-		pthread_mutex_unlock(&db_lock);
+		bc_db_unlock();
 		return;
 	}
 
@@ -136,5 +136,5 @@ void bc_check_avail(void)
 
 	closedir(dir);
 
-	pthread_mutex_unlock(&db_lock);
+	bc_db_unlock();
 }
