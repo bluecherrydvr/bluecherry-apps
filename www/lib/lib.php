@@ -289,6 +289,7 @@ class BCDVRCard{
 		$this->devices = $db->DBFetchAll($tmp);
 		$this->type = count($this->devices);
 		$port = 1;
+		$this->signal_type = 'notconfigured';
 		foreach ($this->devices as $key => $device){
 			$this->devices[$key]['as_id'] = $this->devices[$key]['id'];
 			$tmp = $db->DBFetchArray($db->DBQuery("SELECT * FROM Devices WHERE source_video='{$device['devicepath']}'"));
