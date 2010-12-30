@@ -1,1 +1,1 @@
-<div id="message" class="INFO">This feature is currely in development.<br />Please check 'Announcements' for any available updates.</div>
+<div id="message" class="INFO">This feature is currently in development and will be released in <a href="http://improve.bluecherrydvr.com/versions/show/45">beta 3</a>.<br />Currently you can change the storage path location (General Settings -> Storage Location).<br />Please routinely check the Announcements tab for available updates.</div>
