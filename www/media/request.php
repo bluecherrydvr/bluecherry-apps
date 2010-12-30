@@ -91,17 +91,16 @@ $id = $_GET['id'];
 
 mb_http_output("pass");
 
-$db = bc_db_open();
-if (!$db)
+if (!bc_db_open())
 	requestError('Could not open database');
 
-$events = bc_db_get_table($db, "SELECT * FROM Media WHERE id=" . intval($id));
+$events = bc_db_get_table("SELECT * FROM Media WHERE id=" . intval($id));
 if (empty($events))
 	requestError('Could not retrieve media for '.$id);
 
 $item = $events[0];
 
-bc_db_close($db);
+bc_db_close();
 
 dl_file_resumable($item['filepath']);
 
