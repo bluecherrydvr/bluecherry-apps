@@ -16,6 +16,8 @@
 #include <sys/ioctl.h>
 #include <pthread.h>
 
+#include "bc-server.h"
+
 #include <libbluecherry.h>
 
 static const char *get_v4l2_card_name(const char *dev)
@@ -96,6 +98,16 @@ static void check_solo(const char *dev, const char **driver, const char **alsa,
 	return;
 }
 
+static void bc_add_debug_video(void)
+{
+	if (!debug_video)
+		return;
+	bc_db_query("INSERT INTO AvailableSources "
+		    "(id, devicepath, driver, alsasounddev, card_id) "
+		    "VALUES(999999, '%s', 'solo6010', '', 999999);",
+		    FAKE_VIDEO_DEV);
+}
+
 void bc_check_avail(void)
 {
 	DIR *dir;
@@ -105,6 +117,8 @@ void bc_check_avail(void)
 
 	/* Truncate the table to clear all entries */
 	bc_db_query("DELETE FROM AvailableSources");
+
+	bc_add_debug_video();
 
 	dir = opendir("/dev");
 	if (dir == NULL) {
@@ -129,8 +143,8 @@ void bc_check_avail(void)
 			continue;
 
 		bc_db_query("INSERT INTO AvailableSources "
-			    "(devicepath, driver, alsasounddev,card_id) "
-			    "VALUES('/dev/%s', '%s', '%s',%d);", dev,
+			    "(devicepath, driver, alsasounddev, card_id) "
+			    "VALUES('/dev/%s', '%s', '%s', %d);", dev,
 			    driver, alsadev ?: "", card_id);
 	}
 

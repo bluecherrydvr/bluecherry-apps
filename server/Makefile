@@ -8,6 +8,8 @@ TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-motion-tables.o \
 		  bc-detect.o
 
+#CFLAGS		+= -DEBUG
+
 all: $(TARGETS)
 
 bc-server: $(LIB) $(SERVER_OBJS)

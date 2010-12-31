@@ -15,6 +15,9 @@ static void try_formats(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
+	if (bc_rec->debug_video)
+		return;
+
 	if (bc_set_interval(bc, bc_rec->interval)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
@@ -35,6 +38,9 @@ static void update_osd(struct bc_record *bc_rec)
 	time_t t = time(NULL);
 	char buf[20];
 	struct tm tm;
+
+	if (bc_rec->debug_video)
+		return;
 
 	if (t == bc_rec->osd_time)
 		return;
@@ -63,14 +69,15 @@ static int process_schedule(struct bc_record *bc_rec)
 	} else if (bc_rec->sched_last) {
 		bc_close_avcodec(bc_rec);
 		bc_handle_stop(bc);
-		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
+		if (bc)
+			bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
 		bc_log("I(%d): Switching to new schedule '%s'", bc_rec->id,
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
 		       == 'N' ? "stopped" : "continuous"));
 	}
 
-	if (bc_rec->sched_cur == 'N')
+	if (bc_rec->sched_cur == 'N' || bc_rec->debug_video)
 		ret = 1;
 
 	pthread_mutex_unlock(&bc_rec->sched_mutex);
@@ -160,7 +167,7 @@ static void *bc_device_thread(void *data)
 
 struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 {
-	struct bc_handle *bc;
+	struct bc_handle *bc = NULL;
 	struct bc_record *bc_rec;
 	char *dev = bc_db_get_val(rows, ncols, row, "source_video");
 	char *aud_dev = bc_db_get_val(rows, ncols, row, "source_audio_in");
@@ -179,18 +186,25 @@ struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 	}
 	memset(bc_rec, 0, sizeof(*bc_rec));
 	memset(bc_rec->motion_map, '3', 22 * 18);
+
+	if (!strcmp(dev, FAKE_VIDEO_DEV))
+		bc_rec->debug_video = 1;
+
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
-	bc = bc_handle_get(dev);
-	if (bc == NULL) {
-		bc_log("E(%d): error opening device: %m", bc_rec->id);
-		free(bc_rec);
-		return NULL;
+	if (!bc_rec->debug_video) {
+		bc = bc_handle_get(dev);
+		if (bc == NULL) {
+			bc_log("E(%d): error opening device: %m", bc_rec->id);
+			free(bc_rec);
+			return NULL;
+		}
+
+		bc->__data = bc_rec;
+
+		bc_rec->bc = bc;
 	}
 
-	bc->__data = bc_rec;
-
-	bc_rec->bc = bc;
 	bc_rec->id = id;
 
 	bc_rec->dev = strdup(dev);
@@ -227,7 +241,8 @@ struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 	return bc_rec;
 
 record_fail:
-	bc_handle_free(bc);
+	if (bc)
+		bc_handle_free(bc);
 
 	free(bc_rec->dev);
 	free(bc_rec->name);
@@ -325,14 +340,16 @@ void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
 			 bc_db_get_val(rows, ncols, row, "motion_map"));
 
 	/* Update standard controls */
-	bc_set_control(bc, V4L2_CID_HUE,
-			bc_db_get_val_int(rows, ncols, row, "hue"));
-	bc_set_control(bc, V4L2_CID_CONTRAST,
-			bc_db_get_val_int(rows, ncols, row, "contrast"));
-	bc_set_control(bc, V4L2_CID_SATURATION,
-			bc_db_get_val_int(rows, ncols, row, "saturation"));
-	bc_set_control(bc, V4L2_CID_BRIGHTNESS,
-			bc_db_get_val_int(rows, ncols, row, "brightness"));
+	if (!bc_rec->debug_video) {
+		bc_set_control(bc, V4L2_CID_HUE,
+				bc_db_get_val_int(rows, ncols, row, "hue"));
+		bc_set_control(bc, V4L2_CID_CONTRAST,
+				bc_db_get_val_int(rows, ncols, row, "contrast"));
+		bc_set_control(bc, V4L2_CID_SATURATION,
+				bc_db_get_val_int(rows, ncols, row, "saturation"));
+		bc_set_control(bc, V4L2_CID_BRIGHTNESS,
+				bc_db_get_val_int(rows, ncols, row, "brightness"));
+	}
 
 	if (bc_db_get_val_int(rows, ncols, row, "schedule_override_global") > 0)
 		sched = bc_db_get_val(rows, ncols, row, "schedule");

@@ -15,6 +15,8 @@
 
 #include "g723-dec.h"
 
+#define FAKE_VIDEO_DEV		"/dev/video_fake"
+
 struct bc_record {
 	struct bc_handle	*bc;
 	AVOutputFormat		*fmt_out;
@@ -61,6 +63,9 @@ struct bc_record {
 	int			reset_vid;
 	int			width, height, fmt;
 	int			interval;
+
+	/* If this is a debug record */
+	int			debug_video;
 };
 
 /* Types for aud_format */
@@ -77,6 +82,7 @@ struct bc_record {
 extern pthread_mutex_t av_lock;
 extern char global_sched[7 * 24];
 extern char media_storage[256];
+extern int debug_video;
 
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);

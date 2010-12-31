@@ -20,6 +20,8 @@ static int record_id = -1;
 static float max_used = 95.00;
 static float min_used = 90.00;
 
+int debug_video = 0;
+
 char global_sched[7 * 24];
 char media_storage[256];
 
@@ -51,6 +53,9 @@ static void __handle_motion_end(struct bc_handle *bc)
 	bc_log("I(%d): Motion event stopped", bc_rec->id);
 }
 
+/* XXX Create a function here so that we don't have to do so many
+ * SELECT's in bc_check_globals() */
+
 /* Update our global settings */
 static void bc_check_globals(void)
 {
@@ -67,9 +72,11 @@ static void bc_check_globals(void)
 		char *sched = bc_db_get_val(rows, ncols, 0, "value");
 		if (sched && strlen(sched) == sizeof(global_sched))
 			memcpy(global_sched, sched, sizeof(global_sched));
+		bc_log("D: Updated global schedule from database");
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
+		bc_log("D: Using default global schedule");
 	}
 	if (res == 0)
 		bc_db_free_table(rows);
@@ -260,7 +267,10 @@ static void usage(void)
 	fprintf(stderr, "Usage: %s [-s]\n", __progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -m\tMax threads to start\n");
-	fprintf(stderr, "  -r\tRecord a specifc ID only\n");
+	fprintf(stderr, "  -r\tRecord a specific ID only\n");
+#ifdef EBUG
+	fprintf(stderr, "  -c\tCreate and start fake video connection\n");
+#endif
 	exit(1);
 }
 
@@ -294,11 +304,12 @@ int main(int argc, char **argv)
 
 	check_expire();
 
-	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "hscm:r:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'm': max_threads = atoi(optarg); break;
 		case 'r': record_id = atoi(optarg); break;
+		case 'c': debug_video = 1; break;
 		case 'h': default: usage();
 		}
 	}
