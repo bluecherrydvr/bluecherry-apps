@@ -15,7 +15,7 @@ define('PAGE_HEADER_SEPARATOR', ' :: ');
 #main menu
 define('MMENU_NEWS', 'Announcements');
 define('MMENU_GS', 'General settings');
-define('MENU_STORAGE', 'Storage');
+define('MMENU_STORAGE', 'Storage');
 define('MMENU_USERS', 'Users');
 define('MMENU_LOG', 'System Log');
 define('MMENU_DEVICES', 'Devices');

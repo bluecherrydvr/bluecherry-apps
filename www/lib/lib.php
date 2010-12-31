@@ -40,7 +40,7 @@ class DVRDatabase{
 		while($tmp = fgets($config_file, 4096)){
 			$tmp = trim($tmp);
 			$tmp[0]=='#' or preg_match("/(.*)[\ ][\=][\ ]*(.*);/", $tmp, $matches);
-			if $tmp[0]!='#'{
+			if ($tmp[0]!='#') {
 				$this->config_file_vars[$matches[1]] = trim($matches[2], '"');
 				empty($matches);
 			}
