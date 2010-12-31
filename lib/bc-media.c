@@ -89,14 +89,6 @@ static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
 	return bce;
 }
 
-static int bce_open_db(void)
-{
-	if (bc_db_open())
-		return -1;
-
-	return 0;
-}
-
 static void __update_stat(struct bc_media_entry *bcm)
 {
 	struct stat st;
@@ -110,9 +102,6 @@ static void __update_stat(struct bc_media_entry *bcm)
 static int __do_media(struct bc_media_entry *bcm)
 {
 	int res;
-
-	if (bce_open_db())
-		return -1;
 
 	if (bcm->table_id) {
 		__update_stat(bcm);
@@ -160,9 +149,6 @@ static int do_media(struct bc_media_entry *bcm)
 static int __do_cam(struct bc_event_cam *bce)
 {
 	int res;
-
-	if (bce_open_db())
-		return -1;
 
 	/* If the media isn't inserted yet, don't worry about the event */
 	if (bce->media && !bce->media->table_id)
@@ -225,9 +211,6 @@ void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm)
 
 static int __do_sys_insert(struct bc_event_sys *bce)
 {
-	if (bce_open_db())
-		return -1;
-
 	return bc_db_query("INSERT INTO EventsSystem (time,level_id,"
                            "type_id) VALUES('%lu','%s','%s')", bce->time,
 			   bce->level, bce->type);

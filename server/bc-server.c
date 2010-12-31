@@ -72,11 +72,9 @@ static void bc_check_globals(void)
 		char *sched = bc_db_get_val(rows, ncols, 0, "value");
 		if (sched && strlen(sched) == sizeof(global_sched))
 			memcpy(global_sched, sched, sizeof(global_sched));
-		bc_log("D: Updated global schedule from database");
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
-		bc_log("D: Using default global schedule");
 	}
 	if (res == 0)
 		bc_db_free_table(rows);
