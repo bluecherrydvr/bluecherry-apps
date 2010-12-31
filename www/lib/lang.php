@@ -170,7 +170,7 @@ define(BACK_TO_ADMIN, 'Return to admin panel');
 
 define(NO_NEWS, 'There are no news right now.');
 
-define(NO_CARDS, 'No bluecherry cards were detected. Please make sure the card is in the computer and run <b>sudo bc-detect</b>');
+define(NO_CARDS, 'No Bluecherry cards were detected.');
 
 /*user page errors*/
 define(NO_USERNAME, 'Login field can not be empty.');
