@@ -22,7 +22,7 @@ class ServerStats{
 				$file = fopen("/proc/stat", "r");
 				$tmp = fgets($file, 4096);				
 				$tmp = preg_split("/[\s]+/", $tmp);
-				var_dump_pre($tmp);
+
 				for ($j=1; $j<=4; $j++){
 					$reading[$i][$j-1]=$tmp[$j];	
 				};
@@ -61,14 +61,14 @@ class ServerStats{
 			$uptime  = $this->GetUpTime();
 			$server  = $this->IsServerRunning();
 			//simple XML output
-			//header('Content-type: text/xml');
+			header('Content-type: text/xml');
 			echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
 				  	<server-status>
 						<cpu-usage>$loadavg</cpu-usage>
 						<memory-total>".$memstat['1']."</memory-total>
 						<memory-inuse>".$memstat['2']."</memory-inuse>
 						<memory-used-percentage>".$memstat['3']."</memory-used-percentage>
-						<bc-server>".(($server)? 'up' : 'down')."</bc-server-running>
+						<bc-server-running>".(($server)? 'up' : 'down')."</bc-server-running>
 						<server-uptime>$uptime</server-uptime>
 				  	</server-status>
 			";

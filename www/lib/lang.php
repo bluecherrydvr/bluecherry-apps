@@ -152,7 +152,7 @@ define(VA_SATURATION, 'Staruration');
 define(VA_CONTRAST, 'Contrast');
 define(VA_SETDEFAULT, 'Reset values to default');
 
-define(DEVICE_ENCODING_UPDATED, 'Video standard changed.');
+define(DEVICE_ENCODING_UPDATED, '<![CDATA[Video standard setting changed. <hr /> <b>For the change to take effect you need to restart the server.</b>]]>');
 define(DB_FAIL_TRY_LATER, 'Could not apply changes. Please make sure you are able to connect to the DVR server and that the server is running.');
 
 define(MMAP_HEADER, 'Motion detection settings');
