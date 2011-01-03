@@ -17,6 +17,8 @@ static void *bc_db_sqlite_open(struct config_t *cfg)
 		return NULL;
 
 	if (sqlite3_open(file, &sqlite)) {
+		bc_log("(SQL ERROR): Opening db %s: %s", file,
+		       sqlite3_errmsg(sqlite));
 		sqlite3_close(sqlite);
 		return NULL;
 	}
