@@ -17,8 +17,8 @@ static BC_DECLARE_LIST(bc_rec_list);
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
-static float max_used = 95.00;
-static float min_used = 90.00;
+static float min_avail = 5.00;
+static float min_thresh = 10.00;
 
 int debug_video = 0;
 
@@ -138,35 +138,45 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-/* Check if our media directory is getting full (max_used) and delete old
- * events until there's less than min_used% used. Do not delete archived
- * events. If we've deleted everything we can and we are still using more
- * than or equal to max_used%, then complain....LOUDLY! */
-static void bc_check_media(void)
+static int get_avail(float *avail)
 {
 	struct statvfs st;
-	float used;
-	int nrows, ncols;
-	char **rows;
-	int res, i;
 
 	if (statvfs(media_storage, &st)) {
 		bc_log("E: Could not stat filesystem for %s: %m",
 		       media_storage);
-		return;
+		return -1;
 	}
 
-	used = (float)st.f_bavail / (float)st.f_blocks;
-	if (used < max_used)
+	*avail = (float)((float)st.f_bavail / (float)st.f_blocks) * 100;
+
+	return 0;
+}
+
+/* Check if our media directory is getting full (min_avail%) and delete old
+ * events until there's more than or equal to min_thresh% available. Do not
+ * delete archived events. If we've deleted everything we can and we still
+ * don't have more than min_avail% available, then complain....LOUDLY! */
+static void bc_check_media(void)
+{
+	float avail;
+	int nrows, ncols;
+	char **rows;
+	int res, i;
+
+	if (get_avail(&avail))
+		return;
+
+	if (avail >= min_avail)
 		return;
 
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
-	       media_storage, used);
+	       media_storage, avail);
 
 	bc_db_lock();
 
 	res = bc_db_get_table(&nrows, &ncols, &rows,
-			      "SELECT * from Media WHERE archive=FALSE AND "
+			      "SELECT * from Media WHERE archive!=0 AND "
 			      "end!=0 ORDER BY start ASC;");
 
 	if (res != 0) {
@@ -174,7 +184,7 @@ static void bc_check_media(void)
 		return;
 	}
 
-	for (i = 0; i < nrows && used >= min_used; i++) {
+	for (i = 0; i < nrows && avail < min_thresh; i++) {
 		char *filepath = bc_db_get_val(rows, ncols, i, "filepath");
 		int id = bc_db_get_val_int(rows, ncols, i, "id");
 
@@ -188,21 +198,16 @@ static void bc_check_media(void)
 		bc_log("W: Removed media %d, file %s to make space", id,
 		       filepath);
 
-		if (statvfs(media_storage, &st)) {
-			bc_log("E: Could not stat filesystem for %s: %m",
-			       media_storage);
+		if (get_avail(&avail))
 			break;
-		}
-
-		used = (float)st.f_bavail / (float)st.f_blocks;
         }
 
 	bc_db_free_table(rows);
 	bc_db_unlock();
 
-	if (used >= max_used) {
+	if (avail < min_avail) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
-		       "any more old media!", used);
+		       "any more old media!", avail);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 	}
 }

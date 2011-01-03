@@ -101,4 +101,10 @@ int bc_motion_val(bc_motion_type_t type, const char v);
 
 void bc_check_avail(void);
 
+#ifdef EBUG
+#define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)
+#else
+#define bc_debug(fmt, args...) do{}while(0)
+#endif
+
 #endif /* __BC_SERVER_H */
