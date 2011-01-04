@@ -278,7 +278,8 @@ int bc_event_sys(bc_event_level_t level,
 bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 				bc_media_audio_type_t audio,
 				bc_media_cont_type_t cont,
-				const char *filepath);
+				const char *filepath,
+				bc_event_cam_t bce);
 /* Called at the end of the media to mark end time. If this returns
  * non-zero, you cannot end the media. */
 int bc_media_end(bc_media_entry_t *bcm);
@@ -289,14 +290,8 @@ time_t bc_media_length(bc_media_entry_t *bcm);
  * to the db are retried. */
 void bc_media_event_clear(void);
 
-/* Update an event's media pointer */
-void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm);
-
 /* Handlers for motion events */
 extern void (*bc_handle_motion_start)(struct bc_handle *bc);
 extern void (*bc_handle_motion_end)(struct bc_handle *bc);
-
-/* Global database handle */
-extern struct bc_db_handle bcdb;
 
 #endif /* __LIBBLUECHERRY_H */

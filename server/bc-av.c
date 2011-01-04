@@ -305,11 +305,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 	/* Now start the next one */
 	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
-				       bc_rec->outfile);
-
-	/* Events start before we trigger the media to open,
-	 * so update things here */
-	bc_event_cam_update_media(bc_rec->event, bc_rec->media);
+				       bc_rec->outfile, bc_rec->event);
 }
 
 static int __bc_open_avcodec(struct bc_record *bc_rec)

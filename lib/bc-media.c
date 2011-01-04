@@ -196,19 +196,6 @@ static int do_cam(struct bc_event_cam *bce)
 	return ret;
 }
 
-void bc_event_cam_update_media(bc_event_cam_t bce, bc_media_entry_t bcm)
-{
-	if (bce == NULL || bcm == NULL)
-		return;
-	bce->media = bcm;
-
-	if (!bce->inserted || !bcm->table_id)
-		return;
-
-	bc_db_query("UPDATE EventsCam SET media_id=%lu"
-		    " WHERE id=%lu", bcm->table_id, bce->inserted);
-}
-
 static int __do_sys_insert(struct bc_event_sys *bce)
 {
 	return bc_db_query("INSERT INTO EventsSystem (time,level_id,"
@@ -241,7 +228,8 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 				bc_media_audio_type_t audio,
 				bc_media_cont_type_t cont,
-				const char *filepath)
+				const char *filepath,
+				bc_event_cam_t bce)
 {
 	struct bc_media_entry *bcm = malloc(sizeof(*bcm));
 
@@ -257,6 +245,25 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	bcm->filepath = filepath;
 
 	do_media(bcm);
+
+	/* If no event associated with this, just carry on */
+	if (!bce || !bcm->table_id || !bce->inserted)
+		return bcm;
+
+	bc_db_lock();
+
+	/* Update to match */
+	bcm->start = bce->start_time;
+
+	/* Update cam event to link to correct media id */
+	bc_db_query("UPDATE EventsCam SET media_id=%lu WHERE id=%lu",
+		    bcm->table_id, bce->inserted);
+
+	/* Update media start time */
+	bc_db_query("UPDATE Media SET start=%lu WHERE id=%lu",
+		    bcm->start, bcm->table_id);
+
+	bc_db_unlock();
 
 	return bcm;
 }
