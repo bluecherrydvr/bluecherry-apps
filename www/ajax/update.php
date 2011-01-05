@@ -84,7 +84,7 @@ class updateDB extends DVRData{
 			$this->status = false;
 			$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 		} else {
-			$this->status = ($db->DBQuery("UPDATE Devices SET video_interval='".(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE source_video='{$this_device[0]['source_video']}'")) ? true : false;
+			$this->status = ($db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE source_video='{$this_device[0]['source_video']}'")) ? true : false;
 			$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			$container_card = new BCDVRCard($this_device[0]['card_id']);
 			$this->data = $container_card->fps_available;
