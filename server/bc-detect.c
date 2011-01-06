@@ -112,6 +112,12 @@ void bc_check_avail(void)
 {
 	DIR *dir;
 	struct dirent *dent;
+	static int detection_run;
+
+	if (detection_run)
+		return;
+
+	detection_run = 1;
 
 	bc_db_lock();
 
