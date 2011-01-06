@@ -1,7 +1,7 @@
 <?php 
 defined('INDVR') or exit();
 
-session_name(VAR_SESSION_NAME);
+session_name('VAR_SESSION_NAME');
 session_start();
 
 #include vars and language

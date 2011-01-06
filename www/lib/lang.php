@@ -103,7 +103,6 @@ define('USERS_STATUS_DISABLE', 'Disabled');
 
 
 define('USERS_STATUS_SETUP', 'Admin');
-define('USERS_STATUS_VIEWER', 'Viewer');
 
 #log
 define('LOG_EMPTY', 'Current log file is empty.');
