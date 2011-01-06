@@ -39,11 +39,12 @@ class DVRDatabase{
 		$config_file = @fopen(VAR_CONF_PATH, "r") or die(LANG_DIE_COULDNOTOPENCONF);
 		while($tmp = fgets($config_file, 4096)){
 			$tmp = trim($tmp);
-			$tmp[0]=='#' or preg_match("/(.*)[\ ][\=][\ ]*(.*);/", $tmp, $matches);
-			if ($tmp[0]!='#') {
-				$this->config_file_vars[$matches[1]] = trim($matches[2], '"');
-				empty($matches);
-			}
+			if (strlen($tmp) == 0 or $tmp[0] == '#')
+				continue;
+
+			if (preg_match("/(.*)[\ ][\=][\ ]*(.*);/", $tmp, $matches))
+				$this->config_file_vars[$matches[1]] =
+					trim($matches[2], '"');
 		}
 		
 	}
