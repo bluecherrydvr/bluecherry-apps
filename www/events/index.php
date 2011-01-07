@@ -13,16 +13,16 @@ $current_user->StatusAction('viewer');
 
 bc_db_open() or die("Could not open database\n");
 
-$query = "SELECT * FROM EventsCam WHERE ";
+$query = "SELECT EventsCam.*, Media.size AS media_size, (Media.size>0 OR Media.end=0) AS media_available FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) WHERE ";
 if (isset($_GET['startDate']))
-	$query .= "time >= ".((int)$_GET['startDate'])." AND ";
+	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
 if (isset($_GET['endDate']))
-	$query .= "time <= ".((int)$_GET['endDate'])." AND ";
+	$query .= "EventsCam.time <= ".((int)$_GET['endDate'])." AND ";
 if (isset($_GET['beforeId']))
-	$query .= "id < ".((int)$_GET['beforeId'])." AND ";
+	$query .= "EventsCam.id < ".((int)$_GET['beforeId'])." AND ";
 if (isset($_GET['id']))
-	$query .= "id = ".((int)$_GET['id'])." AND ";
-$query .= "1 ORDER BY time DESC ";
+	$query .= "EventsCam.id = ".((int)$_GET['id'])." AND ";
+$query .= "1 ORDER BY EventsCam.time DESC ";
 $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
 if ($limit > 0)
 	$query .= "LIMIT ".$limit;
@@ -76,8 +76,8 @@ foreach ($events as $item) {
 		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
 		$item['type_id'] . "\"/>\n";
 
-	if (!empty($item['media_id'])) {
-		print "    <content media_id=\"".$item['media_id']."\">";
+	if (!empty($item['media_id']) && $item['media_available']) {
+		print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
 		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
 		print "</content>\n";
 	}
