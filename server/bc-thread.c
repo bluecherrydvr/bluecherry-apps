@@ -97,8 +97,6 @@ static void *bc_device_thread(void *data)
 	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
 
 	for (;;) {
-		double audio_pts, video_pts;
-
 		if (bc_rec->thread_should_die)
 			break;
 
@@ -131,6 +129,7 @@ static void *bc_device_thread(void *data)
 		}
 
 		if (bc_rec->audio_st) {
+			double audio_pts, video_pts;
 			AVStream *st;
 
 			st = bc_rec->video_st;
@@ -142,10 +141,9 @@ static void *bc_device_thread(void *data)
 				st->time_base.den;
 
 			while (audio_pts < video_pts) {
-				if (bc_aud_out(bc_rec)) {
+				if (bc_aud_out(bc_rec))
 					break;
-					/* XXX Do something */
-				}
+
 				audio_pts = (double)st->pts.val *
 						st->time_base.num /
 						st->time_base.den;

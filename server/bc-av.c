@@ -10,10 +10,10 @@
 
 #include "bc-server.h"
 
-/* Use to maintain coherency between calls to avcodec open/close. The
+/* Used to maintain coherency between calls to avcodec open/close. The
  * libavcodec open/close is not thread safe and libavcodec will complain
  * (loudly) if it sees this occuring. */
-pthread_mutex_t av_lock;
+static pthread_mutex_t av_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 static unsigned int bc_to_alsa_fmt(unsigned int fmt)
 {
@@ -50,7 +50,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	int err, fmt;
 
 	/* No alsa device for this record */
-	if (bc_rec->aud_dev == NULL)
+	if (bc_rec->aud_dev == NULL || bc_rec->pcm)
 		return 0;
 
 	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
@@ -60,6 +60,8 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return -1;
 	}
 
+	bc_rec->pcm = pcm;
+
 	snd_pcm_hw_params_alloca(&params);
 
 	if ((err = snd_pcm_hw_params_any(pcm, params)) < 0) {
@@ -67,8 +69,6 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		       bc_rec->id, snd_strerror(err));
 		return -1;
 	}
-
-	bc_rec->pcm = pcm;
 
 	if ((err = snd_pcm_hw_params_set_access(pcm, params,
 					 SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
@@ -114,7 +114,6 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	bc_rec->snd_err = 0;
 	g723_init(&bc_rec->g723_state);
 
 	return 0;
@@ -144,29 +143,16 @@ int bc_aud_out(struct bc_record *bc_rec)
 	int size;
 
 	/* pcm can be null due to not being able to open the alsa dev. */
-	if (!bc_rec->pcm || !bc_rec->audio_st)
-		return 0;
+	if (!bc_rec->pcm)
+		return 1;
 
-	if ((size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data)))
-	    != sizeof(g723_data)) {
-		if (!bc_rec->snd_err) {
-			bc_alsa_close(bc_rec);
-			bc_rec->snd_err = 1;
-			if (bc_alsa_open(bc_rec)) {
-				bc_log("E(%d): asoundlib failed", bc_rec->id);
-				if (bc_rec->audio_st) {
-					avcodec_close(bc_rec->audio_st->codec);
-					bc_rec->audio_st = NULL;
-				}
-				/* We cannot call bc_aud_out again in this
-				 * situation; it will cause an infinite loop.
-				 */
-				return 0;
-			}
-			return bc_aud_out(bc_rec);
-		}
-		errno = -size;
-		return -1;
+	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
+
+	if (size != sizeof(g723_data)) {
+		bc_log("E(%d): Error reading from sound device: %s",
+		       bc_rec->id, snd_strerror(size));
+		bc_alsa_close(bc_rec);
+		return 1;
 	}
 
 	size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
@@ -205,8 +191,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.data = mp2_out;
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
-		errno = EIO;
-		return -1;
+		bc_log("E(%d): Error encoding audio frame", bc_rec->id);
+		return 1;
 	}
 
 	return 0;
@@ -238,37 +224,41 @@ int bc_vid_out(struct bc_record *bc_rec)
 	return 0;
 }
 
-void bc_close_avcodec(struct bc_record *bc_rec)
+static void __bc_close_avcodec(struct bc_record *bc_rec)
 {
 	int i;
 
-	pthread_mutex_lock(&av_lock);
-
-	if (bc_rec->media == BC_MEDIA_FAIL) {
-		pthread_mutex_unlock(&av_lock);
-		return;
-	}
-
 	bc_alsa_close(bc_rec);
 
-	avcodec_close(bc_rec->video_st->codec);
+	if (bc_rec->video_st)
+		avcodec_close(bc_rec->video_st->codec);
 	if (bc_rec->audio_st)
 		avcodec_close(bc_rec->audio_st->codec);
+	bc_rec->video_st = bc_rec->audio_st = NULL;
 
-	av_write_trailer(bc_rec->oc);
+	if (bc_rec->oc) {
+		av_write_trailer(bc_rec->oc);
 
-	for (i = 0; i < bc_rec->oc->nb_streams; i++) {
-		av_freep(&bc_rec->oc->streams[i]->codec);
-		av_freep(&bc_rec->oc->streams[i]);
+		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
+			av_freep(&bc_rec->oc->streams[i]->codec);
+			av_freep(&bc_rec->oc->streams[i]);
+		}
+
+		url_fclose(bc_rec->oc->pb);
+		av_free(bc_rec->oc);
+		bc_rec->oc = NULL;
 	}
-
-	url_fclose(bc_rec->oc->pb);
-	av_free(bc_rec->oc);
 
 	/* Close the media entry in the db */
 	bc_event_cam_end(&bc_rec->event);
 	bc_media_end(&bc_rec->media);
+}
 
+void bc_close_avcodec(struct bc_record *bc_rec)
+{
+	if (pthread_mutex_lock(&av_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in av_lock on avcodec close!");
+	__bc_close_avcodec(bc_rec);
 	pthread_mutex_unlock(&av_lock);
 }
 
@@ -300,9 +290,6 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	if (bc_rec->pcm)
 		audio = BC_MEDIA_AUDIO_MP2;
 
-	/* Just in case */
-	bc_media_end(&bc_rec->media);
-
 	/* Now start the next one */
 	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
 				       bc_rec->outfile, bc_rec->event);
@@ -318,10 +305,20 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
 
-	if (bc_rec->media != BC_MEDIA_FAIL)
+	if (bc_rec->oc != NULL)
 		return 0;
 
-	bc_alsa_open(bc_rec);
+	/* We don't fail when this happens. Video with no sound is
+	 * better than no video at all. */
+	if (bc_alsa_open(bc_rec))
+		bc_alsa_close(bc_rec);
+
+	bc_start_media_entry(bc_rec);
+
+	if (bc_rec->media == BC_MEDIA_FAIL) {
+		errno = ENOMEM;
+		return -1;
+	}
 
 	t = time(NULL);
 	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
@@ -421,8 +418,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	av_write_header(oc);
 
-	bc_start_media_entry(bc_rec);
-
 	return 0;
 }
 
@@ -430,11 +425,11 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 {
 	int ret;
 
-	if (bc_rec->media != BC_MEDIA_FAIL)
-		return 0;
-
-	pthread_mutex_lock(&av_lock);
+	if (pthread_mutex_lock(&av_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in av_lock on avcodec open!");
 	ret = __bc_open_avcodec(bc_rec);
+	if (ret)
+		__bc_close_avcodec(bc_rec);
 	pthread_mutex_unlock(&av_lock);
 
 	return ret;

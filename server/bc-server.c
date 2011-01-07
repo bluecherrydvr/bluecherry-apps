@@ -321,7 +321,6 @@ int main(int argc, char **argv)
 	bc_handle_motion_start = __handle_motion_start;
 	bc_handle_motion_end = __handle_motion_end;
 
-	pthread_mutex_init(&av_lock, NULL);
         avcodec_init();
         av_register_all();
 	/* Help pipe av* log to our log */

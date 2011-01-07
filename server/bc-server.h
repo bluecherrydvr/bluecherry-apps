@@ -31,7 +31,6 @@ struct bc_record {
 	int			pcm_buf_size;
 	struct g723_state	g723_state;
 
-	int			snd_err;
 	char			outfile[PATH_MAX];
 	int			id;
 	char			*name;
@@ -79,7 +78,6 @@ struct bc_record {
 /* Flags for aud_format */
 #define AUD_FMT_FLAG_G723_24	0x01000000
 
-extern pthread_mutex_t av_lock;
 extern char global_sched[7 * 24];
 extern char media_storage[256];
 extern int debug_video;
