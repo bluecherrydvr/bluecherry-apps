@@ -23,14 +23,26 @@
 	(__vb)->memory = V4L2_MEMORY_MMAP;		\
 } while(0)
 
-#define increment_idx(_bc, _x) ({ *_x = (*_x + 1) % bc->buffers; *_x; })
-
 static inline int bc_local_bufs(struct bc_handle *bc)
 {
-	if (bc->rd_idx > bc->wr_idx)
-		return bc->rd_idx - bc->wr_idx;
-	else
-		return ((bc->rd_idx + bc->buffers) - bc->wr_idx) % bc->buffers;
+	int i, c;
+
+	for (i = c = 0; i < bc->buffers; i++) {
+		struct v4l2_buffer vb;
+
+		reset_vbuf(&vb);
+		vb.index = i;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
+			continue;
+
+		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
+			continue;
+
+		c++;
+	}
+
+	return c;
 }
 
 int bc_buf_key_frame(struct bc_handle *bc)
@@ -64,18 +76,18 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 	}
 
 	for (i = 0; i < bc->buffers; i++) {
-		struct v4l2_buffer *vb = &bc->q_buf[i];
+		struct v4l2_buffer vb;
 
-		reset_vbuf(vb);
-		vb->index = i;
+		reset_vbuf(&vb);
+		vb.index = i;
 
-		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, vb) < 0)
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
 			return -1;
 
-		bc->p_buf[i].size = vb->length;
-		bc->p_buf[i].data = mmap(NULL, vb->length,
+		bc->p_buf[i].size = vb.length;
+		bc->p_buf[i].data = mmap(NULL, vb.length,
 					 PROT_WRITE | PROT_READ, MAP_SHARED,
-					 bc->dev_fd, vb->m.offset);
+					 bc->dev_fd, vb.m.offset);
 		if (bc->p_buf[i].data == MAP_FAILED)
 			return -1;
 	}
@@ -86,7 +98,6 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 int bc_handle_start(struct bc_handle *bc)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int ret;
 	int i;
 
 	if (bc->started)
@@ -106,42 +117,55 @@ int bc_handle_start(struct bc_handle *bc)
 
 	/* Queue all buffers */
 	for (i = 0; i < bc->buffers; i++) {
-		ret = ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[i]);
-		if (ret < 0)
+		struct v4l2_buffer vb;
+
+		reset_vbuf(&vb);
+		vb.index = i;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
+			return -1;
+
+		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
+			continue;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vb) < 0)
 			return -1;
 	}
 
-	bc->rd_idx = bc->wr_idx = 0;
+	bc->buf_idx = -1;
 	bc->started = 1;
 
 	return 0;
 }
 
-static int bc_buf_return(struct bc_handle *bc)
+static void bc_buf_return(struct bc_handle *bc)
 {
 	int local = (bc->buffers / 2) - 1;
 	int thresh = (bc->buffers - local) / 2;
-#if 0
-	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
+	int cur = bc_local_bufs(bc);
+	int i;
 
-	/* For motion control, only allow two buffers to be queued */
-	if (vb && vb->flags & V4L2_BUF_FLAG_MOTION_ON) {
-		if ((bc_local_bufs(bc) + 1) < bc->buffers)
-			return 0;
-		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
-		increment_idx(bc, &bc->wr_idx);
-	}
-#endif
 	/* Maintain a balance of queued and dequeued buffers */
-	if (bc_local_bufs(bc) < (local + thresh))
-		return 0;
+	if (cur < (local + thresh))
+		return;
 
-	while (bc_local_bufs(bc) > local) {
-		ioctl(bc->dev_fd, VIDIOC_QBUF, &bc->q_buf[bc->wr_idx]);
-		increment_idx(bc, &bc->wr_idx);
+	for (i = 0; i < bc->buffers && cur > local; i++) {
+		struct v4l2_buffer vb;
+
+		reset_vbuf(&vb);
+		vb.index = i;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
+			continue;
+
+		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
+			continue;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vb) == 0)
+			cur--;
 	}
 
-	return 0;
+	return;
 }
 
 void (*bc_handle_motion_start)(struct bc_handle *bc) = NULL;
@@ -161,20 +185,18 @@ static void __bc_stop_motion_event(struct bc_handle *bc)
 
 int bc_buf_get(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb;
+	struct v4l2_buffer vb;
 	int ret;
 
-	if (bc_buf_return(bc))
-		return errno;
+	bc_buf_return(bc);
 
-	vb = &bc->q_buf[bc->rd_idx];
-	reset_vbuf(vb);
+	reset_vbuf(&vb);
 
-	ret = ioctl(bc->dev_fd, VIDIOC_DQBUF, vb);
-	increment_idx(bc, &bc->rd_idx);
-
-	if (ret < 0)
+	if (ioctl(bc->dev_fd, VIDIOC_DQBUF, &vb) < 0)
 		return EAGAIN;
+
+	bc->buf_idx = vb.index;
+	bc->p_buf[vb.index].vb = vb;
 
 	/* If no motion detection, then carry on normally */
 	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
@@ -313,10 +335,19 @@ void bc_handle_stop(struct bc_handle *bc)
 	if (!bc || bc->dev_fd < 0 || !bc->started)
 		return;
 
-	/* Dequeue all buffers. bc_local_bufs goes to zero when all are local */
-	while (bc_local_bufs(bc)) {
-		ioctl(bc->dev_fd, VIDIOC_DQBUF, &bc->q_buf[bc->rd_idx]);
-		increment_idx(bc, &bc->rd_idx);
+	for (i = 0; i < bc->buffers; i++) {
+		struct v4l2_buffer vb;
+
+		reset_vbuf(&vb);
+		vb.index = i;
+
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
+			continue;
+
+		if (!(vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)))
+			continue;
+
+		ioctl(bc->dev_fd, VIDIOC_DQBUF, &vb);
 	}
 
 	/* Stop the stream */
@@ -327,6 +358,7 @@ void bc_handle_stop(struct bc_handle *bc)
 		munmap(bc->p_buf[i].data, bc->p_buf[i].size);
 
 	bc->started = 0;
+	bc->buf_idx = -1;
 
 	errno = save_err;
 }

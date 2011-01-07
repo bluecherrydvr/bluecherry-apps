@@ -68,13 +68,11 @@ struct bc_handle {
 	struct {
 		void		*data;
 		size_t		size;
+		struct v4l2_buffer vb;
 	}			p_buf[BC_BUFFERS];
-	struct v4l2_buffer	q_buf[BC_BUFFERS];
 
 	int			started;
-	int			rd_idx;
-	int			wr_idx;
-	int			mot_idx;
+	int			buf_idx;
 	int			got_vop;
 	int			mot_cnt;
 	int			gop;

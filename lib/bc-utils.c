@@ -62,41 +62,28 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
-static inline int bc_current_buf(struct bc_handle *bc)
-{
-	if (bc->rd_idx == bc->wr_idx)
-		return -1;
-	return (bc->rd_idx + (bc->buffers - 1)) % bc->buffers;
-}
-
 void *bc_buf_data(struct bc_handle *bc)
 {
-	int idx = bc_current_buf(bc);
-
-	if (idx < 0)
+	if (bc->buf_idx < 0)
 		return NULL;
 
-	return bc->p_buf[bc->q_buf[idx].index].data;
+	return bc->p_buf[bc->buf_idx].data;
 }
 
 unsigned int bc_buf_size(struct bc_handle *bc)
 {
-	int idx = bc_current_buf(bc);
-
-	if (idx < 0)
+	if (bc->buf_idx < 0)
 		return 0;
 
-	return bc->q_buf[idx].bytesused;
+	return bc->p_buf[bc->buf_idx].vb.bytesused;
 }
 
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 {
-	int idx = bc_current_buf(bc);
-
-	if (idx < 0)
+	if (bc->buf_idx < 0)
 		return NULL;
 
-	return &bc->q_buf[idx];
+	return &bc->p_buf[bc->buf_idx].vb;
 }
 
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
