@@ -1,3 +1,14 @@
+bluecherry (2.0.0-0beta2-1) lucid; urgency=low
+
+  * Bug #537: Not All Cameras Recording
+  * Bug #574: Discrepancy between motion event time and associated media start time
+  * Bug #608: 2.0.0-0beta2 shows as a downgraded package
+  * Bug #611: Server does not correctly prune oldest events
+  * Bug #612: Web: Unused capacity is calculated incorrectly
+  * Bug #613: Web: 7.5FPS option is not populated correctly
+
+ -- Curtis Hall <curt@build.bluecherry.net>  Fri, 07 Jan 2011 16:05:29 -0600
+
 bluecherry (2.0.0-0beta2) lucid; urgency=low
 
   * Bug #474: Web: Device settings open after camera is disabled
