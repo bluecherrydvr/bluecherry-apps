@@ -86,40 +86,52 @@ PHP_FUNCTION(bc_db_close)
 PHP_FUNCTION(bc_db_get_table)
 {
 	zval *z_ctx;
-	int nrows, ncols;
+	BC_DB_RES dbres;
 	char *sql;
 	int sql_len;
-	char **rows;
-	int i;
+	int ncols;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
 				  &sql, &sql_len) == FAILURE)
 		RETURN_FALSE;
 
-	i = bc_db_get_table(&nrows, &ncols, &rows, "%s", sql);
-	if (i || !nrows)
+	dbres = bc_db_get_table("%s", sql);
+	if (dbres == NULL)
 		RETURN_FALSE;
+
+	ncols = bc_db_num_fields(dbres);
+	if (ncols < 0) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
 
 	array_init(return_value);
 
-	for (i = 0; i < nrows; i++) {
+	while (!bc_db_fetch_row(dbres)) {
 		zval *row_arr;
-		int t;
+		int i;
 
 		ALLOC_INIT_ZVAL(row_arr);
 		array_init(row_arr);
 
-		for (t = 0; t < ncols; t++) {
-			char *str = rows[((i + 1) * ncols) + t];
+		for (i = 0; i < ncols; i++) {
+			const char *field = bc_db_get_field(dbres, i);
+			const char *str;
+
+			if (field == NULL)
+				continue;
+
+			str = bc_db_get_val(dbres, field);
 			if (str == NULL)
 				continue;
-			add_assoc_string(row_arr, rows[t], str, 1);
+			add_assoc_string(row_arr, field,
+					 (char *)str, 1);
 		}
 
 		add_next_index_zval(return_value, row_arr);
 	}
 
-	bc_db_free_table(rows);
+	bc_db_free_table(dbres);
 }
 
 PHP_FUNCTION(bc_handle_get)

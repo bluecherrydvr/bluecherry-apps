@@ -12,11 +12,7 @@
 #include <libbluecherry.h>
 
 extern struct bc_db_ops bc_db_sqlite;
-extern struct bc_db_ops bc_db_psql;
 extern struct bc_db_ops bc_db_mysql;
-
-static pthread_mutex_t db_lock =
-	PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 struct bc_db_handle bcdb = {
 	.db_type	= BC_DB_SQLITE,
@@ -26,26 +22,20 @@ struct bc_db_handle bcdb = {
 
 void bc_db_lock(void)
 {
-	if (pthread_mutex_lock(&db_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in db_lock!");
+	bcdb.db_ops->lock(bcdb.dbh);
 }
 
 void bc_db_unlock(void)
 {
-	if (pthread_mutex_unlock(&db_lock) == EPERM)
-		bc_log("E: Unlocking db_lock owned by another thread!");
+	bcdb.db_ops->unlock(bcdb.dbh);
 }
 
 void bc_db_close(void)
 {
-	bc_db_lock();
-
 	if (bcdb.db_ops)
 		bcdb.db_ops->close(bcdb.dbh);
 	bcdb.dbh = NULL;
 	bcdb.db_ops = NULL;
-
-	bc_db_unlock();
 }
 
 int bc_db_open(void)
@@ -54,12 +44,8 @@ int bc_db_open(void)
 	long type;
 	int ret = 0;
 
-	bc_db_lock();
-
-	if (bcdb.dbh != NULL) {
-		bc_db_unlock();
+	if (bcdb.dbh != NULL)
 		return 0;
-	}
 
 	config_init(&cfg);
 	if (!config_read_file(&cfg, BC_CONFIG)) {
@@ -75,15 +61,18 @@ int bc_db_open(void)
 
 	switch (type) {
 	case BC_DB_SQLITE:
-		bcdb.db_type = BC_DB_SQLITE;
 		bcdb.db_ops = &bc_db_sqlite;
-		bcdb.dbh = bcdb.db_ops->open(&cfg);
 		break;
-	case BC_DB_PSQL:
 	case BC_DB_MYSQL:
+		bcdb.db_ops = &bc_db_mysql;
+		break;
 	default:
-		bc_log("E(%s): Invalid db type %ld", BC_CONFIG, type);
+		bc_log("E(%s): DB type %ld is not supported", BC_CONFIG, type);
 	}
+
+	bcdb.db_type = type;
+	if (bcdb.db_ops)
+		bcdb.dbh = bcdb.db_ops->open(&cfg);
 
 db_error:
 	if (!bcdb.dbh) {
@@ -93,62 +82,79 @@ db_error:
 
 	config_destroy(&cfg);
 
-	bc_db_unlock();
-
 	return ret;
 }
 
 int bc_db_query(const char *sql, ...)
 {
 	va_list ap;
+	char *query;
 	int ret;
 
 	va_start(ap, sql);
-	ret = bcdb.db_ops->query(bcdb.dbh, sql, ap);
+	if (vasprintf(&query, sql, ap) < 0)
+		return -1;
 	va_end(ap);
+
+	ret = bcdb.db_ops->query(bcdb.dbh, query);
+	free(query);
 
 	return ret;
 }
 
-int bc_db_get_table(int *nrows, int *ncols, char ***res, const char *fmt, ...)
+const char *bc_db_get_field(BC_DB_RES dbres, int nfield)
+{
+	return bcdb.db_ops->get_field(bcdb.dbh, dbres, nfield);
+}
+
+int bc_db_num_fields(BC_DB_RES dbres)
+{
+	return bcdb.db_ops->num_fields(bcdb.dbh, dbres);
+}
+
+int bc_db_fetch_row(BC_DB_RES dbres)
+{
+	return bcdb.db_ops->fetch_row(bcdb.dbh, dbres);
+}
+
+BC_DB_RES bc_db_get_table(const char *sql, ...)
 {
 	va_list ap;
-	int ret;
+	char *query;
+	BC_DB_RES dbres;
 
-	va_start(ap, fmt);
-	ret = bcdb.db_ops->get_table(bcdb.dbh, nrows, ncols, res, fmt, ap);
+	va_start(ap, sql);
+	if (vasprintf(&query, sql, ap) < 0)
+		return NULL;
 	va_end(ap);
 
-	return ret;
+	dbres = bcdb.db_ops->get_table(bcdb.dbh, query);
+	free(query);
+
+	return dbres;
 }
 
-void bc_db_free_table(char **res)
+void bc_db_free_table(BC_DB_RES dbres)
 {
-	bcdb.db_ops->free_table(bcdb.dbh, res);
+	if (dbres)
+		bcdb.db_ops->free_table(bcdb.dbh, dbres);
 }
 
-char *bc_db_get_val(char **rows, int ncols, int row, const char *colname)
+const char *bc_db_get_val(BC_DB_RES dbres, const char *colname)
 {
-	int i;
-
-	for (i = 0; i < ncols; i++) {
-		if (strcmp(colname, rows[i]) == 0)
-			break;
-	}
-
-	return (i == ncols) ? NULL : rows[((row + 1) * ncols) + i];
+	return bcdb.db_ops->get_val(bcdb.dbh, dbres, colname);
 }
 
-int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname)
+int bc_db_get_val_int(BC_DB_RES dbres, const char *colname)
 {
-	char *val = bc_db_get_val(rows, ncols, row, colname);
+	const char *val = bc_db_get_val(dbres, colname);
 
 	return val ? atoi(val) : -1;
 }
 
-int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname)
+int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 {
-	char *val = bc_db_get_val(rows, ncols, row, colname);
+	const char *val = bc_db_get_val(dbres, colname);
 
 	return val ? (atoi(val) ? 1 : 0) : 0;
 }

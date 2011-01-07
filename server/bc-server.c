@@ -59,40 +59,34 @@ static void __handle_motion_end(struct bc_handle *bc)
 /* Update our global settings */
 static void bc_check_globals(void)
 {
-	int nrows, ncols;
-	char **rows;
-	int res;
+	BC_DB_RES dbres;
 
-	/* Get global schedul, default to continuous */
-        res = bc_db_get_table(&nrows, &ncols, &rows,
-			      "SELECT * from GlobalSettings WHERE "
-			      "parameter='G_DEV_SCED';");
+	/* Get global schedule, default to continuous */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_DEV_SCED'");
 
-	if (res == 0 && nrows == 1) {
-		char *sched = bc_db_get_val(rows, ncols, 0, "value");
+	if (dbres == NULL && !bc_db_fetch_row(dbres)) {
+		const char *sched = bc_db_get_val(dbres, "value");
 		if (sched && strlen(sched) == sizeof(global_sched))
 			memcpy(global_sched, sched, sizeof(global_sched));
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
 	}
-	if (res == 0)
-		bc_db_free_table(rows);
+	bc_db_free_table(dbres);
 
 	/* Get path to media storage location, or use default */
-	res = bc_db_get_table(&nrows, &ncols, &rows,
-			      "SELECT * from GlobalSettings WHERE "
-			      "parameter='G_DVR_MEDIA_STORE';");
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_DVR_MEDIA_STORE'");
 
-	if (res == 0 && nrows == 1) {
-		char *stor = bc_db_get_val(rows, ncols, 0, "value");
+	if (dbres == NULL && !bc_db_fetch_row(dbres)) {
+		const char *stor = bc_db_get_val(dbres, "value");
 		if (stor)
 			strcpy(media_storage, stor);
 	} else {
 		strcpy(media_storage, "/var/lib/bluecherry/recordings");
 	}
-	if (res == 0)
-		bc_db_free_table(rows);
+	bc_db_free_table(dbres);
 }
 
 /* Check for threads that have quit */
@@ -159,10 +153,8 @@ static int get_avail(float *avail)
  * don't have more than min_avail% available, then complain....LOUDLY! */
 static void bc_check_media(void)
 {
+	BC_DB_RES dbres;
 	float avail;
-	int nrows, ncols;
-	char **rows;
-	int res, i;
 
 	if (get_avail(&avail))
 		return;
@@ -175,18 +167,17 @@ static void bc_check_media(void)
 
 	bc_db_lock();
 
-	res = bc_db_get_table(&nrows, &ncols, &rows,
-			      "SELECT * from Media WHERE archive!=0 AND "
-			      "end!=0 ORDER BY start ASC;");
+	dbres = bc_db_get_table("SELECT * from Media WHERE archive!=0 AND "
+				"end!=0 ORDER BY start ASC");
 
-	if (res != 0) {
+	if (dbres == NULL) {
 		bc_db_unlock();
 		return;
 	}
 
-	for (i = 0; i < nrows && avail < min_thresh; i++) {
-		char *filepath = bc_db_get_val(rows, ncols, i, "filepath");
-		int id = bc_db_get_val_int(rows, ncols, i, "id");
+	while (!bc_db_fetch_row(dbres) && avail < min_thresh) {
+		const char *filepath = bc_db_get_val(dbres, "filepath");
+		int id = bc_db_get_val_int(dbres, "id");
 
 		if (filepath == NULL)
 			continue;
@@ -202,7 +193,7 @@ static void bc_check_media(void)
 			break;
         }
 
-	bc_db_free_table(rows);
+	bc_db_free_table(dbres);
 	bc_db_unlock();
 
 	if (avail < min_avail) {
@@ -215,30 +206,26 @@ static void bc_check_media(void)
 static void bc_check_db(void)
 {
 	struct bc_record *bc_rec;
-	int nrows, ncols;
-	char **rows;
-	int i;
-	int res;
+	BC_DB_RES dbres;
 
 	bc_check_globals();
 	bc_check_media();
 
-	res = bc_db_get_table(&nrows, &ncols, &rows,
-			      "SELECT * from Devices;");
+	dbres = bc_db_get_table("SELECT * from Devices");
 
-	if (res != 0 || nrows == 0)
+	if (dbres == NULL)
 		return;
 
-	for (i = 0; i < nrows; i++) {
-		char *proto = bc_db_get_val(rows, ncols, i, "protocol");
-		int id = bc_db_get_val_int(rows, ncols, i, "id");
+	while (!bc_db_fetch_row(dbres)) {
+		const char *proto = bc_db_get_val(dbres, "protocol");
+		int id = bc_db_get_val_int(dbres, "id");
 
 		if ((id < 0) || !proto)
 			continue;
 
 		bc_rec = bc_record_exists(id);
 		if (bc_rec) {
-			bc_update_record(bc_rec, rows, ncols, i);
+			bc_update_record(bc_rec, dbres);
 			continue;
 		}
 
@@ -254,7 +241,7 @@ static void bc_check_db(void)
 		if (strcmp(proto, "V4L2") != 0)
 			continue;
 
-		bc_rec = bc_alloc_record(id, rows, ncols, i);
+		bc_rec = bc_alloc_record(id, dbres);
 		if (bc_rec == NULL)
 			continue;
 
@@ -262,7 +249,7 @@ static void bc_check_db(void)
 		bc_list_add(&bc_rec->list, &bc_rec_list);
 	}
 
-	bc_db_free_table(rows);
+	bc_db_free_table(dbres);
 }
 
 static void usage(void)

@@ -39,16 +39,25 @@ enum bc_db_type {
 	BC_DB_MYSQL = 2,
 };
 
+typedef void * BC_DB_RES;
+
 /* Should really be opaque and not in this file */
 struct bc_db_ops {
 	enum bc_db_type type;
 	void *(*open)(struct config_t *cfg);
 	void (*close)(void *handle);
-	int (*get_table)(void *handle, int *nrows, int *ncols, char ***res,
-			 const char *fmt, va_list ap);
-	void (*free_table)(void *handle, char **res);
-	int (*query)(void *handle, const char *sql, va_list ap);
+	BC_DB_RES (*get_table)(void *handle, char *query);
+	void (*free_table)(void *handle, BC_DB_RES dbres);
+	int (*fetch_row)(void *handle, BC_DB_RES dbres);
+	const char *(*get_val)(void *handle, BC_DB_RES dbres,
+			       const char *field);
+	const char *(*get_field)(void *handle, BC_DB_RES dbres,
+				 int nfield);
+	int (*num_fields)(void *handle, BC_DB_RES dbres);
+	int (*query)(void *handle, char *query);
 	unsigned long (*last_insert_rowid)(void *handle);
+	void (*lock)(void *handle);
+	void (*unlock)(void *handle);
 };
 
 struct bc_db_handle {
@@ -238,19 +247,22 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 /* Database functions */
 int bc_db_open(void);
 void bc_db_close(void);
-int bc_db_get_table(int *nrows, int *ncols, char ***res, const char *fmt, ...)
-	__attribute__ ((format (printf, 4, 5)));
-void bc_db_free_table(char **res);
+BC_DB_RES bc_db_get_table(const char *sql, ...)
+	__attribute__ ((format (printf, 1, 2)));
+void bc_db_free_table(BC_DB_RES dbres);
+int bc_db_fetch_row(BC_DB_RES dbres);
 int bc_db_query(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
 unsigned long bc_db_last_insert_rowid(void);
 void bc_db_lock(void);
 void bc_db_unlock(void);
+const char *bc_db_get_field(BC_DB_RES dbres, int nfield);
+int bc_db_num_fields(BC_DB_RES dbres);
 
 /* Used to get specific values from a table result */
-char *bc_db_get_val(char **rows, int ncols, int row, const char *colname);
-int bc_db_get_val_int(char **rows, int ncols, int row, const char *colname);
-int bc_db_get_val_bool(char **rows, int ncols, int row, const char *colname);
+const char *bc_db_get_val(BC_DB_RES dbres, const char *colname);
+int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
+int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
 
 /* Validate and process a license key to get values from it */
 int bc_key_process(struct bc_key_data *res, char *str);

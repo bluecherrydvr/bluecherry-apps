@@ -163,18 +163,18 @@ static void *bc_device_thread(void *data)
 	return bc_rec->thread_should_die;
 }
 
-struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
+struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = NULL;
 	struct bc_record *bc_rec;
-	char *dev = bc_db_get_val(rows, ncols, row, "source_video");
-	char *aud_dev = bc_db_get_val(rows, ncols, row, "source_audio_in");
-	char *name = bc_db_get_val(rows, ncols, row, "device_name");
+	const char *dev = bc_db_get_val(dbres, "source_video");
+	const char *aud_dev = bc_db_get_val(dbres, "source_audio_in");
+	const char *name = bc_db_get_val(dbres, "device_name");
 
 	if (!dev || !name)
 		return NULL;
 
-	if (bc_db_get_val_int(rows, ncols, row, "disabled") > 0)
+	if (bc_db_get_val_int(dbres, "disabled") > 0)
 		return NULL;
 
 	bc_rec = malloc(sizeof(*bc_rec));
@@ -219,16 +219,13 @@ struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row)
 			bc_log("E(%d): out of memory trying to start record", id);
 			goto record_fail;
 		}
-		bc_rec->aud_rate = bc_db_get_val_int(rows, ncols, row,
-						     "audio_rate");
-		bc_rec->aud_channels = bc_db_get_val_int(rows, ncols, row,
-							 "audio_channels");
-		bc_rec->aud_format = bc_db_get_val_int(rows, ncols, row,
-						       "audio_format");
+		bc_rec->aud_rate = bc_db_get_val_int(dbres, "audio_rate");
+		bc_rec->aud_channels = bc_db_get_val_int(dbres, "audio_channels");
+		bc_rec->aud_format = bc_db_get_val_int(dbres, "audio_format");
 	}
 
 	bc_rec->sched_cur = 'N';
-	bc_update_record(bc_rec, rows, ncols, row);
+	bc_update_record(bc_rec, dbres);
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
@@ -250,8 +247,9 @@ record_fail:
 	return NULL;
 }
 
-static void check_motion_map(struct bc_record *bc_rec, char *signal,
-			     char *motion_map)
+static void check_motion_map(struct bc_record *bc_rec,
+			     const char *signal,
+			     const char *motion_map)
 {
 	int vh = strcasecmp(signal, "NTSC") ? 18 : 15;
 	struct bc_handle *bc = bc_rec->bc;
@@ -294,7 +292,7 @@ static void check_motion_map(struct bc_record *bc_rec, char *signal,
 	}
 }
 
-static void check_schedule(struct bc_record *bc_rec, char *sched)
+static void check_schedule(struct bc_record *bc_rec, const char *sched)
 {
 	time_t t;;
 	struct tm tm;
@@ -315,42 +313,41 @@ static void check_schedule(struct bc_record *bc_rec, char *sched)
 	pthread_mutex_unlock(&bc_rec->sched_mutex);
 }
 
-void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row)
+void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	char *sched;
+	const char *sched;
 
-	if (bc_db_get_val_int(rows, ncols, row, "disabled") > 0) {
+	if (bc_db_get_val_int(dbres, "disabled") > 0) {
 		bc_rec->thread_should_die = "Disabled in config";
 		return;
 	}
 
-	bc_rec->interval = bc_db_get_val_int(rows, ncols, row,
-					     "video_interval");
-	bc_rec->width = bc_db_get_val_int(rows, ncols, row, "resolutionX");
-	bc_rec->height = bc_db_get_val_int(rows, ncols, row, "resolutionY");
+	bc_rec->interval = bc_db_get_val_int(dbres, "video_interval");
+	bc_rec->width = bc_db_get_val_int(dbres, "resolutionX");
+	bc_rec->height = bc_db_get_val_int(dbres, "resolutionY");
 	bc_rec->fmt = V4L2_PIX_FMT_MPEG;
 
 	try_formats(bc_rec);
 
 	/* Set the motion threshold blocks */
-	check_motion_map(bc_rec, bc_db_get_val(rows, ncols, row, "signal_type"),
-			 bc_db_get_val(rows, ncols, row, "motion_map"));
+	check_motion_map(bc_rec, bc_db_get_val(dbres, "signal_type"),
+			 bc_db_get_val(dbres, "motion_map"));
 
 	/* Update standard controls */
 	if (!bc_rec->debug_video) {
 		bc_set_control(bc, V4L2_CID_HUE,
-				bc_db_get_val_int(rows, ncols, row, "hue"));
+				bc_db_get_val_int(dbres, "hue"));
 		bc_set_control(bc, V4L2_CID_CONTRAST,
-				bc_db_get_val_int(rows, ncols, row, "contrast"));
+				bc_db_get_val_int(dbres, "contrast"));
 		bc_set_control(bc, V4L2_CID_SATURATION,
-				bc_db_get_val_int(rows, ncols, row, "saturation"));
+				bc_db_get_val_int(dbres, "saturation"));
 		bc_set_control(bc, V4L2_CID_BRIGHTNESS,
-				bc_db_get_val_int(rows, ncols, row, "brightness"));
+				bc_db_get_val_int(dbres, "brightness"));
 	}
 
-	if (bc_db_get_val_int(rows, ncols, row, "schedule_override_global") > 0)
-		sched = bc_db_get_val(rows, ncols, row, "schedule");
+	if (bc_db_get_val_int(dbres, "schedule_override_global") > 0)
+		sched = bc_db_get_val(dbres, "schedule");
 	else
 		sched = global_sched;
 

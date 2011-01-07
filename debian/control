@@ -2,14 +2,15 @@ Source: bluecherry
 Section: admin
 Priority: optional
 Maintainer: Ben Collins <bcollins@bluecherry.net>
-Build-Depends: debhelper (>= 7), libsqlite3-dev, libmysqlclient-dev, libpq-dev,
- libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-dev, libconfig8-dev, libasound2-dev
+Build-Depends: debhelper (>= 7), libsqlite3-dev, libmysqlclient-dev,
+ libavcodec-dev, libavformat-dev, libavutil-dev, sqlite3, php5-dev,
+ libconfig8-dev, libasound2-dev
 Standards-Version: 3.8.4
 
 Package: bluecherry
 Architecture: any
 Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ssl-cert, sqlite3, php5-sqlite
-Recommends: solo6010-dkms
+Depends: ${shlibs:Depends}, ssl-cert, php5-sqlite, php5-mysql, dbconfig-common
+Recommends: solo6010-dkms, mysql-client, sqlite3
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.

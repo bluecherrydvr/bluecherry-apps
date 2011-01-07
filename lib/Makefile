@@ -8,7 +8,7 @@ CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 SOLIB		= libbluecherry.so
 SOLIBVER	= libbluecherry.so.0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-sqlite.o \
-		  bc-db-psql.o bc-db-mysql.o bc-key.o bc-media.o
+		  bc-db-mysql.o bc-key.o bc-media.o
 
 all: $(SOLIBVER)
 

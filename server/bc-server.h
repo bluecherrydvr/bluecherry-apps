@@ -88,8 +88,8 @@ int bc_aud_out(struct bc_record *bc_rec);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
 
-struct bc_record *bc_alloc_record(int id, char **rows, int ncols, int row);
-void bc_update_record(struct bc_record *bc_rec, char **rows, int ncols, int row);
+struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
+void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres);
 
 typedef enum {
 	BC_MOTION_TYPE_SOLO = 0,
