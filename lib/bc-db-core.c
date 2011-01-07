@@ -15,7 +15,8 @@ extern struct bc_db_ops bc_db_sqlite;
 extern struct bc_db_ops bc_db_psql;
 extern struct bc_db_ops bc_db_mysql;
 
-static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t db_lock =
+	PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 struct bc_db_handle bcdb = {
 	.db_type	= BC_DB_SQLITE,
@@ -25,12 +26,14 @@ struct bc_db_handle bcdb = {
 
 void bc_db_lock(void)
 {
-	pthread_mutex_lock(&db_lock);
+	if (pthread_mutex_lock(&db_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in db_lock!");
 }
 
 void bc_db_unlock(void)
 {
-	pthread_mutex_unlock(&db_lock);
+	if (pthread_mutex_unlock(&db_lock) == EPERM)
+		bc_log("E: Unlocking db_lock owned by another thread!");
 }
 
 void bc_db_close(void)
