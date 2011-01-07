@@ -1,4 +1,4 @@
-<?php DEFINE(INDVR, true);
+<?php DEFINE('INDVR', true);
 
 #lib
 include("../lib/lib.php");  #common functions
@@ -21,7 +21,10 @@ $current_user->StatusAction('viewer');
 
 $monitor = new LocalMonitor;
 
-$multi = ($_GET['multi']) ? true : false;
+if (isset($_GET['multi']))
+	$multi = true;
+else
+	$multi = false;
 $bch = false;
 $boundary = "MJPEGBOUNDARY";
 $dev = $monitor->data[0]['source_video'];
