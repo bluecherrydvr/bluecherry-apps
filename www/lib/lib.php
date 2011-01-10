@@ -125,8 +125,7 @@ class DVRUser extends DVRData{
 class DVRData {
 	#mode: global - global config (no insertions, update multiple entries) OR update / insert
 	public function Edit($mode){
-		$db = DVRDatabase::getInstance();
-		return $db->DBQuery($this->FormQueryFromPOST($mode));
+		return $this->FormQueryFromPOST($mode);
 	}
 	
 	public function Kill($type, $id){
@@ -140,17 +139,18 @@ class DVRData {
 		$db = DVRDatabase::getInstance();
 		$id = $db->DBEscapeString($_POST['id']); unset($_POST['id']);
 		$type = $db->DBEscapeString($_POST['type']); unset($_POST['type']);
+		$ret = true;
 		switch ($mode){
 			case 'global':
-				$query = "";
-				foreach ($_POST as $parameter => $value){
+				foreach ($_POST as $parameter => $value) {
 					$db->DBEscapeString($parameter);
 					$db->DBEscapeString($value);
-					$query .= "UPDATE GlobalSettings SET value = '$value' WHERE parameter='$parameter'; ";
+					if (!$db->DBQuery("UPDATE GlobalSettings SET value = '$value' WHERE parameter='$parameter'")) { $ret = false; break; }
+					
 				}
 				break;
 			case 'insert':
-				$query = "INSERT INTO $type ('".implode("', '", array_keys($_POST))."') VALUES ('".implode("', '", $_POST)."') ";
+				$ret = $db->DBQuery("INSERT INTO $type ('".implode("', '", array_keys($_POST))."') VALUES ('".implode("', '", $_POST)."')");
 				break;
 			case 'update':
 				foreach ($_POST as $parameter => $value){
@@ -158,10 +158,10 @@ class DVRData {
 					$tmp[$parameter]="'{$db->DBEscapeString($parameter)}'='{$db->DBEscapeString($value)}'";
 				}
 				
-				$query = "UPDATE $type SET ".implode(", ", $tmp)." WHERE id='$id'";
+				$ret = $db->DBQuery("UPDATE $type SET ".implode(", ", $tmp)." WHERE id='$id'");
 				break;
 		}
-		return $query;
+		return $ret;
 	}
 	
 	public static function GetObjectData($type, $parameter = false, $value = false, $condition = '='){

@@ -133,7 +133,6 @@ class updateDB extends DVRData{
 		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
 		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if (!isset($_POST['password']) || $_POST['password']=='') { $this->status = false; $this->message = NO_PASS; return false; }
-		$db = DVRDatabase::getInstance();
 		$_POST['type'] = 'Users';
 		$_POST['access_setup'] = ($_POST['access_setup']=='on') ? '1' : '0';
 		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
@@ -141,7 +140,7 @@ class updateDB extends DVRData{
 		$_POST['access_backup'] = ($_POST['access_backup']=='on') ? '1' : '0';
 		$_POST['salt'] = genRandomString(4);
 		$_POST['password'] = md5($_POST['password'].$_POST['salt']);
-		$this->status = $db->DBQuery($this->FormQueryFromPOST('insert'));
+		$this->status = $this->FormQueryFromPOST('insert');
 		$this->message = ($this->status) ? USER_CREATED : CHANGES_FAIL;
 	}
 	
@@ -161,7 +160,7 @@ class updateDB extends DVRData{
 		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
 		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if ($_SESSION['id']==$_POST['id'] && $_POST['access_setup']==0) { $this->message = CANT_REMOVE_ADMIN; return false; }
-		$this->status = $db->DBQuery($this->FormQueryFromPOST('update'));
+		$this->status = $this->FormQueryFromPOST('update');
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	
@@ -187,8 +186,7 @@ class updateDB extends DVRData{
 	}
 	
 	function updateField(){
-		$db = DVRDatabase::getInstance();
-		$this->status = $db->DBQuery($this->FormQueryFromPOST('update'));
+		$this->status = $this->FormQueryFromPOST('update');
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	

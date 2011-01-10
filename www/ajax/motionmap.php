@@ -16,7 +16,7 @@ Class MotionMap extends DVRData{
 	public $data;
 	
 	public function __construct($id){
-		$this->data = $this->GetObjectData('devices', 'id', $id);
+		$this->data = $this->GetObjectData('Devices', 'id', $id);
 	}
 }
 
