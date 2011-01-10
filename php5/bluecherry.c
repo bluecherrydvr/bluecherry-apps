@@ -99,7 +99,11 @@ PHP_FUNCTION(bc_db_escape_string)
 	if (tmp_str == NULL)
 		RETURN_FALSE;
 
-	RETURN_STRING(tmp_str, 0);
+	/* We're supposed to be able to pass this to PHP and let it
+	 * free() it on it's own, but instead we have to let it copy
+	 * and free() ourselves, else it crashes in some weird way. */
+	RETURN_STRING(tmp_str, 1);
+	free(tmp_str);
 }
 
 PHP_FUNCTION(bc_db_query)
