@@ -115,6 +115,26 @@ static int bc_db_mysql_fetch_row(void *handle, BC_DB_RES __dbres)
 	return 0;
 }
 
+static const char *bc_db_mysql_get_val(void *handle, BC_DB_RES __dbres,
+				       const char *colname)
+{
+	struct bc_db_mysql_res *dbres = __dbres;
+	int i;
+
+	if (dbres->row == NULL)
+		return NULL;
+
+	for (i = 0; i < dbres->ncols; i++) {
+		MYSQL_FIELD *mf = mysql_fetch_field_direct(dbres->res, i);
+		if (mf == NULL)
+			continue;
+		if (strcmp(colname, mf->name) == 0)
+			break;
+	}
+
+	return (i == dbres->ncols) ? NULL : dbres->row[i];
+}
+
 static int bc_db_mysql_num_fields(void *handle, BC_DB_RES __dbres)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
@@ -162,6 +182,7 @@ struct bc_db_ops bc_db_mysql = {
 	.get_table	= bc_db_mysql_get_table,
 	.free_table	= bc_db_mysql_free_table,
 	.fetch_row	= bc_db_mysql_fetch_row,
+	.get_val	= bc_db_mysql_get_val,
 	.query		= bc_db_mysql_query,
 	.num_fields	= bc_db_mysql_num_fields,
 	.get_field	= bc_db_mysql_get_field,
