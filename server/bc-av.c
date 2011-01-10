@@ -54,7 +54,8 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return 0;
 
 	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
-				SND_PCM_STREAM_CAPTURE, 0)) < 0) {
+				SND_PCM_STREAM_CAPTURE,
+				SND_PCM_NONBLOCK)) < 0) {
 		bc_log("E(%d): Opening audio device failed: %s", bc_rec->id,
 		       snd_strerror(err));
 		return -1;
@@ -144,15 +145,17 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* pcm can be null due to not being able to open the alsa dev. */
 	if (!bc_rec->pcm)
-		return 1;
+		return 0;
 
 	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
 
-	if (size != sizeof(g723_data)) {
+	if (size < 0) {
+		if (size == -EAGAIN)
+			return 0;
 		bc_log("E(%d): Error reading from sound device: %s",
 		       bc_rec->id, snd_strerror(size));
 		bc_alsa_close(bc_rec);
-		return 1;
+		return 0;
 	}
 
 	size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
@@ -165,7 +168,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* We need enough data to encode first... */
 	if (bc_rec->pcm_buf_size < c->frame_size)
-		return 0;
+		return 1;
 
 	av_init_packet(&pkt);
 
@@ -181,7 +184,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* Not enough to encode a full buffer yet */
 	if (pkt.size == 0)
-		return 0;
+		return 1;
 
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
@@ -195,7 +198,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 		return 1;
 	}
 
-	return 0;
+	return 1;
 }
 
 int bc_vid_out(struct bc_record *bc_rec)

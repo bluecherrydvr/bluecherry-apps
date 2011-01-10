@@ -128,27 +128,8 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		if (bc_rec->audio_st) {
-			double audio_pts, video_pts;
-			AVStream *st;
-
-			st = bc_rec->video_st;
-			video_pts = (double)st->pts.val * st->time_base.num /
-				st->time_base.den;
-
-			st = bc_rec->audio_st;
-			audio_pts = (double)st->pts.val * st->time_base.num /
-				st->time_base.den;
-
-			while (audio_pts < video_pts) {
-				if (bc_aud_out(bc_rec))
-					break;
-
-				audio_pts = (double)st->pts.val *
-						st->time_base.num /
-						st->time_base.den;
-			}
-		}
+		while (bc_aud_out(bc_rec))
+			/* Do nothing */;
 
 		if (bc_vid_out(bc_rec)) {
 			bc_log("E(%d): Error writing frame to outfile: %m",
