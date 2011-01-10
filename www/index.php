@@ -1,4 +1,4 @@
-<?php DEFINE(INDVR, true);
+<?php DEFINE('INDVR', true);
 
 	include("lib/lib.php");  #common functions
 	$current_user = new DVRUser();

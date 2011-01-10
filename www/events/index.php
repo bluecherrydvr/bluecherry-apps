@@ -1,6 +1,6 @@
 <?php
 
-DEFINE(INDVR, true);
+DEFINE('INDVR', true);
 #lib
 
 include("../lib/lib.php");  #common functions

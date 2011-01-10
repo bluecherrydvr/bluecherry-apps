@@ -170,7 +170,7 @@ class DVRUser extends DVRData{
 }
 
 #unified class for data operations
-class DVRData{
+class DVRData {
 	#mode: global - global config (no insertions, update multiple entries) OR update / insert
 	public function Edit($mode){
 		$db = DVRDatabase::getInstance();
