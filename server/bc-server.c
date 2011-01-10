@@ -65,7 +65,7 @@ static void bc_check_globals(void)
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DEV_SCED'");
 
-	if (dbres == NULL && !bc_db_fetch_row(dbres)) {
+	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
 		const char *sched = bc_db_get_val(dbres, "value");
 		if (sched && strlen(sched) == sizeof(global_sched))
 			memcpy(global_sched, sched, sizeof(global_sched));
@@ -79,7 +79,7 @@ static void bc_check_globals(void)
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DVR_MEDIA_STORE'");
 
-	if (dbres == NULL && !bc_db_fetch_row(dbres)) {
+	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
 		const char *stor = bc_db_get_val(dbres, "value");
 		if (stor)
 			strcpy(media_storage, stor);
