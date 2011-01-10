@@ -263,6 +263,7 @@ int bc_db_num_fields(BC_DB_RES dbres);
 const char *bc_db_get_val(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
+char *bc_db_escape_string(const char *str);
 
 /* Validate and process a license key to get values from it */
 int bc_key_process(struct bc_key_data *res, char *str);

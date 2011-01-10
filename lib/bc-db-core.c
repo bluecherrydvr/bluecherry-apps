@@ -163,3 +163,24 @@ long unsigned bc_db_last_insert_rowid(void)
 {
 	return bcdb.db_ops->last_insert_rowid(bcdb.dbh);
 }
+
+char *bc_db_escape_string(const char *str)
+{
+	int len = strlen(str);
+	char *p = malloc((len * 2) + 1);
+	int i, t;
+
+	if (p == NULL) {
+		errno = ENOMEM;
+		return NULL;
+	}
+
+	/* <= so we include the terminating null */
+	for (i = t = 0; i <= len; i++, t++) {
+		if (str[i] == '\'' || str[i] == '\\')
+			p[t++] = '\\';
+		p[t] = str[i];
+	}
+
+	return p;
+}
