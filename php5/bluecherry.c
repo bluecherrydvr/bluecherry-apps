@@ -83,6 +83,41 @@ PHP_FUNCTION(bc_db_close)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_db_escape_string)
+{
+	zval *z_ctx;
+	char *str;
+	int str_len;
+	char *tmp_str;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
+				  &str, &str_len) == FAILURE)
+		RETURN_FALSE;
+
+	str[str_len] = '\0';
+	tmp_str = bc_db_escape_string(str);
+	if (tmp_str == NULL)
+		RETURN_FALSE;
+
+	RETURN_STRING(tmp_str, 0);
+}
+
+PHP_FUNCTION(bc_db_query)
+{
+	zval *z_ctx;
+	char *sql;
+	int sql_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
+				  &sql, &sql_len) == FAILURE)
+		RETURN_FALSE;
+
+	if (bc_db_query("%s", sql))
+		RETURN_FALSE;
+
+	RETURN_TRUE;
+}
+
 PHP_FUNCTION(bc_db_get_table)
 {
 	zval *z_ctx;
@@ -238,11 +273,27 @@ PHP_FUNCTION(bc_set_mjpeg)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_log)
+{
+	char *str;
+	int str_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
+				  &str, &str_len) == FAILURE)
+		RETURN_FALSE;
+
+	bc_log("%s", str);
+
+	RETURN_TRUE;
+}
+
 static function_entry bluecherry_functions[] = {
 	/* Bluecherry DB Handlers */
 	PHP_FE(bc_db_open, NULL)
 	PHP_FE(bc_db_close, NULL)
 	PHP_FE(bc_db_get_table, NULL)
+	PHP_FE(bc_db_query, NULL)
+	PHP_FE(bc_db_escape_string, NULL)
 	/* Bluecherry Video Handlers */
 	PHP_FE(bc_handle_get, NULL)
 	PHP_FE(bc_handle_free, NULL)
@@ -252,6 +303,8 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_data, NULL)
 	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
+	/* Miscellaneous */
+	PHP_FE(bc_log, NULL)
 	{NULL, NULL, NULL}
 };
 
