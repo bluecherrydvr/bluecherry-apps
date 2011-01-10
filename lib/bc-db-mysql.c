@@ -5,6 +5,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <libbluecherry.h>
 
@@ -138,6 +139,12 @@ static unsigned long bc_db_mysql_last_insert_rowid(void *handle)
 	return mysql_insert_id(handle);
 }
 
+static void bc_db_mysql_escape_string(void *handle, char *to,
+				      const char *from)
+{
+	mysql_real_escape_string(handle, to, from, strlen(from));
+}
+
 static void bc_db_mysql_lock(void *handle)
 {
 	return;
@@ -159,6 +166,7 @@ struct bc_db_ops bc_db_mysql = {
 	.num_fields	= bc_db_mysql_num_fields,
 	.get_field	= bc_db_mysql_get_field,
 	.last_insert_rowid = bc_db_mysql_last_insert_rowid,
+	.escape_string	= bc_db_mysql_escape_string,
 	.lock		= bc_db_mysql_lock,
 	.unlock		= bc_db_mysql_unlock,
 };

@@ -150,6 +150,12 @@ static unsigned long bc_db_sqlite_last_insert_rowid(void *handle)
 	return (unsigned long)sqlite3_last_insert_rowid(handle);
 }
 
+static void bc_db_sqlite_escape_string(void *handle, char *to,
+				       const char *from)
+{
+	sqlite3_snprintf((strlen(from) * 2) + 1, to, "%q", from);
+}
+
 static void bc_db_sqlite_lock(void *handle)
 {
 	if (pthread_mutex_lock(&db_lock) == EDEADLK)
@@ -174,6 +180,7 @@ struct bc_db_ops bc_db_sqlite = {
 	.num_fields	= bc_db_sqlite_num_fields,
 	.get_field	= bc_db_sqlite_get_field,
 	.last_insert_rowid = bc_db_sqlite_last_insert_rowid,
+	.escape_string	= bc_db_sqlite_escape_string,
 	.lock		= bc_db_sqlite_lock,
 	.unlock		= bc_db_sqlite_unlock,
 };

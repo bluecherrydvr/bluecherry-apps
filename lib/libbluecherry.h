@@ -56,6 +56,7 @@ struct bc_db_ops {
 	int (*num_fields)(void *handle, BC_DB_RES dbres);
 	int (*query)(void *handle, char *query);
 	unsigned long (*last_insert_rowid)(void *handle);
+	void (*escape_string)(void *handle, char *to, const char *from);
 	void (*lock)(void *handle);
 	void (*unlock)(void *handle);
 };
@@ -263,7 +264,7 @@ int bc_db_num_fields(BC_DB_RES dbres);
 const char *bc_db_get_val(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
-char *bc_db_escape_string(const char *str);
+char *bc_db_escape_string(const char *from);
 
 /* Validate and process a license key to get values from it */
 int bc_key_process(struct bc_key_data *res, char *str);
