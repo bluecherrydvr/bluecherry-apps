@@ -1,7 +1,7 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lsqlite3 -lpq -lmysqlclient -lconfig -lm
+LDFLAGS		+= -lsqlite3 -lmysqlclient -lconfig -lm
 
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 

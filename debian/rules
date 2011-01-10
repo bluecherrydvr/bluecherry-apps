@@ -5,12 +5,10 @@
 
 override_dh_auto_install:
 	dh_auto_install
-	install -m755 -d debian/bluecherry/usr/share/doc/bluecherry
-	cat misc/sql/sqlite/*.sql > \
-		debian/bluecherry/usr/share/bluecherry/sqlite-base.sql
-	install -m640 -D misc/bluecherry.conf \
-		debian/bluecherry/etc/bluecherry.conf
+	cat misc/sql/mysql/*.sql > \
+	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/install/mysql
+	install -m640 -D debian/bluecherry.conf.in \
+		debian/bluecherry/usr/share/bluecherry/bluecherry.conf.in
 	install -m644 -D debian/apache.conf \
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
-	install -d -m755 debian/bluecherry/usr/share/bluecherry/www
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www

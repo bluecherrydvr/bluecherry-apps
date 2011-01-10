@@ -1,2 +1,3 @@
-usr/share/bluecherry
+usr/share/bluecherry/www
 var/lib/bluecherry
+usr/share/dbconfig-common/data/bluecherry/install

@@ -2,18 +2,41 @@
 
 set -e
 
-dbdir="/var/lib/bluecherry"
-db="$dbdir/bluecherry.sqlite"
+if [ -f /usr/share/debconf/confmodule ]; then
+	. /usr/share/debconf/confmodule
+fi
+if [ -f /usr/share/dbconfig-common/dpkg/postrm.mysql ]; then
+	. /usr/share/dbconfig-common/dpkg/postrm.mysql
+	dbc_go bluecherry $@
+fi
 
 case "$1" in
+	remove)
+		a2dissite bluecherry
+
+		# Reload some things
+		invoke-rc.d apache2 restart
+		invoke-rc.d rsyslog reload
+	;;
 	purge)
-		rm -f "$db"
-		if test -d "$dbdir"; then
-			 rmdir --ignore-fail-on-non-empty "$dbdir"
+		CONFIGFILE=/etc/bluecherry.conf
+
+		for ext in '~' '%' .bak .ucf-new .ucf-old .ucf-dist;  do
+			rm -f $CONFIGFILE$ext
+		done
+
+		rm -f $CONFIGFILE
+
+		if which ucf > /dev/null; then
+			ucf --purge $CONFIGFILE
 		fi
+		if which ucfr > /dev/null; then
+			ucfr --purge bluecherry $CONFIGFILE
+		fi
+
 		userdel bluecherry || true
 		groupdel bluecherry || true
-		;;
+	;;
 esac
 
 #DEBHELPER#
