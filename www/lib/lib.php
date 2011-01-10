@@ -155,7 +155,7 @@ class DVRData {
 			case 'update':
 				foreach ($_POST as $parameter => $value){
 					if ($value=='true') {$value = '1'; } elseif ($value=='false') {$value = '0'; };
-					$tmp[$parameter]="'{$db->DBEscapeString($parameter)}'='{$db->DBEscapeString($value)}'";
+					$tmp[$parameter]="{$db->DBEscapeString($parameter)}='{$db->DBEscapeString($value)}'";
 				}
 				
 				$ret = $db->DBQuery("UPDATE $type SET ".implode(", ", $tmp)." WHERE id='$id'");
@@ -188,7 +188,7 @@ class DVRDevices extends DVRData{
 		$db = DVRDatabase::getInstance();
 		$tmp = $db->DBFetchAll("SELECT * FROM AvailableSources GROUP BY card_id");
 		$this->number_of_cards = count($tmp);
-		if (!tmp) { return false; };
+		if (!count($tmp)) { return false; };
 		foreach ($tmp as $key => $card){
 			$this->cards[$card['card_id']] = new BCDVRCard($card['card_id']);
 			$this->total_devices += count($this->cards[$card['card_id']]->devices);

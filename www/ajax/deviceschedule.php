@@ -29,7 +29,7 @@ class devSchedule{
 	}
 }
 
-$id = isset($_GET['id']) ? intval($_GET['id']) : 'global';
+$id = (isset($_GET['id']) and $_GET['id'] != '') ? intval($_GET['id']) : 'global';
 
 $device_schedule = new devSchedule($id);
 
