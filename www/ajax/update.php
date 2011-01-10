@@ -34,7 +34,7 @@ class updateDB extends DVRData{
 		$ip = preg_replace("/[^(0-9)\.]/", "", $_POST['id']);
 		$db = DVRDatabase::getInstance();
 		if ($_SERVER['REMOTE_ADDR']!=$ip){
-			$this->status = ($db->DBQuery("UPDATE ActiveUsers SET kick = 1 WHERE ip='$ip'")) ? true : false;
+			$this->status = $db->DBQuery("UPDATE ActiveUsers SET kick = 1 WHERE ip='$ip'");
 			$this->message = ($this->status) ? AU_KICKED : CHANGES_FAIL;
 		} else {
 			$this->status = false;
@@ -56,7 +56,7 @@ class updateDB extends DVRData{
 	function update_control(){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE id='$id' "));
+		$this_device = $db->DBFetchAll("SELECT * FROM Devices WHERE id='$id'");
 		$bch = bc_handle_get($this_device[0]['source_video']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
@@ -70,7 +70,7 @@ class updateDB extends DVRData{
 	function changeFPSRES($type){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.id='$id' "));
+		$this_device = $db->DBFetchAll("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.id='$id'");
 		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
 			$res['x'] = $this_device[0]['resolutionX']; $res['y'] = $this_device[0]['resolutionY']; 
 		}
@@ -84,7 +84,7 @@ class updateDB extends DVRData{
 			$this->status = false;
 			$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 		} else {
-			$this->status = ($db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE source_video='{$this_device[0]['source_video']}'")) ? true : false;
+			$this->status = $db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE source_video='{$this_device[0]['source_video']}'");
 			$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			$container_card = new BCDVRCard($this_device[0]['card_id']);
 			$this->data = $container_card->fps_available;
@@ -95,7 +95,7 @@ class updateDB extends DVRData{
 	function changeState(){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll($db->DBQuery("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices ON AvailableSources.devicepath=Devices.source_video WHERE AvailableSources.id='$id' "));
+		$this_device = $db->DBFetchAll("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices ON AvailableSources.devicepath=Devices.source_video WHERE AvailableSources.id='$id' ");
 		$container_card = new BCDVRCard($this_device[0]['card_id']);
 		if ($this_device[0]['source_video']!=''){ //if the device is configured
 		
@@ -105,12 +105,12 @@ class updateDB extends DVRData{
 					$this->status = false;
 					$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 				} else {
-					$this->status = ($db->DBQuery("UPDATE Devices SET disabled='0' WHERE source_video='{$this_device[0]['source_video']}'")) ? true : false;
+					$this->status = $db->DBQuery("UPDATE Devices SET disabled='0' WHERE source_video='{$this_device[0]['source_video']}'");
 					$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 				}
 				
 			} else {
-				$this->status = ($db->DBQuery("UPDATE Devices SET disabled='1' WHERE source_video='{$this_device[0]['source_video']}'")) ? true : false;
+				$this->status = $db->DBQuery("UPDATE Devices SET disabled='1' WHERE source_video='{$this_device[0]['source_video']}'");
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
 		} else {
@@ -122,7 +122,7 @@ class updateDB extends DVRData{
 				$res['y'] = '288';
 				$enc = 'PAL';
 			}
-			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, audio_channels, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['devicepath']}', 15, '{$enc}', '$ds', 8000, " . 0x01000001 . ", 1, '{$this_device[0]['alsasounddev']}')") ? true : false;
+			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, audio_channels, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['devicepath']}', 15, '{$enc}', '$ds', 8000, " . 0x01000001 . ", 1, '{$this_device[0]['alsasounddev']}')");
 			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
@@ -141,7 +141,7 @@ class updateDB extends DVRData{
 		$_POST['access_backup'] = ($_POST['access_backup']=='on') ? '1' : '0';
 		$_POST['salt'] = genRandomString(4);
 		$_POST['password'] = md5($_POST['password'].$_POST['salt']);
-		$this->status = ($db->DBQuery($this->FormQueryFromPOST('insert'))) ? true : false;
+		$this->status = $db->DBQuery($this->FormQueryFromPOST('insert'));
 		$this->message = ($this->status) ? USER_CREATED : CHANGES_FAIL;
 	}
 	
@@ -150,7 +150,7 @@ class updateDB extends DVRData{
 		$db = DVRDatabase::getInstance();
 		if ($_POST['password']=='__default__') { unset($_POST['password']); }
 		 else { 
-		 	$tmp = $db->DBFetchAll($db->DBQuery("SELECT salt FROM Users WHERE id='$id'"));
+		 	$tmp = $db->DBFetchAll("SELECT salt FROM Users WHERE id='$id'");
 			$_POST['password'] = md5($_POST['password'].$tmp[0]['salt']);
 		};
 		$_POST['type'] = 'Users';
@@ -161,7 +161,7 @@ class updateDB extends DVRData{
 		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
 		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if ($_SESSION['id']==$_POST['id'] && $_POST['access_setup']==0) { $this->message = CANT_REMOVE_ADMIN; return false; }
-		$this->status = ($db->DBQuery($this->FormQueryFromPOST('update'))) ? true : false;
+		$this->status = $db->DBQuery($this->FormQueryFromPOST('update'));
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	
@@ -169,7 +169,7 @@ class updateDB extends DVRData{
 		$id = intval($_POST['id']);
 		if ($_SESSION['id']==$id) { $this->message = DELETE_USER_SELF; return false; }
 		$db = DVRDatabase::getInstance();
-		$this->status = ($db->DBQuery("DELETE FROM Users WHERE id='$id'")) ? true : false;
+		$this->status = $db->DBQuery("DELETE FROM Users WHERE id='$id'");
 		$this->message = ($this->status) ? USER_DELETED : CHANGES_FAIL;
 		return true;
 	}

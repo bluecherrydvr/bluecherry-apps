@@ -20,83 +20,35 @@ session_start();
 	
 #classes
 
-class DVRDatabase{
-	public  $config_file_vars;
-	private $db;
+class DVRDatabase {
 	public static $instance;
-	
+
 	private function __construct(){
-		$this->ReadConfig();
 		$this->DBConnect();
 	}
-	
-	public static function getInstance(){
+
+	public static function getInstance() {
 		self::$instance or self::$instance = new DVRDatabase();
 		return self::$instance;
 	}
-	
-	public function ReadConfig(){
-		$config_file = @fopen(VAR_CONF_PATH, "r") or die(LANG_DIE_COULDNOTOPENCONF);
-		while($tmp = fgets($config_file, 4096)){
-			$tmp = trim($tmp);
-			if (strlen($tmp) == 0 or $tmp[0] == '#')
-				continue;
 
-			if (preg_match("/(.*)[\ ][\=][\ ]*(.*);/", $tmp, $matches))
-				$this->config_file_vars[$matches[1]] =
-					trim($matches[2], '"');
-		}
-		
+	private function DBConnect() {
+		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
 	}
-	
-	private function DBConnect(){
-		switch ($this->config_file_vars["type"]){
-			case 0:
-				$this->db = new SQLite3($this->config_file_vars["file"]) or die(LANG_DIE_COULDNOTCONNECT.$error); break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
+
+	public function DBEscapeString(&$string) {
+		$string = bc_db_escape_string($string);
+		return $string;
 	}
-	
-	public function DBEscapeString(&$string){
-		switch ($this->config_file_vars["type"]){
-			case 0: $string =  $this->db->escapeString($string); return $string; break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
+
+	/* Execute a result-less query */
+	public function DBQuery($query) {
+		return bc_db_query($query);
 	}
-	
-	public function DBQuery($query){
-		switch ($this->config_file_vars["type"]){
-			case 0: return $this->db->query($query); break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
-	}
-	
-	public function DBMultipleQuery($query){
-		switch ($this->config_file_vars["type"]){
-			case 0: return $this->db->exec($query); break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
-	}
-	
-	public function DBNumRows($resource){
-		switch ($this->config_file_vars["type"]){
-			case 0: return $this->DBFetchAll($resource, true); break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
-	}
-	
-	public function DBFetchArray($resource){
-		switch ($this->config_file_vars["type"]){
-			case 0: return $resource->fetchArray(SQLITE3_ASSOC); break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
-	}
-	
-	public function DBFetchAll($resource, $count = false){
-		switch ($this->config_file_vars["type"]){
-			case 0: $i=0; while ($tmp[$i] = $resource->fetchArray(SQLITE3_ASSOC)) $i++; unset($tmp[$i]); return ($count) ? $i-1 : $tmp; break;
-			#support for postgresql(1) and mysql(2) to be added
-		}
+
+	/* Execute a query that will return results */
+	public function DBFetchAll($query) {
+		return bc_db_get_table($query);
 	}
 }
 
@@ -146,7 +98,7 @@ class DVRUser extends DVRData{
 	private function ActiveUsersUpdate(){
 		$db = DVRDatabase::getInstance(); 
 		$db->DBQuery("DELETE FROM ActiveUsers WHERE time <".(time()-300));
-		$tmp = $db->DBFetchAll($db->DBQuery("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}'"));
+		$tmp = $db->DBFetchAll("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
 		if (count($tmp) == 0){ 
 			 $db->DBQuery("INSERT INTO ActiveUsers VALUES ({$_SESSION['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)");
 		} else {
@@ -174,7 +126,7 @@ class DVRData {
 	#mode: global - global config (no insertions, update multiple entries) OR update / insert
 	public function Edit($mode){
 		$db = DVRDatabase::getInstance();
-		return ($db->DBMultipleQuery($this->FormQueryFromPOST($mode))) ? true : false;
+		return $db->DBQuery($this->FormQueryFromPOST($mode));
 	}
 	
 	public function Kill($type, $id){
@@ -189,7 +141,8 @@ class DVRData {
 		$id = $db->DBEscapeString($_POST['id']); unset($_POST['id']);
 		$type = $db->DBEscapeString($_POST['type']); unset($_POST['type']);
 		switch ($mode){
-			case 'global': 
+			case 'global':
+				$query = "";
 				foreach ($_POST as $parameter => $value){
 					$db->DBEscapeString($parameter);
 					$db->DBEscapeString($value);
@@ -213,8 +166,7 @@ class DVRData {
 	
 	public static function GetObjectData($type, $parameter = false, $value = false, $condition = '='){
 		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBQuery("SELECT * FROM {$db->DBEscapeString($type)}".((!$parameter) ? '' : " WHERE {$db->DBEscapeString($parameter)} ".$condition." '{$db->DBEscapeString($value)}'"));
-		$tmp = $db->DBFetchAll($tmp);
+		$tmp = $db->DBFetchAll("SELECT * FROM {$db->DBEscapeString($type)}".((!$parameter) ? '' : " WHERE {$db->DBEscapeString($parameter)} ".$condition." '{$db->DBEscapeString($value)}'"));
 		return (!$tmp) ? false : $tmp;
 	}
 	
@@ -234,7 +186,7 @@ class DVRDevices extends DVRData{
 
 	private function getCards(){
 		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBFetchAll($db->DBQuery("SELECT * FROM AvailableSources GROUP BY card_id"));
+		$tmp = $db->DBFetchAll("SELECT * FROM AvailableSources GROUP BY card_id");
 		$this->number_of_cards = count($tmp);
 		if (!tmp) { return false; };
 		foreach ($tmp as $key => $card){
@@ -244,7 +196,7 @@ class DVRDevices extends DVRData{
 	}
 	private function getIpCameras(){
 		$db = DVRDatabase::getInstance();
-		$this->ip_cameras = $db->DBFetchAll($db->DBQuery("SELECT * FROM Devices WHERE source_video NOT LIKE '/dev/video%'"));
+		$this->ip_cameras = $db->DBFetchAll("SELECT * FROM Devices WHERE source_video NOT LIKE '/dev/video%'");
 		$this->total_devices += count($this->ip_cameras);
 	}
 	public function MakeXML(){
@@ -288,18 +240,17 @@ class BCDVRCard{
 	private function getCardInfo(){
 		$this->fps_available = 480; //BC card capacity
 		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBQuery("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id DESC");
-		$this->devices = $db->DBFetchAll($tmp);
+		$this->devices = $db->DBFetchAll("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id DESC");
 		$this->type = count($this->devices);
 		$port = 1;
 		$this->signal_type = 'notconfigured';
 		foreach ($this->devices as $key => $device){
 			$this->devices[$key]['as_id'] = $this->devices[$key]['id'];
-			$tmp = $db->DBFetchArray($db->DBQuery("SELECT * FROM Devices WHERE source_video='{$device['devicepath']}'"));
+			$tmp = $db->DBFetchAll("SELECT * FROM Devices WHERE source_video='{$device['devicepath']}'");
 			$this->devices[$key]['port'] = $port; $port++;
-			if (!$tmp) { $this->devices[$key]['status'] = 'notconfigured'; $this->devices[$key]['id']=''; }
+			if (!count($tmp)) { $this->devices[$key]['status'] = 'notconfigured'; $this->devices[$key]['id']=''; }
 			 	else {
-					$this->devices[$key] = array_merge($this->devices[$key], $tmp);
+					$this->devices[$key] = array_merge($this->devices[$key], $tmp[0]);
 					$this->devices[$key]['status'] = ($this->devices[$key]['disabled']) ? 'disabled' : 'OK';
 					$this->signal_type = ($this->devices[$key]['signal_type']) ? $this->devices[$key]['signal_type'] : 'notconfigured' ; //NTSC is the default
 				}

@@ -13,7 +13,7 @@ class ActiveUsers{
 	public $users;
 	public function __construct(){
 		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBFetchAll($db->DBQuery("SELECT * FROM ActiveUsers"));
+		$tmp = $db->DBFetchAll("SELECT * FROM ActiveUsers");
 		foreach($tmp as $k => $user){
 			$this->users[$k] = new DVRUser('id', $user['id']);
 			$this->users[$k]->data[0]['ip'] = $user['ip'];

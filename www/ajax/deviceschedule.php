@@ -16,20 +16,20 @@ class devSchedule{
 	public $device_data;
 	public function __construct($id){
 		$db = DVRDatabase::getInstance();
-		$q = ($id!='global') ? "SELECT id, device_name, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
-		$tmp =  $db->DBFetchAll($db->DBQuery($q));
+		$q = ($id != 'global') ? "SELECT id, device_name, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
+		$tmp =  $db->DBFetchAll($q);
 		#if there is no schedule copy global
-		if ($id!='global' && $tmp[0]['schedule']==''){
-			$global_schedule = $db->DBFetchAll($db->DBQuery("SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'"));
+		if ($id != 'global' && $tmp[0]['schedule'] == ''){
+			$global_schedule = $db->DBFetchAll("SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'");
 			$db->DBQuery("UPDATE Devices SET schedule='{$global_schedule[0]['schedule']}' WHERE id='$id'");
-			$tmp =  $db->DBFetchAll($db->DBQuery($q));
+			$tmp =  $db->DBFetchAll($q);
 		}
 		$this->schedule_data = $tmp;
 		if ($id=='global') $this->device_data[0]['id'] = 'global';
 	}
 }
 
-$id = ($_GET['id']) ? intval($_GET['id']) : 'global';
+$id = isset($_GET['id']) ? intval($_GET['id']) : 'global';
 
 $device_schedule = new devSchedule($id);
 

@@ -17,7 +17,7 @@ class devSchedule{
 	public $device_data;
 	public function __construct(){
 		$db = DVRDatabase::getInstance();
-		$this->schedule_data = $db->DBFetchAll($db->DBQuery("SELECT * FROM deviceSchedule WHERE id='global'"));
+		$this->schedule_data = $db->DBFetchAll("SELECT * FROM deviceSchedule WHERE id='global'");
 	}
 }
 

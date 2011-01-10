@@ -7,7 +7,7 @@ Class LiveViewDevices{
 	 
 	public function __construct(){
 		$db = DVRDatabase::getInstance();
-		$this->devices = $db->DBFetchAll($db->DBQuery("SELECT Devices.id, Devices.device_name  FROM Devices INNER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.disabled='0' "));
+		$this->devices = $db->DBFetchAll("SELECT Devices.id, Devices.device_name  FROM Devices INNER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.disabled='0'");
 	}
 }
 
