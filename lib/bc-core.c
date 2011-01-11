@@ -130,6 +130,8 @@ int bc_handle_start(struct bc_handle *bc)
 
 		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vb) < 0)
 			return -1;
+
+		bc->p_buf[i].status = BC_VB_STATUS_QUEUED;
 	}
 
 	bc->buf_idx = -1;
@@ -351,7 +353,10 @@ void bc_handle_stop(struct bc_handle *bc)
 		if (!(vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)))
 			continue;
 
-		ioctl(bc->dev_fd, VIDIOC_DQBUF, &vb);
+		if (ioctl(bc->dev_fd, VIDIOC_DQBUF, &vb) <0)
+			continue;
+
+		bc->p_buf[i].status = BC_VB_STATUS_LOCAL;
 	}
 
 	/* Stop the stream */
