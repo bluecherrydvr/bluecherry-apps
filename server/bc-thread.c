@@ -244,7 +244,7 @@ static void check_motion_map(struct bc_record *bc_rec,
 				int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
 				if (bc_rec->motion_map[pos] == '3')
 					continue;
-				bc_set_motion_thresh(bc, val, (i * 64) + j);
+				bc_set_motion_thresh(bc, val, (i * 32) + j);
 				bc_rec->motion_map[pos] = '3';
 			}
 		}
@@ -267,7 +267,7 @@ static void check_motion_map(struct bc_record *bc_rec,
 						motion_map[pos]);
 			if (bc_rec->motion_map[pos] == motion_map[pos])
 				continue;
-			bc_set_motion_thresh(bc, val, (i * 64) + j);
+			bc_set_motion_thresh(bc, val, (i * 32) + j);
 			bc_rec->motion_map[pos] = motion_map[pos];
 		}
 	}
