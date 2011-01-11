@@ -1,14 +1,14 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lsqlite3 -lmysqlclient -lconfig -lm
+LDFLAGS		+= -lmysqlclient -lconfig -lm
 
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= libbluecherry.so.0
-OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-sqlite.o \
-		  bc-db-mysql.o bc-key.o bc-media.o
+OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
+		  bc-key.o bc-media.o
 
 all: $(SOLIBVER)
 

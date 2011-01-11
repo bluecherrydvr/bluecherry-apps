@@ -11,11 +11,10 @@
 
 #include <libbluecherry.h>
 
-extern struct bc_db_ops bc_db_sqlite;
 extern struct bc_db_ops bc_db_mysql;
 
 struct bc_db_handle bcdb = {
-	.db_type	= BC_DB_SQLITE,
+	.db_type	= BC_DB_MYSQL,
 	.dbh		= NULL,
 	.db_ops		= NULL,
 };
@@ -60,9 +59,6 @@ int bc_db_open(void)
 	}
 
 	switch (type) {
-	case BC_DB_SQLITE:
-		bcdb.db_ops = &bc_db_sqlite;
-		break;
 	case BC_DB_MYSQL:
 		bcdb.db_ops = &bc_db_mysql;
 		break;
@@ -70,9 +66,10 @@ int bc_db_open(void)
 		bc_log("E(%s): DB type %ld is not supported", BC_CONFIG, type);
 	}
 
-	bcdb.db_type = type;
-	if (bcdb.db_ops)
+	if (bcdb.db_ops) {
+		bcdb.db_type = type;
 		bcdb.dbh = bcdb.db_ops->open(&cfg);
+	}
 
 db_error:
 	if (!bcdb.dbh) {
