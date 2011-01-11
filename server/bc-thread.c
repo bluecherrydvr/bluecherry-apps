@@ -94,7 +94,7 @@ static void *bc_device_thread(void *data)
 	struct bc_handle *bc = bc_rec->bc;
 	int ret;
 
-	bc_log("I(%d): Starting record: %s", bc_rec->id, bc_rec->name);
+	bc_log("I(%d): Camera configured: %s", bc_rec->id, bc_rec->name);
 
 	for (;;) {
 		if (bc_rec->thread_should_die)
