@@ -143,7 +143,7 @@ DVRPageScript = new Class({
 				$$('.cardEncoding').each(function(el){
 					el.addEvent('click', function(){
 						var encoding = (el.get('html')=='NTSC') ? 'PAL' : 'NTSC';
-						ajaxUpdateField('updateEncoding', 'devices', {'signal_type' : encoding }, el.get('id'), 'devices');
+						ajaxUpdateField('updateEncoding', 'Devices', {'signal_type' : encoding }, el.get('id'), 'devices');
 					});
 				});
 				$$('.editMap').each(function(el){
@@ -158,7 +158,7 @@ DVRPageScript = new Class({
 				});
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
-						ajaxUpdateField('changeState', 'devices', {'do' : true }, el.get('id'), 'devices');
+						ajaxUpdateField('changeState', 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
 				$$('.videoadj').each(function(el){
@@ -203,11 +203,11 @@ DVRPageScript = new Class({
 						wheel: true,
 						onChange: function(){
 							switch (id){
-								case 'hue': ajaxUpdateField('update_control', 'devices', { 'hue' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'brightness': ajaxUpdateField('update_control', 'devices', { 'brightness' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'saturation': ajaxUpdateField('update_control', 'devices', { 'saturation' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'audio_volume': ajaxUpdateField('update', 'devices', { 'audio_volume' : this.step }, $('device_id').get('value'), 'none'); break;
-								case 'contrast': ajaxUpdateField('update_control', 'devices', { 'contrast' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'hue': ajaxUpdateField('update_control', 'Devices', { 'hue' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'brightness': ajaxUpdateField('update_control', 'Devices', { 'brightness' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'saturation': ajaxUpdateField('update_control', 'Devices', { 'saturation' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'audio_volume': ajaxUpdateField('update', 'Devices', { 'audio_volume' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'contrast': ajaxUpdateField('update_control', 'Devices', { 'contrast' : this.step }, $('device_id').get('value'), 'none'); break;
 							}
 							$(id+'_value').set('value', this.step)
 						}
