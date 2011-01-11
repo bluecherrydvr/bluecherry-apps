@@ -39,6 +39,12 @@ enum bc_db_type {
 	BC_DB_MYSQL = 2,
 };
 
+enum bc_vb_status {
+	BC_VB_STATUS_LOCAL = 0,
+	BC_VB_STATUS_USING,
+	BC_VB_STATUS_QUEUED,
+};
+
 typedef void * BC_DB_RES;
 
 /* Should really be opaque and not in this file */
@@ -76,9 +82,10 @@ struct bc_handle {
 	struct v4l2_streamparm	vparm;
 	/* Userspace buffer accounting */
 	struct {
-		void		*data;
-		size_t		size;
-		struct v4l2_buffer vb;
+		void			*data;
+		size_t			size;
+		struct v4l2_buffer	vb;
+		enum bc_vb_status	status;
 	}			p_buf[BC_BUFFERS];
 
 	int			started;
@@ -87,7 +94,6 @@ struct bc_handle {
 	int			mot_cnt;
 	int			gop;
 	int			buffers;
-	int			buffers_local;
 
 	/* For private data */
 	void			*__data;
