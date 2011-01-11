@@ -530,7 +530,7 @@ var localMotionGrid = new Class({
 		
 		saveSetting: function(output, type){
 			switch(type){
-				case 'mmap': ajaxUpdateField('update', 'devices', {'motion_map' : output}, $('cameraID').get('value'), 'button'); break;
+				case 'mmap': ajaxUpdateField('update', 'Devices', {'motion_map' : output}, $('cameraID').get('value'), 'button'); break;
 				case 'deviceSchedule':
 					if ($('cameraID').get('value')!='global'){
 						if ($('overrideGlobal')) { ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : $('overrideGlobal').get('checked')}, $('cameraID').get('value'), 'button'); }

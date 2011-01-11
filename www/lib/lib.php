@@ -150,7 +150,7 @@ class DVRData {
 				}
 				break;
 			case 'insert':
-				$ret = $db->DBQuery("INSERT INTO $type ('".implode("', '", array_keys($_POST))."') VALUES ('".implode("', '", $_POST)."')");
+				$ret = $db->DBQuery("INSERT INTO $type (".implode(", ", array_keys($_POST)).") VALUES ('".implode("', '", $_POST)."')");
 				break;
 			case 'update':
 				foreach ($_POST as $parameter => $value){
