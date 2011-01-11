@@ -151,7 +151,7 @@ static int get_avail(float *avail)
  * events until there's more than or equal to min_thresh% available. Do not
  * delete archived events. If we've deleted everything we can and we still
  * don't have more than min_avail% available, then complain....LOUDLY! */
-static void bc_check_media(void)
+static void __bc_check_media(void)
 {
 	BC_DB_RES dbres;
 	float avail;
@@ -165,15 +165,11 @@ static void bc_check_media(void)
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
 	       media_storage, avail);
 
-	bc_db_lock();
-
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive!=0 AND "
 				"end!=0 ORDER BY start ASC");
 
-	if (dbres == NULL) {
-		bc_db_unlock();
+	if (dbres == NULL)
 		return;
-	}
 
 	while (!bc_db_fetch_row(dbres) && avail < min_thresh) {
 		const char *filepath = bc_db_get_val(dbres, "filepath");
@@ -194,7 +190,6 @@ static void bc_check_media(void)
         }
 
 	bc_db_free_table(dbres);
-	bc_db_unlock();
 
 	if (avail < min_avail) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
@@ -203,13 +198,17 @@ static void bc_check_media(void)
 	}
 }
 
+static void bc_check_media(void)
+{
+	bc_db_lock("Media");
+	__bc_check_media();
+	bc_db_unlock("Media");
+}
+
 static void bc_check_db(void)
 {
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
-
-	bc_check_globals();
-	bc_check_media();
 
 	dbres = bc_db_get_table("SELECT * from Devices");
 
@@ -291,6 +290,7 @@ int main(int argc, char **argv)
 	int opt;
 	int loops;
 	int bg = 1;
+	int count;
 
 	check_expire();
 
@@ -313,32 +313,41 @@ int main(int argc, char **argv)
 	/* Help pipe av* log to our log */
 	av_log_set_callback(av_log_cb);
 
-	if (bc_db_open()) {
-		bc_log("E: Could not open SQL database");
-		exit(1);
-	}
-
 	if (bg && daemon(0, 0) == -1) {
 		bc_log("E: Could not fork to background: %m");
 		exit(1);
 	}
 
-	bc_log("Started");
+	bc_log("I: Started Bluecherry daemon");
+
+	for (count = 1; bc_db_open(); count++) {
+		sleep(1);
+		if (count % 30)
+			continue;
+		bc_log("E: Could not open SQL database after 30 seconds...");
+	}
+
+	bc_log("I: SQL database connection opened");
 
 	/* Main loop */
 	loops = 0;
-	for (;;) {
+	for (loops = 0 ;; loops++) {
+		/* Every second */
 		bc_check_threads();
 
-		/* Check the db every minute */
-		if (loops-- > 0) {
-			sleep(1);
-			continue;
+		/* Every 10 seconds */
+		if (!(loops % 10)) {
+			/* Check for new devices */
+			bc_check_avail();
+			/* Check global vars */
+			bc_check_globals();
+			/* Check media locations for full */
+			bc_check_media();
+			/* Check for changes in camera records */
+			bc_check_db();
 		}
-		loops = 60;
 
-		bc_check_avail();
-		bc_check_db();
+		sleep(1);
 	}
 
 	exit(0);

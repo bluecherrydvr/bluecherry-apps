@@ -19,14 +19,14 @@ struct bc_db_handle bcdb = {
 	.db_ops		= NULL,
 };
 
-void bc_db_lock(void)
+void bc_db_lock(const char *table)
 {
-	bcdb.db_ops->lock(bcdb.dbh);
+	bcdb.db_ops->lock(bcdb.dbh, table);
 }
 
-void bc_db_unlock(void)
+void bc_db_unlock(const char *table)
 {
-	bcdb.db_ops->unlock(bcdb.dbh);
+	bcdb.db_ops->unlock(bcdb.dbh, table);
 }
 
 void bc_db_close(void)

@@ -139,9 +139,9 @@ static int do_media(struct bc_media_entry *bcm)
 {
 	int ret;
 
-	bc_db_lock();
+	bc_db_lock("Media");
 	ret = __do_media(bcm);
-	bc_db_unlock();
+	bc_db_unlock("Media");
 
 	return ret;
 }
@@ -189,9 +189,9 @@ static int do_cam(struct bc_event_cam *bce)
 {
 	int ret;
 
-	bc_db_lock();
+	bc_db_lock("EventsCam");
 	ret = __do_cam(bce);
-	bc_db_unlock();
+	bc_db_unlock("EventsCam");
 
 	return ret;
 }
@@ -250,8 +250,6 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	if (!bce || !bcm->table_id || !bce->inserted)
 		return bcm;
 
-	bc_db_lock();
-
 	/* Update to match */
 	bcm->start = bce->start_time;
 
@@ -262,8 +260,6 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	/* Update media start time */
 	bc_db_query("UPDATE Media SET start=%lu WHERE id=%lu",
 		    bcm->start, bcm->table_id);
-
-	bc_db_unlock();
 
 	return bcm;
 }

@@ -165,14 +165,14 @@ static void bc_db_mysql_escape_string(void *handle, char *to,
 	mysql_real_escape_string(handle, to, from, strlen(from));
 }
 
-static void bc_db_mysql_lock(void *handle)
+static void bc_db_mysql_lock(void *handle, const char *table)
 {
-	return;
+	bc_db_query("LOCK TABLES %s WRITE", table);
 }
 
-static void bc_db_mysql_unlock(void *handle)
+static void bc_db_mysql_unlock(void *handle, const char *table)
 {
-	return;
+	bc_db_query("UNLOCK TABLES");
 }
 
 struct bc_db_ops bc_db_mysql = {

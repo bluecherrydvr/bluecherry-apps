@@ -108,30 +108,24 @@ static void bc_add_debug_video(void)
 		    FAKE_VIDEO_DEV);
 }
 
+/* XXX Should fix this up so it doesn't require DELETE */
 void bc_check_avail(void)
 {
 	DIR *dir;
 	struct dirent *dent;
-	static int detection_run;
 
-	if (detection_run)
+	dir = opendir("/dev");
+	if (dir == NULL) {
+		bc_log("Could not open /dev: %m");
 		return;
+	}
 
-	detection_run = 1;
-
-	bc_db_lock();
+	bc_db_lock("AvailableSources");
 
 	/* Truncate the table to clear all entries */
 	bc_db_query("DELETE FROM AvailableSources");
 
 	bc_add_debug_video();
-
-	dir = opendir("/dev");
-	if (dir == NULL) {
-		bc_log("Could not open /dev: %m");
-		bc_db_unlock();
-		return;
-	}
 
 	while ((dent = readdir(dir)) != NULL) {
 		const char *dev = dent->d_name;
@@ -154,7 +148,7 @@ void bc_check_avail(void)
 			    driver, alsadev ?: "", card_id);
 	}
 
-	closedir(dir);
+	bc_db_unlock("AvailableSources");
 
-	bc_db_unlock();
+	closedir(dir);
 }
