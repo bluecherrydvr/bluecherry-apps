@@ -11,6 +11,10 @@ $current_user->StatusAction('admin');
 
 	
 $devices = new DVRDevices;
-(!$_GET['XML']) ? include_once('../template/ajax/devices.php') : $devices->MakeXML();
+if (isset($_GET['XML']))
+	$devices->MakeXML();
+else
+	include_once('../template/ajax/devices.php');
+
 ?>
 

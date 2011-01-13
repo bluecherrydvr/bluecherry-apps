@@ -178,12 +178,13 @@ PHP_FUNCTION(bc_handle_get)
 	struct bc_handle *bch;
 	char *devname;
 	int devname_len;
+	long card_id;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &devname,
-				  &devname_len) == FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sl", &devname,
+				  &devname_len, &card_id) == FAILURE)
 		RETURN_FALSE;
 
-	if ((bch = bc_handle_get(devname)) == NULL)
+	if ((bch = bc_handle_get(devname, card_id)) == NULL)
 		RETURN_FALSE;
 
 	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);

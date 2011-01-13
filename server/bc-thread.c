@@ -15,9 +15,6 @@ static void try_formats(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
-	if (bc_rec->debug_video)
-		return;
-
 	if (bc_set_interval(bc, bc_rec->interval)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
@@ -38,9 +35,6 @@ static void update_osd(struct bc_record *bc_rec)
 	time_t t = time(NULL);
 	char buf[20];
 	struct tm tm;
-
-	if (bc_rec->debug_video)
-		return;
 
 	if (t == bc_rec->osd_time)
 		return;
@@ -77,7 +71,7 @@ static int process_schedule(struct bc_record *bc_rec)
 		       == 'N' ? "stopped" : "continuous"));
 	}
 
-	if (bc_rec->sched_cur == 'N' || bc_rec->debug_video)
+	if (bc_rec->sched_cur == 'N')
 		ret = 1;
 
 	pthread_mutex_unlock(&bc_rec->sched_mutex);
@@ -144,18 +138,34 @@ static void *bc_device_thread(void *data)
 	return bc_rec->thread_should_die;
 }
 
+static void get_aud_dev(struct bc_record *bc_rec)
+{
+	bc_rec->aud_dev[0] = '\0';
+
+	if (strcmp(bc_rec->driver, "solo6x10"))
+		return;
+
+	sprintf(bc_rec->aud_dev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
+		bc_rec->bc->card_id, bc_rec->bc->dev_id);
+
+	bc_rec->aud_rate = 8000;
+	bc_rec->aud_channels = 1;
+	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
+}
+
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = NULL;
 	struct bc_record *bc_rec;
-	const char *dev = bc_db_get_val(dbres, "source_video");
-	const char *aud_dev = bc_db_get_val(dbres, "source_audio_in");
+	const char *dev = bc_db_get_val(dbres, "device");
 	const char *name = bc_db_get_val(dbres, "device_name");
+	const char *driver = bc_db_get_val(dbres, "driver");
+	int card_id = bc_db_get_val_int(dbres, "card_id");
 
-	if (!dev || !name)
+	if (!dev || !name || !driver || card_id < 0)
 		return NULL;
 
-	if (bc_db_get_val_int(dbres, "disabled") > 0)
+	if (bc_db_get_val_bool(dbres, "disabled"))
 		return NULL;
 
 	bc_rec = malloc(sizeof(*bc_rec));
@@ -166,44 +176,23 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	memset(bc_rec, 0, sizeof(*bc_rec));
 	memset(bc_rec->motion_map, '3', 22 * 18);
 
-	if (!strcmp(dev, FAKE_VIDEO_DEV))
-		bc_rec->debug_video = 1;
-
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
-	if (!bc_rec->debug_video) {
-		bc = bc_handle_get(dev);
-		if (bc == NULL) {
-			bc_log("E(%d): error opening device: %m", bc_rec->id);
-			free(bc_rec);
-			return NULL;
-		}
-
-		bc->__data = bc_rec;
-
-		bc_rec->bc = bc;
+	bc = bc_handle_get(dev, card_id);
+	if (bc == NULL) {
+		bc_log("E(%d): error opening device: %m", bc_rec->id);
+		free(bc_rec);
+		return NULL;
 	}
 
+	bc->__data = bc_rec;
+	bc_rec->bc = bc;
 	bc_rec->id = id;
+	strcpy(bc_rec->dev, dev);
+	strcpy(bc_rec->name, name);
+	strcpy(bc_rec->driver, driver);
 
-	bc_rec->dev = strdup(dev);
-	bc_rec->name = strdup(name);
-
-	if (!bc_rec->dev || !bc_rec->name) {
-		bc_log("E(%d): out of memory trying to start record", id);
-		goto record_fail;
-	}
-
-	if (aud_dev) {
-		bc_rec->aud_dev = strdup(aud_dev);
-		if (!bc_rec->aud_dev) {
-			bc_log("E(%d): out of memory trying to start record", id);
-			goto record_fail;
-		}
-		bc_rec->aud_rate = bc_db_get_val_int(dbres, "audio_rate");
-		bc_rec->aud_channels = bc_db_get_val_int(dbres, "audio_channels");
-		bc_rec->aud_format = bc_db_get_val_int(dbres, "audio_format");
-	}
+	get_aud_dev(bc_rec);
 
 	bc_rec->sched_cur = 'N';
 	bc_update_record(bc_rec, dbres);
@@ -211,21 +200,12 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
-		goto record_fail;
+		bc_handle_free(bc);
+		free(bc_rec);
+		bc_rec = NULL;
 	}
 
 	return bc_rec;
-
-record_fail:
-	if (bc)
-		bc_handle_free(bc);
-
-	free(bc_rec->dev);
-	free(bc_rec->name);
-	free(bc_rec->aud_dev);
-	free(bc_rec);
-
-	return NULL;
 }
 
 static void check_motion_map(struct bc_record *bc_rec,
@@ -316,16 +296,14 @@ void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 			 bc_db_get_val(dbres, "motion_map"));
 
 	/* Update standard controls */
-	if (!bc_rec->debug_video) {
-		bc_set_control(bc, V4L2_CID_HUE,
-				bc_db_get_val_int(dbres, "hue"));
-		bc_set_control(bc, V4L2_CID_CONTRAST,
-				bc_db_get_val_int(dbres, "contrast"));
-		bc_set_control(bc, V4L2_CID_SATURATION,
-				bc_db_get_val_int(dbres, "saturation"));
-		bc_set_control(bc, V4L2_CID_BRIGHTNESS,
-				bc_db_get_val_int(dbres, "brightness"));
-	}
+	bc_set_control(bc, V4L2_CID_HUE,
+			bc_db_get_val_int(dbres, "hue"));
+	bc_set_control(bc, V4L2_CID_CONTRAST,
+			bc_db_get_val_int(dbres, "contrast"));
+	bc_set_control(bc, V4L2_CID_SATURATION,
+			bc_db_get_val_int(dbres, "saturation"));
+	bc_set_control(bc, V4L2_CID_BRIGHTNESS,
+			bc_db_get_val_int(dbres, "brightness"));
 
 	if (bc_db_get_val_int(dbres, "schedule_override_global") > 0)
 		sched = bc_db_get_val(dbres, "schedule");

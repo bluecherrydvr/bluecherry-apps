@@ -20,8 +20,6 @@ static int record_id = -1;
 static float min_avail = 5.00;
 static float min_thresh = 10.00;
 
-int debug_video = 0;
-
 char global_sched[7 * 24];
 char media_storage[256];
 
@@ -93,25 +91,21 @@ static void bc_check_globals(void)
 static void bc_check_threads(void)
 {
 	struct bc_record *bc_rec, *__t;
-	int ret;
 	char *errmsg = NULL;
 
 	if (bc_list_empty(&bc_rec_list))
 		return;
 
 	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
-		ret = pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg);
-		if (!ret) {
-			bc_log("I(%d): Record thread stopped: %s: %s",
-			       bc_rec->id, bc_rec->name, errmsg);
-			bc_list_del(&bc_rec->list);
-			bc_handle_free(bc_rec->bc);
-			free(bc_rec->aud_dev);
-			free(bc_rec->dev);
-			free(bc_rec->name);
-			free(bc_rec);
-			cur_threads--;
-		}
+		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
+			continue;
+
+		bc_log("I(%d): Camera thread stopped: %s: %s",
+		       bc_rec->id, bc_rec->name, errmsg);
+		bc_list_del(&bc_rec->list);
+		bc_handle_free(bc_rec->bc);
+		free(bc_rec);
+		cur_threads--;
 	}
 }
 
@@ -132,19 +126,14 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-static int get_avail(float *avail)
+static float get_avail(void)
 {
 	struct statvfs st;
 
-	if (statvfs(media_storage, &st)) {
-		bc_log("E: Could not stat filesystem for %s: %m",
-		       media_storage);
-		return -1;
-	}
+	if (statvfs(media_storage, &st))
+		return -1.00;
 
-	*avail = (float)((float)st.f_bavail / (float)st.f_blocks) * 100;
-
-	return 0;
+	return (float)((float)st.f_bavail / (float)st.f_blocks) * 100;
 }
 
 /* Check if our media directory is getting full (min_avail%) and delete old
@@ -156,7 +145,7 @@ static void __bc_check_media(void)
 	BC_DB_RES dbres;
 	float avail;
 
-	if (get_avail(&avail))
+	if ((avail = get_avail()) < 0)
 		return;
 
 	if (avail >= min_avail)
@@ -185,11 +174,14 @@ static void __bc_check_media(void)
 		bc_log("W: Removed media %d, file %s to make space", id,
 		       filepath);
 
-		if (get_avail(&avail))
+		if ((avail = get_avail()) < 0)
 			break;
         }
 
 	bc_db_free_table(dbres);
+
+	if (avail < 0)
+		return;
 
 	if (avail < min_avail) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
@@ -210,7 +202,8 @@ static void bc_check_db(void)
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
 
-	dbres = bc_db_get_table("SELECT * from Devices");
+	dbres = bc_db_get_table("SELECT * from Devices INNER JOIN AvailableSources "
+				"USING (device)");
 
 	if (dbres == NULL)
 		return;
@@ -257,9 +250,7 @@ static void usage(void)
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -m\tMax threads to start\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
-#ifdef EBUG
-	fprintf(stderr, "  -c\tCreate and start fake video connection\n");
-#endif
+
 	exit(1);
 }
 
@@ -288,18 +279,17 @@ static void check_expire(void)
 int main(int argc, char **argv)
 {
 	int opt;
-	int loops;
+	unsigned int loops;
 	int bg = 1;
 	int count;
 
 	check_expire();
 
-	while ((opt = getopt(argc, argv, "hscm:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'm': max_threads = atoi(optarg); break;
 		case 'r': record_id = atoi(optarg); break;
-		case 'c': debug_video = 1; break;
 		case 'h': default: usage();
 		}
 	}
@@ -330,22 +320,25 @@ int main(int argc, char **argv)
 	bc_log("I: SQL database connection opened");
 
 	/* Main loop */
-	loops = 0;
 	for (loops = 0 ;; loops++) {
-		/* Every second */
-		bc_check_threads();
+		/* Every 2 minutes */
+		if (!(loops % 120)) {
+			/* Check for new devices */
+			bc_check_avail();
+		}
 
 		/* Every 10 seconds */
 		if (!(loops % 10)) {
-			/* Check for new devices */
-			bc_check_avail();
 			/* Check global vars */
 			bc_check_globals();
 			/* Check media locations for full */
 			bc_check_media();
-			/* Check for changes in camera records */
+			/* Check for changes in cameras */
 			bc_check_db();
 		}
+
+		/* Every second, check for dead threads */
+		bc_check_threads();
 
 		sleep(1);
 	}

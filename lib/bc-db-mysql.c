@@ -79,7 +79,7 @@ static BC_DB_RES bc_db_mysql_get_table(void *handle, char *query)
 
 	if (ret != 0) {
 		free(dbres);
-		bc_log("(SQL ERROR): '%s' => %d", query, ret);
+		bc_log("(SQL ERROR):[%s] => %s", query, mysql_error(handle));
 		return NULL;
 	}
 

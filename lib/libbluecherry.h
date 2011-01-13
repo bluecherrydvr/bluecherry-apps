@@ -21,6 +21,9 @@
 #define BC_BUFFERS		16
 #define BC_BUFFERS_JPEG		2
 
+#define BC_UID_TYPE_BC		"BCUID"
+#define BC_UID_TYPE_PCI		"BCPCI"
+
 /* Some things that are driver specific */
 #ifndef V4L2_BUF_FLAG_MOTION_ON
 #define V4L2_BUF_FLAG_MOTION_ON		0x0400
@@ -94,6 +97,8 @@ struct bc_handle {
 	int			mot_cnt;
 	int			gop;
 	int			buffers;
+	int			card_id;
+	int			dev_id;
 
 	/* For private data */
 	void			*__data;
@@ -208,7 +213,7 @@ struct bc_list_struct {
 
 
 /* Called to open and close a handle for a device. */
-struct bc_handle *bc_handle_get(const char *dev);
+struct bc_handle *bc_handle_get(const char *dev, int card_id);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */

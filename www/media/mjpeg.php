@@ -12,22 +12,20 @@ $current_user->StatusAction('viewer');
 	
 	Class LocalMonitor extends DVRData{
 	public $data;
-	
+	public $card;
+
 	public function __construct(){
 		$id = intval($_GET['id']);
-		$this->data = $this->GetObjectData('Devices', 'id', $id);
+		$db = DVRDatabase::getInstance();
+		$this->data = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 	}
 }
 
 $monitor = new LocalMonitor;
 
-if (isset($_GET['multi']))
-	$multi = true;
-else
-	$multi = false;
-$bch = false;
 $boundary = "MJPEGBOUNDARY";
-$dev = $monitor->data[0]['source_video'];
+$dev = $monitor->data[0]['device'];
+$card_id = $monitor->data[0]['card_id'];
 
 header("Cache-Control: no-cache");
 header("Cache-Control: private");
@@ -35,7 +33,7 @@ header("Pragma: no-cache");
 
 session_write_close();
 
-$bch = bc_handle_get("$dev");
+$bch = bc_handle_get($dev, $card_id);
 if ($bch == false) {
 	print "Failed to open $dev";
 	exit;
@@ -51,11 +49,12 @@ if (bc_handle_start($bch) == false) {
 	exit;
 }
 
-if (isset($_GET['multipart'])) {
+if (!empty($_GET['multipart'])) {
         $multi = true;
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
         print "\r\n--$boundary\r\n";
 } else {
+	$multi = false;
 	header("Content-type: image/jpeg");
 }
 
@@ -93,4 +92,3 @@ do {
 
 bc_handle_free($bch);
 ?>
-

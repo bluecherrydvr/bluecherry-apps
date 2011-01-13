@@ -12,8 +12,8 @@ foreach($devices->cards as $key => $card){
 	echo "<div id='cardInfo'>Encoding: ".(($card->signal_type=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD.'</b>' : "<a href='#'><div class='cardEncoding' title='".CARD_CHANGE_ENCODING."' id='$card->id'>{$card->signal_type}</div></a>")." | Unused capacity: <div id='unusedCapacity' class='uc{$card->id}'><a>{$card->fps_available}</a></div></div>";
 	
 foreach ($card->devices as $key =>$device){
-	if (!$device['device_name']) { $device['device_name'] = ($device['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
-	echo "<div id='localDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}&nbsp;</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['as_id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div><div id='port'>{$device['port']}</div>";
+	if (empty($device['device_name'])) { $device['device_name'] = ($device['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
+	echo "<div id='localDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}&nbsp;</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div><div id='port'>{$device['port']}</div>";
 	if ($device['status'] != 'notconfigured' && !$device['disabled']) {
 		echo "
 				<hr>

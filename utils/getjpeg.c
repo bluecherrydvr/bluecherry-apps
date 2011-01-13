@@ -43,7 +43,8 @@ extern char *__progname;
 static void usage(void)
 {
         fprintf(stderr, "Usage: %s <args> > outfile\n", __progname);
-	fprintf(stderr, "  -c\tDevice channel (default 0)\n");
+	fprintf(stderr, "  -d\tDevice name\n");
+	fprintf(stderr, "  -c\tCard ID\n");
 	exit(1);
 }
 
@@ -51,22 +52,25 @@ int main(int argc, char **argv)
 {
 	struct bc_handle *bc;
 	char dev[256];
-	int ch = 0;
+	int card_id = -1;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "c:h")) != -1) {
+	dev[0] = '\0';
+	dev[sizeof(dev) - 1] = '\0';
+
+	while ((opt = getopt(argc, argv, "c:d:h")) != -1) {
 		switch (opt) {
-		case 'c': ch = atoi(optarg); break;
+		case 'c': card_id = atoi(optarg); break;
+		case 'd': strncpy(dev, optarg, sizeof(dev) - 1); break;
 		case 'h': default: usage();
 		}
 	}
 
-	if (ch < 0 || ch > 15)
-		print_error("Invalid channel %d", ch);
+	if (dev[0] == '\0' || card_id < 0)
+		usage();
 
 	/* Setup the device */
-	sprintf(dev, "/dev/video%d", ch + 1);
-	if ((bc = bc_handle_get(dev)) == NULL)
+	if ((bc = bc_handle_get(dev, card_id)) == NULL)
 		print_error("%s: error opening device: %m", dev);
 
 	/* Setup for MJPEG, leave everything else as default */

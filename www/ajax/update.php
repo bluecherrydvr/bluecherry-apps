@@ -53,11 +53,12 @@ class updateDB extends DVRData{
 			$this->message = AU_CANT_SB;
 		}
 	}
+	/* XXX Check for errors here */
 	function update_control(){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM Devices WHERE id='$id'");
-		$bch = bc_handle_get($this_device[0]['source_video']);
+		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
+		$bch = bc_handle_get($this_device[0]['device'], $this_device[0]['card_id']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
@@ -70,7 +71,7 @@ class updateDB extends DVRData{
 	function changeFPSRES($type){
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources ON Devices.source_video=AvailableSources.devicepath WHERE Devices.id='$id'");
+		$this_device = $db->DBFetchAll("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
 			$res['x'] = $this_device[0]['resolutionX']; $res['y'] = $this_device[0]['resolutionY']; 
 		}
@@ -84,33 +85,36 @@ class updateDB extends DVRData{
 			$this->status = false;
 			$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 		} else {
-			$this->status = $db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE source_video='{$this_device[0]['source_video']}'");
+			$this->status = $db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'");
 			$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			$container_card = new BCDVRCard($this_device[0]['card_id']);
 			$this->data = $container_card->fps_available;
 		}
-		
 	}
-	
+
 	function changeState(){
-		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices ON AvailableSources.devicepath=Devices.source_video WHERE AvailableSources.id='$id' ");
+		$device = $db->DBEscapeString($_POST['id']);
+		$this_device = $db->DBFetchAll("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices USING (device) WHERE AvailableSources.device='$device' ");
+		if (!$this_device) {
+			$this->status = false;
+			$this->message = CHANGES_FAIL;
+			return;
+		}
 		$container_card = new BCDVRCard($this_device[0]['card_id']);
-		if ($this_device[0]['source_video']!=''){ //if the device is configured
-		
+		if (!empty($this_device[0]['protocol'])){ //if the device is configured
 			$this_device[0]['req_fps'] = (30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1);
-			if ($this_device[0]['disabled']){ //if it is dis
+			if ($this_device[0]['disabled']){
 				if ($this_device[0]['req_fps'] > $container_card->fps_available){
 					$this->status = false;
 					$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 				} else {
-					$this->status = $db->DBQuery("UPDATE Devices SET disabled='0' WHERE source_video='{$this_device[0]['source_video']}'");
+					$this->status = $db->DBQuery("UPDATE Devices SET disabled='0' WHERE device='{$this_device[0]['device']}'");
 					$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 				}
-				
+
 			} else {
-				$this->status = $db->DBQuery("UPDATE Devices SET disabled='1' WHERE source_video='{$this_device[0]['source_video']}'");
+				$this->status = $db->DBQuery("UPDATE Devices SET disabled='1' WHERE device='{$this_device[0]['device']}'");
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
 		} else {
@@ -122,7 +126,9 @@ class updateDB extends DVRData{
 				$res['y'] = '288';
 				$enc = 'PAL';
 			}
-			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, source_video, video_interval, signal_type, disabled, audio_rate, audio_format, audio_channels, source_audio_in) VALUES ('{$this_device[0]['devicepath']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['devicepath']}', 15, '{$enc}', '$ds', 8000, " . 0x01000001 . ", 1, '{$this_device[0]['alsasounddev']}')");
+			$card_info = explode('|', $this_device[0]['device']);
+			$card_info[2]++;
+			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('Port {$card_info[2]} on Card {$this_device[0]['card_id']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['device']}', '{$this_device[0]['driver']}', 15, '{$enc}', '$ds')");
 			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
 				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 			}
@@ -130,9 +136,9 @@ class updateDB extends DVRData{
 		
 	}
 	function newUser(){
-		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
-		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
-		if (!isset($_POST['password']) || $_POST['password']=='') { $this->status = false; $this->message = NO_PASS; return false; }
+		if (empty($_POST['username'])) { $this->status = false; $this->message = NO_USERNAME; return false; }
+		if (empty($_POST['email'])) { $this->status = false; $this->message = NO_EMAIL; return false; }
+		if (empty($_POST['password'])) { $this->status = false; $this->message = NO_PASS; return false; }
 		$_POST['type'] = 'Users';
 		$_POST['access_setup'] = ($_POST['access_setup']=='on') ? '1' : '0';
 		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
@@ -157,8 +163,8 @@ class updateDB extends DVRData{
 		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
 		$_POST['access_remote'] = ($_POST['access_remote']=='on') ? '1' : '0';
 		$_POST['access_backup'] = ($_POST['access_backup']=='on') ? '1' : '0';
-		if (!isset($_POST['username']) || $_POST['username']=='') { $this->status = false; $this->message = NO_USERNAME; return false; }
-		if (!isset($_POST['email']) || $_POST['email']=='') { $this->status = false; $this->message = NO_EMAIL; return false; }
+		if (empty($_POST['username'])) { $this->status = false; $this->message = NO_USERNAME; return false; }
+		if (empty($_POST['email'])) { $this->status = false; $this->message = NO_EMAIL; return false; }
 		if ($_SESSION['id']==$_POST['id'] && $_POST['access_setup']==0) { $this->message = CANT_REMOVE_ADMIN; return false; }
 		$this->status = $this->FormQueryFromPOST('update');
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
@@ -175,13 +181,13 @@ class updateDB extends DVRData{
 	
 	function updateEncoding(){
 		$db = DVRDatabase::getInstance();
-		$card_id = intval($_POST['id']);
+		$card_id = $_POST['id'];
 		$signal_type = $db->DBEscapeString($_POST['signal_type']);
 		if ($signal_type=='NTSC'){ $resolution_full = 480; $resolution_quarter = 240; } else { $resolution_full = 576; $resolution_quarter = 288; };
 		
-		$this->status = $db->DBQuery("UPDATE Devices SET signal_type='{$signal_type}' WHERE source_video IN (SELECT devicepath FROM AvailableSources WHERE card_id={$card_id})");
-		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_full WHERE source_video IN (SELECT devicepath FROM AvailableSources WHERE card_id={$card_id}) AND resolutionY>300");
-		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_quarter WHERE source_video IN (SELECT devicepath FROM AvailableSources WHERE card_id={$card_id}) AND resolutionY<300");
+		$this->status = $db->DBQuery("UPDATE Devices SET signal_type='{$signal_type}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}')");
+		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_full WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}') AND resolutionY>300");
+		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_quarter WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}') AND resolutionY<300");
 		$this->message = ($this->status) ? DEVICE_ENCODING_UPDATED : DB_FAIL_TRY_LATER;
 	}
 	

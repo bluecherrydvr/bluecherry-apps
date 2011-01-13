@@ -1,8 +1,9 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-CFLAGS		+= -pthread
-LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry -lasound
+CFLAGS		+= -pthread $(shell pkg-config --cflags libsysfs)
+LDFLAGS		+= -L$(topdir)/lib -lavformat -lbluecherry -lasound \
+		   $(shell pkg-config --libs libsysfs)
 
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-motion-tables.o \

@@ -287,18 +287,37 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	return 0;
 }
 
-struct bc_handle *bc_handle_get(const char *dev)
+struct bc_handle *bc_handle_get(const char *dev, int card_id)
 {
 	struct bc_handle *bc;
+	const char *p = dev;
+	int id = -1;
 
+	while (p[0] != '\0' && p[0] != '|')
+		p++;
+	if (p[0] == '\0') {
+		errno = EINVAL;
+		return NULL;
+	}
+	p++;
+	while (p[0] != '\0' && p[0] != '|')
+		p++;
+	if (p[0] == '\0' || p[1] == '\0') {
+		errno = EINVAL;
+		return NULL;
+	}
+	id = atoi(p + 1);
+	
 	if ((bc = malloc(sizeof(*bc))) == NULL) {
 		errno = ENOMEM;
-		goto error_fail;
+		return NULL;
 	}
 
 	memset(bc, 0, sizeof(*bc));
-	strncpy(bc->dev_file, dev, sizeof(bc->dev_file) - 1);
-	bc->dev_file[sizeof(bc->dev_file) - 1] = '\0';
+	bc->card_id = card_id;
+	bc->dev_id = id;
+
+	sprintf(bc->dev_file, "/dev/video%d", card_id + id + 1);
 
 	/* Open the device */
 	if ((bc->dev_fd = open(bc->dev_file, O_RDWR)) < 0)

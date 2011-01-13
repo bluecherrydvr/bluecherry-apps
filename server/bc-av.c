@@ -50,7 +50,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	int err, fmt;
 
 	/* No alsa device for this record */
-	if (bc_rec->aud_dev == NULL || bc_rec->pcm)
+	if (bc_rec->aud_dev[0] == '\0' || bc_rec->pcm)
 		return 0;
 
 	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,

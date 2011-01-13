@@ -196,11 +196,12 @@ class DVRDevices extends DVRData{
 	}
 	private function getIpCameras(){
 		$db = DVRDatabase::getInstance();
-		$this->ip_cameras = $db->DBFetchAll("SELECT * FROM Devices WHERE source_video NOT LIKE '/dev/video%'");
+		$this->ip_cameras = $db->DBFetchAll("SELECT * FROM Devices WHERE protocol='IP'");
 		$this->total_devices += count($this->ip_cameras);
 	}
 	public function MakeXML(){
-		$xml = '<?xml version="1.0" encoding="UTF-8" ?><devices>';
+		// The \063 is a '?'. Used decimal so as not to confuse vim
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \063><devices>";
 		foreach($this->cards as $card_id => $card){
 			foreach($card->devices as $device_id => $device){
 				$xml .= '<device';
@@ -234,19 +235,14 @@ class BCDVRCard{
 
 	public function __construct($id){
 		$this->id = $id;
-		$this->getCardInfo($id);
-	}
-
-	private function getCardInfo(){
 		$this->fps_available = 480; //BC card capacity
 		$db = DVRDatabase::getInstance();
-		$this->devices = $db->DBFetchAll("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id DESC");
+		$this->devices = $db->DBFetchAll("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id ASC");
 		$this->type = count($this->devices);
 		$port = 1;
 		$this->signal_type = 'notconfigured';
 		foreach ($this->devices as $key => $device){
-			$this->devices[$key]['as_id'] = $this->devices[$key]['id'];
-			$tmp = $db->DBFetchAll("SELECT * FROM Devices WHERE source_video='{$device['devicepath']}'");
+			$tmp = $db->DBFetchAll("SELECT * FROM Devices WHERE device='{$device['device']}'");
 			$this->devices[$key]['port'] = $port; $port++;
 			if (!count($tmp)) { $this->devices[$key]['status'] = 'notconfigured'; $this->devices[$key]['id']=''; }
 			 	else {
@@ -254,7 +250,7 @@ class BCDVRCard{
 					$this->devices[$key]['status'] = ($this->devices[$key]['disabled']) ? 'disabled' : 'OK';
 					$this->signal_type = ($this->devices[$key]['signal_type']) ? $this->devices[$key]['signal_type'] : 'notconfigured' ; //NTSC is the default
 				}
-			(!$this->devices[$key]['video_interval'] || $this->devices[$key]['disabled']) or $this->fps_available -= (30/$this->devices[$key]['video_interval']) * (($this->devices[$key]['resolutionX']>=704) ? 4 : 1);
+			(empty($this->devices[$key]['video_interval']) || !empty($this->devices[$key]['disabled'])) or $this->fps_available -= (30/$this->devices[$key]['video_interval']) * (($this->devices[$key]['resolutionX']>=704) ? 4 : 1);
 		}
 	}
 }
