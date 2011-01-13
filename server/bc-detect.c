@@ -60,7 +60,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	for (i = 0; i < ports; i++) {
 		bc_db_query("INSERT INTO AvailableSources "
 			    "(device, driver, card_id) "
-			    "VALUES('%s|%s|%d', 'solo6010', '%d')",
+			    "VALUES('%s|%s|%d', 'solo6x10', '%d')",
 			    uid_type, bcuid, i, id);
 	}
 }
