@@ -201,7 +201,7 @@ class DVRDevices extends DVRData{
 	}
 	public function MakeXML(){
 		// The \063 is a '?'. Used decimal so as not to confuse vim
-		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \063><devices>";
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
 		foreach($this->cards as $card_id => $card){
 			foreach($card->devices as $device_id => $device){
 				$xml .= '<device';
