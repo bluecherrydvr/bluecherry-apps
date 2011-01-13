@@ -9,9 +9,13 @@
 #include <string.h>
 #include <pthread.h>
 
-#include <libbluecherry.h>
+#include <bc-db.h>
 
-extern struct bc_db_ops bc_db_mysql;
+enum bc_db_type {
+	BC_DB_SQLITE = 0,
+	BC_DB_PSQL = 1,
+	BC_DB_MYSQL = 2,
+};
 
 static struct bc_db_ops *db_ops = NULL;
 

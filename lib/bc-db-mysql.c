@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <libbluecherry.h>
+#include <bc-db.h>
 
 #include <mysql/mysql.h>
 
@@ -221,7 +221,6 @@ static void bc_db_mysql_unlock(const char *table)
 }
 
 struct bc_db_ops bc_db_mysql = {
-	.type		= BC_DB_SQLITE,
 	.open		= bc_db_mysql_open,
 	.close		= bc_db_mysql_close,
 	.get_table	= bc_db_mysql_get_table,

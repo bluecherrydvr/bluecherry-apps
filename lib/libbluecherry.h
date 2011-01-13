@@ -36,12 +36,6 @@
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
-enum bc_db_type {
-	BC_DB_SQLITE = 0,
-	BC_DB_PSQL = 1,
-	BC_DB_MYSQL = 2,
-};
-
 enum bc_vb_status {
 	BC_VB_STATUS_LOCAL = 0,
 	BC_VB_STATUS_USING,
@@ -49,31 +43,6 @@ enum bc_vb_status {
 };
 
 typedef void * BC_DB_RES;
-
-/* Should really be opaque and not in this file */
-struct bc_db_ops {
-	enum bc_db_type type;
-	int (*open)(struct config_t *cfg);
-	void (*close)(void);
-	BC_DB_RES (*get_table)(char *query);
-	void (*free_table)(BC_DB_RES dbres);
-	int (*fetch_row)(BC_DB_RES dbres);
-	const char *(*get_val)(BC_DB_RES dbres,
-			       const char *field);
-	const char *(*get_field)(BC_DB_RES dbres,
-				 int nfield);
-	int (*num_fields)(BC_DB_RES dbres);
-	int (*query)(char *query);
-	unsigned long (*last_insert_rowid)(void);
-	void (*escape_string)(char *to, const char *from);
-	void (*lock)(const char *table);
-	void (*unlock)(const char *table);
-};
-
-struct bc_db_handle {
-	enum bc_db_type		db_type;
-	struct bc_db_ops	*db_ops;
-};
 
 struct bc_handle {
 	/* Track info about the v4l2 device */
