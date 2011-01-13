@@ -10,6 +10,8 @@ if [ -f /usr/share/dbconfig-common/dpkg/postrm.mysql ]; then
 	dbc_go bluecherry $@
 fi
 
+db_stop
+
 case "$1" in
 	remove)
 		a2dissite bluecherry
