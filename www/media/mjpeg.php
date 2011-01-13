@@ -54,7 +54,7 @@ if (bc_handle_start($bch) == false) {
 	exit;
 }
 
-if (!empty($_GET['multipart'])) {
+if (isset($_GET['multipart'])) {
         $multi = true;
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
         print "\r\n--$boundary\r\n";
