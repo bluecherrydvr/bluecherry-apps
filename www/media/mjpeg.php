@@ -23,6 +23,11 @@ $current_user->StatusAction('viewer');
 
 $monitor = new LocalMonitor;
 
+if ($this->data == false) {
+	print "No such device";
+	exit;
+}
+
 $boundary = "MJPEGBOUNDARY";
 $dev = $monitor->data[0]['device'];
 $card_id = $monitor->data[0]['card_id'];
