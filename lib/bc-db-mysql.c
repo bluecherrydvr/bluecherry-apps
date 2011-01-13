@@ -44,8 +44,9 @@ static void *bc_db_mysql_open(struct config_t *cfg)
 
 	if (mysql_real_connect(mysql, host, user, password, dbname,
 			       (int)port, socket, 0) == NULL) {
+		bc_log("(SQL ERROR): Connecting to MySQL database: %s",
+		       mysql_error(mysql));
 		mysql_close(mysql);
-		bc_log("(SQL ERROR): Connecting to MySQL database");
 		return NULL;
 	}
 
@@ -62,7 +63,7 @@ static int bc_db_mysql_query(void *handle, char *query)
 	int ret = mysql_query(handle, query);
 
 	if (ret != 0)
-		bc_log("(SQL ERROR): '%s' => %d", query, ret);
+		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(handle));
 		
 	return ret;
 }
@@ -79,14 +80,14 @@ static BC_DB_RES bc_db_mysql_get_table(void *handle, char *query)
 
 	if (ret != 0) {
 		free(dbres);
-		bc_log("(SQL ERROR):[%s] => %s", query, mysql_error(handle));
+		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(handle));
 		return NULL;
 	}
 
 	dbres->res = mysql_store_result(handle);
 	if (dbres->res == NULL) {
 		free(dbres);
-		bc_log("(SQL ERROR): No result: '%s'", query);
+		bc_log("(SQL ERROR): No result: [%s]", query);
 		return NULL;
 	}
 
