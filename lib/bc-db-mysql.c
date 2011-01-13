@@ -15,76 +15,111 @@ struct bc_db_mysql_res {
 	MYSQL_RES *res;
 	MYSQL_ROW row;
 	int ncols;
-};	
+};
 
-static void *bc_db_mysql_open(struct config_t *cfg)
+static const char *dbname, *dbuser, *dbpass;
+static const char *dbhost = NULL;
+static const char *dbsocket = NULL;
+static long dbport = 0;
+
+static MYSQL *get_handle(void)
 {
-	const char *dbname, *user, *password;
-	const char *host = NULL;
-	const char *socket = NULL;
-	long port = 0;
-	MYSQL *mysql;
+	static MYSQL *my_con = NULL;
 
-        if (!config_lookup_string(cfg, BC_CONFIG_DB ".dbname", &dbname))
-		return NULL;
-	if (!config_lookup_string(cfg, BC_CONFIG_DB ".user", &user))
-		return NULL;
-	if (!config_lookup_string(cfg, BC_CONFIG_DB ".password", &password))
-		return NULL;
+	if (my_con != NULL) {
+		/* On successful ping, just re-use connection */
+		if (!mysql_ping(my_con))
+			return my_con;
 
-	if (config_lookup_string(cfg, BC_CONFIG_DB ".host", &host))
-		config_lookup_int(cfg, BC_CONFIG_DB ".port", &port);
-	else
-		config_lookup_string(cfg, BC_CONFIG_DB ".socket", &socket);
+		/* Failure, so setup to retry */
+		mysql_close(my_con);
+		my_con = NULL;
+	}
 
-	if ((mysql = mysql_init(NULL)) == NULL) {
+	if ((my_con = mysql_init(NULL)) == NULL) {
 		bc_log("(SQL ERROR): Initializing MySQL");
 		return NULL;
 	}
 
-	if (mysql_real_connect(mysql, host, user, password, dbname,
-			       (int)port, socket, 0) == NULL) {
+	if (mysql_real_connect(my_con, dbhost, dbuser, dbpass, dbname,
+			       (int)dbport, dbsocket, 0) == NULL) {
 		bc_log("(SQL ERROR): Connecting to MySQL database: %s",
-		       mysql_error(mysql));
-		mysql_close(mysql);
-		return NULL;
-	}
+		       mysql_error(my_con));
+		mysql_close(my_con);
+		my_con = NULL;
+                return NULL;
+        }
 
-	return mysql;
+	return my_con;
 }
 
-static void bc_db_mysql_close(void *handle)
+static int bc_db_mysql_open(struct config_t *cfg)
 {
-	mysql_close(handle);
+        if (!config_lookup_string(cfg, BC_CONFIG_DB ".dbname", &dbname))
+		return -1;
+	if (!config_lookup_string(cfg, BC_CONFIG_DB ".user", &dbuser))
+		return -1;
+	if (!config_lookup_string(cfg, BC_CONFIG_DB ".password", &dbpass))
+		return -1;
+
+	if (config_lookup_string(cfg, BC_CONFIG_DB ".host", &dbhost))
+		config_lookup_int(cfg, BC_CONFIG_DB ".port", &dbport);
+	else
+		config_lookup_string(cfg, BC_CONFIG_DB ".socket", &dbsocket);
+
+	if (get_handle() == NULL)
+		return -1;
+
+	return 0;
 }
 
-static int bc_db_mysql_query(void *handle, char *query)
+static void bc_db_mysql_close(void)
 {
-	int ret = mysql_query(handle, query);
+	MYSQL *my_con = get_handle();
+
+	if (my_con != NULL)
+		mysql_close(my_con);
+}
+
+static int bc_db_mysql_query(char *query)
+{
+	MYSQL *my_con = get_handle();
+	int ret;
+
+	if (my_con == NULL)
+		return -1;
+
+	ret = mysql_query(my_con, query);
 
 	if (ret != 0)
-		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(handle));
+		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(my_con));
 		
 	return ret;
 }
 
-static BC_DB_RES bc_db_mysql_get_table(void *handle, char *query)
+static BC_DB_RES bc_db_mysql_get_table(char *query)
 {
-	struct bc_db_mysql_res *dbres = malloc(sizeof(*dbres));
+	MYSQL *my_con = get_handle();
+	struct bc_db_mysql_res *dbres;
 	int ret;
+
+	if (my_con == NULL)
+		return NULL;
+
+	dbres = malloc(sizeof(*dbres));
 
 	if (dbres == NULL)
 		return NULL;
 
-	ret = mysql_query(handle, query);
+	ret = mysql_query(my_con, query);
 
 	if (ret != 0) {
 		free(dbres);
-		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(handle));
+		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(my_con));
 		return NULL;
 	}
 
-	dbres->res = mysql_store_result(handle);
+	dbres->res = mysql_store_result(my_con);
 	if (dbres->res == NULL) {
 		free(dbres);
 		bc_log("(SQL ERROR): No result: [%s]", query);
@@ -96,14 +131,14 @@ static BC_DB_RES bc_db_mysql_get_table(void *handle, char *query)
 	return dbres;
 }
 
-static void bc_db_mysql_free_table(void *handle, BC_DB_RES __dbres)
+static void bc_db_mysql_free_table(BC_DB_RES __dbres)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
 
 	mysql_free_result(dbres->res);
 }
 
-static int bc_db_mysql_fetch_row(void *handle, BC_DB_RES __dbres)
+static int bc_db_mysql_fetch_row(BC_DB_RES __dbres)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
 
@@ -116,7 +151,7 @@ static int bc_db_mysql_fetch_row(void *handle, BC_DB_RES __dbres)
 	return 0;
 }
 
-static const char *bc_db_mysql_get_val(void *handle, BC_DB_RES __dbres,
+static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 				       const char *colname)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
@@ -136,14 +171,14 @@ static const char *bc_db_mysql_get_val(void *handle, BC_DB_RES __dbres,
 	return (i == dbres->ncols) ? NULL : dbres->row[i];
 }
 
-static int bc_db_mysql_num_fields(void *handle, BC_DB_RES __dbres)
+static int bc_db_mysql_num_fields(BC_DB_RES __dbres)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
 
 	return dbres->ncols;
 }
 
-static const char *bc_db_mysql_get_field(void *handle, BC_DB_RES __dbres,
+static const char *bc_db_mysql_get_field(BC_DB_RES __dbres,
 					 int nfield)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
@@ -155,23 +190,32 @@ static const char *bc_db_mysql_get_field(void *handle, BC_DB_RES __dbres,
 	return fields[nfield].name;
 }
 
-static unsigned long bc_db_mysql_last_insert_rowid(void *handle)
+static unsigned long bc_db_mysql_last_insert_rowid(void)
 {
-	return mysql_insert_id(handle);
+	MYSQL *my_con = get_handle();
+
+	if (my_con == NULL)
+		return 0;
+
+	return mysql_insert_id(my_con);
 }
 
-static void bc_db_mysql_escape_string(void *handle, char *to,
-				      const char *from)
+static void bc_db_mysql_escape_string(char *to, const char *from)
 {
-	mysql_real_escape_string(handle, to, from, strlen(from));
+	MYSQL *my_con = get_handle();
+
+	if (my_con == NULL)
+		mysql_escape_string(to, from, strlen(from));
+	else
+		mysql_real_escape_string(my_con, to, from, strlen(from));
 }
 
-static void bc_db_mysql_lock(void *handle, const char *table)
+static void bc_db_mysql_lock(const char *table)
 {
 	bc_db_query("LOCK TABLES %s WRITE", table);
 }
 
-static void bc_db_mysql_unlock(void *handle, const char *table)
+static void bc_db_mysql_unlock(const char *table)
 {
 	bc_db_query("UNLOCK TABLES");
 }

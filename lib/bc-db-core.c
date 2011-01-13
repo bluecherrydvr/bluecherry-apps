@@ -13,28 +13,25 @@
 
 extern struct bc_db_ops bc_db_mysql;
 
-struct bc_db_handle bcdb = {
-	.db_type	= BC_DB_MYSQL,
-	.dbh		= NULL,
-	.db_ops		= NULL,
-};
+static struct bc_db_ops *db_ops = NULL;
 
 void bc_db_lock(const char *table)
 {
-	bcdb.db_ops->lock(bcdb.dbh, table);
+	db_ops->lock(table);
 }
 
 void bc_db_unlock(const char *table)
 {
-	bcdb.db_ops->unlock(bcdb.dbh, table);
+	db_ops->unlock(table);
 }
 
 void bc_db_close(void)
 {
-	if (bcdb.db_ops)
-		bcdb.db_ops->close(bcdb.dbh);
-	bcdb.dbh = NULL;
-	bcdb.db_ops = NULL;
+	if (db_ops == NULL)
+		return;
+
+	db_ops->close();
+	db_ops = NULL;
 }
 
 int bc_db_open(void)
@@ -43,7 +40,7 @@ int bc_db_open(void)
 	long type;
 	int ret = 0;
 
-	if (bcdb.dbh != NULL)
+	if (db_ops != NULL)
 		return 0;
 
 	config_init(&cfg);
@@ -60,22 +57,18 @@ int bc_db_open(void)
 
 	switch (type) {
 	case BC_DB_MYSQL:
-		bcdb.db_ops = &bc_db_mysql;
+		db_ops = &bc_db_mysql;
 		break;
 	default:
 		bc_log("E(%s): DB type %ld is not supported", BC_CONFIG, type);
 	}
 
-	if (bcdb.db_ops) {
-		bcdb.db_type = type;
-		bcdb.dbh = bcdb.db_ops->open(&cfg);
-	}
+	if (db_ops)
+		ret = db_ops->open(&cfg);
 
 db_error:
-	if (!bcdb.dbh) {
-		bcdb.db_ops = NULL;
-		ret = -1;
-	}
+	if (ret)
+		db_ops = NULL;
 
 	config_destroy(&cfg);
 
@@ -93,7 +86,7 @@ int bc_db_query(const char *sql, ...)
 		return -1;
 	va_end(ap);
 
-	ret = bcdb.db_ops->query(bcdb.dbh, query);
+	ret = db_ops->query(query);
 	free(query);
 
 	return ret;
@@ -101,17 +94,17 @@ int bc_db_query(const char *sql, ...)
 
 const char *bc_db_get_field(BC_DB_RES dbres, int nfield)
 {
-	return bcdb.db_ops->get_field(bcdb.dbh, dbres, nfield);
+	return db_ops->get_field(dbres, nfield);
 }
 
 int bc_db_num_fields(BC_DB_RES dbres)
 {
-	return bcdb.db_ops->num_fields(bcdb.dbh, dbres);
+	return db_ops->num_fields(dbres);
 }
 
 int bc_db_fetch_row(BC_DB_RES dbres)
 {
-	return bcdb.db_ops->fetch_row(bcdb.dbh, dbres);
+	return db_ops->fetch_row(dbres);
 }
 
 BC_DB_RES bc_db_get_table(const char *sql, ...)
@@ -125,7 +118,7 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 		return NULL;
 	va_end(ap);
 
-	dbres = bcdb.db_ops->get_table(bcdb.dbh, query);
+	dbres = db_ops->get_table(query);
 	free(query);
 
 	return dbres;
@@ -134,12 +127,12 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 void bc_db_free_table(BC_DB_RES dbres)
 {
 	if (dbres)
-		bcdb.db_ops->free_table(bcdb.dbh, dbres);
+		db_ops->free_table(dbres);
 }
 
 const char *bc_db_get_val(BC_DB_RES dbres, const char *colname)
 {
-	return bcdb.db_ops->get_val(bcdb.dbh, dbres, colname);
+	return db_ops->get_val(dbres, colname);
 }
 
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname)
@@ -158,7 +151,7 @@ int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 
 long unsigned bc_db_last_insert_rowid(void)
 {
-	return bcdb.db_ops->last_insert_rowid(bcdb.dbh);
+	return db_ops->last_insert_rowid();
 }
 
 char *bc_db_escape_string(const char *from)
@@ -168,7 +161,7 @@ char *bc_db_escape_string(const char *from)
 	if (to == NULL)
 		return NULL;
 
-	bcdb.db_ops->escape_string(bcdb.dbh, to, from);
+	db_ops->escape_string(to, from);
 
 	return to;
 }
