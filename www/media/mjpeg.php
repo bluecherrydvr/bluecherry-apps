@@ -23,7 +23,7 @@ $current_user->StatusAction('viewer');
 
 $monitor = new LocalMonitor;
 
-if ($this->data == false) {
+if ($monitor->data == false) {
 	print "No such device";
 	exit;
 }
