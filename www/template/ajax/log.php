@@ -5,9 +5,10 @@
 
 <div id="dvrlog">
 <?php
+	$f = '';
 	foreach($log->log as $value){
 		echo "<div class='$f'>$value</div>";
-		$f = ($f=='') ? 'bg' : '';
+		$f = empty($f) ? 'bg' : '';
 	};
 ?>
 </div>

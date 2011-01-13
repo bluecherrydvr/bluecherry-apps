@@ -19,7 +19,7 @@ class devSchedule{
 		$q = ($id != 'global') ? "SELECT id, device_name, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
 		$tmp =  $db->DBFetchAll($q);
 		#if there is no schedule copy global
-		if ($id != 'global' && $tmp[0]['schedule'] == ''){
+		if ($id != 'global' && empty($tmp[0]['schedule'])){
 			$global_schedule = $db->DBFetchAll("SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'");
 			$db->DBQuery("UPDATE Devices SET schedule='{$global_schedule[0]['schedule']}' WHERE id='$id'");
 			$tmp =  $db->DBFetchAll($q);

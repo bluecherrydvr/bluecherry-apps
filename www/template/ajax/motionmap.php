@@ -1,6 +1,6 @@
 <?php defined('INDVR') or exit(); 
 	  echo "<div id='header'>".MMAP_HEADER."</div>"; 
-	  echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".EDITING_MMAP." <b>".(($motion_map->data[0]['device_name']) ? $motion_map->data[0]['device_name'] : $motion_map->data[0]['id'])."</b></p>";
+	  echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".EDITING_MMAP." <b>".(empty($motion_map->data[0]['device_name']) ? $motion_map->data[0]['id'] : $motion_map->data[0]['device_name'])."</b></p>";
 	  
 ?>
 <INPUT type="Hidden" id="cameraID" value="<?php echo $motion_map->data[0]['id']; ?>" />
