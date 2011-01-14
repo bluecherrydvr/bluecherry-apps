@@ -325,20 +325,22 @@ int main(int argc, char **argv)
 		if (!(loops % 120)) {
 			/* Check for new devices */
 			bc_check_avail();
+			/* Check media locations for full */
+			bc_check_media();
 		}
 
 		/* Every 10 seconds */
 		if (!(loops % 10)) {
 			/* Check global vars */
 			bc_check_globals();
-			/* Check media locations for full */
-			bc_check_media();
 			/* Check for changes in cameras */
 			bc_check_db();
 		}
 
 		/* Every second, check for dead threads */
 		bc_check_threads();
+		/* And resolve un-committed events/media */
+		bc_media_event_clear();
 
 		sleep(1);
 	}
