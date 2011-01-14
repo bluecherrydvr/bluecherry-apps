@@ -74,6 +74,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 				continue;
 			cards[i].valid = 1;
 			strcpy(cards[i].name, bcuid);
+			break;
 		}
 	}
 
