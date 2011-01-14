@@ -278,11 +278,15 @@ void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	const char *sched;
+	const char *name = bc_db_get_val(dbres, "device_name");
 
 	if (bc_db_get_val_int(dbres, "disabled") > 0) {
 		bc_rec->thread_should_die = "Disabled in config";
 		return;
 	}
+
+	if (strcmp(name, bc_rec->name))
+		strcpy(bc_rec->name, name);
 
 	bc_rec->interval = bc_db_get_val_int(dbres, "video_interval");
 	bc_rec->width = bc_db_get_val_int(dbres, "resolutionX");

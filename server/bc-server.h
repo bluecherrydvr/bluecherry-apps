@@ -31,15 +31,15 @@ struct bc_record {
 
 	char			outfile[PATH_MAX];
 	int			id;
-	char			name[128];
-	char			dev[128];
-	char			driver[64];
+	char			name[256];
+	char			dev[256];
+	char			driver[256];
 	int			mot_cnt;
 	pthread_t		thread;
 	struct bc_list_struct	list;
 
 	/* Audio setup */
-	char			aud_dev[128];
+	char			aud_dev[256];
 	int			aud_rate;
 	int			aud_channels;
 	unsigned int		aud_format;
