@@ -36,7 +36,7 @@ static void __handle_motion_start(struct bc_handle *bc)
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
 
-	bc_log("I(%d): Motion event started", bc_rec->id);
+	bc_dev_info(bc_rec, "Motion event started");
 }
 
 static void __handle_motion_end(struct bc_handle *bc)
@@ -48,7 +48,7 @@ static void __handle_motion_end(struct bc_handle *bc)
 		return;
 
 	bc_event_cam_end(&bc_rec->event);
-	bc_log("I(%d): Motion event stopped", bc_rec->id);
+	bc_dev_info(bc_rec, "Motion event stopped");
 }
 
 /* XXX Create a function here so that we don't have to do so many
@@ -100,8 +100,7 @@ static void bc_check_threads(void)
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;
 
-		bc_log("I(%d): Camera thread stopped: %s: %s",
-		       bc_rec->id, bc_rec->name, errmsg);
+		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
 		bc_list_del(&bc_rec->list);
 		bc_handle_free(bc_rec->bc);
 		free(bc_rec);

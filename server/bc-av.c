@@ -152,8 +152,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	if (size < 0) {
 		if (size == -EAGAIN)
 			return 0;
-		bc_log("E(%d): Error reading from sound device: %s",
-		       bc_rec->id, snd_strerror(size));
+		bc_dev_err(bc_rec, "Error reading from sound device: %s",
+			   snd_strerror(size));
 		bc_alsa_close(bc_rec);
 		return 0;
 	}
@@ -194,7 +194,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.data = mp2_out;
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
-		bc_log("E(%d): Error encoding audio frame", bc_rec->id);
+		bc_dev_err(bc_rec, "Error encoding audio frame");
 		return 1;
 	}
 
@@ -260,7 +260,7 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 void bc_close_avcodec(struct bc_record *bc_rec)
 {
 	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in av_lock on avcodec close!");
+		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec close!");
 	__bc_close_avcodec(bc_rec);
 	pthread_mutex_unlock(&av_lock);
 }
@@ -429,7 +429,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	int ret;
 
 	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in av_lock on avcodec open!");
+		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec open!");
 	ret = __bc_open_avcodec(bc_rec);
 	if (ret)
 		__bc_close_avcodec(bc_rec);
