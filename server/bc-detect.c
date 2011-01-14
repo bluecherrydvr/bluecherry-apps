@@ -20,6 +20,12 @@
 #define BCUID_EEPROM_OFF	8
 #define BCUID_EEPROM_PRE	BC_UID_TYPE_BC ":"
 
+#define MAX_CARDS		32
+static struct card_list {
+	int valid;
+	char name[128];
+} cards[MAX_CARDS];
+
 static void check_solo(struct sysfs_device *device, const char *dir)
 {
 	char eeprom_path[SYSFS_PATH_MAX];
@@ -55,7 +61,21 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	if (sscanf(dir, "solo6x10-%d-%d", &id, &ports) != 2)
 		return;
 
-	bc_log("I: Found %s, id %d, %d ports", bcuid, id, ports);
+	/* Check to see if we've scanned this one before */
+	for (i = 0; i < MAX_CARDS; i++) {
+		if (cards[i].valid && !strcmp(cards[i].name, bcuid))
+			break;
+	}
+
+	if (i == MAX_CARDS) {
+		bc_log("I: Found %s, id %d, %d ports", bcuid, id, ports);
+		for (i = 0; i < MAX_CARDS; i++) {
+			if (cards[i].valid)
+				continue;
+			cards[i].valid = 1;
+			strcpy(cards[i].name, bcuid);
+		}
+	}
 
 	for (i = 0; i < ports; i++) {
 		bc_db_query("INSERT INTO AvailableSources "
