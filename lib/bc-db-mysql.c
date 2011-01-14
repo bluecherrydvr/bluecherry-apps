@@ -17,68 +17,86 @@ struct bc_db_mysql_res {
 	int ncols;
 };
 
-static const char *dbname, *dbuser, *dbpass;
-static const char *dbhost = NULL;
-static const char *dbsocket = NULL;
+
+static char *dbname, *dbuser, *dbpass, *dbhost, *dbsock;
 static long dbport = 0;
+static MYSQL *my_con_global;
+
+#define FREE_NULL(__x)		({ if (__x) { free(__x); __x = NULL; } })
+
+#define GET_VAL(__res, __var, __ret) do {				\
+	const char *val;						\
+	FREE_NULL(__res);						\
+	if (!config_lookup_string(cfg, BC_CONFIG_DB "." __var, &val)) {	\
+		__res = NULL;						\
+		if (__ret) {						\
+			bc_db_mysql_close();				\
+                	return -1;					\
+		}							\
+	} else								\
+		__res = strdup(val);					\
+} while(0)
 
 static MYSQL *get_handle(void)
 {
-	static MYSQL *my_con = NULL;
-
-	if (my_con != NULL) {
+	if (my_con_global != NULL) {
 		/* On successful ping, just re-use connection */
-		if (!mysql_ping(my_con))
-			return my_con;
+		if (!mysql_ping(my_con_global))
+			return my_con_global;
 
 		/* Failure, so setup to retry */
-		mysql_close(my_con);
-		my_con = NULL;
+		mysql_close(my_con_global);
+		my_con_global = NULL;
 	}
 
-	if ((my_con = mysql_init(NULL)) == NULL) {
+	if ((my_con_global = mysql_init(NULL)) == NULL) {
 		bc_log("(SQL ERROR): Initializing MySQL");
 		return NULL;
 	}
 
-	if (mysql_real_connect(my_con, dbhost, dbuser, dbpass, dbname,
-			       (int)dbport, dbsocket, 0) == NULL) {
+	if (mysql_real_connect(my_con_global, dbhost, dbuser, dbpass, dbname,
+			       (int)dbport, dbsock, 0) == NULL) {
 		bc_log("(SQL ERROR): Connecting to MySQL database: %s",
-		       mysql_error(my_con));
-		mysql_close(my_con);
-		my_con = NULL;
+		       mysql_error(my_con_global));
+		mysql_close(my_con_global);
+		my_con_global = NULL;
                 return NULL;
         }
 
-	return my_con;
-}
-
-static int bc_db_mysql_open(struct config_t *cfg)
-{
-        if (!config_lookup_string(cfg, BC_CONFIG_DB ".dbname", &dbname))
-		return -1;
-	if (!config_lookup_string(cfg, BC_CONFIG_DB ".user", &dbuser))
-		return -1;
-	if (!config_lookup_string(cfg, BC_CONFIG_DB ".password", &dbpass))
-		return -1;
-
-	if (config_lookup_string(cfg, BC_CONFIG_DB ".host", &dbhost))
-		config_lookup_int(cfg, BC_CONFIG_DB ".port", &dbport);
-	else
-		config_lookup_string(cfg, BC_CONFIG_DB ".socket", &dbsocket);
-
-	if (get_handle() == NULL)
-		return -1;
-
-	return 0;
+	return my_con_global;
 }
 
 static void bc_db_mysql_close(void)
 {
-	MYSQL *my_con = get_handle();
+	FREE_NULL(dbname);
+	FREE_NULL(dbuser);
+	FREE_NULL(dbpass);
+	FREE_NULL(dbhost);
+	FREE_NULL(dbsock);
 
-	if (my_con != NULL)
-		mysql_close(my_con);
+	if (my_con_global)
+		mysql_close(my_con_global);
+	my_con_global = NULL;
+}
+
+static int bc_db_mysql_open(struct config_t *cfg)
+{
+	GET_VAL(dbname, "dbname", 1);
+	GET_VAL(dbuser, "user", 1);
+	GET_VAL(dbpass, "password", 1);
+
+	GET_VAL(dbhost, "host", 0);
+	if (dbhost)
+		config_lookup_int(cfg, BC_CONFIG_DB ".port", &dbport);
+	else
+		GET_VAL(dbsock, "socket", 0);
+
+	if (get_handle() == NULL) {
+		bc_db_mysql_close();
+		return -1;
+	}
+
+	return 0;
 }
 
 static int bc_db_mysql_query(char *query)
