@@ -18,14 +18,13 @@ static void try_formats(struct bc_record *bc_rec)
 	if (bc_set_interval(bc, bc_rec->interval)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
-			bc_log("W(%d): failed to set video interval: %m",
-			       bc_rec->id);
+			bc_dev_warn(bc_rec, "Failed to set video interval: %m");
 	}
 
 	if (bc_set_format(bc, bc_rec->fmt, bc_rec->width, bc_rec->height)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
-			bc_log("W(%d): error setting format: %m", bc_rec->id);
+			bc_dev_warn(bc_rec, "Error setting format: %m");
 	}
 }
 
@@ -59,14 +58,14 @@ static int process_schedule(struct bc_record *bc_rec)
 		try_formats(bc_rec);
 		if (bc_rec->reset_vid)
 			ret = 1;
-		bc_log("I(%d): Reset media file", bc_rec->id);
+		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
 		bc_close_avcodec(bc_rec);
 		bc_handle_stop(bc);
 		if (bc)
 			bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
-		bc_log("I(%d): Switching to new schedule '%s'", bc_rec->id,
+		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
 		       == 'N' ? "stopped" : "continuous"));
 	}
@@ -88,7 +87,7 @@ static void *bc_device_thread(void *data)
 	struct bc_handle *bc = bc_rec->bc;
 	int ret;
 
-	bc_log("I(%d): Camera configured: %s", bc_rec->id, bc_rec->name);
+	bc_dev_info(bc_rec, "Camera configured");
 
 	for (;;) {
 		if (bc_rec->thread_should_die)
@@ -100,7 +99,7 @@ static void *bc_device_thread(void *data)
 			continue;
 
 		if (bc_handle_start(bc)) {
-			bc_log("E(%d): error starting stream: %m", bc_rec->id);
+			bc_dev_err(bc_rec, "Error starting stream: %m");
 			sleep(1);
 			continue;
 		}
@@ -112,13 +111,13 @@ static void *bc_device_thread(void *data)
 			bc_close_avcodec(bc_rec);
 			continue;
 		} else if (ret) {
-			bc_log("E(%d): Failed to get vid buf", bc_rec->id);
+			bc_dev_err(bc_rec, "Failed to get vid buf");
 			continue;
 			/* XXX Do something */
 		}
 
 		if (bc_open_avcodec(bc_rec)) {
-			bc_log("E(%d): error opening avcodec", bc_rec->id);
+			bc_dev_err(bc_rec, "Error opening avcodec");
 			continue;
 		}
 
@@ -126,8 +125,7 @@ static void *bc_device_thread(void *data)
 			/* Do nothing */;
 
 		if (bc_vid_out(bc_rec)) {
-			bc_log("E(%d): Error writing frame to outfile: %m",
-			       bc_rec->id);
+			bc_dev_err(bc_rec, "Error writing frame to outfile: %m");
 			/* XXX Do something */
 		}
 	}
@@ -162,15 +160,17 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	const char *driver = bc_db_get_val(dbres, "driver");
 	int card_id = bc_db_get_val_int(dbres, "card_id");
 
-	if (!dev || !name || !driver || card_id < 0)
-		return NULL;
-
 	if (bc_db_get_val_bool(dbres, "disabled"))
 		return NULL;
 
+	if (!dev || !name || !driver || card_id < 0) {
+		bc_log("E(%d): Could not get info about device from db", id);
+		return NULL;
+	}
+
 	bc_rec = malloc(sizeof(*bc_rec));
 	if (bc_rec == NULL) {
-		bc_log("E(%d): out of memory trying to start record", id);
+		bc_log("E(%d/%s): Out of memory trying to start record", id, name);
 		return NULL;
 	}
 	memset(bc_rec, 0, sizeof(*bc_rec));
@@ -180,7 +180,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	bc = bc_handle_get(dev, card_id);
 	if (bc == NULL) {
-		bc_log("E(%d): error opening device: %m", bc_rec->id);
+		bc_dev_err(bc_rec, "Error opening device: %m");
 		free(bc_rec);
 		return NULL;
 	}
@@ -199,7 +199,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
-		bc_log("E(%d): failed to start thread: %m", bc_rec->id);
+		bc_dev_err(bc_rec, "Failed to start thread: %m");
 		bc_handle_free(bc);
 		free(bc_rec);
 		bc_rec = NULL;
@@ -232,7 +232,7 @@ static void check_motion_map(struct bc_record *bc_rec,
 	}
 
 	if (strlen(motion_map) < 22 * vh) {
-		bc_log("W(%d): motion map is too short", bc_rec->id);
+		bc_dev_warn(bc_rec, "Motion map is too short");
 		return;
 	}
 

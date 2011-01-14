@@ -56,8 +56,8 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
 				SND_PCM_STREAM_CAPTURE,
 				SND_PCM_NONBLOCK)) < 0) {
-		bc_log("E(%d): Opening audio device failed: %s", bc_rec->id,
-		       snd_strerror(err));
+		bc_dev_err(bc_rec, "Opening audio device failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
@@ -66,52 +66,52 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	snd_pcm_hw_params_alloca(&params);
 
 	if ((err = snd_pcm_hw_params_any(pcm, params)) < 0) {
-		bc_log("E(%d): No audio device configurations available: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "No audio device configurations available: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((err = snd_pcm_hw_params_set_access(pcm, params,
 					 SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
-		bc_log("E(%d): Setting audio device access type failed: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Setting audio device access type failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((fmt = bc_to_alsa_fmt(bc_rec->aud_format)) == -1) {
-		bc_log("E(%d): bc_to_alsa_fmt failed", bc_rec->id);
+		bc_dev_err(bc_rec, "bc_to_alsa_fmt failed");
 		return -1;
 	}
 
 	if ((err = snd_pcm_hw_params_set_format(pcm, params, fmt)) < 0) {
-		bc_log("E(%d): Setting audio device format failed: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Setting audio device format failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((err = snd_pcm_hw_params_set_channels(pcm, params,
 					   bc_rec->aud_channels)) < 0) {
-		bc_log("E(%d): Setting audio device channels failed: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Setting audio device channels failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((err = snd_pcm_hw_params_set_rate(pcm, params, bc_rec->aud_rate,
 					      0)) < 0) {
-		bc_log("E(%d): Setting audio device rate failed: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Setting audio device rate failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((err = snd_pcm_hw_params(pcm, params)) < 0) {
-		bc_log("E(%d): Setting audio device parameters failed: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Setting audio device parameters failed: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 
 	if ((err = snd_pcm_prepare(pcm)) < 0) {
-		bc_log("E(%d): Failed to prepare audio device: %s",
-		       bc_rec->id, snd_strerror(err));
+		bc_dev_err(bc_rec, "Failed to prepare audio device: %s",
+			   snd_strerror(err));
 		return -1;
 	}
 

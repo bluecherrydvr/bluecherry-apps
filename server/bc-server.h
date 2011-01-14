@@ -100,4 +100,11 @@ void bc_check_avail(void);
 #define bc_debug(fmt, args...) do{}while(0)
 #endif
 
+#define bc_dev_info(rec, fmt, args...) \
+	bc_log("I(%d/%s): " fmt, rec->id, rec->name, ## args)
+#define bc_dev_warn(rec, fmt, args...) \
+	bc_log("W(%d/%s): " fmt, rec->id, rec->name, ## args)
+#define bc_dev_err(rec, fmt, args...) \
+	bc_log("E(%d/%s): " fmt, rec->id, rec->name, ## args)
+
 #endif /* __BC_SERVER_H */
