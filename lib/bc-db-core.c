@@ -155,8 +155,10 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 		return NULL;
 	va_end(ap);
 
+	bc_db_lock();
 	dbres = db_ops->get_table(query);
 	free(query);
+	bc_db_unlock();
 
 	return dbres;
 }
