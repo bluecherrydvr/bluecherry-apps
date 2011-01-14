@@ -228,14 +228,19 @@ static void bc_db_mysql_escape_string(char *to, const char *from)
 		mysql_real_escape_string(my_con, to, from, strlen(from));
 }
 
-static void bc_db_mysql_lock(const char *table)
+static int bc_db_mysql_start_trans(void)
 {
-	bc_db_query("LOCK TABLES %s WRITE", table);
+	return bc_db_mysql_query("START TRANSACTION");
 }
 
-static void bc_db_mysql_unlock(const char *table)
+static void bc_db_mysql_commit_trans(void)
 {
-	bc_db_query("UNLOCK TABLES");
+	bc_db_mysql_query("COMMIT");
+}
+
+static void bc_db_mysql_rollback_trans(void)
+{
+	bc_db_mysql_query("ROLLBACK");
 }
 
 struct bc_db_ops bc_db_mysql = {
@@ -250,6 +255,7 @@ struct bc_db_ops bc_db_mysql = {
 	.get_field	= bc_db_mysql_get_field,
 	.last_insert_rowid = bc_db_mysql_last_insert_rowid,
 	.escape_string	= bc_db_mysql_escape_string,
-	.lock		= bc_db_mysql_lock,
-	.unlock		= bc_db_mysql_unlock,
+	.start_trans	= bc_db_mysql_start_trans,
+	.commit_trans	= bc_db_mysql_commit_trans,
+	.rollback_trans	= bc_db_mysql_rollback_trans,
 };

@@ -191,9 +191,10 @@ static void __bc_check_media(void)
 
 static void bc_check_media(void)
 {
-	bc_db_lock("Media");
+	if (bc_db_start_trans())
+		return;
 	__bc_check_media();
-	bc_db_unlock("Media");
+	bc_db_commit_trans();
 }
 
 static void bc_check_db(void)

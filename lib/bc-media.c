@@ -139,9 +139,14 @@ static int do_media(struct bc_media_entry *bcm)
 {
 	int ret;
 
-	bc_db_lock("Media");
+	if (bc_db_start_trans())
+		return -1;
+
 	ret = __do_media(bcm);
-	bc_db_unlock("Media");
+	if (ret)
+		bc_db_rollback_trans();
+	else
+		bc_db_commit_trans();
 
 	return ret;
 }
@@ -189,9 +194,14 @@ static int do_cam(struct bc_event_cam *bce)
 {
 	int ret;
 
-	bc_db_lock("EventsCam");
+	if (bc_db_start_trans())
+		return -1;
+
 	ret = __do_cam(bce);
-	bc_db_unlock("EventsCam");
+	if (ret)
+		bc_db_rollback_trans();
+	else
+		bc_db_commit_trans();
 
 	return ret;
 }

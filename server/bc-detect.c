@@ -141,8 +141,11 @@ static void __bc_check_avail(void)
 
 void bc_check_avail(void)
 {
-	bc_db_lock("AvailableSources");
+	if (bc_db_start_trans())
+		return;
+
 	bc_db_query("DELETE FROM AvailableSources");
 	__bc_check_avail();
-	bc_db_unlock("AvailableSources");
+
+	bc_db_commit_trans();
 }

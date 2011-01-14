@@ -234,8 +234,11 @@ int bc_db_fetch_row(BC_DB_RES dbres);
 int bc_db_query(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
 unsigned long bc_db_last_insert_rowid(void);
-void bc_db_lock(const char *table);
-void bc_db_unlock(const char *table);
+void bc_db_lock(void);
+void bc_db_unlock(void);
+int bc_db_start_trans(void);
+void bc_db_commit_trans(void);
+void bc_db_rollback_trans(void);
 const char *bc_db_get_field(BC_DB_RES dbres, int nfield);
 int bc_db_num_fields(BC_DB_RES dbres);
 

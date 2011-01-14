@@ -23,8 +23,9 @@ struct bc_db_ops {
 	int (*query)(char *query);
 	unsigned long (*last_insert_rowid)(void);
 	void (*escape_string)(char *to, const char *from);
-	void (*lock)(const char *table);
-	void (*unlock)(const char *table);
+	int (*start_trans)(void);
+	void (*commit_trans)(void);
+	void (*rollback_trans)(void);
 };
 
 extern struct bc_db_ops bc_db_mysql;
