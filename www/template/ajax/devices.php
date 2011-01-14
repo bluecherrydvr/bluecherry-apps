@@ -13,7 +13,7 @@ foreach($devices->cards as $key => $card){
 	
 foreach ($card->devices as $key =>$device){
 	if (empty($device['device_name'])) { $device['device_name'] = ($device['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
-	echo "<div id='localDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}&nbsp;</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div><div id='port'>{$device['port']}</div>";
+	echo "<div id='localDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div><div id='port'>{$device['port']}</div>";
 	if ($device['status'] != 'notconfigured' && !$device['disabled']) {
 		echo "
 				<hr>
