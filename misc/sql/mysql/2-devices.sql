@@ -49,6 +49,5 @@ CREATE TABLE Devices (
 						-- ^^ Whether to override the global
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
 	UNIQUE (device_name),
-	UNIQUE (device,channel),
-	UNIQUE (host_port,channel)
+	UNIQUE (device,channel)
 );
