@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+VERSION="$(shell dpkg-parsechangelog  | grep ^Version | sed 's/Version: //')"
+
 %:
 	dh $@
 
@@ -12,3 +14,4 @@ override_dh_auto_install:
 	install -m644 -D debian/apache.conf \
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www
+	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/www/version
