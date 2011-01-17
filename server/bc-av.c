@@ -316,19 +316,19 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	if (bc_alsa_open(bc_rec))
 		bc_alsa_close(bc_rec);
 
-	bc_start_media_entry(bc_rec);
-
-	if (bc_rec->media == BC_MEDIA_FAIL) {
-		errno = ENOMEM;
-		return -1;
-	}
-
 	t = time(NULL);
 	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
 	strftime(mytime, sizeof(mytime), "%T", &tm);
 	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
+
+	bc_start_media_entry(bc_rec);
+
+	if (bc_rec->media == BC_MEDIA_FAIL) {
+		errno = ENOMEM;
+		return -1;
+	}
 
 	/* Get the output format */
 	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);
