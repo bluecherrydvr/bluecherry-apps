@@ -233,9 +233,10 @@ void bc_db_free_table(BC_DB_RES dbres);
 int bc_db_fetch_row(BC_DB_RES dbres);
 int bc_db_query(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
+/* Unlocked version */
+int __bc_db_query(const char *sql, ...)
+	__attribute__ ((format (printf, 1, 2)));
 unsigned long bc_db_last_insert_rowid(void);
-void bc_db_lock(void);
-void bc_db_unlock(void);
 int bc_db_start_trans(void);
 void bc_db_commit_trans(void);
 void bc_db_rollback_trans(void);

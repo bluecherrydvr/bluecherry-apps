@@ -107,13 +107,13 @@ static int __do_media(struct bc_media_entry *bcm)
 	if (bcm->table_id) {
 		__update_stat(bcm);
 		/* This is the common case to end a call */
-		res = bc_db_query("UPDATE Media SET end='%lu',size=%lu "
+		res = __bc_db_query("UPDATE Media SET end='%lu',size=%lu "
 				  "WHERE id=%lu", time(NULL),
 				  bcm->bytes, bcm->table_id);
 	} else if (!bcm->start) {
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
-		res = bc_db_query("INSERT INTO Media (start,device_id,"
+		res = __bc_db_query("INSERT INTO Media (start,device_id,"
 				  "container,video,audio,filepath) "
 				  "VALUES('%lu',%d,'%s','%s','%s','%s')",
 				  bcm->start, bcm->cam_id, bcm->cont,
@@ -123,7 +123,7 @@ static int __do_media(struct bc_media_entry *bcm)
 	} else {
 		/* Insert fully. Usually means there was a failure */
 		__update_stat(bcm);
-		res = bc_db_query("INSERT INTO Media (start,end,"
+		res = __bc_db_query("INSERT INTO Media (start,end,"
 				  "device_id,container,video,audio,filepath,"
 				  "size) VALUES('%lu','%lu','%d','%s','%s',"
 				  "'%s','%s',%lu)", bcm->start, time(NULL),
@@ -162,12 +162,12 @@ static int __do_cam(struct bc_event_cam *bce)
 
 	if (bce->inserted) {
 		/* This is the common route to end a call */
-		res = bc_db_query("UPDATE EventsCam SET length='%lu'"
+		res = __bc_db_query("UPDATE EventsCam SET length='%lu'"
 				  " WHERE id=%lu", bce->end_time - bce->start_time,
 				  bce->inserted);
 	} else if (bce->end_time) {
 		/* Insert with length, usually happens on failure, or singular */
-		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
+		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s','%lu')", bce->start_time, bce->level,
 				bce->id, bce->type, bce->end_time - bce->start_time);
@@ -175,7 +175,7 @@ static int __do_cam(struct bc_event_cam *bce)
 			bce->inserted = bc_db_last_insert_rowid();
 	} else {
 		/* Insert open ended (for later update), common start point */
-		res = bc_db_query("INSERT INTO EventsCam (time,level_id,"
+		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
 				"'%s',-1)", bce->start_time, bce->level,
 				bce->id, bce->type);
@@ -185,7 +185,7 @@ static int __do_cam(struct bc_event_cam *bce)
 
 	/* If we have a media reference, update with that info */
 	if (bce->inserted && bce->media)
-		bc_db_query("UPDATE EventsCam SET media_id=%lu"
+		__bc_db_query("UPDATE EventsCam SET media_id=%lu"
 			    " WHERE id=%lu", bce->media->table_id, bce->inserted);
 
 	return res;

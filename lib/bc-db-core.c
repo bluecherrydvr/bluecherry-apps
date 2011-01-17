@@ -21,13 +21,13 @@ static pthread_mutex_t db_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 static struct bc_db_ops *db_ops = NULL;
 
-void bc_db_lock(void)
+static void bc_db_lock(void)
 {
 	if (pthread_mutex_lock(&db_lock) == EDEADLK)
 		bc_log("E: Deadlock detected obtaining db_lock");
 }
 
-void bc_db_unlock(void)
+static void bc_db_unlock(void)
 {
 	if (pthread_mutex_unlock(&db_lock) == EPERM)
 		bc_log("E: Unlocking db_lock when not held by this thread");
@@ -112,7 +112,7 @@ db_error:
 	return ret;
 }
 
-int bc_db_query(const char *sql, ...)
+int __bc_db_query(const char *sql, ...)
 {
 	va_list ap;
 	char *query;
@@ -124,6 +124,26 @@ int bc_db_query(const char *sql, ...)
 	va_end(ap);
 
 	ret = db_ops->query(query);
+	free(query);
+
+	return ret;
+}
+
+int bc_db_query(const char *sql, ...)
+{
+	va_list ap;
+	char *query;
+	int ret;
+
+	va_start(ap, sql);
+	if (vasprintf(&query, sql, ap) < 0)
+		return -1;
+	va_end(ap);
+
+	bc_db_lock();
+	ret = db_ops->query(query);
+	bc_db_unlock();
+
 	free(query);
 
 	return ret;
@@ -157,8 +177,9 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 
 	bc_db_lock();
 	dbres = db_ops->get_table(query);
-	free(query);
 	bc_db_unlock();
+
+	free(query);
 
 	return dbres;
 }
@@ -188,6 +209,7 @@ int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 	return val ? (atoi(val) ? 1 : 0) : 0;
 }
 
+/* Should be used with locks held and lockless __bc_db_query() */
 long unsigned bc_db_last_insert_rowid(void)
 {
 	return db_ops->last_insert_rowid();
