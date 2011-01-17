@@ -13,7 +13,8 @@ $current_user->StatusAction('viewer');
 
 bc_db_open() or die("Could not open database\n");
 
-$query = "SELECT EventsCam.*, Media.size AS media_size, (Media.size>0 OR Media.end=0) AS media_available FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) WHERE ";
+$query = "SELECT EventsCam.*, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
+         "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) WHERE ";
 if (isset($_GET['startDate']))
 	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
 if (isset($_GET['endDate']))
