@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <libbluecherry.h>
 
@@ -65,7 +66,7 @@ struct bc_media_entry {
 	unsigned long table_id;
 	time_t start, end;
 	const char *video, *audio, *cont;
-	const char *filepath;
+	char filepath[PATH_MAX];
 	unsigned long bytes;
 	struct bc_list_struct list;
 };
@@ -252,7 +253,7 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
         bcm->video = video_type_to_str[video];
         bcm->audio = audio_type_to_str[audio];
         bcm->cont = cont_type_to_str[cont];
-	bcm->filepath = filepath;
+	strcpy(bcm->filepath, filepath);
 
 	do_media(bcm);
 
