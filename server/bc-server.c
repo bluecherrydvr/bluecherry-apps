@@ -139,7 +139,7 @@ static float get_avail(void)
  * events until there's more than or equal to min_thresh% available. Do not
  * delete archived events. If we've deleted everything we can and we still
  * don't have more than min_avail% available, then complain....LOUDLY! */
-static void __bc_check_media(void)
+static void bc_check_media(void)
 {
 	BC_DB_RES dbres;
 	float avail;
@@ -167,7 +167,7 @@ static void __bc_check_media(void)
 			continue;
 
 		unlink(filepath);
-		bc_db_query("UPDATE Media SET filepath='',size=0 "
+		__bc_db_query("UPDATE Media SET filepath='',size=0 "
 			    "WHERE id=%d", id);
 
 		bc_log("W: Removed media %d, file %s to make space", id,
@@ -187,14 +187,6 @@ static void __bc_check_media(void)
 		       "any more old media!", avail);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 	}
-}
-
-static void bc_check_media(void)
-{
-	if (bc_db_start_trans())
-		return;
-	__bc_check_media();
-	bc_db_commit_trans();
 }
 
 static void bc_check_db(void)

@@ -79,7 +79,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	}
 
 	for (i = 0; i < ports; i++) {
-		bc_db_query("INSERT INTO AvailableSources "
+		__bc_db_query("INSERT INTO AvailableSources "
 			    "(device, driver, card_id) "
 			    "VALUES('%s|%s|%d', 'solo6x10', '%d')",
 			    uid_type, bcuid, i, id);
@@ -144,7 +144,7 @@ void bc_check_avail(void)
 	if (bc_db_start_trans())
 		return;
 
-	bc_db_query("DELETE FROM AvailableSources");
+	__bc_db_query("DELETE FROM AvailableSources");
 	__bc_check_avail();
 
 	bc_db_commit_trans();
