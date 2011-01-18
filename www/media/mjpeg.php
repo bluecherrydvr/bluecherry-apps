@@ -31,6 +31,7 @@ if ($monitor->data == false) {
 $boundary = "MJPEGBOUNDARY";
 $dev = $monitor->data[0]['device'];
 $card_id = $monitor->data[0]['card_id'];
+$driver = $monitor->data[0]['driver'];
 
 header("Cache-Control: no-cache");
 header("Cache-Control: private");
@@ -38,7 +39,7 @@ header("Pragma: no-cache");
 
 session_write_close();
 
-$bch = bc_handle_get($dev, $card_id);
+$bch = bc_handle_get($dev, $driver, $card_id);
 if ($bch == false) {
 	print "Failed to open $dev";
 	exit;

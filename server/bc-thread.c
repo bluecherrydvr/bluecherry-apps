@@ -178,7 +178,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
-	bc = bc_handle_get(dev, card_id);
+	bc = bc_handle_get(dev, driver, card_id);
 	if (bc == NULL) {
 		bc_dev_err(bc_rec, "Error opening device: %m");
 		free(bc_rec);

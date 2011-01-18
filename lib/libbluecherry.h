@@ -67,6 +67,7 @@ struct bc_handle {
 	int			buffers;
 	int			card_id;
 	int			dev_id;
+	int			ip_cam;
 
 	/* For private data */
 	void			*__data;
@@ -181,7 +182,8 @@ struct bc_list_struct {
 
 
 /* Called to open and close a handle for a device. */
-struct bc_handle *bc_handle_get(const char *dev, int card_id);
+struct bc_handle *bc_handle_get(const char *dev, const char *driver,
+				int card_id);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */

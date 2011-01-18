@@ -287,9 +287,11 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	return 0;
 }
 
-struct bc_handle *bc_handle_get(const char *dev, int card_id)
+static struct bc_handle *v4l2_handle_init(struct bc_handle *bc,
+					  const char *dev,
+					  const char *driver,
+					  int card_id)
 {
-	struct bc_handle *bc;
 	const char *p = dev;
 	int id = -1;
 
@@ -307,13 +309,7 @@ struct bc_handle *bc_handle_get(const char *dev, int card_id)
 		return NULL;
 	}
 	id = atoi(p + 1);
-	
-	if ((bc = malloc(sizeof(*bc))) == NULL) {
-		errno = ENOMEM;
-		return NULL;
-	}
 
-	memset(bc, 0, sizeof(*bc));
 	bc->card_id = card_id;
 	bc->dev_id = id;
 
@@ -348,6 +344,30 @@ struct bc_handle *bc_handle_get(const char *dev, int card_id)
 error_fail:
 	bc_handle_free(bc);
 	return NULL;
+}
+
+static struct bc_handle *rtsp_handle_init(struct bc_handle *bc,
+					  const char *dev,
+					  const char *driver)
+{
+	bc_handle_free(bc);
+	return NULL;
+}
+
+struct bc_handle *bc_handle_get(const char *dev, const char *driver, int card_id)
+{
+	struct bc_handle *bc;
+
+	if ((bc = malloc(sizeof(*bc))) == NULL) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	memset(bc, 0, sizeof(*bc));
+
+	if (!strncmp(driver, "RTSP-", 5))
+		return rtsp_handle_init(bc, dev, driver);
+	else
+		return v4l2_handle_init(bc, dev, driver, card_id);
 }
 
 void bc_handle_stop(struct bc_handle *bc)
