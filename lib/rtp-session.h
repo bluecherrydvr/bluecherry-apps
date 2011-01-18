@@ -4,8 +4,8 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-#ifndef SESSION_H
-#define SESSION_H
+#ifndef __RTP_SESSION_H
+#define __RTP_SESSION_H
 
 #include <stdio.h>
 
@@ -50,4 +50,4 @@ void rtp_session_stop(struct rtp_session *rs);
 int rtp_session_record(struct rtp_session *rs, const char *file);
 int rtp_session_read(struct rtp_session *rs);
 
-#endif
+#endif /* __RTP_SESSION_H */

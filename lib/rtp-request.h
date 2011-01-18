@@ -4,8 +4,8 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-#ifndef REQUEST_H
-#define REQUEST_H
+#ifndef __RTP_REQUEST_H
+#define __RTP_REQUEST_H
 
 #include "rtp-session.h"
 
@@ -19,4 +19,4 @@ int rtp_request_play(struct rtp_session *rs);
 void rtp_request_teardown(struct rtp_session *rs);
 
 
-#endif
+#endif /* __RTP_REQUEST_H */
