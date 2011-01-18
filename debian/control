@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Ben Collins <bcollins@bluecherry.net>
 Build-Depends: debhelper (>= 7), libmysqlclient-dev, libavcodec-dev,
  libavformat-dev, libavutil-dev, php5-dev, libconfig8-dev, libasound2-dev,
- libsysfs-dev
+ libsysfs-dev, apache2-dev
 Standards-Version: 3.8.4
 
 Package: bluecherry
