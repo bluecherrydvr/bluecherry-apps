@@ -179,4 +179,4 @@ INSERT INTO ipCameras (type, manufacturer, model, compression,
   ('Video Server', 'Axis', '241QA', 'MJPEG', '640x480-30,320x240-30', 'RTSP-GENERIC'),
   ('Video Server', 'Axis', 'Q7404', 'H264,MJPEG', '720x480-30,640x480-30,320x240-30', 'RTSP-GENERIC'),
   ('Video Server', 'Axis', '243Q', 'MPEG4,MJPEG', '640x480-30,320x240-30', 'RTSP-GENERIC'),
-  ('Video Server', 'Axis', 'Q7406', 'H264,MJPEG', '720x480-30,640x480-30,320x240-30');
+  ('Video Server', 'Axis', 'Q7406', 'H264,MJPEG', '720x480-30,640x480-30,320x240-30', 'RTSP-GENERIC');
