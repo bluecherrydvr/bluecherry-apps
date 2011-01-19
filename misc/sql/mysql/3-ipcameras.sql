@@ -15,10 +15,10 @@ CREATE TABLE ipCameraDriver (
 -- %h == host or IP address
 -- %p == "user supplied port" or default "port" for protocol type
 -- %{foo}f == "user supplied path" or "foo"
-INSERT INTO ipCameraDriver (name, protocol, media_path, mjpeg_path) VALUES
-  ('RTSP-GENERIC', 'rtsp://%u@%h:%p%{}f', 'http://%u@%h:%p%{}f'),
-  ('RTSP-AXIS-v1', 'rtsp://%u@%h:%p%{/mpeg4/media.amp}f',
-   'http://%u@%h:%p%{/mjpg/video.mjpg}f');
+-- INSERT INTO ipCameraDriver (name, media_path, mjpeg_path) VALUES
+--   ('RTSP-GENERIC', 'rtsp://%u@%h:%p%{}f', 'http://%u@%h:%p%{}f'),
+--   ('RTSP-AXIS-v1', 'rtsp://%u@%h:%p%{/mpeg4/media.amp}f',
+--    'http://%u@%h:%p%{/mjpg/video.mjpg}f');
 
 --
 -- IP Devices
