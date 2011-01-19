@@ -17,17 +17,10 @@
 #define READ_SIZE 1500
 
 
-static struct rtp_response *rtp_response_alloc(void)
+static void rtp_response_init(struct rtp_response *rp)
 {
-	struct rtp_response *rp = malloc(sizeof(*rp));
-
-	if (rp == NULL)
-		return NULL;
-
 	memset(rp, 0, sizeof(*rp));
 	rp->status = HTTP_INTERNAL_SERVER_ERROR;
-
-	return rp;
 }
 
 static void rtp_response_parse(struct rtp_response *rp)
@@ -226,84 +219,73 @@ static void rtp_request_add_auth(char *buf, const char *userinfo)
 	rtp_request_add_header(buf, "Authorization", coded);
 }
 
-static struct rtp_response *rtp_request_send(struct rtp_session *rs, char *buf)
+int rtp_request_send(struct rtp_session *rs, char *buf,
+		     struct rtp_response *rp)
 {
-	struct rtp_response *rp = rtp_response_alloc();
 	char read_buf[READ_SIZE];
 	int len;
 
-	if (rp == NULL)
-		return NULL;
+	rtp_response_init(rp);
 
 	rtp_request_add_auth(buf, rs->userinfo);
 
 	/* Finalize request with CRLF */
 	strcat(buf, CRLF);
 
-	if (write(rs->net_fd, buf, strlen(buf)) < 0) {
-		free(rp);
-		return NULL;
-	}
+	if (write(rs->net_fd, buf, strlen(buf)) < 0)
+		return -1;
 
 	/* Add data to response until a complete response is received */
 	do {
 		len = read(rs->net_fd, read_buf, sizeof(read_buf));
-		if (len <= 0) {
-			free(rp);
-			return NULL;
-		}
+		if (len <= 0)
+			return -1;
 	} while (!rtp_response_add_data(rp, read_buf, len));
 
-	return rp;
+	return 0;
 }
 
-struct rtp_response *rtp_request_describe(struct rtp_session *rs)
+int rtp_request_describe(struct rtp_session *rs, struct rtp_response *rp)
 {
 	char buf[1000];
 
 	rtp_request_init(rs, buf, "DESCRIBE", rs->uri);
 	rtp_request_add_header(buf, "Accept", "application/sdp");
 
-	return rtp_request_send(rs, buf);
+	return rtp_request_send(rs, buf, rp);
 }
 
 /* This doesn't use the base URI we are requesting */
-struct rtp_response *rtp_request_setup(struct rtp_session *rs, const char *uri)
+int rtp_request_setup(struct rtp_session *rs, const char *uri, struct rtp_response *rp)
 {
 	char buf[1000];
 
 	rtp_request_init(rs, buf, "SETUP", uri);
 	rtp_request_add_header(buf, "Transport", "RTP/AVP/TCP;unicast");
-	if (rs->sess_id)
+	if (rs->sess_id[0])
 		rtp_request_add_header(buf, "Session", rs->sess_id);
 
-	return rtp_request_send(rs, buf);
+	return rtp_request_send(rs, buf, rp);
 }
 
 int rtp_request_play(struct rtp_session *rs)
 {
-	struct rtp_response *resp;
+	struct rtp_response rp;
 	char buf[1000];
-	int ret = -1;
 
 	rtp_request_init(rs, buf, "PLAY", rs->uri);
 	rtp_request_add_header(buf, "Session", rs->sess_id);
 
-	resp = rtp_request_send(rs, buf);
-	if (resp != NULL) {
-		ret = 0;
-		free(resp);
-	}
-
-	return ret;
+	return rtp_request_send(rs, buf, &rp);
 }
 
 void rtp_request_teardown(struct rtp_session *rs)
 {
+	struct rtp_response rp;
 	char buf[1000];
 
 	rtp_request_init(rs, buf, "TEARDOWN", rs->uri);
 	rtp_request_add_header(buf, "Session", rs->sess_id);
 
-	free(rtp_request_send(rs, buf));
+	rtp_request_send(rs, buf, &rp);
 }

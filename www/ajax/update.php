@@ -59,8 +59,7 @@ class updateDB extends DVRData{
 		$db = DVRDatabase::getInstance();
 		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		$bch = bc_handle_get($this_device[0]['device'],
-				     $this_device[0]['driver'],
-				     $this_device[0]['card_id']);
+				     $this_device[0]['driver']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };

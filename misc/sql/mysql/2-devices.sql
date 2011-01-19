@@ -16,13 +16,17 @@ CREATE TABLE Devices (
 	protocol varchar(50),			-- IP or V4L2
 
 	-- When protocol='V4L2' then same as AvailableSources.device
-	-- When protocol='IP' then URL to the device, e.g
-	--    rtsp://foo@bar:192.168.1.100:436/media.amp
+	-- When protocol='IP' then IP, PORT and PATH to the device, e.g
+	--    192.168.2.50|554|/mpeg4/media.amp
 	device varchar(256),
 
 	-- When protocol='V4L2', then the same as AvailableSources.driver
 	-- When protocol='IP', then type of IP device (e.g. RTSP-AXIS, RTSP-GENERIC)
 	driver varchar(256),
+
+	-- IP camera specific values, varbinary because it's case sensitive
+	rtsp_username varbinary(256),
+	rtsp_password varbinary(256),
 
 	-- The rest of these may or may not be supported by the device
 	resolutionX smallint,

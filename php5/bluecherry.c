@@ -181,12 +181,11 @@ PHP_FUNCTION(bc_handle_get)
 	int devname_len, driver_len;
 	long card_id;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ssl", &devname,
-				  &devname_len, &driver, &driver_len,
-				  &card_id) == FAILURE)
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &devname,
+				  &devname_len, &driver, &driver_len) == FAILURE)
 		RETURN_FALSE;
 
-	if ((bch = bc_handle_get(devname, driver, card_id)) == NULL)
+	if ((bch = bc_handle_get(devname, driver, NULL)) == NULL)
 		RETURN_FALSE;
 
 	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);

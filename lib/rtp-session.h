@@ -27,27 +27,30 @@ struct rtp_response {
 };
 
 struct rtp_session {
-	const char	*userinfo;
-	const char	*uri;
-	const char	*server;
+	char		userinfo[256];
+	char		uri[1024];
+	char		server[256];
 	unsigned int	port;
 	unsigned int	tunnel_id;
 	unsigned int	seq_num;
 	rtp_media_type_t media;
 	char		sess_id[MAX_SESSION_ID_LEN];
 	int		net_fd;
-	int		out_fd;
 	unsigned char	adts_header[ADTS_HEADER_LENGTH];
 	int		is_mpeg_4aac;
+	/* Where to keep full frames */
+	unsigned char	frame_buf[1024 * 128];
+	int		frame_len;
+	int		frame_valid;
+	/* Buffer for RTP packets */
+	unsigned char	outbuf[2048];
+	int		outbuf_len;
+	int		framerate;
 };
 
-struct rtp_session *rtp_session_alloc(const char *userinfo,
-				      const char *uri,
-				      const char *server,
-				      unsigned int port,
-				      rtp_media_type_t media);
+int rtp_session_init(struct rtp_session *rs, void *dbres);
 void rtp_session_stop(struct rtp_session *rs);
-int rtp_session_record(struct rtp_session *rs, const char *file);
+int rtp_session_start(struct rtp_session *rs);
 int rtp_session_read(struct rtp_session *rs);
 
 #endif /* __RTP_SESSION_H */

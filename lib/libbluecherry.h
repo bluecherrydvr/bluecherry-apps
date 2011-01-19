@@ -14,6 +14,8 @@
 
 #include <linux/videodev2.h>
 
+#include <rtp-session.h>
+
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
@@ -44,9 +46,17 @@ enum bc_vb_status {
 
 typedef void * BC_DB_RES;
 
+/* Camera capability flags */
+#define BC_CAM_CAP_RTSP		0x00000001
+#define BC_CAM_CAP_V4L2		0x00000002
+#define BC_CAM_CAP_OSD		0x00000004
+#define BC_CAM_CAP_SOLO		0x00000008
+
 struct bc_handle {
+	char			device[512];
+	char			driver[512];
+
 	/* Track info about the v4l2 device */
-	char			dev_file[256];
 	int			dev_fd;
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
@@ -59,6 +69,9 @@ struct bc_handle {
 		enum bc_vb_status	status;
 	}			p_buf[BC_BUFFERS];
 
+	/* RTSP related information */
+	struct rtp_session	rtp_sess;
+
 	int			started;
 	int			buf_idx;
 	int			got_vop;
@@ -67,7 +80,7 @@ struct bc_handle {
 	int			buffers;
 	int			card_id;
 	int			dev_id;
-	int			ip_cam;
+	unsigned int		cam_caps;
 
 	/* For private data */
 	void			*__data;
@@ -183,7 +196,7 @@ struct bc_list_struct {
 
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(const char *dev, const char *driver,
-				int card_id);
+				BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */
@@ -204,9 +217,6 @@ void *bc_buf_data(struct bc_handle *bc);
 
 /* Get the size in bytes used by the current buffer */
 unsigned int bc_buf_size(struct bc_handle *bc);
-
-/* Get the v4l2_buffer struct for the current buffer */
-struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
 
 /* Is the current buffer a key frame? */
 int bc_buf_key_frame(struct bc_handle *bc);

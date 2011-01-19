@@ -24,6 +24,9 @@ int bc_set_motion(struct bc_handle *bc, int on)
 {
 	struct v4l2_control vc;
 
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
+
 	vc.id = V4L2_CID_MOTION_ENABLE;
 	vc.value = on ? 1 : 0;
 
@@ -34,6 +37,9 @@ int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 			 unsigned short block)
 {
 	struct v4l2_control vc;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
 
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 	vc.value = val;
@@ -48,6 +54,9 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	struct v4l2_queryctrl qctrl;
 	struct v4l2_control vc;
 	float step;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
 
 	qctrl.id = ctrl;
 	if (ioctl(bc->dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
@@ -64,6 +73,12 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 
 void *bc_buf_data(struct bc_handle *bc)
 {
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		if (bc->rtp_sess.frame_valid)
+			return bc->rtp_sess.frame_buf;
+		return NULL;
+	}
+
 	if (bc->buf_idx < 0)
 		return NULL;
 
@@ -72,23 +87,24 @@ void *bc_buf_data(struct bc_handle *bc)
 
 unsigned int bc_buf_size(struct bc_handle *bc)
 {
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		if (bc->rtp_sess.frame_valid)
+			return bc->rtp_sess.frame_len;
+		return 0;
+	}
+
 	if (bc->buf_idx < 0)
 		return 0;
 
 	return bc->p_buf[bc->buf_idx].vb.bytesused;
 }
 
-struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
-{
-	if (bc->buf_idx < 0)
-		return NULL;
-
-	return &bc->p_buf[bc->buf_idx].vb;
-}
-
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)
 {
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
+
 	if (bc->vfmt.fmt.pix.pixelformat == fmt &&
 	    bc->vfmt.fmt.pix.width == width &&
 	    bc->vfmt.fmt.pix.height == height)
@@ -116,6 +132,9 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	va_list ap;
 	struct v4l2_ext_control ctrl;
 	struct v4l2_ext_controls ctrls;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
 
 	va_start(ap, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, ap);

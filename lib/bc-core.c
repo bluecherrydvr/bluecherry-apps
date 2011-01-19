@@ -14,6 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 
 #include <libbluecherry.h>
 
@@ -23,7 +24,7 @@
 	(__vb)->memory = V4L2_MEMORY_MMAP;		\
 } while(0)
 
-static inline int bc_local_bufs(struct bc_handle *bc)
+static inline int bc_v4l2_local_bufs(struct bc_handle *bc)
 {
 	int i, c;
 
@@ -45,9 +46,53 @@ static inline int bc_local_bufs(struct bc_handle *bc)
 	return c;
 }
 
+static struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
+{
+	if (bc->buf_idx < 0)
+		return NULL;
+
+	return &bc->p_buf[bc->buf_idx].vb;
+}
+
+static int mpeg4_is_key_frame(const unsigned char *data,
+			      int len)
+{
+	int key = 0;
+	int i;
+
+	for (i = 0; i < len; i++) {
+		if (len - i < 5)
+			return 0;
+
+		if (data[i] != 0x00)
+			continue;
+		if (data[i+1] != 0x00)
+			continue;
+		if (data[i+2] != 0x01)
+			continue;
+		if (data[i+3] != 0xb6)
+			continue;
+
+		if (!(data[i+4] & 0xc0))
+			key = 1;
+		break;
+	}
+
+	return key;
+}
+
 int bc_buf_key_frame(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb = bc_buf_v4l2(bc);
+	struct v4l2_buffer *vb;
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+		return mpeg4_is_key_frame(bc->rtp_sess.frame_buf,
+					  bc->rtp_sess.frame_len);
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 1;
+
+	vb = bc_buf_v4l2(bc);
 
 	/* For everything other than mpeg, every frame is a keyframe */
 	if (bc->vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
@@ -59,7 +104,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	return 0;
 }
 
-static int bc_bufs_prepare(struct bc_handle *bc)
+static int bc_v4l2_bufs_prepare(struct bc_handle *bc)
 {
 	struct v4l2_requestbuffers req;
 	int i;
@@ -95,13 +140,10 @@ static int bc_bufs_prepare(struct bc_handle *bc)
 	return 0;
 }
 
-int bc_handle_start(struct bc_handle *bc)
+static int v4l2_handle_start(struct bc_handle *bc)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	int i;
-
-	if (bc->started)
-		return 0;
 
 	/* For mpeg, we get the max, and for mjpeg the min */
 	if (bc->vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
@@ -109,7 +151,7 @@ int bc_handle_start(struct bc_handle *bc)
 	else
 		bc->buffers = BC_BUFFERS_JPEG;
 
-	if (bc_bufs_prepare(bc))
+	if (bc_v4l2_bufs_prepare(bc))
 		return -1;
 
 	if (ioctl(bc->dev_fd, VIDIOC_STREAMON, &type) < 0)
@@ -135,16 +177,36 @@ int bc_handle_start(struct bc_handle *bc)
 	}
 
 	bc->buf_idx = -1;
-	bc->started = 1;
 
 	return 0;
+}
+
+int bc_handle_start(struct bc_handle *bc)
+{
+	int ret = -1;
+
+	if (bc->started)
+		return 0;
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		ret = rtp_session_start(&bc->rtp_sess);
+		bc->vparm.parm.capture.timeperframe.denominator =
+						bc->rtp_sess.framerate;
+		bc->vparm.parm.capture.timeperframe.numerator = 1;
+	} else if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+		ret = v4l2_handle_start(bc);
+	}
+
+	bc->started = 1;
+
+	return ret;
 }
 
 static void bc_buf_return(struct bc_handle *bc)
 {
 	int local = (bc->buffers / 2) - 1;
 	int thresh = (bc->buffers - local) / 2;
-	int cur = bc_local_bufs(bc);
+	int cur = bc_v4l2_local_bufs(bc);
 	int i;
 
 	/* Maintain a balance of queued and dequeued buffers */
@@ -188,6 +250,9 @@ int bc_buf_get(struct bc_handle *bc)
 {
 	struct v4l2_buffer vb;
 	int ret;
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+		return rtp_session_read(&bc->rtp_sess);
 
 	bc_buf_return(bc);
 
@@ -259,6 +324,9 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	double den = bc->vparm.parm.capture.timeperframe.denominator;
 	double num = interval;
 
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
+
 	if (!interval)
 		return 0;
 
@@ -287,76 +355,121 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	return 0;
 }
 
-static struct bc_handle *v4l2_handle_init(struct bc_handle *bc,
-					  const char *dev,
-					  const char *driver,
-					  int card_id)
+static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	const char *p = dev;
+	const char *p = bc->device;
+	char dev_file[PATH_MAX];
 	int id = -1;
+	int free_res = 0;
+	int ret = -1;
+
+	if (dbres == NULL) {
+		if (bc_db_open()) {
+			errno = EIO;
+			return -1;
+		}
+		dbres = bc_db_get_table("SELECT * FROM Devices JOIN "
+					"AvailableSources USING (device) "
+					"WHERE device='%s'", bc->device);
+		if (dbres == NULL) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		free_res = 1;
+	}
+
+	bc->card_id = bc_db_get_val_int(dbres, "card_id");
+
+	bc->cam_caps |= BC_CAM_CAP_V4L2;
+	if (!strcmp(bc->driver, "solo6x10"))
+		bc->cam_caps |= BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
 
 	while (p[0] != '\0' && p[0] != '|')
 		p++;
 	if (p[0] == '\0') {
 		errno = EINVAL;
-		return NULL;
+		goto v4l2_fail;
 	}
 	p++;
 	while (p[0] != '\0' && p[0] != '|')
 		p++;
 	if (p[0] == '\0' || p[1] == '\0') {
 		errno = EINVAL;
-		return NULL;
+		goto v4l2_fail;
 	}
 	id = atoi(p + 1);
 
-	bc->card_id = card_id;
 	bc->dev_id = id;
 
-	sprintf(bc->dev_file, "/dev/video%d", card_id + id + 1);
+	sprintf(dev_file, "/dev/video%d", bc->card_id + id + 1);
 
 	/* Open the device */
-	if ((bc->dev_fd = open(bc->dev_file, O_RDWR)) < 0)
-		goto error_fail;
+	if ((bc->dev_fd = open(dev_file, O_RDWR)) < 0)
+		goto v4l2_fail;
 
 	/* Query the capabilites and verify them */
 	if (ioctl(bc->dev_fd, VIDIOC_QUERYCAP, &bc->vcap) < 0)
-		goto error_fail;
+		goto v4l2_fail;
 
 	if (!(bc->vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE) ||
 	    !(bc->vcap.capabilities & V4L2_CAP_STREAMING)) {
 		errno = EINVAL;
-		goto error_fail;
+		goto v4l2_fail;
 	}
 
 	/* Get the parameters */
 	bc->vparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_PARM, &bc->vparm) < 0)
-		goto error_fail;
+		goto v4l2_fail;
 
 	/* Get the format */
 	bc->vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
-		goto error_fail;
+		goto v4l2_fail;
 
-	return bc;
+	ret = 0;
 
-error_fail:
-	bc_handle_free(bc);
-	return NULL;
+v4l2_fail:
+	if (free_res)
+		bc_db_free_table(dbres);
+
+	return ret;
 }
 
-static struct bc_handle *rtsp_handle_init(struct bc_handle *bc,
-					  const char *dev,
-					  const char *driver)
+static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	bc_handle_free(bc);
-	return NULL;
+	int free_res = 0;
+	int ret;
+
+	if (dbres == NULL) {
+		if (bc_db_open()) {
+			errno = EIO;
+			return -1;
+		}
+		dbres = bc_db_get_table("SELECT * FROM Devices "
+					"WHERE device='%s'", bc->device);
+		if (dbres == NULL) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		free_res = 1;
+	}
+
+	bc->cam_caps |= BC_CAM_CAP_RTSP;
+	ret = rtp_session_init(&bc->rtp_sess, dbres);
+
+	if (free_res)
+		bc_db_free_table(dbres);
+
+	return ret;
 }
 
-struct bc_handle *bc_handle_get(const char *dev, const char *driver, int card_id)
+struct bc_handle *bc_handle_get(const char *dev, const char *driver, BC_DB_RES dbres)
 {
 	struct bc_handle *bc;
+	int ret;
 
 	if ((bc = malloc(sizeof(*bc))) == NULL) {
 		errno = ENOMEM;
@@ -364,20 +477,29 @@ struct bc_handle *bc_handle_get(const char *dev, const char *driver, int card_id
 	}
 	memset(bc, 0, sizeof(*bc));
 
+	strcpy(bc->device, dev);
+	strcpy(bc->driver, driver);
+	bc->dev_fd = -1;
+
 	if (!strncmp(driver, "RTSP-", 5))
-		return rtsp_handle_init(bc, dev, driver);
+		ret = rtsp_handle_init(bc, dbres);
 	else
-		return v4l2_handle_init(bc, dev, driver, card_id);
+		ret = v4l2_handle_init(bc, dbres);
+
+	if (ret) {
+		bc_handle_free(bc);
+		return NULL;
+	}
+
+	return bc;
 }
 
-void bc_handle_stop(struct bc_handle *bc)
+static void v4l2_handle_stop(struct bc_handle *bc)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	/* Don't want this call to change errno at all */
-	int save_err = errno;
 	int i;
 
-	if (!bc || bc->dev_fd < 0 || !bc->started)
+	if (bc->dev_fd < 0)
 		return;
 
 	for (i = 0; i < bc->buffers; i++) {
@@ -405,9 +527,22 @@ void bc_handle_stop(struct bc_handle *bc)
 	for (i = 0; i < bc->buffers; i++)
 		munmap(bc->p_buf[i].data, bc->p_buf[i].size);
 
-	bc->started = 0;
 	bc->buf_idx = -1;
+}
 
+void bc_handle_stop(struct bc_handle *bc)
+{
+	int save_err = errno;
+
+	if (!bc || !bc->started)
+		return;
+
+	if (bc->cam_caps & BC_CAM_CAP_V4L2)
+		v4l2_handle_stop(bc);
+	else if (bc->cam_caps & BC_CAM_CAP_RTSP)
+		rtp_session_stop(&bc->rtp_sess);
+
+	bc->started = 0;
 	errno = save_err;
 }
 
@@ -421,7 +556,9 @@ void bc_handle_free(struct bc_handle *bc)
 
 	bc_handle_stop(bc);
 
-	close(bc->dev_fd);
+	if (bc->dev_fd >= 0)
+		close(bc->dev_fd);
+
 	free(bc);
 
 	errno = save_err;

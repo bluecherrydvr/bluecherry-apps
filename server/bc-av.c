@@ -45,9 +45,13 @@ static void bc_alsa_close(struct bc_record *bc_rec)
 
 static int bc_alsa_open(struct bc_record *bc_rec)
 {
+	struct bc_handle *bc = bc_rec->bc;
 	snd_pcm_hw_params_t *params = NULL;
 	snd_pcm_t *pcm = NULL;
 	int err, fmt;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
 
 	/* No alsa device for this record */
 	if (bc_rec->aud_dev[0] == '\0' || bc_rec->pcm)
@@ -203,9 +207,14 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 int bc_vid_out(struct bc_record *bc_rec)
 {
-	AVCodecContext *c = bc_rec->video_st->codec;
+	AVCodecContext *c;
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
+
+	if (!bc_rec->oc)
+		return 0;
+
+	c = bc_rec->video_st->codec;
 
 	av_init_packet(&pkt);
 
@@ -270,7 +279,7 @@ static void mkdir_recursive(char *path)
 	char *t;
 
 	/* If we succeed, sweetness */
-	if (!mkdir(path, 0755))
+	if (!mkdir(path, 0750))
 		return;
 
 	/* Try to make the parent directory */
@@ -281,7 +290,7 @@ static void mkdir_recursive(char *path)
 	mkdir_recursive(path);
 	*t = '/';
 
-	mkdir(path, 0755);
+	mkdir(path, 0750);
 }
 
 static void bc_start_media_entry(struct bc_record *bc_rec)
@@ -289,9 +298,17 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	bc_media_video_type_t video = BC_MEDIA_VIDEO_M4V;
 	bc_media_audio_type_t audio = BC_MEDIA_AUDIO_NONE;
 	bc_media_cont_type_t cont = BC_MEDIA_CONT_MKV;
+	time_t t = time(NULL);
+	struct tm tm;
+	char date[12], mytime[10], dir[PATH_MAX];
 
-	if (bc_rec->pcm)
-		audio = BC_MEDIA_AUDIO_MP2;
+	/* XXX Need some way to reconcile time between media event and
+	 * filename. They should match. */
+	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
+	strftime(mytime, sizeof(mytime), "%T", &tm);
+	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
+	mkdir_recursive(dir);
+	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	/* Now start the next one */
 	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
@@ -304,9 +321,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
-	time_t t;
-	struct tm tm;
-	char date[12], mytime[10], dir[PATH_MAX];
 
 	if (bc_rec->oc != NULL)
 		return 0;
@@ -315,13 +329,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	 * better than no video at all. */
 	if (bc_alsa_open(bc_rec))
 		bc_alsa_close(bc_rec);
-
-	t = time(NULL);
-	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
-	strftime(mytime, sizeof(mytime), "%T", &tm);
-	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
-	mkdir_recursive(dir);
-	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	bc_start_media_entry(bc_rec);
 
@@ -360,8 +367,8 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->codec->codec_id = CODEC_ID_MPEG4;
 	st->codec->codec_type = CODEC_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
-	st->codec->width = bc->vfmt.fmt.pix.width;
-	st->codec->height = bc->vfmt.fmt.pix.height;
+	st->codec->width = bc_rec->width;
+	st->codec->height = bc_rec->height;
 	st->codec->time_base.den =
 		bc->vparm.parm.capture.timeperframe.denominator;
 	st->codec->time_base.num =

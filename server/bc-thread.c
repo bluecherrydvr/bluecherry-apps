@@ -35,6 +35,9 @@ static void update_osd(struct bc_record *bc_rec)
 	char buf[20];
 	struct tm tm;
 
+	if (!(bc->cam_caps & BC_CAM_CAP_OSD))
+		return;
+
 	if (t == bc_rec->osd_time)
 		return;
 
@@ -104,6 +107,11 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
+		if (bc_open_avcodec(bc_rec)) {
+			bc_dev_err(bc_rec, "Error opening avcodec");
+			continue;
+		}
+
 		ret = bc_buf_get(bc);
 		if (ret == EAGAIN) {
 			continue;
@@ -111,14 +119,9 @@ static void *bc_device_thread(void *data)
 			bc_close_avcodec(bc_rec);
 			continue;
 		} else if (ret) {
-			bc_dev_err(bc_rec, "Failed to get vid buf");
+			bc_dev_err(bc_rec, "Failed to get video frame");
 			continue;
 			/* XXX Do something */
-		}
-
-		if (bc_open_avcodec(bc_rec)) {
-			bc_dev_err(bc_rec, "Error opening avcodec");
-			continue;
 		}
 
 		while (bc_aud_out(bc_rec))
@@ -140,7 +143,7 @@ static void get_aud_dev(struct bc_record *bc_rec)
 {
 	bc_rec->aud_dev[0] = '\0';
 
-	if (strcmp(bc_rec->driver, "solo6x10"))
+	if (!(bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO))
 		return;
 
 	sprintf(bc_rec->aud_dev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
@@ -158,12 +161,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	const char *dev = bc_db_get_val(dbres, "device");
 	const char *name = bc_db_get_val(dbres, "device_name");
 	const char *driver = bc_db_get_val(dbres, "driver");
-	int card_id = bc_db_get_val_int(dbres, "card_id");
 
 	if (bc_db_get_val_bool(dbres, "disabled"))
 		return NULL;
 
-	if (!dev || !name || !driver || card_id < 0) {
+	if (!dev || !name || !driver) {
 		bc_log("E(%d): Could not get info about device from db", id);
 		return NULL;
 	}
@@ -178,7 +180,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
-	bc = bc_handle_get(dev, driver, card_id);
+	bc = bc_handle_get(dev, driver, dbres);
 	if (bc == NULL) {
 		bc_dev_err(bc_rec, "Error opening device: %m");
 		free(bc_rec);
@@ -212,9 +214,14 @@ static void check_motion_map(struct bc_record *bc_rec,
 			     const char *signal,
 			     const char *motion_map)
 {
-	int vh = strcasecmp(signal, "NTSC") ? 18 : 15;
+	int vh;
 	struct bc_handle *bc = bc_rec->bc;
 	int i;
+
+	if (signal == NULL)
+		return;
+
+	vh = strcasecmp(signal, "NTSC") ? 18 : 15;
 
 	if (!motion_map) {
 		for (i = 0; i < vh; i++) {

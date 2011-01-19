@@ -21,6 +21,8 @@
 
 #include <httpd.h>
 
+#include <libbluecherry.h>
+
 #include "rtp-session.h"
 #include "rtp-request.h"
 
@@ -31,29 +33,65 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
-
-struct rtp_session *rtp_session_alloc(const char *userinfo,
-				      const char *uri,
-				      const char *server,
-				      unsigned int port,
-				      rtp_media_type_t media)
+int rtp_session_init(struct rtp_session *rs, void *dbres)
 {
-	struct rtp_session *rs = malloc(sizeof(*rs));
-
-	if (!rs)
-		return NULL;
+	const char *val;
+	char *device;
+	char *p, *t;
 
 	memset(rs, 0, sizeof(*rs));
 
-	rs->userinfo = userinfo;
-	rs->net_fd = -1;
-	rs->out_fd = -1;
-	rs->media = media;
-	rs->server = server;
-	rs->port = port;
-	rs->uri = uri;
+	val = bc_db_get_val(dbres, "rtsp_username");
+	if (!val)
+		return -1;
+	strcpy(rs->userinfo, val);
 
-	return rs;
+	strcat(rs->userinfo, ":");
+
+	val = bc_db_get_val(dbres, "rtsp_password");
+	if (!val)
+		return -1;
+	strcat(rs->userinfo, val);
+
+	val = bc_db_get_val(dbres, "device");
+	if (!val)
+		return -1;
+
+	device = strdup(val);
+	if (!device)
+		return -1;
+
+	p = t = device;
+	while (*t != '|' && *t != '\0')
+		t++;
+	if (*t == '\0') {
+		free(device);
+		return -1;
+	}
+
+	*(t++) = '\0';
+
+	strcpy(rs->server, p);
+
+	p = t;
+	while (*t != '|' && *t != '\0')
+		t++;
+	if (*t == '\0') {
+		free(device);
+		return -1;
+	}
+
+	*(t++) = '\0';
+
+	rs->port = atoi(p);
+	strcpy(rs->uri, t);
+
+	free(device);
+
+	rs->net_fd = -1;
+	rs->media = RTP_MEDIA_VIDEO;
+
+	return 0;
 }
 
 void rtp_session_stop(struct rtp_session *rs)
@@ -62,10 +100,6 @@ void rtp_session_stop(struct rtp_session *rs)
 		rtp_request_teardown(rs);
 		close(rs->net_fd);
 		rs->net_fd = -1;
-	}
-	if (rs->out_fd >= 0) {
-		close(rs->out_fd);
-		rs->out_fd = -1;
 	}
 }
 
@@ -226,13 +260,10 @@ static void sdp_get_attr(char *res, const char *sdp, const char *type,
 	res[end_pos - begin_pos] = '\0';
 }
 
-static int rtp_putdata(int fd, const char *data, int len,
-		       unsigned char *adts, int adts_len)
+static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
 {
+	unsigned char *out = rs->outbuf;
 	int skip = 12;
-
-	if (fd < 0)
-		return -1;
 
 	/* CSRCs */
 	skip += 4 * (data[0] & 0x0f);
@@ -241,37 +272,37 @@ static int rtp_putdata(int fd, const char *data, int len,
 	if (data[0] & 0x10)
 		skip += *(unsigned short *)&data[skip + 2];
 
-	if (adts_len >= 7) {
+	if (rs->is_mpeg_4aac) {
+		unsigned char *adts = rs->adts_header;
 		unsigned int frame_len;
 
 		/* Au header is 4 bytes */
 		skip += 4;
 
-		frame_len = len - skip + adts_len;
+		frame_len = len - skip + ADTS_HEADER_LENGTH;
 		adts[3] &= ~0x03;
 		adts[3] |= ((frame_len >> 11) & 0x3);
 		adts[4] = ((frame_len >> 3) & 0xff);
 		adts[5] &= ~0xe0;
 		adts[5] |= ((frame_len & 0x7) << 5);
-		if (write(fd, adts, adts_len) != adts_len)
-			return -1;
+
+		memcpy(out, adts, ADTS_HEADER_LENGTH);
+		out += ADTS_HEADER_LENGTH;
+		rs->outbuf_len += ADTS_HEADER_LENGTH;
 	}
 
-	if (write(fd, data + skip, len - skip) != len - skip)
-		return -1;
-
-	return 0;
+	memcpy(out, data + skip, len - skip);
+	rs->outbuf_len += len - skip;
 }
 
 static int rtp_session_setup(struct rtp_session *rs)
 {
-	struct rtp_response *desc_resp = NULL;
-	struct rtp_response *setup_resp = NULL;
+	struct rtp_response desc_resp;
+	struct rtp_response setup_resp;
 	char setup_uri[256];
 	char buf[128];
 	char *p;
 	const char *media_type;
-	int ret = -1;
 
 	if (rs->net_fd >= 0)
 		close(rs->net_fd);
@@ -280,52 +311,59 @@ static int rtp_session_setup(struct rtp_session *rs)
         if (rs->net_fd < 0)
 		return -1;
 
+	rs->sess_id[0] = '\0';
+	rs->tunnel_id = 0;
+
 	if (rs->media == RTP_MEDIA_VIDEO)
 		media_type = "m=video ";
 	else
 		media_type = "m=audio ";
 
 	/* Get the SDP, and check the type */
-	desc_resp = rtp_request_describe(rs);
-	if (desc_resp == NULL || desc_resp->status != HTTP_OK)
-		goto setup_fail;
+	if (rtp_request_describe(rs, &desc_resp) || desc_resp.status != HTTP_OK)
+		return -1;
 
-	if (!sdp_check_type(desc_resp->content, media_type))
-		goto setup_fail;
+	if (!sdp_check_type(desc_resp.content, media_type))
+		return -1;
 
 	/* Get the setup URI if needed */
 	strcpy(setup_uri, rs->uri);
-	sdp_get_attr(buf, desc_resp->content, media_type, "control");
+	sdp_get_attr(buf, desc_resp.content, media_type, "control");
 	if (strlen(buf) != 0) {
 		strcat(setup_uri, "/");
 		strcat(setup_uri, buf);
 	}
 
+	sdp_get_attr(buf, desc_resp.content, media_type, "framerate");
+	if (strlen(buf) != 0)
+		rs->framerate = atoi(buf);
+	else
+		rs->framerate = 30; // Guessing
+
 	/* Setup transport parameters */
-	setup_resp = rtp_request_setup(rs, setup_uri);
+	if (rtp_request_setup(rs, setup_uri, &setup_resp) ||
+	    setup_resp.status != HTTP_OK)
+		return -1;
 
-	if (setup_resp == NULL || setup_resp->status != HTTP_OK)
-		goto setup_fail;
-
-	rtp_response_get_header(setup_resp, "Session", buf);
+	rtp_response_get_header(&setup_resp, "Session", buf);
 	p = strstr(buf, " \t;");
 	if (p)
 		*p = '\0';
 	strcpy(rs->sess_id, buf);
 
-	rtp_response_get_header(setup_resp, "Transport", buf);
+	rtp_response_get_header(&setup_resp, "Transport", buf);
 	if ((p = strstr(buf, "interleaved=")) == NULL ||
 	    sscanf(p, "interleaved=%d-", &rs->tunnel_id) != 1)
-		goto setup_fail;
+		return -1;
 
 	if (rs->media == RTP_MEDIA_AUDIO) {
-		sdp_get_attr(buf, desc_resp->content, media_type,
+		sdp_get_attr(buf, desc_resp.content, media_type,
 			     "rtpmap");
 
 		if (strlen(buf) && strstr(buf, "mpeg4-generic")) {
 			char mode[32];
 
-			sdp_get_attr(buf, desc_resp->content,
+			sdp_get_attr(buf, desc_resp.content,
 				     media_type, "fmtp");
 			rtp_get_fmtp_param(mode, buf, "mode");
 
@@ -339,32 +377,57 @@ static int rtp_session_setup(struct rtp_session *rs)
 		}
 	}
 
-	ret = 0;
-
-setup_fail:
-	free(setup_resp);
-	free(desc_resp);
-
-	return ret;
+	return 0;
 }
 
-int rtp_session_record(struct rtp_session *rs, const char *outfile)
+int rtp_session_start(struct rtp_session *rs)
 {
 	if (rtp_session_setup(rs)) {
 		rtp_session_stop(rs);
 		return -1;
 	}
 
-	if (rs->out_fd >= 0)
-		close(rs->out_fd);
-
-	rs->out_fd = open(outfile, O_WRONLY | O_CREAT | O_EXCL, 0640);
-	if (rs->out_fd < 0 || rtp_request_play(rs)) {
+	if (rtp_request_play(rs)) {
 		rtp_session_stop(rs);
 		return -1;
 	}
 
 	return 0;
+}
+
+static void rtp_check_frame(struct rtp_session *rs)
+{
+	const unsigned char *p = rs->outbuf;
+
+	if (rs->outbuf_len == 0)
+		return;
+
+	/* If we had a valid frame or no length, we just copy it */
+	if (rs->frame_valid || rs->frame_len == 0) {
+		memcpy(rs->frame_buf, p, rs->outbuf_len);
+		rs->frame_len = rs->outbuf_len;
+		rs->frame_valid = rs->outbuf_len = 0;
+		return;
+	}
+
+	/* Check if this is the start of a new frame. If so, we mark
+	 * this frame as valid, and will start the next frame with
+	 * outbuf on the next call. */
+	if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x01 &&
+	    (p[3] >= 0xb0 && p[3] <= 0xbf)) {
+		rs->frame_valid = 1;
+		return;
+	}
+
+	/* If it's too big, just ditch the rest */
+	if (rs->frame_len + rs->outbuf_len > sizeof(rs->frame_buf))
+		return;
+
+	/* Else, append it */
+	memcpy(rs->frame_buf + rs->frame_len, p, rs->outbuf_len);
+	rs->frame_len += rs->outbuf_len;
+
+	rs->outbuf_len = 0;
 }
 
 int rtp_session_read(struct rtp_session *rs)
@@ -373,8 +436,11 @@ int rtp_session_read(struct rtp_session *rs)
 	unsigned int len, off;
 	int ret;
 
-	if (rs->net_fd < 0 || rs->out_fd < 0)
-		return -1;
+	if (rs->net_fd < 0)
+		return EIO;
+
+	/* Catch residual data from last call */
+	rtp_check_frame(rs);
 
 	/* Read RTSP embedded data header and then the RTP data. */
 	ret = read(rs->net_fd, header, sizeof(header));
@@ -382,23 +448,25 @@ int rtp_session_read(struct rtp_session *rs)
 		return ret;
 
 	if (header[0] != '$')
-		return -1;
+		return EINVAL;
 
 	len = ntohs(*(u_int16_t*)&header[2]);
       
 	if (len > sizeof(data))
-		return -1;
+		return EINVAL;
 
 	for (ret = off = 0; off < len; off += ret) {
 		ret = read(rs->net_fd, data + off, len - off);
 		if (ret < 0)
-			return -1;
+			return EIO;
 	}
 
 	/* Only parse RTP packets */
 	if ((unsigned char)header[1] != rs->tunnel_id)
-		return 0;
+		return EAGAIN;
 
-	return rtp_putdata(rs->out_fd, data, len, rs->adts_header,
-			   rs->is_mpeg_4aac ? ADTS_HEADER_LENGTH : 0);
+	rtp_putdata(rs, data, len);
+	rtp_check_frame(rs);
+
+	return rs->frame_valid ? 0 : EAGAIN;
 }
