@@ -1,28 +1,13 @@
-<?php DEFINE('INDVR', true);
-#lib
-include("../lib/lib.php");  #common functions
-
-
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
-#/auth check
-
-
-class DVRGlobalSettings extends DVRData{
-	var $data;
-	function __construct(){
-		$this->data = $this->GetGlobalInfo();
-	}
-	function GetGlobalInfo(){
-		return $this->GetObjectData('GlobalSettings');;
-	}
+<?php defined('INDVR') or exit(); ?>
+<div id="generalSettings">
+<h1 class="header"><?php echo GLOBAL_SETTINGS; ?></h1>
+<form id="settingsForm" action="ajax/update.php" method="post">
+<div id='saveButton'><?php echo SAVE_CHANGES; ?></div>
+<?php
+foreach($global_settings->data as $property => $value){
+	if ($value['parameter']!='G_DEV_SCED')echo "<div><label>".constant($value['parameter'])."<span class='sub'>".constant($value['parameter'].'_EX')."</span></label><input type='text' name='{$value['parameter']}' value='{$value['value']}' /></div>";
 }
-
-#run class/get data
-$global_settings = new DVRGlobalSettings();
-
-#require template to show data
-include_once('../template/ajax/general.php');
 ?>
+<input type="Hidden" name="mode" value="global">
+</form>
+</div>
