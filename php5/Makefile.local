@@ -3,6 +3,8 @@ include $(topdir)/mk.conf
 
 EXTDIR		= $(shell php-config --extension-dir)
 MODULE		= bluecherry
+PHP_RPATH	= no
+export PHP_RPATH
 
 all: modules/$(MODULE).so
 
