@@ -269,11 +269,12 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 static void check_expire(void)
 {
 	time_t t = time(NULL);
+	time_t expire = 1297746000;
 
-	if (t < 1296536400)
+	if (t < expire)
 		return;
 
-	fprintf(stderr, "This beta expires Feb 1, 2011 00:00:00\n");
+	fprintf(stderr, "This beta expired %s", ctime(&expire));
 	exit(1);
 }
 
