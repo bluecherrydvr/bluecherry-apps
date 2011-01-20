@@ -262,8 +262,10 @@ static void sdp_get_attr(char *res, const char *sdp, const char *type,
 
 static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
 {
-	unsigned char *out = rs->outbuf;
 	int skip = 12;
+
+	if (rs->frame_valid)
+		rs->frame_valid = rs->frame_len = 0;
 
 	/* CSRCs */
 	skip += 4 * (data[0] & 0x0f);
@@ -286,13 +288,16 @@ static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
 		adts[5] &= ~0xe0;
 		adts[5] |= ((frame_len & 0x7) << 5);
 
-		memcpy(out, adts, ADTS_HEADER_LENGTH);
-		out += ADTS_HEADER_LENGTH;
-		rs->outbuf_len += ADTS_HEADER_LENGTH;
+		
+		memcpy(rs->frame_buf + rs->frame_len, adts, ADTS_HEADER_LENGTH);
+		rs->frame_len += ADTS_HEADER_LENGTH;
 	}
 
-	memcpy(out, data + skip, len - skip);
-	rs->outbuf_len += len - skip;
+	memcpy(rs->frame_buf + rs->frame_len, data + skip, len - skip);
+	rs->frame_len += len - skip;
+
+	if (data[1] & 0x80)
+		rs->frame_valid = 1;
 }
 
 static int rtp_session_setup(struct rtp_session *rs)
@@ -395,41 +400,6 @@ int rtp_session_start(struct rtp_session *rs)
 	return 0;
 }
 
-static void rtp_check_frame(struct rtp_session *rs)
-{
-	const unsigned char *p = rs->outbuf;
-
-	if (rs->outbuf_len == 0)
-		return;
-
-	/* If we had a valid frame or no length, we just copy it */
-	if (rs->frame_valid || rs->frame_len == 0) {
-		memcpy(rs->frame_buf, p, rs->outbuf_len);
-		rs->frame_len = rs->outbuf_len;
-		rs->frame_valid = rs->outbuf_len = 0;
-		return;
-	}
-
-	/* Check if this is the start of a new frame. If so, we mark
-	 * this frame as valid, and will start the next frame with
-	 * outbuf on the next call. */
-	if (p[0] == 0x00 && p[1] == 0x00 && p[2] == 0x01 &&
-	    (p[3] >= 0xb0 && p[3] <= 0xbf)) {
-		rs->frame_valid = 1;
-		return;
-	}
-
-	/* If it's too big, just ditch the rest */
-	if (rs->frame_len + rs->outbuf_len > sizeof(rs->frame_buf))
-		return;
-
-	/* Else, append it */
-	memcpy(rs->frame_buf + rs->frame_len, p, rs->outbuf_len);
-	rs->frame_len += rs->outbuf_len;
-
-	rs->outbuf_len = 0;
-}
-
 int rtp_session_read(struct rtp_session *rs)
 {
 	char data[2048], header[4];
@@ -438,9 +408,6 @@ int rtp_session_read(struct rtp_session *rs)
 
 	if (rs->net_fd < 0)
 		return EIO;
-
-	/* Catch residual data from last call */
-	rtp_check_frame(rs);
 
 	/* Read RTSP embedded data header and then the RTP data. */
 	ret = read(rs->net_fd, header, sizeof(header));
@@ -465,8 +432,8 @@ int rtp_session_read(struct rtp_session *rs)
 	if ((unsigned char)header[1] != rs->tunnel_id)
 		return EAGAIN;
 
+	/* Process the data */
 	rtp_putdata(rs, data, len);
-	rtp_check_frame(rs);
 
 	return rs->frame_valid ? 0 : EAGAIN;
 }

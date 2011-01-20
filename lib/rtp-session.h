@@ -42,9 +42,6 @@ struct rtp_session {
 	unsigned char	frame_buf[1024 * 128];
 	int		frame_len;
 	int		frame_valid;
-	/* Buffer for RTP packets */
-	unsigned char	outbuf[2048];
-	int		outbuf_len;
 	int		framerate;
 };
 
