@@ -4,8 +4,18 @@ require('../template/template.lib.php');
 
 echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
 
+if ($devices->ip_cameras){
+	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
+		foreach($devices->ip_cameras as $key => $device){
+			echo "<div id='ipDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div>";
+				//var_dump_pre($device);
+			echo "</div>";
+		}
+	echo "<div class='bClear'></div></div></div>"; #end ip cameras
+}
+
 if (!$devices->cards){
-	echo NO_CARDS;
+	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
 } else {
 foreach($devices->cards as $key => $card){
 	echo "<div id='dvrCard' class='$card->id'><div class='cardHeader'>#{$card->id} ".CARD_HEADER." ({$card->type} ".PORT.")</div><div class='cardContent'>"; #begin card/header

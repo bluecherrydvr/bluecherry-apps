@@ -97,6 +97,58 @@ DVRPageScript = new Class({
 
 				
 			break;//end users
+			case 'addip':
+				getInfo = function(t, m, x, containerId){
+					var request = new Request.HTML({
+						url: 'ajax/addip.php',
+						data: 'm='+t+'&'+m+'='+x,
+						method: 'get',
+						onRequest: function(){
+						},
+						onSuccess: function(tree, elements, html){
+							$(containerId).set('html', html);
+							switch (containerId){
+								case 'modelSelector':
+									$('models').addEvent('change', function(){
+										if (this.value!='Please choose model'){
+											var w = false;
+										} else {
+											var w = true;
+										}
+										$$('#aip input').set('disabled', w);
+									});
+								break;
+							}
+						}
+					}).send();
+				}
+				$('manufacturers').addEvent('change', function(){
+					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
+					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
+				});
+				buttonMorph($('saveButton'), '#8bb8');
+				$('settingsForm').set('send', {
+					onRequest: function(){
+						$('saveButton').setStyle('background-image', 'url("/img/loading.gif")');
+					},
+					onComplete: function(text, xml){
+						
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						var iconStyle = (status=="OK") ? 'url("/img/icons/check.png")' : 'url("/img/icons/cross.png")';
+						if (status=="OK"){
+							var page = new DVRPage('devices', '', status, msg);
+						} else {
+							var showMessage = new DVRMessage(status, msg);
+						}
+						$('saveButton').setStyle('background-image', iconStyle);
+					}
+				});
+				$('saveButton').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('settingsForm').send();
+				});
+			break;
 			case 'log' :
 				$('dvrlog').setStyle('height', window.innerHeight-180);
 				var scrollLog = new Fx.Scroll('dvrlog').toBottom();
@@ -158,7 +210,8 @@ DVRPageScript = new Class({
 				});
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
-						ajaxUpdateField('changeState', 'Devices', {'do' : true }, el.get('id'), 'devices');
+						var mode = (el.getParent().getParent().get('id') == 'ipDevice') ? 'changeStateIp' : 'changeState';
+						ajaxUpdateField(mode, 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
 				$$('.videoadj').each(function(el){

@@ -14,6 +14,7 @@ class updateDB extends DVRData{
 	public $status;
 	public $data;
 	function __construct(){
+		$this->message = CHANGES_FAIL;
 		$mode = $_POST['mode']; unset($_POST['mode']);
 		switch ($mode) {
 			case 'global': $this->status = $this->Edit('global'); $this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL; break;
@@ -23,12 +24,30 @@ class updateDB extends DVRData{
 			case 'user': $this->editUser(); break;
 			case 'newUser' : $this->newUser(); break;
 			case 'changeState': $this->changeState(); break;
+			case 'changeStateIp': $this->changeStateIp(); break;
 			case 'FPS': $this->changeFPSRES('FPS'); break;
 			case 'RES': $this->changeFPSRES('RES'); break;
 			case 'update_control' : $this->update_control(); break;
 			case 'ban': $this->BanUser(); break;
 			case 'kick': $this->KickUser(); break;
+			case 'addip': $this->status = $this->addIp(); break;
 		}
+	}
+	private function changeStateIp(){
+		$db = DVRDatabase::getInstance();
+		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id={$_POST['id']}");
+		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(($device['disabled']) ? 0 : 1)." WHERE id={$_POST['id']}");
+		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+	}
+	private function addIp(){
+		if (!$_POST['ipAddr']){ $this->message = AIP_NEEDIP;  return false;};
+		if (!$_POST['port']){ $this->message = AIP_NEEDPORT; return false;};
+		if (!$_POST['mjpeg']){ $this->message = AIP_NEEDMJPEG; return false;};
+		$db = DVRDatabase::getInstance();
+		$model_info = $db->DBFetchAll("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
+		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['mjpeg']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480)");
+		$this->message = ($t) ? AIP_CAMADDED : false;
+		return ($t) ? true : false;
 	}
 	private function KickUser(){
 		$ip = preg_replace("/[^(0-9)\.]/", "", $_POST['id']);
@@ -58,8 +77,7 @@ class updateDB extends DVRData{
 		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
 		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
-		$bch = bc_handle_get($this_device[0]['device'],
-				     $this_device[0]['driver']);
+		bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
