@@ -61,7 +61,7 @@ class DVRUser extends DVRData{
 		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
 	}
 	public function CheckStatus(){
-		if (!empty($_SESSION['l'])) {
+		if ($_SESSION['l']){
 			$kicked = $this->ActiveUsersUpdate();
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;
@@ -78,7 +78,8 @@ class DVRUser extends DVRData{
 				case 'admin' :
 					if ($this->status!='admin') $message = JS_RELOAD.USER_NACCESS;
 				break;
-				case 'viewer': 
+				case 'viewer':
+					if ($this->status!='admin' && $this->status!='viewer') $message = JS_RELOAD.USER_NACCESS;
 					if ($this->status=='schedule') $message = DSCED_MSG;
 				break;
 				case 'mjpeg' :
@@ -89,7 +90,7 @@ class DVRUser extends DVRData{
 			}
 			switch ($this->status){
 				case 'new': $message = USER_RELOGIN; break;
-				case 'kicked': session_unset(); $_SESSION['message'] = $message = USER_KICKED; $message .= "<script>setTimeout('window.location.reload(true);', 2000)</script>"; break;
+				case 'kicked': session_unset(); $_SESSION['message'] = $message = USER_KICKED; $message .= JS_RELOAD; break;
 			};
 			
 			if ($message) die("<div class='INFO' id='message'>{$message}</div>");

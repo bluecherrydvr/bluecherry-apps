@@ -11,6 +11,7 @@ define('VAR_NEWS_XML', 'http://forums.bluecherrydvr.com/index.php?app=core&modul
 
 define('VAR_SESSION_NAME', 'bluecherrydvr');
 
+define('JS_RELOAD', '<script>window.location = "/";</script>');
 
 #local card props
 $local_device_fps = array(30, 15, 10, 7.5, 5, 3, 2);
