@@ -179,13 +179,29 @@ PHP_FUNCTION(bc_handle_get)
 	char *devname;
 	char *driver;
 	int devname_len, driver_len;
-	long card_id;
+	BC_DB_RES dbres;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &devname,
 				  &devname_len, &driver, &driver_len) == FAILURE)
 		RETURN_FALSE;
 
-	if ((bch = bc_handle_get(devname, driver, NULL)) == NULL)
+	if (bc_db_open())
+		RETURN_FALSE;
+
+	dbres = bc_db_get_table("SELECT * FROM Devices WHERE device='%s'",
+				devname);
+	if (dbres == NULL)
+		RETURN_FALSE;
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
+
+	bch = bc_handle_get(devname, driver, dbres);
+	bc_db_free_table(dbres);
+
+	if (bch == NULL)
 		RETURN_FALSE;
 
 	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
@@ -279,6 +295,18 @@ PHP_FUNCTION(bc_set_mjpeg)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_get_mjpeg_url)
+{
+	struct bc_handle *bch;
+
+	BCH_GET_RES("bc_get_mjpeg_url");
+
+	if (!(bch->cam_caps & BC_CAM_CAP_MJPEG_URL))
+		RETURN_FALSE;
+
+	RETURN_STRING(bch->mjpeg_url, 1);
+}
+
 PHP_FUNCTION(bc_log)
 {
 	char *str;
@@ -309,6 +337,7 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_data, NULL)
 	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
+	PHP_FE(bc_get_mjpeg_url, NULL)
 	/* Miscellaneous */
 	PHP_FE(bc_log, NULL)
 	{NULL, NULL, NULL}

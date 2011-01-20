@@ -360,24 +360,6 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *p = bc->device;
 	char dev_file[PATH_MAX];
 	int id = -1;
-	int free_res = 0;
-	int ret = -1;
-
-	if (dbres == NULL) {
-		if (bc_db_open()) {
-			errno = EIO;
-			return -1;
-		}
-		dbres = bc_db_get_table("SELECT * FROM Devices JOIN "
-					"AvailableSources USING (device) "
-					"WHERE device='%s'", bc->device);
-		if (dbres == NULL) {
-			errno = EINVAL;
-			return -1;
-		}
-
-		free_res = 1;
-	}
 
 	bc->card_id = bc_db_get_val_int(dbres, "card_id");
 
@@ -389,14 +371,14 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		p++;
 	if (p[0] == '\0') {
 		errno = EINVAL;
-		goto v4l2_fail;
+		return -1;
 	}
 	p++;
 	while (p[0] != '\0' && p[0] != '|')
 		p++;
 	if (p[0] == '\0' || p[1] == '\0') {
 		errno = EINVAL;
-		goto v4l2_fail;
+		return -1;
 	}
 	id = atoi(p + 1);
 
@@ -406,70 +388,61 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 	/* Open the device */
 	if ((bc->dev_fd = open(dev_file, O_RDWR)) < 0)
-		goto v4l2_fail;
+		return -1;
 
 	/* Query the capabilites and verify them */
 	if (ioctl(bc->dev_fd, VIDIOC_QUERYCAP, &bc->vcap) < 0)
-		goto v4l2_fail;
+		return -1;
 
 	if (!(bc->vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE) ||
 	    !(bc->vcap.capabilities & V4L2_CAP_STREAMING)) {
 		errno = EINVAL;
-		goto v4l2_fail;
+		return -1;
 	}
 
 	/* Get the parameters */
 	bc->vparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_PARM, &bc->vparm) < 0)
-		goto v4l2_fail;
+		return -1;
 
 	/* Get the format */
 	bc->vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	if (ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt) < 0)
-		goto v4l2_fail;
+		return -1;
 
-	ret = 0;
-
-v4l2_fail:
-	if (free_res)
-		bc_db_free_table(dbres);
-
-	return ret;
+	return 0;
 }
 
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	int free_res = 0;
-	int ret;
-
-	if (dbres == NULL) {
-		if (bc_db_open()) {
-			errno = EIO;
-			return -1;
-		}
-		dbres = bc_db_get_table("SELECT * FROM Devices "
-					"WHERE device='%s'", bc->device);
-		if (dbres == NULL) {
-			errno = EINVAL;
-			return -1;
-		}
-
-		free_res = 1;
-	}
+	const char *val;
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
-	ret = rtp_session_init(&bc->rtp_sess, dbres);
+	if (rtp_session_init(&bc->rtp_sess, dbres)) {
+		errno = ENOMEM;
+		return -1;
+	}
 
-	if (free_res)
-		bc_db_free_table(dbres);
+	val = bc_db_get_val(dbres, "mjpeg_path");
+	if (val) {
+		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+			 "http://%s@%s%s", bc->rtp_sess.userinfo,
+			 bc->rtp_sess.server, val);
+		bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
+	}
 
-	return ret;
+	return 0;
 }
 
 struct bc_handle *bc_handle_get(const char *dev, const char *driver, BC_DB_RES dbres)
 {
 	struct bc_handle *bc;
 	int ret;
+
+	if (dbres == NULL) {
+		errno = ENOMEM;
+		return NULL;
+	}
 
 	if ((bc = malloc(sizeof(*bc))) == NULL) {
 		errno = ENOMEM;

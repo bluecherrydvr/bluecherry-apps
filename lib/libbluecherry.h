@@ -51,10 +51,12 @@ typedef void * BC_DB_RES;
 #define BC_CAM_CAP_V4L2		0x00000002
 #define BC_CAM_CAP_OSD		0x00000004
 #define BC_CAM_CAP_SOLO		0x00000008
+#define BC_CAM_CAP_MJPEG_URL	0x00000010
 
 struct bc_handle {
 	char			device[512];
 	char			driver[512];
+	char			mjpeg_url[1024];
 
 	/* Track info about the v4l2 device */
 	int			dev_fd;
