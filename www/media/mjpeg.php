@@ -108,7 +108,7 @@ if ($multi) {
 if ($url) {
 	bc_handle_free($bch);
 	bc_db_close();
-	passthru("curl -s $url");
+	passthru("curl -s " . escapeshellarg($url));
 	exit;
 }
 
