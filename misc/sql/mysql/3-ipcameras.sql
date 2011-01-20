@@ -1,8 +1,8 @@
 CREATE TABLE ipCameraDriver (
 	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	name varchar(32),
-	media_url varchar(32),
-	mjpeg_url varchar(32),
+	media_url varchar(64),
+	mjpeg_url varchar(64),
 	UNIQUE (name)
 );
 
@@ -15,7 +15,7 @@ CREATE TABLE ipCameraDriver (
 -- %h == host or IP address
 -- %p == "user supplied port" or default "port" for protocol type
 -- %{foo}f == "user supplied path" or "foo"
--- INSERT INTO ipCameraDriver (name, media_path, mjpeg_path) VALUES
+-- INSERT INTO ipCameraDriver (name, media_url, mjpeg_url) VALUES
 --   ('RTSP-GENERIC', 'rtsp://%u@%h:%p%{}f', 'http://%u@%h:%p%{}f'),
 --   ('RTSP-AXIS-v1', 'rtsp://%u@%h:%p%{/mpeg4/media.amp}f',
 --    'http://%u@%h:%p%{/mjpg/video.mjpg}f');
