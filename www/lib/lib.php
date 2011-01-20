@@ -203,24 +203,19 @@ class DVRDevices extends DVRData{
 	public function MakeXML(){
 		// The \063 is a '?'. Used decimal so as not to confuse vim
 		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
+		$devices = array();
 		foreach($this->cards as $card_id => $card){
-			foreach($card->devices as $device_id => $device){
-				$xml .= '<device';
-				$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
-				foreach($device as $property => $value){
-					$xml.="<$property>$value</$property>";
-				};
-				$xml.='</device>';
-			}
+			$devices = array_merge($devices, $card->devices);
 		};
-		foreach($this->ip_cameras as $camera_id => $device){
-			$xml.='<device>';
+		$devices = array_merge($devices, $this->ip_cameras);
+		foreach($devices as $device){
+			$xml .= '<device';
+			$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
 			foreach($device as $property => $value){
 				$xml.="<$property>$value</$property>";
 			};
 			$xml.='</device>';
 		}
-		
 		$xml .='</devices>';
 		header('Content-type: text/xml');
 		print_r($xml);
