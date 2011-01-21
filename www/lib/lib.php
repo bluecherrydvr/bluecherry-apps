@@ -61,7 +61,7 @@ class DVRUser extends DVRData{
 		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
 	}
 	public function CheckStatus(){
-		if ($_SESSION['l']){
+		if (isset($_SESSION['l'])) {
 			$kicked = $this->ActiveUsersUpdate();
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;

@@ -19,7 +19,7 @@
    			<img src="/img/password_header.png" /><br /><INPUT name="password" type="Password"><br />
   			<INPUT id="login-button" type="Submit" value="Login"><br /><br />
 		</FORM>
-		<div id="login-message"><?php if ($_SESSION['message']) echo $_SESSION['message'];?></div>
+		<div id="login-message"><?php if (isset($_SESSION['message'])) echo $_SESSION['message'];?></div>
 	</div>
 </div>
 </body>

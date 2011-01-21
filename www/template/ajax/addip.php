@@ -1,6 +1,6 @@
 <?php defined('INDVR') or exit(); 
 require('../template/template.lib.php');
-if ($_GET['m']){
+if (isset($_GET['m'])){
 	if ($_GET['m']=='model'){
 		
 		echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), $ipCamData->data['models']), '', 'models');
