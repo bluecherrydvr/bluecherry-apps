@@ -158,7 +158,8 @@ static void rtp_request_init(struct rtp_session *rs, char *buf,
 {
 	char seq[10];
 
-	sprintf(buf, "%s %s RTSP/1.0%s", cmd, uri, CRLF);
+	sprintf(buf, "%s rtsp://%s:%d%s RTSP/1.0%s", cmd, rs->server,
+		rs->port, uri, CRLF);
 	sprintf(seq, "%d", rs->seq_num++);
 
 	/* Add common header fields */
