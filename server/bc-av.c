@@ -137,7 +137,6 @@ static int pcm_dupe(short *in, int in_size, short *out)
 	return in_size * 2;
 }
 
-// XXX Is c needed here?
 int bc_aud_out(struct bc_record *bc_rec)
 {
 	AVCodecContext *c = NULL;
@@ -149,17 +148,17 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* pcm can be null due to not being able to open the alsa dev. */
 	if (!bc_rec->pcm)
-		return 0;
+		return -1;
 
 	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
 
 	if (size < 0) {
 		if (size == -EAGAIN)
-			return 0;
+			return 1;
 		bc_dev_err(bc_rec, "Error reading from sound device: %s",
 			   snd_strerror(size));
 		bc_alsa_close(bc_rec);
-		return 0;
+		return -1;
 	}
 
 	size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
@@ -172,7 +171,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* We need enough data to encode first... */
 	if (bc_rec->pcm_buf_size < c->frame_size)
-		return 1;
+		return 0;
 
 	av_init_packet(&pkt);
 
@@ -188,7 +187,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* Not enough to encode a full buffer yet */
 	if (pkt.size == 0)
-		return 1;
+		return 0;
 
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
@@ -199,7 +198,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
-		return 1;
+		return -1;
 	}
 
 	return 1;
@@ -325,11 +324,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	if (bc_rec->oc != NULL)
 		return 0;
 
-	/* We don't fail when this happens. Video with no sound is
-	 * better than no video at all. */
-	if (bc_alsa_open(bc_rec))
-		bc_alsa_close(bc_rec);
-
 	bc_start_media_entry(bc_rec);
 
 	if (bc_rec->media == BC_MEDIA_FAIL) {
@@ -378,6 +372,11 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 	st = NULL;
+
+	/* We don't fail when this happens. Video with no sound is
+	 * better than no video at all. */
+	if (bc_alsa_open(bc_rec))
+		bc_alsa_close(bc_rec);
 
 	/* Setup new audio stream */
 	if (bc_rec->pcm) {
