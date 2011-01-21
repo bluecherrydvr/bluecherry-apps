@@ -196,7 +196,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.stream_index = bc_rec->audio_st->index;
 	pkt.data = mp2_out;
 
-	if (av_write_frame(bc_rec->oc, &pkt)) {
+	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
 		return -1;
 	}
@@ -227,7 +227,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 				       bc_rec->video_st->time_base);
 	pkt.stream_index = bc_rec->video_st->index;
 
-	if (av_write_frame(bc_rec->oc, &pkt)) {
+	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
 		errno = EIO;
 		return -1;
 	}
