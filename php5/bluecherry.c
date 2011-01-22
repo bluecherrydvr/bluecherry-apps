@@ -173,6 +173,51 @@ PHP_FUNCTION(bc_db_get_table)
 	bc_db_free_table(dbres);
 }
 
+PHP_FUNCTION(bc_handle_get_byid)
+{
+	struct bc_handle *bch;
+	const char *device;
+	const char *driver;
+	long id;
+	BC_DB_RES dbres;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &id) == FAILURE)
+		RETURN_FALSE;
+
+	if (id < 0)
+		RETURN_FALSE;
+
+	if (bc_db_open())
+		RETURN_FALSE;
+
+	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
+				"AvailableSources USING (device) WHERE "
+				"id=%ld AND disabled=0", id);
+
+	if (dbres == NULL)
+		RETURN_FALSE;
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
+
+	device = bc_db_get_val(dbres, "device");
+	driver = bc_db_get_val(dbres, "driver");
+	if (!device || !driver) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
+
+	bch = bc_handle_get(device, driver, dbres);
+	bc_db_free_table(dbres);
+
+	if (bch == NULL)
+		RETURN_FALSE;
+
+	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
+}
+
 PHP_FUNCTION(bc_handle_get)
 {
 	struct bc_handle *bch;
@@ -188,8 +233,11 @@ PHP_FUNCTION(bc_handle_get)
 	if (bc_db_open())
 		RETURN_FALSE;
 
-	dbres = bc_db_get_table("SELECT * FROM Devices WHERE device='%s'",
-				devname);
+	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
+				"AvailableSources USING (device) WHERE "
+				"device='%s' AND driver='%s' AND disabled=0",
+				devname, driver);
+
 	if (dbres == NULL)
 		RETURN_FALSE;
 
@@ -330,6 +378,7 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_db_escape_string, NULL)
 	/* Bluecherry Video Handlers */
 	PHP_FE(bc_handle_get, NULL)
+	PHP_FE(bc_handle_get_byid, NULL)
 	PHP_FE(bc_handle_free, NULL)
 	PHP_FE(bc_handle_start, NULL)
 	PHP_FE(bc_buf_get, NULL)
