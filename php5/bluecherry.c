@@ -192,7 +192,7 @@ PHP_FUNCTION(bc_handle_get_byid)
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
 				"AvailableSources USING (device) WHERE "
-				"id=%ld AND disabled=0", id);
+				"Devices.id=%ld AND disabled=0", id);
 
 	if (dbres == NULL)
 		RETURN_FALSE;
@@ -235,7 +235,8 @@ PHP_FUNCTION(bc_handle_get)
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
 				"AvailableSources USING (device) WHERE "
-				"device='%s' AND driver='%s' AND disabled=0",
+				"Devices.device='%s' AND Devices.driver='%s' "
+				"AND disabled=0",
 				devname, driver);
 
 	if (dbres == NULL)
