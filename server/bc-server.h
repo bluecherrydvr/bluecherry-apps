@@ -24,6 +24,8 @@ struct bc_record {
 	snd_pcm_t		*pcm;
 	time_t			osd_time;
 
+	unsigned int		start_failed;
+
 	/* mp2 encoding accounting */
 	short			pcm_buf[4096];
 	int			pcm_buf_size;

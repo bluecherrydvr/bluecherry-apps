@@ -408,8 +408,15 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	if (codec == NULL)
 		return -1;
 
-	if (avcodec_open(bc_rec->video_st->codec, codec) < 0)
+	/* If we fail to open the codec's, make sure to clear the
+	 * state so we don't try to call avcodec_close() on unopened
+	 * codec's. */
+	if (avcodec_open(bc_rec->video_st->codec, codec) < 0) {
+		bc_rec->video_st = NULL;
+		if (bc_rec->audio_st)
+			bc_rec->audio_st = NULL;
 		return -1;
+	}
 
 	/* Open Audio output */
 	if (bc_rec->audio_st) {
@@ -417,8 +424,11 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		if (codec == NULL)
 			return -1;
 
-		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0)
+		/* Same as above for video */
+		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0) {
+			bc_rec->audio_st = NULL;
 			return -1;
+		}
 	}
 
 	/* Open output file */

@@ -102,9 +102,19 @@ static void *bc_device_thread(void *data)
 			continue;
 
 		if (bc_handle_start(bc)) {
-			bc_dev_err(bc_rec, "Error starting stream: %m");
+			if (!(bc_rec->start_failed++ % 60)) {
+				int saved_err = errno;
+
+				bc_event_cam(bc_rec->id, BC_EVENT_L_ALRM,
+					     BC_EVENT_CAM_T_NOT_FOUND);
+				bc_dev_err(bc_rec, "Error starting stream: %s",
+					   strerror(saved_err));
+			}
 			sleep(1);
 			continue;
+		} else if (bc_rec->start_failed) {
+			bc_rec->start_failed = 0;
+			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
 		if (bc_open_avcodec(bc_rec)) {
