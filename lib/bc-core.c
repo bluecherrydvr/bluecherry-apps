@@ -197,7 +197,8 @@ int bc_handle_start(struct bc_handle *bc)
 		ret = v4l2_handle_start(bc);
 	}
 
-	bc->started = 1;
+	if (!ret)
+		bc->started = 1;
 
 	return ret;
 }
