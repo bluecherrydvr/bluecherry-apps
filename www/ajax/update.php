@@ -74,16 +74,16 @@ class updateDB extends DVRData{
 	}
 	/* XXX Check for errors here */
 	function update_control(){
-		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
-		bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
-		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
-		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
-		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
-		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
+		$bch = bc_handle_get_byid(intval($_POST['id']));
+		if ($bch == false) {
+			$this->status = false;
+			return;
+		}
+		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
+		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
+		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
+		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
 		bc_handle_free($bch);
-	
 		$this->updateField();
 	}
 	

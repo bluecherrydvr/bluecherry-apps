@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 		usage();
 
 	/* Setup the device */
-	if ((bc = bc_handle_get(dev, driver, NULL)) == NULL)
+	if ((bc = bc_handle_get(NULL)) == NULL)
 		print_error("%s: error opening device: %m", dev);
 
 	/* Setup for MJPEG, leave everything else as default */

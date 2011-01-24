@@ -197,8 +197,7 @@ struct bc_list_struct {
 
 
 /* Called to open and close a handle for a device. */
-struct bc_handle *bc_handle_get(const char *dev, const char *driver,
-				BC_DB_RES dbres);
+struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */

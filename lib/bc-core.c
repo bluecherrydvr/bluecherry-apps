@@ -434,13 +434,21 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	return 0;
 }
 
-struct bc_handle *bc_handle_get(const char *dev, const char *driver, BC_DB_RES dbres)
+struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 {
+	const char *device, *driver;
 	struct bc_handle *bc;
 	int ret;
 
 	if (dbres == NULL) {
 		errno = ENOMEM;
+		return NULL;
+	}
+
+	device = bc_db_get_val(dbres, "device");
+	driver = bc_db_get_val(dbres, "driver");
+	if (!device || !driver) {
+		errno = EINVAL;
 		return NULL;
 	}
 
@@ -450,7 +458,7 @@ struct bc_handle *bc_handle_get(const char *dev, const char *driver, BC_DB_RES d
 	}
 	memset(bc, 0, sizeof(*bc));
 
-	strcpy(bc->device, dev);
+	strcpy(bc->device, device);
 	strcpy(bc->driver, driver);
 	bc->dev_fd = -1;
 

@@ -10,42 +10,24 @@ $current_user->CheckStatus();
 $current_user->StatusAction('viewer');
 #/auth check
 	
-	Class LocalMonitor extends DVRData{
-	public $data;
-	public $card;
-
-	public function __construct(){
-		$this->data = false;
-		if (!isset($_GET['id']))
-			return;
-		$id = intval($_GET['id']);
-		$db = DVRDatabase::getInstance();
-		$this->data = $db->DBFetchAll("SELECT * FROM Devices WHERE id='$id'");
-	}
+if (!isset($_GET['id'])) {
+	print "No device supplied";
+	exit;
 }
 
-$monitor = new LocalMonitor;
-
-if ($monitor->data == false) {
+$bch = bc_handle_get_byid(intval($_GET['id']));
+if ($bch == false) {
 	print "No such device";
 	exit;
 }
 
 $boundary = "myboundary";
-$dev = $monitor->data[0]['device'];
-$driver = $monitor->data[0]['driver'];
 
 header("Cache-Control: no-cache");
 header("Cache-Control: private");
 header("Pragma: no-cache");
 
 session_write_close();
-
-$bch = bc_handle_get($dev, $driver);
-if ($bch == false) {
-	print "Failed to open $dev";
-	exit;
-}
 
 if (isset($_GET['multipart']))
 	$multi = true;

@@ -123,29 +123,6 @@ static void *bc_device_thread(void *data)
 			continue;
 			/* XXX Do something */
 		}
-#if 0
-		if (bc_rec->audio_st) {
-			double audio_pts, video_pts;
-			AVStream *st;
-
-			st = bc_rec->video_st;
-			video_pts = (double)st->pts.val * st->time_base.num /
-				st->time_base.den;
-
-			st = bc_rec->audio_st;
-			audio_pts = (double)st->pts.val * st->time_base.num /
-				st->time_base.den;
-
-			while (audio_pts < video_pts) {
-				if (bc_aud_out(bc_rec))
-					break;
-
-				audio_pts = (double)st->pts.val *
-						st->time_base.num /
-						st->time_base.den;
-			}
-		}
-#endif
 
 		while (!bc_aud_out(bc_rec));
 			/* Do nothing */;
@@ -203,7 +180,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
-	bc = bc_handle_get(dev, driver, dbres);
+	bc = bc_handle_get(dbres);
 	if (bc == NULL) {
 		bc_dev_err(bc_rec, "Error opening device: %m");
 		free(bc_rec);
@@ -229,6 +206,9 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		free(bc_rec);
 		bc_rec = NULL;
 	}
+
+	/* Throttle thread starting */
+	sleep(1);
 
 	return bc_rec;
 }

@@ -176,8 +176,6 @@ PHP_FUNCTION(bc_db_get_table)
 PHP_FUNCTION(bc_handle_get_byid)
 {
 	struct bc_handle *bch;
-	const char *device;
-	const char *driver;
 	long id;
 	BC_DB_RES dbres;
 
@@ -202,14 +200,7 @@ PHP_FUNCTION(bc_handle_get_byid)
 		RETURN_FALSE;
 	}
 
-	device = bc_db_get_val(dbres, "device");
-	driver = bc_db_get_val(dbres, "driver");
-	if (!device || !driver) {
-		bc_db_free_table(dbres);
-		RETURN_FALSE;
-	}
-
-	bch = bc_handle_get(device, driver, dbres);
+	bch = bc_handle_get(dbres);
 	bc_db_free_table(dbres);
 
 	if (bch == NULL)
@@ -247,7 +238,7 @@ PHP_FUNCTION(bc_handle_get)
 		RETURN_FALSE;
 	}
 
-	bch = bc_handle_get(devname, driver, dbres);
+	bch = bc_handle_get(dbres);
 	bc_db_free_table(dbres);
 
 	if (bch == NULL)
