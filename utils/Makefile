@@ -2,9 +2,9 @@ topdir = ..
 include $(topdir)/mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lavcodec -lavformat
 
-TARGETS		= getjpeg bc-checkkey getaudio
+TARGETS		= getjpeg bc-checkkey getaudio rtsp-client
 GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
 
 all: $(TARGETS)
