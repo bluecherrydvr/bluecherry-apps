@@ -117,11 +117,6 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		if (bc_open_avcodec(bc_rec)) {
-			bc_dev_err(bc_rec, "Error opening avcodec");
-			continue;
-		}
-
 		ret = bc_buf_get(bc);
 		if (ret == EAGAIN) {
 			continue;
@@ -130,8 +125,17 @@ static void *bc_device_thread(void *data)
 			continue;
 		} else if (ret) {
 			bc_dev_err(bc_rec, "Failed to get video frame");
+			/* Try restarting the handle */
+			bc_handle_stop(bc);
 			continue;
-			/* XXX Do something */
+		}
+
+		/* Do this after we get the first frame, since we need that
+		 * in order to decode the first frame for avcodec params
+		 * like width, height and frame rate. */
+		if (bc_open_avcodec(bc_rec)) {
+			bc_dev_err(bc_rec, "Error opening avcodec");
+			continue;
 		}
 
 		while (!bc_aud_out(bc_rec));

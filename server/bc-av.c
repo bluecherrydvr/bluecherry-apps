@@ -314,12 +314,68 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 				       bc_rec->outfile, bc_rec->event);
 }
 
+static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
+			      int *fnum, int *fden)
+{
+	AVCodec *codec;
+	AVCodecContext *c;
+	int got_picture, len;
+	AVFrame *picture;
+	void *buf = bc_buf_data(bc);
+	int size = bc_buf_size(bc);
+	int ret = -1;
+
+	if (buf == NULL || size <= 0)
+		return -1;
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		*fnum = 1;
+		*fden = bc->rtp_sess.framerate;
+	} else if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+		*fden = bc->vparm.parm.capture.timeperframe.denominator;
+		*fnum = bc->vparm.parm.capture.timeperframe.numerator;
+	} else
+		return -1;
+
+	/* Decode the first picture to get frame size */
+	codec = avcodec_find_decoder(CODEC_ID_MPEG4);
+	if (!codec)
+		return -1;
+
+	c = avcodec_alloc_context();
+	picture = avcodec_alloc_frame();
+
+	if (avcodec_open(c, codec) < 0)
+		goto pic_info_fail;
+
+	len = avcodec_decode_video(c, picture, &got_picture, buf, size);
+
+        if (len < 0 || !got_picture)
+		goto pic_info_fail;
+
+	*width = c->width;
+	*height = c->height;
+
+	ret = 0;
+
+pic_info_fail:
+	if (c != NULL) {
+		avcodec_close(c);
+		av_freep(&c);
+	}
+	if (picture != NULL)
+		av_freep(&picture);
+
+	return ret;
+}
+
 static int __bc_open_avcodec(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
+	int width = 0, height = 0, fnum, fden;
 
 	if (bc_rec->oc != NULL)
 		return 0;
@@ -327,6 +383,11 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	bc_start_media_entry(bc_rec);
 
 	if (bc_rec->media == BC_MEDIA_FAIL) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	if (bc_get_frame_info(bc, &width, &height, &fnum, &fden)) {
 		errno = ENOMEM;
 		return -1;
 	}
@@ -352,21 +413,17 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st = bc_rec->video_st;
 
 	st->stream_copy = 1;
-	st->time_base.den =
-		bc->vparm.parm.capture.timeperframe.denominator;
-	st->time_base.num =
-		bc->vparm.parm.capture.timeperframe.numerator;
+	st->time_base.den = fden;
+	st->time_base.num = fnum;
 	snprintf(st->language, sizeof(st->language), "eng");
 
 	st->codec->codec_id = CODEC_ID_MPEG4;
 	st->codec->codec_type = CODEC_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
-	st->codec->width = bc_rec->width;
-	st->codec->height = bc_rec->height;
-	st->codec->time_base.den =
-		bc->vparm.parm.capture.timeperframe.denominator;
-	st->codec->time_base.num =
-		bc->vparm.parm.capture.timeperframe.numerator;
+	st->codec->width = width;
+	st->codec->height = height;
+	st->codec->time_base.den = fden;
+	st->codec->time_base.num = fnum;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
