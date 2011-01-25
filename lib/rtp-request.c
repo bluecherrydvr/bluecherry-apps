@@ -27,8 +27,6 @@ static void rtp_response_parse(struct rtp_response *rp)
 {
 	char *p, *t;
 
-	//fprintf(stderr, "%s", rp->data);
-
 	p = strstr(rp->data, "RTSP/");
 	if (p == NULL)
 		return;
@@ -144,27 +142,29 @@ void rtp_response_get_header(struct rtp_response *rp, const char *field, char *v
 	}
 }
 
-static void rtp_request_add_header(char *buf, const char *field,
+static void rtp_request_add_header(struct rtp_session *rs,
+				   const char *field,
 				   const char *val)
 {
-	strcat(buf, field);
-	strcat(buf, ": ");
-	strcat(buf, val);
-	strcat(buf, CRLF);
+	strcat(rs->req_buf, field);
+	strcat(rs->req_buf, ": ");
+	strcat(rs->req_buf, val);
+	strcat(rs->req_buf, CRLF);
 }
 
-static void rtp_request_init(struct rtp_session *rs, char *buf,
+static void rtp_request_init(struct rtp_session *rs,
 			     const char *cmd, const char *uri)
 {
 	char seq[10];
 
-	sprintf(buf, "%s rtsp://%s:%d%s RTSP/1.0%s", cmd, rs->server,
+	memset(rs->req_buf, 0, sizeof(rs->req_buf));
+
+	sprintf(rs->req_buf, "%s rtsp://%s:%d%s RTSP/1.0%s", cmd, rs->server,
 		rs->port, uri, CRLF);
 	sprintf(seq, "%d", rs->seq_num++);
 
 	/* Add common header fields */
-	rtp_request_add_header(buf, "CSeq", seq);
-	rtp_request_add_header(buf, "User-Agent", "Bluecherry Server");
+	rtp_request_add_header(rs, "CSeq", seq);
 }
 
 static const char cb64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmno"
@@ -207,20 +207,21 @@ static void base64_encode_ascii(char *out_buf, const char *in_buf)
 	}
 }
 
-static void rtp_request_add_auth(char *buf, const char *userinfo)
+static void rtp_request_add_auth(struct rtp_session *rs)
 {
 	char coded[100];
 
-	if (!userinfo || userinfo[0] == '\0')
+	if (!rs->userinfo || !strlen(rs->userinfo))
 		return;
 
+	memset(coded, 0, sizeof(coded));
 	strcpy(coded, "Basic ");
-	base64_encode_ascii(coded + strlen(coded), userinfo);
+	base64_encode_ascii(coded + strlen(coded), rs->userinfo);
 
-	rtp_request_add_header(buf, "Authorization", coded);
+	rtp_request_add_header(rs, "Authorization", coded);
 }
 
-int rtp_request_send(struct rtp_session *rs, char *buf,
+int rtp_request_send(struct rtp_session *rs,
 		     struct rtp_response *rp)
 {
 	char read_buf[READ_SIZE];
@@ -228,12 +229,15 @@ int rtp_request_send(struct rtp_session *rs, char *buf,
 
 	rtp_response_init(rp);
 
-	rtp_request_add_auth(buf, rs->userinfo);
+	if (strlen(rs->sess_id))
+		rtp_request_add_header(rs, "Session", rs->sess_id);
+	rtp_request_add_auth(rs);
+	rtp_request_add_header(rs, "User-Agent", "Bluecherry Server");
 
 	/* Finalize request with CRLF */
-	strcat(buf, CRLF);
+	strcat(rs->req_buf, CRLF);
 
-	if (write(rs->net_fd, buf, strlen(buf)) < 0)
+	if (write(rs->net_fd, rs->req_buf, strlen(rs->req_buf)) < 0)
 		return -1;
 
 	/* Add data to response until a complete response is received */
@@ -243,50 +247,40 @@ int rtp_request_send(struct rtp_session *rs, char *buf,
 			return -1;
 	} while (!rtp_response_add_data(rp, read_buf, len));
 
-	return 0;
+	return rp->status == HTTP_OK ? 0 : -1;
 }
 
 int rtp_request_describe(struct rtp_session *rs, struct rtp_response *rp)
 {
-	char buf[1000];
+	rtp_request_init(rs, "DESCRIBE", rs->uri);
+	rtp_request_add_header(rs, "Accept", "application/sdp");
 
-	rtp_request_init(rs, buf, "DESCRIBE", rs->uri);
-	rtp_request_add_header(buf, "Accept", "application/sdp");
-
-	return rtp_request_send(rs, buf, rp);
+	return rtp_request_send(rs, rp);
 }
 
 /* This doesn't use the base URI we are requesting */
 int rtp_request_setup(struct rtp_session *rs, const char *uri, struct rtp_response *rp)
 {
-	char buf[1000];
+	rtp_request_init(rs, "SETUP", uri);
+	rtp_request_add_header(rs, "Transport", "RTP/AVP/TCP;unicast");
 
-	rtp_request_init(rs, buf, "SETUP", uri);
-	rtp_request_add_header(buf, "Transport", "RTP/AVP/TCP;unicast");
-	if (rs->sess_id[0])
-		rtp_request_add_header(buf, "Session", rs->sess_id);
-
-	return rtp_request_send(rs, buf, rp);
+	return rtp_request_send(rs, rp);
 }
 
 int rtp_request_play(struct rtp_session *rs)
 {
 	struct rtp_response rp;
-	char buf[1000];
 
-	rtp_request_init(rs, buf, "PLAY", rs->uri);
-	rtp_request_add_header(buf, "Session", rs->sess_id);
+	rtp_request_init(rs, "PLAY", rs->uri);
 
-	return rtp_request_send(rs, buf, &rp);
+	return rtp_request_send(rs, &rp);
 }
 
 void rtp_request_teardown(struct rtp_session *rs)
 {
 	struct rtp_response rp;
-	char buf[1000];
 
-	rtp_request_init(rs, buf, "TEARDOWN", rs->uri);
-	rtp_request_add_header(buf, "Session", rs->sess_id);
+	rtp_request_init(rs, "TEARDOWN", rs->uri);
 
-	rtp_request_send(rs, buf, &rp);
+	rtp_request_send(rs, &rp);
 }

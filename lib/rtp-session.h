@@ -30,6 +30,7 @@ struct rtp_session {
 	char		userinfo[256];
 	char		uri[1024];
 	char		server[256];
+	char		req_buf[1024];
 	unsigned int	port;
 	unsigned int	tunnel_id;
 	unsigned int	seq_num;
@@ -38,14 +39,16 @@ struct rtp_session {
 	int		net_fd;
 	unsigned char	adts_header[ADTS_HEADER_LENGTH];
 	int		is_mpeg_4aac;
-	/* Where to keep full frames */
+	/* Where to keep full frames, 128k buffer space */
 	unsigned char	frame_buf[1024 * 128];
 	int		frame_len;
 	int		frame_valid;
 	int		framerate;
 };
 
-int rtp_session_init(struct rtp_session *rs, void *dbres);
+int rtp_session_init(struct rtp_session *rs, const char *userinfo,
+		     const char *uri, const char *server,
+		     unsigned int port, rtp_media_type_t media);
 void rtp_session_stop(struct rtp_session *rs);
 int rtp_session_start(struct rtp_session *rs);
 int rtp_session_read(struct rtp_session *rs);

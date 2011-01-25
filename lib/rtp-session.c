@@ -21,8 +21,6 @@
 
 #include <httpd.h>
 
-#include <libbluecherry.h>
-
 #include "rtp-session.h"
 #include "rtp-request.h"
 
@@ -33,74 +31,31 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
-int rtp_session_init(struct rtp_session *rs, void *dbres)
+int rtp_session_init(struct rtp_session *rs, const char *userinfo,
+		     const char *uri, const char *server,
+		     unsigned int port, rtp_media_type_t media)
 {
-	const char *val;
-	char *device;
-	char *p, *t;
-
 	memset(rs, 0, sizeof(*rs));
-
-	val = bc_db_get_val(dbres, "rtsp_username");
-	if (!val)
-		return -1;
-	strcpy(rs->userinfo, val);
-
-	strcat(rs->userinfo, ":");
-
-	val = bc_db_get_val(dbres, "rtsp_password");
-	if (!val)
-		return -1;
-	strcat(rs->userinfo, val);
-
-	val = bc_db_get_val(dbres, "device");
-	if (!val)
-		return -1;
-
-	device = strdup(val);
-	if (!device)
-		return -1;
-
-	p = t = device;
-	while (*t != '|' && *t != '\0')
-		t++;
-	if (*t == '\0') {
-		free(device);
-		return -1;
-	}
-
-	*(t++) = '\0';
-
-	strcpy(rs->server, p);
-
-	p = t;
-	while (*t != '|' && *t != '\0')
-		t++;
-	if (*t == '\0') {
-		free(device);
-		return -1;
-	}
-
-	*(t++) = '\0';
-
-	rs->port = atoi(p);
-	strcpy(rs->uri, t);
-
-	free(device);
+ 
+	strcpy(rs->userinfo, userinfo);
+	strcpy(rs->server, server);
+	strcpy(rs->uri, uri);
+	rs->port = port;
+	rs->media = media;
 
 	rs->net_fd = -1;
-	rs->media = RTP_MEDIA_VIDEO;
 
 	return 0;
 }
 
 void rtp_session_stop(struct rtp_session *rs)
 {
-	if (rs->net_fd >= 0) {
-		rtp_request_teardown(rs);
-		close(rs->net_fd);
-		rs->net_fd = -1;
-	}
+	if (rs->net_fd < 0)
+		return;
+
+	rtp_request_teardown(rs);
+	close(rs->net_fd);
+	rs->net_fd = -1;
 }
 
 static int network_client(const char *server, unsigned int port)
@@ -274,6 +229,9 @@ static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
 	if (data[0] & 0x10)
 		skip += *(unsigned short *)&data[skip + 2];
 
+	if (skip >= len)
+		return;
+
 	if (rs->is_mpeg_4aac) {
 		unsigned char *adts = rs->adts_header;
 		unsigned int frame_len;
@@ -344,6 +302,7 @@ static int rtp_session_setup(struct rtp_session *rs)
 		rs->framerate = atoi(buf);
 	else
 		rs->framerate = 30; // Guessing
+
 
 	/* Setup transport parameters */
 	if (rtp_request_setup(rs, setup_uri, &setup_resp) ||

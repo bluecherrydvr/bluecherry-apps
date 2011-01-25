@@ -188,14 +188,10 @@ int bc_handle_start(struct bc_handle *bc)
 	if (bc->started)
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->cam_caps & BC_CAM_CAP_RTSP)
 		ret = rtp_session_start(&bc->rtp_sess);
-		bc->vparm.parm.capture.timeperframe.denominator =
-						bc->rtp_sess.framerate;
-		bc->vparm.parm.capture.timeperframe.numerator = 1;
-	} else if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+	else if (bc->cam_caps & BC_CAM_CAP_V4L2)
 		ret = v4l2_handle_start(bc);
-	}
 
 	if (!ret)
 		bc->started = 1;
@@ -414,12 +410,70 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	return 0;
 }
 
+/* Internal rtp session init that uses a database result */
+static int rtp_session_init_dbres(struct rtp_session *rs,
+				  rtp_media_type_t media,
+				  void *dbres)
+{
+	const char *val;
+	char *device;
+	char *p, *t;
+
+	memset(rs, 0, sizeof(*rs));
+
+	val = bc_db_get_val(dbres, "rtsp_username");
+	if (!val)
+		return -1;
+	strcpy(rs->userinfo, val);
+
+	strcat(rs->userinfo, ":");
+
+	val = bc_db_get_val(dbres, "rtsp_password");
+	if (!val)
+		return -1;
+	strcat(rs->userinfo, val);
+
+	val = bc_db_get_val(dbres, "device");
+	if (!val)
+		return -1;
+
+	device = strdupa(val);
+	if (!device)
+		return -1;
+
+	p = t = device;
+	while (*t != '|' && *t != '\0')
+		t++;
+	if (*t == '\0')
+		return -1;
+
+	*(t++) = '\0';
+
+	strcpy(rs->server, p);
+
+	p = t;
+	while (*t != '|' && *t != '\0')
+		t++;
+	if (*t == '\0')
+		return -1;
+
+	*(t++) = '\0';
+
+	rs->port = atoi(p);
+	strcpy(rs->uri, t);
+
+	rs->net_fd = -1;
+	rs->media = RTP_MEDIA_VIDEO;
+
+	return 0;
+}
+
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *val;
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
-	if (rtp_session_init(&bc->rtp_sess, dbres)) {
+	if (rtp_session_init_dbres(&bc->rtp_sess, RTP_MEDIA_VIDEO, dbres)) {
 		errno = ENOMEM;
 		return -1;
 	}
