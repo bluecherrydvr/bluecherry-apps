@@ -216,11 +216,13 @@ define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
 define('AIP_PORT', 'Port');
 define('AIP_USER', 'Username');
 define('AIP_PASS', 'Password');
+define('AIP_RTSP_PATH', 'Path to RTSP');
 define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_ADD', 'Add camera');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
 define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
+define('AIP_NEEDRTSP', 'Please enter path to RTSP');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 
 #login

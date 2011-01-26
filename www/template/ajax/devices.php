@@ -4,14 +4,14 @@ require('../template/template.lib.php');
 
 echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
 
-if ($devices->ip_cameras){
+# IP Camera List
+if ($devices->ip_cameras) {
 	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
-		foreach($devices->ip_cameras as $key => $device){
-			echo "<div id='ipDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div>";
-				//var_dump_pre($device);
-			echo "</div>";
-		}
-	echo "<div class='bClear'></div></div></div>"; #end ip cameras
+	foreach($devices->ip_cameras as $key => $device){
+		echo "<div id='ipDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div>";
+		echo "</div>";
+	}
+	echo "<div class='bClear'></div></div></div>";
 }
 
 if (!$devices->cards){

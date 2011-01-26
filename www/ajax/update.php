@@ -40,12 +40,24 @@ class updateDB extends DVRData{
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	private function addIp(){
-		if (!$_POST['ipAddr']){ $this->message = AIP_NEEDIP;  return false;};
-		if (!$_POST['port']){ $this->message = AIP_NEEDPORT; return false;};
-		if (!$_POST['mjpeg']){ $this->message = AIP_NEEDMJPEG; return false;};
+		if (empty($_POST['ipAddr'])) {
+			$this->message = AIP_NEEDIP; 
+			return false;
+		}
+		if (empty($_POST['port'])) {
+			$this->message = AIP_NEEDPORT;
+			return false;
+		}
+		if (empty($_POST['mjpeg'])) {
+			$this->message = AIP_NEEDMJPEG;
+			return false;
+		}
+		if (empty($_POST['rtsp'])) {
+			$this->message = AIP_NEEDRTSP;
+			return false;
+		}
 		$db = DVRDatabase::getInstance();
-		$model_info = $db->DBFetchAll("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['mjpeg']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480)");
+		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', 'RTSP-GENERIC', '{$_POST['user']}', '{$_POST['pass']}')");
 		$this->message = ($t) ? AIP_CAMADDED : false;
 		return ($t) ? true : false;
 	}
