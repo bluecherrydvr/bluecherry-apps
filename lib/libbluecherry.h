@@ -118,6 +118,7 @@ typedef enum {
 	BC_EVENT_CAM_T_NOT_FOUND,
 	BC_EVENT_CAM_T_VLOSS,
 	BC_EVENT_CAM_T_ALOSS,
+	BC_EVENT_CAM_T_CONTINUOUS,
 } bc_event_cam_type_t;
 
 typedef enum {
