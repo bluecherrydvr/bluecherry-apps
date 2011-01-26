@@ -226,8 +226,9 @@ define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
 define('AIP_RTSPPATH', 'Please enter path to RTSP');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 
-
+define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'delete');
+define('PROPS_HEADER', 'IP Camera properties');
 
 #login
 define('PLEASE_LOGIN', 'You need');
