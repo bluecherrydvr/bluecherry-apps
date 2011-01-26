@@ -7,7 +7,7 @@
 <div id="aip">
 	<INPUT type="hidden" name="mode" value="addip">
 	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><INPUT type="Text" id="ipAddr" name="ipAddr"></div>
-	<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><INPUT id="port" type="Text" name="port"></div>
+	<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><INPUT id="port" type="Text" name="port" value="554"></div>
 	<div><label id="addipLabel"><?php echo AIP_USER; ?></label><INPUT id="user" type="Text" name="user"></div>
 	<div><label id="addipLabel"><?php echo AIP_PASS; ?></label><INPUT id="pass" type="Password" name="pass"></div>
 	<div><label id="addipLabel"><?php echo AIP_RTSP_PATH; ?></label><INPUT id="rtsp" type="Text" name="rtsp"></div>

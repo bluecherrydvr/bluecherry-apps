@@ -211,7 +211,7 @@ define('AIP_SUBHEADER', '');
 define('AIP_CHOOSE_MANUF', 'Please choose manufacturer');
 define('AIP_CHOOSE_MODEL', 'Please choose model');
 define('AIP_CH_MAN_FIRST', 'Choose manufacturer first');
-define('AIP_IP_ADDR', 'Camera IP address');
+define('AIP_IP_ADDR', 'Camera IP or Host');
 define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
 define('AIP_PORT', 'Port');
 define('AIP_USER', 'Username');
@@ -221,7 +221,6 @@ define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_ADD', 'Add camera');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
-define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
 define('AIP_NEEDRTSP', 'Please enter path to RTSP');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 

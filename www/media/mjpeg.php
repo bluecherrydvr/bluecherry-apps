@@ -39,12 +39,12 @@ $url = bc_get_mjpeg_url($bch);
 if (!$url) {
 	# Nope, so try to start up the local device
 	if (bc_set_mjpeg($bch) == false) {
-		print "Failed to set MJPEG on $dev";
+		print "Failed to set MJPEG";
 		exit;
 	}
 
 	if (bc_handle_start($bch) == false) {
-		print "Faled to start $dev";
+		print "Faled to start";
 		exit;
 	}
 } else {

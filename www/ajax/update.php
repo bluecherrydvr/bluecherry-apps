@@ -48,16 +48,12 @@ class updateDB extends DVRData{
 			$this->message = AIP_NEEDPORT;
 			return false;
 		}
-		if (empty($_POST['mjpeg'])) {
-			$this->message = AIP_NEEDMJPEG;
-			return false;
-		}
 		if (empty($_POST['rtsp'])) {
 			$this->message = AIP_NEEDRTSP;
 			return false;
 		}
 		$db = DVRDatabase::getInstance();
-		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', 'RTSP-GENERIC', '{$_POST['user']}', '{$_POST['pass']}')");
+		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', 'RTSP-GENERIC', '{$_POST['user']}', '{$_POST['pass']}','{$_POST['mjpeg']}')");
 		$this->message = ($t) ? AIP_CAMADDED : false;
 		return ($t) ? true : false;
 	}
