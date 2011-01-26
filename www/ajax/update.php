@@ -33,10 +33,21 @@ class updateDB extends DVRData{
 			case 'addip': $this->status = $this->addIp(); break;
 		}
 	}
-	private function changeStateIp(){
+	private function changeStateIp() {
+		if (!isset($_POST['id'])) {
+			$this->status = false;
+			$this->message = CHANGES_FAIL;
+			return;
+		}
+		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id={$_POST['id']}");
-		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(($device['disabled']) ? 0 : 1)." WHERE id={$_POST['id']}");
+		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id=$id");
+		if ($device == false) {
+			$this->status = false;
+			$this->message = CHANGES_FAIL;
+			return;
+		}
+		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(empty($device[0]['disabled']) ? 1 : 0)." WHERE id=$id");
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	private function addIp(){

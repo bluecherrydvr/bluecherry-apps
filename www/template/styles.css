@@ -132,6 +132,16 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #dvrCard #unusedCapacity:hover		{ cursor:help; }
 #dvrCard .cardEncoding 				{ display:inline; font-weight:bold; text-decoration:none; }
  .bClear							{ clear:both; }
+
+#ipDevice                                            { position:relative; background-position:right top; background-repeat:no-repeat; float:left; background-color:#fefefe; border:1px solid #f2f2f2; width: 270px; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:5px; }
+#ipDevice .name                                      { width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; background:url("/img/icons/bnc.png") no-repeat; background-position:left;}
+#ipDevice a                                          { margin:5px 0 5px 0; display:block; }
+#ipDevice #status                            { display:inline; width:100%; margin:3px 10px 10px 35px; }
+#ipDevice .disabled                          { color: red;           }
+#ipDevice .OK                                        { color: green;         }
+#ipDevice #status a                          { display:inline;       }
+
+
 #localDevice 						{ position:relative; background-position:right top; background-repeat:no-repeat; float:left; background-color:#fefefe; border:1px solid #f2f2f2; width: 270px; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:5px; }
 #localDevice .videoadj				{ margin: 10px 0 15px 0; }
 #localDevice .name 					{ width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; background:url("/img/icons/bnc.png") no-repeat; background-position:left;}
