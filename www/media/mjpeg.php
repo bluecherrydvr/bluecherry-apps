@@ -7,7 +7,7 @@ include("../lib/lib.php");  #common functions
 #auth check
 $current_user = new DVRUser();
 $current_user->CheckStatus();
-$current_user->StatusAction('viewer');
+$current_user->StatusAction('mjpeg');
 #/auth check
 	
 if (!isset($_GET['id'])) {

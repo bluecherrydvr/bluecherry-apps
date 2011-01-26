@@ -61,7 +61,7 @@ class DVRUser extends DVRData{
 		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
 	}
 	public function CheckStatus(){
-		if (isset($_SESSION['l'])) {
+		if (!empty($_SESSION['l'])){
 			$kicked = $this->ActiveUsersUpdate();
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;
@@ -84,7 +84,15 @@ class DVRUser extends DVRData{
 				break;
 				case 'mjpeg' :
 					$this->CheckStatus();
-					if ($this->status != 'admin' && $this->status != 'viewer') return false;
+					if ($this->status != 'admin' && $this->status != 'viewer') {
+						if (!isset($_SERVER['PHP_AUTH_USER'])) { 
+							return false;
+						} else {
+							$this->data = $this->GetObjectData('Users', 'username', $_SERVER['PHP_AUTH_USER']);
+							return (!$this->ValidatePassword($_SERVER['PHP_AUTH_PW'])) ? false : true;
+						}
+						
+					}
 					return true;
 				break;
 			}
@@ -254,6 +262,35 @@ class BCDVRCard{
 	}
 }
 
+class DVRIPCameras{
+	public $data;
+	public $camera;
+	public function __construct($id){
+		if ($id == 'new'){
+			!empty($_GET['m']) or $_GET['m']='';
+			switch($_GET['m']){
+				case 'model': $this->getModels($_GET['manufacturer']); break;
+				case 'ops': $this->getOptions($_GET['model']); break;
+				default: $this->getManufacturers(); break; 
+			};
+		} else { //pull info
+			$db = DVRDatabase::getInstance();
+			$this->camera = $db->DBFetchAll("SELECT * FROM Devices WHERE id=$id");
+		};
+	}
+	private function getManufacturers(){
+		$db = DVRDatabase::getInstance();
+		$this->data['manufacturers'] = $db->DBFetchAll("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
+	}
+	private function getModels($m){
+		$db = DVRDatabase::getInstance();
+		$this->data['models'] = $db->DBFetchAll("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
+	}
+	private function getOptions($model){
+		$db = DVRDatabase::getInstance();
+		$this->data = $db->DBFetchAll("SELECT * FROM ipCameras WHERE model='$model'");
+	}
+}
 
 function genRandomString($length = 4) {
     $characters = '0123456789abcdefghijklmnopqrstuvwxyz';
