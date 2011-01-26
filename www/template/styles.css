@@ -139,12 +139,12 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #localDevice #resolutionFps 		{ background-color:#efefef; width:100%; margin: 5px 0 5px 0;}
 #localDevice #resolutionFps div 	{ display:inline; }
 #localDevice a						{ margin:5px 0 5px 0; display:block; }
-#localDevice #status 				{ display:inline; width:100%; margin:3px 10px 10px 35px; }
-#localDevice .disabled				{ color: red;  		}
-#localDevice .OK					{ color: green;	  	}	
-#localDevice .notconfigured			{ color: gray;	 	}
-#localDevice #status a 				{ display:inline; 	}
-#localDevice #port					{ padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; background: url("/img/icons/port.png") no-repeat center top; width:50px; height:50px; }
+#localDevice, #ipDevice #status 	{ display:inline; width:100%; margin:3px 10px 10px 35px; }
+#localDevice, #ipDevice .disabled	{ color: red;  		}
+#localDevice, #ipDevice .OK			{ color: green;	  	}	
+#localDevice, #ipDevice .notconfigured { color: gray;	 	}
+#localDevice  #status a 			{ display:inline; 	}
+#localDevice  #port					{ padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; background: url("/img/icons/port.png") no-repeat center top; width:50px; height:50px; }
 
 
 /*motion|devices*/
@@ -221,7 +221,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #addIPCamera						{ zoom:1; float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #addipLabel			{ width:200px; }
 #settingsForm select				{ margin-left:5px; }
-#settingsForm #aip input			{ margin:2px 0px 0px 5px; height:15px; }
+#settingsForm #aip input			{ margin:2px 0px 0px 5px; height:17px; }
 #settingsForm #aip #saveButton 		{ height:35px; width:150px; }
 #settingsForm #ipAddr				{ width:150px; }
 #settingsForm #port					{ width:55px; }

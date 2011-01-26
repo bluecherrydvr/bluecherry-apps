@@ -32,7 +32,14 @@ class updateDB extends DVRData{
 			case 'kick': $this->KickUser(); break;
 			case 'addip': $this->status = $this->addIp(); break;
 			case 'deleteIp' : $this->deleteIp(); break;
+			case 'editIp': $this->editIp(); break;
 		}
+	}
+	private function editIp(){
+		$id = intval($_POST['id']);
+		$db = DVRDatabase::getInstance();
+		$this->status = $db->DBQuery("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}");
+		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	private function changeStateIp(){
 		$id = intval($_POST['id']);

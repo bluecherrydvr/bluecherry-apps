@@ -17,9 +17,13 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 <div id="lvlSelect">
 	<ul>
 		<li id="liN">Off</li>
-		<li id="liM" class='on'>Motion</li>
-		<li id="liC">Continuous</li>
-		<li id="liS">Sensor</li>
+		<li id="liC" class="on">Continuous</li>
+		<?php 
+			if ($device_schedule->schedule_data[0]['protocol']!='IP'){
+				echo '<li id="liM">Motion</li><li id="liS">Sensor</li>';
+			};
+		?>
+		
 	</ul>
 	
 	<div id='saveButton' style="cursor:pointer;"><?php echo SAVE_CHANGES; ?></div>
