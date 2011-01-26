@@ -276,6 +276,10 @@ class DVRIPCameras{
 		} else { //pull info
 			$db = DVRDatabase::getInstance();
 			$this->camera = $db->DBFetchAll("SELECT * FROM Devices WHERE id=$id");
+			$tmp = explode('|', $this->camera[0]['device']);
+			$this->camera[0]['ipAddr'] = $tmp[0];
+			$this->camera[0]['port'] = $tmp[1];
+			$this->camera[0]['rtsp'] = $tmp[2];
 		};
 	}
 	private function getManufacturers(){

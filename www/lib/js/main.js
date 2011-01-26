@@ -225,6 +225,11 @@ DVRPageScript = new Class({
 						var page = new DVRPage('videoadj', 'id='+el.get('id'));
 					});
 				});
+				$$('.deviceProps').each(function(el){
+					el.addEvent('click', function(){
+						var page = new DVRPage('editip', 'id='+el.get('id'));
+					});
+				});
 				$$('.RES').each(function(el){
 					el.addEvent('change', function(ev){
 						upadteResFps(el);
@@ -242,6 +247,29 @@ DVRPageScript = new Class({
 					}
 				});
 			break; //end devices
+			case 'editip':
+				buttonMorph($('saveButton'), '#8bb8');
+				$('settingsForm').set('send', {
+					onRequest: function(){
+						$('saveButton').setStyle('background-image', 'url("/img/loading.gif")');
+					},
+					onComplete: function(text, xml){
+						
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						var iconStyle = (status=="OK") ? 'url("/img/icons/check.png")' : 'url("/img/icons/cross.png")';
+						var showMessage = new DVRMessage(status, msg);
+						$('saveButton').setStyle('background-image', iconStyle);
+					}
+				});
+				$('saveButton').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('settingsForm').send();
+				});
+				$('backToList').addEvent('click', function(){
+					var page = new DVRPage('devices');
+				});
+			break;
 			case 'activeusers':
 				$$(".kick").addEvent('click', function(){
 					ajaxUpdateField('kick', 'ActiveUsers', { 'kick' : '1' }, this.get('id'));
