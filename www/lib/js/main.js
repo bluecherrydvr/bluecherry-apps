@@ -73,7 +73,7 @@ DVRPageScript = new Class({
 				if ($('newUser')!=null){
 					buttonMorph($('newUser'), '#8bb8');
 					$('newUser').addEvent('click', function() {
-						openPage = new DVRPage('users', 'id=new');
+									openPage = new DVRPage('users', 'id=new');
 					});
 					$$('#user-table .deleteUser').each(function(el){
 						el.addEvents({
@@ -98,6 +98,34 @@ DVRPageScript = new Class({
 				
 			break;//end users
 			case 'addip':
+				getInfo = function(t, m, x, containerId){
+					var request = new Request.HTML({
+						url: 'ajax/addip.php',
+						data: 'm='+t+'&'+m+'='+x,
+						method: 'get',
+						onRequest: function(){
+						},
+						onSuccess: function(tree, elements, html){
+							$(containerId).set('html', html);
+							switch (containerId){
+								case 'modelSelector':
+									$('models').addEvent('change', function(){
+										if (this.value!='Please choose model'){
+											var w = false;
+										} else {
+											var w = true;
+										}
+										$$('#aip input').set('disabled', w);
+									});
+								break;
+							}
+						}
+					}).send();
+				}
+				$('manufacturers').addEvent('change', function(){
+					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
+					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
+				});
 				buttonMorph($('saveButton'), '#8bb8');
 				$('settingsForm').set('send', {
 					onRequest: function(){
@@ -186,6 +214,12 @@ DVRPageScript = new Class({
 						ajaxUpdateField(mode, 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
+				$$('.deleteIp').each(function(el){
+					el.addEvent('click', function(){
+						var sureDelete = confirm('Are you sure you want to delete this camera (ID: '+el.get('id')+')?');
+						ajaxUpdateField('deleteIp', 'Devices', {'do' : true }, el.get('id'), 'devices');
+					});
+				});				
 				$$('.videoadj').each(function(el){
 					el.addEvent('click', function(){
 						var page = new DVRPage('videoadj', 'id='+el.get('id'));

@@ -1,4 +1,4 @@
-<?php  DEFINE('INDVR', true);
+<?php  DEFINE(INDVR, true);
 #lib
 
 include("../lib/lib.php");  #common functions
@@ -12,21 +12,12 @@ include("../lib/lib.php");  #common functions
 class DVRIPCameras{
 	public $data;
 	public function __construct(){
-		if (isset($_GET['m'])) {
-			switch($_GET['m']){
-			case 'model':
-				$this->getModels($_GET['manufacturer']);
-				break;
-			case 'ops':
-				$this->getOptions($_GET['model']);
-				break;
-			default:
-				$this->getManufacturers();
-				break;
-			}
-		} else {
-			$this->getManufacturers();
-		}
+		!empty($_GET['m']) or $_GET['m']='';
+		switch($_GET['m']){
+			case 'model': $this->getModels($_GET['manufacturer']); break;
+			case 'ops': $this->getOptions($_GET['model']); break;
+			default: $this->getManufacturers(); break; 
+		};
 	}
 	private function getManufacturers(){
 		$db = DVRDatabase::getInstance();

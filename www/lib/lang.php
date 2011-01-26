@@ -210,19 +210,24 @@ define('AIP_HEADER', 'Add an IP Camera');
 define('AIP_SUBHEADER', '');
 define('AIP_CHOOSE_MANUF', 'Please choose manufacturer');
 define('AIP_CHOOSE_MODEL', 'Please choose model');
+define('AIP_CHOOSE_FPSRES', 'Please choose fps/resolution');
 define('AIP_CH_MAN_FIRST', 'Choose manufacturer first');
+define('AIP_CH_MOD_FIRST', 'Choose model first');
 define('AIP_IP_ADDR', 'Camera IP or Host');
 define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
 define('AIP_PORT', 'Port');
 define('AIP_USER', 'Username');
 define('AIP_PASS', 'Password');
-define('AIP_RTSP_PATH', 'Path to RTSP');
 define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_ADD', 'Add camera');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
-define('AIP_NEEDRTSP', 'Please enter path to RTSP');
+define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
+define('AIP_RTSPPATH', 'Please enter path to RTSP');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
+
+
+define('DELETE_CAM', 'delete');
 
 #login
 define('PLEASE_LOGIN', 'You need');
