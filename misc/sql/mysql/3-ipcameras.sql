@@ -35,7 +35,7 @@ CREATE TABLE `ipCameras` (
   `driver` varchar(32) NOT NULL DEFAULT 'RTSP-GENERIC',
   PRIMARY KEY (`id`),
   KEY `driver` (`driver`)
-) 
+); 
 
 INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `resolutions`, `driver`) VALUES
 (1, 'Camera', 'Axis', '209FD', 'MPEG4,MJPEG', '640x480-30,320x240-30', 'RTSP-VAPIX-AUTO'),
