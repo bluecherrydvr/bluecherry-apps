@@ -125,8 +125,9 @@ static void *bc_device_thread(void *data)
 			bc_close_avcodec(bc_rec);
 			continue;
 		} else if (ret) {
-			bc_dev_err(bc_rec, "Failed to get video frame");
-			/* Try restarting the handle */
+			/* Try restarting the connection. Do not report failure
+			 * here. It will get reported if we fail to reconnect. */
+			bc_close_avcodec(bc_rec);
 			bc_handle_stop(bc);
 			continue;
 		}
