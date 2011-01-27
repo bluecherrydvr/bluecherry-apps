@@ -54,7 +54,8 @@ static int process_schedule(struct bc_record *bc_rec)
 	pthread_mutex_lock(&bc_rec->sched_mutex);
 
 	if (bc_rec->reset_vid ||
-	    (bc_media_length(&bc_rec->media) > 3600 && !bc_rec->sched_last)) {
+	    (bc_media_length(&bc_rec->media) > BC_MAX_RECORD_TIME &&
+	    !bc_rec->sched_last)) {
 		bc_close_avcodec(bc_rec);
 		bc_handle_stop(bc);
 		bc_rec->reset_vid = 0;

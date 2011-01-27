@@ -309,6 +309,10 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
+	if (bc_rec->sched_cur == 'C' && bc_rec->event == BC_EVENT_CAM_NULL)
+		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
+					BC_EVENT_CAM_T_CONTINUOUS, bc_rec->media);
+
 	/* Now start the next one */
 	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
 				       bc_rec->outfile, bc_rec->event);
@@ -382,7 +386,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	bc_start_media_entry(bc_rec);
 
-	if (bc_rec->media == BC_MEDIA_FAIL) {
+	if (bc_rec->media == BC_MEDIA_NULL) {
 		errno = ENOMEM;
 		return -1;
 	}

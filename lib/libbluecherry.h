@@ -131,7 +131,7 @@ typedef enum {
 } bc_event_sys_type_t;
 
 typedef struct bc_event_cam * bc_event_cam_t;
-#define BC_EVENT_CAM_FAIL ((bc_event_cam_t)NULL)
+#define BC_EVENT_CAM_NULL ((bc_event_cam_t)NULL)
 
 typedef enum {
 	BC_MEDIA_VIDEO_H264 = 0,
@@ -156,7 +156,7 @@ typedef enum {
 } bc_media_cont_type_t;
 
 typedef struct bc_media_entry * bc_media_entry_t;
-#define BC_MEDIA_FAIL ((bc_media_entry_t)NULL)
+#define BC_MEDIA_NULL ((bc_media_entry_t)NULL)
 
 /* Doubly linked lists */
 

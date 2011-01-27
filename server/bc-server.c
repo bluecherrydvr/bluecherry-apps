@@ -30,7 +30,7 @@ static void __handle_motion_start(struct bc_handle *bc)
 	struct bc_record *bc_rec = bc->__data;
 
 	/* If we already have an event in progress, keep it going */
-	if (bc_rec->event != BC_EVENT_CAM_FAIL)
+	if (bc_rec->event != BC_EVENT_CAM_NULL)
 		return;
 
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
@@ -44,10 +44,10 @@ static void __handle_motion_end(struct bc_handle *bc)
 	struct bc_record *bc_rec = bc->__data;
 
 	/* Ignore when no event is in progress */
-	if (bc_rec->event == BC_EVENT_CAM_FAIL)
+	if (bc_rec->event == BC_EVENT_CAM_NULL)
 		return;
 
-	bc_event_cam_end(&bc_rec->event);
+	/* Do not stop event here, let that happen in bc-av.c */
 	bc_dev_info(bc_rec, "Motion event stopped");
 }
 

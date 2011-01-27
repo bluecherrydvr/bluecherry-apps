@@ -270,8 +270,6 @@ int bc_buf_get(struct bc_handle *bc)
 	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
 		/* Reset this counter in case motion gets turned back on */
 		bc->mot_cnt = 0;
-		/* Call this just in case we have an event in progress. */
-		__bc_stop_motion_event(bc);
 
 		if (!bc->got_vop) {
 			if (!bc_buf_key_frame(bc)) 

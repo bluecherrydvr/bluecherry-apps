@@ -15,6 +15,9 @@
 
 #include "g723-dec.h"
 
+/* Maximum length of recording */
+#define BC_MAX_RECORD_TIME	3600
+
 struct bc_record {
 	struct bc_handle	*bc;
 	AVOutputFormat		*fmt_out;
