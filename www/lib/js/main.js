@@ -10,6 +10,11 @@ DVRmainMenu = new Class({
 
 			});
 		});
+		if ($('lmNewVersion')){
+			$('lmNewVersion').addEvent('click', function(){
+				var openPage = new DVRPage('newversion');
+			});
+		}
 	}
 });
 
@@ -643,6 +648,17 @@ updateStatData = function(){
 				var memTotal = xml.getElementsByTagName("memory-total")[0].childNodes[0].nodeValue;
 				var memPertg = xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue;
 				var serverUp = xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue;
+				var serverRn = xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue;
+				var sr  = $('sr');
+				var snr = $('snr');
+				if (serverRn != 'up'){
+					sr.setStyle('display', 'none');
+					snr.setStyle('display', 'inline');
+					snr.getChildren().highlight('#faa');
+				} else {
+					snr.setStyle('display', 'none');
+					sr.setStyle('display', 'inline');
+				}
 				$('serverStats').setStyle('display', 'block');
 				updateStatBar('cpu', cpuUsage);
 				updateStatBar('mem', memPertg);

@@ -19,7 +19,7 @@ if ($_GET['m']){
 <hr>
 <p><?php echo AIP_SUBHEADER; ?></p>
 
-
+<div id="ajaxMessage" class="INFO"><?php echo IPCAM_WIKI_LINK; ?></div>
 <FORM id="settingsForm" action="/ajax/update.php" method="post">
 <div id="aip">
 	<INPUT type="hidden" name="mode" value="addip">
@@ -30,7 +30,7 @@ if ($_GET['m']){
 	<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><INPUT disabled id="port" type="Text" name="port" value="554"></div>
 	<div><label id="addipLabel"><?php echo AIP_USER; ?></label><INPUT disabled id="user" type="Text" name="user"></div>
 	<div><label id="addipLabel"><?php echo AIP_PASS; ?></label><INPUT disabled id="pass" type="Password" name="pass"></div>
-	<div><label id="addipLabel"><?php echo AIP_RTSPPATH; ?></label><INPUT disabled id="rtsppath" type="Text" name="rtsp"></div>
+	<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><INPUT disabled id="rtsppath" type="Text" name="rtsp"></div>
 	<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><INPUT disabled id="mjpeg" type="Text" name="mjpeg"></div>
 	<div><label id="addipLabel">&nbsp;</label><INPUT disabled id="saveButton" type="Submit" value="<?php echo AIP_ADD; ?>"></div>
 </div>

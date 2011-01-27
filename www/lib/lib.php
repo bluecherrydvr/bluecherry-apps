@@ -52,6 +52,17 @@ class DVRDatabase {
 	}
 }
 
+class DVRVersion{
+	public $up_to_date;
+	public $current_version;
+	public $installed_version;
+	
+	public function __construct(){
+		$this->current_version = file_get_contents(VAR_PATH_TO_CURRENT_VERSION);
+		$this->installed_version = file_get_contents(VAR_PATH_TO_INSTALLED_VERSION);
+		$this->up_to_date = ($this->current_version === $this->installed_version) ? true : false;
+	}
+}
 
 #class to load info/perms of the current user
 class DVRUser extends DVRData{
@@ -304,5 +315,7 @@ function genRandomString($length = 4) {
     }
     return $string;
 }
+
+	$version = new DVRVersion();
 
 ?>
