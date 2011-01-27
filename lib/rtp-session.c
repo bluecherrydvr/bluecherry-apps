@@ -53,7 +53,6 @@ void rtp_session_stop(struct rtp_session *rs)
 	if (rs->net_fd < 0)
 		return;
 
-	rtp_request_teardown(rs);
 	close(rs->net_fd);
 	rs->net_fd = -1;
 }
@@ -267,15 +266,13 @@ static int rtp_session_setup(struct rtp_session *rs)
 	char *p;
 	const char *media_type;
 
-	if (rs->net_fd >= 0)
-		close(rs->net_fd);
-
 	rs->net_fd = network_client(rs->server, rs->port);
         if (rs->net_fd < 0)
 		return -1;
 
 	rs->sess_id[0] = '\0';
-	rs->tunnel_id = 0;
+	rs->tunnel_id = rs->seq_num = rs->is_mpeg_4aac = rs->frame_len =
+		rs->frame_valid = rs->framerate = 0;
 
 	if (rs->media == RTP_MEDIA_VIDEO)
 		media_type = "m=video ";
@@ -346,6 +343,9 @@ static int rtp_session_setup(struct rtp_session *rs)
 
 int rtp_session_start(struct rtp_session *rs)
 {
+	if (rs->net_fd >= 0)
+		return 0;
+
 	if (rtp_session_setup(rs)) {
 		rtp_session_stop(rs);
 		return -1;
