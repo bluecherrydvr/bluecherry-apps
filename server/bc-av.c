@@ -329,16 +329,20 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 	int size = bc_buf_size(bc);
 	int ret = -1;
 
-	if (buf == NULL || size <= 0)
-		return -1;
-
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		*fnum = 1;
-		*fden = bc->rtp_sess.framerate;
-	} else if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
 		*fden = bc->vparm.parm.capture.timeperframe.denominator;
 		*fnum = bc->vparm.parm.capture.timeperframe.numerator;
-	} else
+		*width = bc->vfmt.fmt.pix.width;
+		*height = bc->vfmt.fmt.pix.height;
+		return 0;
+	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		*fnum = 1;
+		*fden = bc->rtp_sess.framerate;
+	} else {
+		return -1;
+	}
+
+	if (buf == NULL || size <= 0)
 		return -1;
 
 	/* Decode the first picture to get frame size */
