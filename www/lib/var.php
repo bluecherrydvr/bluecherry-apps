@@ -14,7 +14,7 @@ define('VAR_SESSION_NAME', 'bluecherrydvr');
 define('JS_RELOAD', '<script>window.location = "/";</script>');
 
 define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
-define('VAR_PATH_TO_INSTALLED_VERSION', $_SERVER['DOCUMENT_ROOT'].'/version');
+define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
 
 #local card props
 $local_device_fps = array(30, 15, 10, 7.5, 5, 3, 2);
