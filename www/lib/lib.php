@@ -58,8 +58,8 @@ class DVRVersion{
 	public $installed_version;
 	
 	public function __construct(){
-		$this->current_version = trim(file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
-		$this->installed_version = trim(file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
+		$this->current_version = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		$this->installed_version = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$this->up_to_date = ($this->current_version == $this->installed_version) ? true : false;
 	}
 }
@@ -96,16 +96,31 @@ class DVRUser extends DVRData{
 				case 'mjpeg' :
 					$this->CheckStatus();
 					if ($this->status != 'admin' && $this->status != 'viewer') {
-						if (!isset($_SERVER['PHP_AUTH_USER'])) { 
-							return false;
+						if (!isset($_SERVER['PHP_AUTH_USER'])) {
+							    header('WWW-Authenticate: Basic realm="media"');
+    							header('HTTP/1.0 401 Unauthorized');
+								exit;
 						} else {
-							$this->data = $this->GetObjectData('Users', 'username', $_SERVER['PHP_AUTH_USER']);
-							return (!$this->ValidatePassword($_SERVER['PHP_AUTH_PW'])) ? false : true;
+							if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
 						}
 						
 					}
 					return true;
 				break;
+				case 'devices':
+					if ($this->status=='admin' || ($_SESSION['from_client']==true && $this->status=='viewer')){
+						return true;
+					} elseif (!isset($_SERVER['PHP_AUTH_USER'])) {
+						    header('WWW-Authenticate: Basic realm="devices"');
+    						header('HTTP/1.0 401 Unauthorized');
+							exit;
+					};
+					if(isset($_GET['short']) && isset($_SERVER['PHP_AUTH_USER'])) {
+						if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
+					} else {
+						$message = JS_RELOAD.USER_NACCESS;
+					}
+				break; 
 			}
 			switch ($this->status){
 				case 'new': $message = USER_RELOGIN; break;
@@ -115,6 +130,14 @@ class DVRUser extends DVRData{
 			if ($message) die("<div class='INFO' id='message'>{$message}</div>");
 	}
 	
+	private function BasicAuthCheck(){
+		$this->data = $this->GetObjectData('Users', 'username', $_SERVER['PHP_AUTH_USER']);
+		
+		return (!$this->ValidatePassword($_SERVER['PHP_AUTH_PW'])) ? false : true;
+	}
+	public function ValidatePassword($entered_password){
+		return (md5($entered_password.$this->data[0]['salt'])===$this->data[0]['password']) ? true : false;
+	}
 	private function ActiveUsersUpdate(){
 		$db = DVRDatabase::getInstance(); 
 		$db->DBQuery("DELETE FROM ActiveUsers WHERE time <".(time()-300));
@@ -126,9 +149,6 @@ class DVRUser extends DVRData{
 			$db->DBQuery("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
 		}
 		return false;
-	}
-	public function ValidatePassword($entered_password){
-		return ($entered_password===md5($this->data['password'])) ? true : false;
 	}
 	private function ScheduleCheck(){
 		return (substr($this->data['schedule'], date('N')*(date('G')+1), 1)=='1')  ? true : false;
@@ -226,6 +246,7 @@ class DVRDevices extends DVRData{
 		// The \063 is a '?'. Used decimal so as not to confuse vim
 		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
 		$devices = array();
+		if (!empty($this->cards))
 		foreach($this->cards as $card_id => $card){
 			$devices = array_merge($devices, $card->devices);
 		};
@@ -234,7 +255,8 @@ class DVRDevices extends DVRData{
 			$xml .= '<device';
 			$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
 			foreach($device as $property => $value){
-				$xml.="<$property>$value</$property>";
+				if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
+					if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
 			};
 			$xml.='</device>';
 		}
