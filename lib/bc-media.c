@@ -20,7 +20,7 @@ static const char *level_to_str[] = {
 };
 
 static const char *cam_type_to_str[] = {
-	"motion", "not found", "video signal loss", "audio signal loss"
+	"motion", "not found", "video signal loss", "audio signal loss", "continuous"
 };
 
 static const char *sys_type_to_str[] = {
@@ -245,7 +245,7 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	struct bc_media_entry *bcm = malloc(sizeof(*bcm));
 
 	if (bcm == NULL)
-		return BC_MEDIA_FAIL;
+		return BC_MEDIA_NULL;
 
 	memset(bcm, 0, sizeof(*bcm));
 
@@ -318,7 +318,7 @@ bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 
 	/* TODO: This failure may need to be directed somewhere */
 	if (bce == NULL)
-		return BC_EVENT_CAM_FAIL;
+		return BC_EVENT_CAM_NULL;
 
 	do_cam(bce);
 
