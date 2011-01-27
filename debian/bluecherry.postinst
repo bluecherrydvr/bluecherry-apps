@@ -13,8 +13,6 @@ dbc_generate_include_owner=bluecherry:bluecherry
 
 dbc_go bluecherry $@
 
-db_stop
-
 case "$1" in
 	configure|reconfigure)
 		ucfr bluecherry /etc/bluecherry.conf
@@ -39,3 +37,5 @@ case "$1" in
 esac
 
 #DEBHELPER#
+
+db_stop
