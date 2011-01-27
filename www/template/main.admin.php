@@ -36,7 +36,7 @@
 			<div id="sr"><div id="ajaxMessage" class="OK"><? echo SERVER_RUNNING; ?></div></div>
 			<div id="snr"><div id="ajaxMessage" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
 			<?php
-				if ($version->up_to_date){
+				if (!$version->up_to_date){
 					echo '<div id="version"><div id="ajaxMessage" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
 				}
 			?>
