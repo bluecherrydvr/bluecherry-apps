@@ -73,6 +73,7 @@ static void bc_db_mysql_close(void)
 	FREE_NULL(dbpass);
 	FREE_NULL(dbhost);
 	FREE_NULL(dbsock);
+	dbport = 0;
 
 	if (my_con_global)
 		mysql_close(my_con_global);
@@ -81,6 +82,9 @@ static void bc_db_mysql_close(void)
 
 static int bc_db_mysql_open(struct config_t *cfg)
 {
+	if (get_handle() != NULL)
+		return 0;
+
 	GET_VAL(dbname, "dbname", 1);
 	GET_VAL(dbuser, "user", 1);
 	GET_VAL(dbpass, "password", 1);
