@@ -56,8 +56,6 @@ static MYSQL *get_handle(void)
 
 	if (mysql_real_connect(my_con_global, dbhost, dbuser, dbpass, dbname,
 			       (int)dbport, dbsock, 0) == NULL) {
-		bc_log("(SQL ERROR): Connecting to MySQL database: %s",
-		       mysql_error(my_con_global));
 		mysql_close(my_con_global);
 		my_con_global = NULL;
                 return NULL;
@@ -75,9 +73,10 @@ static void bc_db_mysql_close(void)
 	FREE_NULL(dbsock);
 	dbport = 0;
 
-	if (my_con_global)
+	if (my_con_global) {
 		mysql_close(my_con_global);
-	my_con_global = NULL;
+		my_con_global = NULL;
+	}
 }
 
 static int bc_db_mysql_open(struct config_t *cfg)
@@ -158,6 +157,7 @@ static void bc_db_mysql_free_table(BC_DB_RES __dbres)
 	struct bc_db_mysql_res *dbres = __dbres;
 
 	mysql_free_result(dbres->res);
+	free(dbres);
 }
 
 static int bc_db_mysql_fetch_row(BC_DB_RES __dbres)
