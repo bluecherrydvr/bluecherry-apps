@@ -58,6 +58,7 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 0;
 
+	memset(&qctrl, 0, sizeof(qctrl));
 	qctrl.id = ctrl;
 	if (ioctl(bc->dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
 		return -1;
