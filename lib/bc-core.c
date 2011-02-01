@@ -29,18 +29,8 @@ static inline int bc_v4l2_local_bufs(struct bc_handle *bc)
 	int i, c;
 
 	for (i = c = 0; i < bc->buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
-
-		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
-			continue;
-
-		c++;
+		if (bc->p_buf[i].status != BC_VB_STATUS_LOCAL)
+			c++;
 	}
 
 	return c;
@@ -219,6 +209,15 @@ static void bc_buf_return(struct bc_handle *bc)
 		reset_vbuf(&vb);
 		vb.index = i;
 
+		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
+			continue;
+
+		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)) {
+			cur--;
+			bc->p_buf[i].status = BC_VB_STATUS_QUEUED;
+                        continue;
+		}
+
 		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vb) == 0) {
 			cur--;
 			bc->p_buf[i].status = BC_VB_STATUS_QUEUED;
@@ -272,7 +271,7 @@ int bc_buf_get(struct bc_handle *bc)
 		bc->mot_cnt = 0;
 
 		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc)) 
+			if (!bc_buf_key_frame(bc))
 				return EAGAIN;
 			bc->got_vop = 1;
 		}
