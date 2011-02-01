@@ -57,9 +57,11 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	if (bc_rec->aud_dev[0] == '\0' || bc_rec->pcm)
 		return 0;
 
-	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
-				SND_PCM_STREAM_CAPTURE,
-				SND_PCM_NONBLOCK)) < 0) {
+	err = snd_pcm_open(&pcm, bc_rec->aud_dev,
+			   SND_PCM_STREAM_CAPTURE,
+			   SND_PCM_NONBLOCK);
+	snd_config_update_free_global(); /* Make valgrind happy */
+	if (err < 0) {
 		bc_dev_err(bc_rec, "Opening audio device failed: %s",
 			   snd_strerror(err));
 		return -1;
@@ -149,6 +151,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	/* pcm can be null due to not being able to open the alsa dev. */
 	if (!bc_rec->pcm)
 		return -1;
+
+	memset(g723_data, 0, sizeof(g723_data));
 
 	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
 

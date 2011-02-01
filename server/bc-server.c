@@ -87,6 +87,25 @@ static void bc_check_globals(void)
 	bc_db_free_table(dbres);
 }
 
+static void bc_stop_threads(void)
+{
+	struct bc_record *bc_rec, *__t;
+	char *errmsg = NULL;
+
+	if (bc_list_empty(&bc_rec_list))
+		return;
+
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
+		bc_rec->thread_should_die = "Shutting down";
+		pthread_join(bc_rec->thread, (void **)&errmsg);
+		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
+		bc_list_del(&bc_rec->list);
+		bc_handle_free(bc_rec->bc);
+		free(bc_rec);
+		cur_threads--;
+	}
+}
+
 /* Check for threads that have quit */
 static void bc_check_threads(void)
 {
@@ -344,8 +363,14 @@ int main(int argc, char **argv)
 		/* And resolve un-committed events/media */
 		bc_media_event_clear();
 
+		if (!bg && loops >= 240)
+			break;
+
 		sleep(1);
 	}
+
+	bc_stop_threads();
+	bc_db_close();
 
 	exit(0);
 }
