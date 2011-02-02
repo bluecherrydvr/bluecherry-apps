@@ -95,8 +95,10 @@ static void bc_stop_threads(void)
 	if (bc_list_empty(&bc_rec_list))
 		return;
 
-	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list)
 		bc_rec->thread_should_die = "Shutting down";
+
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
 		pthread_join(bc_rec->thread, (void **)&errmsg);
 		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
 		bc_list_del(&bc_rec->list);
