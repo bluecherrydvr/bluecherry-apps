@@ -1,3 +1,12 @@
+bluecherry (2.0.0-0beta3-2) lucid; urgency=low
+
+  * Bug #662: bluecherry is not dependant on apache2.2-common, bad things
+    happen during installation
+  * Bug #668: Server eats memory quickly
+  * Feature #669: Server: Check memory and leaking with valgrind
+
+ -- Ben Collins <bcollins@bluecherry.net>  Tue, 01 Feb 2011 23:14:59 -0500
+
 bluecherry (2.0.0-0beta3-1) lucid; urgency=low
 
   * Feature #157: MJPEG (live) streaming network cameras
