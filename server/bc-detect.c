@@ -63,7 +63,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 
 	/* Check to see if we've scanned this one before */
 	for (i = 0; i < MAX_CARDS; i++) {
-		if (cards[i].valid && !strcmp(cards[i].name, bcuid))
+		if (cards[i].valid && !strcasecmp(cards[i].name, bcuid))
 			break;
 	}
 

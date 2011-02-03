@@ -196,6 +196,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
+	bc_rec->id = id;
+	strcpy(bc_rec->dev, dev);
+	strcpy(bc_rec->name, name);
+	strcpy(bc_rec->driver, driver);
+
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {
 		bc_dev_err(bc_rec, "Error opening device: %m");
@@ -205,12 +210,8 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
-	bc_rec->id = id;
-	strcpy(bc_rec->dev, dev);
-	strcpy(bc_rec->name, name);
-	strcpy(bc_rec->driver, driver);
 
-	if (!strcmp(driver, "solo6110"))
+	if (!strcasecmp(driver, "solo6110"))
 		bc_rec->codec_id = CODEC_ID_H264;
 	else
 		bc_rec->codec_id = CODEC_ID_MPEG4;

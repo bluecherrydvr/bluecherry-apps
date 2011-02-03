@@ -215,13 +215,13 @@ static void bc_check_db(void)
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
 
-	dbres = bc_db_get_table("SELECT * from Devices");
+	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
+				"AvailableSources USING (device)");
 
 	if (dbres == NULL)
 		return;
 
 	while (!bc_db_fetch_row(dbres)) {
-		BC_DB_RES this_res = NULL;
 		const char *proto = bc_db_get_val(dbres, "protocol");
 		int id = bc_db_get_val_int(dbres, "id");
 
@@ -243,19 +243,13 @@ static void bc_check_db(void)
 			continue;
 
 		/* If this is a V4L2 device, it needs to be detected */
-		if (!strcmp(proto, "V4L2")) {
-			this_res = bc_db_get_table("SELECT * from "
-					"Devices INNER JOIN AvailableSources "
-					"USING (device) WHERE device='%s'",
-					bc_db_get_val(dbres, "device"));
-			if (!this_res || bc_db_fetch_row(this_res)) {
-				bc_db_free_table(this_res);
+		if (!strcasecmp(proto, "V4L2")) { 
+			int card_id = bc_db_get_val_int(dbres, "card_id");
+			if (card_id < 0)
 				continue;
-			}
 		}
 
-		bc_rec = bc_alloc_record(id, this_res ?: dbres);
-		bc_db_free_table(this_res);
+		bc_rec = bc_alloc_record(id, dbres);
 		if (bc_rec == NULL)
 			continue;
 
