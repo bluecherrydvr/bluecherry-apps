@@ -29,7 +29,7 @@ static inline int bc_v4l2_local_bufs(struct bc_handle *bc)
 	int i, c;
 
 	for (i = c = 0; i < bc->buffers; i++) {
-		if (bc->p_buf[i].status != BC_VB_STATUS_LOCAL)
+		if (bc->p_buf[i].status == BC_VB_STATUS_LOCAL)
 			c++;
 	}
 
