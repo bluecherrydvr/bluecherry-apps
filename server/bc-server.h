@@ -20,13 +20,14 @@
 
 struct bc_record {
 	struct bc_handle	*bc;
+
 	AVOutputFormat		*fmt_out;
 	AVStream		*video_st;
 	AVStream		*audio_st;
 	AVFormatContext		*oc;
-	snd_pcm_t		*pcm;
-	time_t			osd_time;
+	enum CodecID		codec_id;
 
+	time_t			osd_time;
 	unsigned int		start_failed;
 
 	/* mp2 encoding accounting */
@@ -44,6 +45,7 @@ struct bc_record {
 	struct bc_list_struct	list;
 
 	/* Audio setup */
+	snd_pcm_t		*pcm;
 	char			aud_dev[256];
 	int			aud_rate;
 	int			aud_channels;

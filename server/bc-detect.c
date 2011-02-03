@@ -31,7 +31,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	char eeprom_path[SYSFS_PATH_MAX];
 	char bcuid[37];
 	char *uid_type;
-	char eeprom[128];
+	char eeprom[128], driver[64];
 	int id, ports;
 	int fd;
 	int i;
@@ -58,7 +58,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 		uid_type = BC_UID_TYPE_PCI;
 	}
 
-	if (sscanf(dir, "solo6x10-%d-%d", &id, &ports) != 2)
+	if (sscanf(dir, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
 		return;
 
 	/* Check to see if we've scanned this one before */
@@ -68,7 +68,8 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	}
 
 	if (i == MAX_CARDS) {
-		bc_log("I: Found %s, id %d, %d ports", bcuid, id, ports);
+		bc_log("I: Found %s[%s] id %d, %d ports", bcuid, driver,
+		       id, ports);
 		for (i = 0; i < MAX_CARDS; i++) {
 			if (cards[i].valid)
 				continue;
@@ -81,8 +82,8 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 	for (i = 0; i < ports; i++) {
 		__bc_db_query("INSERT INTO AvailableSources "
 			    "(device, driver, card_id) "
-			    "VALUES('%s|%s|%d', 'solo6x10', '%d')",
-			    uid_type, bcuid, i, id);
+			    "VALUES('%s|%s|%d', '%s', '%d')",
+			    uid_type, bcuid, i, driver, id);
 	}
 }
 
@@ -127,7 +128,7 @@ static void __bc_check_avail(void)
 			continue;
 
 		dlist_for_each_data(dirlist, dir, char) {
-			if (!strncmp(dir, "solo6x10-", 9)) {
+			if (!strncmp(dir, "solo6", 5)) {
 				check_solo(device, dir);
 				break;
 			}

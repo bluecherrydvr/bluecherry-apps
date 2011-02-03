@@ -424,18 +424,30 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 	st = bc_rec->video_st;
 
-	st->stream_copy = 1;
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
 	snprintf(st->language, sizeof(st->language), "eng");
 
-	st->codec->codec_id = CODEC_ID_MPEG4;
+	st->codec->codec_id = bc_rec->codec_id;
+
+	/* h264 requires us to work around libavcodec broken defaults */
+	if (bc_rec->codec_id == CODEC_ID_H264) {
+		st->codec->crf = 20;
+		st->codec->me_range = 16;
+		st->codec->me_subpel_quality = 7;
+		st->codec->qmin = 10;
+		st->codec->qmax = 51;
+		st->codec->max_qdiff = 4;
+		st->codec->qcompress = 0.6;
+		st->codec->i_quant_factor = 0.71;
+		st->codec->b_frame_strategy = 1;
+	}
+
 	st->codec->codec_type = CODEC_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
-	st->codec->time_base.den = fden;
-	st->codec->time_base.num = fnum;
+	st->codec->time_base = st->time_base;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
