@@ -358,7 +358,7 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	bc->card_id = bc_db_get_val_int(dbres, "card_id");
 
 	bc->cam_caps |= BC_CAM_CAP_V4L2;
-	if (!strcmp(bc->driver, "solo6x10"))
+	if (!strncmp(bc->driver, "solo6", 5))
 		bc->cam_caps |= BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
 
 	while (p[0] != '\0' && p[0] != '|')
