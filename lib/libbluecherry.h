@@ -38,12 +38,6 @@
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
-enum bc_vb_status {
-	BC_VB_STATUS_LOCAL = 0,
-	BC_VB_STATUS_USING,
-	BC_VB_STATUS_QUEUED,
-};
-
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
@@ -68,8 +62,8 @@ struct bc_handle {
 		void			*data;
 		size_t			size;
 		struct v4l2_buffer	vb;
-		enum bc_vb_status	status;
 	}			p_buf[BC_BUFFERS];
+	int			local_bufs;
 
 	/* RTSP related information */
 	struct rtp_session	rtp_sess;

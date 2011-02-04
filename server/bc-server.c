@@ -243,7 +243,7 @@ static void bc_check_db(void)
 			continue;
 
 		/* If this is a V4L2 device, it needs to be detected */
-		if (!strcasecmp(proto, "V4L2")) { 
+		if (!strcasecmp(proto, "V4L2")) {
 			int card_id = bc_db_get_val_int(dbres, "card_id");
 			if (card_id < 0)
 				continue;
