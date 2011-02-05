@@ -199,14 +199,14 @@ int bc_db_get_val_int(BC_DB_RES dbres, const char *colname)
 {
 	const char *val = bc_db_get_val(dbres, colname);
 
-	return val ? atoi(val) : -1;
+	return (val && strlen(val)) ? atoi(val) : -1;
 }
 
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 {
 	const char *val = bc_db_get_val(dbres, colname);
 
-	return val ? (atoi(val) ? 1 : 0) : 0;
+	return (val && strlen(val)) ? (atoi(val) ? 1 : 0) : 0;
 }
 
 /* Should be used with locks held and lockless __bc_db_query() */

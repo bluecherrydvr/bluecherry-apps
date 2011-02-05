@@ -32,6 +32,16 @@
 				<li id="log" class="viewLog"><? echo MMENU_LOG; ?></li>
 			</ul>
 		</div>
+		<div id="sysMessages">
+			<div id="sr"><div id="ajaxMessage" class="OK"><? echo SERVER_RUNNING; ?></div></div>
+			<div id="snr"><div id="ajaxMessage" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
+			<?php
+				if (!$version->up_to_date){
+					echo '<div id="version"><div id="ajaxMessage" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
+				}
+			?>
+			<div class='bClear'></div>
+		</div>
 		<div id="serverStats">
 			<div><?php echo STATS_HEARDER; ?></div><HR>
 			<div class="label"><?php echo STATS_CPU; ?></div>

@@ -13,6 +13,7 @@ OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 all: $(SOLIBVER)
 
 $(SOLIBVER): $(OBJS)
+	echo $(RES)
 	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
 	ln -sf $@ $(SOLIB)
 

@@ -54,7 +54,8 @@ static int process_schedule(struct bc_record *bc_rec)
 	pthread_mutex_lock(&bc_rec->sched_mutex);
 
 	if (bc_rec->reset_vid ||
-	    (bc_media_length(&bc_rec->media) > 3600 && !bc_rec->sched_last)) {
+	    (bc_media_length(&bc_rec->media) > BC_MAX_RECORD_TIME &&
+	    !bc_rec->sched_last)) {
 		bc_close_avcodec(bc_rec);
 		bc_handle_stop(bc);
 		bc_rec->reset_vid = 0;
@@ -124,8 +125,9 @@ static void *bc_device_thread(void *data)
 			bc_close_avcodec(bc_rec);
 			continue;
 		} else if (ret) {
-			bc_dev_err(bc_rec, "Failed to get video frame");
-			/* Try restarting the handle */
+			/* Try restarting the connection. Do not report failure
+			 * here. It will get reported if we fail to reconnect. */
+			bc_close_avcodec(bc_rec);
 			bc_handle_stop(bc);
 			continue;
 		}
@@ -194,6 +196,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	pthread_mutex_init(&bc_rec->sched_mutex, NULL);
 
+	bc_rec->id = id;
+	strcpy(bc_rec->dev, dev);
+	strcpy(bc_rec->name, name);
+	strcpy(bc_rec->driver, driver);
+
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {
 		bc_dev_err(bc_rec, "Error opening device: %m");
@@ -203,10 +210,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
-	bc_rec->id = id;
-	strcpy(bc_rec->dev, dev);
-	strcpy(bc_rec->name, name);
-	strcpy(bc_rec->driver, driver);
+
+	if (!strcasecmp(driver, "solo6110"))
+		bc_rec->codec_id = CODEC_ID_H264;
+	else
+		bc_rec->codec_id = CODEC_ID_MPEG4;
 
 	get_aud_dev(bc_rec);
 

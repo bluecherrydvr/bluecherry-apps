@@ -7,8 +7,9 @@ echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->total_devices}</b></
 if ($devices->ip_cameras){
 	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
 		foreach($devices->ip_cameras as $key => $device){
-			echo "<div id='ipDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a></div>";
-				//var_dump_pre($device);
+			echo "<div id='ipDevice' class='{$device['id']}'><div><div id='{$device['id']}' class='name'>{$device['device_name']}</div></div><div id='status' id='{$device['id']}' class='{$device['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device['status'])." <a href='#' class='change_state' id='{$device['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device['status'])."]</a> | <a href='#' class='deleteIp' id='{$device['id']}'>[".DELETE_CAM."]</a></div>";
+			echo "<hr><div id='scheduling'><a href='#' id='{$device['id']}' class='deviceSchedule'>".DEVICE_EDIT_SCHED."</a></div>";
+			echo "<div id='editing'><a href='#' id='{$device['id']}' class='deviceProps'>".DEVICE_EDIT_DETAILS."</a></div>";
 			echo "</div>";
 		}
 	echo "<div class='bClear'></div></div></div>"; #end ip cameras

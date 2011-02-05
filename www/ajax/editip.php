@@ -1,4 +1,4 @@
-<?php  DEFINE(INDVR, true);
+<?php DEFINE(INDVR, true);
 #lib
 
 include("../lib/lib.php");  #common functions
@@ -9,8 +9,8 @@ $current_user->CheckStatus();
 $current_user->StatusAction('admin');
 #/auth check
 
-$ipCamData = new DVRIPCameras(true);
+$id = (isset($_GET['id'])) ? intval($_GET['id']) : false;
+$ipCamera = new DVRIPCameras($id);
 
-#template
-include_once('../template/ajax/addip.php');
+include_once('../template/ajax/editip.php');
 ?>

@@ -57,9 +57,11 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	if (bc_rec->aud_dev[0] == '\0' || bc_rec->pcm)
 		return 0;
 
-	if ((err = snd_pcm_open(&pcm, bc_rec->aud_dev,
-				SND_PCM_STREAM_CAPTURE,
-				SND_PCM_NONBLOCK)) < 0) {
+	err = snd_pcm_open(&pcm, bc_rec->aud_dev,
+			   SND_PCM_STREAM_CAPTURE,
+			   SND_PCM_NONBLOCK);
+	snd_config_update_free_global(); /* Make valgrind happy */
+	if (err < 0) {
 		bc_dev_err(bc_rec, "Opening audio device failed: %s",
 			   snd_strerror(err));
 		return -1;
@@ -150,6 +152,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 	if (!bc_rec->pcm)
 		return -1;
 
+	memset(g723_data, 0, sizeof(g723_data));
+
 	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
 
 	if (size < 0) {
@@ -196,7 +200,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.stream_index = bc_rec->audio_st->index;
 	pkt.data = mp2_out;
 
-	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
+	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
 		return -1;
 	}
@@ -227,7 +231,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 				       bc_rec->video_st->time_base);
 	pkt.stream_index = bc_rec->video_st->index;
 
-	if (av_interleaved_write_frame(bc_rec->oc, &pkt)) {
+	if (av_write_frame(bc_rec->oc, &pkt)) {
 		errno = EIO;
 		return -1;
 	}
@@ -309,6 +313,10 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
+	if (bc_rec->sched_cur == 'C' && bc_rec->event == BC_EVENT_CAM_NULL)
+		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
+					BC_EVENT_CAM_T_CONTINUOUS, bc_rec->media);
+
 	/* Now start the next one */
 	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
 				       bc_rec->outfile, bc_rec->event);
@@ -325,16 +333,20 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 	int size = bc_buf_size(bc);
 	int ret = -1;
 
-	if (buf == NULL || size <= 0)
-		return -1;
-
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		*fnum = 1;
-		*fden = bc->rtp_sess.framerate;
-	} else if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
 		*fden = bc->vparm.parm.capture.timeperframe.denominator;
 		*fnum = bc->vparm.parm.capture.timeperframe.numerator;
-	} else
+		*width = bc->vfmt.fmt.pix.width;
+		*height = bc->vfmt.fmt.pix.height;
+		return 0;
+	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		*fnum = 1;
+		*fden = bc->rtp_sess.framerate;
+	} else {
+		return -1;
+	}
+
+	if (buf == NULL || size <= 0)
 		return -1;
 
 	/* Decode the first picture to get frame size */
@@ -382,7 +394,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	bc_start_media_entry(bc_rec);
 
-	if (bc_rec->media == BC_MEDIA_FAIL) {
+	if (bc_rec->media == BC_MEDIA_NULL) {
 		errno = ENOMEM;
 		return -1;
 	}
@@ -412,18 +424,30 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 	st = bc_rec->video_st;
 
-	st->stream_copy = 1;
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
 	snprintf(st->language, sizeof(st->language), "eng");
 
-	st->codec->codec_id = CODEC_ID_MPEG4;
+	st->codec->codec_id = bc_rec->codec_id;
+
+	/* h264 requires us to work around libavcodec broken defaults */
+	if (bc_rec->codec_id == CODEC_ID_H264) {
+		st->codec->crf = 20;
+		st->codec->me_range = 16;
+		st->codec->me_subpel_quality = 7;
+		st->codec->qmin = 10;
+		st->codec->qmax = 51;
+		st->codec->max_qdiff = 4;
+		st->codec->qcompress = 0.6;
+		st->codec->i_quant_factor = 0.71;
+		st->codec->b_frame_strategy = 1;
+	}
+
 	st->codec->codec_type = CODEC_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
-	st->codec->time_base.den = fden;
-	st->codec->time_base.num = fnum;
+	st->codec->time_base = st->time_base;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;

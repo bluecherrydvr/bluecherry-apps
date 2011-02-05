@@ -31,21 +31,36 @@ class updateDB extends DVRData{
 			case 'ban': $this->BanUser(); break;
 			case 'kick': $this->KickUser(); break;
 			case 'addip': $this->status = $this->addIp(); break;
+			case 'deleteIp' : $this->deleteIp(); break;
+			case 'editIp': $this->editIp(); break;
 		}
 	}
-	private function changeStateIp(){
+	private function editIp(){
+		$id = intval($_POST['id']);
 		$db = DVRDatabase::getInstance();
-		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id={$_POST['id']}");
-		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(($device['disabled']) ? 0 : 1)." WHERE id={$_POST['id']}");
+		$this->status = $db->DBQuery("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}");
+		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+	}
+	private function changeStateIp(){
+		$id = intval($_POST['id']);
+		$db = DVRDatabase::getInstance();
+		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id={$id}");
+		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(($device[0]['disabled']) ? 0 : 1)." WHERE id={$id}");
+		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+	}
+	private function deleteIp(){
+		$id = intval($_POST['id']);
+		$db = DVRDatabase::getInstance();
+		$this->status = $db->DBQuery("DELETE FROM Devices WHERE id={$id}");
 		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	private function addIp(){
-		if (!$_POST['ipAddr']){ $this->message = AIP_NEEDIP;  return false;};
+		if (!$_POST['ipAddr']){ $this->message = AIP_NEEDIP; return false;};
 		if (!$_POST['port']){ $this->message = AIP_NEEDPORT; return false;};
-		if (!$_POST['mjpeg']){ $this->message = AIP_NEEDMJPEG; return false;};
+		if (!$_POST['rtsp']){ $this->message = AIP_RTSPPATH; return false;};
 		$db = DVRDatabase::getInstance();
 		$model_info = $db->DBFetchAll("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['mjpeg']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480)");
+		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['mjpeg']}')");
 		$this->message = ($t) ? AIP_CAMADDED : false;
 		return ($t) ? true : false;
 	}
@@ -74,16 +89,16 @@ class updateDB extends DVRData{
 	}
 	/* XXX Check for errors here */
 	function update_control(){
-		$bch = bc_handle_get_byid(intval($_POST['id']));
-		if ($bch == false) {
-			$this->status = false;
-			return;
-		}
-		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
-		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
-		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
-		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
+		$id = intval($_POST['id']);
+		$db = DVRDatabase::getInstance();
+		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
+		bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
+		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
+		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
+		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
+		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
+	
 		$this->updateField();
 	}
 	

@@ -30,7 +30,7 @@ static void __handle_motion_start(struct bc_handle *bc)
 	struct bc_record *bc_rec = bc->__data;
 
 	/* If we already have an event in progress, keep it going */
-	if (bc_rec->event != BC_EVENT_CAM_FAIL)
+	if (bc_rec->event != BC_EVENT_CAM_NULL)
 		return;
 
 	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
@@ -44,10 +44,10 @@ static void __handle_motion_end(struct bc_handle *bc)
 	struct bc_record *bc_rec = bc->__data;
 
 	/* Ignore when no event is in progress */
-	if (bc_rec->event == BC_EVENT_CAM_FAIL)
+	if (bc_rec->event == BC_EVENT_CAM_NULL)
 		return;
 
-	bc_event_cam_end(&bc_rec->event);
+	/* Do not stop event here, let that happen in bc-av.c */
 	bc_dev_info(bc_rec, "Motion event stopped");
 }
 
@@ -85,6 +85,27 @@ static void bc_check_globals(void)
 		strcpy(media_storage, "/var/lib/bluecherry/recordings");
 	}
 	bc_db_free_table(dbres);
+}
+
+static void bc_stop_threads(void)
+{
+	struct bc_record *bc_rec, *__t;
+	char *errmsg = NULL;
+
+	if (bc_list_empty(&bc_rec_list))
+		return;
+
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list)
+		bc_rec->thread_should_die = "Shutting down";
+
+	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
+		pthread_join(bc_rec->thread, (void **)&errmsg);
+		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
+		bc_list_del(&bc_rec->list);
+		bc_handle_free(bc_rec->bc);
+		free(bc_rec);
+		cur_threads--;
+	}
 }
 
 /* Check for threads that have quit */
@@ -194,13 +215,13 @@ static void bc_check_db(void)
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
 
-	dbres = bc_db_get_table("SELECT * from Devices");
+	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
+				"AvailableSources USING (device)");
 
 	if (dbres == NULL)
 		return;
 
 	while (!bc_db_fetch_row(dbres)) {
-		BC_DB_RES this_res = NULL;
 		const char *proto = bc_db_get_val(dbres, "protocol");
 		int id = bc_db_get_val_int(dbres, "id");
 
@@ -222,19 +243,13 @@ static void bc_check_db(void)
 			continue;
 
 		/* If this is a V4L2 device, it needs to be detected */
-		if (!strcmp(proto, "V4L2")) {
-			this_res = bc_db_get_table("SELECT * from "
-					"Devices INNER JOIN AvailableSources "
-					"USING (device) WHERE device='%s'",
-					bc_db_get_val(dbres, "device"));
-			if (!this_res || bc_db_fetch_row(this_res)) {
-				bc_db_free_table(this_res);
+		if (!strcasecmp(proto, "V4L2")) {
+			int card_id = bc_db_get_val_int(dbres, "card_id");
+			if (card_id < 0)
 				continue;
-			}
 		}
 
-		bc_rec = bc_alloc_record(id, this_res ?: dbres);
-		bc_db_free_table(this_res);
+		bc_rec = bc_alloc_record(id, dbres);
 		if (bc_rec == NULL)
 			continue;
 
@@ -344,8 +359,14 @@ int main(int argc, char **argv)
 		/* And resolve un-committed events/media */
 		bc_media_event_clear();
 
+		if (!bg && loops >= 240)
+			break;
+
 		sleep(1);
 	}
+
+	bc_stop_threads();
+	bc_db_close();
 
 	exit(0);
 }

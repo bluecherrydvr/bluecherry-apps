@@ -1,6 +1,33 @@
+bluecherry (2.0.0-0beta3-2) lucid; urgency=low
+
+  * Bug #662: bluecherry is not dependant on apache2.2-common, bad things
+    happen during installation
+  * Bug #668: Server eats memory quickly
+  * Feature #669: Server: Check memory and leaking with valgrind
+
+ -- Ben Collins <bcollins@bluecherry.net>  Tue, 01 Feb 2011 23:14:59 -0500
+
 bluecherry (2.0.0-0beta3-1) lucid; urgency=low
 
-  * 
+  * Feature #157: MJPEG (live) streaming network cameras
+  * Feature #319: Add mysql support
+  * Feature #398: Add Axis network camera support
+  * Feature #399: Add Vivotek network camera support
+  * Feature #483: Web: Flash big red warning if the server isn't running
+  * Feature #522: udev priority for solo6x10 cards
+  * Feature #546: Web: Clean up meminfo in stats.php
+  * Feature #575: Change 'Starting record: ...' text to be a bit more specific
+  * Feature #591: Web: Use php5-bluecherry module for database access
+  * Feature #593: Add support for deletion percentage and deletion percentage trigger in the database
+  * Feature #631: Show camera name in logs during camera specific events
+  * Feature #635: Support reading / writing to eeprom to handle multiple cards gracefully
+  * Feature #639: Add Bluecherry favicon.ico to v2 web root on installation
+  * Feature #651: Treat continuous recorded videos as events
+  * Feature #652: Add support for generic RTSP devices
+  * Feature #653: Add support for WowWee Rovio robot cameras
+  * Feature #655: Web: Add HTTP basic auth support for mjpeg.php
+  * Feature #656: Web: Add HTTP basic auth support for devices.php
+  * Feature #657: Web: Create a new XML view for devices.php
 
  -- Ben Collins <bcollins@bluecherry.net>  Thu, 13 Jan 2011 18:14:48 -0500
 

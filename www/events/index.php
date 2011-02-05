@@ -8,7 +8,7 @@ include("../lib/lib.php");  #common functions
 #auth check
 $current_user = new DVRUser();
 $current_user->CheckStatus();
-$current_user->StatusAction('viewer');
+$current_user->StatusAction('mjpeg');
 #/auth check
 
 bc_db_open() or die("Could not open database\n");

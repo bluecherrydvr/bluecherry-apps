@@ -38,12 +38,6 @@
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
-enum bc_vb_status {
-	BC_VB_STATUS_LOCAL = 0,
-	BC_VB_STATUS_USING,
-	BC_VB_STATUS_QUEUED,
-};
-
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
@@ -68,8 +62,8 @@ struct bc_handle {
 		void			*data;
 		size_t			size;
 		struct v4l2_buffer	vb;
-		enum bc_vb_status	status;
 	}			p_buf[BC_BUFFERS];
+	int			local_bufs;
 
 	/* RTSP related information */
 	struct rtp_session	rtp_sess;
@@ -118,6 +112,7 @@ typedef enum {
 	BC_EVENT_CAM_T_NOT_FOUND,
 	BC_EVENT_CAM_T_VLOSS,
 	BC_EVENT_CAM_T_ALOSS,
+	BC_EVENT_CAM_T_CONTINUOUS,
 } bc_event_cam_type_t;
 
 typedef enum {
@@ -130,7 +125,7 @@ typedef enum {
 } bc_event_sys_type_t;
 
 typedef struct bc_event_cam * bc_event_cam_t;
-#define BC_EVENT_CAM_FAIL ((bc_event_cam_t)NULL)
+#define BC_EVENT_CAM_NULL ((bc_event_cam_t)NULL)
 
 typedef enum {
 	BC_MEDIA_VIDEO_H264 = 0,
@@ -155,7 +150,7 @@ typedef enum {
 } bc_media_cont_type_t;
 
 typedef struct bc_media_entry * bc_media_entry_t;
-#define BC_MEDIA_FAIL ((bc_media_entry_t)NULL)
+#define BC_MEDIA_NULL ((bc_media_entry_t)NULL)
 
 /* Doubly linked lists */
 

@@ -10,7 +10,8 @@ Standards-Version: 3.8.4
 Package: bluecherry
 Architecture: any
 Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl
+Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
+ libapache2-mod-php5
 Recommends: solo6010-dkms
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.

@@ -210,18 +210,35 @@ define('AIP_HEADER', 'Add an IP Camera');
 define('AIP_SUBHEADER', '');
 define('AIP_CHOOSE_MANUF', 'Please choose manufacturer');
 define('AIP_CHOOSE_MODEL', 'Please choose model');
+define('AIP_CHOOSE_FPSRES', 'Please choose fps/resolution');
 define('AIP_CH_MAN_FIRST', 'Choose manufacturer first');
-define('AIP_IP_ADDR', 'Camera IP address');
+define('AIP_CH_MOD_FIRST', 'Choose model first');
+define('AIP_IP_ADDR', 'Camera IP or Host');
 define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
 define('AIP_PORT', 'Port');
 define('AIP_USER', 'Username');
 define('AIP_PASS', 'Password');
 define('AIP_MJPATH', 'Path to MJPEG');
+define('AIP_RTSP', 'Path to RTSP');
 define('AIP_ADD', 'Add camera');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
 define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
+define('AIP_RTSPPATH', 'Please enter path to RTSP');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
+
+define('DEVICE_EDIT_DETAILS', 'Properties');
+define('DELETE_CAM', 'Delete');
+define('PROPS_HEADER', 'IP Camera properties');
+define('IPCAM_WIKI_LINK', 'Please visit this <a href="http://improve.bluecherrydvr.com/projects/v2tracker/wiki/Ipcameras">WIKI</a> for information on supported "Generic" cameras, along with RTSP path and MJPEG path');
+define('SERVER_NOT_RUNNING', 'Server process stopped.');
+define('SERVER_RUNNING', 'Server process running');
+define('NOT_UP_TO_DATE', 'New version available.');
+define('NOT_UP_TO_DATE_LONG', 'New version of the server was released. We strongly recommend to update.');
+define('NOT_UP_TO_DATE_LINK', 'For release notes and update instructions, please visit our <a href="http://forums.bluecherrydvr.com/index.php?/forum/27-announcements/">forums</a>.');
+define('WANT_TO_LEARN_MORE', 'Learn more...');
+define('INSTALLED', 'Installed');
+define('CURR', 'Current');
 
 #login
 define('PLEASE_LOGIN', 'You need');

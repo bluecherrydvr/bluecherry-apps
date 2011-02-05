@@ -10,6 +10,11 @@ DVRmainMenu = new Class({
 
 			});
 		});
+		if ($('lmNewVersion')){
+			$('lmNewVersion').addEvent('click', function(){
+				var openPage = new DVRPage('newversion');
+			});
+		}
 	}
 });
 
@@ -214,9 +219,20 @@ DVRPageScript = new Class({
 						ajaxUpdateField(mode, 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
+				$$('.deleteIp').each(function(el){
+					el.addEvent('click', function(){
+						var sureDelete = confirm('Are you sure you want to delete this camera (ID: '+el.get('id')+')?');
+						ajaxUpdateField('deleteIp', 'Devices', {'do' : true }, el.get('id'), 'devices');
+					});
+				});				
 				$$('.videoadj').each(function(el){
 					el.addEvent('click', function(){
 						var page = new DVRPage('videoadj', 'id='+el.get('id'));
+					});
+				});
+				$$('.deviceProps').each(function(el){
+					el.addEvent('click', function(){
+						var page = new DVRPage('editip', 'id='+el.get('id'));
 					});
 				});
 				$$('.RES').each(function(el){
@@ -236,6 +252,29 @@ DVRPageScript = new Class({
 					}
 				});
 			break; //end devices
+			case 'editip':
+				buttonMorph($('saveButton'), '#8bb8');
+				$('settingsForm').set('send', {
+					onRequest: function(){
+						$('saveButton').setStyle('background-image', 'url("/img/loading.gif")');
+					},
+					onComplete: function(text, xml){
+						
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						var iconStyle = (status=="OK") ? 'url("/img/icons/check.png")' : 'url("/img/icons/cross.png")';
+						var showMessage = new DVRMessage(status, msg);
+						$('saveButton').setStyle('background-image', iconStyle);
+					}
+				});
+				$('saveButton').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('settingsForm').send();
+				});
+				$('backToList').addEvent('click', function(){
+					var page = new DVRPage('devices');
+				});
+			break;
 			case 'activeusers':
 				$$(".kick").addEvent('click', function(){
 					ajaxUpdateField('kick', 'ActiveUsers', { 'kick' : '1' }, this.get('id'));
@@ -609,6 +648,17 @@ updateStatData = function(){
 				var memTotal = xml.getElementsByTagName("memory-total")[0].childNodes[0].nodeValue;
 				var memPertg = xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue;
 				var serverUp = xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue;
+				var serverRn = xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue;
+				var sr  = $('sr');
+				var snr = $('snr');
+				if (serverRn != 'up'){
+					sr.setStyle('display', 'none');
+					snr.setStyle('display', 'inline');
+					snr.getChildren().highlight('#faa');
+				} else {
+					snr.setStyle('display', 'none');
+					sr.setStyle('display', 'inline');
+				}
 				$('serverStats').setStyle('display', 'block');
 				updateStatBar('cpu', cpuUsage);
 				updateStatBar('mem', memPertg);

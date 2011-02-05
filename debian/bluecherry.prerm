@@ -8,5 +8,3 @@ set -e
 dbc_go bluecherry $@
 
 #DEBHELPER#
-
-exit 0

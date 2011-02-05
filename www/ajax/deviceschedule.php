@@ -16,7 +16,7 @@ class devSchedule{
 	public $device_data;
 	public function __construct($id){
 		$db = DVRDatabase::getInstance();
-		$q = ($id != 'global') ? "SELECT id, device_name, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
+		$q = ($id != 'global') ? "SELECT id, device_name, protocol, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
 		$tmp =  $db->DBFetchAll($q);
 		#if there is no schedule copy global
 		if ($id != 'global' && empty($tmp[0]['schedule'])){

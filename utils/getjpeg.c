@@ -32,7 +32,17 @@ static void print_error(char *msg, ...)
 
 static void print_image(struct bc_handle *bc)
 {
-	bc_buf_get(bc);
+	void *data;
+	int size;
+
+	if (bc_buf_get(bc))
+		print_error("Failed to get a buffer");
+
+	data = bc_buf_data(bc);
+	size = bc_buf_size(bc);
+
+	if (data == NULL || size <= 0)
+		print_error("Invalid data or size for buffer");
 
 	if (fwrite(bc_buf_data(bc), bc_buf_size(bc), 1, stdout) != 1)
 		print_error("Error writing jpeg: %m");
@@ -42,45 +52,58 @@ extern char *__progname;
 
 static void usage(void)
 {
-        fprintf(stderr, "Usage: %s <args> > outfile\n", __progname);
-	fprintf(stderr, "  -d\tDevice name\n");
-	fprintf(stderr, "  -D\tDriver name\n");
+	fprintf(stderr, "Usage: %s <args> > outfile\n", __progname);
+	fprintf(stderr, "  -d\tDevice id (default 1)\n");
 	exit(1);
 }
 
 int main(int argc, char **argv)
 {
+	BC_DB_RES dbres;
 	struct bc_handle *bc;
-	char dev[256];
-	char driver[256];
+	long devid = 1;
 	int opt;
 
-	dev[0] = driver[0] = '\0';
-	dev[sizeof(dev) - 1] = '\0';
-	driver[sizeof(driver) - 1] = '\0';
-
-	while ((opt = getopt(argc, argv, "d:D:h")) != -1) {
+	while ((opt = getopt(argc, argv, "d:h")) != -1) {
 		switch (opt) {
-		case 'd': strncpy(dev, optarg, sizeof(dev) - 1); break;
-		case 'D': strncpy(driver, optarg, sizeof(driver) - 1); break;
+		case 'd': devid = atol(optarg); break;
 		case 'h': default: usage();
 		}
 	}
 
-	if (dev[0] == '\0' || driver[0] == '\0')
+	if (devid < 0)
 		usage();
 
+	if (bc_db_open())
+		print_error("Failed to open database");
+
+	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
+				"AvailableSources USING (device) WHERE "
+				"Devices.id=%ld AND disabled=0", devid);
+
+	if (dbres == NULL)
+		print_error("Failed to find device in database");
+
+	if (bc_db_fetch_row(dbres))
+		print_error("Failed to get device from database");
+
 	/* Setup the device */
-	if ((bc = bc_handle_get(NULL)) == NULL)
-		print_error("%s: error opening device: %m", dev);
+	if ((bc = bc_handle_get(dbres)) == NULL)
+		print_error("Error opening device: %m");
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		print_error("Not a v4l2 device");
+
+	bc_db_free_table(dbres);
+	bc_db_close();
 
 	/* Setup for MJPEG, leave everything else as default */
 	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
-		print_error("%s: error setting mjpeg: %m", dev);
+		print_error("Error setting mjpeg: %m");
 
 	if (bc_handle_start(bc))
-		print_error("%s: error starting stream: %m", dev);
+		print_error("Error starting stream: %m");
 
 	print_image(bc);
 

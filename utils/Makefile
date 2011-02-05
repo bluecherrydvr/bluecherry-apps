@@ -10,7 +10,7 @@ GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
 all: $(TARGETS)
 
 getaudio: $(GET_AUDIO_OBJS)
-	$(LD) -o $@ $(GET_AUDIO_OBJS) -lavformat -lasound
+	$(LD) -o $@ $(GET_AUDIO_OBJS) $(LDFLAGS) -lasound
 
 $(topdir)/server/g723-dec.o: $(topdir)/server/g723-dec.c $(topdir)/server/g723-dec.h
 	$(MAKE) -C $(topdir)/server g723-dec.o

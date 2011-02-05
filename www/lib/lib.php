@@ -52,6 +52,17 @@ class DVRDatabase {
 	}
 }
 
+class DVRVersion{
+	public $up_to_date;
+	public $current_version;
+	public $installed_version;
+	
+	public function __construct(){
+		$this->current_version = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		$this->installed_version = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
+		$this->up_to_date = ($this->current_version == $this->installed_version) ? true : false;
+	}
+}
 
 #class to load info/perms of the current user
 class DVRUser extends DVRData{
@@ -61,7 +72,7 @@ class DVRUser extends DVRData{
 		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
 	}
 	public function CheckStatus(){
-		if (isset($_SESSION['l'])) {
+		if (!empty($_SESSION['l'])){
 			$kicked = $this->ActiveUsersUpdate();
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;
@@ -84,9 +95,32 @@ class DVRUser extends DVRData{
 				break;
 				case 'mjpeg' :
 					$this->CheckStatus();
-					if ($this->status != 'admin' && $this->status != 'viewer') return false;
+					if ($this->status != 'admin' && $this->status != 'viewer') {
+						if (!isset($_SERVER['PHP_AUTH_USER'])) {
+							    header('WWW-Authenticate: Basic realm="media"');
+    							header('HTTP/1.0 401 Unauthorized');
+								exit;
+						} else {
+							if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
+						}
+						
+					}
 					return true;
 				break;
+				case 'devices':
+					if ($this->status=='admin' || ($_SESSION['from_client']==true && $this->status=='viewer')){
+						return true;
+					} elseif (!isset($_SERVER['PHP_AUTH_USER'])) {
+						    header('WWW-Authenticate: Basic realm="devices"');
+    						header('HTTP/1.0 401 Unauthorized');
+							exit;
+					};
+					if(isset($_GET['short']) && isset($_SERVER['PHP_AUTH_USER'])) {
+						if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
+					} else {
+						$message = JS_RELOAD.USER_NACCESS;
+					}
+				break; 
 			}
 			switch ($this->status){
 				case 'new': $message = USER_RELOGIN; break;
@@ -96,6 +130,14 @@ class DVRUser extends DVRData{
 			if ($message) die("<div class='INFO' id='message'>{$message}</div>");
 	}
 	
+	private function BasicAuthCheck(){
+		$this->data = $this->GetObjectData('Users', 'username', $_SERVER['PHP_AUTH_USER']);
+		
+		return (!$this->ValidatePassword($_SERVER['PHP_AUTH_PW'])) ? false : true;
+	}
+	public function ValidatePassword($entered_password){
+		return (md5($entered_password.$this->data[0]['salt'])===$this->data[0]['password']) ? true : false;
+	}
 	private function ActiveUsersUpdate(){
 		$db = DVRDatabase::getInstance(); 
 		$db->DBQuery("DELETE FROM ActiveUsers WHERE time <".(time()-300));
@@ -107,9 +149,6 @@ class DVRUser extends DVRData{
 			$db->DBQuery("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
 		}
 		return false;
-	}
-	public function ValidatePassword($entered_password){
-		return ($entered_password===md5($this->data['password'])) ? true : false;
 	}
 	private function ScheduleCheck(){
 		return (substr($this->data['schedule'], date('N')*(date('G')+1), 1)=='1')  ? true : false;
@@ -207,6 +246,7 @@ class DVRDevices extends DVRData{
 		// The \063 is a '?'. Used decimal so as not to confuse vim
 		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
 		$devices = array();
+		if (!empty($this->cards))
 		foreach($this->cards as $card_id => $card){
 			$devices = array_merge($devices, $card->devices);
 		};
@@ -215,7 +255,8 @@ class DVRDevices extends DVRData{
 			$xml .= '<device';
 			$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
 			foreach($device as $property => $value){
-				$xml.="<$property>$value</$property>";
+				if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
+					if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
 			};
 			$xml.='</device>';
 		}
@@ -254,6 +295,39 @@ class BCDVRCard{
 	}
 }
 
+class DVRIPCameras{
+	public $data;
+	public $camera;
+	public function __construct($id){
+		if ($id == 'new'){
+			!empty($_GET['m']) or $_GET['m']='';
+			switch($_GET['m']){
+				case 'model': $this->getModels($_GET['manufacturer']); break;
+				case 'ops': $this->getOptions($_GET['model']); break;
+				default: $this->getManufacturers(); break; 
+			};
+		} else { //pull info
+			$db = DVRDatabase::getInstance();
+			$this->camera = $db->DBFetchAll("SELECT * FROM Devices WHERE id=$id");
+			$tmp = explode('|', $this->camera[0]['device']);
+			$this->camera[0]['ipAddr'] = $tmp[0];
+			$this->camera[0]['port'] = $tmp[1];
+			$this->camera[0]['rtsp'] = $tmp[2];
+		};
+	}
+	private function getManufacturers(){
+		$db = DVRDatabase::getInstance();
+		$this->data['manufacturers'] = $db->DBFetchAll("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
+	}
+	private function getModels($m){
+		$db = DVRDatabase::getInstance();
+		$this->data['models'] = $db->DBFetchAll("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
+	}
+	private function getOptions($model){
+		$db = DVRDatabase::getInstance();
+		$this->data = $db->DBFetchAll("SELECT * FROM ipCameras WHERE model='$model'");
+	}
+}
 
 function genRandomString($length = 4) {
     $characters = '0123456789abcdefghijklmnopqrstuvwxyz';
@@ -263,5 +337,7 @@ function genRandomString($length = 4) {
     }
     return $string;
 }
+
+	$version = new DVRVersion();
 
 ?>

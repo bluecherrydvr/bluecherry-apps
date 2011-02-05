@@ -9,8 +9,7 @@ $current_user->CheckStatus();
 $current_user->StatusAction('admin');
 #/auth check
 
-$ipCamData = new DVRIPCameras(true);
+include_once('../template/ajax/newversion.php');
 
-#template
-include_once('../template/ajax/addip.php');
+
 ?>
