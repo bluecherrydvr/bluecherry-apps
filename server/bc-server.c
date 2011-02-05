@@ -151,9 +151,9 @@ static void bc_check_media(void)
 		return;
 
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
-	       media_storage, avail);
+	       media_storage, 100.0 - avail);
 
-	dbres = bc_db_get_table("SELECT * from Media WHERE archive!=0 AND "
+	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
 				"end!=0 ORDER BY start ASC");
 
 	if (dbres == NULL)
@@ -184,7 +184,7 @@ static void bc_check_media(void)
 
 	if (avail < min_avail) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
-		       "any more old media!", avail);
+		       "any more old media!", 100.0 - avail);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 	}
 }
