@@ -4,7 +4,7 @@ include $(topdir)/mk.conf
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
 LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lavcodec -lavformat
 
-TARGETS		= getjpeg bc-checkkey getaudio rtsp-client
+TARGETS		= getjpeg bc-checkkey getaudio rtsp-client pelcocmd
 GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
 
 all: $(TARGETS)
