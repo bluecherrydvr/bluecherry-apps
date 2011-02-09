@@ -226,6 +226,11 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
+
+	/* See if there is data to send */
+	if (!pkt.data || !pkt.size)
+		return 0;
+
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 				       bc_rec->video_st->time_base);
