@@ -16,7 +16,7 @@ OBJS = timeval.o base64.o hostip.o progress.o \
 	rtsp.o warnless.o hmac.o
 
 CFLAGS = -g -O2 -Wall -fPIC #-Werror
-CPPFLAGS = -I. -DHAVE_CONFIG_H -D_GNU_SOURCE
+CPPFLAGS = -I. -D_GNU_SOURCE -DHAVE_CONFIG_H
 CC = gcc
 LD = $(CC)
 
