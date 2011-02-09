@@ -337,6 +337,7 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
 	int ret = -1;
+	unsigned int codec_id;
 
 	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
 		*fden = bc->vparm.parm.capture.timeperframe.denominator;
@@ -354,8 +355,13 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 	if (buf == NULL || size <= 0)
 		return -1;
 
+	if (bc->rtp_sess.is_h264)
+		codec_id = CODEC_ID_H264;
+	else
+		codec_id = CODEC_ID_MPEG4;
+
 	/* Decode the first picture to get frame size */
-	codec = avcodec_find_decoder(CODEC_ID_MPEG4);
+	codec = avcodec_find_decoder(codec_id);
 	if (!codec)
 		return -1;
 
