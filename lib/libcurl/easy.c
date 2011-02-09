@@ -75,13 +75,11 @@
 #include "getinfo.h"
 #include "hostip.h"
 #include "share.h"
-#include "strdup.h"
 #include "curl_memory.h"
 #include "progress.h"
 #include "easyif.h"
 #include "select.h"
 #include "sendf.h" /* for failf function prototype */
-#include "http_ntlm.h"
 #include "connect.h" /* for Curl_getconnectinfo */
 #include "slist.h"
 #include "curl_rand.h"

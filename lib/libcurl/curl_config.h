@@ -16,6 +16,9 @@
 /* to disable cryptographic authentication */
 /* #undef CURL_DISABLE_CRYPTO_AUTH */
 
+/* to disable NTLM */
+#define CURL_DISABLE_NTLM 1
+
 /* to disable DICT */
 #define CURL_DISABLE_DICT 1
 
@@ -441,7 +444,7 @@
 #define HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the memrchr function or macro. */
-/* #undef HAVE_MEMRCHR */
+#define HAVE_MEMRCHR 1
 
 /* Define to 1 if you have the MSG_NOSIGNAL flag. */
 #define HAVE_MSG_NOSIGNAL 1

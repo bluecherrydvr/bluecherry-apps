@@ -46,7 +46,6 @@
 #include "sendf.h"
 #include "formdata.h" /* for the boundary function */
 #include "url.h" /* for the ssl config check function */
-#include "inet_pton.h"
 #include "ssluse.h"
 #include "connect.h"
 #include "strequal.h"
@@ -1128,13 +1127,13 @@ static CURLcode verifyhost(struct connectdata *conn,
 
 #ifdef ENABLE_IPV6
   if(conn->bits.ipv6_ip &&
-     Curl_inet_pton(AF_INET6, conn->host.name, &addr)) {
+     inet_pton(AF_INET6, conn->host.name, &addr)) {
     target = GEN_IPADD;
     addrlen = sizeof(struct in6_addr);
   }
   else
 #endif
-    if(Curl_inet_pton(AF_INET, conn->host.name, &addr)) {
+    if(inet_pton(AF_INET, conn->host.name, &addr)) {
       target = GEN_IPADD;
       addrlen = sizeof(struct in_addr);
     }
@@ -1641,9 +1640,9 @@ ossl_connect_step1(struct connectdata *conn,
   connssl->server_cert = 0x0;
 
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
-  if ((0 == Curl_inet_pton(AF_INET, conn->host.name, &addr)) &&
+  if ((0 == inet_pton(AF_INET, conn->host.name, &addr)) &&
 #ifdef ENABLE_IPV6
-      (0 == Curl_inet_pton(AF_INET6, conn->host.name, &addr)) &&
+      (0 == inet_pton(AF_INET6, conn->host.name, &addr)) &&
 #endif
       sni &&
       !SSL_set_tlsext_host_name(connssl->handle, conn->host.name))

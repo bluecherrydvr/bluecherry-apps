@@ -60,7 +60,6 @@
 #include "share.h"
 #include "strerror.h"
 #include "url.h"
-#include "inet_pton.h"
 
 #define _MPRINTF_REPLACE /* use our functions only */
 #include <curl/mprintf.h>
@@ -143,7 +142,7 @@ Curl_addrinfo *Curl_ipv4_resolve_r(const char *hostname,
   struct in_addr in;
   struct hostent *buf = NULL;
 
-  if(Curl_inet_pton(AF_INET, hostname, &in) > 0)
+  if(inet_pton(AF_INET, hostname, &in) > 0)
     /* This is a dotted IP address 123.123.123.123-style */
     return Curl_ip2addr(AF_INET, &in, hostname, port);
 

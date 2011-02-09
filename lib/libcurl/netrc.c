@@ -40,7 +40,6 @@
 #include "netrc.h"
 
 #include "strequal.h"
-#include "strtok.h"
 #include "curl_memory.h"
 #include "rawstr.h"
 

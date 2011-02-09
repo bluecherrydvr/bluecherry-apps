@@ -95,7 +95,6 @@
 #include "getinfo.h"
 #include "sslgen.h"
 #include "http_digest.h"
-#include "http_ntlm.h"
 #include "http_negotiate.h"
 #include "share.h"
 #include "curl_memory.h"

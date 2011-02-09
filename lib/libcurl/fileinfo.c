@@ -23,7 +23,6 @@
 #include "setup.h"
 
 #include <stdlib.h>
-#include "strdup.h"
 #include "fileinfo.h"
 
 #define _MPRINTF_REPLACE /* use our functions only */

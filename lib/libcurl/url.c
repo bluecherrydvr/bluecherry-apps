@@ -109,7 +109,6 @@ void idn_free (void *ptr); /* prototype from idn-free.h, not provided by
 #include "strequal.h"
 #include "strerror.h"
 #include "escape.h"
-#include "strtok.h"
 #include "share.h"
 #include "content_encoding.h"
 #include "http_digest.h"
@@ -122,12 +121,9 @@ void idn_free (void *ptr); /* prototype from idn-free.h, not provided by
 #include "warnless.h"
 
 /* And now for the protocols */
-#include "dict.h"
 #include "http.h"
 #include "url.h"
 #include "connect.h"
-#include "inet_ntop.h"
-#include "http_ntlm.h"
 #include "rtsp.h"
 
 #define _MPRINTF_REPLACE /* use our functions only */
@@ -2596,7 +2592,7 @@ CURLcode Curl_disconnect(struct connectdata *conn, bool dead_connection)
 #endif
 
   Curl_hostcache_prune(data); /* kill old DNS cache entries */
-
+#ifdef USE_NTLM
   {
     int has_host_ntlm = (conn->ntlm.state != NTLMSTATE_NONE);
     int has_proxy_ntlm = (conn->proxyntlm.state != NTLMSTATE_NONE);
@@ -2623,7 +2619,7 @@ CURLcode Curl_disconnect(struct connectdata *conn, bool dead_connection)
       Curl_ntlm_cleanup(conn);
     }
   }
-
+#endif
   /* Cleanup possible redirect junk */
   if(data->req.newurl) {
     free(data->req.newurl);

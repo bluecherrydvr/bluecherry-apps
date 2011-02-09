@@ -59,7 +59,6 @@
 #include "share.h"
 #include "strerror.h"
 #include "url.h"
-#include "inet_pton.h"
 #include "connect.h"
 
 #define _MPRINTF_REPLACE /* use our functions only */
@@ -207,8 +206,8 @@ Curl_addrinfo *Curl_getaddrinfo(struct connectdata *conn,
   hints.ai_family = pf;
   hints.ai_socktype = conn->socktype;
 
-  if((1 == Curl_inet_pton(AF_INET, hostname, addrbuf)) ||
-     (1 == Curl_inet_pton(AF_INET6, hostname, addrbuf))) {
+  if((1 == inet_pton(AF_INET, hostname, addrbuf)) ||
+     (1 == inet_pton(AF_INET6, hostname, addrbuf))) {
     /* the given address is numerical only, prevent a reverse lookup */
     hints.ai_flags = AI_NUMERICHOST;
   }

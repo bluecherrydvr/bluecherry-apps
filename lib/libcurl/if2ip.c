@@ -56,7 +56,6 @@
 #  include <inet.h>
 #endif
 
-#include "inet_ntop.h"
 #include "strequal.h"
 #include "if2ip.h"
 
@@ -97,7 +96,7 @@ char *Curl_if2ip(int af, const char *interface, char *buf, int buf_size)
         else
 #endif
           addr = &((struct sockaddr_in *)iface->ifa_addr)->sin_addr;
-        ip = (char *) Curl_inet_ntop(af, addr, buf, buf_size);
+        ip = (char *) inet_ntop(af, addr, buf, buf_size);
         strlcat(buf, scope, buf_size);
         break;
       }
@@ -140,7 +139,7 @@ char *Curl_if2ip(int af, const char *interface, char *buf, int buf_size)
 
   s = (struct sockaddr_in *)&req.ifr_addr;
   memcpy(&in, &s->sin_addr, sizeof(in));
-  ip = (char *) Curl_inet_ntop(s->sin_family, &in, buf, buf_size);
+  ip = (char *) inet_ntop(s->sin_family, &in, buf, buf_size);
 
   sclose(dummy);
   return ip;

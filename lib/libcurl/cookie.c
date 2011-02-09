@@ -83,20 +83,18 @@ Example set of cookies:
 
 #include <stdlib.h>
 #include <string.h>
-
+#include <string.h>
 #define _MPRINTF_REPLACE /* without this on windows OS we get undefined reference to snprintf */
 #include <curl/mprintf.h>
 
 #include "urldata.h"
 #include "cookie.h"
 #include "strequal.h"
-#include "strtok.h"
 #include "sendf.h"
 #include "curl_memory.h"
 #include "share.h"
 #include "strtoofft.h"
 #include "rawstr.h"
-#include "curl_memrchr.h"
 
 /* The last #include file should be: */
 #include "memdebug.h"

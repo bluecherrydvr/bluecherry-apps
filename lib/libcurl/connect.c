@@ -84,9 +84,6 @@
 #include "select.h"
 #include "url.h" /* for Curl_safefree() */
 #include "multiif.h"
-#include "sockaddr.h" /* required for Curl_sockaddr_storage */
-#include "inet_ntop.h"
-#include "inet_pton.h"
 #include "sslgen.h" /* for Curl_ssl_check_cxn() */
 #include "progress.h"
 
@@ -105,7 +102,7 @@ struct Curl_sockaddr_ex {
   unsigned int addrlen;
   union {
     struct sockaddr addr;
-    struct Curl_sockaddr_storage buff;
+    struct sockaddr_storage buff;
   } _sa_ex_u;
 };
 #define sa_addr _sa_ex_u.addr
@@ -240,7 +237,7 @@ static CURLcode bindlocal(struct connectdata *conn,
 {
   struct SessionHandle *data = conn->data;
 
-  struct Curl_sockaddr_storage sa;
+  struct sockaddr_storage sa;
   struct sockaddr *sock = (struct sockaddr *)&sa;  /* bind to this address */
   curl_socklen_t sizeof_sa = 0; /* size of the data sock points to */
   struct sockaddr_in *si4 = (struct sockaddr_in *)&sa;
@@ -265,7 +262,7 @@ static CURLcode bindlocal(struct connectdata *conn,
     /* no local kind of binding was requested */
     return CURLE_OK;
 
-  memset(&sa, 0, sizeof(struct Curl_sockaddr_storage));
+  memset(&sa, 0, sizeof(struct sockaddr_storage));
 
   if(dev && (strlen(dev)<255) ) {
 
@@ -346,7 +343,7 @@ static CURLcode bindlocal(struct connectdata *conn,
 #ifdef ENABLE_IPV6
       /* ipv6 address */
       if((af == AF_INET6) &&
-         (Curl_inet_pton(AF_INET6, myhost, &si6->sin6_addr) > 0)) {
+         (inet_pton(AF_INET6, myhost, &si6->sin6_addr) > 0)) {
         si6->sin6_family = AF_INET6;
         si6->sin6_port = htons(port);
         sizeof_sa = sizeof(struct sockaddr_in6);
@@ -355,7 +352,7 @@ static CURLcode bindlocal(struct connectdata *conn,
 #endif
       /* ipv4 address */
       if((af == AF_INET) &&
-         (Curl_inet_pton(AF_INET, myhost, &si4->sin_addr) > 0)) {
+         (inet_pton(AF_INET, myhost, &si4->sin_addr) > 0)) {
         si4->sin_family = AF_INET;
         si4->sin_port = htons(port);
         sizeof_sa = sizeof(struct sockaddr_in);
@@ -387,9 +384,9 @@ static CURLcode bindlocal(struct connectdata *conn,
   for(;;) {
     if( bind(sockfd, sock, sizeof_sa) >= 0) {
     /* we succeeded to bind */
-      struct Curl_sockaddr_storage add;
+      struct sockaddr_storage add;
       curl_socklen_t size = sizeof(add);
-      memset(&add, 0, sizeof(struct Curl_sockaddr_storage));
+      memset(&add, 0, sizeof(struct sockaddr_storage));
       if(getsockname(sockfd, (struct sockaddr *) &add, &size) < 0) {
         data->state.os_errno = error = SOCKERRNO;
         failf(data, "getsockname() failed with errno %d: %s",
@@ -558,7 +555,7 @@ static bool getaddressinfo(struct sockaddr* sa, char* addr,
   switch (sa->sa_family) {
     case AF_INET:
       si = (struct sockaddr_in*) sa;
-      if(Curl_inet_ntop(sa->sa_family, &si->sin_addr,
+      if(inet_ntop(sa->sa_family, &si->sin_addr,
                         addr, MAX_IPADR_LEN)) {
         us_port = ntohs(si->sin_port);
         *port = us_port;
@@ -568,7 +565,7 @@ static bool getaddressinfo(struct sockaddr* sa, char* addr,
 #ifdef ENABLE_IPV6
     case AF_INET6:
       si6 = (struct sockaddr_in6*)sa;
-      if(Curl_inet_ntop(sa->sa_family, &si6->sin6_addr,
+      if(inet_ntop(sa->sa_family, &si6->sin6_addr,
                         addr, MAX_IPADR_LEN)) {
         us_port = ntohs(si6->sin6_port);
         *port = us_port;
@@ -599,13 +596,13 @@ void Curl_updateconninfo(struct connectdata *conn, curl_socket_t sockfd)
 {
   int error;
   curl_socklen_t len;
-  struct Curl_sockaddr_storage ssrem;
-  struct Curl_sockaddr_storage ssloc;
+  struct sockaddr_storage ssrem;
+  struct sockaddr_storage ssloc;
   struct SessionHandle *data = conn->data;
 
   if(!conn->bits.reuse) {
 
-    len = sizeof(struct Curl_sockaddr_storage);
+    len = sizeof(struct sockaddr_storage);
     if(getpeername(sockfd, (struct sockaddr*) &ssrem, &len)) {
       error = SOCKERRNO;
       failf(data, "getpeername() failed with errno %d: %s",
@@ -613,7 +610,7 @@ void Curl_updateconninfo(struct connectdata *conn, curl_socket_t sockfd)
       return;
     }
 
-    len = sizeof(struct Curl_sockaddr_storage);
+    len = sizeof(struct sockaddr_storage);
     if(getsockname(sockfd, (struct sockaddr*) &ssloc, &len)) {
       error = SOCKERRNO;
       failf(data, "getsockname() failed with errno %d: %s",
@@ -847,8 +844,8 @@ singleipconnect(struct connectdata *conn,
   addr.protocol = ai->ai_protocol;
   addr.addrlen = ai->ai_addrlen;
 
-  if(addr.addrlen > sizeof(struct Curl_sockaddr_storage))
-     addr.addrlen = sizeof(struct Curl_sockaddr_storage);
+  if(addr.addrlen > sizeof(struct sockaddr_storage))
+     addr.addrlen = sizeof(struct sockaddr_storage);
   memcpy(&addr.sa_addr, ai->ai_addr, addr.addrlen);
 
   *connected = FALSE; /* default is not connected */

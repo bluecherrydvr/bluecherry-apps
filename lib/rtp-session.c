@@ -22,11 +22,11 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
-size_t Curl_base64_encode(void *data, const char *inputbuff,
-			  size_t insize, char **outptr);
-
 /* cURL is not thread safe */
 static pthread_mutex_t curl_lock = PTHREAD_MUTEX_INITIALIZER;
+
+size_t Curl_base64_encode(void *data, const char *inputbuff,
+			  size_t insize, char **outptr);
 
 void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 		     const char *uri, const char *server,

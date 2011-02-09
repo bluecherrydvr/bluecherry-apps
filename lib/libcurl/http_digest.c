@@ -35,7 +35,6 @@
 #include "curl_base64.h"
 #include "curl_md5.h"
 #include "http_digest.h"
-#include "strtok.h"
 #include "url.h" /* for Curl_safefree() */
 #include "curl_memory.h"
 #include "easyif.h" /* included for Curl_convert_... prototypes */

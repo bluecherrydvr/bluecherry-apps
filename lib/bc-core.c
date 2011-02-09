@@ -246,8 +246,20 @@ int bc_buf_get(struct bc_handle *bc)
 	struct v4l2_buffer vb;
 	int ret;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		return rtp_session_read(&bc->rtp_sess);
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		struct rtp_session *rs = &bc->rtp_sess;
+		int ret = 0;
+
+		/* Reset for next packet */
+		rs->vid_valid = rs->aud_valid = rs->vid_len = rs->aud_len = 0;
+
+		/* Loop till we get a whole packet */
+		do {
+			ret = rtp_session_read(rs);
+		} while (!ret && !rs->vid_valid && !rs->aud_valid);
+
+		return ret;
+	}
 
 	bc_buf_return(bc);
 
