@@ -213,8 +213,10 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	if (!strcasecmp(driver, "solo6110"))
 		bc_rec->codec_id = CODEC_ID_H264;
-	else
+	else if (!strcasecmp(driver, "solo6010"))
 		bc_rec->codec_id = CODEC_ID_MPEG4;
+	else
+		bc_rec->codec_id = CODEC_ID_NONE;
 
 	get_aud_dev(bc_rec);
 

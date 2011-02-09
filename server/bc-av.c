@@ -433,7 +433,17 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->time_base.num = fnum;
 	snprintf(st->language, sizeof(st->language), "eng");
 
-	st->codec->codec_id = bc_rec->codec_id;
+	if (bc_rec->codec_id == CODEC_ID_NONE) {
+		if (bc->rtp_sess.is_h264)
+			st->codec->codec_id = CODEC_ID_H264;
+		else if (bc->rtp_sess.is_mpeg4)
+			st->codec->codec_id = CODEC_ID_MPEG4;
+		else {
+			bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
+			st->codec->codec_id = CODEC_ID_MPEG4;
+		}
+	} else
+		st->codec->codec_id = bc_rec->codec_id;
 
 	/* h264 requires us to work around libavcodec broken defaults */
 	if (bc_rec->codec_id == CODEC_ID_H264) {
