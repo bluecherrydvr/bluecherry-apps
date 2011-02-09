@@ -251,7 +251,10 @@ int bc_buf_get(struct bc_handle *bc)
 		int ret = 0;
 
 		/* Reset for next packet */
-		rs->vid_valid = rs->aud_valid = rs->vid_len = rs->aud_len = 0;
+		if (rs->vid_valid)
+			rs->vid_valid = rs->vid_len = 0;
+		if (rs->aud_valid)
+			rs->aud_valid = rs->aud_len = 0;
 
 		/* Loop till we get a whole packet */
 		do {
