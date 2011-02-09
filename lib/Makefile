@@ -1,16 +1,20 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm
-CPPFLAGS	+= -I/usr/include/apache2 $(shell apr-1-config --includes)
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lidn -lssl -lcrypto -lrt -lz
+CPPFLAGS	+= -Ilibcurl
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o rtp-request.o rtp-session.o
+		  bc-key.o bc-media.o rtp-session.o \
+		  libcurl/libcurl.a
 
 all: $(SOLIBVER)
+
+libcurl/libcurl.a: FORCE
+	$(MAKE) -C libcurl libcurl.a
 
 $(SOLIBVER): $(OBJS)
 	echo $(RES)
@@ -22,3 +26,6 @@ install: all
 
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
+	$(MAKE) -C libcurl clean
+
+FORCE:

@@ -86,8 +86,8 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	struct v4l2_buffer *vb;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		return mpeg4_is_key_frame(bc->rtp_sess.frame_buf,
-					  bc->rtp_sess.frame_len);
+		return mpeg4_is_key_frame(bc->rtp_sess.vid_buf,
+					  bc->rtp_sess.vid_len);
 
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 1;
@@ -406,7 +406,6 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 /* Internal rtp session init that uses a database result */
 static int rtp_session_init_dbres(struct rtp_session *rs,
-				  rtp_media_type_t media,
 				  void *dbres)
 {
 	const char *val;
@@ -456,9 +455,6 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 	rs->port = atoi(p);
 	strcpy(rs->uri, t);
 
-	rs->net_fd = -1;
-	rs->media = RTP_MEDIA_VIDEO;
-
 	return 0;
 }
 
@@ -467,7 +463,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *val;
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
-	if (rtp_session_init_dbres(&bc->rtp_sess, RTP_MEDIA_VIDEO, dbres)) {
+	if (rtp_session_init_dbres(&bc->rtp_sess, dbres)) {
 		errno = ENOMEM;
 		return -1;
 	}

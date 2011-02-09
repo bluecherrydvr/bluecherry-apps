@@ -5,24 +5,15 @@
  */
 
 #include <stdio.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
 
-#include <httpd.h>
+#include <pthread.h>
+#include <curl/curl.h>
 
 #include "rtp-session.h"
-#include "rtp-request.h"
 
 typedef enum {
 	MAIN = 1,
@@ -31,9 +22,15 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
-int rtp_session_init(struct rtp_session *rs, const char *userinfo,
+size_t Curl_base64_encode(void *data, const char *inputbuff,
+			  size_t insize, char **outptr);
+
+/* cURL is not thread safe */
+static pthread_mutex_t curl_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 		     const char *uri, const char *server,
-		     unsigned int port, rtp_media_type_t media)
+		     unsigned int port)
 {
 	memset(rs, 0, sizeof(*rs));
  
@@ -41,55 +38,35 @@ int rtp_session_init(struct rtp_session *rs, const char *userinfo,
 	strcpy(rs->server, server);
 	strcpy(rs->uri, uri);
 	rs->port = port;
-	rs->media = media;
+}
 
-	rs->net_fd = -1;
-
-	return 0;
+static size_t null_write(void *ptr, size_t size, size_t nmemb,
+			 void *userdata)
+{
+	return size * nmemb;
 }
 
 void rtp_session_stop(struct rtp_session *rs)
 {
-	if (rs->net_fd < 0)
-		return;
-
-	close(rs->net_fd);
-	rs->net_fd = -1;
-}
-
-static int network_client(const char *server, unsigned int port)
-{
-	struct sockaddr_in in_server;
-	int fd;
-
-	memset(&in_server, 0, sizeof in_server);
-	in_server.sin_family = AF_INET;
-	in_server.sin_addr.s_addr = inet_addr(server);
-
-	if (in_server.sin_addr.s_addr == INADDR_NONE) {
-		struct hostent *hp;
-
-		hp = gethostbyname(server);
-		if (hp != NULL) {
-			memcpy(&in_server.sin_addr, hp->h_addr, hp->h_length);
-			in_server.sin_family = hp->h_addrtype;
-		} else {
-			return -1;
-		}
+	pthread_mutex_lock(&curl_lock);
+	if (rs->curl) {
+		curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION,
+				 null_write);
+		curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION,
+				 null_write);
+		curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION,
+				 null_write);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
+				 CURL_RTSPREQ_TEARDOWN);
+		curl_easy_perform(rs->curl);
+		curl_easy_cleanup(rs->curl);
+		rs->curl = NULL;
 	}
-
-	in_server.sin_port = htons(port);
-	fd = socket(AF_INET, SOCK_STREAM, 0);
-
-	if (fd < 0)
-		return -1;
-
-	if (connect(fd, (struct sockaddr *) &in_server, sizeof in_server) < 0) {
-		close(fd);
-		return -1;
+	if (rs->slist) {
+		curl_slist_free_all(rs->slist);
+		rs->slist = NULL;
 	}
-
-	return fd;
+	pthread_mutex_unlock(&curl_lock);
 }
 
 static void rtp_get_fmtp_param(char *res, const char *fmtp, const char *param)
@@ -138,7 +115,7 @@ static void adts_set_profile(unsigned char *header, unsigned int config)
 		break;
 
 	default:
-		fprintf(stderr, "Object Type %d not supported\n", obj_type);
+		/* XXX Not supported!! */
 		profile = 0x00;
 		break;
 	}
@@ -214,25 +191,72 @@ static void sdp_get_attr(char *res, const char *sdp, const char *type,
 	res[end_pos - begin_pos] = '\0';
 }
 
-static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
+static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
+			   void *userdata)
+{
+	struct rtp_session *rs = userdata;
+	char *header = (char *)ptr;
+	int len = size * nmemb;
+	int *id;
+	char *p;
+
+	header[len] = '\0';
+	if (strncasecmp(header, "Transport: ", 11))
+		return len;
+
+	if (rs->setup_vid)
+		id = &rs->tid_v;
+	else
+		id = &rs->tid_a;
+
+	if ((p = strstr(header, "interleaved=")) == NULL ||
+	    sscanf(p, "interleaved=%d-", id) != 1)
+		*id = -1;
+
+	return len;
+}
+
+static void handle_vid(struct rtp_session *rs, unsigned char *data,
+		       int len)
 {
 	int skip = 12;
 
-	if (rs->frame_valid)
-		rs->frame_valid = rs->frame_len = 0;
+	if (rs->vid_valid)
+		rs->vid_valid = rs->vid_len = 0;
 
 	/* CSRCs */
 	skip += 4 * (data[0] & 0x0f);
 
-	/* Extension */
-	if (data[0] & 0x10)
-		skip += *(unsigned short *)&data[skip + 2];
-
-	if (skip >= len)
+	if (skip >= len) {
+		rs->vid_valid = rs->vid_len = 0;
 		return;
+	}
 
-	if (rs->is_mpeg_4aac) {
-		unsigned char *adts = rs->adts_header;
+	memcpy(rs->vid_buf + rs->vid_len, data + skip, len - skip);
+	rs->vid_len += len - skip;
+
+	if (data[1] & 0x80)
+		rs->vid_valid = 1;
+}
+
+static void handle_aud(struct rtp_session *rs, unsigned char *data,
+		       int len)
+{
+	int skip = 12;
+
+	if (rs->aud_valid)
+		rs->aud_valid = rs->aud_len = 0;
+
+	/* CSRCs */
+	skip += 4 * (data[0] & 0x0f);
+
+	if (skip >= len) {
+		rs->aud_valid = rs->aud_len = 0;
+		return;
+	}
+
+	if (rs->is_aac) {
+ 		unsigned char *adts = rs->adts_header;
 		unsigned int frame_len;
 
 		/* Au header is 4 bytes */
@@ -245,154 +269,274 @@ static void rtp_putdata(struct rtp_session *rs, const char *data, int len)
 		adts[5] &= ~0xe0;
 		adts[5] |= ((frame_len & 0x7) << 5);
 
-		
-		memcpy(rs->frame_buf + rs->frame_len, adts, ADTS_HEADER_LENGTH);
-		rs->frame_len += ADTS_HEADER_LENGTH;
+		memcpy(rs->aud_buf + rs->aud_len, adts, ADTS_HEADER_LENGTH);
+		rs->aud_len += ADTS_HEADER_LENGTH;
 	}
 
-	memcpy(rs->frame_buf + rs->frame_len, data + skip, len - skip);
-	rs->frame_len += len - skip;
+	memcpy(rs->aud_buf + rs->aud_len, data + skip, len - skip);
+	rs->aud_len += len - skip;
 
 	if (data[1] & 0x80)
-		rs->frame_valid = 1;
+		rs->aud_valid = 1;
 }
 
-static int rtp_session_setup(struct rtp_session *rs)
+static size_t handle_rtp(void *ptr, size_t size, size_t nmemb,
+			 void *userdata)
 {
-	struct rtp_response desc_resp;
-	struct rtp_response setup_resp;
-	char setup_uri[256];
-	char buf[128];
-	char *p;
-	const char *media_type;
+	struct rtp_session *rs = userdata;
+	size_t ret_len = size * nmemb;
+	unsigned char *data = ptr;
+	int tid, len;
 
-	rs->net_fd = network_client(rs->server, rs->port);
-        if (rs->net_fd < 0)
-		return -1;
+	tid = data[1];
+	len = ((int)data[2] << 8) | (int)data[3];
 
-	rs->sess_id[0] = '\0';
-	rs->tunnel_id = rs->seq_num = rs->is_mpeg_4aac = rs->frame_len =
-		rs->frame_valid = rs->framerate = 0;
+	if (rs->tid_v == tid)
+		handle_vid(rs, data + 4, len);
+	else if (rs->tid_a == tid)
+		handle_aud(rs, data + 4, len);
 
-	if (rs->media == RTP_MEDIA_VIDEO)
-		media_type = "m=video ";
-	else
-		media_type = "m=audio ";
+	return ret_len;
+}
 
-	/* Get the SDP, and check the type */
-	if (rtp_request_describe(rs, &desc_resp) || desc_resp.status != HTTP_OK)
-		return -1;
+static int check_curl(void)
+{
+	static int initialized;
+	int ret = 0;
 
-	if (!sdp_check_type(desc_resp.content, media_type))
-		return -1;
+	pthread_mutex_lock(&curl_lock);
+	if (!initialized) {
+		if (curl_global_init(CURL_GLOBAL_ALL) == CURLE_OK)
+			initialized = 1;
+		else
+			ret = -1;
+	}
+	pthread_mutex_unlock(&curl_lock);
 
-	/* Get the setup URI if needed */
-	strcpy(setup_uri, rs->uri);
-	sdp_get_attr(buf, desc_resp.content, media_type, "control");
-	if (strlen(buf) != 0) {
-		strcat(setup_uri, "/");
-		strcat(setup_uri, buf);
+	return ret;
+}
+
+static void rtp_add_auth(struct rtp_session *rs)
+{
+	char coded[200];
+	char *encoding = NULL;
+
+	if (!strlen(rs->userinfo))
+		return;
+
+	memset(coded, 0, sizeof(coded));
+	strcpy(coded, "Authorization: Basic ");
+
+	Curl_base64_encode(NULL, rs->userinfo, strlen(rs->userinfo),
+			   &encoding);
+	if (encoding != NULL) {
+		if (strlen(coded) + strlen(encoding) < sizeof(coded) - 1)
+			strcat(coded, encoding);
+		curl_free(encoding);
 	}
 
-	sdp_get_attr(buf, desc_resp.content, media_type, "framerate");
+	rs->slist = curl_slist_append(rs->slist, coded);
+	curl_easy_setopt(rs->curl, CURLOPT_HTTPHEADER, rs->slist);
+}
+
+static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
+			 void *userdata);
+
+int rtp_session_start(struct rtp_session *rs)
+{
+	char uri[1024];
+	int ret = -1;
+	long http_code;
+
+	if (check_curl())
+		return -1;
+
+	rs->tid_v = rs->tid_a = -1;
+	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
+	rs->is_mpeg4 = rs->is_h264 = rs->is_aac = rs->is_mp3;
+
+	rs->vid_uri[0] = '\0';
+	rs->aud_uri[0] = '\0';
+
+	pthread_mutex_lock(&curl_lock);
+
+	rs->curl = curl_easy_init();
+	if (rs->curl == NULL)
+		goto setup_fail;
+
+	/* Build our base URI */
+	sprintf(uri, "rtsp://%s:%d%s", rs->server, rs->port, rs->uri);
+
+	/* Setup the base cURL session */
+	curl_easy_setopt(rs->curl, CURLOPT_PRIVATE, (void *)rs);
+	curl_easy_setopt(rs->curl, CURLOPT_URL, uri);
+	/* cURL doesn't support RTSP auth yet */
+        rtp_add_auth(rs);
+	/* Defaults for data handlers do nothing */
+	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEDATA, rs);
+	curl_easy_setopt(rs->curl, CURLOPT_WRITEDATA, rs);
+	curl_easy_setopt(rs->curl, CURLOPT_HEADERDATA, rs);
+	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, null_write);
+	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
+	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, null_write);
+	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 3);
+	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 0);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT,
+			 "RTP/AVP/TCP;unicast");
+
+	/* First, get the SDP and parse it */
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, uri);
+	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, handle_sdp);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
+			 CURL_RTSPREQ_DESCRIBE);
+	if (curl_easy_perform(rs->curl))
+		goto setup_fail;
+	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+	if (http_code != 200 || rs->vid_uri[0] == '\0')
+		goto setup_fail;
+
+	/* No longer needed */
+	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
+
+	/* Now setup the audio/video streams and PLAY them */
+	rs->setup_vid = 1;
+	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->vid_uri);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
+	if (curl_easy_perform(rs->curl))
+		goto setup_fail;
+	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+	if (http_code != 200 || rs->tid_v < 0)
+		goto setup_fail;
+
+	if (rs->aud_uri[0]) {
+		rs->setup_vid = 0;
+		curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->aud_uri);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
+		if (curl_easy_perform(rs->curl))
+			goto setup_fail;
+		curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+		if (http_code != 200 || rs->tid_a < 0)
+			goto setup_fail;
+	}
+
+	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, null_write);
+
+	/* Kick 'er in da head */
+	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, handle_rtp);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->uri);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_PLAY);
+	if (curl_easy_perform(rs->curl))
+		goto setup_fail;
+	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+	if (http_code != 200)
+		goto setup_fail;
+
+	/* All is well on the northern front */
+	ret = 0;
+
+setup_fail:
+	pthread_mutex_unlock(&curl_lock);
+	if (ret)
+		rtp_session_stop(rs);
+
+	return ret;
+}
+
+static void get_uri(char *uri, char *sdp, const char *type,
+		    struct rtp_session *rs)
+{
+	char buf[1024];
+
+	/* Get the setup URI if needed */
+	sdp_get_attr(buf, sdp, type, "control");
+	if (strlen(buf) == 0)
+		return;
+
+	if (buf[0] == '/') {
+		/* Absolute path */
+		sprintf(uri, "rtsp://%s:%d%s", rs->server,
+			rs->port, buf);
+	} else if (!strncasecmp(buf, "rtsp://", 7)) {
+		/* Full URI */
+		strcpy(uri, buf);
+	} else {
+		/* Relative path */
+		sprintf(uri, "%s%s", rs->uri, buf);
+	}
+}
+
+static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
+			 void *userdata)
+{
+	struct rtp_session *rs = userdata;
+	size_t ret = size * nmemb;
+	const char *media_type;
+	char buf[1024];
+
+	((char *)ptr)[size * nmemb] = '\0';
+
+	media_type = "m=video ";
+	if (!sdp_check_type(ptr, media_type))
+		return ret;
+
+	get_uri(rs->vid_uri, ptr, media_type, rs);
+	if (rs->vid_uri[0] == '\0')
+		return ret;
+
+	sdp_get_attr(buf, ptr, media_type, "framerate");
 	if (strlen(buf) != 0)
 		rs->framerate = atoi(buf);
 	else
 		rs->framerate = 30; // Guessing
 
+	sdp_get_attr(buf, ptr, media_type, "rtpmap");
+	if (strlen(buf)) {
+		if (strstr(buf, "H264"))
+			rs->is_h264 = 1;
+		else if (strstr(buf, "MP4V-ES"))
+			rs->is_mpeg4 = 1;
+	}
 
-	/* Setup transport parameters */
-	if (rtp_request_setup(rs, setup_uri, &setup_resp) ||
-	    setup_resp.status != HTTP_OK)
-		return -1;
+	/* Now check for audio */
+	media_type = "m=audio ";
+	if (!sdp_check_type(ptr, media_type))
+		return ret;
 
-	rtp_response_get_header(&setup_resp, "Session", buf);
-	p = strstr(buf, " \t;");
-	if (p)
-		*p = '\0';
-	strcpy(rs->sess_id, buf);
+	get_uri(rs->aud_uri, ptr, media_type, rs);
+	if (rs->aud_uri[0] == '\0')
+		return ret;
 
-	rtp_response_get_header(&setup_resp, "Transport", buf);
-	if ((p = strstr(buf, "interleaved=")) == NULL ||
-	    sscanf(p, "interleaved=%d-", &rs->tunnel_id) != 1)
-		return -1;
+	sdp_get_attr(buf, ptr, media_type, "rtpmap");
 
-	if (rs->media == RTP_MEDIA_AUDIO) {
-		sdp_get_attr(buf, desc_resp.content, media_type,
-			     "rtpmap");
+	if (strlen(buf) && strstr(buf, "mpeg4-generic")) {
+		char mode[32];
 
-		if (strlen(buf) && strstr(buf, "mpeg4-generic")) {
-			char mode[32];
+		sdp_get_attr(buf, ptr, media_type, "fmtp");
+		rtp_get_fmtp_param(mode, buf, "mode");
 
-			sdp_get_attr(buf, desc_resp.content,
-				     media_type, "fmtp");
-			rtp_get_fmtp_param(mode, buf, "mode");
+		if (!strcmp(mode, "AAC-hbr")) {
+			char config[128];
 
-			if (!strcmp(mode, "AAC-hbr")) {
-				char config[128];
-
-				rs->is_mpeg_4aac = 1;
-				rtp_get_fmtp_param(config, buf, "config");
-				set_adts_header(rs->adts_header, config);
-			}
+			rs->is_aac = 1;
+			rtp_get_fmtp_param(config, buf, "config");
+			set_adts_header(rs->adts_header, config);
 		}
 	}
 
-	return 0;
-}
-
-int rtp_session_start(struct rtp_session *rs)
-{
-	if (rs->net_fd >= 0)
-		return 0;
-
-	if (rtp_session_setup(rs)) {
-		rtp_session_stop(rs);
-		return -1;
-	}
-
-	if (rtp_request_play(rs)) {
-		rtp_session_stop(rs);
-		return -1;
-	}
-
-	return 0;
+	return ret;
 }
 
 int rtp_session_read(struct rtp_session *rs)
 {
-	char data[2048], header[4];
-	unsigned int len, off;
-	int ret;
+	int ret = 0;
 
-	if (rs->net_fd < 0)
-		return EIO;
+	pthread_mutex_lock(&curl_lock);
+	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_RECEIVE);
+	if (curl_easy_perform(rs->curl))
+		ret = EIO;
+	pthread_mutex_unlock(&curl_lock);
 
-	/* Read RTSP embedded data header and then the RTP data. */
-	ret = read(rs->net_fd, header, sizeof(header));
-	if (ret <= 0)
-		return ret;
-
-	if (header[0] != '$')
-		return EINVAL;
-
-	len = ntohs(*(u_int16_t*)&header[2]);
-      
-	if (len > sizeof(data))
-		return EINVAL;
-
-	for (ret = off = 0; off < len; off += ret) {
-		ret = read(rs->net_fd, data + off, len - off);
-		if (ret < 0)
-			return EIO;
-	}
-
-	/* Only parse RTP packets */
-	if ((unsigned char)header[1] != rs->tunnel_id)
-		return EAGAIN;
-
-	/* Process the data */
-	rtp_putdata(rs, data, len);
-
-	return rs->frame_valid ? 0 : EAGAIN;
+	return ret;
 }

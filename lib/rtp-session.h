@@ -7,48 +7,43 @@
 #ifndef __RTP_SESSION_H
 #define __RTP_SESSION_H
 
-#include <stdio.h>
-
-typedef enum {
-	RTP_MEDIA_VIDEO,
-	RTP_MEDIA_AUDIO
-} rtp_media_type_t;
-
-#define MAX_SESSION_ID_LEN	32
 #define ADTS_HEADER_LENGTH	7
-#define MAX_RESPONSE_LENGTH	4096
-
-struct rtp_response {
-	char	data[MAX_RESPONSE_LENGTH];
-	int	status;
-	char	*content;
-	int	ptr;
-	int	skip;
-};
 
 struct rtp_session {
+	void		*curl, *slist;
 	char		userinfo[256];
 	char		uri[1024];
 	char		server[256];
-	char		req_buf[1024];
 	unsigned int	port;
-	unsigned int	tunnel_id;
-	unsigned int	seq_num;
-	rtp_media_type_t media;
-	char		sess_id[MAX_SESSION_ID_LEN];
-	int		net_fd;
+
+	/* State */
+	int		setup_vid;
+
+	/* Tunnel tracking (interleave) */
+	int		tid_a, tid_v;
+	char		aud_uri[1024];
+	char		vid_uri[1024];
+
+	/* Video frames */
+	unsigned char	vid_buf[1024 * 128];
+	int		vid_len;
+	int		vid_valid;
+
+	/* Audio frames */
+	unsigned char	aud_buf[1024 * 4];
+	int		aud_len;
+	int		aud_valid;
 	unsigned char	adts_header[ADTS_HEADER_LENGTH];
-	int		is_mpeg_4aac;
-	/* Where to keep full frames, 128k buffer space */
-	unsigned char	frame_buf[1024 * 128];
-	int		frame_len;
-	int		frame_valid;
+
+	/* Information we gather from SDP */
 	int		framerate;
+	int		is_mpeg4, is_h264;
+	int		is_aac, is_mp3;
 };
 
-int rtp_session_init(struct rtp_session *rs, const char *userinfo,
-		     const char *uri, const char *server,
-		     unsigned int port, rtp_media_type_t media);
+void rtp_session_init(struct rtp_session *rs, const char *userinfo,
+		      const char *uri, const char *server,
+		      unsigned int port);
 void rtp_session_stop(struct rtp_session *rs);
 int rtp_session_start(struct rtp_session *rs);
 int rtp_session_read(struct rtp_session *rs);
