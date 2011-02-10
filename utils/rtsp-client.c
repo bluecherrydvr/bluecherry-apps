@@ -51,24 +51,29 @@ static void check_mpeg(struct rtp_session *rs)
 	AVCodec *codec;
 	AVCodecContext *c = NULL;
 	int got_picture, len;
-	AVFrame *picture;
+	AVFrame *picture = NULL;
 
-	if (rs->is_h264)
-		codec = avcodec_find_decoder(CODEC_ID_H264);
-	else
-		codec = avcodec_find_decoder(CODEC_ID_MPEG4);
-
+	codec = avcodec_find_decoder(rs->vid_codec);
 	if (!codec) {
 		fprintf(stderr, "codec not found\n");
-		exit(1);
+		return;
 	}
 
 	c = avcodec_alloc_context();
+	if (c == NULL) {
+		fprintf(stderr, "Failed to alloc context\n");
+		return;
+	}
+
 	picture = avcodec_alloc_frame();
+	if (picture == NULL) {
+		fprintf(stderr, "Failed to alloc frame\n");
+		goto fail_mpeg_check;
+	}
 
 	if (avcodec_open(c, codec) < 0) {
 		fprintf(stderr, "could not open codec\n");
-		exit(1);
+		goto fail_mpeg_check;
 	}
 
 	len = avcodec_decode_video(c, picture, &got_picture, rs->vid_buf,
@@ -76,7 +81,7 @@ static void check_mpeg(struct rtp_session *rs)
 
 	if (len < 0) {
 		fprintf(stderr, "Error while decoding frame\n");
-		exit(1);
+		goto fail_mpeg_check;
 	}
 	if (got_picture) {
 		fprintf(stderr, "Got frame at %dx%d @ %d fps\n",
@@ -85,9 +90,13 @@ static void check_mpeg(struct rtp_session *rs)
 		fprintf(stderr, "Could not decode frame\n");
 	}
 
-	avcodec_close(c);
-	av_freep(&c);
-	av_freep(&picture);
+fail_mpeg_check:
+	if (c) {
+		avcodec_close(c);
+		av_freep(&c);
+	}
+	if (picture)
+		av_freep(&picture);
 }
 
 static void do_vid_out(struct rtp_session *rs, int fd)
@@ -138,6 +147,7 @@ int main(int argc, char* argv[])
 	char *p, *t, c;
 	char userinfo[128], server[128], port[8], path[128];
 	int fd_v = -1, fd_a = -1;
+	int got_vop = 0;
 
 	strcpy(port, DEFAULT_PORT);
 	strcpy(userinfo, DEFAULT_USERINFO);
@@ -208,6 +218,12 @@ int main(int argc, char* argv[])
 		if (rtp_session_read(&rs)) {
 			fprintf(stderr, "Error reading froms stream\n");
 			exit(EXIT_FAILURE);
+		}
+
+		if (!got_vop) {
+			if (!rs.vid_valid)
+				continue;
+			got_vop = 1;
 		}
 		do_vid_out(&rs, fd_v);
 		do_aud_out(&rs, fd_a);
