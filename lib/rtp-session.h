@@ -18,9 +18,17 @@ struct rtp_session {
 
 	/* State */
 	int		setup_vid;
+	unsigned int	heart_beat;
 
 	/* Tunnel tracking (interleave) */
 	int		tid_a, tid_v;
+
+	/* Tracking for UDP */
+	int		aud_port, vid_port;
+	int		aud_serv_port, vid_serv_port;
+	int		aud_fd, vid_fd;
+
+	/* URI for audio and video */
 	char		aud_uri[1024];
 	char		vid_uri[1024];
 
