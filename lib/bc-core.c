@@ -192,8 +192,10 @@ int bc_handle_start(struct bc_handle *bc)
 	else if (bc->cam_caps & BC_CAM_CAP_V4L2)
 		ret = v4l2_handle_start(bc);
 
-	if (!ret)
+	if (!ret) {
 		bc->started = 1;
+		bc->got_vop = 0;
+	}
 
 	return ret;
 }
@@ -257,11 +259,23 @@ int bc_buf_get(struct bc_handle *bc)
 			rs->aud_valid = rs->aud_len = 0;
 
 		/* Loop till we get a whole packet */
-		do {
+		for (;;) {
 			ret = rtp_session_read(rs);
-		} while (!ret && !rs->vid_valid && !rs->aud_valid);
+			if (ret)
+				return ret;
 
-		return ret;
+			if (!bc->got_vop) {
+				if (!rs->vid_valid)
+					continue;
+				else
+					bc->got_vop = 1;
+			}
+
+			if (rs->vid_valid || rs->aud_valid)
+				break;
+		}
+
+		return 0;
 	}
 
 	bc_buf_return(bc);
