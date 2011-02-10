@@ -102,10 +102,11 @@ struct Curl_sockaddr_ex {
   unsigned int addrlen;
   union {
     struct sockaddr addr;
-    struct sockaddr_storage buff;
-  } _sa_ex_u;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+    struct sockaddr_storage storage;
+  } sa;
 };
-#define sa_addr _sa_ex_u.addr
 
 static bool verifyconnect(curl_socket_t sockfd, int *error);
 
@@ -236,13 +237,12 @@ static CURLcode bindlocal(struct connectdata *conn,
                           curl_socket_t sockfd, int af)
 {
   struct SessionHandle *data = conn->data;
-
-  struct sockaddr_storage sa;
-  struct sockaddr *sock = (struct sockaddr *)&sa;  /* bind to this address */
+  struct Curl_sockaddr_ex addr;
+  struct sockaddr *sock = &addr.sa.addr;  /* bind to this address */
   curl_socklen_t sizeof_sa = 0; /* size of the data sock points to */
-  struct sockaddr_in *si4 = (struct sockaddr_in *)&sa;
+  struct sockaddr_in *si4 = &addr.sa.in;
 #ifdef ENABLE_IPV6
-  struct sockaddr_in6 *si6 = (struct sockaddr_in6 *)&sa;
+  struct sockaddr_in6 *si6 = &addr.sa.in6;
 #endif
 
   struct Curl_dns_entry *h=NULL;
@@ -262,7 +262,7 @@ static CURLcode bindlocal(struct connectdata *conn,
     /* no local kind of binding was requested */
     return CURLE_OK;
 
-  memset(&sa, 0, sizeof(struct sockaddr_storage));
+  memset(&addr.sa, 0, sizeof(addr.sa));
 
   if(dev && (strlen(dev)<255) ) {
 
@@ -826,7 +826,7 @@ singleipconnect(struct connectdata *conn,
   curl_socket_t sockfd;
   CURLcode res = CURLE_OK;
 #if defined(ENABLE_IPV6) && defined(HAVE_SOCKADDR_IN6_SIN6_SCOPE_ID)
-  struct sockaddr_in6 *sa6 = (void *)&addr.sa_addr;
+  struct sockaddr_in6 *sa6 = (void *)&addr.sa.in;
 #endif
 
   *sockp = CURL_SOCKET_BAD;
@@ -846,7 +846,7 @@ singleipconnect(struct connectdata *conn,
 
   if(addr.addrlen > sizeof(struct sockaddr_storage))
      addr.addrlen = sizeof(struct sockaddr_storage);
-  memcpy(&addr.sa_addr, ai->ai_addr, addr.addrlen);
+  memcpy(&addr.sa, ai->ai_addr, addr.addrlen);
 
   *connected = FALSE; /* default is not connected */
 
@@ -877,7 +877,7 @@ singleipconnect(struct connectdata *conn,
 #endif
 
   /* store remote address and port used in this connection attempt */
-  if(!getaddressinfo((struct sockaddr*)&addr.sa_addr,
+  if(!getaddressinfo((struct sockaddr*)&addr.sa,
                      conn->primary_ip, &conn->primary_port)) {
     /* malformed address or bug in inet_ntop, try next address */
     error = ERRNO;
@@ -926,7 +926,7 @@ singleipconnect(struct connectdata *conn,
 
   /* Connect TCP sockets, bind UDP */
   if(conn->socktype == SOCK_STREAM)
-    rc = connect(sockfd, &addr.sa_addr, addr.addrlen);
+    rc = connect(sockfd, &addr.sa.addr, addr.addrlen);
   else
     rc = 0;
 

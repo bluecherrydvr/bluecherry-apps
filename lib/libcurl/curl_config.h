@@ -896,10 +896,18 @@
 #define SIZEOF_INT 4
 
 /* The size of `long', as computed by sizeof. */
+#ifdef __x86_64__
 #define SIZEOF_LONG 8
+#else
+#define SIZEOF_LONG 4
+#endif
 
 /* The size of `off_t', as computed by sizeof. */
+#if defined(__x86_64__) || _FILE_OFFSET_BITS == 64
 #define SIZEOF_OFF_T 8
+#else
+#define SIZEOF_OFF_T 4
+#endif
 
 /* The size of `short', as computed by sizeof. */
 #define SIZEOF_SHORT 2

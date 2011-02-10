@@ -184,7 +184,7 @@ typedef CURL_TYPEOF_CURL_OFF_T curl_off_t;
 #define CURL_FORMAT_OFF_T "%ld"
 
 /* The size of `curl_off_t', as computed by sizeof. */
-#ifdef __x86_64__
+#if defined(__x86_64__) || _FILE_OFFSET_BITS == 64
 #define CURL_SIZEOF_CURL_OFF_T 8
 #else
 #define CURL_SIZEOF_CURL_OFF_T 4
