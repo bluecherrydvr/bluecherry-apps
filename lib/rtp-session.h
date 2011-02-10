@@ -7,6 +7,8 @@
 #ifndef __RTP_SESSION_H
 #define __RTP_SESSION_H
 
+#include <libavcodec/avcodec.h>
+
 #define ADTS_HEADER_LENGTH	7
 
 struct rtp_session {
@@ -45,8 +47,8 @@ struct rtp_session {
 
 	/* Information we gather from SDP */
 	int		framerate;
-	int		is_mpeg4, is_h264;
-	int		is_aac, is_mp3;
+	enum CodecID	vid_codec, aud_codec;
+	int		samplerate, bitrate, channels;
 };
 
 void rtp_session_init(struct rtp_session *rs, const char *userinfo,

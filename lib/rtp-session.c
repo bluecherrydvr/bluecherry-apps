@@ -108,7 +108,7 @@ static void rtp_get_fmtp_param(char *res, const char *fmtp, const char *param)
 
 	res[0] = '\0';
 
-	while ((p = strstr(p, param)) != NULL) {
+	while ((p = strcasestr(p, param)) != NULL) {
 		p += strlen(param);
 		if (*p != '=')
 			continue;
@@ -191,7 +191,7 @@ static void set_adts_header(unsigned char header[ADTS_HEADER_LENGTH],
 
 static int sdp_check_type(const char *sdp, const char *type)
 {
-	if (strstr(sdp, type) == NULL)
+	if (strcasestr(sdp, type) == NULL)
 		return 0;
 
 	return 1;
@@ -207,11 +207,11 @@ static void sdp_get_attr(char *res, const char *sdp, const char *type,
 	snprintf(fa, sizeof(fa), "a=%s:", attr);
 	fa[sizeof(fa) - 1] = '\0';
 
-	begin_pos = strstr(sdp, type);
+	begin_pos = strcasestr(sdp, type);
 	if (begin_pos == NULL)
 		return;
 
-	begin_pos = strstr(begin_pos, fa);
+	begin_pos = strcasestr(begin_pos, fa);
 	if (begin_pos == NULL)
 		return;
 
@@ -237,7 +237,7 @@ static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
 	if (strncasecmp(header, "Transport: ", 11))
 		return len;
 
-	if ((p = strstr(header, "interleaved="))) {
+	if ((p = strcasestr(header, "interleaved="))) {
 		if (rs->setup_vid)
 			id = &rs->tid_v;
 		else
@@ -245,7 +245,7 @@ static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
 
 		if (sscanf(p, "interleaved=%d-", id) != 1)
 			*id = -1;
-	} else if ((p = strstr(header, "client_port="))) {
+	} else if ((p = strcasestr(header, "client_port="))) {
 		int *serv_port;
 
 		if (rs->setup_vid) {
@@ -259,7 +259,7 @@ static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
 		if (sscanf(p, "client_port=%d-", id) != 1)
 			*id = -1;
 
-		p = strstr(header, "server_port=");
+		p = strcasestr(header, "server_port=");
 		if (!p || sscanf(p, "server_port=%d-", serv_port) != 1)
 			*id = -1;
 	}
@@ -306,7 +306,7 @@ static void handle_aud(struct rtp_session *rs, unsigned char *data,
 		return;
 	}
 
-	if (rs->is_aac) {
+	if (rs->aud_codec == CODEC_ID_AAC) {
  		unsigned char *adts = rs->adts_header;
 		unsigned int frame_len;
 
@@ -439,10 +439,9 @@ int rtp_session_start(struct rtp_session *rs)
 	if (check_curl())
 		return -1;
 
-	rs->tid_v = rs->tid_a = -1;
-	rs->aud_port = rs->vid_port = -1;
+	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
-	rs->is_mpeg4 = rs->is_h264 = rs->is_aac = rs->is_mp3 = 0;
+	rs->vid_codec = rs->aud_codec = CODEC_ID_NONE;
 
 	rs->vid_uri[0] = '\0';
 	rs->aud_uri[0] = '\0';
@@ -578,6 +577,7 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 	size_t ret = size * nmemb;
 	const char *media_type;
 	char buf[1024];
+	char *p;
 
 	((char *)ptr)[size * nmemb] = '\0';
 
@@ -586,21 +586,18 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 		return ret;
 
 	get_uri(rs->vid_uri, ptr, media_type, rs);
-	if (rs->vid_uri[0] == '\0')
+	if (!strlen(rs->vid_uri))
 		return ret;
 
 	sdp_get_attr(buf, ptr, media_type, "framerate");
-	if (strlen(buf) != 0)
-		rs->framerate = atoi(buf);
-	else
-		rs->framerate = 30; // Guessing
+	rs->framerate = strlen(buf) ? atoi(buf) : 30;
 
 	sdp_get_attr(buf, ptr, media_type, "rtpmap");
 	if (strlen(buf)) {
-		if (strstr(buf, "H264"))
-			rs->is_h264 = 1;
-		else if (strstr(buf, "MP4V-ES"))
-			rs->is_mpeg4 = 1;
+		if (strcasestr(buf, "H264"))
+			rs->vid_codec = CODEC_ID_H264;
+		else if (strcasestr(buf, "MP4V-ES"))
+			rs->vid_codec = CODEC_ID_MPEG4;
 	}
 
 	/* Now check for audio */
@@ -609,24 +606,50 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 		return ret;
 
 	get_uri(rs->aud_uri, ptr, media_type, rs);
-	if (rs->aud_uri[0] == '\0')
+	if (!strlen(rs->aud_uri))
 		return ret;
 
+	/* Any error in parsing after here just leaves the
+	 * aud_uri empty so we get no audio. */
 	sdp_get_attr(buf, ptr, media_type, "rtpmap");
 
-	if (strlen(buf) && strstr(buf, "mpeg4-generic")) {
+	if (!strlen(buf)) {
+		rs->aud_uri[0] = '\0';
+		return ret;
+	}
+
+	if ((p = strcasestr(buf, "mpeg4-generic"))) {
 		char mode[32];
+		char bitrate[32];
+
+		if (sscanf(p, "mpeg4-generic/%d/%d", &rs->samplerate,
+			   &rs->channels) != 2) {
+			if (sscanf(p, "mpeg4-generic/%d", &rs->samplerate)
+			    != 1) {
+				rs->aud_uri[0] = '\0';
+				return ret;
+			}
+			rs->channels = 1;
+		}
 
 		sdp_get_attr(buf, ptr, media_type, "fmtp");
 		rtp_get_fmtp_param(mode, buf, "mode");
+		rtp_get_fmtp_param(bitrate, buf, "bitrate");
+		if (!strlen(bitrate))
+			rs->bitrate = 24000;
+		else
+			rs->bitrate = atoi(bitrate);
 
-		if (!strcmp(mode, "AAC-hbr")) {
+		if (!strcasecmp(mode, "AAC-hbr")) {
 			char config[128];
 
-			rs->is_aac = 1;
+			rs->aud_codec = CODEC_ID_AAC;
 			rtp_get_fmtp_param(config, buf, "config");
 			set_adts_header(rs->adts_header, config);
-		}
+		} else
+			rs->aud_uri[0] = '\0';
+	} else {
+		rs->aud_uri[0] = '\0';
 	}
 
 	return ret;
