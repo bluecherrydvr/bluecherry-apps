@@ -503,13 +503,27 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
+		enum CodecID codec_id;
+
+		if (bc_rec->pcm)
+			codec_id = CODEC_ID_MP2;
+		else
+			codec_id = bc->rtp_sess.aud_codec;
+
+		/* If we can't find an encoder, just skip it */
+		if (avcodec_find_encoder(codec_id) == NULL) {
+			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
+				    "so not recording", codec_id);
+			goto no_audio;
+		}
+
 		if ((bc_rec->audio_st = av_new_stream(oc, 1)) == NULL)
 			return -1;
 		st = bc_rec->audio_st;
+		st->codec->codec_id = codec_id;
 		st->codec->codec_type = CODEC_TYPE_AUDIO;
 
 		if (bc_rec->pcm) {
-			st->codec->codec_id = CODEC_ID_MP2;
 			st->codec->bit_rate = 32000;
 			st->codec->sample_rate = 16000;
 			st->codec->sample_fmt = SAMPLE_FMT_S16;
@@ -518,7 +532,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		} else {
 			struct rtp_session *rs = &bc->rtp_sess;
 
-			st->codec->codec_id = rs->aud_codec;
 			st->codec->bit_rate = rs->bitrate;
 			st->codec->sample_rate = rs->samplerate;
 			st->codec->channels = rs->channels;
@@ -529,7 +542,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
+no_audio:
 		st = NULL;
 	}
 
@@ -537,23 +550,16 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 
 	/* Open Video output */
-	codec = avcodec_find_encoder(bc_rec->video_st->codec->codec_id);
-	if (codec == NULL) {
+	st = bc_rec->video_st;
+	codec = avcodec_find_encoder(st->codec->codec_id);
+	if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
 		bc_rec->video_st = NULL;
+		/* Clear this */
 		if (bc_rec->audio_st)
 			bc_rec->audio_st = NULL;
 		return -1;
 	}
-
-	/* If we fail to open the codec's, make sure to clear the
-	 * state so we don't try to call avcodec_close() on unopened
-	 * codec's. */
-	if (avcodec_open(bc_rec->video_st->codec, codec) < 0) {
-		bc_rec->video_st = NULL;
-		if (bc_rec->audio_st)
-			bc_rec->audio_st = NULL;
-		return -1;
-	}
+	st = NULL;
 
 	/* Open Audio output */
 	if (bc_rec->audio_st) {
@@ -564,6 +570,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 			bc_dev_warn(bc_rec, "Failed to open audio codec (%08x) "
 				    "so not recording", st->codec->codec_id);
 		}
+		st = NULL;
 	}
 
 	/* Open output file */
