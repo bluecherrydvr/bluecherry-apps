@@ -21,7 +21,7 @@
 
 static void printUsage()
 {
-	printf("usage: pelcocmd [-p panSpeed] [-t tiltSpeed] [-s stopTime] [-d /dev/ttyX] command\n");
+	printf("usage: pelcocmd [-a address] [-p panSpeed] [-t tiltSpeed] [-s stopTime] [-d /dev/ttyX] command\n");
 	printf("commands: left right up down in out stop\n");
 	printf("presets:  save go clear [1-20]\n");
 	printf("extended: zeropan flip (may not be supported)\n");
