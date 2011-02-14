@@ -59,6 +59,7 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
+	const char *err_msg;
 	BC_DB_RES dbres;
 	struct bc_handle *bc;
 	long devid = 1;
@@ -102,8 +103,8 @@ int main(int argc, char **argv)
 	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
 		print_error("Error setting mjpeg: %m");
 
-	if (bc_handle_start(bc))
-		print_error("Error starting stream: %m");
+	if (bc_handle_start(bc, &err_msg))
+		print_error("Error starting stream: %s", err_msg);
 
 	print_image(bc);
 

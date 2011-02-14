@@ -287,7 +287,7 @@ PHP_FUNCTION(bc_handle_start)
 
 	BCH_GET_RES("bc_handle_start");
 
-	if (bc_handle_start(bch) < 0)
+	if (bc_handle_start(bch, NULL) < 0)
 		RETURN_FALSE;
 
 	RETURN_TRUE;

@@ -196,7 +196,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */
-int bc_handle_start(struct bc_handle *bc);
+int bc_handle_start(struct bc_handle *bc, const char **err_msg);
 void bc_handle_stop(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */

@@ -26,6 +26,12 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
+#define RETERR(__msg) ({		\
+	if (err_msg)			\
+		*err_msg = __msg;	\
+	return -1;			\
+})
+
 static const char * const trans_fmt =
 	"RTP/AVP/TCP/UDP;unicast;interleaved=0-1;client_port=%d-%d";
 
@@ -41,6 +47,8 @@ static int get_next_port(void)
 	pthread_mutex_lock(&port_lock);
 	port = next_port;
 	next_port += 2;
+	if (next_port > 65535)
+		next_port = 4000;
 	pthread_mutex_unlock(&port_lock);
 
 	return port;
@@ -428,7 +436,14 @@ static int open_listener(int port)
 static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 			 void *userdata);
 
-int rtp_session_start(struct rtp_session *rs)
+#define GOTOERR(__msg) ({		\
+	if (err_msg)			\
+		*err_msg = __msg;	\
+	goto setup_fail;		\
+})
+
+
+int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 {
 	char uri[1024];
 	char trans[256];
@@ -437,7 +452,7 @@ int rtp_session_start(struct rtp_session *rs)
 	int port;
 
 	if (check_curl())
-		return -1;
+		RETERR("Failed to initialize cURL");
 
 	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
@@ -450,7 +465,7 @@ int rtp_session_start(struct rtp_session *rs)
 
 	rs->curl = curl_easy_init();
 	if (rs->curl == NULL)
-		goto setup_fail;
+		GOTOERR("Failed to initialize cURL session");
 
 	/* Build our base URI */
 	sprintf(uri, "rtsp://%s:%d%s", rs->server, rs->port, rs->uri);
@@ -476,10 +491,10 @@ int rtp_session_start(struct rtp_session *rs)
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
 			 CURL_RTSPREQ_DESCRIBE);
 	if (curl_easy_perform(rs->curl))
-		goto setup_fail;
+		GOTOERR("Failed DESCRIBE request");
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200 || rs->vid_uri[0] == '\0')
-		goto setup_fail;
+		GOTOERR("Bad response from DESCRIBE request");
 
 	/* No longer needed */
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
@@ -493,14 +508,14 @@ int rtp_session_start(struct rtp_session *rs)
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->vid_uri);
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
 	if (curl_easy_perform(rs->curl))
-		goto setup_fail;
+		GOTOERR("Failed video SETUP request");
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200 || (rs->tid_v < 0 && rs->vid_port <= 0))
-		goto setup_fail;
+		GOTOERR("Bad response from video SETUP request");
 	if (rs->vid_port > 0) {
 		rs->vid_fd = open_listener(rs->vid_port);
 		if (rs->vid_fd < 0)
-			goto setup_fail;
+			GOTOERR("Failure to open UDP listener for video");
 	}
 
 	/* SETUP the audio too, if we have a URI for it */
@@ -513,14 +528,14 @@ int rtp_session_start(struct rtp_session *rs)
 		curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->aud_uri);
 		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
 		if (curl_easy_perform(rs->curl))
-			goto setup_fail;
+			GOTOERR("Failed audio SETUP request");
 		curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 		if (http_code != 200 || (rs->tid_a < 0 && rs->aud_port <= 0))
-			goto setup_fail;
+			GOTOERR("Bad response from audio SETUP request");
 		if (rs->aud_port > 0) {
 			rs->aud_fd = open_listener(rs->aud_port);
 			if (rs->aud_fd < 0)
-				goto setup_fail;
+				GOTOERR("Failure to open UDP listener for audio");
 		}
 	}
 
@@ -531,20 +546,22 @@ int rtp_session_start(struct rtp_session *rs)
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, uri);
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_PLAY);
 	if (curl_easy_perform(rs->curl))
-		goto setup_fail;
+		GOTOERR("Failed PLAY request");
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200)
-		goto setup_fail;
+		GOTOERR("Bad response from PLAY request");
 
 	/* All is well on the northern front */
 	ret = 0;
 
 setup_fail:
 	pthread_mutex_unlock(&curl_lock);
-	if (ret)
+	if (ret) {
 		rtp_session_stop(rs);
+		return -1;
+	}
 
-	return ret;
+	return 0;
 }
 
 static void get_uri(char *uri, char *sdp, const char *type,

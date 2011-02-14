@@ -148,6 +148,7 @@ int main(int argc, char* argv[])
 	char userinfo[128], server[128], port[8], path[128];
 	int fd_v = -1, fd_a = -1;
 	int got_vop = 0;
+	const char *err_msg;
 
 	strcpy(port, DEFAULT_PORT);
 	strcpy(userinfo, DEFAULT_USERINFO);
@@ -207,8 +208,8 @@ int main(int argc, char* argv[])
 		userinfo[0] ? userinfo : "", userinfo[0] ? "@" : "", server,
 		port, path);
 
-	if (rtp_session_start(&rs)) {
-		fprintf(stderr, "Could not connect to server\n");
+	if (rtp_session_start(&rs, &err_msg)) {
+		fprintf(stderr, "Could not connect to server: %s\n", err_msg);
 		exit(EXIT_FAILURE);
 	}
 

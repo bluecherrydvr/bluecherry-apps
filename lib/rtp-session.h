@@ -55,7 +55,7 @@ void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 		      const char *uri, const char *server,
 		      unsigned int port);
 void rtp_session_stop(struct rtp_session *rs);
-int rtp_session_start(struct rtp_session *rs);
+int rtp_session_start(struct rtp_session *rs, const char **err_msg);
 int rtp_session_read(struct rtp_session *rs);
 
 #endif /* __RTP_SESSION_H */
