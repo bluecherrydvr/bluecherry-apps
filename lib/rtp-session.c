@@ -724,19 +724,24 @@ int rtp_session_read(struct rtp_session *rs)
 
 	pthread_mutex_lock(&curl_lock);
 	if (rs->tid_v >= 0 || rs->tid_a >= 0) {
+		/* Receive interleaved TCP data */
 		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
 				 CURL_RTSPREQ_RECEIVE);
 		if (curl_easy_perform(rs->curl))
 			ret = EIO;
 	} else if (rs->vid_fd >= 0 || rs->aud_fd >= 0) {
 		/* Read stuff from UDP ports */
-		if (read_listener(rs))
-			return EIO;
-		/* Send a heart beat every so often */
-		if (!(rs->heart_beat++ & 0x000003ff)) {
+		if (read_listener(rs)) {
+			ret = EIO;
+		} else if (!(rs->heart_beat++ & 0x000003ff)) {
+			/* Send a heart beat every so often */
 			curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
 					 CURL_RTSPREQ_OPTIONS);
-			if (curl_easy_perform(rs->curl))
+			/* Some ACTi cameras return an error on OPTIONS after PLAY.
+			 * Newer firmware is supposed to fix this problem. So we
+			 * simply check for connection timeout and ignore the
+			 * actual response code here. */
+			if (curl_easy_perform(rs->curl) == CURLE_OPERATION_TIMEDOUT)
 				ret = EIO;
 		}
 	} else {
