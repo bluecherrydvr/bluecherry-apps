@@ -340,8 +340,10 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 	/* XXX Need some way to reconcile time between media event and
 	 * filename. They should match. */
-	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
-	strftime(mytime, sizeof(mytime), "%T", &tm);
+	localtime_r(&t, &tm);
+
+	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
+	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
 	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
@@ -589,8 +591,10 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (pthread_mutex_lock(&av_lock) == EDEADLK)
 		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec open!");
 	ret = __bc_open_avcodec(bc_rec);
-	if (ret)
+	if (ret) {
+		bc_media_destroy(&bc_rec->media);
 		__bc_close_avcodec(bc_rec);
+	}
 	pthread_mutex_unlock(&av_lock);
 
 	return ret;
