@@ -288,6 +288,8 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 int bc_media_end(bc_media_entry_t *bcm);
 /* Get the length of the current media object */
 time_t bc_media_length(bc_media_entry_t *bcm);
+/* Destroy a media object (that not got started) */
+void bc_media_destroy(bc_media_entry_t *bcm);
 
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */

@@ -310,6 +310,18 @@ int bc_media_end(bc_media_entry_t *__bcm)
 	return 0;
 }
 
+void bc_media_destroy(bc_media_entry_t *__bcm)
+{
+	bc_media_entry_t bcm = *__bcm;
+
+	if (!bcm)
+		return;
+
+	*__bcm = NULL;
+
+	bc_db_query("DELETE FROM Media WHERE id=%lu", bcm->table_id);
+}
+
 bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 				  bc_event_cam_type_t type,
 				  bc_media_entry_t media)
