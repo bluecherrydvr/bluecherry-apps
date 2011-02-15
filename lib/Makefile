@@ -8,8 +8,8 @@ CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 LIBCURL		= libcurl/lib/.libs/libcurl.a
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
-OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o rtp-session.o $(LIBCURL)
+OBJS		= $(LIBCURL) bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
+		  bc-key.o bc-media.o rtp-session.o
 
 all: $(SOLIBVER)
 
