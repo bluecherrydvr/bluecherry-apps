@@ -17,11 +17,9 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h> 
 
-#define STEPPER_BAUDRATE B2400
-
 static void printUsage()
 {
-	printf("usage: pelcocmd [-a address] [-p panSpeed] [-t tiltSpeed] [-s stopTime] [-d /dev/ttyX] command\n");
+	printf("usage: pelcocmd [-i id] [-p panSpeed] [-t tiltSpeed] [-s stopTime] [-d /dev/ttyX] [-b baudRate] command\n");
 	printf("commands: left right up down in out stop\n");
 	printf("presets:  save go clear [1-20]\n");
 	printf("extended: zeropan flip (may not be supported)\n");
@@ -35,15 +33,19 @@ static void pelcoChecksum(char data[7])
 		data[6] += data[i];
 }
 
+/* Returns -1 on failure, 0 on success */
+static int baudRateFromInt(int input, speed_t *out);
+
 int main(int argc, char *argv[])
 {
 	const char *device = "/dev/ttyUSB0";
 	const char *command = 0;
 	char data[7] = { 0xff, 0x01, 0x00, 0x00, 0x20, 0x20, 0x00 };
 	int inputStopDelay = -1, stopDelay = -1;
+	speed_t baudRate = B2400;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "p:t:d:a:s:")) >= 0)
+	while ((opt = getopt(argc, argv, "p:t:d:i:s:b:")) >= 0)
 	{
 		switch (opt)
 		{
@@ -56,11 +58,18 @@ int main(int argc, char *argv[])
 		case 'd':
 			device = optarg;
 			break;
-		case 'a':
+		case 'i':
 			data[1] = (char)atoi(optarg);
 			break;
 		case 's':
 			inputStopDelay = atoi(optarg);
+			break;
+		case 'b':
+			if (baudRateFromInt(atoi(optarg), &baudRate) < 0)
+			{
+				puts("Invalid baud rate");
+				return 1;
+			}
 			break;
 		default:
 			printUsage();
@@ -125,7 +134,7 @@ int main(int argc, char *argv[])
 
 	struct termios adtio;
 	memset (&adtio, 0, sizeof(adtio));
-	adtio.c_cflag= STEPPER_BAUDRATE | CS8 | CLOCAL | CREAD;
+	adtio.c_cflag= baudRate | CS8 | CLOCAL | CREAD;
 	adtio.c_iflag= IGNPAR;
 	adtio.c_oflag= 0;
 	adtio.c_lflag= 0;   /* non-canon, no echo */
@@ -151,5 +160,29 @@ int main(int argc, char *argv[])
 	}
 
 	close(serdevice);
+	return 0;
+}
+
+static int baudRateFromInt(int input, speed_t *out)
+{
+	switch (input)
+	{
+		case 50: *out = B50; break;
+		case 75: *out = B75; break;
+		case 110: *out = B110; break;
+		case 134: *out = B134; break;
+		case 150: *out = B150; break;
+		case 200: *out = B200; break;
+		case 300: *out = B300; break;
+		case 600: *out = B600; break;
+		case 1200: *out = B1200; break;
+		case 1800: *out = B1800; break;
+		case 2400: *out = B2400; break;
+		case 9600: *out = B9600; break;
+		case 19200: *out = B19200; break;
+		case 38400: *out = B38400; break;
+		default: return -1;
+	}
+
 	return 0;
 }
