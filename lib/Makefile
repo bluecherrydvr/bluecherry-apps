@@ -8,7 +8,7 @@ CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 LIBCURL		= libcurl/lib/.libs/libcurl.a
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
-OBJS		= $(LIBCURL) bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
+OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 		  bc-key.o bc-media.o rtp-session.o
 
 all: $(SOLIBVER)
@@ -20,9 +20,11 @@ libcurl/lib/Makefile: libcurl/configure
 libcurl/lib/.libs/libcurl.a: libcurl/lib/Makefile
 	$(MAKE) -C libcurl/lib
 
+rtp-session.o: $(LIBCURL)
+
 $(SOLIBVER): $(OBJS)
 	echo $(RES)
-	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
+	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS) $(LIBCURL)
 	ln -sf $@ $(SOLIB)
 
 install: all
@@ -31,5 +33,6 @@ install: all
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
 	-$(MAKE) -C libcurl distclean
+	rm -f libcurl/config.log
 
 FORCE:
