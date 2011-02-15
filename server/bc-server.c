@@ -284,7 +284,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 static void check_expire(void)
 {
 	time_t t = time(NULL);
-	time_t expire = 1297746000;
+	time_t expire = 1299042000;
 
 	if (t < expire)
 		return;
