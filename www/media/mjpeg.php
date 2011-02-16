@@ -17,7 +17,7 @@ if (!$current_user->camPermission($_GET['id'])){
 
 function get_boundary($url_full)
 {
-	global $boundary, $single;
+	global $boundary, $single_url;
 
 	$url = parse_url($url_full);
 	if (!$url)
@@ -35,7 +35,13 @@ function get_boundary($url_full)
 	if (!$fh)
 		return;
 
-	fwrite($fh, "GET ". $url['path'] ." HTTP/1.0\r\n");
+	if (empty($url['query']))
+		$path = $url['path'];
+	else
+		$path = $url['path'] . "?" . $url['query'];
+
+
+	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
 	fwrite($fh, "Host: ". $url['host'] ."\r\n");
 	if ($auth)
 		fwrite($fh, "Authorization: Basic $auth\r\n");
@@ -69,12 +75,12 @@ function get_boundary($url_full)
 
 	/* The URL only supplies us one JPEG per request, so we make it a feed */
 	if (stristr($msg, "Content-Type: image/jpeg"))
-		$single = TRUE;
+		$single_url = TRUE;
 }
 
 function get_one_jpeg($url_full)
 {
-	global $single;
+	global $single_url;
 
 	$url = parse_url($url_full);
 	if (!$url)
@@ -92,7 +98,12 @@ function get_one_jpeg($url_full)
 	if (!$fh)
 		return;
 
-	fwrite($fh, "GET ". $url['path'] ." HTTP/1.0\r\n");
+	if (empty($url['query']))
+		$path = $url['path'];
+	else
+		$path = $url['path'] . "?" . $url['query'];
+
+	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
 	fwrite($fh, "Host: ". $url['host'] ."\r\n");
 	if ($auth)
 		fwrite($fh, "Authorization: Basic $auth\r\n");
@@ -102,7 +113,7 @@ function get_one_jpeg($url_full)
 	$myj = FALSE;
 
 	// For multipart/mixed, skip the initial header
-	if ($single == FALSE) {
+	if ($single_url == FALSE) {
 		while (($msg = fgets($fh)) != FALSE) {
 			if ($msg == "\r\n")
 				break;
@@ -229,7 +240,7 @@ if ($url) {
 	bc_db_close();
 
 	// For this case, we pass off to curl
-	if ($multi and $single == FALSE) {
+	if ($multi and $single_url == FALSE) {
 		passthru("curl -s " . escapeshellarg($url));
 		exit;
 	}
