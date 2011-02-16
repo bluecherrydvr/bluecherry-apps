@@ -47,3 +47,5 @@ lib/libcurl/Makefile
 lib/libcurl/config.status
 lib/libcurl/libtool
 lib/libcurl/tests/server/Makefile
+lib/libcurl/curl-config
+lib/libcurl/tests/configurehelp.pm
