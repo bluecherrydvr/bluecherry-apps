@@ -456,7 +456,8 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 
 	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
-	rs->vid_codec = rs->aud_codec = CODEC_ID_NONE;
+	rs->aud_codec = CODEC_ID_NONE;
+	rs->vid_codec = CODEC_ID_MPEG4;
 
 	rs->vid_uri[0] = '\0';
 	rs->aud_uri[0] = '\0';
@@ -733,7 +734,7 @@ int rtp_session_read(struct rtp_session *rs)
 		/* Read stuff from UDP ports */
 		if (read_listener(rs)) {
 			ret = EIO;
-		} else if (!(rs->heart_beat++ & 0x000003ff)) {
+		} else if (0) { //!(rs->heart_beat++ & 0x000003ff)) {
 			/* Send a heart beat every so often */
 			curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
 					 CURL_RTSPREQ_OPTIONS);
