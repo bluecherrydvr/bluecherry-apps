@@ -33,6 +33,5 @@ install: all
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
 	-$(MAKE) -C libcurl distclean
-	rm -f libcurl/config.log
-
-FORCE:
+	rm -fr libcurl/config.log libcurl/Makefile libcurl/config.status \
+		libcurl/libtool libcurl/aclocal.m4.bak libcurl/autom4te.cache/
