@@ -75,6 +75,12 @@ DVRPageScript = new Class({
 					$('deleteButton').deleteUserButton();
 					
 				};
+				if ($('editAccessList')!=null){
+					$('editAccessList').addEvent('click', function(){
+						openPage = new DVRPage('cameraperms', 'id='+$$('.objId').get('value'));
+					});
+					$('editAccessList').buttonAnimate("#aac");
+				}
 				if ($('newUser')!=null){
 					buttonMorph($('newUser'), '#8bb8');
 					$('newUser').addEvent('click', function() {
@@ -173,7 +179,8 @@ DVRPageScript = new Class({
 				$('addIPCamera').addEvent('click', function(){
 					openPage = new DVRPage('addip');
 				});
-				$('addIPCamera').buttonAnimate("#aca")
+
+				$('addIPCamera').buttonAnimate("#aca");
 				initNames = function(){
 					$$('.name').each(function(el){
 						el.addEvent('click', function(){
@@ -321,6 +328,29 @@ DVRPageScript = new Class({
 					setTimeout("renewImg();", 500);
 				});
 				
+			break;
+			case 'cameraperms':
+				$('userInfo').addEvent('click', function(){
+					openPage = new DVRPage('users', 'id='+this.get('class'));
+				});
+				$('allUsers').addEvent('click', function(){
+					openPage = new DVRPage('users');
+				});
+				$$('#camList div').addEvent('click', function(){
+					var newClass = (this.get('class')=='allowed') ? 'nallowed' : 'allowed';
+					this.set('class', newClass);
+				});
+				var sb = $('saveButton');
+				sb.buttonAnimate("#aca");
+				sb.addEvent('click', function(){
+					var naList = '';
+					$$('#camList .nallowed').each(function(el){
+						naList += el.get('id')+',';
+					});
+					ajaxUpdateField('access_device_list', 'Users', { 'value' : naList }, $('userInfo').get('class'), 'button');
+					//alert(naList);
+				});
+
 			break;
 			case 'deviceschedule':
 				$('backToList').addEvent('click', function(){
@@ -651,6 +681,7 @@ updateStatData = function(){
 				var serverRn = xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue;
 				var sr  = $('sr');
 				var snr = $('snr');
+				var ncn = $('ncn');
 				if (serverRn != 'up'){
 					sr.setStyle('display', 'none');
 					snr.setStyle('display', 'inline');
@@ -659,12 +690,21 @@ updateStatData = function(){
 					snr.setStyle('display', 'none');
 					sr.setStyle('display', 'inline');
 				}
+				ncn.setStyle('display', 'none');
 				$('serverStats').setStyle('display', 'block');
 				updateStatBar('cpu', cpuUsage);
 				updateStatBar('mem', memPertg);
 				$('meminfo').set('html', Math.round(memInUse/1024) + "MB / " + Math.round(memTotal/1024)+ "MB");
 				$('serverUptime').set('html', serverUp);
 
+			},
+			onFailure: function(){
+				var sr  = $('sr');
+				var snr = $('snr');
+				var ncn = $('ncn');
+				ncn.setStyle('display', 'inline');
+				sr.setStyle('display', 'none');
+				snr.setStyle('display', 'none');
 			}
 		}).send();
 		setTimeout("updateStatData();", 2000);
@@ -685,12 +725,4 @@ updateStatBar = function(barId, val, y, r){
 
 
 
-window.addEvent('domready', function(){
-	containerDivID = 'pageContainer';
-	
-	var mainMenu = new DVRmainMenu();
-	var pageToOpen = (Cookie.read('currentPage') || 'news');
-	var pageToOpenData = (Cookie.read('currentPageData') || '');
-	openPage = new DVRPage(pageToOpen, pageToOpenData);
-	updateStatData();
-});
+

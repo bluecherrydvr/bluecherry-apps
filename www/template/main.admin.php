@@ -11,6 +11,17 @@
 	<script type="text/javascript" src="./lib/mootools-more.js"></script>
 	<script type="text/javascript" src="./lib/js/main.js"></script>
 	<script type="text/javascript" src="./lib/js/viewer.js"></script>
+	<script>
+		window.addEvent('load', function(){
+		containerDivID = 'pageContainer';
+		
+		var mainMenu = new DVRmainMenu();
+		var pageToOpen = (Cookie.read('currentPage') || 'news');
+		var pageToOpenData = (Cookie.read('currentPageData') || '');
+			openPage = new DVRPage(pageToOpen, pageToOpenData);
+			updateStatData();
+		});
+	</script>
 </head>
 <body>
 	<div id="leftColumn">
@@ -33,11 +44,14 @@
 			</ul>
 		</div>
 		<div id="sysMessages">
-			<div id="sr"><div id="ajaxMessage" class="OK"><? echo SERVER_RUNNING; ?></div></div>
-			<div id="snr"><div id="ajaxMessage" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
+			<div id="sr"><div id="message" class="OK"><? echo SERVER_RUNNING; ?></div></div>
+			<div id="snr"><div id="message" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
+			<div id="ncn"><div id="message" class="F"><? echo NO_CONNECTION; ?></div></div>
 			<?php
 				if (!$version->up_to_date){
-					echo '<div id="version"><div id="ajaxMessage" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
+					echo '<div id="version"><div id="message" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
+				} else {
+					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->current_version.'</div></div>';					
 				}
 			?>
 			<div class='bClear'></div>

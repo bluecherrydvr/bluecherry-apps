@@ -1,4 +1,11 @@
 <?php 
+
+/*
+    Copyright (c) 2010-2011 Bluecherry, LLC.
+    http://www.bluecherrydvr.com / support@bluecherrydvr.com
+    Confidential, all rights reserved. No distribution is permitted.
+ */
+ 
 defined('INDVR') or exit();
 
 session_name('VAR_SESSION_NAME');
@@ -74,6 +81,7 @@ class DVRUser extends DVRData{
 	public function CheckStatus(){
 		if (!empty($_SESSION['l'])){
 			$kicked = $this->ActiveUsersUpdate();
+			$this->data = $this->GetObjectData('Users', 'id', $_SESSION['id']);
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;
 				case 'viewer': $this->status = ($this->ScheduleCheck()) ? 'viewer' : 'schedule'; break;
@@ -128,6 +136,12 @@ class DVRUser extends DVRData{
 			};
 			
 			if ($message) die("<div class='INFO' id='message'>{$message}</div>");
+	}
+	
+	public function camPermission($id){
+		$this->data = $this->GetObjectData('Users', 'id', $_SESSION['id']);
+		$access_list = explode(',', $this->data[0]['access_device_list']);
+		return (in_array($id, $access_list)) ? false : true;
 	}
 	
 	private function BasicAuthCheck(){
@@ -243,6 +257,8 @@ class DVRDevices extends DVRData{
 		$this->total_devices += count($this->ip_cameras);
 	}
 	public function MakeXML(){
+		$this_user = new DVRUser('id', $_SESSION['id']);
+		$access_list = explode(',', $this_user->data[0]['access_device_list']);
 		// The \063 is a '?'. Used decimal so as not to confuse vim
 		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
 		$devices = array();
@@ -252,13 +268,15 @@ class DVRDevices extends DVRData{
 		};
 		$devices = array_merge($devices, $this->ip_cameras);
 		foreach($devices as $device){
-			$xml .= '<device';
-			$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
-			foreach($device as $property => $value){
-				if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
-					if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
-			};
-			$xml.='</device>';
+			if (!in_array($device['id'], $access_list)){
+				$xml .= '<device';
+				$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
+				foreach($device as $property => $value){
+					if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
+						if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
+				};
+				$xml.='</device>';
+			}
 		}
 		$xml .='</devices>';
 		header('Content-type: text/xml');

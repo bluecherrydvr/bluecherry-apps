@@ -33,7 +33,13 @@ class updateDB extends DVRData{
 			case 'addip': $this->status = $this->addIp(); break;
 			case 'deleteIp' : $this->deleteIp(); break;
 			case 'editIp': $this->editIp(); break;
+			case 'access_device_list': $this->updateCamPerms(); break;
 		}
+	}
+	private function updateCamPerms(){
+		$db = DVRDatabase::getInstance();
+		$this->status = $db->DBQuery("UPDATE Users SET access_device_list='".trim($_POST['value'], ",")."' WHERE id='{$_POST['id']}'");
+		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
 	}
 	private function editIp(){
 		$id = intval($_POST['id']);

@@ -8,7 +8,12 @@ include("../lib/lib.php");  #common functions
 $current_user = new DVRUser();
 $current_user->CheckStatus();
 $current_user->StatusAction('mjpeg');
-#/auth check
+if (!$current_user->camPermission($_GET['id'])){
+	header("Content-type: image/jpeg");
+	readfile("../img/np.jpg");
+	exit;
+}
+
 
 function get_boundary($url_full)
 {

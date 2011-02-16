@@ -19,7 +19,7 @@ define('MMENU_STORAGE', 'Storage');
 define('MMENU_USERS', 'Users');
 define('MMENU_LOG', 'System Log');
 define('MMENU_DEVICES', 'Devices');
-define('MMENU_SCHED', 'Recording schedule');
+define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 #main
@@ -39,6 +39,9 @@ define('LANG_DIE_COULDNOTOPENCONF', 'Fatal error: could not read configuration f
 define('BB_MAP_ARROW', '>');
 define('SAVE_SETTINGS', 'Save settings');
 define('SAVE_CHANGES', 'Save changes');
+define('SAVE', 'Save');
+define('SAVE_AS', 'Save as...');
+define('CLEAR_ALL', 'Clear all');
 
 define('CHANGES_OK', 'Changes successfully saved');
 define('CHANGES_FAIL', 'Could not apply changes at this time, please try later.');
@@ -58,8 +61,11 @@ define('G_DVR_MEDIA_STORE', 'Storage location');
 define('G_DVR_MEDIA_STORE_EX', 'storage for videos');
 
 #users page
+define('EDIT_ACCESS_LIST', 'Camera access permissions');
 define('USERS_ALL_TABLE_HEADER', 'DVR Users');
 define('USERS_DETAIL_TABLE_HEADER', 'User details: ');
+
+define('CAMERA_PERMISSIONS_SUB', 'User camera access permissions');
 
 define('USERS_ALL_TABLE_SUBHEADER', 'Users currently registered in the DVR system.');
 define('USERS_DETAIL_TABLE_SUBHEADER', 'Edit user information and access rights. ');
@@ -190,6 +196,7 @@ define('STATS_UPT', 'Server uptime:');
 define('USER_KICKED', 'Your session was terminated by an Administrator.');
 define('USER_NACCESS', 'You need administrator priveleges to access this page. Please <a href="/">login again</a>.');
 define('USER_RELOGIN', 'Your session has expired, please <a htef="/">relogin</a>. ');
+define('NO_CONNECTION', 'Cound not connect to the server.<br /><br />Please make sure that:<br />-server httpd is running<br />-you are online');
 
 #active users 
 define('ACTIVE_USERS_HEADER', 'Connected users');
@@ -234,12 +241,18 @@ define('IPCAM_WIKI_LINK', 'Please visit this <a href="http://improve.bluecherryd
 define('SERVER_NOT_RUNNING', 'Server process stopped.');
 define('SERVER_RUNNING', 'Server process running');
 define('NOT_UP_TO_DATE', 'New version available.');
+define('UP_TO_DATE', 'Version');
 define('NOT_UP_TO_DATE_LONG', 'New version of the server was released. We strongly recommend to update.');
 define('NOT_UP_TO_DATE_LINK', 'For release notes and update instructions, please visit our <a href="http://forums.bluecherrydvr.com/index.php?/forum/27-announcements/">forums</a>.');
 define('WANT_TO_LEARN_MORE', 'Learn more...');
 define('INSTALLED', 'Installed');
 define('CURR', 'Current');
 
+#layouts
+define('NO_SAVED_LAYOUTS', 'No saved layouts');
+define('CHOOSE_LAYOUT', 'Layout to load...');
+
 #login
 define('PLEASE_LOGIN', 'You need');
+
 ?>
