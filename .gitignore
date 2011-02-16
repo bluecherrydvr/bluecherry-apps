@@ -43,4 +43,7 @@ lib/libcurl/src/stamp-h2
 lib/libcurl/tests/Makefile
 lib/libcurl/tests/data/Makefile
 lib/libcurl/tests/libtest/Makefile
+lib/libcurl/Makefile
+lib/libcurl/config.status
+lib/libcurl/libtool
 lib/libcurl/tests/server/Makefile
