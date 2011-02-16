@@ -23,11 +23,8 @@
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: rtsp_client [options] rtsp://[USERINFO@]"
+	fprintf(stderr, "Usage: rtsp_client rtsp://[USERINFO@]"
 		"SERVER[:PORT]/PATH_TO_SDP\n\n");
-	fprintf(stderr, "Options: \n");
-	fprintf(stderr, "  -a: Enable recording audio as well (default off)\n");
-	fprintf(stderr, "  -o: Output path for MKV file (default temp.mkv)\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -54,28 +51,37 @@ static void check_mpeg(struct rtp_session *rs)
 	AVCodec *codec;
 	AVCodecContext *c = NULL;
 	int got_picture, len;
-	AVFrame *picture;
+	AVFrame *picture = NULL;
 
-	codec = avcodec_find_decoder(CODEC_ID_MPEG4);
+	codec = avcodec_find_decoder(rs->vid_codec);
 	if (!codec) {
 		fprintf(stderr, "codec not found\n");
-		exit(1);
+		return;
 	}
 
 	c = avcodec_alloc_context();
+	if (c == NULL) {
+		fprintf(stderr, "Failed to alloc context\n");
+		return;
+	}
+
 	picture = avcodec_alloc_frame();
+	if (picture == NULL) {
+		fprintf(stderr, "Failed to alloc frame\n");
+		goto fail_mpeg_check;
+	}
 
 	if (avcodec_open(c, codec) < 0) {
 		fprintf(stderr, "could not open codec\n");
-		exit(1);
+		goto fail_mpeg_check;
 	}
 
-	len = avcodec_decode_video(c, picture, &got_picture, rs->frame_buf,
-				   rs->frame_len);
+	len = avcodec_decode_video(c, picture, &got_picture, rs->vid_buf,
+				   rs->vid_len);
 
 	if (len < 0) {
 		fprintf(stderr, "Error while decoding frame\n");
-		exit(1);
+		goto fail_mpeg_check;
 	}
 	if (got_picture) {
 		fprintf(stderr, "Got frame at %dx%d @ %d fps\n",
@@ -84,31 +90,27 @@ static void check_mpeg(struct rtp_session *rs)
 		fprintf(stderr, "Could not decode frame\n");
 	}
 
-	avcodec_close(c);
-	av_freep(&c);
-	av_freep(&picture);
+fail_mpeg_check:
+	if (c) {
+		avcodec_close(c);
+		av_freep(&c);
+	}
+	if (picture)
+		av_freep(&picture);
 }
 
-static void do_out(struct rtp_session *rs, int fd)
+static void do_vid_out(struct rtp_session *rs, int fd)
 {
 	static int got_one;
-	int ret;
 
 	if (fd < 0)
 		return;
 
-	ret = rtp_session_read(rs);
-
-	if (ret && ret != EAGAIN) {
-		fprintf(stderr, "Error reading from RTP: %s\n", strerror(ret));
-		exit(EXIT_FAILURE);
-	}
-
-	if (ret == EAGAIN || !rs->frame_valid)
+	if (!rs->vid_valid)
 		return;
 
-	if (write(fd, rs->frame_buf, rs->frame_len) != rs->frame_len) {
-		fprintf(stderr, "Could not write data: %m\n");
+	if (write(fd, rs->vid_buf, rs->vid_len) != rs->vid_len) {
+		fprintf(stderr, "Could not write video data: %m\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -116,32 +118,45 @@ static void do_out(struct rtp_session *rs, int fd)
 		got_one = 1;
 		check_mpeg(rs);
 	}
+
+	rs->vid_valid = rs->vid_len = 0;
+}
+
+static void do_aud_out(struct rtp_session *rs, int fd)
+{
+	if (fd < 0)
+		return;
+
+	if (!rs->aud_valid)
+		return;
+
+	if (write(fd, rs->aud_buf, rs->aud_len) != rs->aud_len) {
+	        fprintf(stderr, "Could not write audio data: %m\n");
+		exit(EXIT_FAILURE);
+	}
+
+        rs->aud_valid = rs->aud_len = 0;
 }
 
 int main(int argc, char* argv[])
 {
 	int opt;
-	const char *outfile = "temp.m4v";
+	const char *out_v = "temp.m4v";
 	const char *out_a = "temp.aac";
-	int audio = 0;
-	struct rtp_session rs_v, rs_a;
+	struct rtp_session rs;
 	char *p, *t, c;
 	char userinfo[128], server[128], port[8], path[128];
 	int fd_v = -1, fd_a = -1;
+	int got_vop = 0;
+	const char *err_msg;
 
 	strcpy(port, DEFAULT_PORT);
 	strcpy(userinfo, DEFAULT_USERINFO);
 	avcodec_init();
         av_register_all();
 
-	while ((opt = getopt(argc, argv, "hao:")) != -1) {
+	while ((opt = getopt(argc, argv, "h")) != -1) {
 		switch (opt) {
-		case 'a':
-			audio = 1;
-			break;
-		case 'o':
-			outfile = optarg;
-			break;
 		case 'h':
 		default:
 			usage();
@@ -174,43 +189,45 @@ int main(int argc, char* argv[])
 	strcpy(path, "/");
 	strcat(path, t);
 
-	fd_v = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	fd_v = open(out_v, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd_v < 0) {
 		fprintf(stderr, "Could not open output file: %s: %m\n",
-			outfile);
+			out_v);
 		exit(EXIT_FAILURE);
 	}
-	rtp_session_init(&rs_v, userinfo, path, server, atoi(port),
-			 RTP_MEDIA_VIDEO);
-	if (rtp_session_start(&rs_v)) {
-		fprintf(stderr, "Could not connect to video server\n");
+	fd_a = open(out_a, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd_a < 0) {
+		fprintf(stderr, "Could not open output file: %s: %m\n",
+			out_a);
 		exit(EXIT_FAILURE);
 	}
 
-	if (audio) {
-		fd_a = open(out_a, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-		if (fd_a < 0) {
-			fprintf(stderr, "Could not open output file: %s: %m\n",
-				out_a);
-			exit(EXIT_FAILURE);
-		}
-		rtp_session_init(&rs_a, userinfo, path, server, atoi(port),
-				 RTP_MEDIA_AUDIO);
-		if (rtp_session_start(&rs_a)) {
-			fprintf(stderr, "Could not connect to audio server\n");
-			exit(EXIT_FAILURE);
-		}
-	}
+	rtp_session_init(&rs, userinfo, path, server, atoi(port));
 
 	fprintf(stderr, "Conecting to rtsp://%s%s%s:%s%s\n",
 		userinfo[0] ? userinfo : "", userinfo[0] ? "@" : "", server,
 		port, path);
 
+	if (rtp_session_start(&rs, &err_msg)) {
+		fprintf(stderr, "Could not connect to server: %s\n", err_msg);
+		exit(EXIT_FAILURE);
+	}
+
 	fprintf(stderr, "Recording data...\n");
 
 	while (1) {
-		do_out(&rs_v, fd_v);
-		do_out(&rs_a, fd_a);
+		if (rtp_session_read(&rs)) {
+			fprintf(stderr, "Error reading froms stream\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (!got_vop) {
+			if (!rs.vid_valid)
+				continue;
+			got_vop = 1;
+		}
+		do_vid_out(&rs, fd_v);
+		do_aud_out(&rs, fd_a);
 	}
 
 	exit(0);

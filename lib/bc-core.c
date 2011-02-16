@@ -24,6 +24,12 @@
 	(__vb)->memory = V4L2_MEMORY_MMAP;		\
 } while(0)
 
+#define RETERR(__msg) ({		\
+	if (err_msg)			\
+		*err_msg = __msg;	\
+	return -1;			\
+})
+
 static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 {
 	int i, c;
@@ -86,8 +92,8 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	struct v4l2_buffer *vb;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		return mpeg4_is_key_frame(bc->rtp_sess.frame_buf,
-					  bc->rtp_sess.frame_len);
+		return mpeg4_is_key_frame(bc->rtp_sess.vid_buf,
+					  bc->rtp_sess.vid_len);
 
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 1;
@@ -104,7 +110,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	return 0;
 }
 
-static int bc_v4l2_bufs_prepare(struct bc_handle *bc)
+static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 {
 	struct v4l2_requestbuffers req;
 	int i;
@@ -113,12 +119,10 @@ static int bc_v4l2_bufs_prepare(struct bc_handle *bc)
 	req.count = bc->buffers;
 
 	if (ioctl(bc->dev_fd, VIDIOC_REQBUFS, &req) < 0)
-		return -1;
+		RETERR("REQBUFS Failed");
 
-	if (req.count != bc->buffers) {
-		errno = EINVAL;
-		return -1;
-	}
+	if (req.count != bc->buffers)
+		RETERR("REQBUFS Returned wrong buffer count");
 
 	for (i = 0; i < bc->buffers; i++) {
 		struct v4l2_buffer vb;
@@ -127,20 +131,20 @@ static int bc_v4l2_bufs_prepare(struct bc_handle *bc)
 		vb.index = i;
 
 		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			return -1;
+			RETERR("QUERYBUF Failed");
 
 		bc->p_buf[i].size = vb.length;
 		bc->p_buf[i].data = mmap(NULL, vb.length,
 					 PROT_WRITE | PROT_READ, MAP_SHARED,
 					 bc->dev_fd, vb.m.offset);
 		if (bc->p_buf[i].data == MAP_FAILED)
-			return -1;
+			RETERR("MMAP Failed");
 	}
 
 	return 0;
 }
 
-static int v4l2_handle_start(struct bc_handle *bc)
+static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	int i;
@@ -151,11 +155,11 @@ static int v4l2_handle_start(struct bc_handle *bc)
 	else
 		bc->buffers = BC_BUFFERS_JPEG;
 
-	if (bc_v4l2_bufs_prepare(bc))
+	if (bc_v4l2_bufs_prepare(bc, err_msg))
 		return -1;
 
 	if (ioctl(bc->dev_fd, VIDIOC_STREAMON, &type) < 0)
-		return -1;
+		RETERR("STREAMON Failed");
 
 	/* Queue all buffers */
 	for (i = 0; i < bc->buffers; i++) {
@@ -165,13 +169,13 @@ static int v4l2_handle_start(struct bc_handle *bc)
 		vb.index = i;
 
 		if (ioctl(bc->dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			return -1;
+			RETERR("QUERYBUF Failed");
 
 		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
 			continue;
 
 		if (ioctl(bc->dev_fd, VIDIOC_QBUF, &vb) < 0)
-			return -1;
+			RETERR("QBUF Failed");
 	}
 
 	bc->local_bufs = 0;
@@ -180,20 +184,25 @@ static int v4l2_handle_start(struct bc_handle *bc)
 	return 0;
 }
 
-int bc_handle_start(struct bc_handle *bc)
+int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 {
 	int ret = -1;
+
+	if (err_msg)
+		*err_msg = "No error (or unknown error)";
 
 	if (bc->started)
 		return 0;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		ret = rtp_session_start(&bc->rtp_sess);
+		ret = rtp_session_start(&bc->rtp_sess, err_msg);
 	else if (bc->cam_caps & BC_CAM_CAP_V4L2)
-		ret = v4l2_handle_start(bc);
+		ret = v4l2_handle_start(bc, err_msg);
 
-	if (!ret)
+	if (!ret) {
 		bc->started = 1;
+		bc->got_vop = 0;
+	}
 
 	return ret;
 }
@@ -246,8 +255,35 @@ int bc_buf_get(struct bc_handle *bc)
 	struct v4l2_buffer vb;
 	int ret;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		return rtp_session_read(&bc->rtp_sess);
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		struct rtp_session *rs = &bc->rtp_sess;
+		int ret = 0;
+
+		/* Reset for next packet */
+		if (rs->vid_valid)
+			rs->vid_valid = rs->vid_len = 0;
+		if (rs->aud_valid)
+			rs->aud_valid = rs->aud_len = 0;
+
+		/* Loop till we get a whole packet */
+		for (;;) {
+			ret = rtp_session_read(rs);
+			if (ret)
+				return ret;
+
+			if (!bc->got_vop) {
+				if (!rs->vid_valid)
+					continue;
+				else
+					bc->got_vop = 1;
+			}
+
+			if (rs->vid_valid || rs->aud_valid)
+				break;
+		}
+
+		return 0;
+	}
 
 	bc_buf_return(bc);
 
@@ -406,7 +442,6 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 /* Internal rtp session init that uses a database result */
 static int rtp_session_init_dbres(struct rtp_session *rs,
-				  rtp_media_type_t media,
 				  void *dbres)
 {
 	const char *val;
@@ -456,9 +491,6 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 	rs->port = atoi(p);
 	strcpy(rs->uri, t);
 
-	rs->net_fd = -1;
-	rs->media = RTP_MEDIA_VIDEO;
-
 	return 0;
 }
 
@@ -467,7 +499,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *val;
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
-	if (rtp_session_init_dbres(&bc->rtp_sess, RTP_MEDIA_VIDEO, dbres)) {
+	if (rtp_session_init_dbres(&bc->rtp_sess, dbres)) {
 		errno = ENOMEM;
 		return -1;
 	}

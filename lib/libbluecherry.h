@@ -196,7 +196,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
 
 /* Called to start and stop the stream */
-int bc_handle_start(struct bc_handle *bc);
+int bc_handle_start(struct bc_handle *bc, const char **err_msg);
 void bc_handle_stop(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */
@@ -288,6 +288,8 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 int bc_media_end(bc_media_entry_t *bcm);
 /* Get the length of the current media object */
 time_t bc_media_length(bc_media_entry_t *bcm);
+/* Destroy a media object (that not got started) */
+void bc_media_destroy(bc_media_entry_t *bcm);
 
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */

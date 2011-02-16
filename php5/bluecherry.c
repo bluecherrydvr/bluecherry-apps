@@ -287,7 +287,7 @@ PHP_FUNCTION(bc_handle_start)
 
 	BCH_GET_RES("bc_handle_start");
 
-	if (bc_handle_start(bch) < 0)
+	if (bc_handle_start(bch, NULL) < 0)
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -296,10 +296,16 @@ PHP_FUNCTION(bc_handle_start)
 PHP_FUNCTION(bc_buf_get)
 {
 	struct bc_handle *bch;
+	int ret;
 
 	BCH_GET_RES("bc_buf_get");
 
-	bc_buf_get(bch);
+	do {
+		ret = bc_buf_get(bch);
+	} while(ret == EAGAIN);
+
+	if (ret)
+		RETURN_FALSE;
 
 	RETURN_TRUE;
 }

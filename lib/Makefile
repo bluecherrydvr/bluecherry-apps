@@ -1,20 +1,30 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm
-CPPFLAGS	+= -I/usr/include/apache2 $(shell apr-1-config --includes)
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lidn -lssl -lcrypto -lrt -lz
+CPPFLAGS	+= -Ilibcurl/include
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
+LIBCURL		= libcurl/lib/.libs/libcurl.a
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o rtp-request.o rtp-session.o
+		  bc-key.o bc-media.o rtp-session.o
 
 all: $(SOLIBVER)
 
+
+libcurl/lib/Makefile: libcurl/configure
+	cd libcurl && ./configure --prefix=/usr --disable-shared --enable-debug --enable-optimize --disable-warnings --disable-werror --enable-curldebug --enable-largefile --enable-static --enable-http --disable-ftp --disable-file --disable-ldap --disable-ldaps --enable-rtsp --disable-proxy --disable-dict --disable-telnet --disable-tftp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-manual --enable-ipv6 --disable-thread-resolver --enable-verbose --disable-sspi --enable-crypto-auth --disable-hidden-symbols --with-pic --without-krb4 --without-ca-bindle --without-ca-path --without-libssh2
+
+libcurl/lib/.libs/libcurl.a: libcurl/lib/Makefile
+	$(MAKE) $(MAKEARGS) -C libcurl/lib
+
+rtp-session.o: $(LIBCURL)
+
 $(SOLIBVER): $(OBJS)
 	echo $(RES)
-	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
+	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS) $(LIBCURL)
 	ln -sf $@ $(SOLIB)
 
 install: all
@@ -22,3 +32,7 @@ install: all
 
 clean:
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
+	-$(MAKE) -C libcurl distclean
+	rm -fr libcurl/{config.log,Makefile,config.status,libtool} \
+		libcurl/{aclocal.m4.bak,autom4te.cache/,curl-config} \
+		libcurl/tests/configurehelp.pm

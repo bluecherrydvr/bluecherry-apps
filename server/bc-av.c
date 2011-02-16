@@ -15,6 +15,23 @@
  * (loudly) if it sees this occuring. */
 static pthread_mutex_t av_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
+static int has_audio(struct bc_record *bc_rec)
+{
+	struct bc_handle *bc = bc_rec->bc;
+
+	if (bc_rec->pcm != NULL)
+		return 1;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_RTSP))
+		return 0;
+	if (bc->rtp_sess.tid_a >= 0)
+		return 1;
+	if (bc->rtp_sess.aud_port >= 0)
+		return 1;
+
+	return 0;
+}
+
 static unsigned int bc_to_alsa_fmt(unsigned int fmt)
 {
 	/* Prefer S16_LE */
@@ -141,64 +158,75 @@ static int pcm_dupe(short *in, int in_size, short *out)
 
 int bc_aud_out(struct bc_record *bc_rec)
 {
-	AVCodecContext *c = NULL;
+	AVCodecContext *c;
 	AVPacket pkt;
-	unsigned char g723_data[96];
-	short pcm_in[512];
-	unsigned char mp2_out[1024];
-	int size;
 
 	/* pcm can be null due to not being able to open the alsa dev. */
-	if (!bc_rec->pcm)
+	if (!has_audio(bc_rec) || !bc_rec->audio_st)
 		return -1;
-
-	memset(g723_data, 0, sizeof(g723_data));
-
-	size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
-
-	if (size < 0) {
-		if (size == -EAGAIN)
-			return 1;
-		bc_dev_err(bc_rec, "Error reading from sound device: %s",
-			   snd_strerror(size));
-		bc_alsa_close(bc_rec);
-		return -1;
-	}
-
-	size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
-
-	bc_rec->pcm_buf_size += pcm_dupe(pcm_in, size,
-					 bc_rec->pcm_buf +
-					 bc_rec->pcm_buf_size);
 
 	c = bc_rec->audio_st->codec;
-
-	/* We need enough data to encode first... */
-	if (bc_rec->pcm_buf_size < c->frame_size)
-		return 0;
-
 	av_init_packet(&pkt);
 
-	pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
-					bc_rec->pcm_buf);
+	if (bc_rec->pcm) {
+		unsigned char g723_data[96];
+		short pcm_in[512];
+		unsigned char mp2_out[1024];
+		int size;
 
-	/* Most likely, we don't align perfectly */
-	if (bc_rec->pcm_buf_size > c->frame_size)
-		memcpy(bc_rec->pcm_buf, bc_rec->pcm_buf + c->frame_size,
-		       (bc_rec->pcm_buf_size - c->frame_size) * 2);
+		memset(g723_data, 0, sizeof(g723_data));
 
-	bc_rec->pcm_buf_size -= c->frame_size;
+		size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
 
-	/* Not enough to encode a full buffer yet */
-	if (pkt.size == 0)
-		return 0;
+		if (size < 0) {
+			if (size == -EAGAIN)
+				return 1;
+			bc_dev_err(bc_rec, "Error reading from sound device: %s",
+				   snd_strerror(size));
+			bc_alsa_close(bc_rec);
+			return -1;
+		}
+
+		size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
+
+		bc_rec->pcm_buf_size += pcm_dupe(pcm_in, size,
+						 bc_rec->pcm_buf +
+						 bc_rec->pcm_buf_size);
+
+		/* We need enough data to encode first... */
+		if (bc_rec->pcm_buf_size < c->frame_size)
+			return 0;
+
+		pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
+						bc_rec->pcm_buf);
+
+		/* Most likely, we don't align perfectly */
+		if (bc_rec->pcm_buf_size > c->frame_size)
+			memcpy(bc_rec->pcm_buf, bc_rec->pcm_buf + c->frame_size,
+			       (bc_rec->pcm_buf_size - c->frame_size) * 2);
+
+		bc_rec->pcm_buf_size -= c->frame_size;
+
+		/* Not enough to encode a full buffer yet */
+		if (pkt.size == 0)
+			return 0;
+
+		pkt.data = mp2_out;
+	} else {
+		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
+
+		if (!rs->aud_valid)
+			return 1;
+
+		pkt.size = rs->aud_len;
+		pkt.data = rs->aud_buf;
+	}
 
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 				       bc_rec->audio_st->time_base);
 	pkt.flags |= PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
-	pkt.data = mp2_out;
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
@@ -226,6 +254,11 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
+
+	/* See if there is data to send */
+	if (!pkt.data || !pkt.size)
+		return 0;
+
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 				       bc_rec->video_st->time_base);
@@ -252,7 +285,7 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 	bc_rec->video_st = bc_rec->audio_st = NULL;
 
 	if (bc_rec->oc) {
-		av_write_trailer(bc_rec->oc);
+		//av_write_trailer(bc_rec->oc);
 
 		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
 			av_freep(&bc_rec->oc->streams[i]->codec);
@@ -307,8 +340,10 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 	/* XXX Need some way to reconcile time between media event and
 	 * filename. They should match. */
-	strftime(date, sizeof(date), "%Y/%m/%d", localtime_r(&t, &tm));
-	strftime(mytime, sizeof(mytime), "%T", &tm);
+	localtime_r(&t, &tm);
+
+	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
+	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
 	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
@@ -350,7 +385,7 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 		return -1;
 
 	/* Decode the first picture to get frame size */
-	codec = avcodec_find_decoder(CODEC_ID_MPEG4);
+	codec = avcodec_find_decoder(bc->rtp_sess.vid_codec);
 	if (!codec)
 		return -1;
 
@@ -428,7 +463,16 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->time_base.num = fnum;
 	snprintf(st->language, sizeof(st->language), "eng");
 
-	st->codec->codec_id = bc_rec->codec_id;
+	if (bc_rec->codec_id == CODEC_ID_NONE) {
+		if (bc->cam_caps & BC_CAM_CAP_RTSP)
+			st->codec->codec_id = bc->rtp_sess.vid_codec;
+
+		if (st->codec->codec_id == CODEC_ID_NONE) {
+			bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
+			st->codec->codec_id = CODEC_ID_MPEG4;
+		}
+	} else
+		st->codec->codec_id = bc_rec->codec_id;
 
 	/* h264 requires us to work around libavcodec broken defaults */
 	if (bc_rec->codec_id == CODEC_ID_H264) {
@@ -460,24 +504,47 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		bc_alsa_close(bc_rec);
 
 	/* Setup new audio stream */
-	if (bc_rec->pcm) {
+	if (has_audio(bc_rec)) {
+		enum CodecID codec_id;
+
+		if (bc_rec->pcm)
+			codec_id = CODEC_ID_MP2;
+		else
+			codec_id = bc->rtp_sess.aud_codec;
+
+		/* If we can't find an encoder, just skip it */
+		if (avcodec_find_encoder(codec_id) == NULL) {
+			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
+				    "so not recording", codec_id);
+			goto no_audio;
+		}
+
 		if ((bc_rec->audio_st = av_new_stream(oc, 1)) == NULL)
 			return -1;
 		st = bc_rec->audio_st;
-
-		st->codec->codec_id = CODEC_ID_MP2;
+		st->codec->codec_id = codec_id;
 		st->codec->codec_type = CODEC_TYPE_AUDIO;
-		st->codec->bit_rate = 32000;
-		st->codec->sample_rate = 16000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
-		st->codec->channels = 1;
-		st->codec->time_base = (AVRational){1, 16000};
+
+		if (bc_rec->pcm) {
+			st->codec->bit_rate = 32000;
+			st->codec->sample_rate = 16000;
+			st->codec->sample_fmt = SAMPLE_FMT_S16;
+			st->codec->channels = 1;
+			st->codec->time_base = (AVRational){1, 16000};
+		} else {
+			struct rtp_session *rs = &bc->rtp_sess;
+
+			st->codec->bit_rate = rs->bitrate;
+			st->codec->sample_rate = rs->samplerate;
+			st->codec->channels = rs->channels;
+			st->codec->time_base = (AVRational){1, rs->samplerate};
+		}
 
 		snprintf(st->language, sizeof(st->language), "eng");
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
+no_audio:
 		st = NULL;
 	}
 
@@ -485,31 +552,27 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 
 	/* Open Video output */
-	codec = avcodec_find_encoder(bc_rec->video_st->codec->codec_id);
-	if (codec == NULL)
-		return -1;
-
-	/* If we fail to open the codec's, make sure to clear the
-	 * state so we don't try to call avcodec_close() on unopened
-	 * codec's. */
-	if (avcodec_open(bc_rec->video_st->codec, codec) < 0) {
+	st = bc_rec->video_st;
+	codec = avcodec_find_encoder(st->codec->codec_id);
+	if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
 		bc_rec->video_st = NULL;
+		/* Clear this */
 		if (bc_rec->audio_st)
 			bc_rec->audio_st = NULL;
 		return -1;
 	}
+	st = NULL;
 
 	/* Open Audio output */
 	if (bc_rec->audio_st) {
-		codec = avcodec_find_encoder(bc_rec->audio_st->codec->codec_id);
-		if (codec == NULL)
-			return -1;
-
-		/* Same as above for video */
-		if (avcodec_open(bc_rec->audio_st->codec, codec) < 0) {
+		st = bc_rec->audio_st;
+		codec = avcodec_find_encoder(st->codec->codec_id);
+		if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
 			bc_rec->audio_st = NULL;
-			return -1;
+			bc_dev_warn(bc_rec, "Failed to open audio codec (%08x) "
+				    "so not recording", st->codec->codec_id);
 		}
+		st = NULL;
 	}
 
 	/* Open output file */
@@ -528,8 +591,10 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (pthread_mutex_lock(&av_lock) == EDEADLK)
 		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec open!");
 	ret = __bc_open_avcodec(bc_rec);
-	if (ret)
+	if (ret) {
+		bc_media_destroy(&bc_rec->media);
 		__bc_close_avcodec(bc_rec);
+	}
 	pthread_mutex_unlock(&av_lock);
 
 	return ret;

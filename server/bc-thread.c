@@ -94,6 +94,8 @@ static void *bc_device_thread(void *data)
 	bc_dev_info(bc_rec, "Camera configured");
 
 	for (;;) {
+		const char *err_msg;
+
 		if (bc_rec->thread_should_die)
 			break;
 
@@ -102,14 +104,12 @@ static void *bc_device_thread(void *data)
 		if (process_schedule(bc_rec))
 			continue;
 
-		if (bc_handle_start(bc)) {
+		if (bc_handle_start(bc, &err_msg)) {
 			if (!(bc_rec->start_failed++ % 60)) {
-				int saved_err = errno;
-
 				bc_event_cam(bc_rec->id, BC_EVENT_L_ALRM,
 					     BC_EVENT_CAM_T_NOT_FOUND);
 				bc_dev_err(bc_rec, "Error starting stream: %s",
-					   strerror(saved_err));
+					   err_msg);
 			}
 			sleep(1);
 			continue;
@@ -213,8 +213,10 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	if (!strcasecmp(driver, "solo6110"))
 		bc_rec->codec_id = CODEC_ID_H264;
-	else
+	else if (!strcasecmp(driver, "solo6010"))
 		bc_rec->codec_id = CODEC_ID_MPEG4;
+	else
+		bc_rec->codec_id = CODEC_ID_NONE;
 
 	get_aud_dev(bc_rec);
 
