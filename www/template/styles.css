@@ -18,7 +18,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #ajaxMessage.F, #message.F   		{ border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
 #ajaxMessage.OK, #message.OK	 	{ border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
-#sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
+#sysMessages #message			{ padding-left:35px; width:130px; margin:10px 5px 0 5px; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
 #sysMessages #snr, #sysMessages #sr, #sysMessages #ncn { display:none; }
 
@@ -49,7 +49,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #dschedule-window-header { color:#933; font-weight:bold; font-size:1.2em; margin-bottom:20px; }
 
 /*left column*/
-#leftColumn   { padding:20px; width:200px; float:left; }
+#leftColumn   { padding:20px; width:180px; float:left; }
 #centerColumn { padding:20px; float:left; position:relative; }
 
 /*main page-space*/
@@ -60,7 +60,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #mainMenu { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0;}
 #menuButtons { margin:0px; padding:0px; list-style-type:none; }
 #menuButtons hr { color:#bbb; height:1px; display:block; margin: 3px 0 3px 0; width:100%; }
-#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:18px; display:block; margin-top:5px; position:relative; height: 27px; width: 150px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
+#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:18px; display:block; margin-top:5px; position:relative; height: 27px; width: 130px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
 #menuButtons p { vertical-align:center; }
 #menuButtons li { background-repeat: no-repeat; background-position:2px center; }
 #menuButtons .news			  { background-image:url("/img/icons/news.png");   }
