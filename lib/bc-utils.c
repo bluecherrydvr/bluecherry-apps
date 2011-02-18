@@ -48,6 +48,18 @@ int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
+int bc_set_mjpeg(struct bc_handle *bc)
+{
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return -1;
+
+	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
+		return -1;
+
+	return 0;
+}
+
 /* Check range and convert our 0-100 to valid ranges in the hardware */
 int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 {

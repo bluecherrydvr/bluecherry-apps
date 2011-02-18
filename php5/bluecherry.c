@@ -336,8 +336,7 @@ PHP_FUNCTION(bc_set_mjpeg)
 
 	BCH_GET_RES("bc_set_mjpeg");
 
-	bch->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-	if (ioctl(bch->dev_fd, VIDIOC_S_FMT, &bch->vfmt) < 0)
+	if (bc_set_mjpeg(bch))
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -369,6 +368,30 @@ PHP_FUNCTION(bc_log)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_motion_is_on)
+{
+	struct bc_handle *bch;
+
+	BCH_GET_RES("bc_motion_is_on");
+
+	if (bc_motion_is_on(bch))
+		RETURN_TRUE;
+
+	RETURN_FALSE;
+}
+
+PHP_FUNCTION(bc_motion_is_detected)
+{
+	struct bc_handle *bch;
+
+	BCH_GET_RES("bc_motion_is_detected");
+
+	if (bc_motion_is_detected(bch))
+		RETURN_TRUE;
+
+	RETURN_FALSE;
+}
+
 static function_entry bluecherry_functions[] = {
 	/* Bluecherry DB Handlers */
 	PHP_FE(bc_db_open, NULL)
@@ -387,6 +410,8 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
 	PHP_FE(bc_get_mjpeg_url, NULL)
+	PHP_FE(bc_motion_is_on, NULL)
+	PHP_FE(bc_motion_is_detected, NULL)
 	/* Miscellaneous */
 	PHP_FE(bc_log, NULL)
 	{NULL, NULL, NULL}

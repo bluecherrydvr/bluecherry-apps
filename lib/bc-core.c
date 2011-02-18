@@ -30,6 +30,45 @@
 	return -1;			\
 })
 
+static struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
+{
+	if (bc->buf_idx < 0)
+		return NULL;
+
+	return &bc->p_buf[bc->buf_idx].vb;
+}
+
+int bc_motion_is_on(struct bc_handle *bc)
+{
+	struct v4l2_buffer *vb;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
+
+	vb = bc_buf_v4l2(bc);
+	if (vb == NULL)
+		return 0;
+
+	return vb->flags & V4L2_BUF_FLAG_MOTION_ON ? 1 : 0;
+}
+
+int bc_motion_is_detected(struct bc_handle *bc)
+{
+	struct v4l2_buffer *vb;
+
+	if (!bc_motion_is_on(bc))
+		return 0;
+
+	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+		return 0;
+
+	vb = bc_buf_v4l2(bc);
+	if (vb == NULL)
+		return 0;
+
+	return vb->flags & V4L2_BUF_FLAG_MOTION_DETECTED ? 1 : 0;
+}
+
 static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 {
 	int i, c;
@@ -50,14 +89,6 @@ static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 	}
 
 	bc->local_bufs = c;
-}
-
-static struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
-{
-	if (bc->buf_idx < 0)
-		return NULL;
-
-	return &bc->p_buf[bc->buf_idx].vb;
 }
 
 static int mpeg4_is_key_frame(const unsigned char *data,
@@ -298,8 +329,10 @@ int bc_buf_get(struct bc_handle *bc)
 	bc->buf_idx = vb.index;
 	bc->p_buf[bc->buf_idx].vb = vb;
 
-	/* If no motion detection, then carry on normally */
-	if (!(bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_ON)) {
+	/* If no motion detection, then carry on normally. For MJPEG,
+	 * we never stall the buffer for motion. */
+	if (bc->vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG ||
+	    !bc_motion_is_on(bc)) {
 		/* Reset this counter in case motion gets turned back on */
 		bc->mot_cnt = 0;
 
@@ -316,7 +349,7 @@ int bc_buf_get(struct bc_handle *bc)
 	 * ERESTART for "motion just ended, stop this recording". */
         ret = EAGAIN;
 
-	if (bc_buf_v4l2(bc)->flags & V4L2_BUF_FLAG_MOTION_DETECTED) {
+	if (bc_motion_is_detected(bc)) {
 		if (bc->mot_cnt == 0) {
 			bc->got_vop = 0;
 			// First time, send event
