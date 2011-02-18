@@ -477,6 +477,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	/* cURL doesn't support RTSP auth yet */
         rtp_add_auth(rs);
 	/* Defaults for data handlers do nothing */
+	curl_easy_setopt(rs->curl, CURLOPT_RANGE, "npt=0.000-");
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEDATA, rs);
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEDATA, rs);
 	curl_easy_setopt(rs->curl, CURLOPT_HEADERDATA, rs);
