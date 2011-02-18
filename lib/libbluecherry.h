@@ -221,11 +221,17 @@ int bc_buf_key_frame(struct bc_handle *bc);
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval);
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height);
+int bc_set_mjpeg(struct bc_handle *bc);
 
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
 int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 			 unsigned short block);
+/* Checks if the current buffer has motion on/detected */
+int bc_motion_is_on(struct bc_handle *bc);
+int bc_motion_is_detected(struct bc_handle *bc);
+
+/* Set v4l2 control */
 int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val);
 
 /* Set the text of the OSD */
