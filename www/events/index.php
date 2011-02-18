@@ -23,7 +23,9 @@ if (isset($_GET['beforeId']))
 	$query .= "EventsCam.id < ".((int)$_GET['beforeId'])." AND ";
 if (isset($_GET['id']))
 	$query .= "EventsCam.id = ".((int)$_GET['id'])." AND ";
-	
+if (empty($current_user->data[0]['access_device_list'])){
+	$current_user->data[0]['access_device_list'] = '-1';
+}
 $query .= "EventsCam.device_id NOT IN ({$current_user->data[0]['access_device_list']}) ";
 $query .= "ORDER BY EventsCam.time DESC ";
 $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
@@ -31,6 +33,7 @@ if ($limit > 0)
 	$query .= "LIMIT ".$limit;
 	
 $events = bc_db_get_table($query);
+
 
 # Output header for this feed
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
