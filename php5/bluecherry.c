@@ -296,15 +296,10 @@ PHP_FUNCTION(bc_handle_start)
 PHP_FUNCTION(bc_buf_get)
 {
 	struct bc_handle *bch;
-	int ret;
 
 	BCH_GET_RES("bc_buf_get");
 
-	do {
-		ret = bc_buf_get(bch);
-	} while(ret == EAGAIN);
-
-	if (ret)
+	if (bc_buf_get(bch))
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -322,8 +317,15 @@ PHP_FUNCTION(bc_buf_size)
 PHP_FUNCTION(bc_buf_data)
 {
 	struct bc_handle *bch;
-        
+        unsigned char *data;
+	int size;
+
 	BCH_GET_RES("bc_buf_data");
+
+	data = bc_buf_data(bch);
+	size = bc_buf_size(bch);
+	if (data == NULL || size <= 0)
+		RETURN_FALSE;
 
 	RETURN_STRINGL(bc_buf_data(bch), bc_buf_size(bch), 1);
 }
