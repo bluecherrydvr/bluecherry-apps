@@ -1,4 +1,4 @@
-bluecherry (2.0.0-0beta4.0) lucid; urgency=low
+bluecherry (1:2.0.0-0beta4.0) lucid; urgency=low
 
   * Bug #573: mjpeg.php occasionally says LANG_DIE_COULDNOTOPENCONF
   * Bug #648: Server: Change file format naming, replace colons separators
