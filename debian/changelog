@@ -1,3 +1,19 @@
+bluecherry (2.0.0-0beta4.0) lucid; urgency=low
+
+  * Bug #573: mjpeg.php occasionally says LANG_DIE_COULDNOTOPENCONF
+  * Bug #648: Server: Change file format naming, replace colons separators
+    with periods or underscores
+  * Bug #654: RTSP problems with Sony revision 5 cameras
+  * Feature #397: Add ACTi network camera support
+  * Feature #450: Web: Save layouts in web liveView
+  * Feature #504: Extend per-user permissions to include camera(s)
+  * Feature #605: Add support for H.264 capture cards
+  * Feature #614: Web: Show bluecherry version in side bar
+  * Feature #670: Server: Support IP cameras that only provide single JPEG
+    frames for live viewing
+
+ -- Ben Collins <bcollins@bluecherry.net>  Fri, 18 Feb 2011 01:07:21 -0500
+
 bluecherry (2.0.0-0beta3-2) lucid; urgency=low
 
   * Bug #662: bluecherry is not dependant on apache2.2-common, bad things
