@@ -3,7 +3,12 @@
 set -e
 
 case "$1" in
-	install|upgrade)
+	upgrade)
+		echo "UPGRADES WILL NOT WORK!!"
+		echo "Please 'dpkg -P bluecherry' before installing this new package"
+		exit 1
+		;;
+	install)
 		if ! id bluecherry > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
 				-G audio,video -M -U -r bluecherry
