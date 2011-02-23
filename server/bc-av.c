@@ -520,7 +520,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		}
 
 		if ((bc_rec->audio_st = av_new_stream(oc, 1)) == NULL)
-			return -1;
+			goto no_audio;
 		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
 		st->codec->codec_type = CODEC_TYPE_AUDIO;
