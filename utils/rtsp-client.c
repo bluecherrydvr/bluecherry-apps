@@ -55,7 +55,7 @@ static void check_mpeg(struct rtp_session *rs)
 
 	codec = avcodec_find_decoder(rs->vid_codec);
 	if (!codec) {
-		fprintf(stderr, "codec not found\n");
+		fprintf(stderr, "codec not found: 0x%08x\n", rs->vid_codec);
 		return;
 	}
 
