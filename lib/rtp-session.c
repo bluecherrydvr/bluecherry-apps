@@ -107,6 +107,11 @@ void rtp_session_stop(struct rtp_session *rs)
 		close(rs->aud_fd);
 		rs->aud_fd = -1;
 	}
+	if (rs->vid_buf) {
+		free(rs->vid_buf);
+		rs->vid_buf = NULL;
+		rs->vid_buf_len = 0;
+	}
 	pthread_mutex_unlock(&curl_lock);
 }
 
@@ -291,8 +296,22 @@ static void handle_vid(struct rtp_session *rs, unsigned char *data,
 		return;
 	}
 
-	memcpy(rs->vid_buf + rs->vid_len, data + skip, len - skip);
-	rs->vid_len += len - skip;
+	/* If our video buffer is too small, double it */
+	if (rs->vid_len + (len - skip) > rs->vid_buf_len) {
+		int new_len = rs->vid_buf_len *= 2;
+		void *new_buf = realloc(rs->vid_buf, new_len);
+
+		if (new_buf != NULL) {
+			rs->vid_buf_len = new_len;
+			rs->vid_buf = new_buf;
+		}
+	}
+
+	/* XXX: If we skip this, we're chopping a frame!! */
+	if (rs->vid_len + (len - skip) <= rs->vid_buf_len) {
+		memcpy(rs->vid_buf + rs->vid_len, data + skip, len - skip);
+		rs->vid_len += len - skip;
+	}
 
 	if (data[1] & 0x80)
 		rs->vid_valid = 1;
@@ -453,6 +472,14 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 
 	if (check_curl())
 		RETERR("Failed to initialize cURL");
+
+	if (rs->vid_buf == NULL) {
+		rs->vid_buf_len = 32 * 1024;
+		rs->vid_buf = malloc(rs->vid_buf_len);
+	}
+
+	if (rs->vid_buf == NULL)
+		GOTOERR("Failed to allocate video buffer");
 
 	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
@@ -667,6 +694,11 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 			set_adts_header(rs->adts_header, config);
 		} else
 			rs->aud_uri[0] = '\0';
+	} else if ((p = strcasestr(buf, "L16/"))) {
+		if (sscanf(p, "L16/%d", &rs->samplerate) != 1)
+			return ret;
+		rs->channels = 1;
+		rs->aud_codec = CODEC_ID_PCM_S16BE;
 	} else {
 		rs->aud_uri[0] = '\0';
 	}

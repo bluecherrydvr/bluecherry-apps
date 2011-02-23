@@ -35,7 +35,8 @@ struct rtp_session {
 	char		vid_uri[1024];
 
 	/* Video frames */
-	unsigned char	vid_buf[1024 * 128];
+	unsigned char	*vid_buf;
+	unsigned int	vid_buf_len;
 	int		vid_len;
 	int		vid_valid;
 
