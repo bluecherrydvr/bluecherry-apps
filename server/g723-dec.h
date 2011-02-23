@@ -22,10 +22,6 @@ struct g723_state {
 	short sr[2];
 
 	char td;
-
-	/* Used to track between calls to g723_decode */
-	int bits;
-	unsigned short buf;
 };
 
 void g723_init(struct g723_state *);
