@@ -29,6 +29,20 @@ CREATE TABLE Devices (
 	rtsp_password varbinary(256),
 	mjpeg_path varbinary(256),
 
+	-- This can be a serial tty or URL. It's not dependent on the camera
+	-- being IP or V4L2 (iow, an IP device can have a local serial tty
+	-- to control the PTZ). It should be file:///dev/ttyS0 format or
+	-- http://IP:PORT/PATH for IP based PTZ control. If it's an IP based
+	-- path, you can either include the username and password in this
+	-- field, or we will try the rtsp_{username,password} fields if
+	-- authentication is required.
+	ptz_control_path varbinary(256),
+	-- The control protocol is almost always PELCO for serial tty
+	ptz_control_protocol varchar(32),
+	-- Comman separated values for serial tty based PTZ controls in
+	-- Baud,Bit,Parity,StopBit format. E.g. 9600,8,n,1
+	ptz_serial_values varchar(64),
+
 	-- The rest of these may or may not be supported by the device
 	resolutionX smallint,
 	resolutionY smallint,
@@ -44,10 +58,6 @@ CREATE TABLE Devices (
 	signal_type varchar(6),			-- NTSC or PAL
 	buffer_prerecording smallint DEFAULT 5,	-- Seconds of pre/post recording for
 	buffer_postrecording smallint DEFAULT 5,--   motion stop/start
-	ptz_contol_path varchar(255),		-- Serial port device for PTZ
-	ptz_control_protocol varchar(15),	-- Protocol for PTZ controls
-	ptz_baud_rate varchar(6),		-- Baudrate and such for PTZ (8,n,1)
-	ip_ptz_control_type smallint,		-- Control type of IP PTZ
 	motion_map BLOB(400),			-- motion map
 	schedule BLOB(168),			-- Recording schedule
 	schedule_override_global boolean DEFAULT FALSE,
