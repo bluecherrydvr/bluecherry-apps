@@ -66,3 +66,12 @@ CREATE TABLE Devices (
 	UNIQUE (device_name),
 	UNIQUE (device,channel)
 );
+
+CREATE TABLE PTZPresets (
+	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	device_id integer NOT NULL,
+	preset_id integer NOT NULL,
+	preset_name varchar(64),
+	UNIQUE (device_id,preset_name),
+	FOREIGN KEY (device_id) REFERENCES Devices(id)
+);
