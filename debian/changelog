@@ -1,3 +1,13 @@
+bluecherry (1:2.0.0-0beta4.1) lucid; urgency=low
+
+  * Changes in table format for PTZ (not used yet)
+  * server: Handle error in audio setup correctly
+  * rtp-session: Use realloc for vid_buffer to increase size as needed
+  * userLayouts table sql
+  * lib: Implement better handling of motion when we are using MJPEG
+
+ -- Ben Collins <bcollins@bluecherry.net>  Mon, 28 Feb 2011 17:13:05 -0500
+
 bluecherry (1:2.0.0-0beta4.0) lucid; urgency=low
 
   * Bug #573: mjpeg.php occasionally says LANG_DIE_COULDNOTOPENCONF
