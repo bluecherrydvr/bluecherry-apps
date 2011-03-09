@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <termios.h>
 #include <libconfig.h>
 
 #include <linux/videodev2.h>
@@ -77,6 +78,13 @@ struct bc_handle {
 	int			card_id;
 	int			dev_id;
 	unsigned int		cam_caps;
+
+	/* PTZ params. Path is a device for PELCO types and full URI
+	 * for IP based PTZ controls. */
+	char			ptz_path[1024];
+	unsigned int		ptz_proto;
+	/* Used for serial based protcols */
+	struct termios		ptz_tio;
 
 	/* For private data */
 	void			*__data;
@@ -152,8 +160,30 @@ typedef enum {
 typedef struct bc_media_entry * bc_media_entry_t;
 #define BC_MEDIA_NULL ((bc_media_entry_t)NULL)
 
-/* Doubly linked lists */
+/* These bits are setup in such a way as to avoid conflicting bits being
+ * used together. Each nibble should only have one bit set. In addition,
+ * You can't use STOP with anything else. */
+#define BC_PTZ_CMD_STOP		0x80000000
 
+/* Movement commands */
+#define BC_PTZ_CMD_RIGHT	0x00000001
+#define BC_PTZ_CMD_LEFT		0x00000002
+#define BC_PTZ_CMD_UP		0x00000010
+#define BC_PTZ_CMD_DOWN		0x00000020
+#define BC_PTZ_CMD_IN		0x00000100
+#define BC_PTZ_CMD_OUT		0x00000200
+#define BC_PTZ_CMD_ZEROPAN	0x00001000
+#define BC_PTZ_CMD_FLIP		0x00002000
+#define BC_PTZ_CMDS_MOVE_MASK	0x00003333
+
+/* Preset commands */
+#define BC_PTZ_CMD_SAVE		0x00010000
+#define BC_PTZ_CMD_GO		0x00020000
+#define BC_PTZ_CMD_CLEAR	0x00040000
+#define BC_PTZ_CMDS_PSET_MASK	0x00070000
+
+
+/* Doubly linked lists */
 struct bc_list_struct {
 	struct bc_list_struct *next, *prev;
 };
@@ -304,5 +334,10 @@ void bc_media_event_clear(void);
 /* Handlers for motion events */
 extern void (*bc_handle_motion_start)(struct bc_handle *bc);
 extern void (*bc_handle_motion_end)(struct bc_handle *bc);
+
+/* PTZ commands */
+void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
+int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay, 
+	       int pan_speed, int tilt_speed, int pset_id);
 
 #endif /* __LIBBLUECHERRY_H */

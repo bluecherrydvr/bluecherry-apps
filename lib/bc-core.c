@@ -576,6 +576,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	strcpy(bc->driver, driver);
 	bc->dev_fd = -1;
 
+	bc_ptz_check(bc, dbres);
+
 	if (!strncmp(driver, "RTSP-", 5))
 		ret = rtsp_handle_init(bc, dbres);
 	else

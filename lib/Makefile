@@ -9,7 +9,7 @@ LIBCURL		= libcurl/lib/.libs/libcurl.a
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o rtp-session.o
+		  bc-key.o bc-media.o rtp-session.o bc-ptz.o
 
 all: $(SOLIBVER)
 
