@@ -31,7 +31,7 @@ CREATE TABLE Devices (
 
 	-- This can be a serial tty or URL. It's not dependent on the camera
 	-- being IP or V4L2 (iow, an IP device can have a local serial tty
-	-- to control the PTZ). It should be file:///dev/ttyS0 format or
+	-- to control the PTZ). It should be /dev/ttyS0 format or
 	-- http://IP:PORT/PATH for IP based PTZ control. If it's an IP based
 	-- path, you can either include the username and password in this
 	-- field, or we will try the rtsp_{username,password} fields if
