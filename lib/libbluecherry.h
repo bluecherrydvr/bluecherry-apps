@@ -172,15 +172,13 @@ typedef struct bc_media_entry * bc_media_entry_t;
 #define BC_PTZ_CMD_DOWN		0x00000020
 #define BC_PTZ_CMD_IN		0x00000100
 #define BC_PTZ_CMD_OUT		0x00000200
-#define BC_PTZ_CMD_ZEROPAN	0x00001000
-#define BC_PTZ_CMD_FLIP		0x00002000
-#define BC_PTZ_CMDS_MOVE_MASK	0x00003333
+#define BC_PTZ_CMDS_MOVE_MASK	0x00000333
 
 /* Preset commands */
-#define BC_PTZ_CMD_SAVE		0x00010000
-#define BC_PTZ_CMD_GO		0x00020000
-#define BC_PTZ_CMD_CLEAR	0x00040000
-#define BC_PTZ_CMDS_PSET_MASK	0x00070000
+#define BC_PTZ_CMD_SAVE		0x00001000
+#define BC_PTZ_CMD_GO		0x00002000
+#define BC_PTZ_CMD_CLEAR	0x00004000
+#define BC_PTZ_CMDS_PSET_MASK	0x00007000
 
 
 /* Doubly linked lists */

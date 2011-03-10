@@ -133,10 +133,6 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 	if (cmd & BC_PTZ_CMDS_PSET_MASK && cmd & BC_PTZ_CMDS_MOVE_MASK)
 		return -EINVAL;
 
-	/* Preset id must be between 1 and 20 inclusive */
-	if (cmd & BC_PTZ_CMDS_PSET_MASK && (pset_id < 1 || pset_id > 20))
-		return -EINVAL;
-
 	/* Directional commands cannot conflict  (e.g. up and down) */
 	if ((cmd & 0x3) == 0x3 || (cmd & 0x30) == 0x30 ||
 	    (cmd & 0x300) == 0x300 || (cmd & 0x3000) == 0x3000)
@@ -170,11 +166,6 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 			data[3] = 1 << 5, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_OUT)
 			data[3] = 1 << 6, real_delay = delay;
-
-		if (cmd & BC_PTZ_CMD_ZEROPAN)
-			data[3] = 0x07, data[4] = 0, data[5] = 0x22;
-		if (cmd & BC_PTZ_CMD_FLIP)
-			data[3] = 0x07, data[4] = 0, data[5] = 0x21;
 	} else { /* Presets */
 		data[4] = 0;
 		data[5] = pset_id;
@@ -183,6 +174,7 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 		case BC_PTZ_CMD_SAVE: data[3] = 0x03; break;
 		case BC_PTZ_CMD_GO: data[3] = 0x05; break;
 		case BC_PTZ_CMD_CLEAR: data[3] = 0x07; break;
+		default: return -EINVAL;
 		}
 	}
 
