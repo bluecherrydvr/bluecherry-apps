@@ -173,6 +173,79 @@ PHP_FUNCTION(bc_db_get_table)
 	bc_db_free_table(dbres);
 }
 
+/*
+ * Command is a string of single characters:
+ *    (S)top
+ *    Move: (u)p (d)own (l)eft (r)ight (i)n (o)out (z)eropan (f)lip
+ *    Presets: (s)ave (g)o (c)lear
+ *
+ * Stop can only be by itself (capital S). Move commands and Preset commands
+ * cannot be used together. Some Move commands are mutually exclusive (e.g.
+ * left and right) and all Preset commands are mutually exclusive.
+ */
+PHP_FUNCTION(bc_ptz_cmd)
+{
+	struct bc_handle bch;
+	long id, delay, pan_speed, tilt_speed, pset_id;
+	char *cmd_str;
+	int cmd_len, ret, i;
+	unsigned int cmd;
+	BC_DB_RES dbres;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "lsllll", &id,
+				  &cmd_str, &cmd_len, &delay, &pan_speed,
+				  &tilt_speed, &pset_id) == FAILURE)
+		RETURN_FALSE;
+
+	if (id < 0)
+		RETURN_FALSE;
+
+	if (bc_db_open())
+		RETURN_FALSE;
+
+	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
+				"AvailableSources USING (device) WHERE "
+				"Devices.id=%ld AND disabled=0", id);
+
+	if (dbres == NULL)
+		RETURN_FALSE;
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
+
+	memset(&bch, 0, sizeof(bch));
+	bc_ptz_check(&bch, dbres);
+
+	for (i = 0, cmd = 0; i < cmd_len; i++) {
+		switch (cmd_str[i]) {
+		case 'S': cmd |= BC_PTZ_CMD_STOP; break;
+		case 'r': cmd |= BC_PTZ_CMD_RIGHT; break;
+		case 'l': cmd |= BC_PTZ_CMD_LEFT; break;
+		case 'u': cmd |= BC_PTZ_CMD_UP; break;
+		case 'd': cmd |= BC_PTZ_CMD_DOWN; break;
+		case 'i': cmd |= BC_PTZ_CMD_IN; break;
+		case 'o': cmd |= BC_PTZ_CMD_OUT; break;
+		case 'z': cmd |= BC_PTZ_CMD_ZEROPAN; break;
+		case 'f': cmd |= BC_PTZ_CMD_FLIP; break;
+		case 's': cmd |= BC_PTZ_CMD_SAVE; break;
+		case 'g': cmd |= BC_PTZ_CMD_GO; break;
+		case 'c': cmd |= BC_PTZ_CMD_CLEAR; break;
+		}
+	}
+
+	ret = bc_ptz_cmd(&bch, cmd, (int)delay, (int)pan_speed,
+			 (int)tilt_speed, (int)pset_id);
+
+	bc_db_free_table(dbres);
+
+	if (ret)
+		RETURN_FALSE;
+
+	RETURN_TRUE;
+}
+
 PHP_FUNCTION(bc_handle_get_byid)
 {
 	struct bc_handle *bch;
@@ -412,6 +485,7 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_get_mjpeg_url, NULL)
 	PHP_FE(bc_motion_is_on, NULL)
 	PHP_FE(bc_motion_is_detected, NULL)
+	PHP_FE(bc_ptz_cmd, NULL)
 	/* Miscellaneous */
 	PHP_FE(bc_log, NULL)
 	{NULL, NULL, NULL}
