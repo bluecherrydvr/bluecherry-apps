@@ -256,27 +256,40 @@ class DVRDevices extends DVRData{
 		}
 		$this->total_devices += count($this->ip_cameras);
 	}
-	public function MakeXML(){
+	public function MakeXML() {
 		$this_user = new DVRUser('id', $_SESSION['id']);
 		$access_list = explode(',', $this_user->data[0]['access_device_list']);
-		// The \063 is a '?'. Used decimal so as not to confuse vim
-		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
+		// The \x3f is a '?'. Used hex so as not to confuse vim
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n<devices>\n";
 		$devices = array();
 		if (!empty($this->cards))
 		foreach($this->cards as $card_id => $card){
 			$devices = array_merge($devices, $card->devices);
 		};
 		$devices = array_merge($devices, $this->ip_cameras);
-		foreach($devices as $device){
-			if (!in_array($device['id'], $access_list)){
-				$xml .= '<device';
-				$xml .= empty($device['id']) ? '>' : ' id="'.$device['id'].'">';
-				foreach($device as $property => $value){
-					if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
-						if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
-				};
-				$xml.='</device>';
-			}
+		foreach ($devices as $device) {
+			if (in_array($device['id'], $access_list))
+				continue;
+
+			if (empty($device['id']))
+				$xml .= "  <device>\n";
+			else
+				$xml .= "  <device id=\"" . $device['id'] . "\">\n";
+
+			foreach($device as $property => $value) {
+				if ($property == 'rtsp_password' ||
+				    $property == 'rtsp_username')
+					continue;
+				if (isset($_GET['short']) && ($property != 'protocol'
+				    && $property != 'device_name' &&
+				    $property != 'resolutionX' &&
+				    $property != 'resolutionY'))
+					continue;
+				$xml .= "    <$property>";
+				$xml .= htmlentities($value);
+				$xml .= "</$property>\n";
+			};
+			$xml .= "  </device>\n";
 		}
 		$xml .='</devices>';
 		header('Content-type: text/xml');
