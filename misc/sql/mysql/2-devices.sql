@@ -73,5 +73,6 @@ CREATE TABLE PTZPresets (
 	preset_id integer NOT NULL,
 	preset_name varchar(64),
 	UNIQUE (device_id,preset_name),
+	UNIQUE (device_id,preset_id),
 	FOREIGN KEY (device_id) REFERENCES Devices(id)
 );
