@@ -114,6 +114,7 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	if (stopbits != 1 && stopbits != 2)
 		return;
 
+	strcpy(bc->ptz_path, ptz_path);
 	bc->ptz_tio.c_cflag = speed | csbits | CLOCAL | CREAD;
 	bc->ptz_tio.c_iflag = par;
 }
