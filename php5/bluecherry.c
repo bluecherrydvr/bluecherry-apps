@@ -176,7 +176,7 @@ PHP_FUNCTION(bc_db_get_table)
 /*
  * Command is a string of single characters:
  *    (S)top
- *    Move: (u)p (d)own (l)eft (r)ight (i)n (o)out
+ *    Move: (u)p (d)own (l)eft (r)ight (w)ide (t)ight
  *    Presets: (s)ave (g)o (c)lear
  *
  * Stop can only be by itself (capital S). Move commands and Preset commands
@@ -225,11 +225,12 @@ PHP_FUNCTION(bc_ptz_cmd)
 		case 'l': cmd |= BC_PTZ_CMD_LEFT; break;
 		case 'u': cmd |= BC_PTZ_CMD_UP; break;
 		case 'd': cmd |= BC_PTZ_CMD_DOWN; break;
-		case 'i': cmd |= BC_PTZ_CMD_IN; break;
-		case 'o': cmd |= BC_PTZ_CMD_OUT; break;
+		case 't': cmd |= BC_PTZ_CMD_IN; break;
+		case 'w': cmd |= BC_PTZ_CMD_OUT; break;
 		case 's': cmd |= BC_PTZ_CMD_SAVE; break;
 		case 'g': cmd |= BC_PTZ_CMD_GO; break;
 		case 'c': cmd |= BC_PTZ_CMD_CLEAR; break;
+		default: RETURN_FALSE;
 		}
 	}
 
