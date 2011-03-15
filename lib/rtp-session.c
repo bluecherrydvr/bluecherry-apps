@@ -33,7 +33,7 @@ typedef enum {
 })
 
 static const char * const trans_fmt =
-	"RTP/AVP/TCP/UDP;unicast;interleaved=0-1;client_port=%d-%d";
+	"RTP/AVP/TCP;unicast;interleaved=0-1;client_port=%d-%d";
 
 /* cURL is not thread safe */
 static pthread_mutex_t curl_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -512,7 +512,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 3);
-	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 0);
+	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 1);
 
 	/* First, get the SDP and parse it */
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, uri);
