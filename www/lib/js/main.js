@@ -105,9 +105,10 @@ DVRPageScript = new Class({
 					});
 					
 				};
-
-				
 			break;//end users
+			case 'ptzsettings':
+				var ptzSettingsForm = new DVRSettingsForm('settingsForm');
+			break;
 			case 'addip':
 				getInfo = function(t, m, x, containerId){
 					var request = new Request.HTML({
@@ -220,6 +221,11 @@ DVRPageScript = new Class({
 						var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
 					});
 				});
+				$$('.ptzsettings').each(function(el){
+					el.addEvent('click', function(){
+						var page = new DVRPage('ptzsettings', 'id='+el.get('id'));
+					});
+				});
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
 						var mode = (el.getParent().getParent().get('id') == 'ipDevice') ? 'changeStateIp' : 'changeState';
@@ -257,6 +263,13 @@ DVRPageScript = new Class({
 					onActive: function(one, two){
 						Cookie.write('localDevicesTabOpen', this.previous);
 					}
+				});
+				$$('#settingsOpen').each(function(el){
+					el.addEvent('click', function(){
+						var settingsDiv = el.getParent().getParent().getElementById('cameraSettings');
+						var newVal = (settingsDiv.getStyle('display') == 'none') ? 'inline' : 'none';
+						settingsDiv.setStyle('display', newVal);
+					});
 				});
 			break; //end devices
 			case 'editip':

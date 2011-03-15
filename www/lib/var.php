@@ -21,4 +21,10 @@ $local_device_fps = array(30, 15, 10, 7.5, 5, 3, 2);
 $resolutions['NTSC'] = array('704x480', '352x240');
 $resolutions['PAL']  = array('704x576', '352x288');
 
+#anaglog ptz properties
+$ptz['BAUD']= array(1200, 2400, 4800, 9600, 19200, 38400);
+$ptz['BIT'] = array(7, 8);
+$ptz['STOP_BIT']= array(0, 1);
+$ptz['PARITY'] = array('None', 'Even', 'Odd');
+
 ?>
