@@ -40,7 +40,7 @@ CREATE TABLE Devices (
 	-- The control protocol is almost always PELCO for serial tty
 	ptz_control_protocol varchar(32),
 	-- Comman separated values for serial tty based PTZ controls in
-	-- Baud,Bit,Parity,StopBit format. E.g. 9600,8,n,1
+	-- Addr,Baud,Bit,Parity,StopBit format. E.g. 1,9600,8,n,1
 	ptz_serial_values varchar(64),
 
 	-- The rest of these may or may not be supported by the device

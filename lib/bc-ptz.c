@@ -80,7 +80,7 @@ static int ctopar(char input, int *out)
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *ptz_path, *ptz_proto, *ptz_params;
-	int baud, bits, stopbits, par, csbits;
+	int baud, bits, stopbits, par, csbits, addr;
 	speed_t speed;
 	char parity;
 
@@ -98,7 +98,8 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	if (!ptz_params)
 		return;
 
-	if (sscanf(ptz_params, "%d,%d,%c,%d", &baud, &bits, &parity, &stopbits) != 4)
+	if (sscanf(ptz_params, "%d,%d,%d,%c,%d", &addr, &baud, &bits, &parity,
+		   &stopbits) != 5)
 		return;
 	parity = tolower(parity);
 
@@ -114,8 +115,14 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	if (stopbits != 1 && stopbits != 2)
 		return;
 
+	if (addr < 0 || addr > 255)
+		return;
+
 	strcpy(bc->ptz_path, ptz_path);
+	bc->ptz_addr = addr;
 	bc->ptz_tio.c_cflag = speed | csbits | CLOCAL | CREAD;
+	if (stopbits == 2)
+		bc->ptz_tio.c_cflag |= CSTOPB;
 	bc->ptz_tio.c_iflag = par;
 }
 
@@ -146,6 +153,8 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 		    (cmd & BC_PTZ_CMDS_PSET_MASK) != BC_PTZ_CMD_CLEAR)
 			return -EINVAL;
 	}
+
+	data[2] = bc->ptz_addr;
 
 	if (pan_speed >= 0 && pan_speed <= 255)
 		data[4] = pan_speed;

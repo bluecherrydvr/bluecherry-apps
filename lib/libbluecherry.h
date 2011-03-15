@@ -82,6 +82,7 @@ struct bc_handle {
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
 	char			ptz_path[1024];
+	unsigned char		ptz_addr;
 	unsigned int		ptz_proto;
 	/* Used for serial based protcols */
 	struct termios		ptz_tio;
