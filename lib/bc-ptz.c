@@ -114,6 +114,7 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	if (stopbits != 1 && stopbits != 2)
 		return;
 
+	strcpy(bc->ptz_path, ptz_path);
 	bc->ptz_tio.c_cflag = speed | csbits | CLOCAL | CREAD;
 	bc->ptz_tio.c_iflag = par;
 }
@@ -155,25 +156,25 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 		data[3] = 0;
 	} else if (cmd & BC_PTZ_CMDS_MOVE_MASK) {
 	        if (cmd & BC_PTZ_CMD_RIGHT)
-			data[3] = 1 << 1, real_delay = delay;
+			data[3] |= 1 << 1, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_LEFT)
-			data[3] = 1 << 2, real_delay = delay;
+			data[3] |= 1 << 2, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_UP)
-			data[3] = 1 << 3, real_delay = delay;
+			data[3] |= 1 << 3, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_DOWN)
-			data[3] = 1 << 4, real_delay = delay;
+			data[3] |= 1 << 4, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_IN)
-			data[3] = 1 << 5, real_delay = delay;
+			data[3] |= 1 << 5, real_delay = delay;
 		if (cmd & BC_PTZ_CMD_OUT)
-			data[3] = 1 << 6, real_delay = delay;
+			data[3] |= 1 << 6, real_delay = delay;
 	} else { /* Presets */
 		data[4] = 0;
 		data[5] = pset_id;
 
 		switch (cmd) {
 		case BC_PTZ_CMD_SAVE: data[3] = 0x03; break;
-		case BC_PTZ_CMD_GO: data[3] = 0x05; break;
-		case BC_PTZ_CMD_CLEAR: data[3] = 0x07; break;
+		case BC_PTZ_CMD_GO: data[3] = 0x07; break;
+		case BC_PTZ_CMD_CLEAR: data[3] = 0x05; break;
 		default: return -EINVAL;
 		}
 	}

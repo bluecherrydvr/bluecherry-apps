@@ -33,7 +33,7 @@ typedef enum {
 })
 
 static const char * const trans_fmt =
-	"RTP/AVP/TCP/UDP;unicast;interleaved=0-1;client_port=%d-%d";
+	"RTP/AVP/TCP;unicast;interleaved=0-1;client_port=%d-%d";
 
 /* cURL is not thread safe */
 static pthread_mutex_t curl_lock = PTHREAD_MUTEX_INITIALIZER;

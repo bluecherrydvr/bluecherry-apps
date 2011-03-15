@@ -88,7 +88,7 @@ function print_preset($id, $cmd)
 	$preset = intval($_GET['preset']);
 	$name = "";
 
-	if ($cmd == "save" or $cmd == "map") {
+	if ($cmd == "save" or $cmd == "map" or $cmd == "rename") {
 		if (empty($_GET['name']))
 			print_err("Name is required for save");
 		$name = $db->DBEscapeString($_GET['name']);
@@ -122,7 +122,7 @@ function print_preset($id, $cmd)
 	}
 
 	print "<response status=\"OK\">\n";
-	print "  <preset id=$preset>$name</preset>\n";
+	print "  <preset id=\"$preset\">$name</preset>\n";
 	print "</response>\n";
 }
 
@@ -149,10 +149,11 @@ switch ($_GET['command']) {
 case "query": print_query($id); break;
 case "move" : print_move($id); break;
 
-case "save" :
-case "go"   :
-case "map"  :
-case "clear": print_preset($id, $_GET['command']); break;
+case "save"  :
+case "go"    :
+case "map"   :
+case "rename":
+case "clear" : print_preset($id, $_GET['command']); break;
 
 default: print_err("Invalid command: " . $_GET['command']); break;
 }
