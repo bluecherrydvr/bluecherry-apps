@@ -122,7 +122,7 @@ function print_preset($id, $cmd)
 	}
 
 	print "<response status=\"OK\">\n";
-	print "  <preset id=$preset>$name</preset>\n";
+	print "  <preset id=\"$preset\">$name</preset>\n";
 	print "</response>\n";
 }
 
