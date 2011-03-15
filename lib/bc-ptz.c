@@ -173,8 +173,8 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 
 		switch (cmd) {
 		case BC_PTZ_CMD_SAVE: data[3] = 0x03; break;
-		case BC_PTZ_CMD_GO: data[3] = 0x05; break;
-		case BC_PTZ_CMD_CLEAR: data[3] = 0x07; break;
+		case BC_PTZ_CMD_GO: data[3] = 0x07; break;
+		case BC_PTZ_CMD_CLEAR: data[3] = 0x05; break;
 		default: return -EINVAL;
 		}
 	}
