@@ -261,9 +261,10 @@ define('USERNAME_EXISTS', 'User with this username already exists.');
 define('DEVICE_EDIT_PTZ', 'Edit PTZ settings');
 
 define('PTZ_SET_HEADER', 'PTZ settings for camera: ');
+define('PTZ_PROTOCOL', 'Protocol:');
 define('PTZ_SET_SUBHEADER', 'Basic PTZ configuration');
 define('PTZ_CONTOL_PATH', 'Control path:');
-define('PTZ_VALUES', 'Values:');
+define('PTZ_ADDR', 'Camera address:');
 define('PTZ_BAUD', 'Baud rate:');
 define('PTZ_BIT', 'Bit:');
 define('PTZ_STOP_BIT', 'Stop bit:');

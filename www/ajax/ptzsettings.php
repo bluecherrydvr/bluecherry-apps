@@ -15,36 +15,40 @@ class camera extends DVRData{
 	public $data;
 	public $ptz_config;
 	public function __construct($camId){
-		$id = intval($camId);
-		$this->data = $this->GetObjectData('Devices', 'id', $id);
-		$this->data = $this->data[0];
-		$this->ptz_config = $this->getPtzSettings();
+		if (!empty($camId)){
+			$id = intval($camId);
+			$this->data = $this->GetObjectData('Devices', 'id', $id);
+			$this->data = $this->data[0];
+			$this->ptz_config = $this->getPtzSettings();
+		};
 	}
 	private function getPtzSettings(){
 		if (empty($this->data['ptz_control_path'])){
 			$ptz_config['ptz'] = false;
 		} else {
 			$ptz_config['path'] = $this->data['ptz_control_path'];
-			$ptz_config['values'] = $this->data['ptz_serial_values'];
-			$config = explode(",", $this->data['ptz_control_protocol']);
-			$ptz_config['baud'] = $config[0];
-			$ptz_config['bit'] = $config[1];
-			switch($config[2]){
+			$ptz_config['protocol'] = $this->data['ptz_control_protocol'];
+			$config = explode(",", $this->data['ptz_serial_values']);
+			$ptz_config['addr'] = $config[0];
+			$ptz_config['baud'] = $config[1];
+			$ptz_config['bit'] = $config[2];
+			switch($config[3]){
 				case 'n': $ptz_config['pairity'] = 'None'; break;
 				case 'e': $ptz_config['pairity'] = 'Even'; break;
 				case 'o': $ptz_config['pairity'] = 'Odd';  break;
 			}
-			$ptz_config['stop_bit'] = $config[3];
+			$ptz_config['stop_bit'] = $config[4];
 			return $ptz_config;
 		}
 	}
-	public static function updatePtzSettings($path, $values, $baud, $bit, $parity, $stop_bit, $id){
+	public static function updatePtzSettings($path, $baud, $bit, $parity, $stop_bit, $protocol, $addr, $id){
 		switch($parity){
 				case 'None': $pairty = 'n'; break;
 				case 'Even': $pairty = 'e'; break;
 				case 'Odd':  $pairty = 'o'; break;
 		};
-		$status = self::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$baud},{$bit},{$pairty},{$stop_bit}', ptz_serial_values='$values' WHERE id='{$id}'", true);
+		$status = self::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
+		echo "UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}', WHERE id='{$id}'";
 		self::outputXml($status);
 	}
 	private function query($query, $resultless = false){
@@ -68,7 +72,7 @@ class camera extends DVRData{
 
 
 if (!empty($_POST)){
-	camera::updatePtzSettings($_POST['path'], $_POST['values'], $_POST['baud'], $_POST['bit'], $_POST['parity'], $_POST['stop_bit'], $_POST['id']);
+	camera::updatePtzSettings($_POST['path'], $_POST['baud'], $_POST['bit'], $_POST['parity'], $_POST['stop_bit'], $_POST['protocol'], $_POST['addr'], $_POST['id']);
 };
 
 $this_camera = new camera($_GET['id']);
