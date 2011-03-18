@@ -120,9 +120,11 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 
 	strcpy(bc->ptz_path, ptz_path);
 	bc->ptz_addr = addr;
-	bc->ptz_tio.c_cflag = speed | csbits | CLOCAL | CREAD;
+	bc->ptz_tio.c_cflag = csbits | CLOCAL | CREAD;
 	if (stopbits == 2)
 		bc->ptz_tio.c_cflag |= CSTOPB;
+	cfsetospeed(&bc->ptz_tio, speed);
+	cfsetispeed(&bc->ptz_tio, speed);
 	bc->ptz_tio.c_iflag = par;
 }
 
@@ -190,7 +192,7 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 
 	pelco_csum(data);
 
-	fd = open(bc->ptz_path, O_RDWR | O_NOCTTY);
+	fd = open(bc->ptz_path, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd < 0)
 		return -EIO;
 
@@ -208,7 +210,7 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 		ret = -EIO;		
 	}
 
-	tcflush(fd, TCIFLUSH);
+//	tcflush(fd, TCIFLUSH);
 	close(fd);
 
 	return ret;
