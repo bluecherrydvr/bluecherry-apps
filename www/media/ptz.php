@@ -74,6 +74,12 @@ function print_move($id)
 	if (!empty($_GET['duration']))
 		$delay = intval($_GET['duration']);
 
+	if (empty($cmd) || $_GET['command'] == 'stop')
+	{
+		$cmd = 'S';
+		$delay = 0;
+	}
+
 	bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, 0);
 
 	print "<response status=\"OK\" />\n";
@@ -147,6 +153,7 @@ if (empty($_GET['command']))
 
 switch ($_GET['command']) {
 case "query": print_query($id); break;
+case "stop" :
 case "move" : print_move($id); break;
 
 case "save"  :
