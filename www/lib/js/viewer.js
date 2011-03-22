@@ -147,3 +147,37 @@ layoutsUpdate = function(mode, layout){
 	}).send();
 }
 
+
+sendPtzCommand = function(camId, command, d, cont, speed){
+		if (!speed) var speed = 32;
+		var data = 'id='+camId+'&panspeed='+speed+'&tiltspeed='+speed;
+		if (command == "stop"){
+			data += '&command=stop';
+		} else {
+			data += '&command='+command;
+			data += (cont) ? '&duration=-1' : '&duration=250';
+			if (d!='t' && d!='w'){
+				if (d.substring(0,1)!='n') { data += '&pan='+d.substring(0,1); };
+				if (d.substring(1,2)!='n') { data += '&tilt='+d.substring(1,2); };
+			} else {
+				data += '&zoom='+d;
+			}
+		}
+		
+		var t = new Date;
+		var latency;
+		var request = new Request.HTML({
+			url: 'media/ptz.php',
+			data: data,
+			method: 'get',
+			onRequest: function(){
+			},
+			onComplete: function(){
+			},
+			onFailure: function(){
+			},
+			onSuccess: function(tree, elements, html){
+			}
+		}).send();
+	};
+
