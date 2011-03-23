@@ -48,7 +48,6 @@ class camera extends DVRData{
 				case 'Odd':  $pairty = 'o'; break;
 		};
 		$status = self::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
-		echo "UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}', WHERE id='{$id}'";
 		self::outputXml($status);
 	}
 	private function query($query, $resultless = false){

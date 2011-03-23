@@ -1,4 +1,4 @@
-<?php //defined('INDVR') or exit();
+<?php defined('INDVR') or exit();
 
 #db
 define('VAR_CONF_PATH', "/etc/bluecherry.conf");
@@ -24,7 +24,7 @@ $resolutions['PAL']  = array('704x576', '352x288');
 #anaglog ptz properties
 $ptz['PROTOCOLS'] = array('PELCO');
 $ptz['BAUD']= array(1200, 2400, 4800, 9600, 19200, 38400);
-$ptz['BIT'] = array(7, 8);
+$ptz['BIT'] = array(8, 7);
 $ptz['STOP_BIT']= array(1, 2);
 $ptz['PARITY'] = array('None', 'Even', 'Odd');
 
