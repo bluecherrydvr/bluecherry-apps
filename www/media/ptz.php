@@ -102,8 +102,10 @@ function print_preset($id, $cmd)
 		if ($cmd == "save")
 			bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
 
-		$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
-			     "$preset AND device_id=$id");
+		if ($cmd == "rename")
+			$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
+				     "$preset AND device_id=$id");
+
 		if ($db->DBQuery("INSERT INTO PTZPresets (device_id,preset_id,".
 			         "preset_name) VALUES ($id,$preset,'$name')") == false)
 			print_err("Failed to save preset");
