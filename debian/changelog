@@ -5,15 +5,11 @@ bluecherry (1:2.0.0-0beta5.0) lucid; urgency=low
   * Bug #696: Web: Live view does not have the option to save / edit layouts
   * Bug #697: Web: Clicking 'Save Changes' over and over during add user adds
     multiple users
-  * Bug #704: only administrators can view camera feeds
-  * Bug #708: "viewer" accounts cannot login under web browser
   * Bug #710: Web interface locks up, waiting for javascript to finish
-  * Bug #712: Excessive lag with PTZ commands
   * Feature #323: PTZ control
   * Feature #350: PTZ Presets
   * Feature #384: Notification table
   * Feature #686: Web: PTZ control
-  * Feature #695: Rotate individual cameras on layout
   * Feature #709: delete or update layouts
 
  -- Ben Collins <bcollins@bluecherry.net>  Thu, 24 Mar 2011 00:15:05 -0400
