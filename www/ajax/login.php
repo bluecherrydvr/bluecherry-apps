@@ -18,10 +18,10 @@ class DVRLogin{
 	}
 	private function DoLogin($user){
 		if ($user->data[0]['access_setup']==true) { $_SESSION['l'] = 'admin'; }
-			elseif ($user->data[0]['access_setup']==true) { $_SESSION['l'] = 'viewer'; };
+			else { $_SESSION['l'] = 'viewer'; };
 		$this->msg = 'OK';
 		$_SESSION['id'] = $user->data[0]['id'];
-		$_SESSION['from_client'] = empty($_POST['from_client']) ? 1 : 0;
+		$_SESSION['from_client'] = empty($_POST['from_client']) ? 0 : 1;
 	}
 }
 

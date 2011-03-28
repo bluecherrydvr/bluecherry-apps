@@ -84,7 +84,7 @@ class DVRUser extends DVRData{
 			$this->data = $this->GetObjectData('Users', 'id', $_SESSION['id']);
 			switch ($_SESSION['l']) {
 				case 'admin':  $this->status = 'admin';  break;
-				case 'viewer': $this->status = ($this->ScheduleCheck()) ? 'viewer' : 'schedule'; break;
+				case 'viewer': $this->status = 'viewer' ; break;
 				default: $this->status = 'new';
 			};
 			if ($kicked){ $this->status = 'kicked'; };
@@ -99,7 +99,6 @@ class DVRUser extends DVRData{
 				break;
 				case 'viewer':
 					if ($this->status!='admin' && $this->status!='viewer') $message = JS_RELOAD.USER_NACCESS;
-					if ($this->status=='schedule') $message = DSCED_MSG;
 				break;
 				case 'mjpeg' :
 					$this->CheckStatus();
