@@ -285,7 +285,7 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 	bc_rec->video_st = bc_rec->audio_st = NULL;
 
 	if (bc_rec->oc) {
-		//av_write_trailer(bc_rec->oc);
+		av_write_trailer(bc_rec->oc);
 
 		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
 			av_freep(&bc_rec->oc->streams[i]->codec);
