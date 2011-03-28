@@ -18,7 +18,7 @@ struct motion_table {
 /* Order needs to match the bc_motion_type_t vals */
 struct motion_table mts[] = {
 	/* Solo6x10 - Range 0 highest, 0xffff lowest */
-	{ { 0xffff, 4096, 2048, 768, 384, 64 } },
+	{ { 0xffff, 1152, 1024, 768, 512, 384 } },
 };
 
 /* Takes a character from '0' (off) to '5' (high sen) */
