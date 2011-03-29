@@ -337,6 +337,6 @@ extern void (*bc_handle_motion_end)(struct bc_handle *bc);
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
 int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay, 
-	       int pan_speed, int tilt_speed, int pset_id);
+	       int pan_speed, int tilt_speed, int pset_id, int noclose);
 
 #endif /* __LIBBLUECHERRY_H */
