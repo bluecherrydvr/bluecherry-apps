@@ -100,21 +100,25 @@ function print_preset($id, $cmd)
 	$preset = intval($_GET['preset']);
 	$name = "";
 
-	if ($cmd == "save" or $cmd == "map" or $cmd == "rename") {
+	if ($cmd == "save" or $cmd == "map" or $cmd == "rename" or
+	    $cmd == "update" or $cmd == "sync") {
 		if (empty($_GET['name']))
 			print_err("Name is required for save");
 		$name = $db->DBEscapeString($_GET['name']);
 
-		if ($cmd == "save")
+		if ($cmd == "save" or $cmd == "sync")
 			my_bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
 
-		if ($cmd == "rename")
-			$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
-				     "$preset AND device_id=$id");
+		if ($cmd != "sync") {
+			if ($cmd == "rename" or $cmd == "update")
+				$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
+					     "$preset AND device_id=$id");
 
-		if ($db->DBQuery("INSERT INTO PTZPresets (device_id,preset_id,".
-			         "preset_name) VALUES ($id,$preset,'$name')") == false)
-			print_err("Failed to save preset");
+			if ($db->DBQuery("INSERT INTO PTZPresets (device_id,preset_id,".
+				         "preset_name) VALUES ($id,$preset,".
+					 "'$name')") == false)
+				print_err("Failed to save preset");
+		}
 		$name = htmlentities($_GET['name']);
 	} else if ($cmd == "go") {
 		$pset = $db->DBFetchAll("SELECT * FROM PTZPresets WHERE preset_id=".
@@ -169,6 +173,8 @@ case "save"  :
 case "go"    :
 case "map"   :
 case "rename":
+case "update":
+case "sync"  :
 case "clear" : print_preset($id, $_GET['command']); break;
 
 default: print_err("Invalid command: " . $_GET['command']); break;
