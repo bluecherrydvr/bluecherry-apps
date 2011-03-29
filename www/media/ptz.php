@@ -12,6 +12,12 @@ function print_err($msg, $extra = "")
 	exit;
 }
 
+function my_bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, $preset)
+{
+	exec("/usr/lib/bluecherry/ptzcmd $id $cmd $delay $panspeed ".
+	     "$tiltspeed $preset > /dev/null 2>&1");
+}
+
 function print_query($id)
 {
 	$db = DVRDatabase::getInstance();
@@ -80,7 +86,7 @@ function print_move($id)
 		$delay = 0;
 	}
 
-	bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, 0);
+	my_bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, 0);
 
 	print "<response status=\"OK\" />\n";
 }
@@ -100,7 +106,7 @@ function print_preset($id, $cmd)
 		$name = $db->DBEscapeString($_GET['name']);
 
 		if ($cmd == "save")
-			bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
+			my_bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
 
 		if ($cmd == "rename")
 			$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
@@ -116,7 +122,7 @@ function print_preset($id, $cmd)
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
 
-		bc_ptz_cmd($id, "g", 0, 0, 0, $preset);
+		my_bc_ptz_cmd($id, "g", 0, 0, 0, $preset);
 		$name = $pset[0]['preset_name'];
 	} else if ($cmd == "clear") {
 		$pset = $db->DBFetchAll("SELECT * FROM PTZPresets WHERE preset_id=".
@@ -124,7 +130,7 @@ function print_preset($id, $cmd)
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
 
-		bc_ptz_cmd($id, "c", 0, 0, 0, $preset);
+		my_bc_ptz_cmd($id, "c", 0, 0, 0, $preset);
 
 		$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
 			     "$preset AND device_id=$id");
