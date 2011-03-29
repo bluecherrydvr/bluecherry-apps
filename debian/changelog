@@ -1,6 +1,13 @@
 bluecherry (1:2.0.0-0beta5.1) lucid; urgency=low
 
-  * Introduce a better range of values for solo motion thresholds.
+  * Bug #623: Web: Enabling user with 'Web' access does not allow the user to
+    access the web interface
+  * Bug #676: Hard lock when restarting apache
+  * Bug #678: Motion activated recording does not turn off (randomly)
+  * Bug #704: only administrators can view camera feeds
+  * Bug #708: "viewer" accounts cannot login under web browser
+  * Bug #712: Excessive lag with PTZ commands
+  * Feature #731: Write duration in recorded videos when they're closed
 
  -- Ben Collins <bcollins@bluecherry.net>  Mon, 28 Mar 2011 14:31:35 -0400
 
