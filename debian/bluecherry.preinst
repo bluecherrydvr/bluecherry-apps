@@ -4,9 +4,11 @@ set -e
 
 case "$1" in
 	upgrade)
-		echo "UPGRADES WILL NOT WORK!!"
-		echo "Please 'dpkg -P bluecherry' before installing this new package"
-		exit 1
+		if dpkg --compare-versions "$2" lt "1:2.0.0-0beta5.0"; then
+			echo "UPGRADES WILL NOT WORK!!"
+			echo "Please 'dpkg -P bluecherry' before installing this new package"
+			exit 1
+		fi
 		;;
 	install)
 		if ! id bluecherry > /dev/null 2>&1; then
