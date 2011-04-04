@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <limits.h>
+#include <fcntl.h>
 
 #include <libbluecherry.h>
 
@@ -42,6 +43,26 @@ static const char *cont_type_to_str[] = {
 /* Linked list if events that failed to write */
 static BC_DECLARE_LIST(cam_event_queue);
 static BC_DECLARE_LIST(sys_event_queue);
+
+static const char db_status_file[] = "/var/run/bluecherry/db-writable";
+
+static int bc_db_check_success(void)
+{
+	char cmd[256];
+
+	sprintf(cmd, "touch -m -t 197001010000.00 %s", db_status_file);
+
+	return system(cmd);
+}
+
+static int bc_db_check_fail(void)
+{
+	char cmd[256];
+
+	sprintf(cmd, "touch -m %s", db_status_file);
+	
+	return system(cmd);
+}
 
 struct bc_event_cam {
 	int id;
@@ -144,10 +165,13 @@ static int do_media(struct bc_media_entry *bcm)
 		return -1;
 
 	ret = __do_media(bcm);
-	if (ret)
+	if (ret) {
+		bc_db_check_fail();
 		bc_db_rollback_trans();
-	else
+	} else {
+		bc_db_check_success();
 		bc_db_commit_trans();
+	}
 
 	return ret;
 }
@@ -199,10 +223,13 @@ static int do_cam(struct bc_event_cam *bce)
 		return -1;
 
 	ret = __do_cam(bce);
-	if (ret)
+	if (ret) {
+		bc_db_check_fail();
 		bc_db_rollback_trans();
-	else
+	} else {
+		bc_db_check_success();
 		bc_db_commit_trans();
+	}
 
 	return ret;
 }
