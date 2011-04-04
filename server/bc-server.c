@@ -21,7 +21,10 @@ static float min_avail = 5.00;
 static float min_thresh = 10.00;
 
 char global_sched[7 * 24];
-char media_storage[256];
+
+static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+#define MAX_STOR_LOCS	10
+static char media_storage[MAX_STOR_LOCS][256];
 
 extern char *__progname;
 
@@ -58,6 +61,7 @@ static void __handle_motion_end(struct bc_handle *bc)
 static void bc_check_globals(void)
 {
 	BC_DB_RES dbres;
+	int i;
 
 	/* Get global schedule, default to continuous */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
@@ -73,17 +77,29 @@ static void bc_check_globals(void)
 	}
 	bc_db_free_table(dbres);
 
-	/* Get path to media storage location, or use default */
+	/* Get path to media storage locations, or use default */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DVR_MEDIA_STORE'");
 
-	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
-		const char *stor = bc_db_get_val(dbres, "value");
-		if (stor)
-			strcpy(media_storage, stor);
-	} else {
-		strcpy(media_storage, "/var/lib/bluecherry/recordings");
+	if (pthread_mutex_lock(&media_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in media_lock on db_check!");
+
+	i = 0;
+	if (dbres != NULL) {
+		while (bc_db_fetch_row(dbres)) {
+			const char *stor = bc_db_get_val(dbres, "value");
+			if (stor)
+				strcpy(media_storage[i++], stor);
+		}
 	}
+	if (i == 0) {
+		/* Fall back to one single default location */
+		strcpy(media_storage[i++], "/var/lib/bluecherry/recordings");
+	}
+	media_storage[i][0] = '\0';
+
+	pthread_mutex_unlock(&media_lock);
+
 	bc_db_free_table(dbres);
 }
 
@@ -146,33 +162,53 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-static float get_avail(void)
+static float get_avail(const char *stor)
 {
 	struct statvfs st;
 
-	if (statvfs(media_storage, &st))
+	if (statvfs(stor, &st))
 		return -1.00;
 
 	return (float)((float)st.f_bavail / (float)st.f_blocks) * 100;
 }
 
+void bc_get_media_loc(char *stor)
+{
+	float avail;
+	int i;
+
+	if (pthread_mutex_lock(&media_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in media_lock on get_loc!");
+
+	for (i = 0; i < MAX_STOR_LOCS && media_storage[i][0]; i++) {
+		avail = get_avail(media_storage[i]);
+		if (avail >= min_avail) {
+			strcpy(stor, media_storage[i]);
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&media_lock);
+}
+
+
 /* Check if our media directory is getting full (min_avail%) and delete old
  * events until there's more than or equal to min_thresh% available. Do not
  * delete archived events. If we've deleted everything we can and we still
  * don't have more than min_avail% available, then complain....LOUDLY! */
-static void bc_check_media(void)
+static void bc_clear_media_one(const char *stor)
 {
 	BC_DB_RES dbres;
 	float avail;
 
-	if ((avail = get_avail()) < 0)
+	if ((avail = get_avail(stor)) < 0)
 		return;
 
 	if (avail >= min_avail)
 		return;
 
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
-	       media_storage, 100.0 - avail);
+	       stor, 100.0 - avail);
 
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
 				"end!=0 ORDER BY start ASC");
@@ -194,7 +230,7 @@ static void bc_check_media(void)
 		bc_log("W: Removed media %d, file %s to make space", id,
 		       filepath);
 
-		if ((avail = get_avail()) < 0)
+		if ((avail = get_avail(stor)) < 0)
 			break;
         }
 
@@ -208,6 +244,34 @@ static void bc_check_media(void)
 		       "any more old media!", 100.0 - avail);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 	}
+}
+
+static void bc_check_media(void)
+{
+	int i, free;
+
+	if (pthread_mutex_lock(&media_lock) == EDEADLK)
+		bc_log("E: Deadlock detected in media_lock on check_media!");
+
+	for (i = 0, free = 0; i < MAX_STOR_LOCS && media_storage[i][0] && !free; i++) {
+		float avail;
+
+		if ((avail = get_avail(media_storage[i])) < 0)
+			continue;
+
+		if (avail >= min_avail)
+			free = 1;
+	}
+
+	if (free) {
+		pthread_mutex_unlock(&media_lock);
+		return;
+	}
+
+	for (i = 0; i < MAX_STOR_LOCS && media_storage[i][0]; i++)
+		bc_clear_media_one(media_storage[i]);
+
+	pthread_mutex_unlock(&media_lock);
 }
 
 static void bc_check_db(void)

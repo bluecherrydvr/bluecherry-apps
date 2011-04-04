@@ -337,6 +337,9 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	time_t t = time(NULL);
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
+	char stor[256];
+
+	bc_get_media_loc(stor);
 
 	/* XXX Need some way to reconcile time between media event and
 	 * filename. They should match. */
@@ -344,7 +347,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
-	sprintf(dir, "%s/%s/%06d", media_storage, date, bc_rec->id);
+	sprintf(dir, "%s/%s/%06d", stor, date, bc_rec->id);
 	mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
