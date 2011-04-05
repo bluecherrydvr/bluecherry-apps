@@ -86,17 +86,21 @@ static void bc_check_globals(void)
 
 	i = 0;
 	if (dbres != NULL) {
-		while (bc_db_fetch_row(dbres)) {
+		while (!bc_db_fetch_row(dbres)) {
 			const char *stor = bc_db_get_val(dbres, "value");
-			if (stor)
-				strcpy(media_storage[i++], stor);
+			if (stor) {
+				strcpy(media_storage[i], stor);
+				bc_mkdir_recursive(media_storage[i]);
+				i++;
+			}
 		}
 	}
 	if (i == 0) {
 		/* Fall back to one single default location */
+		bc_mkdir_recursive("/var/lib/bluecherry/recordings");
 		strcpy(media_storage[i++], "/var/lib/bluecherry/recordings");
 	}
-	media_storage[i][0] = '\0';
+	media_storage[i][0] = 0;
 
 	pthread_mutex_unlock(&media_lock);
 
@@ -177,6 +181,8 @@ void bc_get_media_loc(char *stor)
 	float avail;
 	int i;
 
+	stor[0] = 0;
+
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on get_loc!");
 
@@ -187,6 +193,9 @@ void bc_get_media_loc(char *stor)
 			break;
 		}
 	}
+
+	if (stor[0] == 0)
+		strcpy(stor, media_storage[0]);
 
 	pthread_mutex_unlock(&media_lock);
 }
@@ -399,6 +408,9 @@ int main(int argc, char **argv)
 	}
 
 	bc_log("I: SQL database connection opened");
+
+	/* Set these from the start */
+	bc_check_globals();
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {

@@ -310,7 +310,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	pthread_mutex_unlock(&av_lock);
 }
 
-static void mkdir_recursive(char *path)
+void bc_mkdir_recursive(char *path)
 {
 	char *t;
 
@@ -323,7 +323,7 @@ static void mkdir_recursive(char *path)
 	if (t == NULL || t == path)
 		return;
 	*t = '\0';
-	mkdir_recursive(path);
+	bc_mkdir_recursive(path);
 	*t = '/';
 
 	mkdir(path, 0750);
@@ -348,7 +348,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
 	sprintf(dir, "%s/%s/%06d", stor, date, bc_rec->id);
-	mkdir_recursive(dir);
+	bc_mkdir_recursive(dir);
 	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
 
 	if (bc_rec->sched_cur == 'C' && bc_rec->event == BC_EVENT_CAM_NULL)

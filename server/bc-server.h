@@ -102,6 +102,8 @@ int bc_motion_val(bc_motion_type_t type, const char v);
 
 void bc_check_avail(void);
 
+void bc_mkdir_recursive(char *path);
+
 #ifdef EBUG
 #define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)
 #else
