@@ -22,7 +22,7 @@
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 
 #define BC_BUFFERS		16
-#define BC_BUFFERS_JPEG		2
+#define BC_BUFFERS_JPEG		8
 
 #define BC_UID_TYPE_BC		"BCUID"
 #define BC_UID_TYPE_PCI		"BCPCI"
