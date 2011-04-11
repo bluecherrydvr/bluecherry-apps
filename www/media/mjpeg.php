@@ -206,8 +206,10 @@ function print_image() {
 		$myj = get_one_jpeg($url);
 		$myl = strlen($myj);
 	} else {
-		if (bc_buf_get($bch) == false)
-			exit;
+		if (bc_buf_get($bch) == false) {
+			sleep(1);
+			return;
+		}
 		$myl = bc_buf_size($bch);
 		$myj = bc_buf_data($bch);
 	}
