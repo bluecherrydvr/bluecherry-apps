@@ -46,14 +46,24 @@ CREATE TABLE EventsCam (
         FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
 );
 
+CREATE TABLE EventsCamSnapshot (
+	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	event_id integer NOT NULL,
+	file_size integer NOT NULL,
+	file_data BLOB NOT NULL,
+	file_type varchar(100) NOT NULL DEFAULT 'image/jpeg',
+	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+);
+
 -- A separate table for system events
 CREATE TABLE EventsSystem (
 	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
 	time integer NOT NULL,
 	level_id varchar(10),
 	type_id varchar(10),
+	more varchar(64),	-- E.g. disk-space could have more='/dev/sdb1'
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
-	FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
+	FOREIGN KEY (type_id) REFERENCES EventTypesSys(id)
 );
 
 -- Comments on an event (Cam only?)
