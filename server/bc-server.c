@@ -220,7 +220,7 @@ static void bc_clear_media_one(const char *stor)
 	       stor, 100.0 - avail);
 
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"end!=0 ORDER BY start ASC");
+				"end!=0 AND size>0 ORDER BY start ASC");
 
 	if (dbres == NULL)
 		return;
