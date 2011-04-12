@@ -63,11 +63,13 @@ class DVRVersion{
 	public $up_to_date;
 	public $current_version;
 	public $installed_version;
-	
+
 	public function __construct(){
 		$this->current_version = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 		$this->installed_version = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		$this->up_to_date = ($this->current_version == $this->installed_version) ? true : false;
+		system("dpkg --compare-versions " . $this->installed_version .
+			" lt " . $this->current_version, $ret);
+		$this->up_to_date = $ret != 0;
 	}
 }
 
