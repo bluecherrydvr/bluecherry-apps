@@ -17,14 +17,18 @@ static BC_DECLARE_LIST(bc_rec_list);
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
-static float min_avail = 5.00;
-static float min_thresh = 10.00;
 
 char global_sched[7 * 24];
 
 static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+
+struct bc_storage {
+	char path[PATH_MAX];
+	int min_thresh, max_thresh;
+};
+
 #define MAX_STOR_LOCS	10
-static char media_storage[MAX_STOR_LOCS][256];
+static struct bc_storage media_stor[MAX_STOR_LOCS];
 
 extern char *__progname;
 
@@ -78,29 +82,39 @@ static void bc_check_globals(void)
 	bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
-	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
-				"parameter='G_DVR_MEDIA_STORE'");
+	dbres = bc_db_get_table("SELECT * from Storage ORDER BY "
+				"priority ASC");
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on db_check!");
 
+	memset(media_stor, 0, sizeof(media_stor));
 	i = 0;
 	if (dbres != NULL) {
 		while (!bc_db_fetch_row(dbres)) {
-			const char *stor = bc_db_get_val(dbres, "value");
-			if (stor) {
-				strcpy(media_storage[i], stor);
-				bc_mkdir_recursive(media_storage[i]);
-				i++;
-			}
+			const char *path = bc_db_get_val(dbres, "path");
+			int max_thresh = bc_db_get_val_int(dbres, "max_thresh");
+			int min_thresh = bc_db_get_val_int(dbres, "min_thresh");
+
+			if (!path || !strlen(path) || max_thresh <= 0 ||
+			    min_thresh <= 0)
+				continue;
+
+			strcpy(media_stor[i].path, path);
+			media_stor[i].max_thresh = max_thresh;
+			media_stor[i].min_thresh = min_thresh;
+
+			bc_mkdir_recursive(media_stor[i].path);
+			i++;
 		}
 	}
 	if (i == 0) {
 		/* Fall back to one single default location */
 		bc_mkdir_recursive("/var/lib/bluecherry/recordings");
-		strcpy(media_storage[i++], "/var/lib/bluecherry/recordings");
+		strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
+		media_stor[0].max_thresh = 95;
+		media_stor[i].min_thresh = 90;
 	}
-	media_storage[i][0] = 0;
 
 	pthread_mutex_unlock(&media_lock);
 
@@ -166,19 +180,26 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-static float get_avail(const char *stor)
+static float storage_used(const struct bc_storage *stor)
 {
 	struct statvfs st;
 
-	if (statvfs(stor, &st))
+	if (statvfs(stor->path, &st))
 		return -1.00;
 
-	return (float)((float)st.f_bavail / (float)st.f_blocks) * 100;
+	return 100.0 - ((float)((float)st.f_bavail / (float)st.f_blocks) * 100);
+}
+
+static int storage_full(const struct bc_storage *stor)
+{
+	if (storage_used(stor) >= stor->max_thresh)
+		return 1;
+
+	return 0;
 }
 
 void bc_get_media_loc(char *stor)
 {
-	float avail;
 	int i;
 
 	stor[0] = 0;
@@ -186,16 +207,15 @@ void bc_get_media_loc(char *stor)
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on get_loc!");
 
-	for (i = 0; i < MAX_STOR_LOCS && media_storage[i][0]; i++) {
-		avail = get_avail(media_storage[i]);
-		if (avail >= min_avail) {
-			strcpy(stor, media_storage[i]);
+	for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+		if (!storage_full(&media_stor[i])) {
+			strcpy(stor, media_stor[i].path);
 			break;
 		}
 	}
 
 	if (stor[0] == 0)
-		strcpy(stor, media_storage[0]);
+		strcpy(stor, media_stor[0].path);
 
 	pthread_mutex_unlock(&media_lock);
 }
@@ -205,80 +225,75 @@ void bc_get_media_loc(char *stor)
  * events until there's more than or equal to min_thresh% available. Do not
  * delete archived events. If we've deleted everything we can and we still
  * don't have more than min_avail% available, then complain....LOUDLY! */
-static void bc_clear_media_one(const char *stor)
+static void bc_clear_media_one(const struct bc_storage *stor)
 {
 	BC_DB_RES dbres;
-	float avail;
+	float used = storage_used(stor);
 
-	if ((avail = get_avail(stor)) < 0)
-		return;
-
-	if (avail >= min_avail)
+	if (used < stor->max_thresh)
 		return;
 
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
-	       stor, 100.0 - avail);
+	       stor->path, used);
 
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"end!=0 AND size>0 ORDER BY start ASC");
+				"end!=0 AND size>0 AND filepath LIKE '%s%%' "
+				"ORDER BY start ASC", stor->path);
 
-	if (dbres == NULL)
+	if (dbres == NULL) {
+		bc_log("W: Filesystem has no available media to delete!");
+		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 		return;
+	}
 
-	while (!bc_db_fetch_row(dbres) && avail < min_thresh) {
+	while (!bc_db_fetch_row(dbres) && used > stor->min_thresh) {
 		const char *filepath = bc_db_get_val(dbres, "filepath");
 		int id = bc_db_get_val_int(dbres, "id");
 
-		if (filepath == NULL)
+		if (filepath == NULL || !strlen(filepath))
 			continue;
 
 		unlink(filepath);
 		__bc_db_query("UPDATE Media SET filepath='',size=0 "
-			    "WHERE id=%d", id);
+			      "WHERE id=%d", id);
 
-		bc_log("W: Removed media %d, file %s to make space", id,
+		bc_log("W: Removed media id %d, file '%s', to make space", id,
 		       filepath);
 
-		if ((avail = get_avail(stor)) < 0)
+		if ((used = storage_used(stor)) < 0)
 			break;
         }
 
 	bc_db_free_table(dbres);
 
-	if (avail < 0)
+	if (used < 0)
 		return;
 
-	if (avail < min_avail) {
+	if (used >= stor->min_thresh) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
-		       "any more old media!", 100.0 - avail);
+		       "any more old media!", used);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 	}
 }
 
 static void bc_check_media(void)
 {
-	int i, free;
+	int i, free = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on check_media!");
 
-	for (i = 0, free = 0; i < MAX_STOR_LOCS && media_storage[i][0] && !free; i++) {
-		float avail;
-
-		if ((avail = get_avail(media_storage[i])) < 0)
-			continue;
-
-		if (avail >= min_avail)
+	for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+		if (!storage_full(&media_stor[i])) {
 			free = 1;
+			break;
+		}
 	}
 
-	if (free) {
-		pthread_mutex_unlock(&media_lock);
-		return;
+	if (!free) {
+		for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++)
+			bc_clear_media_one(&media_stor[i]);
 	}
-
-	for (i = 0; i < MAX_STOR_LOCS && media_storage[i][0]; i++)
-		bc_clear_media_one(media_storage[i]);
 
 	pthread_mutex_unlock(&media_lock);
 }
