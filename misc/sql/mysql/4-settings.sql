@@ -12,9 +12,9 @@ INSERT INTO GlobalSettings VALUES ('G_DEV_NOTES', '');
 CREATE TABLE Storage (
 	priority integer PRIMARY KEY NOT NULL,
 	path varchar(512) NOT NULL,
-	max_thresh integer NOT NULL,
-	min_thresh integer NOT NULL,
+	max_thresh decimal(5,2) NOT NULL,
+	min_thresh decimal(5,2) NOT NULL,
 	UNIQUE (path)
 );
 
-INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95, 90);
+INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00);
