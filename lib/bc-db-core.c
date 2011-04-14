@@ -202,6 +202,13 @@ int bc_db_get_val_int(BC_DB_RES dbres, const char *colname)
 	return (val && strlen(val)) ? atoi(val) : -1;
 }
 
+float bc_db_get_val_float(BC_DB_RES dbres, const char *colname)
+{
+	const char *val = bc_db_get_val(dbres, colname);
+
+	return (val && strlen(val)) ? (float)atof(val) : -1.00;
+}
+
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 {
 	const char *val = bc_db_get_val(dbres, colname);

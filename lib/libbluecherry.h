@@ -289,6 +289,7 @@ int bc_db_num_fields(BC_DB_RES dbres);
 /* Used to get specific values from a table result */
 const char *bc_db_get_val(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
+float bc_db_get_val_float(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
 char *bc_db_escape_string(const char *from);
 
