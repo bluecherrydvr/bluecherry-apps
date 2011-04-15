@@ -224,7 +224,12 @@ long unsigned bc_db_last_insert_rowid(void)
 
 char *bc_db_escape_string(const char *from)
 {
-	char *to = malloc((strlen(from) * 2) + 1);
+	char *to;
+
+	if (from == NULL)
+		return NULL;
+
+	to = malloc((strlen(from) * 2) + 1);
 
 	if (to == NULL)
 		return NULL;
