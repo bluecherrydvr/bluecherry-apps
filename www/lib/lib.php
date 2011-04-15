@@ -40,7 +40,7 @@ class database{
 	private function connect() {
 		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
 	}
-	public static function escapeString(&$string) {
+	public function escapeString(&$string) {
 		$string = bc_db_escape_string($string);
 		return $string;
 	}
@@ -55,12 +55,16 @@ class database{
 }
 
 class data{
+	public static function escapeString(&$string) {
+		$db = database::getInstance();
+		return $db->escapeString($string);
+	}
 	public static function query($query, $resultless = false){
 		$db = database::getInstance();
 		return ($resultless) ? $db->query($query) : $db->fetchAll($query);
 	}
 	public static function getObject($table, $parameter = false , $value = false, $condition = '='){
-		$data = self::query("SELECT * FROM ".database::escapeString($table).((!$parameter) ? '' : " WHERE ".database::escapeString($parameter).$condition." '".database::escapeString($value)."'"));
+		$data = self::query("SELECT * FROM ".self::escapeString($table).((!$parameter) ? '' : " WHERE ".self::escapeString($parameter).$condition." '".self::escapeString($value)."'"));
 		return ($data) ? $data : false;
 	}
 	public static function getRandomString($length = 4) {
@@ -77,7 +81,7 @@ class data{
 			case 'insert': return "INSERT INTO {$table} (".implode(", ", array_keys($array)).") VALUES ('".implode("', '", $array)."')"; break;
 			case 'update': 
 				foreach ($array as $p => $v){
-					$tmp[$p]=database::escapeString($p)."='".database::escapeString($v)."'";
+					$tmp[$p]=self::escapeString($p)."='".self::escapeString($v)."'";
 				};
 				return "UPDATE $table SET ".implode(", ", $tmp)." WHERE {$parameter}='{$value}'";
 			break;

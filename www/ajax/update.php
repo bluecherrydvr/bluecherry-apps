@@ -126,7 +126,7 @@ class update{
 	}
 	
 	private function changeState(){
-		$device = $db->escapeString($_POST['id']);
+		$device = data::escapeString($_POST['id']);
 		$this_device = data::query("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices USING (device) WHERE AvailableSources.device='$device' ");
 		if (!$this_device) {
 			$result = false;
