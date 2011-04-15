@@ -226,6 +226,9 @@ char *bc_db_escape_string(const char *from)
 {
 	char *to;
 
+	if (db_ops == NULL)
+		return NULL;
+
 	if (from == NULL)
 		return NULL;
 
