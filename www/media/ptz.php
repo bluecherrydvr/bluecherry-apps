@@ -38,7 +38,7 @@ function print_query($id)
 		print "  <protocol>". $dev['ptz_control_protocol'] ."</protocol>\n";
 		print "  <defaults panspeed=\"0\" tiltspeed=\"0\" duration=\"0\" />\n";
 		print "  <capabilities pan=\"1\" tilt=\"1\" zoom=\"1\" />\n";
-		$presets = $db->DBFetchAll("SELECT * FROM PTZPresets WHERE ".
+		$presets = $db->fetchAll("SELECT * FROM PTZPresets WHERE ".
 			"device_id=$id");
 		print "  <presets>\n";
 		foreach ($presets as $pset) {
@@ -97,7 +97,7 @@ function print_move($id)
 
 function print_preset($id, $cmd)
 {
-	$db = DVRDatabase::getInstance();
+	$db = database::getInstance();
 
 	if (empty($_GET['preset']))
 		print_err("Preset is required for this command");
@@ -108,17 +108,17 @@ function print_preset($id, $cmd)
 	    $cmd == "update" or $cmd == "sync") {
 		if (empty($_GET['name']))
 			print_err("Name is required for save");
-		$name = $db->DBEscapeString($_GET['name']);
+		$name = $db->escapeString($_GET['name']);
 
 		if ($cmd == "save" or $cmd == "sync")
 			my_bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
 
 		if ($cmd != "sync") {
 			if ($cmd == "rename" or $cmd == "update")
-				$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
+				$db->query("DELETE FROM PTZPresets WHERE preset_id=".
 					     "$preset AND device_id=$id");
 
-			if ($db->DBQuery("INSERT INTO PTZPresets (device_id,preset_id,".
+			if ($db->query("INSERT INTO PTZPresets (device_id,preset_id,".
 				         "preset_name) VALUES ($id,$preset,".
 					 "'$name')") == false)
 				print_err("Failed to save preset");

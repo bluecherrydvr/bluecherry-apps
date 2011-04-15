@@ -16,8 +16,8 @@ class DVREvents{
 	}
 	
 	private function GetEvents($limit){
-		$db = DVRDatabase::getInstance();
-		$this->events = $db->DBFetchAll("SELECT * FROM EventsCam ".((!$limit) ? "" : "LIMIT $limit"));
+		$db = database::getInstance();
+		$this->events = $db->fetchAll("SELECT * FROM EventsCam ".((!$limit) ? "" : "LIMIT $limit"));
 	}
 	
 	public function MakeXML(){
