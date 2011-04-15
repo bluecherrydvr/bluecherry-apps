@@ -6,9 +6,8 @@ DEFINE('INDVR', true);
 include("../lib/lib.php");  #common functions
 
 #auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('viewer');
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('backup');
 #/auth check
 
 print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";

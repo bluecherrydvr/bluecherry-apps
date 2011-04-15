@@ -1,6 +1,7 @@
 <?php defined('INDVR') or exit(); 
 
-#lib
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('viewer');
 
 Class liveViewDevices{
 	public $devices;
@@ -8,11 +9,10 @@ Class liveViewDevices{
 	public $layout_list;
 	public $layout_values;
 	public function __construct(){
-		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBFetchAll("SELECT access_device_list FROM Users WHERE id='{$_SESSION['id']}'");
-		$this->layout_list = $db->DBFetchAll("SELECT layout_name FROM userLayouts WHERE user_id='{$_SESSION['id']}'");
+		$tmp = data::query("SELECT access_device_list FROM Users WHERE id='{$_SESSION['id']}'");
+		$this->layout_list = data::query("SELECT layout_name FROM userLayouts WHERE user_id='{$_SESSION['id']}'");
 		$this->access_list = explode(',', $tmp[0]['access_device_list']);
-		$this->devices = $db->DBFetchAll("SELECT Devices.id, Devices.device_name  FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.disabled='0' UNION SELECT Devices.id, Devices.device_name  FROM Devices WHERE protocol='IP' AND disabled='0'");
+		$this->devices = data::query("SELECT Devices.id, Devices.device_name  FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.disabled='0' UNION SELECT Devices.id, Devices.device_name  FROM Devices WHERE protocol='IP' AND disabled='0'");
 		if (!empty($_SESSION['load_layout'])) $this->loadLayout();
 	}
 	private function loadLayout(){
@@ -32,8 +32,6 @@ Class liveViewDevices{
 }
 
 $lv = new liveViewDevices;
-
-#require template to show data
 include_once('template/main.viewer.php');
 
 ?>

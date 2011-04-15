@@ -11,6 +11,7 @@
 </div>
 <div id="lvlSelect">
 	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div>
+	<br><div id='button' class='showHideImg'><?php echo HIDE_IMG; ?></div>
 	<ul>
 		<li value="0" id="li0">Off</li>
 		<li value="1" id="li1">Minimal</li>

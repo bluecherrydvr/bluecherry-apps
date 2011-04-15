@@ -1,7 +1,12 @@
 <?php DEFINE('INDVR', true);
 
+
 #lib
 include("../lib/lib.php");  #common functions
+
+
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('basic');
 
 function print_err($msg, $extra = "")
 {
@@ -20,9 +25,8 @@ function my_bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, $preset)
 
 function print_query($id)
 {
-	$db = DVRDatabase::getInstance();
 
-	$devices = $db->DBFetchAll("SELECT * FROM Devices WHERE id=$id");
+	$devices = data::query("SELECT * FROM Devices WHERE id=$id");
 	if (!$devices)
 		print_err("Error looking up device: $id");
 
@@ -121,7 +125,7 @@ function print_preset($id, $cmd)
 		}
 		$name = htmlentities($_GET['name']);
 	} else if ($cmd == "go") {
-		$pset = $db->DBFetchAll("SELECT * FROM PTZPresets WHERE preset_id=".
+		$pset = data::query("SELECT * FROM PTZPresets WHERE preset_id=".
 					"$preset AND device_id=$id");
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
@@ -129,15 +133,15 @@ function print_preset($id, $cmd)
 		my_bc_ptz_cmd($id, "g", 0, 0, 0, $preset);
 		$name = $pset[0]['preset_name'];
 	} else if ($cmd == "clear") {
-		$pset = $db->DBFetchAll("SELECT * FROM PTZPresets WHERE preset_id=".
+		$pset = data::query("SELECT * FROM PTZPresets WHERE preset_id=".
 					"$preset AND device_id=$id");
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
 
 		my_bc_ptz_cmd($id, "c", 0, 0, 0, $preset);
 
-		$db->DBQuery("DELETE FROM PTZPresets WHERE preset_id=".
-			     "$preset AND device_id=$id");
+		data::query("DELETE FROM PTZPresets WHERE preset_id=".
+			     "$preset AND device_id=$id", true);
 	}
 
 	print "<response status=\"OK\">\n";

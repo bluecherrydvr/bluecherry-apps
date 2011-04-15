@@ -23,7 +23,8 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 				echo '<li id="liM">Motion</li><li id="liS">Sensor</li>';
 			};
 		?>
-		
+			<hr>
+		<li id="fillAll">Fill All</li>	
 	</ul>
 	
 	<div id='saveButton' style="cursor:pointer;"><?php echo SAVE_CHANGES; ?></div>

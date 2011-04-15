@@ -5,13 +5,12 @@ include("../lib/lib.php");  #common functions
 
 
 #auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
 #/auth check
 
 
-$device_data = DVRData::GetObjectData('Devices', 'id', intval($_GET['id']));
+$device_data = data::getObject('Devices', 'id', intval($_GET['id']));
 
 include_once('../template/ajax/videoadj.php') 
 ?>

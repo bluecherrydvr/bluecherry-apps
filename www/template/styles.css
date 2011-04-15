@@ -18,9 +18,9 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #ajaxMessage.F, #message.F   		{ border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
 #ajaxMessage.OK, #message.OK	 	{ border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
-#sysMessages #message			{ padding-left:35px; width:130px; margin:10px 5px 0 5px; }
+#sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
-#sysMessages #snr, #sysMessages #sr, #sysMessages #ncn { display:none; }
+#sysMessages #snr, #sysMessages #sr, #sysMessages #ncn, #sysMessages #ftw { display:none; }
 
 /*login*/
 #login-window-container  	 { margin:30px 0 20px 0; width:100%; height:100%; text-align:center; vertical-align:middle; z-index:9; position:absolute; top:0; left:0; }
@@ -34,6 +34,11 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm div 					{ display:block; float:left; width:100%; padding:5px 0 5px 0; border-top:1px dotted #ccc; }
 #settingsForm #saveButton 			{ zoom:1; margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #saveButton 						{ zoom:1; margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#button								{ zoom:1; margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#button.add							{ float: left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
+#button.save						{ float: right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
+#button.deleteShort					{ width: 25px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+#button.showHideImg					{ float: right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
 #settingsForm div #editAccessList	{ zoom:1; width:230px; padding:5px 5px 5px 35px; margin:4px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ zoom:1; float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #deleteButton						{ zoom:1; float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
@@ -42,6 +47,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm input 				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
 #settingsForm input:focus 			{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]		{ background:#ccc; color:#333; }
+#settingsForm select				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; margin-left:20px; }
 #settingsForm textarea				{ font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; height:200px; margin:2px 20px 10px; }
 
 /*access denied according to schedule*/
@@ -49,8 +55,8 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #dschedule-window-header { color:#933; font-weight:bold; font-size:1.2em; margin-bottom:20px; }
 
 /*left column*/
-#leftColumn   { padding:20px 20px 20px 10px; width:180px; float:left; }
-#centerColumn { padding:20px 10px 20px 10px; float:left; position:relative; }
+#leftColumn   { padding:20px; width:200px; float:left; }
+#centerColumn { padding:20px; float:left; position:relative; }
 
 /*main page-space*/
 #pageContainer { position:relative; border:1px solid #ddd; width:620px; height:auto; display:block; float:left; -moz-border-radius: 5px; -webkit-border-radius: 5px;  margin-left:5px; padding:10px; }
@@ -60,7 +66,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #mainMenu { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0;}
 #menuButtons { margin:0px; padding:0px; list-style-type:none; }
 #menuButtons hr { color:#bbb; height:1px; display:block; margin: 3px 0 3px 0; width:100%; }
-#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:15px; display:block; margin-top:5px; position:relative; height: 27px; width: 130px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
+#menuButtons li { margin: 0 5px 0 5px; paddin:2px; font-size:18px; display:block; margin-top:5px; position:relative; height: 27px; width: 150px; line-height:1.5em; vertical-align:middle; padding-left:35px; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
 #menuButtons p { vertical-align:center; }
 #menuButtons li { background-repeat: no-repeat; background-position:2px center; }
 #menuButtons .news			  { background-image:url("/img/icons/news.png");   }
@@ -143,6 +149,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #ipDevice .name						{ width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; background:url("/img/icons/device.png") no-repeat; background-position:left;}
 #localDevice #resolutionFps 		{ background-color:#efefef; width:100%; margin: 5px 0 5px 0;}
 #localDevice #resolutionFps div 	{ display:inline; }
+#localDevice #cameraSettingsHeader, #ipDevice #cameraSettingsHeader { width:100%; margin: 15px 0 5px 35px; }
 #localDevice a						{ margin:5px 0 5px 0; display:block; }
 #localDevice #status, #ipDevice #status 	{ display:inline; width:100%; margin:3px 10px 10px 35px; }
 #localDevice .disabled, #ipDevice .disabled	{ color: red;  		}
@@ -232,7 +239,6 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 
 #addIPCamera						{ zoom:1; float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #addipLabel			{ width:200px; }
-#settingsForm select				{ margin-left:5px; }
 #settingsForm #aip input			{ margin:2px 0px 0px 5px; height:17px; }
 #settingsForm #aip #saveButton 		{ height:35px; width:150px; }
 #settingsForm #ipAddr				{ width:150px; }
@@ -246,5 +252,9 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #camList div {zoom:1; cursor:pointer; float:left; margin-bottom:10px; display:block; margin-left:10px; width:200px; height:30px; padding-left:30px; line-height:30px; background-position:3px; background-repeat:no-repeat; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
 #camList .allowed	{ border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
 #camList .nallowed	{ border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+
+/*storage*/
+#storageForm #separator { border-top:1px dotted gray; padding:10px; }
+#storageForm label { padding:3px; margin-right:15px; }
 
 

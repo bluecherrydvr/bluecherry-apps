@@ -6,7 +6,7 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
  
-defined('INDVR') or exit();
+//defined('INDVR') or exit();
 
 session_name('VAR_SESSION_NAME');
 session_start();
@@ -15,7 +15,7 @@ session_start();
 	include("lang.php"); #language
 	include("var.php");  #config vars
 
-	#debug
+	//debug
 	function var_dump_pre($mixed = null) {
 	  echo '<hr><pre>';
  	  var_dump($mixed);
@@ -27,274 +27,335 @@ session_start();
 	
 #classes
 
-class DVRDatabase {
+#singleton database class, uses php5-bluecherry functions
+class database{
 	public static $instance;
-
 	private function __construct(){
-		$this->DBConnect();
+		$this->connect();
 	}
-
 	public static function getInstance() {
-		self::$instance or self::$instance = new DVRDatabase();
+		self::$instance or self::$instance = new database();
 		return self::$instance;
 	}
-
-	private function DBConnect() {
+	private function connect() {
 		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
 	}
-
-	public function DBEscapeString(&$string) {
+	public static function escapeString(&$string) {
 		$string = bc_db_escape_string($string);
 		return $string;
 	}
-
 	/* Execute a result-less query */
-	public function DBQuery($query) {
+	public function query($query) {
 		return bc_db_query($query);
 	}
-
 	/* Execute a query that will return results */
-	public function DBFetchAll($query) {
+	public function fetchAll($query) {
 		return bc_db_get_table($query);
 	}
 }
 
-class DVRVersion{
-	public $up_to_date;
-	public $current_version;
-	public $installed_version;
-
-	public function __construct(){
-		$this->current_version = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
-		$this->installed_version = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		system("dpkg --compare-versions " . $this->installed_version .
-			" lt " . $this->current_version, $ret);
-		$this->up_to_date = $ret != 0;
+class data{
+	public static function query($query, $resultless = false){
+		$db = database::getInstance();
+		return ($resultless) ? $db->query($query) : $db->fetchAll($query);
 	}
-}
-
-#class to load info/perms of the current user
-class DVRUser extends DVRData{
-	public $status;
-	public $data;
-	function __construct($parameter = false, $value = false){
-		if ($parameter) { $this->data = $this->GetObjectData('Users', $parameter, $value); };
+	public static function getObject($table, $parameter = false , $value = false, $condition = '='){
+		$data = self::query("SELECT * FROM ".database::escapeString($table).((!$parameter) ? '' : " WHERE ".database::escapeString($parameter).$condition." '".database::escapeString($value)."'"));
+		return ($data) ? $data : false;
 	}
-	public function CheckStatus(){
-		if (!empty($_SESSION['l'])){
-			$kicked = $this->ActiveUsersUpdate();
-			$this->data = $this->GetObjectData('Users', 'id', $_SESSION['id']);
-			switch ($_SESSION['l']) {
-				case 'admin':  $this->status = 'admin';  break;
-				case 'viewer': $this->status = 'viewer' ; break;
-				default: $this->status = 'new';
-			};
-			if ($kicked){ $this->status = 'kicked'; };
+	public static function getRandomString($length = 4) {
+		$s = '0123456789abcdefghijklmnopqrstuvwxyz';
+		for ($p = 0; $p < $length; $p++)
+			$string .= $s[mt_rand(0, strlen($s))];
+		return $string;
+	}
+	public static function formQueryFromArray($type, $table, $array, $parameter = false, $value = false){
+		foreach($array as $p => $v){
+			if ($v === true || $v === 'on' ) { $array[$p] = 1; } elseif ($v == false) {$array[$p] = 0; };
+		}
+		switch($type){
+			case 'insert': return "INSERT INTO {$table} (".implode(", ", array_keys($array)).") VALUES ('".implode("', '", $array)."')"; break;
+			case 'update': 
+				foreach ($array as $p => $v){
+					$tmp[$p]=database::escapeString($p)."='".database::escapeString($v)."'";
+				};
+				return "UPDATE $table SET ".implode(", ", $tmp)." WHERE {$parameter}='{$value}'";
+			break;
 		}
 	}
-	
-	public function StatusAction($l){
-			$message = false;
-			switch($l){
-				case 'admin' :
-					if ($this->status!='admin') $message = JS_RELOAD.USER_NACCESS;
-				break;
-				case 'viewer':
-					if ($this->status!='admin' && $this->status!='viewer') $message = JS_RELOAD.USER_NACCESS;
-				break;
-				case 'mjpeg' :
-					$this->CheckStatus();
-					if ($this->status != 'admin' && $this->status != 'viewer') {
-						if (!isset($_SERVER['PHP_AUTH_USER'])) {
-							    header('WWW-Authenticate: Basic realm="media"');
-    							header('HTTP/1.0 401 Unauthorized');
-								exit;
-						} else {
-							if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
-						}
-						
-					}
-					return true;
-				break;
-				case 'devices':
-					if ($this->status=='admin' || ($_SESSION['from_client']==true && $this->status=='viewer')){
-						return true;
-					} elseif (!isset($_SERVER['PHP_AUTH_USER'])) {
-						    header('WWW-Authenticate: Basic realm="devices"');
-    						header('HTTP/1.0 401 Unauthorized');
-							exit;
-					};
-					if(isset($_GET['short']) && isset($_SERVER['PHP_AUTH_USER'])) {
-						if (!$this->BasicAuthCheck()) $message = LOGIN_WRONG;
-					} else {
-						$message = JS_RELOAD.USER_NACCESS;
-					}
-				break; 
-			}
-			switch ($this->status){
-				case 'new': $message = USER_RELOGIN; break;
-				case 'kicked': session_unset(); $_SESSION['message'] = $message = USER_KICKED; $message .= JS_RELOAD; break;
-			};
-			
-			if ($message) die("<div class='INFO' id='message'>{$message}</div>");
-	}
-	
-	public function camPermission($id){
-		$this->data = $this->GetObjectData('Users', 'id', $_SESSION['id']);
-		$access_list = explode(',', $this->data[0]['access_device_list']);
-		return (in_array($id, $access_list)) ? false : true;
-	}
-	
-	private function BasicAuthCheck(){
-		$this->data = $this->GetObjectData('Users', 'username', $_SERVER['PHP_AUTH_USER']);
-		
-		return (!$this->ValidatePassword($_SERVER['PHP_AUTH_PW'])) ? false : true;
-	}
-	public function ValidatePassword($entered_password){
-		return (md5($entered_password.$this->data[0]['salt'])===$this->data[0]['password']) ? true : false;
-	}
-	private function ActiveUsersUpdate(){
-		$db = DVRDatabase::getInstance(); 
-		$db->DBQuery("DELETE FROM ActiveUsers WHERE time <".(time()-300));
-		$tmp = $db->DBFetchAll("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
-		if (count($tmp) == 0){ 
-			 $db->DBQuery("INSERT INTO ActiveUsers VALUES ({$_SESSION['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)");
-		} else {
-			if ($tmp[0]['kick']) return true;
-			$db->DBQuery("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}'");
-		}
-		return false;
-	}
-	private function ScheduleCheck(){
-		return (substr($this->data['schedule'], date('N')*(date('G')+1), 1)=='1')  ? true : false;
-	}
-	
-	public function ban($v = 0){
-		$db = DVRDatabase::getInstance();
-		$db->DBQuery("UPDATE Users SET access_setup = $v, access_remote = $v, access_web = $v, access_backup = $v, access_relay = $v WHERE id={$this->data[0]['id']}");
-		
-	}
-}
-
-#unified class for data operations
-class DVRData {
-	#mode: global - global config (no insertions, update multiple entries) OR update / insert
-	public function Edit($mode){
-		return $this->FormQueryFromPOST($mode);
-	}
-	
-	public function Kill($type, $id){
-		$db = DVRDatabase::getInstance();
-		$db->DBQuery("DELETE FROM $type WHERE id=".$id);
-	}
-	
-	#forms SQL query from POST array
-	public function FormQueryFromPOST($mode){
-		#separate id/table(type) that are not to be inserted
-		$db = DVRDatabase::getInstance();
-		$id = $db->DBEscapeString($_POST['id']); unset($_POST['id']);
-		$type = $db->DBEscapeString($_POST['type']); unset($_POST['type']);
-		$ret = true;
-		switch ($mode){
-			case 'global':
-				foreach ($_POST as $parameter => $value) {
-					$db->DBEscapeString($parameter);
-					$db->DBEscapeString($value);
-					if (!$db->DBQuery("UPDATE GlobalSettings SET value = '$value' WHERE parameter='$parameter'")) { $ret = false; break; }
-					
-				}
-				break;
-			case 'insert':
-				$ret = $db->DBQuery("INSERT INTO $type (".implode(", ", array_keys($_POST)).") VALUES ('".implode("', '", $_POST)."')");
-				break;
-			case 'update':
-				foreach ($_POST as $parameter => $value){
-					if ($value=='true') {$value = '1'; } elseif ($value=='false') {$value = '0'; };
-					$tmp[$parameter]="{$db->DBEscapeString($parameter)}='{$db->DBEscapeString($value)}'";
-				}
-				
-				$ret = $db->DBQuery("UPDATE $type SET ".implode(", ", $tmp)." WHERE id='$id'");
-				break;
-		}
-		return $ret;
-	}
-	
-	public static function GetObjectData($type, $parameter = false, $value = false, $condition = '='){
-		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBFetchAll("SELECT * FROM {$db->DBEscapeString($type)}".((!$parameter) ? '' : " WHERE {$db->DBEscapeString($parameter)} ".$condition." '{$db->DBEscapeString($value)}'"));
-		return (!$tmp) ? false : $tmp;
-	}
-	
-	
-}
-
-class DVRDevices extends DVRData{
-	public $number_of_card;
-	public $total_devices;
-	public $cards;
-	public $ip_cameras;
-	public function __construct(){
-		$id = (isset($_GET['id'])) ? intval($_GET['id']) : false;
-		$this->getCards();
-		$this->getIpCameras();
-	}
-
-	private function getCards(){
-		$db = DVRDatabase::getInstance();
-		$tmp = $db->DBFetchAll("SELECT * FROM AvailableSources GROUP BY card_id");
-		$this->number_of_cards = count($tmp);
-		if (!count($tmp)) { return false; };
-		foreach ($tmp as $key => $card){
-			$this->cards[$card['card_id']] = new BCDVRCard($card['card_id']);
-			$this->total_devices += count($this->cards[$card['card_id']]->devices);
-		}
-	}
-	private function getIpCameras(){
-		$db = DVRDatabase::getInstance();
-		$this->ip_cameras = $db->DBFetchAll("SELECT * FROM Devices WHERE protocol='IP'");
-		foreach ($this->ip_cameras as $key => $device){
-			$this->ip_cameras[$key]['status'] = (!$device['disabled']) ? 'OK' : 'disabled';
-		}
-		$this->total_devices += count($this->ip_cameras);
-	}
-	public function MakeXML() {
-		$this_user = new DVRUser('id', $_SESSION['id']);
-		$access_list = explode(',', $this_user->data[0]['access_device_list']);
-		// The \x3f is a '?'. Used hex so as not to confuse vim
-		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n<devices>\n";
-		$devices = array();
-		if (!empty($this->cards))
-		foreach($this->cards as $card_id => $card){
-			$devices = array_merge($devices, $card->devices);
-		};
-		$devices = array_merge($devices, $this->ip_cameras);
-		foreach ($devices as $device) {
-			if (in_array($device['id'], $access_list))
-				continue;
-
-			if (empty($device['id']))
-				$xml .= "  <device>\n";
-			else
-				$xml .= "  <device id=\"" . $device['id'] . "\">\n";
-
-			foreach($device as $property => $value) {
-				if ($property == 'rtsp_password' ||
-				    $property == 'rtsp_username')
-					continue;
-				if (isset($_GET['short']) && ($property != 'protocol'
-				    && $property != 'device_name' &&
-				    $property != 'resolutionX' &&
-				    $property != 'resolutionY'))
-					continue;
-				$xml .= "    <$property>";
-				$xml .= htmlentities($value);
-				$xml .= "</$property>\n";
-			};
-			$xml .= "  </device>\n";
-		}
-		$xml .='</devices>';
+	public static function responseXml($status, $message = false, $data = ''){
+		if (!message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
+		$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
-		print_r($xml);
+		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
+				<response>
+					<status>{$status}</status>
+					<msg>{$message}</msg>
+					<data>{$data}</data>
+				</response>";
+				
+	}
+}
+
+class user{
+	public $info;
+	public function __construct($parameter = false, $value = false){
+		if ($parameter && $value) $this->getInfo($parameter, $value);
+		
+	}
+	private function getInfo($parameter, $value){
+		$info = data::getObject('Users', $parameter, $value);
+		$this->info = $info[0];
+		$this->info['access_ptz_list'] = explode(',', $this->info['access_ptz_list']);
+		$this->info['access_device_list'] = explode(',', $this->info['access_device_list']);
+	}
+	private function checkUserData($data, $new=false){
+		if (empty($data['username']))	{ return NO_USERNAME;	}
+		if (empty($data['email']))		{ return NO_EMAIL;		}
+		if (empty($data['password']))	{ return NO_PASS;		}
+		if (data::getObject('Users', 'username', $data['username']) && $new) { return USERNAME_EXISTS; }
+		return true;
+	}
+	private function checkPassword($password){
+		return (md5($password.$this->info['salt'])===$this->info['password']) ? true : false;
+	}
+	private function updateActiveUsers(){ #updates user record and returns kick value
+		$tmp = data::query("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}");
+		if (!$tmp) { #if user record does not exist -- insert new
+			data::query("INSERT INTO ActiveUsers VALUES ({$_SESSION['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)", true);
+		} else { #or update if it exists, i.e. reload within 5 minutes
+			data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}", true);
+		}
+		//data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300));
+		return ($tmp[0]['kick']) ? true : false;
+	}
+	public function checkAccessPermissions($type){
+		if (!$_SESSION['id']) {
+			if ($type == 'basic'){
+				return ($this->basicAuthCheck()) ? true : false;
+			} else {
+				return false;
+			}
+		}
+		if ($this->updateActiveUsers()) { session_destroy(); return false; } #update records, check if user was kicked
+		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual']) return false; #require login when opening admin pages from client
+		if ($this->info['access_setup']) { return true; } #admin user all priveleges granted
+			else {
+				return ($type != 'admin' || ($type == 'backup' && $this->info['access_backup'] )) ? true : false; #page does not require admin priv and if its backup user must have permissions
+			}
+	}
+	
+	private function basicAuthCheck(){
+			if (!isset($_SERVER['PHP_AUTH_USER'])) {
+				header('WWW-Authenticate: Basic realm="'.DVR_COMPANY_NAME.'"');
+   				header('HTTP/1.0 401 Unauthorized');
+				exit;
+			} else {
+				$this->getInfo('login', $_SERVER['PHP_AUTH_USER']);
+				return ($this->checkPassword($_SERVER['PHP_AUTH_PW'])) ? true : false;
+			}
+	}
+	public function camPermission($id){
+		return (in_array($id, $this->info['access_device_list'])) ? false : true;
+	}
+	public function doLogin($password, $from_client = false){
+		if (!$this->info['access_setup']){ #if user is not admin check for permissions to use web/client
+			if (!$this->info['access_web'] && !$from_client)	{ return NA_WEB; };
+			if (!$this->info['access_remote'] && $from_client)	{ return NA_CLIENT; };
+		}
+		if ($this->checkPassword($password)) { 
+				$_SESSION['id'] = $this->info['id']; 
+				$_SESSION['from_client'] = $from_client; 
+				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
+				return 'OK'; } 
+		else { return LOGIN_WRONG; };
+	}
+	public function doLogout(){
+		if (!empty($_SESSION['from_client_manual'])){ #if returning to client unset manual login var
+			unset($_SESSION['from_client_manual']);
+		} else { #if from web -- destroy session on logout
+			session_destroy(); 
+		}
+	}
+	public static function update($data, $new = false){
+		$check = false;
+		$response = self::checkUserData($data, $new);
+		
+		if ($response === true){
+			if ($new){
+				$data['salt'] = data::getRandomString(4);
+				$data['password'] = md5($data['password'].$data['salt']);
+				var_dump_pre($data);
+				$query = data::formQueryFromArray('insert', 'Users', $data);
+				$response = USER_CREATED;
+			} else {
+				$id = intval($data['id']);
+				unset($data['id']);
+				if ($data['password'] == '__default__') { unset($data['password']); }
+					else {
+						$ud = data::query("SELECT salt FROM Users WHERE id='{$id}'");
+						$data['password'] = md5($data['password'].$ud[0]['salt']);
+					}
+				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
+				$response = false;
+			}
+			$check = (data::query($query, true)) ? true : false;
+		}
+		return array($check, $response);
+	}
+	public static function remove($id){
+		return (data::query("DELETE FROM Users WHERE id='{$id}'", true));
+	}
+	public static function kick($ip){
+		$ip = preg_replace("/[^(0-9)\.\:]/", "", $ip);
+		if ($_SERVER['REMOTE_ADDR']!=$ip){
+			return (data::query("UPDATE ActiveUsers SET kick = 1, time = ".time()." WHERE ip='{$ip}'", true)) ? true : false;
+		} else {
+			return AU_CANT_EOS;
+		}
+	}
+}
+
+
+class camera {
+	public $info;
+	public function __construct($device){
+		$this->getInfo($device);
+	}
+	public function getInfo($device){
+		$devices = data::getObject('Devices', 'device', $device);
+		$available = data::getObject('AvailableSources', 'device', $device);
+		if (!$devices){ #if does not exist in Devices
+			$this->info['status'] = 'notconfigured';
+			$this->info += $available[0];
+		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
+			$this->info['status'] = 'unmatched';
+			$this->info += $devices[0];
+		} else {
+			$this->info['status'] = ($devices[0]['disabled']) ? 'disabled' : 'OK';
+			array_merge($this->info, $devices, $available);
+			$this->info += $devices[0] + $available[0];
+		}
+		$this->getPtzSettings();
+	}
+	private function getPtzSettings(){
+		if (empty($this->info['ptz_control_path'])){
+			$ptz_config = false;
+		} else {
+			$ptz_config['path'] = $this->info['ptz_control_path'];
+			$ptz_config['protocol'] = $this->info['ptz_control_protocol'];
+			$config = explode(",", $this->info['ptz_serial_values']);
+			$ptz_config['addr'] = $config[0];
+			$ptz_config['baud'] = $config[1];
+			$ptz_config['bit'] = $config[2];
+			switch($config[3]){
+				case 'n': $ptz_config['pairity'] = 'None'; break;
+				case 'e': $ptz_config['pairity'] = 'Even'; break;
+				case 'o': $ptz_config['pairity'] = 'Odd';  break;
+			}
+			$ptz_config['stop_bit'] = $config[4];
+			$this->info['ptz_config'] = $ptz_config;
+		}
+	}
+	public static function updatePtzSettings($path, $baud, $bit, $parity, $stop_bit, $protocol, $addr, $id){
+		switch($parity){
+				case 'None': $pairty = 'n'; break;
+				case 'Even': $pairty = 'e'; break;
+				case 'Odd':  $pairty = 'o'; break;
+		};
+		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
+		dataf::outputXml($status);
+	}
+	public function changeState(){
+		
+	}
+	public function updateResFps(){
+	}
+}
+
+class ipCamera{
+	public $info;
+	public function __construct($id = false){
+		if ($id) $this->getInfo(intval($id));
+	}
+	public function getInfo($id){
+		$info = data::query("SELECT * FROM Devices WHERE id=$id");
+		$this->info = $info[0];
+		$tmp = explode('|', $info[0]['device']);
+		$this->info['status'] = (!$info[0]['disabled']) ? 'OK' : 'disabled';
+		$this->info['ipAddr'] = $tmp[0];
+		$this->info['port'] = $tmp[1];
+		$this->info['rtsp'] = $tmp[2];
+	}
+	public static function create(){
+		if (!$_POST['ipAddr']){ data::responseXml(false, AIP_NEEDIP); return false;};
+		if (!$_POST['port']){ data::responseXml(false, AIP_NEEDPORT); return false;};
+		if (!$_POST['rtsp']){ data::responseXml(false, AIP_RTSPPATH); return false;};
+		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
+		$status = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['mjpeg']}')", true);
+		$message = ($status) ? AIP_CAMADDED : false;
+		data::responseXml($status, $message);
+	}
+	public static function remove($id){
+		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
+	}
+	public function changeState(){
+		return data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true);
+	}
+}
+
+class card {
+	public $info;
+	public $cameras;
+	public function __construct($id){
+		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
+		foreach ($devices as $key => $device){
+			$this->cameras[$key] = new camera($device['device']);
+			$port++; 
+			$this->cameras[$key]->info['port'] = $port;
+			if ($this->cameras[$key]->info['signal_type']) { $this->info['signal_type'] = $this->cameras[$key]->info['signal_type']; };
+			if ($this->cameras[$key]->info['video_interval'] && !$this->cameras[$key]->info['disabled'] ){
+				$used_fps = ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
+			}
+		}
+		$this->info['id'] = $id;
+		$this->signal_type = 'notconfigured';
+		$this->info['ports'] = count($this->cameras);
+		$this->info['driver'] = $this->cameras[0]->info['driver'];
+		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];
+		$this->info['encoding'] = $this->cameras[0]->info['signal_type'];
+		$this->info['available_capacity'] = $this->info['capacity']-$used_fps;
+		
+	}
+}
+
+class ipCameras{
+	public $camera;
+	public function __construct(){
+		$m = (!empty($_GET['m'])) ? $_GET['m'] : '';
+		switch($m){
+			case 'model': $this->getModels($_GET['manufacturer']); break;
+			case 'ops': $this->getOptions($_GET['model']); break;
+			default: $this->getManufacturers(); break; 
+		};
+	}
+	private function getManufacturers(){
+		$this->data['manufacturers'] = data::query("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
+	}
+	private function getModels($m){
+		$this->data['models'] = data::query("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
+	}
+	private function getOptions($model){
+		$this->data = data::query("SELECT * FROM ipCameras WHERE model='$model'");
+	}
+}
+
+class softwareVersion{
+	public $version;
+	public function __construct(){
+		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
+		$this->version['up_to_date'] = (version_compare($this->installed_version, $this->current_version, '<')) ? true : false;
 	}
 }
 
@@ -308,13 +369,12 @@ class BCDVRCard{
 	public function __construct($id){
 		$this->id = $id;
 		$this->fps_available = 480; //BC card capacity
-		$db = DVRDatabase::getInstance();
-		$this->devices = $db->DBFetchAll("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id ASC");
+		$this->devices = data::query("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id ASC");
 		$this->type = count($this->devices);
 		$port = 1;
 		$this->signal_type = 'notconfigured';
 		foreach ($this->devices as $key => $device){
-			$tmp = $db->DBFetchAll("SELECT * FROM Devices WHERE device='{$device['device']}'");
+			$tmp = data::query("SELECT * FROM Devices WHERE device='{$device['device']}'");
 			$this->devices[$key]['port'] = $port; $port++;
 			if (!count($tmp)) { $this->devices[$key]['status'] = 'notconfigured'; $this->devices[$key]['id']=''; }
 			 	else {
@@ -327,49 +387,7 @@ class BCDVRCard{
 	}
 }
 
-class DVRIPCameras{
-	public $data;
-	public $camera;
-	public function __construct($id){
-		if ($id == 'new'){
-			!empty($_GET['m']) or $_GET['m']='';
-			switch($_GET['m']){
-				case 'model': $this->getModels($_GET['manufacturer']); break;
-				case 'ops': $this->getOptions($_GET['model']); break;
-				default: $this->getManufacturers(); break; 
-			};
-		} else { //pull info
-			$db = DVRDatabase::getInstance();
-			$this->camera = $db->DBFetchAll("SELECT * FROM Devices WHERE id=$id");
-			$tmp = explode('|', $this->camera[0]['device']);
-			$this->camera[0]['ipAddr'] = $tmp[0];
-			$this->camera[0]['port'] = $tmp[1];
-			$this->camera[0]['rtsp'] = $tmp[2];
-		};
-	}
-	private function getManufacturers(){
-		$db = DVRDatabase::getInstance();
-		$this->data['manufacturers'] = $db->DBFetchAll("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
-	}
-	private function getModels($m){
-		$db = DVRDatabase::getInstance();
-		$this->data['models'] = $db->DBFetchAll("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
-	}
-	private function getOptions($model){
-		$db = DVRDatabase::getInstance();
-		$this->data = $db->DBFetchAll("SELECT * FROM ipCameras WHERE model='$model'");
-	}
-}
 
-function genRandomString($length = 4) {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyz';
-    $string = '';    
-    for ($p = 0; $p < $length; $p++) {
-        $string .= $characters[mt_rand(0, strlen($characters))];
-    }
-    return $string;
-}
-
-	$version = new DVRVersion();
+$version = new softwareVersion;
 
 ?>

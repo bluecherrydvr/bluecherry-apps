@@ -1,0 +1,29 @@
+/* context menu */
+body { padding-top:0px; margin-top:0px; }
+
+#layoutsMenu  { border:1px solid #999; padding:0; background:#eee; width:200px; list-style-type:none; display:none; }
+#layoutsMenu .separator { border-bottom:1px solid #999; }
+#layoutsMenu li { margin:0; padding:0; }
+#layoutsMenu li a { display:block; padding:5px 10px 5px 35px; width:155px; font-size:12px; text-decoration:none; font-family:tahoma,arial,sans-serif; color:#000; background-position:8px 4px; background-repeat:no-repeat; }
+#layoutsMenu li a:hover { background-color:#ddd; }
+#layoutsMenu li a.disabled { color:#ccc; font-style:italic; }
+#layoutsMenu li a.disabled:hover { background-color:#eee; }
+#layoutsMenu li a.save		{ background-image:url(/img/icons/menu/save.png); }
+#layoutsMenu li a.clearAll	{ background-image:url(/img/icons/menu/clear.png); }
+#layoutsMenu li a.delete	{ background-image:url(/img/icons/menu/delete.png); }
+
+#liveViewGrid tr td	{ border:1px solid gray; }
+
+#topMenu							{ height:50px; border:1px solid gray; }
+
+#gridAdjustments ul					{ list-style-type:none; background-repeat:no-repeat; background-position:center center; margin:0px; padding:0px; }
+#gridAdjustments ul li				{ float:left; width:48px; height:48px; cursor:pointer; }
+#gridAdjustments ul li.l1			{ background-image:url('/img/icons/layouts/1.png'); }
+#gridAdjustments ul li.l4			{ background-image:url('/img/icons/layouts/4.png'); }
+#gridAdjustments ul li.l9			{ background-image:url('/img/icons/layouts/9.png'); }
+#gridAdjustments ul li.l16 			{ background-image:url('/img/icons/layouts/16.png'); }
+#gridAdjustments ul li.ar 			{ background-image:url('/img/icons/layouts/add-row.png'); }
+#gridAdjustments ul li.dr 			{ background-image:url('/img/icons/layouts/del-row.png'); }
+#gridAdjustments ul li.ac 			{ background-image:url('/img/icons/layouts/add-column.png'); }
+#gridAdjustments ul li.dc 			{ background-image:url('/img/icons/layouts/del-column.png'); }
+#gridAdjustments ul li.separator 	{ width:2px; border-right:1px solid #efefef; cursor:default; }

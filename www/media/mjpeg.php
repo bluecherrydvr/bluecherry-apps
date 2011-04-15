@@ -5,9 +5,9 @@ include("../lib/lib.php");  #common functions
 
 
 #auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('mjpeg');
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('basic');
+
 if (!$current_user->camPermission($_GET['id'])){
 	header("Content-type: image/jpeg");
 	readfile("../img/np.jpg");

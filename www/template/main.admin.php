@@ -26,6 +26,7 @@
 <body>
 	<div id="leftColumn">
 		<div id="logo"></div>
+		<div id="logout"><a href="/ajax/logout.php"><?php echo LOGOUT; ?></a></div>
 		<div id="mainMenu">
 	  		<ul id="menuButtons">
 				<li class='liveView'><?php echo MMENU_LIVEVIEW; ?></li>
@@ -47,11 +48,12 @@
 			<div id="sr"><div id="message" class="OK"><? echo SERVER_RUNNING; ?></div></div>
 			<div id="snr"><div id="message" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
 			<div id="ncn"><div id="message" class="F"><? echo NO_CONNECTION; ?></div></div>
+			<div id="ftw"><div id="message" class="F"><? echo WRITE_FAILED; ?><div id="writeFailTime"></div></div></div>
 			<?php
-				if (!$version->up_to_date){
+				if (!$version->version['up_to_date']){
 					echo '<div id="version"><div id="message" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
 				} else {
-					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': <br />'.$version->current_version.'</div></div>';					
+					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['current'].'</div></div>';					
 				}
 			?>
 			<div class='bClear'></div>

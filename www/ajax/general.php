@@ -2,26 +2,21 @@
 #lib
 include("../lib/lib.php");  #common functions
 
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
 
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
-#/auth check
-
-
-class DVRGlobalSettings extends DVRData{
+class globalSettings{
 	var $data;
 	function __construct(){
-		$this->data = $this->GetGlobalInfo();
+		$this->data =$this->getGlobalInfo();
 	}
 	function GetGlobalInfo(){
-		return $this->GetObjectData('GlobalSettings');;
+		return data::getObject('GlobalSettings');
 	}
 }
 
 #run class/get data
-$global_settings = new DVRGlobalSettings();
+$global_settings = new globalSettings();
 
 #require template to show data
 include_once('../template/ajax/general.php');

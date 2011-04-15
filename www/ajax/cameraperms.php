@@ -5,9 +5,8 @@ DEFINE('INDVR', true);
 include("../lib/lib.php");  #common functions
 
 #auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
 #/auth check
 
 class userCameraPermissions{
@@ -15,15 +14,13 @@ class userCameraPermissions{
 	public $user;
 	public function __construct(){
 		$id = intval($_GET['id']);
-		$this->user = new DVRUser('id', $id);
+		$this->user = new user('id', $id);
 		$type = ($_GET['t'] == 'PTZ') ? 'access_ptz_list' : 'access_device_list';
-		$this->camera_list = $this->matchCams($this->user->data[0][$type]);
+		$this->camera_list = $this->matchCams($this->user->info[$type]);
 		
 	}
 	private function matchCams($access_list){
-		$db = DVRDatabase::getInstance();
-		$camera_list = $db->DBFetchAll("SELECT id, device_name FROM Devices");
-		$access_list = explode(',', $access_list);
+		$camera_list = data::query("SELECT id, device_name FROM Devices");
 		foreach($camera_list as $key => $camera){
 			$camera_list[$key]['allowed'] = (in_array($camera_list[$key]['id'], $access_list)) ? false : true;
 		}

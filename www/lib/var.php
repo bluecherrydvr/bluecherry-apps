@@ -1,4 +1,4 @@
-<?php defined('INDVR') or exit();
+<?php //defined('INDVR') or exit();
 
 #db
 define('VAR_CONF_PATH', "/etc/bluecherry.conf");
@@ -17,15 +17,26 @@ define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
 define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
 
 #local card props
-$local_device_fps = array(30, 15, 10, 7.5, 5, 3, 2);
-$resolutions['NTSC'] = array('704x480', '352x240');
-$resolutions['PAL']  = array('704x576', '352x288');
+$GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
+$GLOBALS['capacity'] = array(
+	'solo6010' => 480,
+	'solo6110' => 600
+);
+
+$GLOBALS['resolutions'] = array(
+	'NTSC' => array('704x480', '352x240'),
+	'PAL'  => array('704x576', '352x288')
+);
 
 #anaglog ptz properties
-$ptz['PROTOCOLS'] = array('PELCO');
-$ptz['BAUD']= array(1200, 2400, 4800, 9600, 19200, 38400);
-$ptz['BIT'] = array(8, 7);
-$ptz['STOP_BIT']= array(1, 2);
-$ptz['PARITY'] = array('None', 'Even', 'Odd');
+$GLOBALS['ptz'] = array(
+	'PROTOCOLS' => array('PELCO'),
+	'BAUD' => array(1200, 2400, 4800, 9600, 19200, 38400),
+	'BIT' =>  array(8, 7),
+	'STOP_BIT' => array(1, 2),
+	'PARITY' => array('None', 'Even', 'Odd')
+);
+
+$GLOBALS['storage_limits'] = array(100, 99.99, 99.98, 99.97, 99.96, 99.95, 99.94, 99.93, 99.92, 99.91, 99.9, 99.8, 99.7, 99.6, 99.5, 99.5, 99.4, 99.3, 99.2, 99.1, 99, 98, 96, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50);
 
 ?>

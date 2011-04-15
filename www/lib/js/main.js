@@ -176,6 +176,26 @@ DVRPageScript = new Class({
 					openPage = new DVRPage('log', 'lines='+this.get('value'));
 				});
 			break; //end log
+			case 'storage':
+				var storageForm  = new DVRSettingsForm('storageForm');
+				var addButton = $$('#button.add');
+				addButton.buttonAnimate("#aca");
+				var initDelete = function(){
+					$$('.deleteShort').each(function(el){
+						el.buttonAnimate("#caa");
+						el.addEvent('click', function(ev){
+							el.getParent().dispose();
+						});
+					});
+				};
+				initDelete();
+				addButton.addEvent('click', function(ev){
+					var el = new Element('div', {'id': 'separator', 'html': $('tableEntry').get('html')});
+					el.inject($('storageForm'));
+					initDelete();
+				});
+				
+			break; //end storage
 			case 'devices' :
 				$('addIPCamera').addEvent('click', function(){
 					openPage = new DVRPage('addip');
@@ -381,6 +401,13 @@ DVRPageScript = new Class({
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
 				});
+				$$('.showHideImg').addEvent('click', function(ev){
+					$('cameraOutput').removeEvent('load');
+					var name = $('cameraOutput').get('name');
+					$('cameraOutput').set('name', $('cameraOutput').get('src'));
+					$('cameraOutput').set('src', name);
+					ev.stopPropagation();
+				});
 				var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');
 			break; //end motionmap
 			case 'general':
@@ -526,10 +553,33 @@ function buttonMorph(el, color){
 	});
 }
 
+settingsForm = new Class({
+	initialize: function(formId, saveButton){
+		$(formId).set('send', { 
+			onRequest: function(){
+				$$(saveButton).setStyle('background-image', 'url("/img/loading.gif")');
+			},
+			onComplete: function(text, xml){
+				var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+				var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+				var iconStyle = (status=="OK") ? 'url("/img/icons/check.png")' : 'url("/img/icons/cross.png")';
+				$$(saveButton).setStyle('background-image', iconStyle);
+				$$(saveButton).highlight();
+				var showMessage = new DVRMessage(status, msg);
+			}
+		});
+		$$(saveButton).addEvent('click', function(){
+			$(formId).send();	
+		});
+		buttonMorph($$(saveButton), '#8bb8');
+	}
+});
+
 DVRSettingsForm = new Class({
 	initialize: function(formID){
-		$(formID).set('send', {
+		$(formID).set('send', { 
 			onRequest: function(){
+				var savebutton = ($('saveButton')) ? $('saveButton') : $('.save'); 
 				$('saveButton').setStyle('background-image', 'url("/img/loading.gif")');
 			},
 			onComplete: function(text, xml){
@@ -558,10 +608,11 @@ var localMotionGrid = new Class({
 			switch(type){
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
-					$(el).addEvent('load', function(){
-						self.drawGrid($(el), $(value).get('value'));
+					var tfunc = function(el, self){
+						self.drawGrid(el, $(value).get('value'));
 						tempOverlay.removeoverlay();
-					});
+					}
+					$(el).addEvent('load', tfunc($(el), self));
 					self.sensitivitySelector();
 				break;//end mmap
 				default:
@@ -635,12 +686,16 @@ var localMotionGrid = new Class({
 		//sets up seinsitivity selector
 		sensitivitySelector: function(el){
 			if ($('clearAll')){
+				
 				$('clearAll').addEvent('click', function(ev){
 					ev.stopPropagation();
 					$$('#cameraOutputContainer table tr td').set('class', 'gridCol0');
 				});
+			}
+			if ($('fillAll')){
 				$('fillAll').addEvent('click', function(ev){
-					$$('#cameraOutputContainer table tr td').set('class', 'gridCol'+$$('#lvlSelect .on').get('value'));
+					$$('#gridTable tr td:not(td.gridColEx)').set('class', 'gridCol'+$$('#lvlSelect .on').get('id').toString().substring(2,3));
+					$$('#cameraOutputContainer table tr td').set('class', 'gridCol'+$$('#lvlSelect .on').get('id').toString().substring(2,3));
 					ev.stopPropagation();
 				});
 			};
@@ -692,9 +747,11 @@ updateStatData = function(){
 				var memPertg = xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue;
 				var serverUp = xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue;
 				var serverRn = xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue;
+				var writeFail= xml.getElementsByTagName("failed-write")[0].childNodes[0].nodeValue;
 				var sr  = $('sr');
 				var snr = $('snr');
 				var ncn = $('ncn');
+				var ftw = $('ftw');
 				if (serverRn != 'up'){
 					sr.setStyle('display', 'none');
 					snr.setStyle('display', 'inline');
@@ -702,6 +759,12 @@ updateStatData = function(){
 				} else {
 					snr.setStyle('display', 'none');
 					sr.setStyle('display', 'inline');
+				}
+				if (writeFail!='false'){
+					$('writeFailTime').set('html', writeFail); 
+					ftw.setStyle('display', 'inline');
+				} else {
+					ftw.setStyle('display', 'none');
 				}
 				ncn.setStyle('display', 'none');
 				$('serverStats').setStyle('display', 'block');
@@ -720,7 +783,7 @@ updateStatData = function(){
 				snr.setStyle('display', 'none');
 			}
 		}).send();
-		setTimeout("updateStatData();", 2000);
+		//setTimeout("updateStatData();", 2000);
 };
 
 updateStatBar = function(barId, val, y, r){

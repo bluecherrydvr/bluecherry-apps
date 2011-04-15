@@ -4,16 +4,12 @@ DEFINE('INDVR', true);
 #libs
 include("../lib/lib.php");  #common functions
 
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('viewer');
-#/auth check
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('viewer');
 
 class editLayout{
 	public function __construct($action){
-		$db = DVRDatabase::getInstance();
-		$db->DBEscapeString($_POST['layout']);
+		data::escapeString($_POST['layout']);
 		switch ($action){
 			case 'edit': $this->editLayout(); break;
 			case 'new' : $this->newLayout(); break;
@@ -23,22 +19,18 @@ class editLayout{
 		}
 	}
 	private function deleteLayout(){
-		$db = DVRDatabase::getInstance();
-		$db->DBQuery("DELETE FROM userLayouts WHERE user_id={$_SESSION['id']} AND layout_name='{$_POST['layout']}'"); 
+		data::query("DELETE FROM userLayouts WHERE user_id={$_SESSION['id']} AND layout_name='{$_POST['layout']}'"); 
 	}
 	private function editLayout(){
 		$value = $this->cookieToString();
-		$db = DVRDatabase::getInstance();
-		$db->DBQuery("UPDATE userLayouts SET layout='{$value}' WHERE user_id={$_SESSION['id']} AND layout_name='{$_POST['layout']}'"); 
+		data::query("UPDATE userLayouts SET layout='{$value}' WHERE user_id={$_SESSION['id']} AND layout_name='{$_POST['layout']}'"); 
 	}
 	private function newLayout(){
 		$value = $this->cookieToString();
-		$db = DVRDatabase::getInstance();
-		$db->DBQuery("INSERT INTO userLayouts VALUES ('', {$_SESSION['id']}, '{$_POST['layout']}', '{$value}')");
+		data::query("INSERT INTO userLayouts VALUES ('', {$_SESSION['id']}, '{$_POST['layout']}', '{$value}')");
 	}
 	private function loadLayout(){
-		$db = DVRDatabase::getInstance();
-		$layout = $db->DBFetchAll("SELECT layout_name, layout FROM userLayouts WHERE layout_name='{$_POST['layout']}' AND user_id='{$_SESSION['id']}'");
+		$layout = data::query("SELECT layout_name, layout FROM userLayouts WHERE layout_name='{$_POST['layout']}' AND user_id='{$_SESSION['id']}'");
 		$_SESSION['load_layout'] = $layout[0]['layout'];
 		$_SESSION['load_layout_name'] = $layout[0]['layout_name'];
 	}

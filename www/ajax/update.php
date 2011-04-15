@@ -3,13 +3,10 @@
 #libs
 include("../lib/lib.php");  #common functions
 
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
-#/auth check
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
 
-class updateDB extends DVRData{
+class update{
 	public $message;
 	public $status;
 	public $data;
@@ -17,101 +14,97 @@ class updateDB extends DVRData{
 		$this->message = CHANGES_FAIL;
 		$mode = $_POST['mode']; unset($_POST['mode']);
 		switch ($mode) {
-			case 'global': $this->status = $this->Edit('global'); $this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL; break;
-			case 'deleteUser' : $this->status = $this->deleteUser(); break;
-			case 'updateEncoding': $this->updateEncoding(); break;
-			case 'update': $this->updateField(); break;
-			case 'user': $this->editUser(); break;
-			case 'newUser' : $this->newUser(); break;
-			case 'changeState': $this->changeState(); break;
+			case 'global':	$this->updateGlobal(); break;
+			case 'kick':	$this->kickUser(); break;
+			case 'deleteIp': $this->deleteIp(); break;
+			case 'access_device_list': $this->editAccessList(); break;
 			case 'changeStateIp': $this->changeStateIp(); break;
 			case 'FPS': $this->changeFPSRES('FPS'); break;
 			case 'RES': $this->changeFPSRES('RES'); break;
+			case 'deleteUser' : $this->status = $this->deleteUser(); break;
+			case 'update': $this->update(); break;
 			case 'update_control' : $this->update_control(); break;
-			case 'ban': $this->BanUser(); break;
-			case 'kick': $this->KickUser(); break;
-			case 'addip': $this->status = $this->addIp(); break;
-			case 'deleteIp' : $this->deleteIp(); break;
+			case 'newUser': $this->newUser(); break;
+			case 'user': $this->updateUser(); break;
 			case 'editIp': $this->editIp(); break;
-			case 'access_device_list': $this->updateCamPerms(); break;
+			case 'changeState': $this->changeState(); break;
 		}
 	}
-	private function updateCamPerms(){
-		$db = DVRDatabase::getInstance();
-		$this->status = $db->DBQuery("UPDATE Users SET access_device_list='".trim($_POST['value'], ",")."' WHERE id='{$_POST['id']}'");
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+	#update functions will be moved to individual files after template/js update in beta7
+	private function newUser(){
+		$result = user::update($_POST, true);
+		data::responseXml($result[0], $result[1]);
+	}
+	private function updateUser(){
+		$result = user::update($_POST);
+		data::responseXml($result[0], $result[1]);
 	}
 	private function editIp(){
 		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$this->status = $db->DBQuery("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}");
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+		$result = data::query("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}", true);
+		data::responseXml($result);
 	}
-	private function changeStateIp(){
+	private	function update_control(){
 		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$device = $db->DBFetchAll("SELECT disabled FROM Devices WHERE id={$id}");
-		$this->status = $db->DBQuery("UPDATE Devices SET disabled=".(($device[0]['disabled']) ? 0 : 1)." WHERE id={$id}");
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-	}
-	private function deleteIp(){
-		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$this->status = $db->DBQuery("DELETE FROM Devices WHERE id={$id}");
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-	}
-	private function addIp(){
-		if (!$_POST['ipAddr']){ $this->message = AIP_NEEDIP; return false;};
-		if (!$_POST['port']){ $this->message = AIP_NEEDPORT; return false;};
-		if (!$_POST['rtsp']){ $this->message = AIP_RTSPPATH; return false;};
-		$db = DVRDatabase::getInstance();
-		$model_info = $db->DBFetchAll("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$t = $db->DBQuery("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['mjpeg']}')");
-		$this->message = ($t) ? AIP_CAMADDED : false;
-		return ($t) ? true : false;
-	}
-	private function KickUser(){
-		$ip = preg_replace("/[^(0-9)\.]/", "", $_POST['id']);
-		$db = DVRDatabase::getInstance();
-		if ($_SERVER['REMOTE_ADDR']!=$ip){
-			$this->status = $db->DBQuery("UPDATE ActiveUsers SET kick = 1 WHERE ip='$ip'");
-			$this->message = ($this->status) ? AU_KICKED : CHANGES_FAIL;
-		} else {
-			$this->status = false;
-			$this->message = AU_CANT_EOS;
-		}
-	}
-	private function BanUser(){
-		$id = intval($_POST['id']);
-		$user = new DVRUser('id', $id);
-		if ($_SESSION['id']!=$id){
-			$user->ban();
-			$this->status = true;
-			$this->message = AU_BANNED;
-		} else {
-			$this->status = false;
-			$this->message = AU_CANT_SB;
-		}
-	}
-	/* XXX Check for errors here */
-	function update_control(){
-		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
+		$this_device = data::query("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
 		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
-	
-		$this->updateField();
+		$this->update();
 	}
-	
+	private function update(){
+		$table = $_POST['type']; unset($_POST['type']);
+		$id = $_POST['id']; unset($_POST['id']);
+		$query = data::formQueryFromArray('update', $table, $_POST, 'id', $id);
+		data::responseXml(data::query($query, true));
+	}
+	private function deleteUser(){
+		$id = intval($_POST['id']);
+		if ($id!=$_SESSION['id']){
+			$result = user::remove($id);
+		} else {
+			$result = false;
+			$msg = DELETE_USER_SELF;
+		}
+		data::responseXml($result, $msg);
+	}
+	private function deleteIp(){
+		$id = intval($_POST['id']);
+		data::responseXml(ipCamera::remove($id));
+	}
+	private function changeStateIp(){
+		$id = intval($_POST['id']);
+		$camera = new ipCamera($id);
+		data::responseXml($camera->changeState());
+	}
+	private function updateGlobal(){
+		$status = true;
+		foreach ($_POST as $parameter => $value){
+			$status = (data::query("UPDATE GlobalSettings SET value='{$value}' WHERE parameter='{$parameter}'", true)) ? $status : false;
+			
+		}
+		data::responseXml($status);
+	}
+	private function kickUser(){
+		$result = user::kick($_POST['id']); 
+		if ($result===true){
+			$status = true;
+			$result = '';
+		} else {
+			$status = false;
+		}
+		data::responseXml($status, $result);
+	}
+	private function editAccessList(){
+		$status = data::query("UPDATE Users SET access_device_list='".trim($_POST['value'], ",")."' WHERE id='{$_POST['id']}'", true);
+		data::responseXml($status);
+	}
 	function changeFPSRES($type){
 		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		$this_device = $db->DBFetchAll("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
+		$this_device = data::query("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
 			$res['x'] = $this_device[0]['resolutionX']; $res['y'] = $this_device[0]['resolutionY']; 
 		}
@@ -120,46 +113,43 @@ class updateDB extends DVRData{
 		
 		$this_device[0]['req_fps'] = (($fps) * (($resX>=704) ? 4 : 1)) - ((30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1));
 		
-		$container_card = new BCDVRCard($this_device[0]['card_id']);
-		if ($this_device[0]['req_fps'] > $container_card->fps_available){
-			$this->status = false;
-			$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
+		$container_card = new card($this_device[0]['card_id']);
+		if ($this_device[0]['req_fps'] > $container_card->info['available_capacity']){
+			$result = false;
+			$message = ENABLE_DEVICE_NOTENOUGHCAP;
 		} else {
-			$this->status = $db->DBQuery("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'");
-			$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-			$container_card = new BCDVRCard($this_device[0]['card_id']);
-			$this->data = $container_card->fps_available;
+			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'", true);
+			$container_card = new card($this_device[0]['card_id']);
+			$this->data = $container_card->info['available_capacity'];
 		}
+		data::responseXml($result, $msg);
 	}
-
-	function changeState(){
-		$db = DVRDatabase::getInstance();
+	
+	private function changeState(){
 		$device = $db->DBEscapeString($_POST['id']);
-		$this_device = $db->DBFetchAll("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices USING (device) WHERE AvailableSources.device='$device' ");
+		$this_device = data::query("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices USING (device) WHERE AvailableSources.device='$device' ");
 		if (!$this_device) {
-			$this->status = false;
-			$this->message = CHANGES_FAIL;
+			$result = false;
+			data::responseXml($result);
 			return;
 		}
-		$container_card = new BCDVRCard($this_device[0]['card_id']);
+		$container_card = new card($this_device[0]['card_id']);
 		if (!empty($this_device[0]['protocol'])){ //if the device is configured
 			$this_device[0]['req_fps'] = (30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1);
 			if ($this_device[0]['disabled']){
-				if ($this_device[0]['req_fps'] > $container_card->fps_available){
+				if ($this_device[0]['req_fps'] > $container_card->info['available_capacity']){
 					$this->status = false;
 					$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
 				} else {
-					$this->status = $db->DBQuery("UPDATE Devices SET disabled='0' WHERE device='{$this_device[0]['device']}'");
-					$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+					$result = data::query("UPDATE Devices SET disabled='0' WHERE device='{$this_device[0]['device']}'", true);
 				}
 
 			} else {
-				$this->status = $db->DBQuery("UPDATE Devices SET disabled='1' WHERE device='{$this_device[0]['device']}'");
-				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
+				$result = data::query("UPDATE Devices SET disabled='1' WHERE device='{$this_device[0]['device']}'", true);
 			}
 		} else {
 			$ds = ($container_card->fps_available<2) ? 1 : 0;
-			if ($container_card->signal_type == 'notconfigured' || $container_card->signal_type == 'NTSC'){
+			if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
 				$res['y']='240';
 				$enc = 'NTSC';
 			} else {
@@ -168,92 +158,12 @@ class updateDB extends DVRData{
 			}
 			$card_info = explode('|', $this_device[0]['device']);
 			$card_info[2]++;
-			$this->status = $db->DBQuery("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('Port {$card_info[2]} on Card {$this_device[0]['card_id']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['device']}', '{$this_device[0]['driver']}', 15, '{$enc}', '$ds')");
-			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; } else {
-				$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-			}
+			$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('Port {$card_info[2]} on Card {$this_device[0]['card_id']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['device']}', '{$this_device[0]['driver']}', 15, '{$enc}', '$ds')", true);
+			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; };
 		}
-		
-	}
-	function newUser(){
-		if (empty($_POST['username'])) { $this->status = false; $this->message = NO_USERNAME; return false; }
-		if (empty($_POST['email'])) { $this->status = false; $this->message = NO_EMAIL; return false; }
-		if (empty($_POST['password'])) { $this->status = false; $this->message = NO_PASS; return false; }
-		$_POST['type'] = 'Users';
-		$_POST['access_setup'] = ($_POST['access_setup']=='on') ? '1' : '0';
-		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
-		$_POST['access_remote'] = ($_POST['access_remote']=='on') ? '1' : '0';
-		$_POST['access_backup'] = ($_POST['access_backup']=='on') ? '1' : '0';
-		$_POST['salt'] = genRandomString(4);
-		$_POST['password'] = md5($_POST['password'].$_POST['salt']);
-		$this->status = $this->FormQueryFromPOST('insert');
-		$this->message = ($this->status) ? USER_CREATED : CHANGES_FAIL;
-	}
-	
-	function editUser(){
-		$id = intval($_POST['id']);
-		$db = DVRDatabase::getInstance();
-		if ($_POST['password']=='__default__') { unset($_POST['password']); }
-		 else { 
-		 	$tmp = $db->DBFetchAll("SELECT salt FROM Users WHERE id='$id'");
-			$_POST['password'] = md5($_POST['password'].$tmp[0]['salt']);
-		};
-		$_POST['type'] = 'Users';
-		$_POST['access_setup'] = ($_POST['access_setup']=='on') ? '1' : '0';
-		$_POST['access_web'] = ($_POST['access_web']=='on') ? '1' : '0';
-		$_POST['access_remote'] = ($_POST['access_remote']=='on') ? '1' : '0';
-		$_POST['access_backup'] = ($_POST['access_backup']=='on') ? '1' : '0';
-		if (empty($_POST['username'])) { $this->status = false; $this->message = NO_USERNAME; return false; }
-		if (empty($_POST['email'])) { $this->status = false; $this->message = NO_EMAIL; return false; }
-		if ($_SESSION['id']==$_POST['id'] && $_POST['access_setup']==0) { $this->message = CANT_REMOVE_ADMIN; return false; }
-		$this->status = $this->FormQueryFromPOST('update');
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-	}
-	
-	function deleteUser(){
-		$id = intval($_POST['id']);
-		if ($_SESSION['id']==$id) { $this->message = DELETE_USER_SELF; return false; }
-		$db = DVRDatabase::getInstance();
-		$this->status = $db->DBQuery("DELETE FROM Users WHERE id='$id'");
-		$this->message = ($this->status) ? USER_DELETED : CHANGES_FAIL;
-		return true;
-	}
-	
-	function updateEncoding(){
-		$db = DVRDatabase::getInstance();
-		$card_id = $_POST['id'];
-		$signal_type = $db->DBEscapeString($_POST['signal_type']);
-		if ($signal_type=='NTSC'){ $resolution_full = 480; $resolution_quarter = 240; } else { $resolution_full = 576; $resolution_quarter = 288; };
-		
-		$this->status = $db->DBQuery("UPDATE Devices SET signal_type='{$signal_type}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}')");
-		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_full WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}') AND resolutionY>300");
-		$this->status = $db->DBQuery("UPDATE Devices SET resolutionY=$resolution_quarter WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$card_id}') AND resolutionY<300");
-		$this->message = ($this->status) ? DEVICE_ENCODING_UPDATED : DB_FAIL_TRY_LATER;
-	}
-	
-	function updateField(){
-		$this->status = $this->FormQueryFromPOST('update');
-		$this->message = ($this->status) ? CHANGES_OK : CHANGES_FAIL;
-	}
-	
-	function outputXML(){
-		switch ($this->status){
-			case true: $s = 'OK';    break;
-			case false: $s = 'F';    break;
-			case 'INFO': $s= 'INFO'; break;
-		}
-		header('Content-type: text/xml');
-		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
-				<response>
-					<status>{$s}</status>
-					<msg>{$this->message}</msg>
-					<data>{$this->data}</data>
-				</response>";
-				
 	}
 
 }
 
-$update = new updateDB;
-$update->outputXML();
+$update = new update;
 ?>

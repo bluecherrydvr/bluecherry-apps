@@ -20,7 +20,7 @@ if ($_GET['m']){
 <p><?php echo AIP_SUBHEADER; ?></p>
 
 <div id="ajaxMessage" class="INFO"><?php echo IPCAM_WIKI_LINK; ?></div>
-<FORM id="settingsForm" action="/ajax/update.php" method="post">
+<FORM id="settingsForm" action="/ajax/addip.php" method="post">
 <div id="aip">
 	<INPUT type="hidden" name="mode" value="addip">
 	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(array_merge(array(AIP_CHOOSE_MANUF), $ipCamData->data['manufacturers']), '', 'manufacturers'); ?></div>

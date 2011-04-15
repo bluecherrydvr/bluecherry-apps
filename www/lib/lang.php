@@ -126,6 +126,8 @@ define('NEWS_HEADER', DVR_COMPANY_NAME.' Announcements');
 #login
 define('LOGIN_WRONG', 'Wrong login/password combination, please try again.');
 define('LOGIN_OK', 'Please wait while you are redirected...');
+define('NA_WEB', 'You do not have permission to use web interface');
+define('NA_CLIENT', 'You do not have permission to use remote client');
 
 #devices
 define('CARD_HEADER', 'Bluecherry hardware compression');
@@ -168,6 +170,10 @@ define('EDITING_SCHED', 'Recording schedule for camera:');
 define('EDITING_GLOBAL_SCHED', 'Global schedule');
 define('GLOBAL_SCHED_OG', 'Use device-specific schedule for this camera.');
 define('SIGNAL_TYPE_NOT_CONFD', 'Configure at least one device first');
+define('SCHED_GLOBAL', 'global');
+define('SCHED_SPEC', 'device specific');
+
+define('HIDE_IMG', 'Show/hide image');
 
 define('AVAILABLE_DEVICES', 'Available video sources:');
 define('LAYOUT_CONTROL', 'Select layout:');
@@ -257,7 +263,7 @@ define('PLEASE_LOGIN', 'You need');
 
 define('USERNAME_EXISTS', 'User with this username already exists.');
 
-/*temp for PTZ*/
+#PTZ
 define('DEVICE_EDIT_PTZ', 'Edit PTZ settings');
 
 define('PTZ_SET_HEADER', 'PTZ settings for camera: ');
@@ -269,5 +275,17 @@ define('PTZ_BAUD', 'Baud rate:');
 define('PTZ_BIT', 'Bit:');
 define('PTZ_STOP_BIT', 'Stop bit:');
 define('PTZ_PARITY', 'Parity:');
+
+###
+define('QUERY_FAILED', 'Could not execute query. Please check <i>/var/log/apache2/error.log</i> for details.');
+define('LOGOUT', 'Logout');
+define('WRITE_FAILED', 'Failed to write to storage folder at: ');
+
+#storage 
+define('STRAGE_HEADER', 'Manage storage locations');
+define('ADD_LOCATION', 'Add location');
+define('LOCATION', 'Folder:');
+
+
 
 ?>

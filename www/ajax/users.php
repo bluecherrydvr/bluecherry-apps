@@ -4,13 +4,12 @@ include("../lib/lib.php");  #common functions
 
 
 #auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
 #/auth check
 
 
-class Users extends DVRData{
+class Users {
 	public $data;
 	public $all;
 	function __construct($id = false){
@@ -20,12 +19,12 @@ class Users extends DVRData{
 	}
 	
 	private function GetAllUsersInfo(){
-		return $this->GetObjectData('Users');
+		return data::getObject('Users');
 		
 	}
 	
 	private function GetUserInfo($id){
-		return $this->GetObjectData('Users', 'id', $id);
+		return data::getObject('Users', 'id', $id);
 	}
 }
 
