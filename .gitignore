@@ -49,3 +49,12 @@ lib/libcurl/libtool
 lib/libcurl/tests/server/Makefile
 lib/libcurl/curl-config
 lib/libcurl/tests/configurehelp.pm
+
+debian/bluecherry.debhelper.log
+debian/bluecherry.postinst.debhelper
+debian/bluecherry.postrm.debhelper
+debian/bluecherry.preinst.debhelper
+debian/bluecherry.prerm.debhelper
+debian/bluecherry.substvars
+debian/bluecherry/
+debian/files
