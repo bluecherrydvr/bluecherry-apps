@@ -355,7 +355,9 @@ class softwareVersion{
 	public function __construct(){
 		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		$this->version['up_to_date'] = (version_compare($this->installed_version, $this->current_version, '<')) ? true : false;
+		system("dpkg --compare-versions " . $this->version['installed'] .
+		       " lt " . $this->version['current'], $ret);
+		$this->version['up_to_date'] = $ret != 0;
 	}
 }
 
