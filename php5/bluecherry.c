@@ -94,6 +94,9 @@ PHP_FUNCTION(bc_db_escape_string)
 				  &str, &str_len) == FAILURE)
 		RETURN_FALSE;
 
+	if (bc_db_open())
+		RETURN_FALSE;
+
 	str[str_len] = '\0';
 	tmp_str = bc_db_escape_string(str);
 	if (tmp_str == NULL)
