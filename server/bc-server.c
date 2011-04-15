@@ -24,7 +24,7 @@ static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 struct bc_storage {
 	char path[PATH_MAX];
-	int min_thresh, max_thresh;
+	float min_thresh, max_thresh;
 };
 
 #define MAX_STOR_LOCS	10
@@ -93,8 +93,8 @@ static void bc_check_globals(void)
 	if (dbres != NULL) {
 		while (!bc_db_fetch_row(dbres)) {
 			const char *path = bc_db_get_val(dbres, "path");
-			int max_thresh = bc_db_get_val_int(dbres, "max_thresh");
-			int min_thresh = bc_db_get_val_int(dbres, "min_thresh");
+			float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
+			float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
 
 			if (!path || !strlen(path) || max_thresh <= 0 ||
 			    min_thresh <= 0)
@@ -112,8 +112,8 @@ static void bc_check_globals(void)
 		/* Fall back to one single default location */
 		bc_mkdir_recursive("/var/lib/bluecherry/recordings");
 		strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
-		media_stor[0].max_thresh = 95;
-		media_stor[i].min_thresh = 90;
+		media_stor[0].max_thresh = 95.00;
+		media_stor[i].min_thresh = 90.00;
 	}
 
 	pthread_mutex_unlock(&media_lock);
