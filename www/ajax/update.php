@@ -28,6 +28,7 @@ class update{
 			case 'user': $this->updateUser(); break;
 			case 'editIp': $this->editIp(); break;
 			case 'changeState': $this->changeState(); break;
+			case 'updateEncoding': $this->changeEncoding(); break;
 		}
 	}
 	#update functions will be moved to individual files after template/js update in beta7
@@ -126,41 +127,16 @@ class update{
 	}
 	
 	private function changeState(){
-		$device = data::escapeString($_POST['id']);
-		$this_device = data::query("SELECT * FROM AvailableSources LEFT OUTER JOIN Devices USING (device) WHERE AvailableSources.device='$device' ");
-		if (!$this_device) {
-			$result = false;
-			data::responseXml($result);
-			return;
-		}
-		$container_card = new card($this_device[0]['card_id']);
-		if (!empty($this_device[0]['protocol'])){ //if the device is configured
-			$this_device[0]['req_fps'] = (30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1);
-			if ($this_device[0]['disabled']){
-				if ($this_device[0]['req_fps'] > $container_card->info['available_capacity']){
-					$this->status = false;
-					$this->message = ENABLE_DEVICE_NOTENOUGHCAP;
-				} else {
-					$result = data::query("UPDATE Devices SET disabled='0' WHERE device='{$this_device[0]['device']}'", true);
-				}
-
-			} else {
-				$result = data::query("UPDATE Devices SET disabled='1' WHERE device='{$this_device[0]['device']}'", true);
-			}
-		} else {
-			$ds = ($container_card->fps_available<2) ? 1 : 0;
-			if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
-				$res['y']='240';
-				$enc = 'NTSC';
-			} else {
-				$res['y'] = '288';
-				$enc = 'PAL';
-			}
-			$card_info = explode('|', $this_device[0]['device']);
-			$card_info[2]++;
-			$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('Port {$card_info[2]} on Card {$this_device[0]['card_id']}', 352, {$res['y']}, 'V4L2', '{$this_device[0]['device']}', '{$this_device[0]['driver']}', 15, '{$enc}', '$ds')", true);
-			if ($ds==1) { $this->status = 'INFO'; $this->message = NEW_DEV_NEFPS; };
-		}
+		$camera = new camera($_POST['id']);
+		$result = $camera->changeState();
+		data::responseXml($result[0], $result[1]);
+	}
+	
+	private function changeEncoding(){
+		$id = intval($_POST['id']);
+		$card = new card($id);
+		$result = $card->changeEncoding();
+		data::responseXml($result[0], $result[1]);
 	}
 
 }

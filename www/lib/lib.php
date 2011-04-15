@@ -40,7 +40,8 @@ class database{
 	private function connect() {
 		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
 	}
-	public function escapeString(&$string) {
+	public static function escapeString(&$string) {
+		self::$instance or self::$instance = new database();
 		$string = bc_db_escape_string($string);
 		return $string;
 	}
@@ -55,16 +56,12 @@ class database{
 }
 
 class data{
-	public static function escapeString(&$string) {
-		$db = database::getInstance();
-		return $db->escapeString($string);
-	}
 	public static function query($query, $resultless = false){
 		$db = database::getInstance();
 		return ($resultless) ? $db->query($query) : $db->fetchAll($query);
 	}
 	public static function getObject($table, $parameter = false , $value = false, $condition = '='){
-		$data = self::query("SELECT * FROM ".self::escapeString($table).((!$parameter) ? '' : " WHERE ".self::escapeString($parameter).$condition." '".self::escapeString($value)."'"));
+		$data = self::query("SELECT * FROM ".database::escapeString($table).((!$parameter) ? '' : " WHERE ".database::escapeString($parameter).$condition." '".database::escapeString($value)."'"));
 		return ($data) ? $data : false;
 	}
 	public static function getRandomString($length = 4) {
@@ -81,7 +78,7 @@ class data{
 			case 'insert': return "INSERT INTO {$table} (".implode(", ", array_keys($array)).") VALUES ('".implode("', '", $array)."')"; break;
 			case 'update': 
 				foreach ($array as $p => $v){
-					$tmp[$p]=self::escapeString($p)."='".self::escapeString($v)."'";
+					$tmp[$p]=database::escapeString($p)."='".database::escapeString($v)."'";
 				};
 				return "UPDATE $table SET ".implode(", ", $tmp)." WHERE {$parameter}='{$value}'";
 			break;
@@ -184,12 +181,10 @@ class user{
 	public static function update($data, $new = false){
 		$check = false;
 		$response = self::checkUserData($data, $new);
-		
 		if ($response === true){
 			if ($new){
 				$data['salt'] = data::getRandomString(4);
 				$data['password'] = md5($data['password'].$data['salt']);
-				var_dump_pre($data);
 				$query = data::formQueryFromArray('insert', 'Users', $data);
 				$response = USER_CREATED;
 			} else {
@@ -268,10 +263,38 @@ class camera {
 				case 'Odd':  $pairty = 'o'; break;
 		};
 		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
-		dataf::outputXml($status);
+		data::outputXml($status);
 	}
 	public function changeState(){
-		
+		$container_card = new card($this->info['card_id']);
+		switch($this->info['status']){
+			case 'OK':
+				$result = data::query("UPDATE Devices SET disabled='1' WHERE id='{$this->info['id']}'", true);
+				return array($result);
+			break;
+			case 'disabled':
+				$required_capacity = (30/$this->info['video_interval']) * (($this->info['resolutionX']>=704) ? 4 : 1);
+				if ($required_capacity > $container_card->info['available_capacity']){ #ns capacity to enable
+					return array(false, ENABLE_DEVICE_NOTENOUGHCAP);
+				} else {
+					$result = data::query("UPDATE Devices SET disabled='0' WHERE id='{$this->info['id']}'", true);
+					return array($result);
+				}
+			break;
+			case 'notconfigured':
+				$disabled = ($container_card->info['available_capacity']>=2) ? 0 : 1;
+				if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
+					$res['y']='240';
+					$signal_type = 'NTSC';
+				} else {
+					$res['y'] = '288';
+					$signal_type = 'PAL';
+				};
+				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['device']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
+				return array($result, $msg);
+			break;
+		}
 	}
 	public function updateResFps(){
 	}
@@ -323,13 +346,22 @@ class card {
 			}
 		}
 		$this->info['id'] = $id;
-		$this->signal_type = 'notconfigured';
+		$this->info['encoding'] = 'notconfigured';
 		$this->info['ports'] = count($this->cameras);
 		$this->info['driver'] = $this->cameras[0]->info['driver'];
 		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];
-		$this->info['encoding'] = $this->cameras[0]->info['signal_type'];
+		$this->info['encoding'] = ($this->cameras[0]->info['signal_type']) ? $this->cameras[0]->info['signal_type'] : $this->info['encoding'];
 		$this->info['available_capacity'] = $this->info['capacity']-$used_fps;
+	}
+	public function changeEncoding(){
+		$encoding = ($this->info['encoding']=='NTSC') ? 'PAL' : 'NTSC';
+		$resolution_full = explode('x', $GLOBALS['resolutions'][$encoding][0]);
+		$resolution_quarter = explode('x', $GLOBALS['resolutions'][$encoding][1]);
 		
+		if (!data::query("UPDATE Devices SET signal_type='{$encoding}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}')", true)) return false;
+		if (!data::query("UPDATE Devices SET resolutionY=$resolution_full[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY>300", true)) return false;
+		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
+		return array(true, DEVICE_ENCODING_UPDATED);
 	}
 }
 
@@ -359,40 +391,10 @@ class softwareVersion{
 	public function __construct(){
 		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		system("dpkg --compare-versions " . $this->version['installed'] .
-		       " lt " . $this->version['current'], $ret);
+		system("dpkg --compare-versions ".escapeshellarg($this->version['installed'])." lt ".escapeshellarg($this->version['current']), $ret);
 		$this->version['up_to_date'] = $ret != 0;
 	}
 }
-
-class BCDVRCard{
-	public $id;
-	public $type;
-	public $signal_type;
-	public $fps_available;
-	public $devices;
-
-	public function __construct($id){
-		$this->id = $id;
-		$this->fps_available = 480; //BC card capacity
-		$this->devices = data::query("SELECT * FROM AvailableSources WHERE card_id='{$this->id}' ORDER BY id ASC");
-		$this->type = count($this->devices);
-		$port = 1;
-		$this->signal_type = 'notconfigured';
-		foreach ($this->devices as $key => $device){
-			$tmp = data::query("SELECT * FROM Devices WHERE device='{$device['device']}'");
-			$this->devices[$key]['port'] = $port; $port++;
-			if (!count($tmp)) { $this->devices[$key]['status'] = 'notconfigured'; $this->devices[$key]['id']=''; }
-			 	else {
-					$this->devices[$key] = array_merge($this->devices[$key], $tmp[0]);
-					$this->devices[$key]['status'] = ($this->devices[$key]['disabled']) ? 'disabled' : 'OK';
-					$this->signal_type = ($this->devices[$key]['signal_type']) ? $this->devices[$key]['signal_type'] : 'notconfigured' ; //NTSC is the default
-				}
-			(empty($this->devices[$key]['video_interval']) || !empty($this->devices[$key]['disabled'])) or $this->fps_available -= (30/$this->devices[$key]['video_interval']) * (($this->devices[$key]['resolutionX']>=704) ? 4 : 1);
-		}
-	}
-}
-
 
 $version = new softwareVersion;
 
