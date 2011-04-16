@@ -38,7 +38,7 @@ function print_query($id)
 		print "  <protocol>". $dev['ptz_control_protocol'] ."</protocol>\n";
 		print "  <defaults panspeed=\"0\" tiltspeed=\"0\" duration=\"0\" />\n";
 		print "  <capabilities pan=\"1\" tilt=\"1\" zoom=\"1\" />\n";
-		$presets = data::fetchAll("SELECT * FROM PTZPresets WHERE ".
+		$presets = data::query("SELECT * FROM PTZPresets WHERE ".
 			"device_id=$id");
 		print "  <presets>\n";
 		foreach ($presets as $pset) {
