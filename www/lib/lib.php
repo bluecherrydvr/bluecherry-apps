@@ -88,7 +88,7 @@ class data{
 		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
 		$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
-		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
+		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"\x3f>
 				<response>
 					<status>{$status}</status>
 					<msg>{$message}</msg>
@@ -156,7 +156,9 @@ class user{
 				return ($this->checkPassword($_SERVER['PHP_AUTH_PW'])) ? true : false;
 			}
 	}
-	public function camPermission($id){
+	public function camPermission($id) {
+		if (empty($this->info['access_device_list']))
+			return true;
 		return (in_array($id, $this->info['access_device_list'])) ? false : true;
 	}
 	public function doLogin($password, $from_client = false){
