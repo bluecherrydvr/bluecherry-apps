@@ -106,7 +106,7 @@ function print_preset($id, $cmd)
 	    $cmd == "update" or $cmd == "sync") {
 		if (empty($_GET['name']))
 			print_err("Name is required for save");
-		$name = data::escapeString($_GET['name']);
+		$name = database::escapeString($_GET['name']);
 
 		if ($cmd == "save" or $cmd == "sync")
 			my_bc_ptz_cmd($id, "s", 0, 0, 0, $preset);

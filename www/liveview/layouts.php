@@ -9,7 +9,7 @@ $current_user->checkAccessPermissions('viewer');
 
 class editLayout{
 	public function __construct($action){
-		data::escapeString($_POST['layout']);
+		database::escapeString($_POST['layout']);
 		switch ($action){
 			case 'edit': $this->editLayout(); break;
 			case 'new' : $this->newLayout(); break;
