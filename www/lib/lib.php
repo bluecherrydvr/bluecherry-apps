@@ -85,7 +85,7 @@ class data{
 		}
 	}
 	public static function responseXml($status, $message = false, $data = ''){
-		if (!message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
+		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
 		$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
@@ -225,15 +225,21 @@ class camera {
 		$devices = data::getObject('Devices', 'device', $device);
 		$available = data::getObject('AvailableSources', 'device', $device);
 		if (!$devices){ #if does not exist in Devices
+			$this->info = $available[0];
 			$this->info['status'] = 'notconfigured';
-			$this->info += $available[0];
 		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
+			$this->info = $devices[0];
 			$this->info['status'] = 'unmatched';
-			$this->info += $devices[0];
 		} else {
-			$this->info['status'] = ($devices[0]['disabled']) ? 'disabled' : 'OK';
-			array_merge($this->info, $devices, $available);
-			$this->info += $devices[0] + $available[0];
+			$this->info = array_merge($devices[0], $available[0]);
+			$this->info['status'] = empty($devices[0]['disabled']) ? 'OK' : 'disabled';
+		}
+		if ($this->info['status'] != 'unmatched' and
+		    empty($this->info['device_name'])) {
+			$dev = explode('|', $this->info['device']);
+			$this->info['device_name'] =
+				"Port " . ($dev[2] + 1) .
+				" on Card " . $this->info['card_id'];
 		}
 		$this->getPtzSettings();
 	}
@@ -290,7 +296,7 @@ class camera {
 					$res['y'] = '288';
 					$signal_type = 'PAL';
 				};
-				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['device']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['device_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
 				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
 				return array($result, $msg);
 			break;
@@ -335,23 +341,27 @@ class card {
 	public $info;
 	public $cameras;
 	public function __construct($id){
-		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
-		foreach ($devices as $key => $device){
-			$this->cameras[$key] = new camera($device['device']);
-			$port++; 
-			$this->cameras[$key]->info['port'] = $port;
-			if ($this->cameras[$key]->info['signal_type']) { $this->info['signal_type'] = $this->cameras[$key]->info['signal_type']; };
-			if ($this->cameras[$key]->info['video_interval'] && !$this->cameras[$key]->info['disabled'] ){
-				$used_fps = ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
-			}
-		}
 		$this->info['id'] = $id;
+		$this->info['ports'] = 0;
+		$used_capacity = 0;
+
+		$devices = data::query("SELECT device FROM AvailableSources ".
+					"WHERE card_id='{$id}'");
+		foreach ($devices as $key => $device){
+			$cam = new camera($device['device']);
+			$this->info['ports']++;
+			$cam->info['port'] = $this->info['ports'];
+			if (!empty($cam->info['signal_type'])) { $this->info['signal_type'] = $cam->info['signal_type']; };
+			if (!empty($cam->info['video_interval']) && !$cam->info['disabled'] ){
+				$used_capacity += ($cam->info['resolutionX']>352) ? 4*(30/$cam->info['video_interval']) : (30/$cam->info['video_interval']);
+			}
+			$this->cameras[$this->info['ports'] - 1] = $cam;
+		}
 		$this->info['encoding'] = 'notconfigured';
-		$this->info['ports'] = count($this->cameras);
 		$this->info['driver'] = $this->cameras[0]->info['driver'];
 		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];
-		$this->info['encoding'] = ($this->cameras[0]->info['signal_type']) ? $this->cameras[0]->info['signal_type'] : $this->info['encoding'];
-		$this->info['available_capacity'] = $this->info['capacity']-$used_fps;
+		$this->info['encoding'] = $this->info['signal_type'];
+		$this->info['available_capacity'] = $this->info['capacity']-$used_capacity;
 	}
 	public function changeEncoding(){
 		$encoding = ($this->info['encoding']=='NTSC') ? 'PAL' : 'NTSC';

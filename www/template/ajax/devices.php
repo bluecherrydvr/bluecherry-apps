@@ -18,6 +18,7 @@ if ($devices->ipCameras){
 if (!$devices->cards){
 	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
 } else {
+$counter = 0;
 foreach($devices->cards as $key => $card){
 	$counter++;
 	echo "<div id='dvrCard' class='{$card->info['id']}'><div class='cardHeader'>#{$counter} ".CARD_HEADER." ({$card->info['ports']} ".PORT.")</div><div class='cardContent'>"; #begin card/header

@@ -13,6 +13,7 @@ class devices{
 	public $cards;
 	public $ipCameras;
 	public function __construct(){
+		$this->info['total_devices'] = 0;
 		$this->getCards();
 		$this->getIpCameras();
 	}
