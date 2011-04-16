@@ -48,11 +48,13 @@ class update{
 	private	function update_control(){
 		$id = intval($_POST['id']);
 		$this_device = data::query("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
-		bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
-		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
-		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
-		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
-		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
+		$bch = bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
+		if ($bch == false)
+			return;
+		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
+		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
+		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
+		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
 		bc_handle_free($bch);
 		$this->update();
 	}
@@ -115,6 +117,7 @@ class update{
 		$this_device[0]['req_fps'] = (($fps) * (($resX>=704) ? 4 : 1)) - ((30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1));
 		
 		$container_card = new card($this_device[0]['card_id']);
+		$message = false;
 		if ($this_device[0]['req_fps'] > $container_card->info['available_capacity']){
 			$result = false;
 			$message = ENABLE_DEVICE_NOTENOUGHCAP;
@@ -123,7 +126,7 @@ class update{
 			$container_card = new card($this_device[0]['card_id']);
 			$this->data = $container_card->info['available_capacity'];
 		}
-		data::responseXml($result, $msg);
+		data::responseXml($result, $message);
 	}
 	
 	private function changeState(){
