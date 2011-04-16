@@ -231,6 +231,7 @@ class camera {
 			$this->info = $devices[0];
 			$this->info['status'] = 'unmatched';
 		} else {
+			unset($available[0]['id']);
 			$this->info = array_merge($devices[0], $available[0]);
 			$this->info['status'] = empty($devices[0]['disabled']) ? 'OK' : 'disabled';
 		}
