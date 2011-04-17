@@ -57,11 +57,12 @@ class ServerStats{
 			return (shell_exec('pidof bc-server')) ? true : false;
 		}
 		private function writeFailCheck(){
-			if (file_exists("/var/run/bluecherry/db-writable")){
-				return date("F d Y H:i:s.", filemtime("/var/run/bluecherry/db-writable"));
+			$time = filemtime("/var/run/bluecherry/db-writable");
+			if ($time!=0){
+				return date("F d Y H:i:s.", $time);
 			} else {
 				return 'false';
-			}
+			};
 		}
 		function makeXML(){
 			$loadavg = $this->getLoadAvg();

@@ -3,8 +3,8 @@
 require('../template/template.lib.php');
 
 ?>
-<h1 class="header" id="header"><?php echo PTZ_SET_HEADER."{$this_camera->info['device_name']}"; ?></h1><hr>
-<p><?php echo PTZ_SET_SUBHEADER; ?></p>
+<h1 class="header" id="header"><?php echo PTZ_SET_SUBHEADER; ?></h1><hr>
+<p><?php echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".PTZ_SET_HEADER." {$this_camera->info['device_name']}"; ?></p>
 <FORM method='Post' action='/ajax/ptzsettings.php' id='settingsForm'>
 	<INPUT type="Hidden" name="id" value="<?php echo $this_camera->info['id']; ?>">
 	<div id='saveButton'><?php echo SAVE_CHANGES; ?></div>

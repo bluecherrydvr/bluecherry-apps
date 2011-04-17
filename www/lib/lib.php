@@ -156,9 +156,7 @@ class user{
 				return ($this->checkPassword($_SERVER['PHP_AUTH_PW'])) ? true : false;
 			}
 	}
-	public function camPermission($id) {
-		if (empty($this->info['access_device_list']))
-			return true;
+	public function camPermission($id){
 		return (in_array($id, $this->info['access_device_list'])) ? false : true;
 	}
 	public function doLogin($password, $from_client = false){
@@ -226,23 +224,19 @@ class camera {
 	public function getInfo($device){
 		$devices = data::getObject('Devices', 'device', $device);
 		$available = data::getObject('AvailableSources', 'device', $device);
+		unset($available[0]['id']);
 		if (!$devices){ #if does not exist in Devices
-			$this->info = $available[0];
 			$this->info['status'] = 'notconfigured';
+			$this->info += $available[0];
+			$tmp = explode('|', $this->info['device']); 
+			$this->info['new_name'] = PORT." ".($tmp[2] + 1).ON_CARD.$this->info['card_id'];
 		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
-			$this->info = $devices[0];
 			$this->info['status'] = 'unmatched';
+			$this->info += $devices[0];
 		} else {
-			unset($available[0]['id']);
-			$this->info = array_merge($devices[0], $available[0]);
-			$this->info['status'] = empty($devices[0]['disabled']) ? 'OK' : 'disabled';
-		}
-		if ($this->info['status'] != 'unmatched' and
-		    empty($this->info['device_name'])) {
-			$dev = explode('|', $this->info['device']);
-			$this->info['device_name'] =
-				"Port " . ($dev[2] + 1) .
-				" on Card " . $this->info['card_id'];
+			$this->info['status'] = ($devices[0]['disabled']) ? 'disabled' : 'OK';
+			array_merge($this->info, $devices, $available);
+			$this->info += $devices[0] + $available[0];
 		}
 		$this->getPtzSettings();
 	}
@@ -274,6 +268,25 @@ class camera {
 		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
 		data::outputXml($status);
 	}
+	public function changeResFps($type, $value){
+		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
+			$res['x'] = $this->info['resolutionX']; $res['y'] = $this->info['resolutionY']; 
+		}
+		$fps = ($type=='FPS') ? intval($_POST['value']) : (30/$this->info['video_interval']);
+		$resX = ($type=='RES') ? ($res['x']) : $this->info['resolutionX'];
+		
+		$required_capacity = (($fps) * (($resX>=704) ? 4 : 1)) - ((30/$this->info['video_interval']) * (($this->info['resolutionX']>=704) ? 4 : 1));
+		
+		$container_card = new card($this->info['card_id']);
+		if ($required_capacity > $container_card->info['available_capacity']){
+			$result = false;
+			$message = ENABLE_DEVICE_NOTENOUGHCAP;
+		} else {
+			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'", true);
+			$data = $container_card->info['available_capacity']-$required_capacity;
+		}
+		return array($result, false, $data);
+	}
 	public function changeState(){
 		$container_card = new card($this->info['card_id']);
 		switch($this->info['status']){
@@ -299,13 +312,12 @@ class camera {
 					$res['y'] = '288';
 					$signal_type = 'PAL';
 				};
-				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['device_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['new_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
 				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
-				return array($result, $msg);
+				$data = ($result && !$disabled) ? $container_card->info['available_capacity'] : $container_card->info['available_capacity']-$required_capacity;
+				return array($result, $msg, );
 			break;
 		}
-	}
-	public function updateResFps(){
 	}
 }
 
@@ -344,26 +356,22 @@ class card {
 	public $info;
 	public $cameras;
 	public function __construct($id){
+		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
 		$this->info['id'] = $id;
-		$this->info['ports'] = 0;
-		$used_capacity = 0;
-
-		$devices = data::query("SELECT device FROM AvailableSources ".
-					"WHERE card_id='{$id}'");
-		foreach ($devices as $key => $device){
-			$cam = new camera($device['device']);
-			$this->info['ports']++;
-			$cam->info['port'] = $this->info['ports'];
-			if (!empty($cam->info['signal_type'])) { $this->info['signal_type'] = $cam->info['signal_type']; };
-			if (!empty($cam->info['video_interval']) && !$cam->info['disabled'] ){
-				$used_capacity += ($cam->info['resolutionX']>352) ? 4*(30/$cam->info['video_interval']) : (30/$cam->info['video_interval']);
-			}
-			$this->cameras[$this->info['ports'] - 1] = $cam;
-		}
 		$this->info['encoding'] = 'notconfigured';
+		foreach ($devices as $key => $device){
+			$this->cameras[$key] = new camera($device['device']);
+			$port++; #count ports on the card
+			$this->cameras[$key]->info['port'] = $port;
+			$this->info['encoding'] = ($this->cameras[$key]->info['signal_type']) ? $this->cameras[$key]->info['signal_type'] : $this->info['encoding'];
+			if ($this->cameras[$key]->info['video_interval'] && !$this->cameras[$key]->info['disabled'] ){
+				$used_capacity = ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
+			}
+		}
+	
+		$this->info['ports'] = $port;
 		$this->info['driver'] = $this->cameras[0]->info['driver'];
 		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];
-		$this->info['encoding'] = $this->info['signal_type'];
 		$this->info['available_capacity'] = $this->info['capacity']-$used_capacity;
 	}
 	public function changeEncoding(){
@@ -376,6 +384,7 @@ class card {
 		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
 		return array(true, DEVICE_ENCODING_UPDATED);
 	}
+	
 }
 
 class ipCameras{

@@ -19,8 +19,8 @@ class update{
 			case 'deleteIp': $this->deleteIp(); break;
 			case 'access_device_list': $this->editAccessList(); break;
 			case 'changeStateIp': $this->changeStateIp(); break;
-			case 'FPS': $this->changeFPSRES('FPS'); break;
-			case 'RES': $this->changeFPSRES('RES'); break;
+			case 'FPS': $this->changeFpsRes('FPS'); break;
+			case 'RES': $this->changeFpsRes('RES'); break;
 			case 'deleteUser' : $this->status = $this->deleteUser(); break;
 			case 'update': $this->update(); break;
 			case 'update_control' : $this->update_control(); break;
@@ -49,12 +49,11 @@ class update{
 		$id = intval($_POST['id']);
 		$this_device = data::query("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		$bch = bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
-		if ($bch == false)
-			return;
-		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
-		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
-		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
-		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
+		if (!$bch) { data::responseXml(false); return; }
+		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, $_POST['hue']); };
+		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, $_POST['saturation']); };
+		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, $_POST['contrast']); };
+		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, $_POST['brightness']); };
 		bc_handle_free($bch);
 		$this->update();
 	}
@@ -105,28 +104,10 @@ class update{
 		$status = data::query("UPDATE Users SET access_device_list='".trim($_POST['value'], ",")."' WHERE id='{$_POST['id']}'", true);
 		data::responseXml($status);
 	}
-	function changeFPSRES($type){
-		$id = intval($_POST['id']);
-		$this_device = data::query("SELECT * FROM Devices LEFT OUTER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
-		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
-			$res['x'] = $this_device[0]['resolutionX']; $res['y'] = $this_device[0]['resolutionY']; 
-		}
-		$fps = ($type=='FPS') ? intval($_POST['value']) : (30/$this_device[0]['video_interval']);
-		$resX = ($type=='RES') ? ($res['x']) : $this_device[0]['resolutionX'];
-		
-		$this_device[0]['req_fps'] = (($fps) * (($resX>=704) ? 4 : 1)) - ((30/$this_device[0]['video_interval']) * (($this_device[0]['resolutionX']>=704) ? 4 : 1));
-		
-		$container_card = new card($this_device[0]['card_id']);
-		$message = false;
-		if ($this_device[0]['req_fps'] > $container_card->info['available_capacity']){
-			$result = false;
-			$message = ENABLE_DEVICE_NOTENOUGHCAP;
-		} else {
-			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'", true);
-			$container_card = new card($this_device[0]['card_id']);
-			$this->data = $container_card->info['available_capacity'];
-		}
-		data::responseXml($result, $message);
+	function changeFpsRes($type){
+		$camera = new camera($_POST['id']);
+		$result = $camera->changeResFps($type, $_POST['value']);
+		data::responseXml($result[0], $result[1], $result[2]);
 	}
 	
 	private function changeState(){

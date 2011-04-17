@@ -1,7 +1,14 @@
 <?php defined('INDVR') or exit();
 #template common functions
 require('../template/template.lib.php');
-
+?>
+<ul id="settingsMenu">
+		<li><a href="#videoadj" class="videoadj"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
+		<li class="separator"><a href="#editmap"" class="editmap"><?php echo DEVICE_EDIT_MMAP;?></a></li>
+		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
+		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
+</ul>
+<?php
 echo "<div id='header'>".TOTAL_DEVICES."&nbsp;<b>{$devices->info['total_devices']}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
 
 if ($devices->ipCameras){
@@ -18,7 +25,6 @@ if ($devices->ipCameras){
 if (!$devices->cards){
 	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
 } else {
-$counter = 0;
 foreach($devices->cards as $key => $card){
 	$counter++;
 	echo "<div id='dvrCard' class='{$card->info['id']}'><div class='cardHeader'>#{$counter} ".CARD_HEADER." ({$card->info['ports']} ".PORT.")</div><div class='cardContent'>"; #begin card/header
@@ -26,18 +32,14 @@ foreach($devices->cards as $key => $card){
 	
 foreach ($card->cameras as $key =>$device){
 	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
-	echo "<div id='localDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='status' id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> ".(($device->info['status'] == 'notconfigured') ? "" : "<a id='settingsOpen' href='#'>[Settings]</a>")."</div><div id='port'>{$device->info['port']}</div>";
+	echo "<div id='localDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='status' id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> ".(($device->info['status'] == 'notconfigured') ? "" : "<a class='settingsOpen' href='#' id='{$device->info['id']}' name='{$device->info['device']}'>[Settings]</a>")."</div><div id='port'>{$device->info['port']}</div>";
 	if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) {
 		echo "<div background-color:#efefef;' id='cameraSettings'>
 				<hr>
 				<div id='resolutionFps'>
-					<div id='RES'>Resolution:".arrayToSelect($GLOBALS['resolutions'][$card->info['encoding']], $device->info['resolutionX'].'x'.$device->info['resolutionY'], $device->info['id'] ,'RES')."</div>
-					<div id='FPS'>FPS:".arrayToSelect($GLOBALS['local_device_fps'], 30/$device->info['video_interval'], $device->info['id'],'FPS')."</div>
+					<div id='RES'>Resolution:".arrayToSelect($GLOBALS['resolutions'][$card->info['encoding']], $device->info['resolutionX'].'x'.$device->info['resolutionY'], $device->info['device'] ,'RES')."</div>
+					<div id='FPS'>FPS:".arrayToSelect($GLOBALS['local_device_fps'], 30/$device->info['video_interval'], $device->info['device'],'FPS')."</div>
 				</div>
-				<div id='videoadj'><a href='#' id='{$device->info['id']}' class='videoadj'>".DEVICE_EDIT_VIDADJ."</a></div>
-				<div id='motionDetection'><a href='#' id='{$device->info['id']}' class='editMap' id=''>".DEVICE_EDIT_MMAP."</a></div>
-				<div id='scheduling' ><a href='#' style='display:inline;' id='{$device->info['id']}' class='deviceSchedule'>".DEVICE_EDIT_SCHED."</a> [".(($device->info['schedule_override_global']) ? SCHED_SPEC : SCHED_GLOBAL)."]</div>
-				<div id='ptzsettings'><a href='#' id='{$device->info['device']}' class='ptzsettings'>".DEVICE_EDIT_PTZ."</a></div>
 			 </div>";
 	}
 	echo	"</div>";

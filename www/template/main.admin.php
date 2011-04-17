@@ -9,6 +9,7 @@
 	<link rel="stylesheet" href="template/styles.css">
 	<script type="text/javascript" src="./lib/mootools.js"></script>
 	<script type="text/javascript" src="./lib/mootools-more.js"></script>
+	<script type="text/javascript" src="./lib/mootools-plugins.js"></script>
 	<script type="text/javascript" src="./lib/js/main.js"></script>
 	<script type="text/javascript" src="./lib/js/viewer.js"></script>
 	<script>

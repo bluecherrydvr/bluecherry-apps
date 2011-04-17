@@ -108,6 +108,9 @@ DVRPageScript = new Class({
 			break;//end users
 			case 'ptzsettings':
 				var ptzSettingsForm = new DVRSettingsForm('settingsForm');
+				$('backToList').addEvent('click', function(){
+					var page = new DVRPage('devices');
+				});
 			break;
 			case 'addip':
 				getInfo = function(t, m, x, containerId){
@@ -231,20 +234,27 @@ DVRPageScript = new Class({
 						ajaxUpdateField('updateEncoding', 'Devices', {'signal_type' : encoding }, el.get('id'), 'devices');
 					});
 				});
-				$$('.editMap').each(function(el){
-					el.addEvent('click', function(){
-						var page = new DVRPage('motionmap', 'id='+el.get('id'));
-					});
-				});
-				$$('.deviceSchedule').each(function(el){
-					el.addEvent('click', function(){
-						var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
-					});
-				});
-				$$('.ptzsettings').each(function(el){
-					el.addEvent('click', function(){
-						var page = new DVRPage('ptzsettings', 'id='+el.get('id'));
-					});
+				var context = new ContextMenu({
+					offsets: { x:-250, y:-50 },
+					targets: '.settingsOpen',
+					trigger: 'click',
+					menu:	'settingsMenu',
+					actions: {
+						'videoadj':function(el, ref){
+							var page = new DVRPage('videoadj', 'id='+el.get('id'));
+						},
+						'editmap':function(el, ref){
+							var page = new DVRPage('motionmap', 'id='+el.get('id'));
+						},
+						'deviceschedule':function(el, ref){
+							alert('kk');
+							var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
+							alert('kk1');
+						},
+						'ptzsettings':function(el, ref){
+							var page = new DVRPage('ptzsettings', 'id='+el.get('name'));
+						}
+					}
 				});
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
@@ -258,11 +268,6 @@ DVRPageScript = new Class({
 						ajaxUpdateField('deleteIp', 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});				
-				$$('.videoadj').each(function(el){
-					el.addEvent('click', function(){
-						var page = new DVRPage('videoadj', 'id='+el.get('id'));
-					});
-				});
 				$$('.deviceProps').each(function(el){
 					el.addEvent('click', function(){
 						var page = new DVRPage('editip', 'id='+el.get('id'));
@@ -283,13 +288,6 @@ DVRPageScript = new Class({
 					onActive: function(one, two){
 						Cookie.write('localDevicesTabOpen', this.previous);
 					}
-				});
-				$$('#settingsOpen').each(function(el){
-					el.addEvent('click', function(){
-						var settingsDiv = el.getParent().getParent().getElementById('cameraSettings');
-						var newVal = (settingsDiv.getStyle('display') == 'none') ? 'inline' : 'none';
-						settingsDiv.setStyle('display', newVal);
-					});
 				});
 			break; //end devices
 			case 'editip':

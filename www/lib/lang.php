@@ -145,7 +145,7 @@ define('DEVICE_VIDEO_STATUS_notconfigured', 'Disabled');
 define('DEVICE_VIDEO_STATUS_CHANGE_notconfigured', 'Enable');
 define('DEVICE_VIDEO_RESFPS', 'Device resolution/FPS');
 define('DEVICE_EDIT_MMAP', 'Motion detection settings');
-define('DEVICE_EDIT_VIDADJ', 'Video/Audio adjustment settings');
+define('DEVICE_EDIT_VIDADJ', 'Video/audio settings');
 define('DEVICE_EDIT_SCHED', 'Schedule');
 define('VIDEO_ADJ', 'Video adjustments for');
 define('DEVICE_UNNAMED', 'Unnamed');
@@ -286,6 +286,6 @@ define('STRAGE_HEADER', 'Manage storage locations');
 define('ADD_LOCATION', 'Add location');
 define('LOCATION', 'Folder:');
 
-
+define('ON_CARD', ' on Card ');
 
 ?>
