@@ -22,7 +22,7 @@
 					".((!empty($dvr_users->data['new'])) ? "" : "<div id='deleteButton'>".DELETE_USER."</div>")."
 					<div id='saveButton'>".SAVE_CHANGES."</div>
 					<div>
-						<div id='editAccessList'>Edit access list</div>
+						".((!empty($dvr_users->data['new'])) ? "" : "<div id='editAccessList'>Edit access list</div>")."
 					</div>
 					<div><label>".USERS_NAME."<span class='sub'>".USERS_NAME_EX."</span></label><input type='text' name='name' value='{$dvr_users->data[0]['name']}'  /></div><br />
 					<div><label>".USERS_LOGIN."<span class='sub'>".USERS_LOGIN_EX."</span></label><input type='text' name='username' value='".((!empty($dvr_users->data['new'])) ? '' : $dvr_users->data[0]['username'])."' /></div><br />
