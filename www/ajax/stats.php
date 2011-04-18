@@ -57,7 +57,7 @@ class ServerStats{
 			return (shell_exec('pidof bc-server')) ? true : false;
 		}
 		private function writeFailCheck(){
-			$time = filemtime("/var/run/bluecherry/db-writable");
+			$time = file_exists(DB_WRITABLE) ? filemtime(DB_WRITABLE) : 0;
 			if ($time!=0){
 				return date("F d Y H:i:s.", $time);
 			} else {

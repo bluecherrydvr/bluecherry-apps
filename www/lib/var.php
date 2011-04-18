@@ -15,7 +15,7 @@ define('JS_RELOAD', '<script>window.location = "/";</script>');
 
 define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
 define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
-
+define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 #local card props
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
 $GLOBALS['capacity'] = array(

@@ -61,10 +61,12 @@
 		</div>
 		<div id="serverStats">
 			<div><?php echo STATS_HEARDER; ?></div><HR>
+			<div style="display:none;"><!--disable cpu stats!-->
 			<div class="label"><?php echo STATS_CPU; ?></div>
 			<div class="progressBar" id='cpu'>
 				<div class="text">0</div>
 			</div>
+			</div><!--disable cpu stats!-->
 			<div class="label"><?php echo STATS_MEM; ?></div>
 			<div class="progressBar" id='mem'>
 				<div class="text">0</div>

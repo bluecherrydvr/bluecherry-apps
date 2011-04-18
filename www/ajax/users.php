@@ -12,8 +12,8 @@ $current_user->checkAccessPermissions('admin');
 class Users {
 	public $data;
 	public $all;
-	function __construct($id = false){
-		if (!isset($id)) { $this->data = $this->GetAllUsersInfo(); $this->all = true; }
+	function __construct($id){
+		if (!$id) { $this->data = $this->GetAllUsersInfo(); $this->all = true; }
 			elseif  ($id=='new') { $this->data['name'] = USERS_NEW; $this->all = false; $this->data['new'] = true; } //enter only name
 			else { $this->GetUserInfo($id); $this->data = $this->GetUserInfo($id); $this->all = false; }
 	}
@@ -28,8 +28,8 @@ class Users {
 	}
 }
 
-
-$dvr_users = new Users($_GET['id']);
+$id = empty($_GET['id']) ? false : $_GET['id'];
+$dvr_users = new Users($id);
 
 #template
 include_once('../template/ajax/users.php');

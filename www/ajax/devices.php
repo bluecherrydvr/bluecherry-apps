@@ -18,6 +18,7 @@ class devices{
 	}
 	private function getCards(){
 		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
+		$this->info['total_devices'] = 0;
 		if (!$cards) { return false; } 
 			else {
 				foreach ($cards as $key => $card){
@@ -29,14 +30,13 @@ class devices{
 	}
 	private function getIpCameras(){
 		$info = data::query("SELECT * FROM Devices WHERE protocol='IP'");
-		foreach ($info as $key => $device){
+		foreach ($info as $key => $device) {
 			$this->ipCameras[$key] = new ipCamera($device['id']);
 		}
 		$this->info['total_devices'] += count($this->ipCameras);
 	}
 	public function MakeXML(){
 		$this_user = new user('id', $_SESSION['id']);
-		$access_list = $this_user->info['access_device_list'];
 		// The \063 is a '?'. Used decimal so as not to confuse vim
 		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
 		$devices = array();
@@ -46,7 +46,7 @@ class devices{
 		};
 		$devices = array_merge($devices, $this->ipCameras);
 		foreach($devices as $device){
-			if (!in_array($device->info['id'], $access_list)){
+			if (!in_array($device->info['id'], $this_user->info['access_device_list'])){
 				$xml .= '<device';
 				$xml .= empty($device->info['id']) ? '>' : ' id="'.$device->info['id'].'">';
 				foreach($device->info as $property => $value){

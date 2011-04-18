@@ -1,7 +1,6 @@
 <?php defined('INDVR') or exit();
 #template common functions
 require('../template/template.lib.php');
-
 ?>
 <h1 class="header" id="header"><?php echo PTZ_SET_SUBHEADER; ?></h1><hr>
 <p><?php echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".PTZ_SET_HEADER." {$this_camera->info['device_name']}"; ?></p>

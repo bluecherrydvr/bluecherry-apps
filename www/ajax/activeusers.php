@@ -19,7 +19,7 @@ class ActiveUsers{
 			$this->users[$k]->info['from_client'] = $user['from_client'];
 		}
 		//var_dump_pre($this->users);
-		if ($_GET['XML']) $this->MakeXML(); else
+		if (!empty($_GET['XML'])) $this->MakeXML(); else
 			include_once('../template/ajax/activeusers.php');
 	}
 	private function MakeXML(){

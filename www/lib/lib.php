@@ -127,11 +127,11 @@ class user{
 		} else { #or update if it exists, i.e. reload within 5 minutes
 			data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}", true);
 		}
-		//data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300));
-		return ($tmp[0]['kick']) ? true : false;
+		data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300));
+		return (!empty($tmp[0]['kick'])) ? true : false;
 	}
 	public function checkAccessPermissions($type){
-		if (!$_SESSION['id']) {
+		if (empty($_SESSION['id'])) {
 			if ($type == 'basic'){
 				return ($this->basicAuthCheck()) ? true : false;
 			} else {
@@ -358,13 +358,14 @@ class card {
 	public function __construct($id){
 		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
 		$this->info['id'] = $id;
+		$port = 0;
 		$this->info['encoding'] = 'notconfigured';
 		foreach ($devices as $key => $device){
 			$this->cameras[$key] = new camera($device['device']);
 			$port++; #count ports on the card
 			$this->cameras[$key]->info['port'] = $port;
-			$this->info['encoding'] = ($this->cameras[$key]->info['signal_type']) ? $this->cameras[$key]->info['signal_type'] : $this->info['encoding'];
-			if ($this->cameras[$key]->info['video_interval'] && !$this->cameras[$key]->info['disabled'] ){
+			$this->info['encoding'] = (!empty($this->cameras[$key]->info['signal_type'])) ? $this->cameras[$key]->info['signal_type'] : $this->info['encoding'];
+			if (!empty($this->cameras[$key]->info['video_interval']) && !$this->cameras[$key]->info['disabled'] ){
 				$used_capacity = ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
 			}
 		}
@@ -419,5 +420,4 @@ class softwareVersion{
 }
 
 $version = new softwareVersion;
-
 ?>

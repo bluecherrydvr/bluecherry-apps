@@ -247,9 +247,7 @@ DVRPageScript = new Class({
 							var page = new DVRPage('motionmap', 'id='+el.get('id'));
 						},
 						'deviceschedule':function(el, ref){
-							alert('kk');
 							var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
-							alert('kk1');
 						},
 						'ptzsettings':function(el, ref){
 							var page = new DVRPage('ptzsettings', 'id='+el.get('name'));
@@ -739,13 +737,13 @@ updateStatData = function(){
 			url: 'ajax/stats.php',
 			method: 'get',
 			onSuccess: function(text, xml){
-				var cpuUsage = xml.getElementsByTagName("cpu-usage")[0].childNodes[0].nodeValue;
-				var memInUse = xml.getElementsByTagName("memory-inuse")[0].childNodes[0].nodeValue;
-				var memTotal = xml.getElementsByTagName("memory-total")[0].childNodes[0].nodeValue;
-				var memPertg = xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue;
-				var serverUp = xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue;
-				var serverRn = xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue;
-				var writeFail= xml.getElementsByTagName("failed-write")[0].childNodes[0].nodeValue;
+				var cpuUsage = (xml.getElementsByTagName("cpu-usage")[0].childNodes[0].nodeValue || 0);
+				var memInUse = (xml.getElementsByTagName("memory-inuse")[0].childNodes[0].nodeValue || 0);
+				var memTotal = (xml.getElementsByTagName("memory-total")[0].childNodes[0].nodeValue || 0);
+				var memPertg = (xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue || 0);
+				var serverUp = (xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue || 0);
+				var serverRn = (xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue || 0);
+				var writeFail= (xml.getElementsByTagName("failed-write")[0].childNodes[0].nodeValue || 0);
 				var sr  = $('sr');
 				var snr = $('snr');
 				var ncn = $('ncn');
@@ -781,7 +779,7 @@ updateStatData = function(){
 				snr.setStyle('display', 'none');
 			}
 		}).send();
-		//setTimeout("updateStatData();", 2000);
+		setTimeout("updateStatData();", 2000);
 };
 
 updateStatBar = function(barId, val, y, r){

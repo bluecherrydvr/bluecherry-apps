@@ -25,12 +25,13 @@ if ($devices->ipCameras){
 if (!$devices->cards){
 	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
 } else {
-foreach($devices->cards as $key => $card){
-	$counter++;
-	echo "<div id='dvrCard' class='{$card->info['id']}'><div class='cardHeader'>#{$counter} ".CARD_HEADER." ({$card->info['ports']} ".PORT.")</div><div class='cardContent'>"; #begin card/header
-	echo "<div id='cardInfo'>Encoding: ".(($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD.'</b>' : "<a href='#'><div class='cardEncoding' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</div></a>")." | Unused capacity: <div id='unusedCapacity' class='uc{$card->info['id']}'><a>{$card->info['available_capacity']}</a></div></div>";
-	
+	$counter = 0;
+	foreach($devices->cards as $key => $card){
+		$counter++;
+		echo "<div id='dvrCard' class='{$card->info['id']}'><div class='cardHeader'>#{$counter} ".CARD_HEADER." ({$card->info['ports']} ".PORT.")</div><div class='cardContent'>"; #begin card/header
+		echo "<div id='cardInfo'>Encoding: ".(($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD.'</b>' : "<a href='#'><div class='cardEncoding' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</div></a>")." | Unused capacity: <div id='unusedCapacity' class='uc{$card->info['id']}'><a>{$card->info['available_capacity']}</a></div></div>";
 foreach ($card->cameras as $key =>$device){
+	if (empty($device->info['id'])) { $device->info['id']=''; };
 	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
 	echo "<div id='localDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='status' id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> ".(($device->info['status'] == 'notconfigured') ? "" : "<a class='settingsOpen' href='#' id='{$device->info['id']}' name='{$device->info['device']}'>[Settings]</a>")."</div><div id='port'>{$device->info['port']}</div>";
 	if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) {
