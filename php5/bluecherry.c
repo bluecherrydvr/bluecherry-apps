@@ -160,14 +160,16 @@ PHP_FUNCTION(bc_db_get_table)
 			const char *field = bc_db_get_field(dbres, i);
 			const char *str;
 
+			/* This would be an error actually */
 			if (field == NULL)
 				continue;
 
 			str = bc_db_get_val(dbres, field);
 			if (str == NULL)
-				continue;
-			add_assoc_string(row_arr, field,
-					 (char *)str, 1);
+				add_assoc_null(row_arr, field);
+			else
+				add_assoc_string(row_arr, field,
+						 (char *)str, 1);
 		}
 
 		add_next_index_zval(return_value, row_arr);
