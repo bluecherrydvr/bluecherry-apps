@@ -44,9 +44,11 @@ class devices{
 		foreach($this->cards as $card_id => $card){
 			$devices = array_merge($devices, $card->cameras);
 		};
-		$devices = array_merge($devices, $this->ipCameras);
+		if (!empty($this->ipCameras))
+			$devices += $this->ipCameras;
+			
 		foreach($devices as $device){
-			if (!in_array($device->info['id'], $this_user->info['access_device_list'])){
+			if ($this_user->camPermission($device->info['id'])){
 				$xml .= '<device';
 				$xml .= empty($device->info['id']) ? '>' : ' id="'.$device->info['id'].'">';
 				foreach($device->info as $property => $value){
