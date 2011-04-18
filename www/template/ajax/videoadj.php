@@ -4,7 +4,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".((
 		
 ?>
 <div id="liveViewContainer">
-	<img id="liveViewImg" src='/media/mjpeg.php?id=<?php echo $_GET['id']; ?>'>
+	<img id="liveViewImg" width='352' src='/media/mjpeg.php?id=<?php echo $_GET['id']; ?>'>
 </div>
 <div id="videoAdjControls">
 	<INPUT value="<?php echo $device_data[0]['id']; ?>" type="Hidden" id="device_id">
@@ -17,4 +17,3 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".((
 	</div>
 			<a id="setToDefault"><?php echo VA_SETDEFAULT; ?></a>
 </div>
-<div id='test1'></div>

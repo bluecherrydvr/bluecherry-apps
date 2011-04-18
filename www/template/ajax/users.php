@@ -28,7 +28,7 @@
 					<div><label>".USERS_LOGIN."<span class='sub'>".USERS_LOGIN_EX."</span></label><input type='text' name='username' value='".((!empty($dvr_users->data['new'])) ? '' : $dvr_users->data[0]['username'])."' /></div><br />
 					<div><label>".USERS_PASSWORD."<span class='sub'>".USERS_PASSWORD_EX."</span></label><input type='password' name='password' value='".((!empty($dvr_users->data['new'])) ? '' : '__default__')."' /></div><br />
 					<div><label>".USERS_EMAIL."<span class='sub'>".USERS_EMAIL_EX."</span></label><input type='text' name='email' value='".((!empty($dvr_users->data[0]['email'])) ? $dvr_users->data[0]['email'] : '')."' /></div><br />
-					<div><label>".USERS_PHONE."<span class='sub'>".USERS_PHONE."</span></label><input type='text' name='phone' value='".((!empty($dvr_users->data[0]['phone'])) ? $$dvr_users->data[0]['phone'] : '')."' /></div><br />
+					<div><label>".USERS_PHONE."<span class='sub'>".USERS_PHONE."</span></label><input type='text' name='phone' value='".((!empty($dvr_users->data[0]['phone'])) ? $dvr_users->data[0]['phone'] : '')."' /></div><br />
 					<div><label>".USERS_ACCESS_SETUP."<span class='sub'>".USERS_ACCESS_SETUP_EX."</span></label><input type='checkbox' name='access_setup' ".((!empty($dvr_users->data[0]['access_setup'])) ? 'checked' : '')." /></div><br />
 					<div><label>".USERS_ACCESS_WEB."<span class='sub'>".USERS_ACCESS_WEB_EX."</span></label><input type='checkbox' name='access_web' ".((!empty($dvr_users->data[0]['access_web'])) ? 'checked' : '')." /></div><br />
 					<div><label>".USERS_ACCESS_REMOTE."<span class='sub'>".USERS_ACCESS_REMOTE_EX."</span></label><input type='checkbox' name='access_remote' ".((!empty($dvr_users->data[0]['access_remote'])) ? 'checked' : '')." /></div><br />

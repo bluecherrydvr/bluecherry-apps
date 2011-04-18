@@ -58,7 +58,7 @@ class ServerStats{
 		}
 		private function writeFailCheck(){
 			$time = file_exists(DB_WRITABLE) ? filemtime(DB_WRITABLE) : 0;
-			if ($time!=0){
+			if ($time>43200){
 				return date("F d Y H:i:s.", $time);
 			} else {
 				return 'false';

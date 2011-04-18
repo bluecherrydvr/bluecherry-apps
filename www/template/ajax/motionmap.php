@@ -9,9 +9,11 @@
 <div id="cameraOutputContainer">
 	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>">
 </div>
+</div>
+<div class='bClear'></div>
 <div id="lvlSelect">
-	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div>
-	<br><div id='button' class='showHideImg'><?php echo HIDE_IMG; ?></div>
+	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div><br><br>
+	<div id='button' class='showHideImg'><?php echo HIDE_IMG; ?></div>
 	<ul>
 		<li value="0" id="li0">Off</li>
 		<li value="1" id="li1">Minimal</li>
@@ -22,7 +24,5 @@
 		<hr>
 		<li id="clearAll">Clear All</li>
 		<li id="fillAll">Fill All</li>
-	</ul>
-	
-</div>	
+	</ul>	
 </div>
