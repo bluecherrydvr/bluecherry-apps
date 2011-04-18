@@ -7,12 +7,12 @@ require('../template/template.lib.php');
 <div id='saveButton'><?php echo SAVE; ?></div>
 <div class='bClear'></div>
 <div style="display:none;" id='tableEntry'>
-<?php		print "<label>".LOCATION."</label><INPUT name='path[]' type='text' id='path' value=''> Max:".arrayToSelect($GLOBALS['storage_limits'], 95, 'max[]')." Min:".arrayToSelect($GLOBALS['storage_limits'], 90, 'min[]')."<div id='button' class='deleteShort'></div>"; ?>
+<?php		print "<label>".LOCATION."</label><INPUT name='path[]' type='text' id='path' value='' style='width:270px;'> Max: <INPUT style='width:40px;' type='text' name='max[]' id='max[]' value='95'>% Min:<INPUT style='width:40px;' type='text' name='min[]' id='min[]' value='90'>%<div id='button' class='deleteShort'></div>"; ?>
 </div>
 <form id='storageForm' method="post" action="/ajax/storage.php">
 <?php
 foreach ($locations as $id => $location){
-	print "<div id='separator'><label>".LOCATION."</label><INPUT name='path[]' type='text' id='path' value='{$location['path']}'> Max:".arrayToSelect($GLOBALS['storage_limits'], $location['max_thresh'], 'max[]')." Min:".arrayToSelect($GLOBALS['storage_limits'], $location['min_thresh'], 'min[]')."<div id='button' class='deleteShort'></div></div>";
+	print "<div id='separator'><label>".LOCATION."</label><INPUT name='path[]' type='text' id='path' value='{$location['path']}' style='width:270px;'> Max: <INPUT style='width:40px;' type='text' name='max[]' id='max[]' value='{$location['max_thresh']}'>% Min:<INPUT style='width:40px;' type='text' name='min[]' id='min[]' value='{$location['min_thresh']}'>%<div id='button' class='deleteShort'></div></div>";
 }
 
 ?>
