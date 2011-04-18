@@ -57,8 +57,6 @@ define('G_DVR_EMAIL', 'Email address');
 define('G_DVR_EMAIL_EX', 'Email for notifications');
 define('G_DEV_NOTES', 'Notes');
 define('G_DEV_NOTES_EX', 'dvr memos');
-define('G_DVR_MEDIA_STORE', 'Storage location');
-define('G_DVR_MEDIA_STORE_EX', 'storage for videos');
 
 #users page
 define('EDIT_ACCESS_LIST', 'Camera access permissions');
