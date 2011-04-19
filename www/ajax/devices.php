@@ -38,30 +38,45 @@ class devices{
 	public function MakeXML(){
 		$this_user = new user('id', $_SESSION['id']);
 		// The \063 is a '?'. Used decimal so as not to confuse vim
-		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f><devices>";
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n<devices>\n";
 		$devices = array();
-		if (!empty($this->cards))
-		foreach($this->cards as $card_id => $card){
-			$devices = array_merge($devices, $card->cameras);
-		};
+		if (!empty($this->cards)) {
+			foreach($this->cards as $card_id => $card) {
+				$devices = array_merge($devices, $card->cameras);
+			}
+		}
 		if (!empty($this->ipCameras))
 			$devices = array_merge($devices, $this->ipCameras);
-			
-		foreach($devices as $device){
-			if (!$this_user->camPermission($device->info['id']))
+
+		$short_props = array('protocol', 'device_name', 'resolutionX',
+				     'resolutionY');
+		$block_props = array('rtsp_password', 'rtsp_username');
+
+		foreach($devices as $device) {
+			if (isset($device->info['id']) and
+			    !$this_user->camPermission($device->info['id']))
 				continue;
 
-			$xml .= '<device';
-			$xml .= empty($device->info['id']) ? '>' : ' id="'.$device->info['id'].'">';
-			foreach($device->info as $property => $value){
-				if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
-					if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
-			};
-			$xml .= "</device>\n";
+			$xml .= '  <device';
+			if (!empty($device->info['id']))
+				$xml .= ' id="' . $device->info['id'].'"';
+			$xml .= ">\n";
+
+			foreach ($device->info as $prop => $val) {
+				if (isset($_GET['short']) and
+				    !in_array($prop, $short_props))
+					continue;
+
+				if (in_array($prop, $block_props))
+					continue;
+
+				$xml .= "    <$prop>$val</$prop>\n";
+			}
+			$xml .= "  </device>\n";
 		}
 		$xml .= "</devices>";
 		header('Content-type: text/xml');
-		print_r($xml);
+		print $xml;
 	}
 		
 }
