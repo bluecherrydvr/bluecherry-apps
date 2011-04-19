@@ -77,8 +77,9 @@ $ptzdevices = data::query("SELECT * FROM Devices WHERE ptz_serial_values <> ''")
 		</ul>
 	</div>
 	<div id='lvSavedLayouts'>
-		<?php	$layouts =  (is_array($lv->layout_list[0])) ? array_merge(array(CHOOSE_LAYOUT), $lv->layout_list) : array(NO_SAVED_LAYOUTS);
-			echo arrayToSelect($layouts, $_SESSION['load_layout_name'], 'layouts');
+		<?php	$layouts =  (is_array($lv->layout_list)) ? array_merge(array(CHOOSE_LAYOUT), $lv->layout_list) : array(NO_SAVED_LAYOUTS);
+			if (!empty($_SESSION['load_layout_name']))
+				echo arrayToSelect($layouts, $_SESSION['load_layout_name'], 'layouts');
 			echo "<INPUT type='Submit' id='deleteLayout' value='".DELETE_CAM."'><INPUT type='Submit' id='saveLayout' value='".SAVE."'><BR /><INPUT type='Submit' id='clearAll' value='".CLEAR_ALL."' ><INPUT type='Submit' id='saveLayoutAs' value='".SAVE_AS."' >";
 		?>
 	</div>
