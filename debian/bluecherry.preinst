@@ -4,7 +4,7 @@ set -e
 
 case "$1" in
 	upgrade)
-		if dpkg --compare-versions "$2" lt "1:2.0.0-0beta5.0"; then
+		if dpkg --compare-versions "$2" lt "1:2.0.0-0beta6.0"; then
 			echo "UPGRADES WILL NOT WORK!!"
 			echo "Please 'dpkg -P bluecherry' before installing this new package"
 			exit 1
