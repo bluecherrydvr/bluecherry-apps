@@ -411,10 +411,15 @@ class ipCameras{
 class softwareVersion{
 	public $version;
 	public function __construct(){
-		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
-		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		system("dpkg --compare-versions ".escapeshellarg($this->version['installed'])." lt ".escapeshellarg($this->version['current']), $ret);
+		$current = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		$installed = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
+		system("dpkg --compare-versions ".escapeshellarg($installed).
+		       " lt ".escapeshellarg($current), $ret);
 		$this->version['up_to_date'] = $ret != 0;
+		$this->version['current'] = substr($current,
+						strpos($current, ":") + 1);
+		$this->version['installed'] = substr($installed,
+						strpos($installed, ":") + 1);
 	}
 }
 

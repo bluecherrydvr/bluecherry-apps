@@ -54,7 +54,7 @@
 				if (!$version->version['up_to_date']){
 					echo '<div id="version"><div id="message" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
 				} else {
-					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['current'].'</div></div>';					
+					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['installed'].'</div></div>';					
 				}
 			?>
 			<div class='bClear'></div>
