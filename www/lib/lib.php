@@ -8,23 +8,21 @@
  
 //defined('INDVR') or exit();
 
-session_name('VAR_SESSION_NAME');
+include("lang.php");
+include("var.php");
+
+session_name(VAR_SESSION_NAME);
 session_start();
 
-#include vars and language
-	include("lang.php"); #language
-	include("var.php");  #config vars
+//debug
+function var_dump_pre($mixed = null) {
+	echo '<hr><pre>';
+	var_dump($mixed);
+	echo '</pre>';
+	return null;
+}
 
-	//debug
-	function var_dump_pre($mixed = null) {
-	  echo '<hr><pre>';
- 	  var_dump($mixed);
-	  echo '</pre>';
-	  return null;
-	}
-	
-	
-	
+
 #classes
 
 #singleton database class, uses php5-bluecherry functions
