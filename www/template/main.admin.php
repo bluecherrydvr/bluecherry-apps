@@ -42,6 +42,7 @@
 				<li id="devices" class="devices"><? echo MMENU_DEVICES; ?></li>
 				<li id="deviceschedule" class="globalschedule"><? echo MMENU_SCHED; ?></li>
 				<hr>
+				<li id="statistics" class="eventStatistics"><? echo MMENU_STATISTICS; ?></li>
 				<li id="log" class="viewLog"><? echo MMENU_LOG; ?></li>
 			</ul>
 		</div>
@@ -54,7 +55,7 @@
 				if (!$version->version['up_to_date']){
 					echo '<div id="version"><div id="message" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
 				} else {
-					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['installed'].'</div></div>';					
+					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['installed'].'</div></div>';
 				}
 			?>
 			<div class='bClear'></div>

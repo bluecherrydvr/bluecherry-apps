@@ -74,6 +74,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #menuButtons .settingsStorage { background-image:url("/img/icons/storage.png");  }
 #menuButtons .settingsGeneral { background-image:url("/img/icons/general.png");  }
 #menuButtons .viewLog 		  { background-image:url("/img/icons/log.png"); }
+#menuButtons .eventStatistics { background-image:url("/img/icons/statistics.png"); }
 #menuButtons .devices 		  { background-image:url("/img/icons/device.png"); }
 #menuButtons .globalschedule  { background-image:url("/img/icons/schedule.png"); }
 #menuButtons .liveView		  { background-image:url("/img/icons/liveview.png"); }
@@ -258,3 +259,21 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #storageForm label { padding:3px; margin-right:15px; }
 
 
+/*devices-menu*/
+#settingsMenu  { border:1px solid #999; padding:0; background:#eee; width:200px; list-style-type:none; display:none; }
+#settingsMenu .separator { border-bottom:1px solid #999; }
+#settingsMenu li { margin:0; padding:0; }
+#settingsMenu li a { display:block; padding:5px 10px 5px 35px; width:155px; font-size:12px; text-decoration:none; font-family:tahoma,arial,sans-serif; color:#000; background-position:8px 4px; background-repeat:no-repeat; }
+#settingsMenu li a:hover { background-color:#ddd; }
+#settingsMenu li a.disabled { color:#ccc; font-style:italic; }
+#settingsMenu li a.disabled:hover { background-color:#eee; }
+#settingsMenu li a.videoadj		{ background-image:url(/img/icons/menu/config.png); }
+#settingsMenu li a.editmap	{ background-image:url(/img/icons/menu/motion.png); }
+#settingsMenu li a.ptzsettings	{ background-image:url(/img/icons/menu/ptz.png); }
+#settingsMenu li a.deviceschedule	{ background-image:url(/img/icons/menu/schedule.png); }
+
+#statisticsTable { border-collapse:collapse; }
+#statisticsTable tr th {border-bottom:1px solid black}
+#statisticsTable tr td.primarySeparator { border-top:2px solid black;  }
+#statisticsTable tr td.secondarySeparator { border-top:1px solid black; }
+#statisticsTable tr td {border:1px solid gray; border-collapse:collapse; padding:10px;}

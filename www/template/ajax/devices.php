@@ -15,7 +15,7 @@ if ($devices->ipCameras){
 	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
 		foreach($devices->ipCameras as $key => $device){
 			echo "<div id='ipDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='status' id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a href='#' class='deleteIp' id='{$device->info['id']}'>[".DELETE_CAM."]</a></div>";
-			echo "<div id='scheduling'><a href='#' id='{$device->info['id']}' class='deviceSchedule'>".DEVICE_EDIT_SCHED."</a></div>";
+			echo "<div id='scheduling'><a href='#' id='{$device->info['id']}' class='ipDeviceSchedule'>".DEVICE_EDIT_SCHED."</a></div>";
 			echo "<div id='editing'><a href='#' id='{$device->info['id']}' class='deviceProps'>".DEVICE_EDIT_DETAILS."</a></div>";
 			echo "</div>";
 		}

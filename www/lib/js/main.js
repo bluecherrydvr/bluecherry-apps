@@ -58,6 +58,20 @@ DVRContainerOverlay = new Class({
 DVRPageScript = new Class({
 	initialize: function(page){
 		switch (page){
+			case 'statistics':
+				$('sForm').set('send', { 
+					onComplete: function(text, xml){
+						$('sResults').set('html', text);
+					},
+					onFailure: function(){
+						$('sResults').set('html', 'Could not complete request, please try later.');
+					}
+				});
+				$('formSubmit').addEvent('click', function(e){
+					e.preventDefault();
+					$('sForm').send();
+				});
+			break;
 			//userspage
 			case 'users':
 				$$('#user-table tr').each(function(el){
@@ -203,7 +217,11 @@ DVRPageScript = new Class({
 				$('addIPCamera').addEvent('click', function(){
 					openPage = new DVRPage('addip');
 				});
-
+				$$('.ipDeviceSchedule').each(function(el){
+					el.addEvent('click', function(){
+						var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
+					});
+				});
 				$('addIPCamera').buttonAnimate("#aca");
 				initNames = function(){
 					$$('.name').each(function(el){
