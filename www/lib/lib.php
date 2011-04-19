@@ -282,7 +282,7 @@ class camera {
 			$result = false;
 			$message = ENABLE_DEVICE_NOTENOUGHCAP;
 		} else {
-			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='$id'", true);
+			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='{$this->info['id']}'", true);
 			$data = $container_card->info['available_capacity']-$required_capacity;
 		}
 		return array($result, false, $data);
