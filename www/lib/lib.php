@@ -125,7 +125,7 @@ class user{
 		} else { #or update if it exists, i.e. reload within 5 minutes
 			data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}", true);
 		}
-		data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300));
+		data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
 		return (!empty($tmp[0]['kick'])) ? true : false;
 	}
 	public function checkAccessPermissions($type){
