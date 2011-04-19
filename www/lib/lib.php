@@ -360,13 +360,14 @@ class card {
 		$this->info['id'] = $id;
 		$port = 0;
 		$this->info['encoding'] = 'notconfigured';
+		$used_capacity = 0;
 		foreach ($devices as $key => $device){
 			$this->cameras[$key] = new camera($device['device']);
 			$port++; #count ports on the card
 			$this->cameras[$key]->info['port'] = $port;
 			$this->info['encoding'] = (!empty($this->cameras[$key]->info['signal_type'])) ? $this->cameras[$key]->info['signal_type'] : $this->info['encoding'];
 			if (!empty($this->cameras[$key]->info['video_interval']) && !$this->cameras[$key]->info['disabled'] ){
-				$used_capacity = ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
+				$used_capacity += ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
 			}
 		}
 	
