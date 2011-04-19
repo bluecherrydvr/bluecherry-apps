@@ -21,6 +21,7 @@ define('MMENU_LOG', 'System Log');
 define('MMENU_DEVICES', 'Devices');
 define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
+define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
