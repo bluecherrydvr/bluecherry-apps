@@ -45,20 +45,21 @@ class devices{
 			$devices = array_merge($devices, $card->cameras);
 		};
 		if (!empty($this->ipCameras))
-			$devices += $this->ipCameras;
+			$devices = array_merge($devices, $this->ipCameras);
 			
 		foreach($devices as $device){
-			if ($this_user->camPermission($device->info['id'])){
-				$xml .= '<device';
-				$xml .= empty($device->info['id']) ? '>' : ' id="'.$device->info['id'].'">';
-				foreach($device->info as $property => $value){
-					if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
-						if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
-				};
-				$xml.='</device>';
-			}
+			if (!$this_user->camPermission($device->info['id']))
+				continue;
+
+			$xml .= '<device';
+			$xml .= empty($device->info['id']) ? '>' : ' id="'.$device->info['id'].'">';
+			foreach($device->info as $property => $value){
+				if (!isset($_GET['short']) || ($property=='protocol' || $property=='device_name' || $property=='resolutionX' || $property=='resolutionY'))
+					if ($property!='rtsp_password' && $property!='rtsp_username') $xml.="<$property>$value</$property>";
+			};
+			$xml .= "</device>\n";
 		}
-		$xml .='</devices>';
+		$xml .= "</devices>";
 		header('Content-type: text/xml');
 		print_r($xml);
 	}
