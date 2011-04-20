@@ -18,9 +18,9 @@
 		<li value="0" id="li0">Off</li>
 		<li value="1" id="li1">Minimal</li>
 		<li value="2" id="li2">Low</li>
-		<li value="3" id="li3">Average</li>
+		<li value="3" id="li3" class="on">Average</li>
 		<li value="4" id="li4">High</li>
-		<li value="5" id="li5" class="on">Very High</li>
+		<li value="5" id="li5">Very High</li>
 		<hr>
 		<li id="clearAll">Clear All</li>
 		<li id="fillAll">Fill All</li>
