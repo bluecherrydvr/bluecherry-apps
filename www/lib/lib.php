@@ -290,7 +290,7 @@ class camera {
 		switch($this->info['status']){
 			case 'OK':
 				$result = data::query("UPDATE Devices SET disabled='1' WHERE id='{$this->info['id']}'", true);
-				return array($result);
+				return array($result, false);
 			break;
 			case 'disabled':
 				$required_capacity = (30/$this->info['video_interval']) * (($this->info['resolutionX']>=704) ? 4 : 1);
@@ -298,7 +298,7 @@ class camera {
 					return array(false, ENABLE_DEVICE_NOTENOUGHCAP);
 				} else {
 					$result = data::query("UPDATE Devices SET disabled='0' WHERE id='{$this->info['id']}'", true);
-					return array($result);
+					return array($result, false);
 				}
 			break;
 			case 'notconfigured':
@@ -313,7 +313,7 @@ class camera {
 				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['new_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
 				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
 				$data = ($result && !$disabled) ? $container_card->info['available_capacity'] : $container_card->info['available_capacity']-$required_capacity;
-				return array($result, $msg, );
+				return array($result, $msg);
 			break;
 		}
 	}
