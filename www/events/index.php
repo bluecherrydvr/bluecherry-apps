@@ -60,6 +60,9 @@ print "  </generator>\n";
 
 # Output one item for each event
 foreach ($events as $item) {
+	if (!$current_user->camPermission($item['device_id']))
+		continue;
+
 	print "  <entry>\n";
 	print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
 	print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
