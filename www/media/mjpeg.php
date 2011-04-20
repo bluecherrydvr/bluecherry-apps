@@ -8,7 +8,7 @@ include("../lib/lib.php");  #common functions
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('basic');
 
-if (!$current_user->camPermission($_GET['id'])){
+if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id'])){
 	header("Content-type: image/jpeg");
 	readfile("../img/np.jpg");
 	exit;
