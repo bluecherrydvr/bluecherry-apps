@@ -171,7 +171,7 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 }
 
 extern char *__progname;
-#define BC_LOG_SERVICE	LOG_LOCAL4
+#define BC_LOG_SERVICE	LOG_DAEMON
 
 void bc_log(const char *msg, ...)
 {
