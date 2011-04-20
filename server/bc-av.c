@@ -285,14 +285,16 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 	bc_rec->video_st = bc_rec->audio_st = NULL;
 
 	if (bc_rec->oc) {
-		av_write_trailer(bc_rec->oc);
+		if (bc_rec->oc->pb)
+			av_write_trailer(bc_rec->oc);
 
 		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
 			av_freep(&bc_rec->oc->streams[i]->codec);
 			av_freep(&bc_rec->oc->streams[i]);
 		}
 
-		url_fclose(bc_rec->oc->pb);
+		if (bc_rec->oc->pb)
+			url_fclose(bc_rec->oc->pb);
 		av_free(bc_rec->oc);
 		bc_rec->oc = NULL;
 	}
@@ -579,8 +581,11 @@ no_audio:
 	}
 
 	/* Open output file */
-	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0)
+	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
+		bc_dev_err(bc_rec, "Failed to open outfile (perms?): %s",
+			   bc_rec->outfile);
 		return -1;
+	}
 
 	av_write_header(oc);
 
