@@ -413,10 +413,18 @@ DVRPageScript = new Class({
 				var grid = new localMotionGrid('scheduleContainer', 'valueString', 'deviceSchedule');
 			break;//end deviceschedule
 			case 'motionmap':
+				var imgOn = true;
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
 				});
-				$$('.showHideImg').addEvent('click', function(ev){
+				$$('.showHideImg')[0].addEvent('click', function(ev){
+					if (imgOn) {
+						$('cameraOutput').fade('out');
+						imgOn = false;
+					} else {
+						$('cameraOutput').fade('in');
+						imgOn = true;
+					}
 					$('cameraOutput').removeEvent('load');
 					var name = $('cameraOutput').get('name');
 					$('cameraOutput').set('name', $('cameraOutput').get('src'));
