@@ -12,7 +12,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 
 <INPUT type="Hidden" id="cameraID" value="<?php echo ($global) ? 'global' : $device_schedule->schedule_data[0]['id']; ?>" />
 <INPUT type="Hidden" id="valueString" value="<?php echo $device_schedule->schedule_data[0]['schedule']; ?>" />
-<?php if (!$global) { echo "<div id='message' class='".(($og) ? 'OK' : 'INFO')."'><INPUT type='Checkbox' id='overrideGlobal' ".(($og) ? 'checked': '' ).">".GLOBAL_SCHED_OG."</div>";}; ?>
+<?php if (!$global) { echo "<div id='message' class='".(($og) ? 'OK' : 'INFO')."'><INPUT type='Checkbox' id='overrideGlobal'".(($og) ? ' checked="checked"': '' )." />".GLOBAL_SCHED_OG."</div>";}; ?>
 <div class="bClear"></div>
 <div id="lvlSelect">
 	<ul>
@@ -23,7 +23,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 				echo '<li id="liM">Motion</li><li id="liS">Sensor</li>';
 			};
 		?>
-			<hr>
+			<hr />
 		<li id="fillAll">Fill All</li>	
 	</ul>
 	

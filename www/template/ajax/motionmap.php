@@ -7,12 +7,12 @@
 <INPUT type="Hidden" id="valueString" value="<?php echo $motion_map->data[0]['motion_map']; ?>" />
 <div id="mmapContainer">
 <div id="cameraOutputContainer">
-	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>">
+	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>" />
 </div>
 </div>
 <div class='bClear'></div>
 <div id="lvlSelect">
-	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div><br><br>
+	<div id='saveButton' style="border:1px solid black; display:inline; cursor:pointer;"><?php echo SAVE_CHANGES; ?></div><br /><br />
 	<div id='button' class='showHideImg'><?php echo HIDE_IMG; ?></div>
 	<ul>
 		<li value="0" id="li0">Off</li>
@@ -21,7 +21,7 @@
 		<li value="3" id="li3" class="on">Average</li>
 		<li value="4" id="li4">High</li>
 		<li value="5" id="li5">Very High</li>
-		<hr>
+		<hr />
 		<li id="clearAll">Clear All</li>
 		<li id="fillAll">Fill All</li>
 	</ul>	

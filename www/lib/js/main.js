@@ -86,8 +86,9 @@ DVRPageScript = new Class({
 					});
 					//user details form
 					var userForm = new DVRSettingsForm('settingsForm');
-					$('deleteButton').deleteUserButton();
-					
+					if ($('deleteButton') != null) {
+						$('deleteButton').deleteUserButton();
+					}
 				};
 				if ($('editAccessList')!=null){
 					$('editAccessList').addEvent('click', function(){
@@ -618,25 +619,25 @@ DVRSettingsForm = new Class({
 //image overlay/save class for motion detection page
 var localMotionGrid = new Class({
 		initialize: function(el, value, type){
-			var self = this;
 			switch(type){
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
-					var tfunc = function(el, self){
-						self.drawGrid(el, $(value).get('value'));
+					var tfunc = function(el, obj) {
+						obj.drawGrid(el, $(value).get('value'));
 						tempOverlay.removeoverlay();
 					}
-					$(el).addEvent('load', tfunc($(el), self));
-					self.sensitivitySelector();
+					
+					$(el).addEvent('load', tfunc($(el), this));
+					this.sensitivitySelector();
 				break;//end mmap
 				default:
-					self.drawGrid($(el), $(value).get('value'), 24, 7);
-					self.addScheduleFields();
-					self.sensitivitySelector();
+					this.drawGrid($(el), $(value).get('value'), 24, 7);
+					this.addScheduleFields();
+					this.sensitivitySelector();
 				break;
 			};
 			$('saveButton').addEvent('click', function(){
-				self.saveSetting(self.prepareOutput($(el).getParent().get('id')), type);
+				this.saveSetting(this.prepareOutput($(el).getParent().get('id')), type);
 			});
 
 		},

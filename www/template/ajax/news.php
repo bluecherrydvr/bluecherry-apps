@@ -1,5 +1,5 @@
 <?php defined('INDVR') or exit(); ?>
-<h1 class="header"><?php echo NEWS_HEADER; ?></h1><hr>
+<h1 class="header"><?php echo NEWS_HEADER; ?></h1><hr />
 <div id="dvrNews">
 <?php
 if (!$news->news) {

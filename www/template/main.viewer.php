@@ -43,7 +43,7 @@ $ptzdevices = data::query("SELECT * FROM Devices WHERE ptz_serial_values <> ''")
 <style>
 		#ptz { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 17px; margin-bottom:15px; }
 		#ptzControl { width: 146px; height:200px; position:relative; }
-		#ptzControl	div	{ width:48px; height:48px; background-repeat: no-repeat background-position: center center; cursor:pointer; position:relative; float:left; }
+		#ptzControl	div	{ width:48px; height:48px; background-repeat: no-repeat; background-position: center center; cursor:pointer; position:relative; float:left; }
 		#ptzControl .lu	{ background-image: url("/img/ptz/lu.png"); }
 		#ptzControl .ln	{ background-image: url("/img/ptz/l.png");  }
 		#ptzControl .ld	{ background-image: url("/img/ptz/ld.png"); }

@@ -9,6 +9,6 @@ foreach($global_settings->data as $property => $value){
 		".(($value['parameter']=="G_DEV_NOTES") ? "<textarea class='notes' name='G_DEV_NOTES'>{$value['value']}</textarea>" : "<input type='text' name='{$value['parameter']}' value='{$value['value']}' />")."</div>";
 }
 ?>
-<input type="Hidden" name="mode" value="global">
+<input type="Hidden" name="mode" value="global" />
 </form>
 </div>

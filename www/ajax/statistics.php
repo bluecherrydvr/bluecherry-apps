@@ -47,18 +47,18 @@ if (!empty($_POST)){
 	$last_event_date = date($date_format, $result[0]['time']);
 	?>
 <FORM id='sForm' action="/ajax/statistics.php" method="post">
-	Start date: <INPUT type="text" name='start' value='<?php echo $first_event_date; ?>'><br /><br />
-	End Date : <INPUT type="text" name='end' value='<?php echo $last_event_date; ?>'><br /><br />
+	Start date: <input type="text" name='start' value='<?php echo $first_event_date; ?>' /><br /><br />
+	End Date : <input type="text" name='end' value='<?php echo $last_event_date; ?>' /><br /><br />
 	<div>Date/time format <b>YYYY-MM-DD HH:MM:SS</b></div>
 	Primary grouping: <?php echo arrayToSelect(array_keys($query_params), '', 'primary_grouping'); ?><br />
 	Secondary grouping: <?php echo arrayToSelect(array_keys($query_params), '', 'secondary_grouping'); ?><br /><br />
-	Select events:<br>
-	<INPUT type="Checkbox" name="all_events" checked>All events<br>
-	<INPUT type="Checkbox" name="motion_events">Motion<br>
-	<INPUT type="Checkbox" name="continuous_events">Continuous<br>
-	<INPUT type="Submit" value="Get statistics" id='formSubmit'>
+	Select events:<br />
+	<input type="Checkbox" name="all_events" checked="checked">All events</input><br />
+	<input type="Checkbox" name="motion_events">Motion</input><br />
+	<input type="Checkbox" name="continuous_events">Continuous</input><br />
+	<input type="Submit" value="Get statistics" id='formSubmit' />
 </FORM>	
-<hr>
+<hr />
 <div id='sResults' width='100%'></div>
 	<?php
 }

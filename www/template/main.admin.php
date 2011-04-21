@@ -70,9 +70,9 @@
 			<div class="progressBar" id='mem'>
 				<div class="text">0</div>
 			</div>
-			<div class="label" id="meminfo">&nbsp;</div>
+			<div class="label" id="meminfo"></div>
 			<div class="label"><?php echo STATS_UPT ?></div>
-			<div id="serverUptime">&nbsp;</div>
+			<div id="serverUptime"></div>
 		</div>
 	</div>
 	<div id="centerColumn">
