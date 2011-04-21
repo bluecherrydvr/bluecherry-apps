@@ -11,15 +11,13 @@
 	<script type="text/javascript" src="./lib/mootools-more.js"></script>
 	<script type="text/javascript" src="./lib/mootools-plugins.js"></script>
 	<script type="text/javascript" src="./lib/js/main.js"></script>
-	<script type="text/javascript" src="./lib/js/viewer.js"></script>
 	<script>
 		window.addEvent('load', function(){
-		containerDivID = 'pageContainer';
-		
-		var mainMenu = new DVRmainMenu();
-		var pageToOpen = (Cookie.read('currentPage') || 'news');
-		var pageToOpenData = (Cookie.read('currentPageData') || '');
-			openPage = new DVRPage(pageToOpen, pageToOpenData);
+			containerDivID = 'pageContainer';
+			var mainMenu = new DVRmainMenu();
+			var pageToOpen = (Cookie.read('currentPage') || 'news');
+			var pageToOpenData = (Cookie.read('currentPageData') || '');	
+			var openPage = new DVRPage(pageToOpen, pageToOpenData);
 			updateStatData();
 		});
 	</script>

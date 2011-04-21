@@ -49,7 +49,9 @@ DVRContainerOverlay = new Class({
 		overlay.inject($(containerDivID));
 	},
 	removeoverlay: function(){
-		$('pageContainerLoadingOverlay').dispose();
+		if ($('pageContainerLoadingOverlay')){
+			$('pageContainerLoadingOverlay').dispose();
+		}
 	}
 });
 
@@ -396,7 +398,6 @@ DVRPageScript = new Class({
 						naList += el.get('id')+',';
 					});
 					ajaxUpdateField('access_device_list', 'Users', { 'value' : naList }, $('userInfo').get('class'), 'button');
-					//alert(naList);
 				});
 
 			break;
@@ -425,10 +426,6 @@ DVRPageScript = new Class({
 						$('cameraOutput').fade('in');
 						imgOn = true;
 					}
-					$('cameraOutput').removeEvent('load');
-					var name = $('cameraOutput').get('name');
-					$('cameraOutput').set('name', $('cameraOutput').get('src'));
-					$('cameraOutput').set('src', name);
 					ev.stopPropagation();
 				});
 				var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');
@@ -627,16 +624,16 @@ DVRSettingsForm = new Class({
 //image overlay/save class for motion detection page
 var localMotionGrid = new Class({
 		initialize: function(el, value, type){
+			var self = this;
 			switch(type){
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
-					var tfunc = function(el, obj) {
-						obj.drawGrid(el, $(value).get('value'));
+					$(el).addEvent('load', function(){
+						self.drawGrid($(el), $(value).get('value'));
 						tempOverlay.removeoverlay();
-					}
+						self.sensitivitySelector();
+					});
 					
-					$(el).addEvent('load', tfunc($(el), this));
-					this.sensitivitySelector();
 				break;//end mmap
 				default:
 					this.drawGrid($(el), $(value).get('value'), 24, 7);

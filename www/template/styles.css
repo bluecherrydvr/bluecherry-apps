@@ -150,7 +150,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #localDevice #resolutionFps 		{ background-color:#efefef; width:100%; margin: 5px 0 5px 0;}
 #localDevice #resolutionFps div 	{ display:inline; }
 #localDevice #cameraSettingsHeader, #ipDevice #cameraSettingsHeader { width:100%; margin: 15px 0 5px 35px; }
-#localDevice a						{ margin:5px 0 5px 0; display:block; }
+#localDevice a						{ margin:5px 0 5px 0; display:inline; }
 #localDevice #status, #ipDevice #status 	{ display:inline; width:100%; margin:3px 10px 10px 35px; }
 #localDevice .disabled, #ipDevice .disabled	{ color: red;  		}
 #localDevice .OK, #ipDevice .OK			{ color: green; width:300px; }
