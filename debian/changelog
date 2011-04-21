@@ -1,3 +1,16 @@
+bluecherry (1:2.0.0-0beta6.1) lucid; urgency=low
+
+  * Bug #546: Web: Clean up meminfo in stats.php
+  * Bug #629: Web: Default to 'average' for motion detection mapping
+  * Bug #745: Events are shown even if the user doesn't have permission to
+    the camera(s)
+  * Bug #749: Logs are being logged twice (bluecherry.log and messages)
+  * Bug #751: bc-server crashes if it is unable to write media
+  * Bug #753: Web: Motion mapping controls are in the middle of the static
+    image
+
+ -- Ben Collins <bcollins@bluecherry.net>  Thu, 21 Apr 2011 17:52:47 -0400
+
 bluecherry (1:2.0.0-0beta6.0) lucid; urgency=low
 
   * Bug #496: Complain *loudly* if unable to write events
