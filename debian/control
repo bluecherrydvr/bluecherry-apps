@@ -11,7 +11,7 @@ Package: bluecherry
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
- libapache2-mod-php5
+ libapache2-mod-php5, sysstat
 Recommends: solo6010-dkms
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.
