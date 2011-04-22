@@ -128,7 +128,7 @@ class user{
 		data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
 		return (!empty($tmp[0]['kick'])) ? true : false;
 	}
-	public function checkAccessPermissions($type){
+	private function userStatus($type){
 		if (empty($_SESSION['id'])) {
 			if ($type == 'basic'){
 				return ($this->basicAuthCheck()) ? true : false;
@@ -136,12 +136,18 @@ class user{
 				return false;
 			}
 		}
-		if ($this->updateActiveUsers()) { session_destroy(); return false; } #update records, check if user was kicked
+		if ($this->updateActiveUsers()) { $_SESSION['message'] = USER_KICKED; session_destroy(); return false; } #update records, check if user was kicked
 		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual']) return false; #require login when opening admin pages from client
 		if ($this->info['access_setup']) { return true; } #admin user all priveleges granted
 			else {
 				return ($type != 'admin' || ($type == 'backup' && $this->info['access_backup'] )) ? true : false; #page does not require admin priv and if its backup user must have permissions
 			}
+	}
+	public function checkAccessPermissions($type){
+		if (!$this->userStatus($type)){
+			echo JS_RELOAD;
+			exit;
+		}
 	}
 	
 	private function basicAuthCheck(){

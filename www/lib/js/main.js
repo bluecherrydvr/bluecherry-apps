@@ -642,7 +642,7 @@ var localMotionGrid = new Class({
 				break;
 			};
 			$('saveButton').addEvent('click', function(){
-				this.saveSetting(this.prepareOutput($(el).getParent().get('id')), type);
+				self.saveSetting(self.prepareOutput($(el).getParent().get('id')), type);
 			});
 
 		},
