@@ -118,7 +118,7 @@ function print_preset($id, $cmd)
 
 			if (data::query("INSERT INTO PTZPresets (device_id,preset_id,".
 				         "preset_name) VALUES ($id,$preset,".
-					 "'$name')") == false)
+					 "'$name')", true) == false)
 				print_err("Failed to save preset");
 		}
 		$name = htmlentities($_GET['name']);
@@ -148,11 +148,6 @@ function print_preset($id, $cmd)
 }
 
 print "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n";
-
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('ptz');
 
 if (!isset($_GET['id'])) 
 	print_err("Need to supply valid device ID");

@@ -270,7 +270,7 @@ class camera {
 				case 'Odd':  $pairty = 'o'; break;
 		};
 		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
-		data::outputXml($status);
+		data::responseXml($status);
 	}
 	public function changeResFps($type, $value){
 		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
