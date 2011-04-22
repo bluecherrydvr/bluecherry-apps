@@ -259,9 +259,16 @@ int bc_vid_out(struct bc_record *bc_rec)
 	if (!pkt.data || !pkt.size)
 		return 0;
 
-	if (c->coded_frame->pts != AV_NOPTS_VALUE)
-		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-				       bc_rec->video_st->time_base);
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		pkt.pts = av_rescale_q(bc->rtp_sess.vid_ts,
+				       bc_rec->video_st->time_base,
+				       c->time_base);
+	} else {
+		if (c->coded_frame->pts != AV_NOPTS_VALUE)
+			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
+					       bc_rec->video_st->time_base);
+	}
+
 	pkt.stream_index = bc_rec->video_st->index;
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
@@ -463,6 +470,12 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
 		return -1;
 	st = bc_rec->video_st;
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		/* For video, RTP defines a constant 90KHz clock */
+		st->codec->time_base.num = 1;
+		st->codec->time_base.den = 90000;
+	}
 
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
