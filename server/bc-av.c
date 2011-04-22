@@ -260,9 +260,9 @@ int bc_vid_out(struct bc_record *bc_rec)
 		return 0;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		pkt.pts = av_rescale_q(bc->rtp_sess.vid_ts,
-				       bc_rec->video_st->time_base,
-				       c->time_base);
+		/* RTP is at a constant 90KHz time scale */
+		pkt.pts = av_rescale_q(bc->rtp_sess.vid_ts, (AVRational){1, 90000},
+				       bc_rec->video_st->time_base);
 	} else {
 		if (c->coded_frame->pts != AV_NOPTS_VALUE)
 			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
@@ -471,14 +471,9 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 	st = bc_rec->video_st;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		/* For video, RTP defines a constant 90KHz clock */
-		st->codec->time_base.num = 1;
-		st->codec->time_base.den = 90000;
-	}
-
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
+
 	snprintf(st->language, sizeof(st->language), "eng");
 
 	if (bc_rec->codec_id == CODEC_ID_NONE) {
