@@ -1,19 +1,13 @@
 <?php defined('INDVR') or exit(); 
 	  echo "<div id='header'>".MMAP_HEADER."</div>"; 
 	  echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".EDITING_MMAP." <b>".(empty($motion_map->data[0]['device_name']) ? $motion_map->data[0]['id'] : $motion_map->data[0]['device_name'])."</b></p>";
-
-if ($motion_map->data[0]['resolutionY'] == '240' or
-    $motion_map->data[0]['resolutionY'] == '480')
-	$height = 240;
-else
-	$height = 288;
-
+	  
 ?>
 <INPUT type="Hidden" id="cameraID" value="<?php echo $motion_map->data[0]['id']; ?>" />
 <INPUT type="Hidden" id="valueString" value="<?php echo $motion_map->data[0]['motion_map']; ?>" />
 <div id="mmapContainer">
 <div id="cameraOutputContainer">
-	<img id="cameraOutput" width="352" height="<?php echo $height; ?>" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>" />
+	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>" />
 </div>
 </div>
 <div class='bClear'></div>
