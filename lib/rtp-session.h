@@ -38,6 +38,9 @@ struct rtp_session {
 	unsigned char	*vid_buf;
 	unsigned int	vid_buf_len;
 	int		vid_len;
+	int		vid_ts_valid;
+	unsigned int	vid_ts_last;
+	unsigned int	vid_ts;
 	int		vid_valid;
 
 	/* Audio frames */

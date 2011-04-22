@@ -112,6 +112,7 @@ void rtp_session_stop(struct rtp_session *rs)
 		rs->vid_buf = NULL;
 		rs->vid_buf_len = 0;
 	}
+	rs->vid_ts_valid = 0;
 	pthread_mutex_unlock(&curl_lock);
 }
 
@@ -313,8 +314,23 @@ static void handle_vid(struct rtp_session *rs, unsigned char *data,
 		rs->vid_len += len - skip;
 	}
 
-	if (data[1] & 0x80)
+	if (data[1] & 0x80) {
+		unsigned int ts = ntohl(*(unsigned int *)(data + 4));
+
+		if (rs->vid_ts_valid) {
+			/* Check for wrap */
+			if (rs->vid_ts_last > ts)
+				rs->vid_ts = (ts + UINT_MAX) - rs->vid_ts_last;
+			else
+				rs->vid_ts = ts - rs->vid_ts_last;
+		} else {
+			rs->vid_ts_valid = 1;
+			rs->vid_ts = 0;
+			rs->vid_ts_last = ts;
+		}
+
 		rs->vid_valid = 1;
+	}
 }
 
 static void handle_aud(struct rtp_session *rs, unsigned char *data,
@@ -582,6 +598,8 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 
 	/* All is well on the northern front */
 	ret = 0;
+
+	rs->vid_ts_valid = 0;
 
 setup_fail:
 	pthread_mutex_unlock(&curl_lock);
