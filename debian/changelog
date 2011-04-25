@@ -1,3 +1,11 @@
+bluecherry (1:2.0.0-0beta6.3) lucid; urgency=low
+
+  * Bug #756: ptz.php uses old user class
+  * Bug #757: ptz.php insert preset query returns false
+  * Bug #758: lib.php: uses wrong method to form xml
+
+ -- Ben Collins <bcollins@bluecherry.net>  Mon, 25 Apr 2011 16:21:29 -0400
+
 bluecherry (1:2.0.0-0beta6.2) lucid; urgency=low
 
   * Bug #754 (Assigned): Web: Motion detection settings are not saved
