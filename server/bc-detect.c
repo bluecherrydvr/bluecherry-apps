@@ -23,6 +23,7 @@
 #define MAX_CARDS		32
 static struct card_list {
 	int valid;
+	int dirty;
 	char name[128];
 } cards[MAX_CARDS];
 
@@ -63,8 +64,10 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 
 	/* Check to see if we've scanned this one before */
 	for (i = 0; i < MAX_CARDS; i++) {
-		if (cards[i].valid && !strcasecmp(cards[i].name, bcuid))
+		if (cards[i].valid && !strcasecmp(cards[i].name, bcuid)) {
+			cards[i].dirty = 0;
 			break;
+		}
 	}
 
 	if (i == MAX_CARDS) {
@@ -74,6 +77,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 			if (cards[i].valid)
 				continue;
 			cards[i].valid = 1;
+			cards[i].dirty = 0;
 			strcpy(cards[i].name, bcuid);
 			break;
 		}
@@ -142,11 +146,27 @@ static void __bc_check_avail(void)
 
 void bc_check_avail(void)
 {
+	int i;
+
 	if (bc_db_start_trans())
 		return;
 
 	__bc_db_query("DELETE FROM AvailableSources");
+	for (i = 0; i < MAX_CARDS; i++) {
+		if (!cards[i].valid)
+			continue;
+		cards[i].dirty = 1;
+	}
+
 	__bc_check_avail();
 
 	bc_db_commit_trans();
+
+	/* Check for cards gone missing */
+	for (i = 0; i < MAX_CARDS; i++) {
+		if (!(cards[i].valid && cards[i].dirty))
+			continue;
+		bc_log("W: Card with name %s no longer found", cards[i].name);
+		memset(&cards[i], 0, sizeof(cards[i]));
+	}
 }
