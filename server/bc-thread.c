@@ -57,7 +57,6 @@ static int process_schedule(struct bc_record *bc_rec)
 	    (bc_media_length(&bc_rec->media) > BC_MAX_RECORD_TIME &&
 	    !bc_rec->sched_last)) {
 		if (bc_rec->reset_vid) {
-			bc_dev_info(bc_rec, "Resetting media due to reset_vid");
 			bc_rec->reset_vid = 0;
 			ret = 1;
 		}
