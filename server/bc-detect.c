@@ -29,16 +29,16 @@ static struct card_list {
 
 static void check_solo(struct sysfs_device *device, const char *dir)
 {
-	char eeprom_path[SYSFS_PATH_MAX];
+	char path[SYSFS_PATH_MAX];
 	char bcuid[37];
 	char *uid_type;
-	char eeprom[128], driver[64];
+	char eeprom[128], driver[64], video_type[8];
 	int id, ports;
 	int fd;
 	int i;
 
-	sprintf(eeprom_path, "%s/%s/eeprom", device->path, dir);
-	fd = open(eeprom_path, 0, O_RDONLY);
+	sprintf(path, "%s/%s/eeprom", device->path, dir);
+	fd = open(path, 0, O_RDONLY);
 	if (fd >= 0) {
 		int ret = read(fd, eeprom, sizeof(eeprom));
 		close(fd);
@@ -61,6 +61,17 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 
 	if (sscanf(dir, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
 		return;
+
+	sprintf(path, "%s/%s/video_type", device->path, dir);
+	fd = open(path, 0, O_RDONLY);
+	if (fd >= 0) {
+		int ret = read(fd, video_type, sizeof(video_type));
+		close(fd);
+
+		if (ret <= 0)
+			strcpy(video_type, "NTSC");
+	} else
+		strcpy(video_type, "NTSC");
 
 	/* Check to see if we've scanned this one before */
 	for (i = 0; i < MAX_CARDS; i++) {
@@ -85,9 +96,10 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 
 	for (i = 0; i < ports; i++) {
 		__bc_db_query("INSERT INTO AvailableSources "
-			    "(device, driver, card_id) "
-			    "VALUES('%s|%s|%d', '%s', '%d')",
-			    uid_type, bcuid, i, driver, id);
+			      "(device, driver, card_id, video_type) "
+			      "VALUES('%s|%s|%d', '%s', '%d', '%s')",
+			      uid_type, bcuid, i, driver, id,
+			      video_type);
 	}
 }
 

@@ -178,12 +178,20 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	const char *dev = bc_db_get_val(dbres, "device");
 	const char *name = bc_db_get_val(dbres, "device_name");
 	const char *driver = bc_db_get_val(dbres, "driver");
+	const char *signal_type = bc_db_get_val(dbres, "signal_type");
+	const char *video_type = bc_db_get_val(dbres, "video_type");
 
 	if (bc_db_get_val_bool(dbres, "disabled"))
 		return NULL;
 
 	if (!dev || !name || !driver) {
 		bc_log("E(%d): Could not get info about device from db", id);
+		return NULL;
+	}
+
+	if (signal_type && video_type && !strcasecmp(signal_type, video_type)) {
+		bc_log("E(%d): Video type mismatch, driver has %s and record wants %s",
+		       id, video_type, signal_type);
 		return NULL;
 	}
 
