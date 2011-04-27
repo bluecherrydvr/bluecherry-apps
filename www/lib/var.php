@@ -20,7 +20,8 @@ define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
 $GLOBALS['capacity'] = array(
 	'solo6010' => 480,
-	'solo6110' => 600
+	'solo6110' => 600,
+	'solo6x10' => 480 #backward compatibility
 );
 
 $GLOBALS['resolutions'] = array(
