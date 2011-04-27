@@ -189,7 +189,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		return NULL;
 	}
 
-	if (signal_type && video_type && !strcasecmp(signal_type, video_type)) {
+	if (signal_type && video_type && strcasecmp(signal_type, video_type)) {
 		bc_log("E(%d): Video type mismatch, driver has %s and record wants %s",
 		       id, video_type, signal_type);
 		return NULL;
