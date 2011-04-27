@@ -3,17 +3,39 @@
 #lib
 include("../lib/lib.php");  #common functions
 
+function image_err($msg)
+{
+	$width = 352;
+	$height = 240;
+	$font_size = 5;
+
+	$im = imagecreate($width, $height);
+	$gray = imagecolorallocate ($im, 25, 25, 25);
+
+	$bg = imagecolorallocate($im, 255, 255, 255);
+	imagefilledrectangle($im, 0, 0,$width ,$height , $bg);
+
+	/* Center the text */
+	$text_width = imagefontwidth($font_size) * strlen($msg);
+        $center = ceil($width / 2);
+        $x = $center - ceil($text_width / 2);
+        imagestring($im, $font_size, $x, ceil($height / 2), $msg, $gray);
+
+	/* Output as PNG */
+	header('Content-Type: image/png');
+	imagepng($im);
+
+	imagedestroy($im);
+
+	exit;
+}
 
 #auth check
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('basic');
 
-if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id'])){
-	header("Content-type: image/jpeg");
-	readfile("../img/np.jpg");
-	exit;
-}
-
+if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id']))
+	image_err("No permission");
 
 function get_boundary($url_full)
 {
@@ -146,16 +168,12 @@ function get_one_jpeg($url_full)
 	return $myj;
 }
 
-if (!isset($_GET['id'])) {
-	print "No device supplied";
-	exit;
-}
+if (!isset($_GET['id']))
+	image_err("No device ID supplied");
 
 $bch = bc_handle_get_byid(intval($_GET['id']));
-if ($bch == false) {
-	print "No such device";
-	exit;
-}
+if ($bch == false)
+	image_err("No such device");
 
 $single_url = FALSE;
 $boundary = "BCMJPEGBOUNDARY";
@@ -175,15 +193,11 @@ else
 $url = bc_get_mjpeg_url($bch);
 if (!$url) {
 	# Nope, so try to start up the local device
-	if (bc_set_mjpeg($bch) == false) {
-		print "Failed to set MJPEG";
-		exit;
-	}
+	if (bc_set_mjpeg($bch) == false)
+		image_err("Failed to set MJPEG");
 
-	if (bc_handle_start($bch) == false) {
-		print "Faled to start";
-		exit;
-	}
+	if (bc_handle_start($bch) == false)
+		image_err("Faled to start");
 } else {
 	# Get the boundary as well
 	get_boundary($url);
