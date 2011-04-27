@@ -5,7 +5,7 @@ CREATE TABLE AvailableSources (
 	device varchar(256),			-- E.g. BCPCI|0000:01.0|0
 	driver varchar(256),			-- E.g. solo6010
 	card_id varchar(256) NOT NULL,		-- E.g. BCPCI|0000:01.0
-	video_type varcard(256) NOT NULL,	-- E.g. NTSC or PAL
+	video_type varchar(256) NOT NULL,	-- E.g. NTSC or PAL
 	UNIQUE (device)
 );
 
