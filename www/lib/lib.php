@@ -156,7 +156,7 @@ class user{
    				header('HTTP/1.0 401 Unauthorized');
 				exit;
 			} else {
-				$this->getInfo('login', $_SERVER['PHP_AUTH_USER']);
+				$this->getInfo('username', $_SERVER['PHP_AUTH_USER']);
 				return ($this->checkPassword($_SERVER['PHP_AUTH_PW'])) ? true : false;
 			}
 	}
