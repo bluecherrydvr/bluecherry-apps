@@ -191,7 +191,6 @@ if (!$url) {
 
 if ($multi) {
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
-        print "\r\n--$boundary\r\n";
 } else {
 	header("Content-type: image/jpeg");
 }
