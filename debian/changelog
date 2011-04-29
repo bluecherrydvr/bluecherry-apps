@@ -1,3 +1,15 @@
+bluecherry (1:2.0.0-0beta6.4) lucid; urgency=low
+
+  * Bug #761: Customers using older device drivers are unable to enable
+    devices
+  * Bug #764: Older Axis cameras only display one JPEG image during MJPEG
+    streaming
+  * Bug #766: web: basic auth check method uses invalid parameter
+  * Bug #768: Remove vid_reset from displaying in logs
+  * Feature #767: Server: Check for cards that go missing and report in log
+
+ -- Ben Collins <bcollins@bluecherry.net>  Fri, 29 Apr 2011 15:10:11 -0400
+
 bluecherry (1:2.0.0-0beta6.3) lucid; urgency=low
 
   * Bug #756: ptz.php uses old user class
