@@ -21,9 +21,11 @@
 #define DEFAULT_PORT		"554"
 #define DEFAULT_USERINFO	"root:pass"
 
+extern int rtp_verbose;
+
 static void usage(void)
 {
-	fprintf(stderr, "Usage: rtsp_client rtsp://[USERINFO@]"
+	fprintf(stderr, "Usage: rtsp-client <-v> rtsp://[USERINFO@]"
 		"SERVER[:PORT]/PATH_TO_SDP\n\n");
 	exit(EXIT_FAILURE);
 }
@@ -155,8 +157,11 @@ int main(int argc, char* argv[])
 	avcodec_init();
         av_register_all();
 
-	while ((opt = getopt(argc, argv, "h")) != -1) {
+	while ((opt = getopt(argc, argv, "hv")) != -1) {
 		switch (opt) {
+		case 'v':
+			rtp_verbose = 1;
+			break;
 		case 'h':
 		default:
 			usage();
