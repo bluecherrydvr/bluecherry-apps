@@ -32,6 +32,8 @@ typedef enum {
 	return -1;			\
 })
 
+int rtp_verbose = 0;
+
 static const char * const trans_fmt =
 	"RTP/AVP/TCP;unicast;interleaved=0-1;client_port=%d-%d";
 
@@ -528,7 +530,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 3);
-	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 0);
+	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 1);
 
 	/* First, get the SDP and parse it */
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, uri);
@@ -644,6 +646,9 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 	char *p;
 
 	((char *)ptr)[size * nmemb] = '\0';
+
+	if (rtp_verbose)
+		printf("> %s\n", ptr);
 
 	media_type = "m=video ";
 	if (!sdp_check_type(ptr, media_type))
