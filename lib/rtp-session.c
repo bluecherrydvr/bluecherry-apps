@@ -648,7 +648,7 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 	((char *)ptr)[size * nmemb] = '\0';
 
 	if (rtp_verbose)
-		printf("> %s\n", ptr);
+		printf("> %s\n", (char *)ptr);
 
 	media_type = "m=video ";
 	if (!sdp_check_type(ptr, media_type))
