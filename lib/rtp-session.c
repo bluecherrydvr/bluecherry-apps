@@ -530,7 +530,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 3);
-	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, 1);
+	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, rtp_verbose);
 
 	/* First, get the SDP and parse it */
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, uri);
