@@ -5,7 +5,7 @@ include("../lib/lib.php");  #common functions
 
 #auth check
 $current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
+$current_user->checkAccessPermissions('devices');
 #/auth check
 
 class devices{

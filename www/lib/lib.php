@@ -119,14 +119,18 @@ class user{
 		return (md5($password.$this->info['salt'])===$this->info['password']) ? true : false;
 	}
 	private function updateActiveUsers(){ #updates user record and returns kick value
-		$tmp = data::query("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}");
-		if (!$tmp) { #if user record does not exist -- insert new
-			data::query("INSERT INTO ActiveUsers VALUES ({$_SESSION['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)", true);
-		} else { #or update if it exists, i.e. reload within 5 minutes
-			data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$_SESSION['id']}", true);
+		if (!empty($this->info['id'])){
+			$tmp = data::query("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}");
+			if (!$tmp) { #if user record does not exist -- insert new
+				data::query("INSERT INTO ActiveUsers VALUES ({$this->info['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)", true);
+			} else { #or update if it exists, i.e. reload within 5 minutes
+				data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}", true);
+			}
+			data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
+			return (!empty($tmp[0]['kick'])) ? true : false;
+		} else {
+			return false;
 		}
-		data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
-		return (!empty($tmp[0]['kick'])) ? true : false;
 	}
 	private function userStatus($type){
 		if (empty($_SESSION['id'])) {
@@ -138,6 +142,7 @@ class user{
 		}
 		if ($this->updateActiveUsers()) { $_SESSION['message'] = USER_KICKED; session_destroy(); return false; } #update records, check if user was kicked
 		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual']) return false; #require login when opening admin pages from client
+		if ($type == 'devices' && !$this->info['access_setup'] && $_GET['XML']) { return true; }
 		if ($this->info['access_setup']) { return true; } #admin user all priveleges granted
 			else {
 				return ($type != 'admin' || ($type == 'backup' && $this->info['access_backup'] )) ? true : false; #page does not require admin priv and if its backup user must have permissions
@@ -226,12 +231,14 @@ class camera {
 		$this->getInfo($device);
 	}
 	public function getInfo($device){
+		$devices = array();
+		$available = array();
 		$devices = data::getObject('Devices', 'device', $device);
 		$available = data::getObject('AvailableSources', 'device', $device);
 		unset($available[0]['id']);
 		if (!$devices){ #if does not exist in Devices
 			$this->info['status'] = 'notconfigured';
-			$this->info += $available[0];
+			$this->info = array_merge($this->info, $available[0]);
 			$tmp = explode('|', $this->info['device']); 
 			$this->info['new_name'] = PORT." ".($tmp[2] + 1).ON_CARD.$this->info['card_id'];
 		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
