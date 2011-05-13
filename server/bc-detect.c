@@ -70,6 +70,8 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 
 		if (ret <= 0)
 			strcpy(video_type, "NTSC");
+		else
+			video_type[ret] = '\0';
 	} else
 		strcpy(video_type, "NTSC");
 
