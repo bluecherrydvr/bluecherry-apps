@@ -42,7 +42,7 @@ class update{
 	}
 	private function editIp(){
 		$id = intval($_POST['id']);
-		$result = data::query("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}", true);
+		$result = data::query("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}' WHERE id={$id}", true);
 		data::responseXml($result);
 	}
 	private	function update_control(){

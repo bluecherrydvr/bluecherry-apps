@@ -242,7 +242,9 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm #aip input			{ margin:2px 0px 0px 5px; height:17px; }
 #settingsForm #aip #saveButton 		{ height:35px; width:150px; }
 #settingsForm #ipAddr				{ width:150px; }
+#settingsForm #ipAddrMjpeg                           { width:150px; }
 #settingsForm #port					{ width:55px; }
+#settingsForm #portMjpeg                                     { width:55px; }
 
 #logout { text-align:center; }
 #logout:hover { background-color:#f99; cursor:pointer; }

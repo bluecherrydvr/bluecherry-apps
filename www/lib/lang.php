@@ -225,6 +225,8 @@ define('AIP_CHOOSE_MODEL', 'Please choose model');
 define('AIP_CHOOSE_FPSRES', 'Please choose fps/resolution');
 define('AIP_CH_MAN_FIRST', 'Choose manufacturer first');
 define('AIP_CH_MOD_FIRST', 'Choose model first');
+define('AIP_IP_ADDR_MJPEG', 'MJPEG IP Address');
+define('AIP_PORT_MJPEG', 'MJPEG Port');
 define('AIP_IP_ADDR', 'Camera IP or Host');
 define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
 define('AIP_PORT', 'Port');

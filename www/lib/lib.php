@@ -345,13 +345,26 @@ class ipCamera{
 		$this->info['ipAddr'] = $tmp[0];
 		$this->info['port'] = $tmp[1];
 		$this->info['rtsp'] = $tmp[2];
+
+		if (!empty($this->info['mjpeg_path'])) {
+			$tmp = explode('|', $info[0]['mjpeg_path']);
+			/* Older database has single path and no server/port */
+			if (count($tmp) == 1) {
+				$this->info['ipAddrMjpeg'] = $this->info['ipAddr'];
+				$this->info['portMjpeg'] = 80;
+			} else {
+				$this->info['ipAddrMjpeg'] = $tmp[0];
+				$this->info['portMjpeg'] = $tmp[1];
+				$this->info['mjpeg_path'] = $tmp[2];
+			}
+		}
 	}
 	public static function create(){
 		if (!$_POST['ipAddr']){ data::responseXml(false, AIP_NEEDIP); return false;};
 		if (!$_POST['port']){ data::responseXml(false, AIP_NEEDPORT); return false;};
 		if (!$_POST['rtsp']){ data::responseXml(false, AIP_RTSPPATH); return false;};
 		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$status = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['mjpeg']}')", true);
+		$status = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}')", true);
 		$message = ($status) ? AIP_CAMADDED : false;
 		data::responseXml($status, $message);
 	}
