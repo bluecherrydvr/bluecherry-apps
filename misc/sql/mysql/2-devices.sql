@@ -13,7 +13,7 @@ CREATE TABLE Devices (
 	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,	-- Unique ID for this device
 
 	-- These are required
-	device_name varchar(100),		-- User given name
+	device_name varchar(100),		-- User-given name
 	protocol varchar(50),			-- IP or V4L2
 
 	-- When protocol='V4L2' then same as AvailableSources.device
@@ -28,6 +28,8 @@ CREATE TABLE Devices (
 	-- IP camera specific values, varbinary because it's case sensitive
 	rtsp_username varbinary(256),
 	rtsp_password varbinary(256),
+	-- In the format of IP|PORT|PATH just like device. If IP is empty,
+	-- then use the same IP as RTSP. If port is empty, use 80
 	mjpeg_path varbinary(256),
 
 	-- This can be a serial tty or URL. It's not dependent on the camera

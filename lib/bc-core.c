@@ -527,6 +527,47 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 	return 0;
 }
 
+/* We always use the username:password from the RTSP connection */
+static int rtp_mjpeg_parse(struct bc_handle *bc, const char *mjpeg_dev)
+{
+	char *server, *port, *t;
+	char *device = strdupa(mjpeg_dev);
+
+	bc->mjpeg_url[0] = '\0';
+
+	if (!device)
+		return -1;
+
+	server = t = device;
+	while (*t != '|' && *t != '\0')
+		t++;
+
+	/* No pipe means just the path, so use port 80 and IP of RTSP */
+	if (*t == '\0') {
+		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+			 "http://%s@%s%s", bc->rtp_sess.userinfo,
+			 bc->rtp_sess.server, mjpeg_dev);
+		return 0;
+	}
+
+	*(t++) = '\0';
+
+	port = t;
+	while (*t != '|' && *t != '\0')
+		t++;
+	if (*t == '\0')
+		return -1;
+
+	*(t++) = '\0';
+
+	snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+		 "http://%s@%s:%d%s", bc->rtp_sess.userinfo,
+		 strlen(server) ? server : bc->rtp_sess.server,
+		 strlen(port) ? atoi(port) : 80, strlen(t) ? t : "/");
+
+	return 0;
+}
+
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *val;
@@ -538,11 +579,9 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	}
 
 	val = bc_db_get_val(dbres, "mjpeg_path");
-	if (val) {
-		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
-			 "http://%s@%s%s", bc->rtp_sess.userinfo,
-			 bc->rtp_sess.server, val);
-		bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
+	if (val && strlen(val)) {
+		if (!rtp_mjpeg_parse(bc, val))
+			bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
 	}
 
 	return 0;
