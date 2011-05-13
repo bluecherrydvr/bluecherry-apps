@@ -96,6 +96,7 @@ static void *bc_device_thread(void *data)
 
 	for (;;) {
 		const char *err_msg;
+		int vid_ok = 1;
 
 		if (bc_rec->thread_should_die)
 			break;
@@ -121,7 +122,11 @@ static void *bc_device_thread(void *data)
 
 		ret = bc_buf_get(bc);
 		if (ret == EAGAIN) {
-			continue;
+			/* If the video isn't opened yet, continue until we get
+			 * first frame. */
+			if (bc_rec->oc == NULL)
+				continue;
+			vid_ok = 0;
 		} else if (ret == ERESTART) {
 			bc_close_avcodec(bc_rec);
 			continue;
@@ -144,7 +149,7 @@ static void *bc_device_thread(void *data)
 		while (!bc_aud_out(bc_rec));
 			/* Do nothing */;
 
-		if (bc_vid_out(bc_rec)) {
+		if (vid_ok && bc_vid_out(bc_rec)) {
 			bc_dev_err(bc_rec, "Error writing frame to outfile: %m");
 			/* XXX Do something */
 		}
