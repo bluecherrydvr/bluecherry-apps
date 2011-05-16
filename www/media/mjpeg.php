@@ -225,7 +225,6 @@ function print_image() {
 		}
 		$myl = bc_buf_size($bch);
 		$myj = bc_buf_data($bch);
-		sleep(1);
 	}
 
 	if ($multi) {
