@@ -15,14 +15,12 @@ struct bc_db_ops {
 	BC_DB_RES (*get_table)(char *query);
 	void (*free_table)(BC_DB_RES dbres);
 	int (*fetch_row)(BC_DB_RES dbres);
-	const char *(*get_val)(BC_DB_RES dbres,
-			       const char *field);
-	const char *(*get_field)(BC_DB_RES dbres,
-				 int nfield);
+	const char *(*get_val)(BC_DB_RES dbres, const char *field);
+	const char *(*get_field)(BC_DB_RES dbres, int nfield);
 	int (*num_fields)(BC_DB_RES dbres);
 	int (*query)(char *query);
 	unsigned long (*last_insert_rowid)(void);
-	void (*escape_string)(char *to, const char *from);
+	void (*escape_string)(char *to, const char *from, int len);
 	int (*start_trans)(void);
 	void (*commit_trans)(void);
 	void (*rollback_trans)(void);

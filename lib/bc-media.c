@@ -73,6 +73,9 @@ struct bc_event_cam {
 	unsigned long inserted;
 	struct bc_media_entry *media;
 	struct bc_list_struct list;
+	/* For snapshot saving */
+	void *file_data;
+	int file_size;
 };
 
 struct bc_event_sys {
@@ -176,6 +179,28 @@ static int do_media(struct bc_media_entry *bcm)
 	return ret;
 }
 
+static int __bc_media_set_snapshot(struct bc_event_cam *bce, void *file_data,
+                                   int file_size)
+{
+	char *file_str;
+	int ret;
+
+	if (!bce->inserted)
+		return -EINVAL;
+
+	file_str = bc_db_escape_string(file_data, file_size);
+	if (file_str == NULL)
+		return -ENOMEM;
+
+	ret = bc_db_query("INSERT INTO EventsCamSnapshot (event_id, "
+			  "file_size, file_data) VALUES (%lu, %d, '%s')",
+			  bce->inserted, file_size, file_str);
+
+	free(file_str);
+
+	return ret;
+}
+
 static int __do_cam(struct bc_event_cam *bce)
 {
 	int res;
@@ -208,9 +233,20 @@ static int __do_cam(struct bc_event_cam *bce)
 	}
 
 	/* If we have a media reference, update with that info */
-	if (bce->inserted && bce->media)
+	if (bce->inserted && bce->media) {
 		__bc_db_query("UPDATE EventsCam SET media_id=%lu"
-			    " WHERE id=%lu", bce->media->table_id, bce->inserted);
+			      " WHERE id=%lu", bce->media->table_id,
+			      bce->inserted);
+	}
+
+	if (bce->inserted && bce->file_data) {
+		if (!__bc_media_set_snapshot(bce, bce->file_data,
+					     bce->file_size)) {
+			free(bce->file_data);
+			bce->file_data = NULL;
+			bce->file_size = 0;
+		}
+	}
 
 	return res;
 }
@@ -347,6 +383,24 @@ void bc_media_destroy(bc_media_entry_t *__bcm)
 	*__bcm = NULL;
 
 	bc_db_query("DELETE FROM Media WHERE id=%lu", bcm->table_id);
+}
+
+void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
+			   int file_size)
+{
+	void *copy;
+
+	/* Set it now, else retry later */
+	if (!__bc_media_set_snapshot(bce, file_data, file_size))
+		return;
+
+	/* Save a copy */
+	copy = malloc(file_size);
+	if (copy == NULL)
+		return;
+
+	bce->file_data = copy;
+	bce->file_size = file_size;
 }
 
 bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,

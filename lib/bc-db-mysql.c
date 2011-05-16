@@ -222,14 +222,14 @@ static unsigned long bc_db_mysql_last_insert_rowid(void)
 	return mysql_insert_id(my_con);
 }
 
-static void bc_db_mysql_escape_string(char *to, const char *from)
+static void bc_db_mysql_escape_string(char *to, const char *from, int len)
 {
 	MYSQL *my_con = get_handle();
 
 	if (my_con == NULL)
-		mysql_escape_string(to, from, strlen(from));
+		mysql_escape_string(to, from, len);
 	else
-		mysql_real_escape_string(my_con, to, from, strlen(from));
+		mysql_real_escape_string(my_con, to, from, len);
 }
 
 static int bc_db_mysql_start_trans(void)
