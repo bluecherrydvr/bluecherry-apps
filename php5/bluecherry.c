@@ -159,17 +159,18 @@ PHP_FUNCTION(bc_db_get_table)
 		for (i = 0; i < ncols; i++) {
 			const char *field = bc_db_get_field(dbres, i);
 			const char *str;
+			int len;
 
 			/* This would be an error actually */
 			if (field == NULL)
 				continue;
 
-			str = bc_db_get_val(dbres, field);
+			str = bc_db_get_val(dbres, field, &len);
 			if (str == NULL)
 				add_assoc_null(row_arr, field);
 			else
-				add_assoc_string(row_arr, field,
-						 (char *)str, 1);
+				add_assoc_stringl(row_arr, field,
+						 (char *)str, len, 1);
 		}
 
 		add_next_index_zval(return_value, row_arr);

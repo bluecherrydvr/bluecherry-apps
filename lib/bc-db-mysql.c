@@ -174,13 +174,17 @@ static int bc_db_mysql_fetch_row(BC_DB_RES __dbres)
 }
 
 static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
-				       const char *colname)
+				       const char *colname,
+				       int *length)
 {
 	struct bc_db_mysql_res *dbres = __dbres;
+	unsigned long *lengths;
 	int i;
 
 	if (dbres->row == NULL)
 		return NULL;
+
+	lengths = mysql_fetch_lengths(dbres->res);
 
 	for (i = 0; i < dbres->ncols; i++) {
 		MYSQL_FIELD *mf = mysql_fetch_field_direct(dbres->res, i);
@@ -189,6 +193,9 @@ static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 		if (strcmp(colname, mf->name) == 0)
 			break;
 	}
+
+	if (i != dbres->ncols && length != NULL)
+		*length = lengths[i];
 
 	return (i == dbres->ncols) ? NULL : dbres->row[i];
 }

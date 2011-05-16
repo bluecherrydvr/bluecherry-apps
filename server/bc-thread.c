@@ -185,11 +185,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = NULL;
 	struct bc_record *bc_rec;
-	const char *dev = bc_db_get_val(dbres, "device");
-	const char *name = bc_db_get_val(dbres, "device_name");
-	const char *driver = bc_db_get_val(dbres, "driver");
-	const char *signal_type = bc_db_get_val(dbres, "signal_type");
-	const char *video_type = bc_db_get_val(dbres, "video_type");
+	const char *dev = bc_db_get_val(dbres, "device", NULL);
+	const char *name = bc_db_get_val(dbres, "device_name", NULL);
+	const char *driver = bc_db_get_val(dbres, "driver", NULL);
+	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+	const char *video_type = bc_db_get_val(dbres, "video_type", NULL);
 
 	if (bc_db_get_val_bool(dbres, "disabled"))
 		return NULL;
@@ -331,7 +331,7 @@ void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	const char *sched;
-	const char *name = bc_db_get_val(dbres, "device_name");
+	const char *name = bc_db_get_val(dbres, "device_name", NULL);
 
 	if (bc_db_get_val_int(dbres, "disabled") > 0) {
 		bc_rec->thread_should_die = "Disabled in config";
@@ -349,8 +349,8 @@ void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 	try_formats(bc_rec);
 
 	/* Set the motion threshold blocks */
-	check_motion_map(bc_rec, bc_db_get_val(dbres, "signal_type"),
-			 bc_db_get_val(dbres, "motion_map"));
+	check_motion_map(bc_rec, bc_db_get_val(dbres, "signal_type", NULL),
+			 bc_db_get_val(dbres, "motion_map", NULL));
 
 	/* Update standard controls */
 	bc_set_control(bc, V4L2_CID_HUE,
@@ -363,7 +363,7 @@ void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres)
 			bc_db_get_val_int(dbres, "brightness"));
 
 	if (bc_db_get_val_int(dbres, "schedule_override_global") > 0)
-		sched = bc_db_get_val(dbres, "schedule");
+		sched = bc_db_get_val(dbres, "schedule", NULL);
 	else
 		sched = global_sched;
 

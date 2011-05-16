@@ -190,28 +190,28 @@ void bc_db_free_table(BC_DB_RES dbres)
 		db_ops->free_table(dbres);
 }
 
-const char *bc_db_get_val(BC_DB_RES dbres, const char *colname)
+const char *bc_db_get_val(BC_DB_RES dbres, const char *colname, int *length)
 {
-	return db_ops->get_val(dbres, colname);
+	return db_ops->get_val(dbres, colname, length);
 }
 
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname)
 {
-	const char *val = bc_db_get_val(dbres, colname);
+	const char *val = bc_db_get_val(dbres, colname, NULL);
 
 	return (val && strlen(val)) ? atoi(val) : -1;
 }
 
 float bc_db_get_val_float(BC_DB_RES dbres, const char *colname)
 {
-	const char *val = bc_db_get_val(dbres, colname);
+	const char *val = bc_db_get_val(dbres, colname, NULL);
 
 	return (val && strlen(val)) ? (float)atof(val) : -1.00;
 }
 
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
 {
-	const char *val = bc_db_get_val(dbres, colname);
+	const char *val = bc_db_get_val(dbres, colname, NULL);
 
 	return (val && strlen(val)) ? (atoi(val) ? 1 : 0) : 0;
 }

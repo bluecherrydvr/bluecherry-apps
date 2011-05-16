@@ -72,7 +72,7 @@ static void bc_check_globals(void)
 				"parameter='G_DEV_SCED'");
 
 	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
-		const char *sched = bc_db_get_val(dbres, "value");
+		const char *sched = bc_db_get_val(dbres, "value", NULL);
 		if (sched && strlen(sched) == sizeof(global_sched))
 			memcpy(global_sched, sched, sizeof(global_sched));
 	} else {
@@ -92,7 +92,7 @@ static void bc_check_globals(void)
 	i = 0;
 	if (dbres != NULL) {
 		while (!bc_db_fetch_row(dbres)) {
-			const char *path = bc_db_get_val(dbres, "path");
+			const char *path = bc_db_get_val(dbres, "path", NULL);
 			float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
 			float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
 
@@ -247,7 +247,7 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 	}
 
 	while (!bc_db_fetch_row(dbres) && used > stor->min_thresh) {
-		const char *filepath = bc_db_get_val(dbres, "filepath");
+		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
 		if (filepath == NULL || !strlen(filepath))
@@ -310,7 +310,7 @@ static void bc_check_db(void)
 		return;
 
 	while (!bc_db_fetch_row(dbres)) {
-		const char *proto = bc_db_get_val(dbres, "protocol");
+		const char *proto = bc_db_get_val(dbres, "protocol", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
 		if ((id < 0) || !proto)
