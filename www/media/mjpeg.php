@@ -225,6 +225,7 @@ function print_image() {
 		}
 		$myl = bc_buf_size($bch);
 		$myj = bc_buf_data($bch);
+		sleep(1);
 	}
 
 	if ($multi) {
@@ -249,7 +250,7 @@ if ($multi) {
 	ob_implicit_flush(1);
 }
 
-# For URLs, we just pass through to curl
+# For URLs that support MJPEG, we just pass through to curl
 if ($url) {
 	bc_handle_free($bch);
 	bc_db_close();

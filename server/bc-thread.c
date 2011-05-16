@@ -141,6 +141,14 @@ static void *bc_device_thread(void *data)
 		} else {
 			ret = bc_buf_get(bc);
 			if (!ret) {
+				/* Do this after we get the first frame,
+				 * since we need that in order to decode
+				 * the first frame for avcodec params like
+				 * width, height and frame rate. */
+				if (bc_open_avcodec(bc_rec)) {
+					bc_dev_err(bc_rec, "Error opening avcodec");
+					continue;
+				}
 				if (bc_vid_out(bc_rec)) {
 					bc_dev_err(bc_rec, "Error writing frame "
 						   "to outfile: %m");
