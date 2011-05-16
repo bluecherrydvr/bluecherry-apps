@@ -12,8 +12,10 @@ $current_user->checkAccessPermissions('backup');
 
 bc_db_open() or die("Could not open database\n");
 
-$query = "SELECT EventsCam.*, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
-         "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) WHERE ";
+$query = "SELECT EventsCam.*, EventsCamSnapshot.id AS snapshot_id, EventsCamSnapshot.file_size AS snapshot_size, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
+         "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
+	 "LEFT JOIN EventsCamSnapshot ON (EventsCam.id=EventsCamSnapshot.event_id) ".
+	 "WHERE ";
 if (isset($_GET['startDate']))
 	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
 if (isset($_GET['endDate']))
@@ -89,6 +91,11 @@ foreach ($events as $item) {
 		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
 		print "</content>\n";
 	}
+	if (!empty($item['snapshot_id'])) {
+		print "    <content snapshot_id=\"".$item['snapshot_id']."\">";
+                print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/snapshot.php?id=".$item['snapshot_id'];
+                print "</content>\n";
+        }
 
 	print "  </entry>\n";
 }
