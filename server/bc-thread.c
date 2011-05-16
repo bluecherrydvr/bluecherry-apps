@@ -95,7 +95,7 @@ static void *bc_device_thread(void *data)
 	bc_dev_info(bc_rec, "Camera configured");
 
 	for (;;) {
-		double audio_pts, video_pts;
+		double audio_pts = 0, video_pts = 0;
 		const char *err_msg;
 
 		if (bc_rec->thread_should_die)
@@ -120,12 +120,14 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		audio_pts = (double)bc_rec->audio_st->pts.val *
-				bc_rec->audio_st->time_base.num /
-				bc_rec->audio_st->time_base.den;
-		video_pts = (double)bc_rec->video_st->pts.val *
-				bc_rec->video_st->time_base.num /
-				bc_rec->video_st->time_base.den;
+		if (bc_rec->oc) {
+			audio_pts = (double)bc_rec->audio_st->pts.val *
+					bc_rec->audio_st->time_base.num /
+					bc_rec->audio_st->time_base.den;
+			video_pts = (double)bc_rec->video_st->pts.val *
+					bc_rec->video_st->time_base.num /
+					bc_rec->video_st->time_base.den;
+		}
 
 		if (has_audio(bc_rec) && audio_pts < video_pts) {
 			if (bc_aud_out(bc_rec))
