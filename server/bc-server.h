@@ -30,10 +30,9 @@ struct bc_record {
 	time_t			osd_time;
 	unsigned int		start_failed;
 
-	/* mp2 encoding accounting */
-	short			pcm_buf[4096];
-	int			pcm_buf_size;
 	struct g723_state	g723_state;
+	unsigned char		g723_data[48];
+	signed short		pcm_data[384];
 
 	char			outfile[PATH_MAX];
 	int			id;
@@ -103,6 +102,8 @@ int bc_motion_val(bc_motion_type_t type, const char v);
 void bc_check_avail(void);
 
 void bc_mkdir_recursive(char *path);
+
+int has_audio(struct bc_record *bc_rec);
 
 #ifdef EBUG
 #define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)

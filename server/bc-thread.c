@@ -95,8 +95,8 @@ static void *bc_device_thread(void *data)
 	bc_dev_info(bc_rec, "Camera configured");
 
 	for (;;) {
+		double audio_pts, video_pts;
 		const char *err_msg;
-		int vid_ok = 1;
 
 		if (bc_rec->thread_should_die)
 			break;
@@ -120,24 +120,6 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		ret = bc_buf_get(bc);
-		if (ret == EAGAIN) {
-			/* If the video isn't opened yet, continue until we get
-			 * first frame. */
-			if (bc_rec->oc == NULL)
-				continue;
-			vid_ok = 0;
-		} else if (ret == ERESTART) {
-			bc_close_avcodec(bc_rec);
-			continue;
-		} else if (ret) {
-			/* Try restarting the connection. Do not report failure
-			 * here. It will get reported if we fail to reconnect. */
-			bc_close_avcodec(bc_rec);
-			bc_handle_stop(bc);
-			continue;
-		}
-
 		/* Do this after we get the first frame, since we need that
 		 * in order to decode the first frame for avcodec params
 		 * like width, height and frame rate. */
@@ -146,12 +128,33 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		while (!bc_aud_out(bc_rec));
-			/* Do nothing */;
+		audio_pts = (double)bc_rec->audio_st->pts.val *
+				bc_rec->audio_st->time_base.num /
+				bc_rec->audio_st->time_base.den;
+		video_pts = (double)bc_rec->video_st->pts.val *
+				bc_rec->video_st->time_base.num /
+				bc_rec->video_st->time_base.den;
 
-		if (vid_ok && bc_vid_out(bc_rec)) {
-			bc_dev_err(bc_rec, "Error writing frame to outfile: %m");
-			/* XXX Do something */
+		if (has_audio(bc_rec) && audio_pts < video_pts) {
+			if (bc_aud_out(bc_rec))
+				/* Do nothing */;
+		} else {
+			ret = bc_buf_get(bc);
+			if (!ret) {
+				if (bc_vid_out(bc_rec)) {
+					bc_dev_err(bc_rec, "Error writing frame "
+						   "to outfile: %m");
+					/* XXX Do something */
+				}
+			} else if (ret == ERESTART) {
+				bc_close_avcodec(bc_rec);
+			} else if (ret != EAGAIN) {
+				/* Try restarting the connection. Do not
+				 * report failure here. It will get reported
+				 * if we fail to reconnect. */
+				bc_close_avcodec(bc_rec);
+				bc_handle_stop(bc);
+			}
 		}
 	}
 

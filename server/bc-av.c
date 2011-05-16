@@ -15,7 +15,7 @@
  * (loudly) if it sees this occuring. */
 static pthread_mutex_t av_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
-static int has_audio(struct bc_record *bc_rec)
+int has_audio(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
@@ -75,8 +75,8 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return 0;
 
 	err = snd_pcm_open(&pcm, bc_rec->aud_dev,
-			   SND_PCM_STREAM_CAPTURE,
-			   SND_PCM_NONBLOCK);
+			   SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC);
+//			   SND_PCM_NONBLOCK);
 	snd_config_update_free_global(); /* Make valgrind happy */
 	if (err < 0) {
 		bc_dev_err(bc_rec, "Opening audio device failed: %s",
@@ -143,19 +143,9 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	return 0;
 }
 
-/* Convert 8khz PCM to 16khz. Horrid in that we don't do wave smoothing,
- * but it's fast and serves our purpose. MP2 audio doesn't support 8khz
- * audio, which is why we need this. */
-static int pcm_dupe(short *in, int in_size, short *out)
-{
-	int n;
-
-	for (n = 0; n < in_size; n++)
-		out[n * 2] = out[(n * 2) + 1] = in[n];
-
-	return in_size * 2;
-}
-
+/* Returns zero meaning "keep processing", or postive value meaning
+ * "wrote one packet to file, can read more" or negative value meaning
+ * "error occured or nothing to process". */
 int bc_aud_out(struct bc_record *bc_rec)
 {
 	AVCodecContext *c;
@@ -163,60 +153,38 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 	/* pcm can be null due to not being able to open the alsa dev. */
 	if (!has_audio(bc_rec) || !bc_rec->audio_st)
-		return -1;
+		return 0;
 
 	c = bc_rec->audio_st->codec;
 	av_init_packet(&pkt);
 
 	if (bc_rec->pcm) {
-		unsigned char g723_data[96];
-		short pcm_in[512];
-		unsigned char mp2_out[1024];
 		int size;
 
-		memset(g723_data, 0, sizeof(g723_data));
-
-		size = snd_pcm_readi(bc_rec->pcm, g723_data, sizeof(g723_data));
+		size = snd_pcm_readi(bc_rec->pcm, bc_rec->g723_data,
+				     sizeof(bc_rec->g723_data));
 
 		if (size < 0) {
 			if (size == -EAGAIN)
-				return 1;
+				return 0;
 			bc_dev_err(bc_rec, "Error reading from sound device: %s",
 				   snd_strerror(size));
 			bc_alsa_close(bc_rec);
+			avcodec_close(bc_rec->audio_st->codec);
+			bc_rec->audio_st = NULL;
 			return -1;
 		}
 
-		size = g723_decode(&bc_rec->g723_state, g723_data, size, pcm_in);
+		pkt.size = g723_decode(&bc_rec->g723_state,
+				       bc_rec->g723_data, size,
+				       bc_rec->pcm_data);
 
-		bc_rec->pcm_buf_size += pcm_dupe(pcm_in, size,
-						 bc_rec->pcm_buf +
-						 bc_rec->pcm_buf_size);
-
-		/* We need enough data to encode first... */
-		if (bc_rec->pcm_buf_size < c->frame_size)
-			return 0;
-
-		pkt.size = avcodec_encode_audio(c, mp2_out, sizeof(mp2_out),
-						bc_rec->pcm_buf);
-
-		/* Most likely, we don't align perfectly */
-		if (bc_rec->pcm_buf_size > c->frame_size)
-			memcpy(bc_rec->pcm_buf, bc_rec->pcm_buf + c->frame_size,
-			       (bc_rec->pcm_buf_size - c->frame_size) * 2);
-
-		bc_rec->pcm_buf_size -= c->frame_size;
-
-		/* Not enough to encode a full buffer yet */
-		if (pkt.size == 0)
-			return 0;
-
-		pkt.data = mp2_out;
+		pkt.data = (void *)bc_rec->pcm_data;
 	} else {
 		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
 
 		if (!rs->aud_valid)
-			return 1;
+			return 0;
 
 		pkt.size = rs->aud_len;
 		pkt.data = rs->aud_buf;
@@ -233,7 +201,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 int bc_vid_out(struct bc_record *bc_rec)
@@ -521,7 +489,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		enum CodecID codec_id;
 
 		if (bc_rec->pcm)
-			codec_id = CODEC_ID_MP2;
+			codec_id = CODEC_ID_PCM_S16LE;
 		else
 			codec_id = bc->rtp_sess.aud_codec;
 
@@ -539,11 +507,10 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->codec_type = CODEC_TYPE_AUDIO;
 
 		if (bc_rec->pcm) {
-			st->codec->bit_rate = 32000;
-			st->codec->sample_rate = 16000;
+			st->codec->sample_rate = 8000;
 			st->codec->sample_fmt = SAMPLE_FMT_S16;
 			st->codec->channels = 1;
-			st->codec->time_base = (AVRational){1, 16000};
+			st->codec->time_base = (AVRational){1, 8000};
 		} else {
 			struct rtp_session *rs = &bc->rtp_sess;
 
