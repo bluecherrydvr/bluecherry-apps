@@ -162,6 +162,8 @@ define('DEVICE_ENCODING_UPDATED', '<![CDATA[Video standard setting changed. <hr 
 define('DB_FAIL_TRY_LATER', 'Could not apply changes. Please make sure you are able to connect to the DVR server and that the server is running.');
 
 define('MMAP_HEADER', 'Motion detection settings');
+define('PRE_REC_BUFFER', 'Pre-event buffer');
+define('POST_REC_BUFFER', 'Post-event buffer');
 define('SCHED_HEADER','Device recording schedule');
 define('ALL_DEVICES', 'All devices');
 define('EDITING_MMAP', 'Motion detection settings for camera:');
@@ -239,7 +241,9 @@ define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
 define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
 define('AIP_RTSPPATH', 'Please enter path to RTSP');
+define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
+
 
 define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'Delete');

@@ -7,11 +7,12 @@ include("../lib/lib.php");  #common functions
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('admin');
 #/auth check
-if ($_POST){
+if (!empty($_POST)){
 	ipCamera::create();
 	exit;
 } else {
-	$ipCamData = new ipCameras;
+	$m = (!empty($_GET['m'])) ? $_GET['m'] : '';
+	$ipCamData = new ipCameras($m);
 }
 
 #template

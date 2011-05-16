@@ -130,20 +130,44 @@ DVRPageScript = new Class({
 				});
 			break;
 			case 'addip':
+				expandAdvancedSettings = function(a){
+					var s = (($('advancedSettings').getStyle('display') == 'none' && a!='close') || (a=='open')) ? 'block' : 'none';
+					$('advancedSettings').setStyle('display', s);
+				}
+				$('advancedSettingsSwitch').addEvent('click', function(){
+					expandAdvancedSettings();
+				});
 				getInfo = function(t, m, x, containerId){
-					var request = new Request.HTML({
+					var request = new Request({
 						url: 'ajax/addip.php',
 						data: 'm='+t+'&'+m+'='+x,
 						method: 'get',
 						onRequest: function(){
 						},
-						onSuccess: function(tree, elements, html){
-							$(containerId).set('html', html);
+						onSuccess: function(html, xml){
+							if (containerId) { 
+								$(containerId).set('html', html)}
+							else {
+								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
+								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
+								$('mjpeg').set('value', mjpegPath);
+								$('rtsppath').set('value', rtspPath);
+								if (mjpegPath=='' || rtspPath == ''){ //in case paths are not in driver DB or empty
+									expandAdvancedSettings('open');
+								} else {
+									expandAdvancedSettings('close');
+								}
+							}
 							switch (containerId){
 								case 'modelSelector':
 									$('models').addEvent('change', function(){
 										if (this.value!='Please choose model'){
 											var w = false;
+											if (this.value == 'Generic'){
+												expandAdvancedSettings('open');
+											} else {
+												getInfo('ops', 'model', this.value, false);
+											};
 										} else {
 											var w = true;
 										}
@@ -414,6 +438,12 @@ DVRPageScript = new Class({
 				var grid = new localMotionGrid('scheduleContainer', 'valueString', 'deviceSchedule');
 			break;//end deviceschedule
 			case 'motionmap':
+				$('buffer_prerecording').addEvent('change', function(){
+					ajaxUpdateField('update', 'Devices', {'buffer_prerecording' : this.value}, $('cameraID').get('value'), 'button');
+				});
+				$('buffer_postrecording').addEvent('change', function(){
+					ajaxUpdateField('update', 'Devices', {'buffer_postrecording' : this.value}, $('cameraID').get('value'), 'button');
+				});
 				var imgOn = true;
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
