@@ -222,7 +222,7 @@ long unsigned bc_db_last_insert_rowid(void)
 	return db_ops->last_insert_rowid();
 }
 
-char *bc_db_escape_string(const char *from)
+char *bc_db_escape_string(const char *from, int len)
 {
 	char *to;
 
@@ -232,12 +232,12 @@ char *bc_db_escape_string(const char *from)
 	if (from == NULL)
 		return NULL;
 
-	to = malloc((strlen(from) * 2) + 1);
+	to = malloc((len * 2) + 1);
 
 	if (to == NULL)
 		return NULL;
 
-	db_ops->escape_string(to, from);
+	db_ops->escape_string(to, from, len);
 
 	return to;
 }

@@ -336,13 +336,67 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 				       bc_rec->outfile, bc_rec->event);
 }
 
-static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
+static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *picture)
+{
+	AVCodecContext *joc = NULL;
+	AVCodec *codec;
+	unsigned char *buf = NULL;
+	int buf_size;
+	int pic_size;
+
+	buf_size = avpicture_get_size(PIX_FMT_YUVJ420P, oc->width, oc->height);
+
+	buf = malloc(buf_size);
+	if (buf == NULL)
+		return;
+
+	joc = avcodec_alloc_context();
+	if (!joc)
+		goto save_fail;
+
+	joc->bit_rate = oc->bit_rate;
+	joc->width = oc->width;
+	joc->height = oc->height;
+	joc->pix_fmt = PIX_FMT_YUVJ420P; // XXX 422 or 444?
+	joc->codec_id = CODEC_ID_MJPEG;
+	joc->codec_type = CODEC_TYPE_VIDEO;
+	joc->time_base.num = oc->time_base.num;
+	joc->time_base.den = oc->time_base.den;
+
+	codec = avcodec_find_encoder(joc->codec_id);
+	if (!codec)
+		goto save_fail;
+
+	if (avcodec_open(joc, codec) < 0)
+		goto save_fail;
+
+	joc->mb_lmin = joc->lmin = joc->qmin * FF_QP2LAMBDA;
+	joc->mb_lmax = joc->lmax = joc->qmax * FF_QP2LAMBDA;
+	joc->flags = CODEC_FLAG_QSCALE;
+	joc->global_quality = joc->qmin * FF_QP2LAMBDA;
+
+	picture->pts = 1;
+	picture->quality = joc->global_quality;
+	pic_size = avcodec_encode_video(joc, buf, buf_size, picture);
+
+	bc_media_set_snapshot(bc_rec->event, buf, pic_size);
+
+save_fail:
+	if (joc != NULL)
+		avcodec_close(joc);
+	if (buf != NULL)
+		free(buf);
+}
+
+static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 			      int *fnum, int *fden)
 {
+	struct bc_handle *bc = bc_rec->bc;
 	AVCodec *codec;
 	AVCodecContext *c;
 	int got_picture, len;
 	AVFrame *picture;
+	enum CodecID codec_id = CODEC_ID_NONE;
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
 	int ret = -1;
@@ -352,19 +406,22 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 		*fnum = bc->vparm.parm.capture.timeperframe.numerator;
 		*width = bc->vfmt.fmt.pix.width;
 		*height = bc->vfmt.fmt.pix.height;
-		return 0;
+		codec_id = bc_rec->codec_id;
 	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		*fnum = 1;
 		*fden = bc->rtp_sess.framerate;
+		codec_id = bc->rtp_sess.vid_codec;
+		if (codec_id == CODEC_ID_NONE)
+			codec_id = CODEC_ID_MPEG4;
 	} else {
 		return -1;
 	}
 
-	if (buf == NULL || size <= 0)
+	if (buf == NULL || size <= 0 || codec_id == CODEC_ID_NONE)
 		return -1;
 
 	/* Decode the first picture to get frame size */
-	codec = avcodec_find_decoder(bc->rtp_sess.vid_codec);
+	codec = avcodec_find_decoder(codec_id);
 	if (!codec)
 		return -1;
 
@@ -381,6 +438,8 @@ static int bc_get_frame_info(struct bc_handle *bc, int *width, int *height,
 
 	*width = c->width;
 	*height = c->height;
+
+	bc_save_jpeg(bc_rec, c, picture);
 
 	ret = 0;
 
@@ -413,7 +472,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	if (bc_get_frame_info(bc, &width, &height, &fnum, &fden)) {
+	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
 		errno = ENOMEM;
 		return -1;
 	}

@@ -249,7 +249,7 @@ if ($multi) {
 	ob_implicit_flush(1);
 }
 
-# For URLs, we just pass through to curl
+# For URLs that support MJPEG, we just pass through to curl
 if ($url) {
 	bc_handle_free($bch);
 	bc_db_close();

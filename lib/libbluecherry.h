@@ -291,7 +291,7 @@ const char *bc_db_get_val(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
 float bc_db_get_val_float(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
-char *bc_db_escape_string(const char *from);
+char *bc_db_escape_string(const char *from, int len);
 
 /* Validate and process a license key to get values from it */
 int bc_key_process(struct bc_key_data *res, char *str);
@@ -326,6 +326,8 @@ int bc_media_end(bc_media_entry_t *bcm);
 time_t bc_media_length(bc_media_entry_t *bcm);
 /* Destroy a media object (that not got started) */
 void bc_media_destroy(bc_media_entry_t *bcm);
+void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
+			   int file_size);
 
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
