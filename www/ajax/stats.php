@@ -4,7 +4,8 @@ include("../lib/lib.php");  #common functions
 
 
 #auth check
-$current_user = new user('id', $_SESSION['id']);
+$user_id = (!empty($_SESSION['id'])) ? $_SESSION['id'] : false;
+$current_user = new user('id', $user_id);
 $current_user->checkAccessPermissions('admin');
 #/auth check
 

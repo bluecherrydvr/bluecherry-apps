@@ -49,6 +49,7 @@ CREATE TABLE Devices (
 	-- The rest of these may or may not be supported by the device
 	resolutionX smallint,
 	resolutionY smallint,
+	model varchar(30),
 	channel integer NOT NULL DEFAULT 0,	-- If device supports multiple channels
 	invert boolean NOT NULL DEFAULT 0,	-- True if cam is inverted
 	audio_volume smallint DEFAULT 50,	-- Audio gain (0 - 100)
@@ -59,8 +60,8 @@ CREATE TABLE Devices (
 	video_quality smallint DEFAULT 2,	-- 2 default (range 1-3, l/m/h))
 	video_interval smallint,		-- Interval of encoding (fps-ish)
 	signal_type varchar(6),			-- NTSC or PAL
-	buffer_prerecording smallint DEFAULT 5,	-- Seconds of pre/post recording for
-	buffer_postrecording smallint DEFAULT 5,--   motion stop/start
+	buffer_prerecording smallint DEFAULT 0,	-- Seconds of pre/post recording for
+	buffer_postrecording smallint DEFAULT 3,--   motion stop/start
 	motion_map varchar(400) NOT NULL DEFAULT '3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333',					-- motion map
 	schedule BLOB(168),			-- Recording schedule
 	schedule_override_global boolean DEFAULT FALSE,

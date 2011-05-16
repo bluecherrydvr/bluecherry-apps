@@ -225,39 +225,37 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #liveViewContainer #lvGridTable td { border:1px solid #eee; }
 
 /*videoadj*/
-#liveViewContainer 				{ position:relative; display:inline; }
-#videoAdjSliders				{ display: block; width:370px; }
-#videoAdjSliders .control		{ float:left; height:1em; padding:5px 0 5px 0; display:block; margin:5px 0 5px 0; display: block; }
-#videoAdjSliders .control input { width:30px; display:inline; margin:0px 5px 0 10px; text-align:center;}
-#videoAdjSliders label			{ float: left; text-align:right; display:block; width:130px; margin:5px 5px 5px 0; font-size:1em; }
-#videoAdjSliders .slider		{ float: left; width:200px; background: url("/img/icons/ln.png") 0 center repeat-x; height:1em; margin:10px; }
-#videoAdjSliders .slider .knob	{ height:1em; width:1em;  background: url("/img/icons/knob.png") no-repeat center center; }
-#videoAdjSliders #audio_volume.control { margin-bottom:30px; }
-#setToDefault { display: block; float:left; font-size:1.2em; background-color:#ddffdd; padding:5px; border:1px dotted #afa; margin-left:120px; margin-top:20px;}
-#setToDefault:hover { cursor:pointer; background-color:#bbffbb; }
+#liveViewContainer 						{ position:relative; display:inline; }
+#videoAdjSliders						{ display: block; width:370px; }
+#videoAdjSliders .control				{ float:left; height:1em; padding:5px 0 5px 0; display:block; margin:5px 0 5px 0; display: block; }
+#videoAdjSliders .control input 		{ width:30px; display:inline; margin:0px 5px 0 10px; text-align:center;}
+#videoAdjSliders label					{ float: left; text-align:right; display:block; width:130px; margin:5px 5px 5px 0; font-size:1em; }
+#videoAdjSliders .slider				{ float: left; width:200px; background: url("/img/icons/ln.png") 0 center repeat-x; height:1em; margin:10px; }
+#videoAdjSliders .slider .knob			{ height:1em; width:1em;  background: url("/img/icons/knob.png") no-repeat center center; }
+#videoAdjSliders #audio_volume.control	{ margin-bottom:30px; }
+#setToDefault 							{ display: block; float:left; font-size:1.2em; background-color:#ddffdd; padding:5px; border:1px dotted #afa; margin-left:120px; margin-top:20px;}
+#setToDefault:hover 					{ cursor:pointer; background-color:#bbffbb; }
 
 
-#addIPCamera						{ float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#settingsForm #addipLabel			{ width:200px; }
-#settingsForm #aip input			{ margin:2px 0px 0px 5px; height:17px; }
-#settingsForm #aip #saveButton 		{ height:35px; width:150px; }
-#settingsForm #ipAddr				{ width:150px; }
-#settingsForm #ipAddrMjpeg                           { width:150px; }
-#settingsForm #port					{ width:55px; }
-#settingsForm #portMjpeg                                     { width:55px; }
+#addIPCamera										{ float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#settingsForm #addipLabel							{ width:200px; }
+#settingsForm #aip input							{ margin:2px 0px 0px 5px; height:17px; }
+#settingsForm #aip #saveButton 						{ height:35px; width:150px; }
+#settingsForm #ipAddr, #settingsForm #ipAddrMjpeg 	{ width:150px; }
+#settingsForm #port	, #settingsForm #portMjpeg 		{ width:55px; }
 
-#logout { text-align:center; }
-#logout:hover { background-color:#f99; cursor:pointer; }
-#logout a { text-decoration:none; font-size:1.1em; color:#933; }
+#logout 		{ text-align:center; }
+#logout:hover	{ background-color:#f99; cursor:pointer; }
+#logout a 		{ text-decoration:none; font-size:1.1em; color:#933; }
 
 /*cameraperms*/
-#camList div {cursor:pointer; float:left; margin-bottom:10px; display:block; margin-left:10px; width:200px; height:30px; padding-left:30px; line-height:30px; background-position:3px; background-repeat:no-repeat; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
+#camList div		{cursor:pointer; float:left; margin-bottom:10px; display:block; margin-left:10px; width:200px; height:30px; padding-left:30px; line-height:30px; background-position:3px; background-repeat:no-repeat; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
 #camList .allowed	{ border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
 #camList .nallowed	{ border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
 
 /*storage*/
 #storageForm #separator { border-top:1px dotted gray; padding:10px; }
-#storageForm label { padding:3px; margin-right:15px; }
+#storageForm label		{ padding:3px; margin-right:15px; }
 
 
 /*devices-menu*/
@@ -277,4 +275,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #statisticsTable tr th {border-bottom:1px solid black}
 #statisticsTable tr td.primarySeparator { border-top:2px solid black;  }
 #statisticsTable tr td.secondarySeparator { border-top:1px solid black; }
-#statisticsTable tr td {border:1px solid gray; border-collapse:collapse; padding:10px;}
+#statisticsTable tr td {border:1px solid gray; border-collapse:collapse; padding:10px; }
+
+#settingsForm #advancedSettings { display:none; border:none; padding:0px; }
+#settingsForm #advancedSettingsSwitch { color:green; padding:3px; cursor:pointer; border:none; }

@@ -345,7 +345,6 @@ class ipCamera{
 		$this->info['ipAddr'] = $tmp[0];
 		$this->info['port'] = $tmp[1];
 		$this->info['rtsp'] = $tmp[2];
-
 		if (!empty($this->info['mjpeg_path'])) {
 			$tmp = explode('|', $info[0]['mjpeg_path']);
 			/* Older database has single path and no server/port */
@@ -360,13 +359,13 @@ class ipCamera{
 		}
 	}
 	public static function create(){
-		if (!$_POST['ipAddr']){ data::responseXml(false, AIP_NEEDIP); return false;};
-		if (!$_POST['port']){ data::responseXml(false, AIP_NEEDPORT); return false;};
-		if (!$_POST['rtsp']){ data::responseXml(false, AIP_RTSPPATH); return false;};
+		if (!$_POST['ipAddr'])	{ data::responseXml(false, AIP_NEEDIP); return false;};
+		if (!$_POST['port'])	{ data::responseXml(false, AIP_NEEDPORT); return false;};
+		if (!$_POST['rtsp'])	{ data::responseXml(false, AIP_RTSPPATH); return false;};
 		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$status = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}')", true);
-		$message = ($status) ? AIP_CAMADDED : false;
-		data::responseXml($status, $message);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}', '{$_POST['models']}')", true);
+		$message = ($result) ? AIP_CAMADDED : false;
+		data::responseXml($result, $message);
 	}
 	public static function remove($id){
 		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
@@ -415,8 +414,7 @@ class card {
 
 class ipCameras{
 	public $camera;
-	public function __construct(){
-		$m = (!empty($_GET['m'])) ? $_GET['m'] : '';
+	public function __construct($m){
 		switch($m){
 			case 'model': $this->getModels($_GET['manufacturer']); break;
 			case 'ops': $this->getOptions($_GET['model']); break;
@@ -430,7 +428,9 @@ class ipCameras{
 		$this->data['models'] = data::query("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
 	}
 	private function getOptions($model){
-		$this->data = data::query("SELECT * FROM ipCameras WHERE model='$model'");
+		$data = data::query("SELECT * FROM ipCameras WHERE model='$model'");
+		$driver = data::query("SELECT * FROM ipCameraDriver WHERE name='{$data[0]['driver']}'");
+		$this->data = (is_array($driver[0])) ? array_merge($data[0], $driver[0]) : $data[0];
 	}
 }
 
@@ -439,8 +439,11 @@ class softwareVersion{
 	public function __construct(){
 		$current = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 		$installed = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		system("dpkg --compare-versions ".escapeshellarg($installed).
-		       " lt ".escapeshellarg($current), $ret);
+		if ($current===$installed){
+			$ret = true;
+		} else {
+			system("dpkg --compare-versions ".escapeshellarg($installed)." lt ".escapeshellarg($current), $ret);
+		}
 		$this->version['up_to_date'] = $ret != 0;
 		$this->version['current'] = substr($current,
 						strpos($current, ":") + 1);

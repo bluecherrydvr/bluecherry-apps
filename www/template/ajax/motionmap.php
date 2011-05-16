@@ -1,10 +1,15 @@
 <?php defined('INDVR') or exit(); 
+	require('../template/template.lib.php');
 	  echo "<div id='header'>".MMAP_HEADER."</div>"; 
 	  echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".EDITING_MMAP." <b>".(empty($motion_map->data[0]['device_name']) ? $motion_map->data[0]['id'] : $motion_map->data[0]['device_name'])."</b></p>";
 	  
 ?>
 <INPUT type="Hidden" id="cameraID" value="<?php echo $motion_map->data[0]['id']; ?>" />
 <INPUT type="Hidden" id="valueString" value="<?php echo $motion_map->data[0]['motion_map']; ?>" />
+<hr />
+<?php echo PRE_REC_BUFFER.':'.arrayToSelect($GLOBALS['buffer']['pre'], $motion_map->data[0]['buffer_prerecording'], 'buffer_prerecording').' | '.POST_REC_BUFFER.':'.arrayToSelect($GLOBALS['buffer']['post'], $motion_map->data[0]['buffer_postrecording'], 'buffer_postrecording'); ?>
+<hr />
+<div class='bClear'></div>
 <div id="mmapContainer">
 <div id="cameraOutputContainer">
 	<img id="cameraOutput" width="352" src="/media/mjpeg.php?id=<?php echo $motion_map->data[0]['id']; ?>" />
