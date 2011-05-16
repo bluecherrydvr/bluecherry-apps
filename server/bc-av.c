@@ -76,7 +76,6 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 
 	err = snd_pcm_open(&pcm, bc_rec->aud_dev,
 			   SND_PCM_STREAM_CAPTURE, SND_PCM_ASYNC);
-//			   SND_PCM_NONBLOCK);
 	snd_config_update_free_global(); /* Make valgrind happy */
 	if (err < 0) {
 		bc_dev_err(bc_rec, "Opening audio device failed: %s",
