@@ -120,14 +120,6 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		/* Do this after we get the first frame, since we need that
-		 * in order to decode the first frame for avcodec params
-		 * like width, height and frame rate. */
-		if (bc_open_avcodec(bc_rec)) {
-			bc_dev_err(bc_rec, "Error opening avcodec");
-			continue;
-		}
-
 		audio_pts = (double)bc_rec->audio_st->pts.val *
 				bc_rec->audio_st->time_base.num /
 				bc_rec->audio_st->time_base.den;
