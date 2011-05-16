@@ -483,19 +483,19 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 
 	memset(rs, 0, sizeof(*rs));
 
-	val = bc_db_get_val(dbres, "rtsp_username");
+	val = bc_db_get_val(dbres, "rtsp_username", NULL);
 	if (!val)
 		return -1;
 	strcpy(rs->userinfo, val);
 
 	strcat(rs->userinfo, ":");
 
-	val = bc_db_get_val(dbres, "rtsp_password");
+	val = bc_db_get_val(dbres, "rtsp_password", NULL);
 	if (!val)
 		return -1;
 	strcat(rs->userinfo, val);
 
-	val = bc_db_get_val(dbres, "device");
+	val = bc_db_get_val(dbres, "device", NULL);
 	if (!val)
 		return -1;
 
@@ -578,7 +578,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 	}
 
-	val = bc_db_get_val(dbres, "mjpeg_path");
+	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	if (val && strlen(val)) {
 		if (!rtp_mjpeg_parse(bc, val))
 			bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
@@ -598,8 +598,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		return NULL;
 	}
 
-	device = bc_db_get_val(dbres, "device");
-	driver = bc_db_get_val(dbres, "driver");
+	device = bc_db_get_val(dbres, "device", NULL);
+	driver = bc_db_get_val(dbres, "driver", NULL);
 	if (!device || !driver) {
 		errno = EINVAL;
 		return NULL;

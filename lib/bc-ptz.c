@@ -84,17 +84,17 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	speed_t speed;
 	char parity;
 
-	ptz_path = bc_db_get_val(dbres, "ptz_control_path");
+	ptz_path = bc_db_get_val(dbres, "ptz_control_path", NULL);
 
 	if (!ptz_path || strncasecmp(ptz_path, "/dev/", 5))
 		return;
 
-	ptz_proto = bc_db_get_val(dbres, "ptz_control_protocol");
+	ptz_proto = bc_db_get_val(dbres, "ptz_control_protocol", NULL);
 
 	if (!ptz_proto || strcasecmp(ptz_proto, "PELCO"))
 		return;
 
-	ptz_params = bc_db_get_val(dbres, "ptz_serial_values");
+	ptz_params = bc_db_get_val(dbres, "ptz_serial_values", NULL);
 	if (!ptz_params)
 		return;
 
