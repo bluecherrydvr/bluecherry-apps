@@ -447,7 +447,7 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	sprintf(dev_file, "/dev/video%d", bc->card_id + id + 1);
 
 	/* Open the device */
-	if ((bc->dev_fd = open(dev_file, O_RDWR | O_NONBLOCK)) < 0)
+	if ((bc->dev_fd = open(dev_file, O_RDWR)) < 0)
 		return -1;
 
 	/* Query the capabilites and verify them */
