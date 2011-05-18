@@ -67,6 +67,9 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	snd_pcm_t *pcm = NULL;
 	int err, fmt;
 
+	/* XXX Sounds disabled */
+	return 0;
+
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 0;
 
