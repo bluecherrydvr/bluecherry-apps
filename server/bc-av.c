@@ -370,8 +370,10 @@ static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *
 	if (!codec)
 		goto save_fail;
 
-	if (avcodec_open(joc, codec) < 0)
+	if (avcodec_open(joc, codec) < 0) {
+		codec = NULL;
 		goto save_fail;
+	}
 
 	joc->mb_lmin = joc->lmin = joc->qmin * FF_QP2LAMBDA;
 	joc->mb_lmax = joc->lmax = joc->qmax * FF_QP2LAMBDA;
@@ -385,8 +387,11 @@ static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *
 	bc_media_set_snapshot(bc_rec->event, buf, pic_size);
 
 save_fail:
-	if (joc != NULL)
-		avcodec_close(joc);
+	if (joc != NULL) {
+		if (codec)
+			avcodec_close(joc);
+		av_freep(&joc);
+	}
 	if (buf != NULL)
 		free(buf);
 }
@@ -395,7 +400,7 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 			      int *fnum, int *fden)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	AVCodec *codec;
+	AVCodec *codec = NULL;
 	AVCodecContext *c;
 	int got_picture, len;
 	AVFrame *picture;
@@ -431,8 +436,10 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	c = avcodec_alloc_context();
 	picture = avcodec_alloc_frame();
 
-	if (avcodec_open(c, codec) < 0)
+	if (avcodec_open(c, codec) < 0) {
+		codec = NULL;
 		goto pic_info_fail;
+	}
 
 	len = avcodec_decode_video(c, picture, &got_picture, buf, size);
 
@@ -448,7 +455,8 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 
 pic_info_fail:
 	if (c != NULL) {
-		avcodec_close(c);
+		if (codec)
+			avcodec_close(c);
 		av_freep(&c);
 	}
 	if (picture != NULL)

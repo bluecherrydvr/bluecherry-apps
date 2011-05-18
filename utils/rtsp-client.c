@@ -86,8 +86,9 @@ static void check_mpeg(struct rtp_session *rs)
 		goto fail_mpeg_check;
 	}
 	if (got_picture) {
-		fprintf(stderr, "Got frame at %dx%d @ %d fps\n",
-			c->width, c->height, rs->framerate);
+		fprintf(stderr, "Got frame at %dx%d @ %d fps (codec %s)\n",
+			c->width, c->height, rs->framerate,
+			rs->vid_codec == CODEC_ID_MPEG4 ? "mpeg4" : "h.264");
 	} else {
 		fprintf(stderr, "Could not decode frame\n");
 	}
