@@ -120,7 +120,7 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		if (bc_rec->oc) {
+		if (bc_rec->oc && bc_rec->audio_st) {
 			audio_pts = (double)bc_rec->audio_st->pts.val *
 					bc_rec->audio_st->time_base.num /
 					bc_rec->audio_st->time_base.den;
