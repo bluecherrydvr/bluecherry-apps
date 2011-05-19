@@ -1,40 +1,20 @@
 CREATE TABLE ipCameraDriver (
-        id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
-        name varchar(32),
-        media_url varchar(64),
-        mjpeg_url varchar(64),
-        UNIQUE (name)
+        id varchar(32) PRIMARY KEY NOT NULL,
+        rtsp_path varchar(256),
+        mjpeg_path varchar(256),
+	rtsp_port int(8),
+	mjpeg_port int(8)
 );
 
---
--- Drivers for ipCameras
---
-
--- Percent replacements as follows:
--- %u == user info (e.g. 'user:password')
--- %h == host or IP address
--- %p == "user supplied port" or default "port" for protocol type
--- %{foo}f == "user supplied path" or "foo"
--- INSERT INTO ipCameraDriver (name, media_url, mjpeg_url) VALUES
---   ('RTSP-GENERIC', 'rtsp://%u@%h:%p%{}f', 'http://%u@%h:%p%{}f'),
---   ('RTSP-AXIS-v1', 'rtsp://%u@%h:%p%{/mpeg4/media.amp}f',
---    'http://%u@%h:%p%{/mjpg/video.mjpg}f');
-
---
--- IP Devices
---
-                                        
-
-CREATE TABLE `ipCameras` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `type` varchar(30) DEFAULT NULL,
-  `manufacturer` varchar(30) DEFAULT NULL,
-  `model` varchar(30) DEFAULT NULL,
-  `compression` varchar(30) DEFAULT NULL,
-  `resolutions` varchar(250) DEFAULT NULL,
-  `driver` varchar(32) NOT NULL DEFAULT 'RTSP-GENERIC',
-  PRIMARY KEY (`id`),
-  KEY `driver` (`driver`)
+CREATE TABLE ipCameras (
+	id int(11) PRIMARY KEY NOT NULL AUTO_INCREMENT,
+	type varchar(30) DEFAULT NULL,
+	manufacturer varchar(30) DEFAULT NULL,
+	model varchar(30) DEFAULT NULL,
+	compression varchar(30) DEFAULT NULL,
+	resolutions varchar(250) DEFAULT NULL,
+	driver varchar(32) NOT NULL DEFAULT 'RTSP-GENERIC',
+	FOREIGN KEY (driver) REFERENCES ipCameraDriver(id)
 ); 
 
 INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `resolutions`, `driver`) VALUES
