@@ -1,136 +1,146 @@
-		liveViewerLayout = new Class({
-			initialize: function(){
-				var self = this;
-				
-				var lvRows = (Cookie.read('lvRows') || 2);
-				var lvCols = (Cookie.read('lvCols') || 2);
-				self.drawGrid(lvRows, lvCols);
+window.addEvent('load', function(){
+	var layoutsMenu = new ContextMenu({
+		menu:	'layoutsMenu',
+		targets: '#layoutsControl',
+		trigger: 'click',
+		actions: {
+			'save' : function(){
+				layoutsUpdate('edit', Cookie.read('currentLayout'));
 			},
-			
-			drawGrid: function(r, c){
-				
-				var gridTable = new Element('table', {
-   	            	'id' : 'lvGridTable'
-   	        	});
-				for (row = 1; row<=r; row++){
-   	            	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
-   	            	for(col = 1; col<=c; col++){
-						//making sure that window does not overflow with content
-						var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
-						imgSrcId = (imgSrcId!='none') ? '/media/mjpeg.php?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
-							if ((480/(window.innerHeight-70-10*r)/r) > (704/(window.innerWidth-300-10*c)/c)){
-								var imgHeight = (window.innerHeight-70-10*r>=r*480) ? '' : ((window.innerHeight-70-10*r)/r);
-								if (imgSrcId=='none') {
-									var imgWidth = 704/(480/((window.innerHeight-70-10*r)/r));
-								}
-							} else {
-								var imgWidth = (window.innerWidth-230-10*c>=c*704) ? '' : ((window.innerWidth-300-10*c)/c);
-								if (imgSrcId=='none') {
-									var imgHeight = 480/(704/((window.innerWidth-300-10*c)/c));
-								}
-							};
-						
-						
-   	                 	var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
-							
-							var lvImg = new Element('img', {'class': 'lvImg' , 'width': imgWidth, 'height': imgHeight, 'src': imgSrcId});
-							lvImg.inject(thisCol);
-   	                	thisCol.inject(thisRow, 'bottom');
-    	            };
-       	        	thisRow.inject(gridTable, 'bottom');
-       	    	};
-        	    gridTable.inject($('liveViewContainer'));
+			'saveAs' : function(){
+				var layoutName = prompt('New layout name:');
+				if (layoutName != null){
+					layoutsUpdate('new', layoutName);
+				}
 			},
-			
-			addDelRowColumn: function(n, t){
-				var tp = ((n)=='c' ? 'lvCols' : 'lvRows');
-				var v = parseInt(Cookie.read(tp) || 2);
-				Cookie.write(tp, ((t) ? v+1 : v-1));
-				window.location.reload(true);
+			'delete' : function(){
+				layoutsUpdate('delete', Cookie.read('currentLayout'));
+				Cookie.write('currentLayout', '');
 			},
-			
-			setLayout: function(tp){
-				Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
-				window.location.reload(true);
+			'load' : function(el, ref, item){
+				layoutsUpdate('load', item.get('html'));
+				Cookie.write('currentLayout', item.get('html'));
+			},
+			'clearAll' : function(){
+				layoutsUpdate('clear', false);
+				Cookie.write('currentLayout', '');
 			}
-		});
-		
-		window.addEvent('domready', function(){
-			var grid = new liveViewerLayout();
-			$$('.ac').addEvent('click', function(){ grid.addDelRowColumn('c', true); });
-			$$('.dc').addEvent('click', function(){ grid.addDelRowColumn('c', false); });
-			$$('.ar').addEvent('click', function(){ grid.addDelRowColumn('r', true); });
-			$$('.dr').addEvent('click', function(){ grid.addDelRowColumn('r', false); });
-			
-			$$('.l1').addEvent('click', function(){ grid.setLayout(1); });
-			$$('.l4').addEvent('click', function(){ grid.setLayout(4); });
-			$$('.l9').addEvent('click', function(){ grid.setLayout(9); });
-			$$('.l16').addEvent('click', function(){ grid.setLayout(16); });
-			//START
-			$$('.device').each(function(el){
-				el.addEvent('mousedown', function(ev){
-					ev.stop();
-					var dragOptions = {
-						droppables: $$(''),
-						onEnter: function(el, drop, ev){
-							if(drop.get('class')=='lvImg') drop.set('class', 'lvImgOver');
+		}
+	});
+	makeGrid();
+	adjustImageSize();
+	var cameraMenu = new ContextMenu({
+		menu:	'cameraList',
+		targets: '.noImg',
+		trigger: 'click',
+		actions: {
+			'loadCam' : function(el, ref, item){
+				var id = item.get('id');
+				var elParent = el.getParent();
+				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
+				el.set('src', '/media/mjpeg.php?multipart=true&id='+id);
+				el.set('class', 'lvImg');
+				if (item.get('class')){
+					addPtz(el, id);
+				};
+			}
+		}
+	});
+	$$('.ac').addEvent('click', function(){ addDelRowColumn('c', true); });
+	$$('.dc').addEvent('click', function(){ addDelRowColumn('c', false); });
+	$$('.ar').addEvent('click', function(){ addDelRowColumn('r', true); });
+	$$('.dr').addEvent('click', function(){ addDelRowColumn('r', false); });
+	
+	$$('.l1').addEvent('click', function(){ setLayout(1);	});
+	$$('.l4').addEvent('click', function(){ setLayout(4);	});
+	$$('.l9').addEvent('click', function(){ setLayout(9);	});
+	$$('.l16').addEvent('click', function(){ setLayout(16); });
+	$('logout').addEvent('click', function(){
+		document.location = '/ajax/logout.php';
+	});
+	$('backToAdmin').addEvent('click', function(){
+		document.location = '/';
+	});
+	$$('.presets').each(function(el){
+		presetmenuvar = new ContextMenu({
+					menu: 'presets-'+el.getParent().get('id'),
+					targets: '#'+el.get('id'),
+					trigger: 'click',
+					actions:{
+						'goto': function(el, ref, item){
+							presetRequest('go', item.get('id'), item.get('name'));
 						},
-						onLeave: function(el, drop, ev){
-							if(drop.get('class')=='lvImgOver') drop.set('class', 'lvImg');
-						},
-						onDrop: function(el, drop, ev){
-							var id = el.get('id');
-							el.dispose();
-							if (drop && drop.get('class')=='lvImgOver'){
-								drop.set('src', '/media/mjpeg.php?multipart=true&id='+id);
-								drop.set('class', 'lvImg');
-								//drop.set('height', ''); //previously assumed to be PAL for extra height
-								var elParent = drop.getParent();
-								Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
+						'rename': function(el, ref, item){
+							var presetName = prompt('New preset name:');
+							if (presetName != null){
+								presetRequest('rename', item.get('id'), item.get('name'), presetName);
 							}
-							
-							
+						},
+						'delete': function(el, ref, item){
+							presetRequest('clear', item.get('id'), item.get('name'));
+						},
+						'map': function(el, ref, item){
+							var presetName = prompt('New preset name:');
+							if (presetName != null){
+								presetRequest('save', item.get('id'), item.get('name'), presetName);
+							}							
 						}
-					};
-					dragClone = this.clone(true, true).setStyles(this.getCoordinates()).setStyles({'opacity': 0.9, 'position': 'absolute'}).inject(document.body);
-					var drag = dragClone.makeDraggable(dragOptions);
-					drag.start(ev);
-
-				});
-			});	
-
+					}
 		});
-	
-	
-viewerSaveLoadLayout = new Class({
-	initialize: function(){
-		$('layouts').addEvent('change', function(){
-			if (this.value==layoutToLoad) {
-				var sts = true;
-			} else {
-				layoutsUpdate('load', this.value);
-				var sts = false;
-			}
-			$('saveLayout').set('disabled', sts);
-		});
-		$('saveLayout').addEvent('click', function(){
-			layoutsUpdate('edit', $('layouts').get('value'));
-		});
-		$('deleteLayout').addEvent('click', function(){
-			layoutsUpdate('delete', $('layouts').get('value'));
-		});
-		$('clearAll').addEvent('click', function(){
-			layoutsUpdate('clear', false);
-		});
-		$('saveLayoutAs').addEvent('click', function(){
-			var layoutName = prompt('New layout name:');
-			if (layoutName != null){
-				layoutsUpdate('new', layoutName);
-			}
-		});
-		
-	}
+	});
 });
+
+//functions/classes
+
+presetRequest = function(command, presetId, cameraId, name){
+	var data = '?id='+cameraId+'&command='+command;
+	if (command=='rename' || command=='save'){
+		data += '&name='+name;
+	};
+	if (command!='save'){
+		data += '&preset='+presetId;
+	}
+	var request = new Request.HTML({
+		url: 'media/ptz.php',
+		data: data,
+		method: 'get',
+		onRequest: function(){
+		},
+		onComplete: function(){
+		},
+		onFailure: function(){
+		},
+		onSuccess: function(tree, elements, html){
+		}
+	}).send();
+}
+
+addPtz = function(el, id){
+	var ptzTable = new Element('div', {'class': 'ptzControls', 'id' : id, 'html' : '<div class="lu"></div><div class="nu"></div><div class="ru"></div><div class="ln"></div><div class=""></div><div class="rn"></div><div class="ld"></div><div class="nd"></div><div class="rd"></div><div class="t">+</div><div class="w">&ndash;</div><div class="presets" id="presetButton">p</div>'});
+	ptzTable.inject(el.getParent(), 'bottom');
+	ptzTable.getChildren().each(function(el){
+		if (el.get('class')!='presets'){
+			el.addEvents({
+				'click': function(){
+					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), false);
+				},
+				'mousedown': function(){
+					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), true);
+				},
+				'mouseup': function(){
+					sendPtzCommand(this.getParent().get('id'), 'stop', el.get('class'), true);
+				},
+				'mouseout': function(){
+					sendPtzCommand(this.getParent().get('id'), 'stop', el.get('class'), true);
+				}
+			});
+		} else if ($('presets-'+id)==null) {
+			el.setStyle('display', 'none');		
+		}
+	});
+	
+	
+}
 
 layoutsUpdate = function(mode, layout){
 	var request = new Request({
@@ -147,37 +157,104 @@ layoutsUpdate = function(mode, layout){
 	}).send();
 }
 
+makeGrid = function(){
+	var lvRows = (Cookie.read('lvRows') || 2);
+	var lvCols = (Cookie.read('lvCols') || 2);
+	var gridTable = new Element('table', {
+           	'id' : 'lvGridTable'
+    });
+	for (row = 1; row<=lvRows; row++){
+       	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
+       	for(col = 1; col<=lvCols; col++){
+			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
+			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
+			var imgClass = (imgSrcId!='none') ? 'lvImg' : 'noImg';
+			//alert('#'+imgSrcId+' .ptz');
+			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
+			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg.php?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
+			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId});
+			lvImg.inject(thisCol);
+			if (thisCam  && (thisCam.get('id')==id)) {
+				addPtz(lvImg, id);
+			}
+            thisCol.inject(thisRow, 'bottom');
+		};
+  	    thisRow.inject(gridTable, 'bottom');
+	};
+    gridTable.inject($('liveViewContainer'));
+	
+}
+
+adjustImageSize = function(){
+	//based on 704/480 aspect for ntsc
+
+	var lvRows = (Cookie.read('lvRows') || 2);
+	var lvCols = (Cookie.read('lvCols') || 2);
+	var verticalAdj = 60;
+	var horizontalAdj = 250;
+	var maxHeight = 0;
+	var maxWidth = 0;  
+	if ((window.innerHeight-verticalAdj)/(lvRows*480) < (window.innerWidth-horizontalAdj)/(lvCols*704)){
+		maxHeight = (window.innerHeight-verticalAdj)/(lvRows);
+		maxWidth = 704*(maxHeight/480);
+	} else {
+		maxWidth = (window.innerWidth-horizontalAdj)/(lvCols);
+		maxHeight = 480*(maxWidth/704);
+	}
+	
+	$$('#liveViewContainer table tr td img').each(function(el){
+		if ((el.width/el.height) > (704/480)){
+			el.setStyle('width', maxWidth);
+			el.setStyle('height', '');
+		}
+		else {
+			el.setStyle('height', maxHeight);
+			el.setStyle('width', '');
+		}
+	});
+	window.addEvent('resize', function(){
+		adjustImageSize();
+	});
+}
+addDelRowColumn = function(n, t){
+	var tp = ((n)=='c' ? 'lvCols' : 'lvRows');
+	var v = parseInt(Cookie.read(tp) || 2);
+	Cookie.write(tp, ((t) ? v+1 : v-1));
+	window.location.reload(true);
+},
+	
+setLayout = function(tp){
+	Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
+	window.location.reload(true);
+}
+
 
 sendPtzCommand = function(camId, command, d, cont, speed){
-		if (!speed) var speed = 32;
-		var data = 'id='+camId+'&panspeed='+speed+'&tiltspeed='+speed;
-		if (command == "stop"){
-			data += '&command=stop';
+	if (!speed) var speed = 32;
+	var data = 'id='+camId+'&panspeed='+speed+'&tiltspeed='+speed;
+	if (command == "stop"){
+		data += '&command=stop';
+	} else {
+		data += '&command='+command;
+		data += (cont) ? '&duration=-1' : '&duration=250';
+		if (d!='t' && d!='w'){
+			if (d.substring(0,1)!='n') { data += '&pan='+d.substring(0,1); };
+			if (d.substring(1,2)!='n') { data += '&tilt='+d.substring(1,2); };
 		} else {
-			data += '&command='+command;
-			data += (cont) ? '&duration=-1' : '&duration=250';
-			if (d!='t' && d!='w'){
-				if (d.substring(0,1)!='n') { data += '&pan='+d.substring(0,1); };
-				if (d.substring(1,2)!='n') { data += '&tilt='+d.substring(1,2); };
-			} else {
-				data += '&zoom='+d;
-			}
+			data += '&zoom='+d;
 		}
-		
-		var t = new Date;
-		var latency;
-		var request = new Request.HTML({
-			url: 'media/ptz.php',
-			data: data,
-			method: 'get',
-			onRequest: function(){
-			},
-			onComplete: function(){
-			},
-			onFailure: function(){
-			},
-			onSuccess: function(tree, elements, html){
-			}
-		}).send();
-	};
-
+	}
+	var request = new Request.HTML({
+		url: 'media/ptz.php',
+		data: data,
+		method: 'get',
+		onRequest: function(){
+		},
+		onComplete: function(){
+		},
+		onFailure: function(){
+		},
+		onSuccess: function(tree, elements, html){
+		}
+	}).send();
+};

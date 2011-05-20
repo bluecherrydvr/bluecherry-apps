@@ -178,6 +178,8 @@ define('HIDE_IMG', 'Show/hide image');
 
 define('AVAILABLE_DEVICES', 'Available video sources:');
 define('LAYOUT_CONTROL', 'Select layout:');
+define('NONE_SELECTED', 'None selected');
+define('CLEAR_LAYOUT', 'Clear layout');
 define('BACK_TO_ADMIN', 'Return to admin panel');
 
 define('NO_NEWS', 'There are no news right now.');
@@ -262,6 +264,7 @@ define('CURR', 'Current');
 #layouts
 define('NO_SAVED_LAYOUTS', 'No saved layouts');
 define('CHOOSE_LAYOUT', 'Layout to load...');
+define('LAYOUTS', 'Layouts');
 
 #login
 define('PLEASE_LOGIN', 'You need');
@@ -292,5 +295,7 @@ define('ADD_LOCATION', 'Add location');
 define('LOCATION', 'Folder:');
 
 define('ON_CARD', ' on Card ');
+
+define('MAP_PRESET', 'New preset...');
 
 ?>

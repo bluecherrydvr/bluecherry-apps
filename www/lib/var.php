@@ -15,6 +15,9 @@ define('JS_RELOAD', '<script>window.location = "/";</script>');
 
 define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
 define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
+define('VAR_PATH_TO_IPCAMLIST_VERSION', 'http://www.bluecherrydvr.com/version');
+define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://www.bluecherrydvr.com/ipcamlistupdate.php');
+
 define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 #local card props
 $GLOBALS['buffer'] = array(

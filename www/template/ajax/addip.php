@@ -11,6 +11,8 @@ if ($mode) {
 		$data = "
 			<mjpegPath><![CDATA[{$ipCamData->data['mjpeg_url']}]]></mjpegPath>
 			<rtspPath><![CDATA[{$ipCamData->data['media_url']}]]></rtspPath>
+			<mjpegPort><![CDATA[{$ipCamData->data['mjpeg_port']}]]></mjpegPort>
+			<rtspPort><![CDATA[{$ipCamData->data['rtsp_port']}]]></rtspPort>
 			<resolutions><![CDATA[{$ipCamData->data['resolutions']}]]></resolutions>
 		";
 		data::responseXml(true, true, $data);

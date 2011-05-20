@@ -1,21 +1,36 @@
 /* context menu */
 body { padding-top:0px; margin-top:0px; }
+.bClear { clear:both; }
+#layoutsMenu, #cameraList, .presetsList  { border:1px solid #999; padding:0; background:#eee; width:200px; list-style-type:none; display:none; }
+#cameraList { width:404px; }
+#layoutsMenu .separator, #cameraList .separator, .presetsList .separator { border-bottom:1px solid #999; }
+#layoutsMenu li, #cameraList li { margin:0; padding:0; }
+.presetsList li { margin:0px 0px 10px 0px; }
+#cameraList li { float:left; border:1px dotted white;  }
+#layoutsMenu li a, #cameraList li a { display:block; padding:5px 10px 5px 35px; width:155px; font-size:12px; text-decoration:none; font-family:tahoma,arial,sans-serif; color:#000; background-position:8px 4px; background-repeat:no-repeat; }
+.presetsList li a { height:25px; display:inline; padding:5px 10px 5px 35px;  font-size:12px; text-decoration:none; font-family:tahoma,arial,sans-serif; color:#000; background-position:8px 4px; background-repeat:no-repeat; }
+.presetsList li a.renamePreset { width:25px; background-image:url(/img/icons/menu/edit.png); background-position:center center;center center; border:1px dotted white; position:absolute; right: 28px; padding:0px; }
+.presetsList li a.deletePreset { width:25px; background-image:url(/img/icons/menu/delete.png); background-position:center center; border:1px dotted white; position:absolute; right: 1px; padding:0px; }
+.presetsList li a.mapPreset    { background-image:url(/img/icons/plus.png); }
+.presetsList li a.loadPreset   { width:100%; }
 
-#layoutsMenu  { border:1px solid #999; padding:0; background:#eee; width:200px; list-style-type:none; display:none; }
-#layoutsMenu .separator { border-bottom:1px solid #999; }
-#layoutsMenu li { margin:0; padding:0; }
-#layoutsMenu li a { display:block; padding:5px 10px 5px 35px; width:155px; font-size:12px; text-decoration:none; font-family:tahoma,arial,sans-serif; color:#000; background-position:8px 4px; background-repeat:no-repeat; }
-#layoutsMenu li a:hover { background-color:#ddd; }
-#layoutsMenu li a.disabled { color:#ccc; font-style:italic; }
-#layoutsMenu li a.disabled:hover { background-color:#eee; }
-#layoutsMenu li a.save		{ background-image:url(/img/icons/menu/save.png); }
-#layoutsMenu li a.clearAll	{ background-image:url(/img/icons/menu/clear.png); }
-#layoutsMenu li a.delete	{ background-image:url(/img/icons/menu/delete.png); }
+#layoutsMenu li a:hover, #cameraList li a:hover, .presetsList a:hover{ background-color:#ddd; }
+#layoutsMenu li a.disabled, #cameraList li a.disabled { color:#ccc; font-style:italic; }
+#layoutsMenu li a.disabled:hover, #cameraList li a.disabled:hover { background-color:#eee; }
+#layoutsMenu li a.save			{ background-image:url(/img/icons/menu/save.png); }
+#layoutsMenu li a.clearLayout	{ background-image:url(/img/icons/menu/clear.png); }
+#layoutsMenu li a.delete		{ background-image:url(/img/icons/menu/delete.png); }
+#cameraList li a.ptz			{ background-image:url(/img/icons/menu/ptz.png); }
+#liveViewGrid tr td				{ border:1px solid gray; }
 
-#liveViewGrid tr td	{ border:1px solid gray; }
+#leftMenu							{ width:100px; position:relative; float:left;  }
 
-#topMenu							{ height:50px; border:1px solid gray; }
+#layoutsControl:hover { cursor:pointer; background-color:#eee; }
 
+/*GRID*/
+#gridAdjustments, #layoutsControl, #logout, #backToAdmin	{ width:100%; text-align:center; float:left; border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
+#logout, #backToAdmin { cursor:pointer; }
+#logout:hover, #backToAdmin:hover { background-color:#fee; }
 #gridAdjustments ul					{ list-style-type:none; background-repeat:no-repeat; background-position:center center; margin:0px; padding:0px; }
 #gridAdjustments ul li				{ float:left; width:48px; height:48px; cursor:pointer; }
 #gridAdjustments ul li.l1			{ background-image:url('/img/icons/layouts/1.png'); }
@@ -27,3 +42,27 @@ body { padding-top:0px; margin-top:0px; }
 #gridAdjustments ul li.ac 			{ background-image:url('/img/icons/layouts/add-column.png'); }
 #gridAdjustments ul li.dc 			{ background-image:url('/img/icons/layouts/del-column.png'); }
 #gridAdjustments ul li.separator 	{ width:2px; border-right:1px solid #efefef; cursor:default; }
+
+/*LV*/
+#liveViewContainer {position: relative; float:left; border:1px solid gray; margin-left:10px; }
+#lvGridTable tr td { border:1px dotted gray; margin:3px; position:relative; float:left; }
+.lvImg { float:left; }
+.chooseCamera { width:100%; text-align:center; }
+
+/*PTZ*/
+#ptzControlsContainer { display: none;  }
+.ptzControls { height:100%; width:100%; position:absolute; float:left; z-order:20; }
+.ptzControls div {  }
+.ptzControls div { height:32%; width:32%; border: none; border-collapse:collapse; float:left; }
+.ptzControls .lu	{ cursor: nw-resize; }
+.ptzControls .ln	{ cursor: w-resize;  }
+.ptzControls .ld	{ cursor: sw-resize; }
+.ptzControls .nd	{ cursor: s-resize;  }
+.ptzControls .ru	{ cursor: ne-resize; }
+.ptzControls .rn	{ cursor: e-resize;  }
+.ptzControls .nu	{ cursor: n-resize;  }
+.ptzControls .rd	{ cursor: se-resize; }
+
+.ptzControls .t		{ font-size:20px; line-height:20px; vertical-align:middle; text-align:center; cursor: pointer; opacity:0.7; filter:alpha(opacity=90); background-color:#000; color:#fff; position:absolute; width: 20px; height:20px; right:27px; top:3px; }
+.ptzControls .w		{ font-size:20px; line-height:20px; vertical-align:middle; text-align:center; cursor: pointer; opacity:0.7; filter:alpha(opacity=90); background-color:#000; color:#fff; position:absolute; width: 20px; height:20px; right:5px; top:3px; }
+.ptzControls .presets { font-size:15px; line-height:20px; vertical-align:middle; text-align:center; cursor: pointer; opacity:0.7; filter:alpha(opacity=90); background-color:#000; color:#fff; position:absolute; width: 20px; height:20px; right:51px; top:3px; }

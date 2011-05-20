@@ -150,9 +150,13 @@ DVRPageScript = new Class({
 							else {
 								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
 								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
+								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
+								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
 								$('mjpeg').set('value', mjpegPath);
 								$('rtsppath').set('value', rtspPath);
-								if (mjpegPath=='' || rtspPath == ''){ //in case paths are not in driver DB or empty
+								$('port').set('value', rtspPort);
+								$('mjpegPort').set('value', mjpegPort);
+								if (mjpegPath=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
 									expandAdvancedSettings('open');
 								} else {
 									expandAdvancedSettings('close');
@@ -722,7 +726,6 @@ var localMotionGrid = new Class({
 						'mouseenter' : function(){
 							if (dragFlag){
 								this.set('class', 'gridCol'+$$('#lvlSelect .on').get('id').toString().substring(2,3));
-							 
 							};
 						}
 					});

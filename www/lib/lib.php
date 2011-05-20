@@ -352,9 +352,9 @@ class ipCamera{
 				$this->info['ipAddrMjpeg'] = $this->info['ipAddr'];
 				$this->info['portMjpeg'] = 80;
 			} else {
-				$this->info['ipAddrMjpeg'] = $tmp[0];
-				$this->info['portMjpeg'] = $tmp[1];
-				$this->info['mjpeg_path'] = $tmp[2];
+				$this->info['ipAddrMjpeg'] =	$tmp[0];
+				$this->info['portMjpeg']   =	$tmp[1];
+				$this->info['mjpeg_path']  =	$tmp[2];
 			}
 		}
 	}
@@ -429,7 +429,7 @@ class ipCameras{
 	}
 	private function getOptions($model){
 		$data = data::query("SELECT * FROM ipCameras WHERE model='$model'");
-		$driver = data::query("SELECT * FROM ipCameraDriver WHERE name='{$data[0]['driver']}'");
+		$driver = data::query("SELECT * FROM ipCameraDriver WHERE id='{$data[0]['driver']}'");
 		$this->data = (is_array($driver[0])) ? array_merge($data[0], $driver[0]) : $data[0];
 	}
 }

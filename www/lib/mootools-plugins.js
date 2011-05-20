@@ -14,7 +14,8 @@ var ContextMenu = new Class({
 		onShow: $empty,
 		onHide: $empty,
 		onClick: $empty,
-		fadeSpeed: 200
+		fadeSpeed: 200,
+		targetElement: false
 	},
 	
 	//initialization
@@ -23,9 +24,11 @@ var ContextMenu = new Class({
 		this.setOptions(options)
 		
 		//option diffs menu
-		this.menu = $(this.options.menu);
-		this.targets = $$(this.options.targets);
 		
+		this.menu = $(this.options.menu);
+		
+		this.targets = (!this.options.targetElement) ? $$(this.options.targets) : this.options.targets;
+		//alert(this.targets.get('class'));
 		//fx
 		this.fx = new Fx.Tween(this.menu, { property: 'opacity', duration:this.options.fadeSpeed });
 		
@@ -64,8 +67,9 @@ var ContextMenu = new Class({
 		/* menu items */
 		this.menu.getElements('a').each(function(item) {
 			item.addEvent('click',function(e) {
+
 				if(!item.hasClass('disabled')) {
-					this.execute(item.get('href').split('#')[1],$(this.options.element));
+					this.execute(item.get('href').split('#')[1],$(this.options.element), item);
 					this.fireEvent('click',[item,e]);
 				}
 				e.stopPropagation()
@@ -73,7 +77,7 @@ var ContextMenu = new Class({
 		},this);
 		
 		//hide on body click
-		$(document.body).addEvent('click', function() {
+		$(document).addEvent('click', function() {
 			this.hide();
 		}.bind(this));
 	},
@@ -124,10 +128,11 @@ var ContextMenu = new Class({
 	},
 	
 	//execute an action
-	execute: function(action,element) {
+	execute: function(action,element, item) {
 		if(this.options.actions[action]) {
-			this.options.actions[action](element,this);
+			this.options.actions[action](element, this, item);
 		}
+		this.hide();
 		return this;
 	}
 	
