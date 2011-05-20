@@ -98,7 +98,12 @@ function print_move($id)
 function print_preset($id, $cmd)
 {
 	if (empty($_GET['preset']))
-		print_err("Preset is required for this command");
+		if (!empty($id) && $cmd=='save'){
+			$this_device_presets = data::query("select l.preset_id + 1 as preset from PTZPresets as l left outer join PTZPresets as r on l.preset_id + 1 = r.preset_id AND (r.device_id is NULL OR r.device_id={$id}) WHERE r.preset_id is NULL limit 1");
+			$preset = $this_device_presets[0]['preset'];
+		} else {
+			print_err("Preset is required for this command");
+		}
 	$preset = intval($_GET['preset']);
 	$name = "";
 
