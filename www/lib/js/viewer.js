@@ -93,7 +93,7 @@ window.addEvent('load', function(){
 //functions/classes
 
 presetRequest = function(command, presetId, cameraId, name){
-	var data = '?id='+cameraId+'&command='+command;
+	var data = 'id='+cameraId+'&command='+command;
 	if (command=='rename' || command=='save'){
 		data += '&name='+name;
 	};
