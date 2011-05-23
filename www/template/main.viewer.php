@@ -24,8 +24,9 @@
 			<?php 
 				$layouts =  (is_array($lv->layout_list[0])) ? $lv->layout_list : array(NO_SAVED_LAYOUTS);
 				foreach ($layouts as $key => $layout){
-					echo "<li>".(($layout==NO_SAVED_LAYOUTS) ? "{$layout['layout_name']}" : "<a href='#load' class='{$layout['layout_name']}'>{$layout['layout_name']}")."</a></li>";
+					echo "<li>".(($layout==NO_SAVED_LAYOUTS) ? "<a class='disabled'>{$layouts[0]}</a>" : "<a href='#load' class='{$layout['layout_name']}'>{$layout['layout_name']}")."</a></li>";
 				}
+				
 			?>
 		</ul>
 		<ul id="cameraList">
@@ -49,8 +50,11 @@
 		}
 		?>
 	<div id='leftMenu'>
-		<div id="logout"><?php echo LOGOUT; ?></div>
-		<div id="backToAdmin"><?php echo BACK_TO_ADMIN; ?></div>
+		<div id='logout'><?php echo LOGOUT; ?></div>
+		<div id='backToAdmin'><?php echo BACK_TO_ADMIN; ?></div>
+		<div id='layoutsControl'>
+			<?php echo LAYOUTS;?>
+		</div>
 		<div id='gridAdjustments'>
 			<ul>
 				<li class='l1'></li>
@@ -63,11 +67,8 @@
 				<li class='dc'></li>
 			</ul>
 		</div>
-		<div id='layoutsControl'>
-			<?php echo LAYOUTS;?>
-		</div>
 	</div>
-	<div id="liveViewContainer"></div>
+	<div id='liveViewContainer'></div>
 </div>
 </body>
 </html>
