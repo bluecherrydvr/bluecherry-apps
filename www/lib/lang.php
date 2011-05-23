@@ -149,6 +149,7 @@ define('DEVICE_EDIT_SCHED', 'Schedule');
 define('VIDEO_ADJ', 'Video adjustments for');
 define('DEVICE_UNNAMED', 'Unnamed');
 define('TOTAL_DEVICES', 'Total devices');
+define('ENABLE_ALL_PORTS', 'enable all ports');
 
 define('VA_HEADER', 'Video adjustments');
 define('VA_BRIGHTNESS', 'Brightness');

@@ -409,7 +409,12 @@ class card {
 		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
 		return array(true, DEVICE_ENCODING_UPDATED);
 	}
-	
+	public function enableAllPorts(){
+		foreach ($this->cameras as $key => $camera){
+			$camera->changeState();
+		}
+		return true;
+	}
 }
 
 class ipCameras{

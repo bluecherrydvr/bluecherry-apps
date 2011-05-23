@@ -245,6 +245,11 @@ DVRPageScript = new Class({
 				
 			break; //end storage
 			case 'devices' :
+				if ($('enableAll')){
+					$('enableAll').addEvent('click', function(){
+						ajaxUpdateField('enableAll', 'Devices', {'card_id' : this.get('class')}, this.get('class'), 'devices');
+					});
+				};
 				$('addIPCamera').addEvent('click', function(){
 					openPage = new DVRPage('addip');
 				});
