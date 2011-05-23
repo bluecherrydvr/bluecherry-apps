@@ -279,3 +279,5 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 
 #settingsForm #advancedSettings { display:none; border:none; padding:0px; }
 #settingsForm #advancedSettingsSwitch { color:green; padding:3px; cursor:pointer; border:none; }
+
+#enableAll { display:inline; color:green; border-bottom:1px dotted gray; cursor:pointer; }

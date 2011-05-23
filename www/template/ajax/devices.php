@@ -35,7 +35,7 @@ foreach ($card->cameras as $key =>$device){
 	if (empty($device->info['id'])) { $device->info['id']=''; };
 	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
 	echo "<div id='localDevice' class='{$device->info['id']}'>";
-	echo "<div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div>";
+	echo "<div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div> [id: {$device->info['id']}]</div>";
 	echo "<div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])."";
 	echo "&nbsp;<a href='#' class='change_state' id='"."{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a>";
 	if ($device->info['status'] != 'notconfigured') {
