@@ -35,6 +35,7 @@ class editLayout{
 		$_SESSION['load_layout_name'] = $layout[0]['layout_name'];
 	}
 	private function cookieToString($unset = false){
+		$r = '';
 		foreach($_COOKIE as $key => $value){
 			if (preg_match("/imgSrcy[0-9]*x[0-9]*|lvRows|lvCols/", $key)) {
 				$r .= "{$key}:{$value};";
