@@ -11,6 +11,8 @@
 #include <signal.h>
 #include <stdarg.h>
 
+#include <linux/serial.h>
+
 #include "libbluecherry.h"
 
 extern char *__progname;
@@ -93,13 +95,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	ret = bc_ptz_cmd(&bch, cmd, delay, pan_speed, tilt_speed, pset_id, 1);
+	ret = bc_ptz_cmd(&bch, cmd, delay, pan_speed, tilt_speed, pset_id);
 
 	if (ret)
 		err("Command failed");
-
-	/* Hack!! */
-	kill(getpid(), SIGTERM);
 
         exit(0);
 }

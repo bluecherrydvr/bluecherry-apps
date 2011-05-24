@@ -17,12 +17,6 @@ function print_err($msg, $extra = "")
 	exit;
 }
 
-function my_bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, $preset)
-{
-	exec("/usr/lib/bluecherry/ptzcmd $id $cmd $delay $panspeed ".
-	     "$tiltspeed $preset > /dev/null 2>&1");
-}
-
 function print_query($id)
 {
 
@@ -84,27 +78,28 @@ function print_move($id)
 	if (!empty($_GET['duration']))
 		$delay = intval($_GET['duration']);
 
-	if (empty($cmd) || $_GET['command'] == 'stop')
-	{
+	if (empty($cmd) || $_GET['command'] == 'stop') {
 		$cmd = 'S';
 		$delay = 0;
 	}
 
-	my_bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, 0);
+	bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, 0);
 
 	print "<response status=\"OK\" />\n";
 }
 
 function print_preset($id, $cmd)
 {
-	if (empty($_GET['preset']))
+	if (empty($_GET['preset'])) {
 		if (!empty($id) && $cmd=='save'){
 			$this_device_presets = data::query("select l.preset_id + 1 as preset from PTZPresets as l left outer join PTZPresets as r on l.preset_id + 1 = r.preset_id AND (r.device_id is NULL OR r.device_id={$id}) WHERE r.preset_id is NULL limit 1");
 			$preset = $this_device_presets[0]['preset'];
 		} else {
 			print_err("Preset is required for this command");
 		}
-	$preset = intval($_GET['preset']);
+	} else
+		$preset = intval($_GET['preset']);
+
 	$name = "";
 
 	if ($cmd == "save" or $cmd == "map" or $cmd == "rename" or
@@ -114,7 +109,7 @@ function print_preset($id, $cmd)
 		$name = database::escapeString($_GET['name']);
 
 		if ($cmd == "save" or $cmd == "sync")
-			my_bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
+			bc_ptz_cmd($id, "s", 0, 0, 0, $preset);
 
 		if ($cmd != "sync") {
 			if ($cmd == "rename" or $cmd == "update")
@@ -133,7 +128,7 @@ function print_preset($id, $cmd)
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
 
-		my_bc_ptz_cmd($id, "g", 0, 0, 0, $preset);
+		bc_ptz_cmd($id, "g", 0, 0, 0, $preset);
 		$name = $pset[0]['preset_name'];
 	} else if ($cmd == "clear") {
 		$pset = data::query("SELECT * FROM PTZPresets WHERE preset_id=".
@@ -141,7 +136,7 @@ function print_preset($id, $cmd)
 		if (!$pset)
 			print_err("Unknown preset $preset for device $id");
 
-		my_bc_ptz_cmd($id, "c", 0, 0, 0, $preset);
+		bc_ptz_cmd($id, "c", 0, 0, 0, $preset);
 
 		data::query("DELETE FROM PTZPresets WHERE preset_id=".
 			     "$preset AND device_id=$id", true);
@@ -168,6 +163,7 @@ if (empty($_GET['command']))
 
 switch ($_GET['command']) {
 case "query": print_query($id); break;
+
 case "stop" :
 case "move" : print_move($id); break;
 

@@ -13,6 +13,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <linux/serial.h>
+
 #include <libbluecherry.h>
 
 /* PTZ Control protocols */
@@ -129,8 +131,9 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 }
 
 static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
-			    int pan_speed, int tilt_speed, int pset_id, int noclose)
+			    int pan_speed, int tilt_speed, int pset_id)
 {
+	struct serial_struct serinfo;
 	char data[7] = { 0xff, 0x01, 0x00, 0x00, 0x20, 0x20, 0x00 };
 	int fd, real_delay = -1;
 	int ret = 0;
@@ -196,6 +199,11 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 	if (fd < 0)
 		return -EIO;
 
+	/* Set close_wait to 0 */
+	ioctl(fd, TIOCGSERIAL, &serinfo);
+	serinfo.closing_wait = 65535; /* Magic for "none" */
+	ioctl(fd, TIOCSSERIAL, &serinfo);
+
 	tcflush(fd, TCIFLUSH);
 	if (tcsetattr(fd, TCSANOW, &bc->ptz_tio) == 0 &&
 	    write(fd, data, sizeof(data)) == sizeof(data)) {
@@ -210,22 +218,20 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 		ret = -EIO;		
 	}
 
-	/* XXX Hack!! Closing causes delay, caller requested we sidestep that */
-	if (!noclose)
-		close(fd);
+	close(fd);
 
 	return ret;
 }
 
 int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
- 	       int pan_speed, int tilt_speed, int pset_id, int noclose)
+ 	       int pan_speed, int tilt_speed, int pset_id)
 {
 	if (!strlen(bc->ptz_path))
 		return -ENODEV;
 
 	if (bc->ptz_proto == BC_PTZ_PROTO_PELCO)
 		return bc_ptz_cmd_pelco(bc, cmd, delay, pan_speed,
-					tilt_speed, pset_id, noclose);
+					tilt_speed, pset_id);
 
 	return -EINVAL;
 }
