@@ -1,3 +1,28 @@
+bluecherry (1:2.0.0-0beta7.0) lucid; urgency=low
+
+  * Bug #750: Continuous recording from network cameras seriously truncates
+    the time
+  * Bug #762: web: ActiveUsers.id set to be the key/auto_increment
+  * Bug #771: bc-server seg faults and causes a OOM event
+  * Bug #772: Server: PTZ commands unresponsive in 6.4
+  * Bug #773: Non administrator accounts not able to see cameras in the client
+  * Bug #794: server: NUL terminate the value read from video_type on driver
+    sysfs
+  * Bug #824: solo6110: Changing resolutions causes the H.264 encoder to not
+    display anything
+  * Feature #411: Save JPEG image from each event
+  * Feature #492: Add black box around time stamp
+  * Feature #514: Allowing adjusting the post-record / pre-record time
+  * Feature #638: (Web) Add "Enable All" button to switch on all ports for a
+    specific card
+  * Feature #687: Web: Support PTZ Presets
+  * Feature #732: Web: Show statistics (events per day, week, month)
+  * Feature #752: Web: Show device id next to each port on devices page
+  * Feature #821: Web: auto fill information from database when adding ip
+    camera
+
+ -- Ben Collins <bcollins@bluecherry.net>  Wed, 18 May 2011 11:17:56 -0400
+
 bluecherry (1:2.0.0-0beta6.4) lucid; urgency=low
 
   * Bug #761: Customers using older device drivers are unable to enable
