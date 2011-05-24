@@ -25,5 +25,4 @@ $(topdir)/server/g723-dec.o: $(topdir)/server/g723-dec.c $(topdir)/server/g723-d
 clean:
 	rm -f $(TARGETS) *.o
 
-install: ptzcmd
-	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
+install:
