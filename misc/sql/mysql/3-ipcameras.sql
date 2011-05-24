@@ -18,6 +18,7 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-Brickcom', '/channel1', '/channel2', 554, 80),
 ('RTSP-Linksys', '/img/video.sav', '/img/mjpeg.jpg', 554, 80),
 ('RTSP-DLink', '/play1.sdp', '/mjpeg.cgi', 554, 80),
+('RTSP-Grandstream', '/', '/snapshot/view0.jpg', 554, 80),
 ('RTSP-Trendnet', '/mpeg4', '/cgi/mjpg/mjpeg.cgi', 554, 80);
 
 CREATE TABLE `ipCameras` (
@@ -367,7 +368,14 @@ INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `
 (332, 'Camera', 'Sony', 'SNC-RS86N', 'MPEG4,H264,MJPEG', '720x480-30FPS,640x480-30FPS,384x288-30FPS,320x240-30FPS', ''),
 (333, 'Video Server', 'Sony', 'SNT-EP104', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V4'),
 (334, 'Video Server', 'Sony', 'SNT-EP154', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V5'),
-(335, 'Video Server', 'Sony', 'SNT-EX101', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V6'),
-(336, 'Video Server', 'Sony', 'SNT-EX101E', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V7'),
-(337, 'Video Server', 'Sony', 'SNT-EX104', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V8'),
-(338, 'Video Server', 'Sony', 'SNT-EX154', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V9');
+(335, 'Video Server', 'Sony', 'SNT-EX101', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V5'),
+(336, 'Video Server', 'Sony', 'SNT-EX101E', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V5'),
+(337, 'Video Server', 'Sony', 'SNT-EX104', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V5'),
+(338, 'Video Server', 'Sony', 'SNT-EX154', 'MPEG4,H264,MJPEG', '', 'RTSP-Sony-V5'),
+(339, 'Camera', 'Grandstream', 'GXV3601', 'H264', '', 'RTSP-Grandstream'),
+(340, 'Camera', 'Grandstream', 'GXV3662', 'H264', '', 'RTSP-Grandstream'),
+(341, 'Camera', 'Grandstream', 'GXV3615W', 'H264', '', 'RTSP-Grandstream'),
+(342, 'Camera', 'Grandstream', 'GXV3615', 'H264', '', 'RTSP-Grandstream'),
+(343, 'Camera', 'Grandstream', 'GXV3611', 'H264', '', 'RTSP-Grandstream'),
+(344, 'Camera', 'Grandstream', 'GXV3601', 'H264', '', 'RTSP-Grandstream'),
+(345, 'Camera', 'Grandstream', 'GXV3601', 'H264', '', 'RTSP-Grandstream');
