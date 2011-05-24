@@ -241,7 +241,7 @@ PHP_FUNCTION(bc_ptz_cmd)
 	}
 
 	ret = bc_ptz_cmd(&bch, cmd, (int)delay, (int)pan_speed,
-			 (int)tilt_speed, (int)pset_id, 0);
+			 (int)tilt_speed, (int)pset_id);
 
 	bc_db_free_table(dbres);
 
