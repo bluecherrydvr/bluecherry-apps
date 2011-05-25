@@ -245,9 +245,9 @@ DVRPageScript = new Class({
 				
 			break; //end storage
 			case 'devices' :
-				if ($('enableAll')){
-					$('enableAll').addEvent('click', function(){
-						ajaxUpdateField('enableAll', 'Devices', {'card_id' : this.get('class')}, this.get('class'), 'devices');
+				if ($$('.enableAll')){
+					$$('.enableAll').addEvent('click', function(){
+						ajaxUpdateField('enableAll', 'Devices', {'card_id' : this.get('id')}, this.get('id'), 'devices');
 					});
 				};
 				$('addIPCamera').addEvent('click', function(){
