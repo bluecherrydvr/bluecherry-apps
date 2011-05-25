@@ -87,8 +87,8 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 void *bc_buf_data(struct bc_handle *bc)
 {
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		if (bc->rtp_sess.vid_valid)
-			return bc->rtp_sess.vid_buf;
+		if (bc->rtp_sess.pkt_vid.data)
+			return bc->rtp_sess.pkt_vid.data;
 		return NULL;
 	}
 
@@ -101,8 +101,8 @@ void *bc_buf_data(struct bc_handle *bc)
 unsigned int bc_buf_size(struct bc_handle *bc)
 {
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		if (bc->rtp_sess.vid_valid)
-			return bc->rtp_sess.vid_len;
+		if (bc->rtp_sess.pkt_vid.data)
+			return bc->rtp_sess.pkt_vid.size;
 		return 0;
 	}
 
