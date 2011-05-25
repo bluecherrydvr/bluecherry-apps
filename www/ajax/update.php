@@ -34,13 +34,13 @@ class update{
 	}
 	#update functions will be moved to individual files after template/js update in beta7
 	private function enableAll(){
-		if (empty($_POST['card_id'])) { $result = false; } else {
+		if (!isset($_POST['card_id'])) { $result = false; } else {
 			$card_id = $_POST['card_id'];
 			$card = new card($card_id);
 			if ($card->info['encoding'] != 'notconfigured') { $result =  false; } else {
 				$result = $card->enableAllPorts();
 			}
-		};
+		}
 		data::responseXml($result);
 	}
 	private function newUser(){
