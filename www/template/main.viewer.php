@@ -40,7 +40,7 @@
 		<?php 
 		foreach($lv->devices as $key => $device){
 			if (!empty($device['ptz_serial_values']) && !empty($device['presets'])){
-				$tmp = "<ul id='presets-{$device['id']}' class='presetsList'><li><a href='#map' class='mapPreset'>".MAP_PRESET."</a></li>";
+				$tmp = "<ul id='presets-{$device['id']}' class='presetsList'><li><a href='#map' class='mapPreset' id='{$device['id']}'>".MAP_PRESET."</a></li>";
 				foreach ($device['presets'] as $key => $preset){
 					$tmp .= "<li><a href='#goto' name='{$device['id']}' id='{$preset['preset_id']}' class='loadPreset'>{$preset['preset_name']}</a><a href='#rename' name='{$device['id']}'  class='renamePreset' id='{$preset['preset_id']}'></a><a href='#delete' name='{$device['id']}' class='deletePreset' id='{$preset['preset_id']}'></a></li>";
 				}
