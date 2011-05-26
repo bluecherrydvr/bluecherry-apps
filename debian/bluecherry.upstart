@@ -12,4 +12,9 @@ expect fork
 respawn
 umask 027
 
+pre-start script
+    mkdir -p /var/run/bluecherry
+    chown bluecherry.bluecherry /var/run/bluecherry
+end script
+
 exec /usr/bin/sudo -H -u bluecherry /usr/sbin/bc-server
