@@ -21,9 +21,11 @@
 #define DEFAULT_PORT		"554"
 #define DEFAULT_USERINFO	"root:pass"
 
+extern int rtp_verbose;
+
 static void usage(void)
 {
-	fprintf(stderr, "Usage: rtsp-client rtsp://[USERINFO@]"
+	fprintf(stderr, "Usage: rtsp-client <-v> rtsp://[USERINFO@]"
 		"SERVER[:PORT]/PATH_TO_SDP\n\n");
 	exit(EXIT_FAILURE);
 }
@@ -46,22 +48,109 @@ static char *strpbrk_and_copy(char *dest, char *src, const char *s2, char *res)
 	return p + 1;
 }
 
+static void check_mpeg(struct rtp_session *rs)
+{
+	AVCodec *codec;
+	AVCodecContext *c = NULL;
+	int got_picture, len;
+	AVFrame *picture = NULL;
+
+	codec = avcodec_find_decoder(rs->vid_codec);
+	if (!codec) {
+		fprintf(stderr, "codec not found: 0x%08x\n", rs->vid_codec);
+		return;
+	}
+
+	c = avcodec_alloc_context();
+	if (c == NULL) {
+		fprintf(stderr, "Failed to alloc context\n");
+		return;
+	}
+
+	picture = avcodec_alloc_frame();
+	if (picture == NULL) {
+		fprintf(stderr, "Failed to alloc frame\n");
+		goto fail_mpeg_check;
+	}
+
+	if (avcodec_open(c, codec) < 0) {
+		fprintf(stderr, "could not open codec\n");
+		goto fail_mpeg_check;
+	}
+
+	len = avcodec_decode_video(c, picture, &got_picture, rs->vid_buf,
+				   rs->vid_len);
+
+	if (len < 0) {
+		fprintf(stderr, "Error while decoding frame\n");
+		goto fail_mpeg_check;
+	}
+	if (got_picture) {
+		fprintf(stderr, "Got frame at %dx%d @ %d fps (codec %s)\n",
+			c->width, c->height, rs->framerate,
+			rs->vid_codec == CODEC_ID_MPEG4 ? "mpeg4" : "h.264");
+	} else {
+		fprintf(stderr, "Could not decode frame\n");
+	}
+
+fail_mpeg_check:
+	if (c) {
+		avcodec_close(c);
+		av_freep(&c);
+	}
+	if (picture)
+		av_freep(&picture);
+}
+
 static void do_vid_out(struct rtp_session *rs, int fd)
 {
-	if (write(fd, rs->pkt_vid.data, rs->pkt_vid.size) != rs->pkt_vid.size) {
+	static int got_one;
+
+	if (fd < 0)
+		return;
+
+	if (!rs->vid_valid)
+		return;
+
+	if (write(fd, rs->vid_buf, rs->vid_len) != rs->vid_len) {
 		fprintf(stderr, "Could not write video data: %m\n");
 		exit(EXIT_FAILURE);
 	}
+
+	if (!got_one) {
+		got_one = 1;
+		check_mpeg(rs);
+	}
+
+	rs->vid_valid = rs->vid_len = 0;
+}
+
+static void do_aud_out(struct rtp_session *rs, int fd)
+{
+	if (fd < 0)
+		return;
+
+	if (!rs->aud_valid)
+		return;
+
+	if (write(fd, rs->aud_buf, rs->aud_len) != rs->aud_len) {
+	        fprintf(stderr, "Could not write audio data: %m\n");
+		exit(EXIT_FAILURE);
+	}
+
+        rs->aud_valid = rs->aud_len = 0;
 }
 
 int main(int argc, char* argv[])
 {
 	int opt;
 	const char *out_v = "temp.m4v";
+	const char *out_a = "temp.aac";
 	struct rtp_session rs;
 	char *p, *t, c;
 	char userinfo[128], server[128], port[8], path[128];
-	int fd_v = -1;
+	int fd_v = -1, fd_a = -1;
+	int got_vop = 0;
 	const char *err_msg;
 
 	strcpy(port, DEFAULT_PORT);
@@ -69,8 +158,11 @@ int main(int argc, char* argv[])
 	avcodec_init();
         av_register_all();
 
-	while ((opt = getopt(argc, argv, "h")) != -1) {
+	while ((opt = getopt(argc, argv, "hv")) != -1) {
 		switch (opt) {
+		case 'v':
+			rtp_verbose = 1;
+			break;
 		case 'h':
 		default:
 			usage();
@@ -109,6 +201,12 @@ int main(int argc, char* argv[])
 			out_v);
 		exit(EXIT_FAILURE);
 	}
+	fd_a = open(out_a, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd_a < 0) {
+		fprintf(stderr, "Could not open output file: %s: %m\n",
+			out_a);
+		exit(EXIT_FAILURE);
+	}
 
 	rtp_session_init(&rs, userinfo, path, server, atoi(port));
 
@@ -121,17 +219,21 @@ int main(int argc, char* argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	dump_format(rs.fmt_ctx, 0, rs.url, 0);
-
 	fprintf(stderr, "Recording data...\n");
 
 	while (1) {
 		if (rtp_session_read(&rs)) {
-			fprintf(stderr, "Error reading from stream\n");
+			fprintf(stderr, "Error reading froms stream\n");
 			exit(EXIT_FAILURE);
 		}
 
+		if (!got_vop) {
+			if (!rs.vid_valid)
+				continue;
+			got_vop = 1;
+		}
 		do_vid_out(&rs, fd_v);
+		do_aud_out(&rs, fd_a);
 	}
 
 	exit(0);

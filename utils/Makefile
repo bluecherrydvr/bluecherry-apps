@@ -2,7 +2,7 @@ topdir = ..
 include $(topdir)/mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
-LDFLAGS		+= -L$(topdir)/lib -lavcodec -lavformat
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lavcodec -lavformat
 
 TARGETS		= getjpeg bc-checkkey getaudio rtsp-client pelcocmd ptzcmd
 GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
@@ -12,15 +12,6 @@ all: $(TARGETS)
 
 getaudio: $(GET_AUDIO_OBJS)
 	$(LD) -o $@ $(GET_AUDIO_OBJS) $(LDFLAGS) -lasound
-
-getjpeg: getjpeg.o
-	$(LD) $< -o $@ $(LDFLAGS) -lbluecherry
-
-bc-checkkey: bc-checkkey.o
-	$(LD) $< -o $@ $(LDFLAGS) -lbluecherry
-
-ptzcmd: ptzcmd.o
-	$(LD) $< -o $@ $(LDFLAGS) -lbluecherry
 
 rtsp-client: $(RTSP_CLIENT_OBJS)
 	$(LD) $(RTSP_CLIENT_OBJS) -o $@ $(LDFLAGS)
