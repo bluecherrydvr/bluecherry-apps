@@ -122,21 +122,19 @@ int bc_buf_key_frame(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		if (bc->rtp_sess.pkt_vid.data == NULL)
-			return 0;
-		return mpeg4_is_key_frame(bc->rtp_sess.pkt_vid.data,
-					  bc->rtp_sess.pkt_vid.size);
-	}
+	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+		return mpeg4_is_key_frame(bc->rtp_sess.vid_buf,
+					  bc->rtp_sess.vid_len);
 
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 1;
+
+	vb = bc_buf_v4l2(bc);
 
 	/* For everything other than mpeg, every frame is a keyframe */
 	if (bc->vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
 		return 1;
 
-	vb = bc_buf_v4l2(bc);
 	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
 		return 1;
 
@@ -292,14 +290,27 @@ int bc_buf_get(struct bc_handle *bc)
 		struct rtp_session *rs = &bc->rtp_sess;
 		int ret = 0;
 
-		ret = rtp_session_read(rs);
-		if (ret)
-			return ret;
+		/* Reset for next packet */
+		if (rs->vid_valid)
+			rs->vid_valid = rs->vid_len = 0;
+		if (rs->aud_valid)
+			rs->aud_valid = rs->aud_len = 0;
 
-		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc))
-				return EAGAIN;
-			bc->got_vop = 1;
+		/* Loop till we get a whole packet */
+		for (;;) {
+			ret = rtp_session_read(rs);
+			if (ret)
+				return ret;
+
+			if (!bc->got_vop) {
+				if (!rs->vid_valid)
+					continue;
+				else
+					bc->got_vop = 1;
+			}
+
+			if (rs->vid_valid || rs->aud_valid)
+				break;
 		}
 
 		return 0;
@@ -466,8 +477,6 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 static int rtp_session_init_dbres(struct rtp_session *rs,
 				  void *dbres)
 {
-	char userinfo[256], server[256], uri[256];
-	int port;
 	const char *val;
 	char *device;
 	char *p, *t;
@@ -477,14 +486,14 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 	val = bc_db_get_val(dbres, "rtsp_username", NULL);
 	if (!val)
 		return -1;
-	strcpy(userinfo, val);
+	strcpy(rs->userinfo, val);
 
-	strcat(userinfo, ":");
+	strcat(rs->userinfo, ":");
 
 	val = bc_db_get_val(dbres, "rtsp_password", NULL);
 	if (!val)
 		return -1;
-	strcat(userinfo, val);
+	strcat(rs->userinfo, val);
 
 	val = bc_db_get_val(dbres, "device", NULL);
 	if (!val)
@@ -502,7 +511,7 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 
 	*(t++) = '\0';
 
-	strcpy(server, p);
+	strcpy(rs->server, p);
 
 	p = t;
 	while (*t != '|' && *t != '\0')
@@ -512,10 +521,10 @@ static int rtp_session_init_dbres(struct rtp_session *rs,
 
 	*(t++) = '\0';
 
-	port = atoi(p);
-	strcpy(uri, t);
+	rs->port = atoi(p);
+	strcpy(rs->uri, t);
 
-	return rtp_session_init(rs, userinfo, uri, server, port);
+	return 0;
 }
 
 /* We always use the username:password from the RTSP connection */
@@ -684,9 +693,6 @@ void bc_handle_free(struct bc_handle *bc)
 
 	if (bc->dev_fd >= 0)
 		close(bc->dev_fd);
-
-	if (bc->rtp_sess.url)
-		free(bc->rtp_sess.url);
 
 	free(bc);
 
