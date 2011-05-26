@@ -8,7 +8,7 @@ CREATE TABLE `ipCameraDriver` (
 );
 
 INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjpeg_port`) VALUES
-('RTSP-VAPIX-AUTO', '/mpeg4/media.amp', '/mjpeg/video.mjpg', 554, 80),
+('RTSP-VAPIX-AUTO', '/mpeg4/media.amp', '/mjpg/video.mjpg', 554, 80),
 ('RTSP-ACTi', '/', '/cgi-bin/cmd/encoder?SNAPSHOT', 7070, 80),
 ('RTSP-Vivotek-V1', '/live.sdp', '/cgi-bin/video.jpg', 554, 80),
 ('RTSP-Vivotek-V2', '/live.sdp', '/video.mjpg', 554, 80),
