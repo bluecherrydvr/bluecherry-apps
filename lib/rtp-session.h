@@ -39,7 +39,7 @@ struct rtp_session {
 	unsigned int	vid_buf_len;
 	int		vid_len;
 	int		vid_ts_valid;
-	unsigned int	vid_ts_last;
+	unsigned int	vid_ts_start;
 	unsigned int	vid_ts;
 	int		vid_valid;
 
@@ -53,6 +53,9 @@ struct rtp_session {
 	int		framerate;
 	enum CodecID	vid_codec, aud_codec;
 	int		samplerate, bitrate, channels;
+
+	void		*sprop_cfg;
+	int		sprop_cfg_size;
 };
 
 void rtp_session_init(struct rtp_session *rs, const char *userinfo,

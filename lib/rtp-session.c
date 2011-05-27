@@ -36,6 +36,7 @@ int rtp_verbose = 0;
 
 static const char * const trans_fmt =
 	"RTP/AVP/TCP;unicast;interleaved=0-1;client_port=%d-%d";
+static const unsigned char sseq[] = { 0, 0, 0, 1 };
 
 /* cURL is not thread safe */
 static pthread_mutex_t curl_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -58,6 +59,7 @@ static int get_next_port(void)
 
 size_t Curl_base64_encode(void *data, const char *inputbuff,
 			  size_t insize, char **outptr);
+size_t Curl_base64_decode(const char *src, unsigned char **outptr);
 
 void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 		     const char *uri, const char *server,
@@ -113,6 +115,11 @@ void rtp_session_stop(struct rtp_session *rs)
 		free(rs->vid_buf);
 		rs->vid_buf = NULL;
 		rs->vid_buf_len = 0;
+	}
+	if (rs->sprop_cfg) {
+		free(rs->sprop_cfg);
+		rs->sprop_cfg = NULL;
+		rs->sprop_cfg_size = 0;
 	}
 	rs->vid_ts_valid = 0;
 	pthread_mutex_unlock(&curl_lock);
@@ -283,35 +290,86 @@ static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
 	return len;
 }
 
+static void reset_vid_buf(struct rtp_session *rs)
+{
+	rs->vid_len = 0;
+	rs->vid_valid = 0;
+}
+
 static void handle_vid(struct rtp_session *rs, unsigned char *data,
 		       int len)
 {
 	int skip = 12;
+	int need;
 
-	if (rs->vid_valid)
-		rs->vid_valid = rs->vid_len = 0;
+	if (rs->vid_valid || !rs->vid_len)
+		reset_vid_buf(rs);
 
 	/* CSRCs */
 	skip += 4 * (data[0] & 0x0f);
 
 	if (skip >= len) {
-		rs->vid_valid = rs->vid_len = 0;
+		reset_vid_buf(rs);
 		return;
 	}
 
+	/* Figure extra room in case we need sseq */
+	need = (len - skip) + sizeof(sseq);
+
 	/* If our video buffer is too small, double it */
-	if (rs->vid_len + (len - skip) > rs->vid_buf_len) {
-		int new_len = rs->vid_buf_len *= 2;
+	while (rs->vid_len + need > rs->vid_buf_len) {
+		int new_len = rs->vid_buf_len * 2;
 		void *new_buf = realloc(rs->vid_buf, new_len);
 
-		if (new_buf != NULL) {
-			rs->vid_buf_len = new_len;
-			rs->vid_buf = new_buf;
-		}
+		if (new_buf == NULL)
+			break; /* XXX DO SOMETHING FOOL!!! */
+
+		rs->vid_buf_len = new_len;
+		rs->vid_buf = new_buf;
 	}
 
-	/* XXX: If we skip this, we're chopping a frame!! */
-	if (rs->vid_len + (len - skip) <= rs->vid_buf_len) {
+	if (rs->vid_len + need <= rs->vid_buf_len) {
+		if (rs->vid_codec == CODEC_ID_H264) {
+			unsigned char nal = *(data + skip);
+			unsigned char type = nal & 0x1f;
+
+			if (type >= 0 && type <= 23)
+				type = 0;
+
+			switch (type) {
+			case 0:
+				memcpy(rs->vid_buf + rs->vid_len, sseq, sizeof(sseq));
+				rs->vid_len += sizeof(sseq);
+				break;
+			case 28:
+				{
+					unsigned char fu_head = *(data + skip + 1);
+					unsigned char sbit = fu_head >> 7;
+
+					skip += 2; /* Skip FU-A NAL and Head */ 
+
+					if (sbit) {
+						unsigned char new_nal;
+
+						new_nal = (nal & 0xe0) |
+							(fu_head & 0x1f);
+
+						/* Copy SPROP */
+						memcpy(rs->vid_buf, rs->sprop_cfg,
+						       rs->sprop_cfg_size);
+						rs->vid_len = rs->sprop_cfg_size;
+						/* Copy start sequence */
+						memcpy(rs->vid_buf + rs->vid_len, sseq,
+						       sizeof(sseq));
+						rs->vid_len += sizeof(sseq);
+						/* Copy new NAL */
+						rs->vid_buf[rs->vid_len] = new_nal;
+						rs->vid_len++;
+					}
+				}
+				break;
+			}
+		}
 		memcpy(rs->vid_buf + rs->vid_len, data + skip, len - skip);
 		rs->vid_len += len - skip;
 	}
@@ -321,14 +379,14 @@ static void handle_vid(struct rtp_session *rs, unsigned char *data,
 
 		if (rs->vid_ts_valid) {
 			/* Check for wrap */
-			if (rs->vid_ts_last > ts)
-				rs->vid_ts = (ts + UINT_MAX) - rs->vid_ts_last;
+			if (rs->vid_ts_start > ts)
+				rs->vid_ts = (ts + UINT_MAX) - rs->vid_ts_start;
 			else
-				rs->vid_ts = ts - rs->vid_ts_last;
+				rs->vid_ts = ts - rs->vid_ts_start;
 		} else {
 			rs->vid_ts_valid = 1;
 			rs->vid_ts = 0;
-			rs->vid_ts_last = ts;
+			rs->vid_ts_start = ts;
 		}
 
 		rs->vid_valid = 1;
@@ -501,6 +559,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 
 	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
+
 	rs->aud_codec = CODEC_ID_NONE;
 	rs->vid_codec = CODEC_ID_MPEG4;
 
@@ -602,6 +661,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	ret = 0;
 
 	rs->vid_ts_valid = 0;
+	reset_vid_buf(rs);
 
 setup_fail:
 	pthread_mutex_unlock(&curl_lock);
@@ -636,6 +696,84 @@ static void get_uri(char *uri, char *sdp, const char *type,
 	}
 }
 
+static void parse_config(struct rtp_session *rs, const char *data)
+{
+	int len = strlen(data);
+	unsigned char *p;
+	int i;
+
+	if (!len)
+		return;
+
+	rs->sprop_cfg_size = (len + 1) >> 1;
+	p = malloc(rs->sprop_cfg_size);
+	if (p == NULL)
+		return;
+
+	memset(p, 0, rs->sprop_cfg_size);
+	rs->sprop_cfg = p;
+
+	/* Convert hex char to binary */
+	for (i = 0; i < len; i++) {
+		unsigned char t = data[i];
+		unsigned char c;
+
+		if (t >= '0' && data[i] <= '9')
+			c = t - '0';
+		else if (tolower(t) >= 'a' && tolower(t) <= 'f')
+			c = (t - 'a') + 10;
+
+		if (i & 1)
+			*p++ |= c << 4;
+		else
+			*p = c;
+	}
+
+	if (rtp_verbose)
+		printf(">> CFG Parsed >>\n");
+}
+
+static void parse_sprop(struct rtp_session *rs, char *data)
+{
+	char *t, *p = data;
+	int size = strlen(data);
+
+	rs->sprop_cfg = NULL;
+	rs->sprop_cfg_size = 0;
+
+	while (p - data < size && *p) {
+		unsigned char *res;
+		int b64len, newlen;
+		void *new;
+
+		for (t = p; *t && *t != ','; t++)
+			/* Increment to end of this portion */;
+
+		*t = '\0';
+
+		b64len = Curl_base64_decode(p, &res);
+		p = t + 1;
+
+		if (!b64len)
+			continue;
+
+		newlen = b64len + sizeof(sseq) + rs->sprop_cfg_size;
+		new = realloc(rs->sprop_cfg, newlen);
+
+		if (new == NULL)
+			break;
+
+		memcpy(new + rs->sprop_cfg_size, sseq, sizeof(sseq));
+		memcpy(new + rs->sprop_cfg_size + sizeof(sseq), res, b64len);
+
+		rs->sprop_cfg = new;
+		rs->sprop_cfg_size = newlen;
+	}
+
+	if (rtp_verbose)
+		printf(">> SPROP Parsed >>\n");
+}
+
 static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 			 void *userdata)
 {
@@ -648,7 +786,7 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 	((char *)ptr)[size * nmemb] = '\0';
 
 	if (rtp_verbose)
-		printf("> %s\n", (char *)ptr);
+		printf(">> SDP >>\n%s\n", (char *)ptr);
 
 	media_type = "m=video ";
 	if (!sdp_check_type(ptr, media_type))
@@ -663,10 +801,21 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 
 	sdp_get_attr(buf, ptr, media_type, "rtpmap");
 	if (strlen(buf)) {
-		if (strcasestr(buf, "H264"))
+		char sprop_cfg[1024];
+		char fmtp[1024];
+
+		sdp_get_attr(fmtp, ptr, media_type, "fmtp");
+
+		if (strcasestr(buf, "H264")) {
+			rtp_get_fmtp_param(sprop_cfg, fmtp, "sprop-parameter-sets");
+			parse_sprop(rs, sprop_cfg);
 			rs->vid_codec = CODEC_ID_H264;
-		else if (strcasestr(buf, "MP4V-ES"))
+		} else {
+			/* Assume mpeg4 */
+			rtp_get_fmtp_param(sprop_cfg, fmtp, "config");
+			parse_config(rs, sprop_cfg);
 			rs->vid_codec = CODEC_ID_MPEG4;
+		}
 	}
 
 	/* Now check for audio */
