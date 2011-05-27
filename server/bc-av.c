@@ -407,7 +407,6 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	enum CodecID codec_id = CODEC_ID_NONE;
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
-	int ret = -1;
 
 	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
 		*fden = bc->vparm.parm.capture.timeperframe.denominator;
@@ -418,6 +417,9 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		*fnum = 1;
 		*fden = bc->rtp_sess.framerate;
+		/* Just a guess */
+		*width = 640;
+		*height = 480;
 		codec_id = bc->rtp_sess.vid_codec;
 		if (codec_id == CODEC_ID_NONE)
 			codec_id = CODEC_ID_MPEG4;
@@ -425,13 +427,13 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 		return -1;
 	}
 
-	if (buf == NULL || size <= 0 || codec_id == CODEC_ID_NONE)
-		return -1;
+	if (buf == NULL || size <= 0)
+		return 0;
 
 	/* Decode the first picture to get frame size */
 	codec = avcodec_find_decoder(codec_id);
 	if (!codec)
-		return -1;
+		return 0;
 
 	c = avcodec_alloc_context();
 	picture = avcodec_alloc_frame();
@@ -451,8 +453,6 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 
 	bc_save_jpeg(bc_rec, c, picture);
 
-	ret = 0;
-
 pic_info_fail:
 	if (c != NULL) {
 		if (codec)
@@ -462,7 +462,7 @@ pic_info_fail:
 	if (picture != NULL)
 		av_freep(&picture);
 
-	return ret;
+	return 0;
 }
 
 static int __bc_open_avcodec(struct bc_record *bc_rec)
@@ -525,7 +525,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->codec_id = bc_rec->codec_id;
 
 	/* h264 requires us to work around libavcodec broken defaults */
-	if (bc_rec->codec_id == CODEC_ID_H264) {
+	if (st->codec->codec_id == CODEC_ID_H264) {
 		st->codec->crf = 20;
 		st->codec->me_range = 16;
 		st->codec->me_subpel_quality = 7;
