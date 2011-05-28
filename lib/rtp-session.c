@@ -34,8 +34,11 @@ typedef enum {
 
 int rtp_verbose = 0;
 
-static const char * const trans_fmt =
-	"RTP/AVP/TCP;unicast;interleaved=0-1;client_port=%d-%d";
+static const char * const trans_fmt_tcp =
+	"RTP/AVP/TCP;unicast;interleaved=0-1";
+static const char * const trans_fmt_udp =
+	"RTP/AVP/UDP;unicast;client_port=%d-%d";
+
 static const unsigned char sseq[] = { 0, 0, 0, 1 };
 
 /* cURL is not thread safe */
@@ -545,6 +548,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	int ret = -1;
 	long http_code;
 	int port;
+	int use_udp = 0;
 
 	if (check_curl())
 		RETERR("Failed to initialize cURL");
@@ -606,8 +610,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 
 	/* Now setup the audio/video streams */
-	port = get_next_port();
-	sprintf(trans, trans_fmt, port, port + 1);
+	strcpy(trans, trans_fmt_tcp);
 	rs->setup_vid = 1;
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
 	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
@@ -616,18 +619,35 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	if (curl_easy_perform(rs->curl))
 		GOTOERR("Failed video SETUP request");
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
-	if (http_code != 200 || (rs->tid_v < 0 && rs->vid_port <= 0))
-		GOTOERR("Bad response from video SETUP request");
-	if (rs->vid_port > 0) {
+	if (http_code != 200 || rs->tid_v < 0) {
+		/* Try UDP next */
+		port = get_next_port();
+		sprintf(trans, trans_fmt_udp, port, port + 1);
+
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
+		curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->vid_uri);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
+		if (curl_easy_perform(rs->curl))
+			GOTOERR("Failed video SETUP request");
+		curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+		if (http_code != 200 || rs->vid_port <= 0)
+			GOTOERR("Bad response from video SETUP request");
+
 		rs->vid_fd = open_listener(rs->vid_port);
 		if (rs->vid_fd < 0)
 			GOTOERR("Failure to open UDP listener for video");
+		use_udp = 1;
 	}
 
 	/* SETUP the audio too, if we have a URI for it */
 	if (rs->aud_uri[0]) {
-		port = get_next_port();
-		sprintf(trans, trans_fmt, port, port + 1);
+		if (use_udp) {
+			port = get_next_port();
+			sprintf(trans, trans_fmt_udp, port, port + 1);
+		} else {
+			strcpy(trans, trans_fmt_tcp);
+		}
 		rs->setup_vid = 0;
 		curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
 		curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
@@ -638,7 +658,9 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 		curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 		if (http_code != 200 || (rs->tid_a < 0 && rs->aud_port <= 0))
 			GOTOERR("Bad response from audio SETUP request");
-		if (rs->aud_port > 0) {
+		if (use_udp) {
+			if (rs->aud_port <= 0)
+				GOTOERR("No audio port after UDP negotiation");
 			rs->aud_fd = open_listener(rs->aud_port);
 			if (rs->aud_fd < 0)
 				GOTOERR("Failure to open UDP listener for audio");
