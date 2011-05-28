@@ -80,7 +80,6 @@ removethis(){
 # Ensure that buildconf runs from the subdirectory where configure.ac lives
 #
 if test ! -f configure.ac ||
-  test ! -f src/main.c ||
   test ! -f lib/urldata.h ||
   test ! -f include/curl/curl.h; then
   echo "Can not run buildconf from outside of curl's source subdirectory!"
@@ -337,9 +336,6 @@ fi
 
 echo "buildconf: running autoheader"
 ${AUTOHEADER:-autoheader} || die "The autoheader command failed"
-
-echo "buildconf: cp lib/curl_config.h.in src/curl_config.h.in"
-cp lib/curl_config.h.in src/curl_config.h.in
 
 echo "buildconf: running autoconf"
 ${AUTOCONF:-autoconf}     || die "The autoconf command failed"

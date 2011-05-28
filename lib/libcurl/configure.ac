@@ -34,7 +34,7 @@ This configure script may be copied, distributed and modified under the
 terms of the curl license; see COPYING for more details])
 
 AC_CONFIG_SRCDIR([lib/urldata.h])
-AM_CONFIG_HEADER(lib/curl_config.h src/curl_config.h include/curl/curlbuild.h)
+AM_CONFIG_HEADER(lib/curl_config.h include/curl/curlbuild.h)
 AM_MAINTAINER_MODE
 
 CURL_CHECK_OPTION_DEBUG
@@ -2843,33 +2843,10 @@ if test "x$want_curldebug_assumed" = "xyes" &&
 fi
 
 AC_CONFIG_FILES([Makefile \
-           docs/Makefile \
-           docs/examples/Makefile \
-           docs/libcurl/Makefile \
            include/Makefile \
            include/curl/Makefile \
-           src/Makefile \
            lib/Makefile \
-           tests/Makefile \
-           tests/data/Makefile \
-           tests/server/Makefile \
-           tests/libtest/Makefile \
-           packages/Makefile \
-           packages/Win32/Makefile \
-           packages/Win32/cygwin/Makefile \
-           packages/Linux/Makefile \
-           packages/Linux/RPM/Makefile \
-           packages/Linux/RPM/curl.spec \
-           packages/Linux/RPM/curl-ssl.spec \
-           packages/Solaris/Makefile \
-           packages/EPM/curl.list \
-           packages/EPM/Makefile \
-           packages/vms/Makefile \
-           packages/AIX/Makefile \
-           packages/AIX/RPM/Makefile \
-           packages/AIX/RPM/curl.spec \
-           curl-config \
-           libcurl.pc
+           curl-config
 ])
 AC_OUTPUT
 
