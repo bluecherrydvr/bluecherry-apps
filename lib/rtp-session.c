@@ -60,8 +60,6 @@ static int get_next_port(void)
 	return port;
 }
 
-size_t Curl_base64_encode(void *data, const char *inputbuff,
-			  size_t insize, char **outptr);
 size_t Curl_base64_decode(const char *src, unsigned char **outptr);
 
 void rtp_session_init(struct rtp_session *rs, const char *userinfo,
@@ -473,29 +471,6 @@ static int check_curl(void)
 	return ret;
 }
 
-static void rtp_add_auth(struct rtp_session *rs)
-{
-	char coded[200];
-	char *encoding = NULL;
-
-	if (!strlen(rs->userinfo))
-		return;
-
-	memset(coded, 0, sizeof(coded));
-	strcpy(coded, "Authorization: Basic ");
-
-	Curl_base64_encode(NULL, rs->userinfo, strlen(rs->userinfo),
-			   &encoding);
-	if (encoding != NULL) {
-		if (strlen(coded) + strlen(encoding) < sizeof(coded) - 1)
-			strcat(coded, encoding);
-		curl_free(encoding);
-	}
-
-	rs->slist = curl_slist_append(rs->slist, coded);
-	curl_easy_setopt(rs->curl, CURLOPT_HTTPHEADER, rs->slist);
-}
-
 static int open_listener(int port)
 {
 	struct sockaddr_in sa_in;
@@ -582,10 +557,9 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	/* Setup the base cURL session */
 	curl_easy_setopt(rs->curl, CURLOPT_PRIVATE, (void *)rs);
 	curl_easy_setopt(rs->curl, CURLOPT_URL, uri);
-	/* cURL doesn't support RTSP auth yet */
-        rtp_add_auth(rs);
-	/* Defaults for data handlers do nothing */
+	curl_easy_setopt(rs->curl, CURLOPT_USERPWD, rs->userinfo);
 	curl_easy_setopt(rs->curl, CURLOPT_RANGE, "npt=0.000-");
+	/* Defaults for data handlers do nothing */
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEDATA, rs);
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEDATA, rs);
 	curl_easy_setopt(rs->curl, CURLOPT_HEADERDATA, rs);
