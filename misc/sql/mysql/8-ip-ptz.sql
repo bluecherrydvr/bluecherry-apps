@@ -1,4 +1,4 @@
-kCREATE TABLE `ipCameraPTZDriver` (
+CREATE TABLE `ipCameraPTZDriver` (
   `id` varchar(32) NOT NULL,
   `move_up` varchar(256) DEFAULT NULL,
   `move_down` varchar(256) DEFAULT NULL,
