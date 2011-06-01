@@ -606,8 +606,8 @@ output_auth_headers(struct connectdata *conn,
  *
  * @returns CURLcode
  */
-static CURLcode
-http_output_auth(struct connectdata *conn,
+CURLcode
+Curl_http_output_auth(struct connectdata *conn,
                  const char *request,
                  const char *path,
                  bool proxytunnel) /* TRUE if this is the request setting
@@ -1334,7 +1334,7 @@ CURLcode Curl_proxyCONNECT(struct connectdata *conn,
       }
 
       /* Setup the proxy-authorization header, if any */
-      result = http_output_auth(conn, "CONNECT", host_port, TRUE);
+      result = Curl_http_output_auth(conn, "CONNECT", host_port, TRUE);
 
       if(CURLE_OK == result) {
         char *host=(char *)"";
@@ -2187,7 +2187,7 @@ CURLcode Curl_http(struct connectdata *conn, bool *done)
   }
 
   /* setup the authentication headers */
-  result = http_output_auth(conn, request, ppath, FALSE);
+  result = Curl_http_output_auth(conn, request, ppath, FALSE);
   if(result)
     return result;
 

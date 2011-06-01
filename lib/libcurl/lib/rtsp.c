@@ -270,9 +270,6 @@ CURLcode Curl_rtsp(struct connectdata *conn, bool *done)
     return CURLE_BAD_FUNCTION_ARGUMENT;
   }
 
-  /* TODO: auth? */
-  /* TODO: proxy? */
-
   /* Stream URI. Default to server '*' if not specified */
   if(data->set.str[STRING_RTSP_STREAM_URI]) {
     p_stream_uri = data->set.str[STRING_RTSP_STREAM_URI];
@@ -280,6 +277,13 @@ CURLcode Curl_rtsp(struct connectdata *conn, bool *done)
   else {
     p_stream_uri = "*";
   }
+
+  /* setup the authentication headers */
+  result = Curl_http_output_auth(conn, p_request, p_stream_uri, FALSE);
+  if(result)
+    return result;
+
+  /* TODO: proxy? */
 
   /* Transport Header for SETUP requests */
   p_transport = Curl_checkheaders(data, "Transport:");

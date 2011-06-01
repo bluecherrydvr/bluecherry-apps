@@ -158,4 +158,11 @@ CURLcode Curl_http_readwrite_headers(struct SessionHandle *data,
                                      ssize_t *nread,
                                      bool *stop_reading);
 
+/* Added for bluecherry -- BenC */
+CURLcode
+Curl_http_output_auth(struct connectdata *conn,
+                 const char *request,
+                 const char *path,
+                 bool proxytunnel);
+
 #endif
