@@ -230,9 +230,12 @@ if (!empty($_GET['interval'])) {
 		$invt = intval($_GET['interval']);
 }
 
+$is_active = false;
+$active_time = 0;
+
 function print_image() {
 	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
-	global $intv_cnt, $intv, $id;
+	global $intv_cnt, $intv, $id, $is_active, $active_time;
 
 	$myl = 0;
 	$myj = FALSE;
@@ -247,10 +250,9 @@ function print_image() {
 		$myj = bc_buf_data($bch);
 	}
 
-	$is_active = check_active($id);
+	$tm = time();
 
 	if ($intv_low) {
-		$tm = time();
 		if ($tm <= $intv_time)
 			return;
 		$intv_time = $tm;
@@ -259,6 +261,11 @@ function print_image() {
 		if ($intv_cnt <= $intv)
 			return;
 		$intv_cnt = 0;
+	}
+
+	if ($tm > $intv_time) {
+		$is_active = check_active($id);
+		$active_time = $tm;
 	}
 
 	if ($is_active) {
