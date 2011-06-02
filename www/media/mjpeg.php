@@ -279,7 +279,7 @@ if ($url) {
 	bc_db_close();
 
 	// For this case, we pass off to curl
-	if ($multi and $single_url == FALSE) {
+	if ($multi and $single_url == FALSE and !$intv_low and $intv == 1) {
 		passthru("curl -s " . escapeshellarg($url));
 		exit;
 	}
