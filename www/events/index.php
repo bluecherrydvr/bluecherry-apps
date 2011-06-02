@@ -86,16 +86,16 @@ foreach ($events as $item) {
 		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
 		$item['type_id'] . "\"/>\n";
 
-	if (!empty($item['media_id']) && $item['media_available']) {
-		print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
-		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
-		print "</content>\n";
-	}
 	if (!empty($item['snapshot_id'])) {
 		print "    <content snapshot_id=\"".$item['snapshot_id']."\">";
                 print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/snapshot.php?id=".$item['snapshot_id'];
                 print "</content>\n";
         }
+	if (!empty($item['media_id']) && $item['media_available']) {
+		print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
+		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
+		print "</content>\n";
+	}
 
 	print "  </entry>\n";
 }
