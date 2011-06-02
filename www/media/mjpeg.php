@@ -168,10 +168,36 @@ function get_one_jpeg($url_full)
 	return $myj;
 }
 
+// Checks for in-progress event to add a border around the frame
+function check_border($data)
+{
+	global $id;
+
+	$list = bc_db_get_table("SELECT id FROM EventsCam WHERE device_id=$id ".
+				"AND length=-1");
+	if (empty($list))
+		return $data;
+
+	$im = imagecreatefromstring($data);
+	$red = imagecolorallocate($im, 255, 0, 0);
+
+	imagerectangle($im, 0, 0, imagesx($im) - 1, imagesy($im) - 1, $red);
+
+	ob_start();
+	imagejpeg($im);
+	$data = ob_get_contents();
+	ob_end_clean();
+
+	imagedestroy($im);
+
+	return $data;
+}
+
 if (!isset($_GET['id']))
 	image_err("No device ID supplied");
 
-$bch = bc_handle_get_byid(intval($_GET['id']));
+$id = intval($_GET['id']);
+$bch = bc_handle_get_byid($id);
 if ($bch == false)
 	image_err("No such device");
 
@@ -222,22 +248,22 @@ if (!empty($_GET['interval'])) {
 }
 
 function print_image() {
-	global $multi, $bch, $boundary, $url;
+	global $multi, $bch, $boundary, $url, $intv_low, $intv_time, $intv_cnt, $intv;
 
 	$myl = 0;
 	$myj = FALSE;
 
 	if ($url) {
 		$myj = get_one_jpeg($url);
-		$myl = strlen($myj);
 	} else {
 		if (bc_buf_get($bch) == false) {
 			sleep(1);
 			return;
 		}
-		$myl = bc_buf_size($bch);
 		$myj = bc_buf_data($bch);
 	}
+
+	$myj = check_border($myj);
 
 	if ($intv_low) {
 		$tm = time();
@@ -253,7 +279,7 @@ function print_image() {
 
 	if ($multi) {
 		print "Content-type: image/jpeg\r\n";
-		print "Content-size: " . $myl . "\r\n\r\n";
+		print "Content-size: " . strlen($myj) . "\r\n\r\n";
 	}
 
 	print $myj;
@@ -276,7 +302,6 @@ if ($multi) {
 # Cleanup some unused resources
 if ($url) {
 	bc_handle_free($bch);
-	bc_db_close();
 
 	// For this case, we pass off to curl
 	if ($multi and $single_url == FALSE and !$intv_low and $intv == 1) {
