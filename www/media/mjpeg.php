@@ -209,6 +209,18 @@ if ($multi) {
 	header("Content-type: image/jpeg");
 }
 
+$intv_low = false;
+$intv_time = 0;
+$intv_cnt = 0;
+$invt = 1;
+
+if (!empty($_GET['interval'])) {
+	if ($_GET['interval'] == "low")
+		$intv_low = true;
+	else
+		$invt = intval($_GET['interval']);
+}
+
 function print_image() {
 	global $multi, $bch, $boundary, $url;
 
@@ -225,6 +237,18 @@ function print_image() {
 		}
 		$myl = bc_buf_size($bch);
 		$myj = bc_buf_data($bch);
+	}
+
+	if ($intv_low) {
+		$tm = time();
+		if ($tm <= $intv_time)
+			return;
+		$intv_time = $tm;
+	} else {
+		$intv_cnt++;
+		if ($intv_cnt <= $intv)
+			return;
+		$intv_cnt = 0;
 	}
 
 	if ($multi) {
@@ -249,7 +273,7 @@ if ($multi) {
 	ob_implicit_flush(1);
 }
 
-# For URLs that support MJPEG, we just pass through to curl
+# Cleanup some unused resources
 if ($url) {
 	bc_handle_free($bch);
 	bc_db_close();
@@ -269,4 +293,5 @@ do {
 
 bc_db_close();
 bc_handle_free($bch);
+
 ?>
