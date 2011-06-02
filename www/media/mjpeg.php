@@ -168,29 +168,15 @@ function get_one_jpeg($url_full)
 	return $myj;
 }
 
-// Checks for in-progress event to add a border around the frame
-function check_border($data)
+// Checks for in-progress event
+function check_active($id)
 {
-	global $id;
-
 	$list = bc_db_get_table("SELECT id FROM EventsCam WHERE device_id=$id ".
 				"AND length=-1");
 	if (empty($list))
-		return $data;
+		return FALSE;
 
-	$im = imagecreatefromstring($data);
-	$red = imagecolorallocate($im, 255, 0, 0);
-
-	imagerectangle($im, 0, 0, imagesx($im) - 1, imagesy($im) - 1, $red);
-
-	ob_start();
-	imagejpeg($im);
-	$data = ob_get_contents();
-	ob_end_clean();
-
-	imagedestroy($im);
-
-	return $data;
+	return TRUE;
 }
 
 if (!isset($_GET['id']))
@@ -229,11 +215,8 @@ if (!$url) {
 	get_boundary($url);
 }
 
-if ($multi) {
+if ($multi)
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
-} else {
-	header("Content-type: image/jpeg");
-}
 
 $intv_low = false;
 $intv_time = 0;
@@ -248,7 +231,8 @@ if (!empty($_GET['interval'])) {
 }
 
 function print_image() {
-	global $multi, $bch, $boundary, $url, $intv_low, $intv_time, $intv_cnt, $intv;
+	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
+	global $intv_cnt, $intv, $id;
 
 	$myl = 0;
 	$myj = FALSE;
@@ -263,7 +247,7 @@ function print_image() {
 		$myj = bc_buf_data($bch);
 	}
 
-	$myj = check_border($myj);
+	$is_active = check_active($id);
 
 	if ($intv_low) {
 		$tm = time();
@@ -277,9 +261,18 @@ function print_image() {
 		$intv_cnt = 0;
 	}
 
+	if ($is_active) {
+		if ($multi)
+			print "Bluecherry-Active: true\r\n";
+		else
+			header("Bluecherry-Active: true");
+	}
+
 	if ($multi) {
 		print "Content-type: image/jpeg\r\n";
 		print "Content-size: " . strlen($myj) . "\r\n\r\n";
+	} else {
+		header("Content-type: image/jpeg");
 	}
 
 	print $myj;
