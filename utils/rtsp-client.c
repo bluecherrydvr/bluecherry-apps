@@ -21,11 +21,18 @@
 #define DEFAULT_PORT		"554"
 #define DEFAULT_USERINFO	"root:pass"
 
+
 extern int rtp_verbose;
+
+static int do_raw;
+
+static AVOutputFormat *fmt_out;
+static AVStream *vst, *ast;
+static AVFormatContext *oc;
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: rtsp-client <-v> rtsp://[USERINFO@]"
+	fprintf(stderr, "Usage: rtsp-client [-v] [-r] rtsp://[USERINFO@]"
 		"SERVER[:PORT]/PATH_TO_SDP\n\n");
 	exit(EXIT_FAILURE);
 }
@@ -48,7 +55,7 @@ static char *strpbrk_and_copy(char *dest, char *src, const char *s2, char *res)
 	return p + 1;
 }
 
-static void check_mpeg(struct rtp_session *rs)
+static void check_mpeg(struct rtp_session *rs, int *width, int *height)
 {
 	AVCodec *codec;
 	AVCodecContext *c = NULL;
@@ -85,7 +92,13 @@ static void check_mpeg(struct rtp_session *rs)
 		fprintf(stderr, "Error while decoding frame\n");
 		goto fail_mpeg_check;
 	}
+
 	if (got_picture) {
+		if (height)
+			*height = c->height;
+		if (width)
+			*width = c->width;
+
 		fprintf(stderr, "Got frame at %dx%d @ %d fps (codec %s)\n",
 			c->width, c->height, rs->framerate,
 			rs->vid_codec == CODEC_ID_MPEG4 ? "mpeg4" : "h.264");
@@ -102,40 +115,184 @@ fail_mpeg_check:
 		av_freep(&picture);
 }
 
-static void do_vid_out(struct rtp_session *rs, int fd)
+static void open_av(struct rtp_session *rs)
 {
-	static int got_one;
+	static const char *out = "temp.mkv";
+	int width = 640, height = 480;
+	AVCodec *codec;
 
-	if (fd < 0)
+	if (oc)
 		return;
 
+	check_mpeg(rs, &width, &height);
+
+	fmt_out = guess_format(NULL, "temp.mkv", NULL);
+	if (!fmt_out) {
+		fprintf(stderr, "Could not guess output format\n");
+		exit(1);
+	}
+
+	oc = avformat_alloc_context();
+	if (!oc) {
+		fprintf(stderr, "Could not alloc context\n");
+		exit(1);
+	}
+
+	oc->oformat = fmt_out;
+	snprintf(oc->filename, sizeof(oc->filename), "%s", out);
+
+	vst = av_new_stream(oc, 0);
+	if (!vst) {
+		fprintf(stderr, "Could not add video stream\n");
+		exit(1);
+	}
+
+	if (rs->vid_codec == CODEC_ID_H264) {
+		vst->codec->crf = 20;
+		vst->codec->me_range = 16;
+		vst->codec->me_subpel_quality = 7;
+		vst->codec->qmin = 10;
+		vst->codec->qmax = 51;
+		vst->codec->max_qdiff = 4;
+		vst->codec->qcompress = 0.6;
+		vst->codec->i_quant_factor = 0.71;
+		vst->codec->b_frame_strategy = 1;
+	}
+	vst->codec->codec_id = rs->vid_codec;
+	vst->codec->codec_type = CODEC_TYPE_VIDEO;
+	vst->codec->pix_fmt = PIX_FMT_YUV420P;
+	vst->codec->width = width;
+	vst->codec->height = height;
+	vst->codec->time_base = vst->time_base = (AVRational){ 1, rs->framerate };
+
+	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
+		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+	if (rs->tid_a >= 0 || rs->aud_port >= 0) {
+		ast = av_new_stream(oc, 1);
+		if (!ast) {
+			fprintf(stderr, "Could not add audio stream\n");
+			exit(1);
+		}
+
+		ast->codec->codec_id = rs->aud_codec;
+		ast->codec->codec_type = CODEC_TYPE_AUDIO;
+		ast->codec->bit_rate = rs->bitrate;
+		ast->codec->sample_rate = rs->samplerate;
+		ast->codec->channels = rs->channels;
+		ast->codec->time_base = (AVRational){1, rs->samplerate};
+
+		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
+			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+	}
+
+	if (av_set_parameters(oc, NULL) < 0) {
+		fprintf(stderr, "Could not set params\n");
+		exit(1);
+	}
+
+	codec = avcodec_find_encoder(vst->codec->codec_id);
+	if (codec == NULL || avcodec_open(vst->codec, codec) < 0) {
+		fprintf(stderr, "Could not open video encoder\n");
+		exit(1);
+	}
+
+        if (ast) {
+                codec = avcodec_find_encoder(ast->codec->codec_id);
+                if (codec == NULL || avcodec_open(ast->codec, codec) < 0) {
+			fprintf(stderr, "Could not open audio encoder\n");
+			exit(1);
+		}
+	}
+
+	if (url_fopen(&oc->pb, out, URL_WRONLY) < 0) {
+		fprintf(stderr, "Could not open outfile\n");
+		exit(1);
+	}
+
+	av_write_header(oc);
+}
+
+static void do_vid_out(struct rtp_session *rs)
+{
 	if (!rs->vid_valid)
 		return;
 
-	if (write(fd, rs->vid_buf, rs->vid_len) != rs->vid_len) {
-		fprintf(stderr, "Could not write video data: %m\n");
-		exit(EXIT_FAILURE);
-	}
+	if (do_raw) {
+		static int fd = -1;
+		static int got_one;
 
-	if (!got_one) {
-		got_one = 1;
-		check_mpeg(rs);
+		if (fd < 0)
+			fd = open("temp.m4v", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if (fd < 0) {
+			fprintf(stderr, "Could not open output file: %m\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (write(fd, rs->vid_buf, rs->vid_len) != rs->vid_len) {
+			fprintf(stderr, "Could not write video data: %m\n");
+			exit(EXIT_FAILURE);
+		}
+		if (!got_one) {
+			got_one = 1;
+			check_mpeg(rs, NULL, NULL);
+		}
+	} else {
+		static AVRational tb = (AVRational){ 1, 90000 };
+		AVPacket pkt;
+
+		open_av(rs);
+
+		av_init_packet(&pkt);
+
+		pkt.data = rs->vid_buf;
+		pkt.size = rs->vid_len;
+		pkt.pts = av_rescale_q(rs->vid_ts, tb, vst->time_base);
+		pkt.stream_index = vst->index;
+
+		if (av_write_frame(oc, &pkt)) {
+			fprintf(stderr, "Error writing video frame\n");
+			exit(1);
+		}
 	}
 
 	rs->vid_valid = rs->vid_len = 0;
 }
 
-static void do_aud_out(struct rtp_session *rs, int fd)
+static void do_aud_out(struct rtp_session *rs)
 {
-	if (fd < 0)
-		return;
-
 	if (!rs->aud_valid)
 		return;
 
-	if (write(fd, rs->aud_buf, rs->aud_len) != rs->aud_len) {
-	        fprintf(stderr, "Could not write audio data: %m\n");
-		exit(EXIT_FAILURE);
+	if (do_raw) {
+		static int fd = -1;
+
+		if (fd < 0)
+			fd = open("test.aac", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+		if (fd < 0) {
+			fprintf(stderr, "Could not open output file: %m\n");
+			exit(EXIT_FAILURE);
+		}
+
+		if (write(fd, rs->aud_buf, rs->aud_len) != rs->aud_len) {
+		        fprintf(stderr, "Could not write audio data: %m\n");
+			exit(EXIT_FAILURE);
+		}
+	} else if (oc) {
+		AVPacket pkt;
+
+		av_init_packet(&pkt);
+		pkt.size = rs->aud_len;
+		pkt.data = rs->aud_buf;
+		pkt.flags |= PKT_FLAG_KEY;
+		pkt.stream_index = ast->index;
+
+		if (av_write_frame(oc, &pkt)) {
+			fprintf(stderr, "Could not write audio packet\n");
+			exit(1);
+		}
 	}
 
         rs->aud_valid = rs->aud_len = 0;
@@ -144,12 +301,9 @@ static void do_aud_out(struct rtp_session *rs, int fd)
 int main(int argc, char* argv[])
 {
 	int opt;
-	const char *out_v = "temp.m4v";
-	const char *out_a = "temp.aac";
 	struct rtp_session rs;
 	char *p, *t, c;
 	char userinfo[128], server[128], port[8], path[128];
-	int fd_v = -1, fd_a = -1;
 	int got_vop = 0;
 	const char *err_msg;
 
@@ -158,10 +312,13 @@ int main(int argc, char* argv[])
 	avcodec_init();
         av_register_all();
 
-	while ((opt = getopt(argc, argv, "hv")) != -1) {
+	while ((opt = getopt(argc, argv, "hvr")) != -1) {
 		switch (opt) {
 		case 'v':
 			rtp_verbose = 1;
+			break;
+		case 'r':
+			do_raw = 1;
 			break;
 		case 'h':
 		default:
@@ -195,19 +352,6 @@ int main(int argc, char* argv[])
 	strcpy(path, "/");
 	strcat(path, t);
 
-	fd_v = open(out_v, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (fd_v < 0) {
-		fprintf(stderr, "Could not open output file: %s: %m\n",
-			out_v);
-		exit(EXIT_FAILURE);
-	}
-	fd_a = open(out_a, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (fd_a < 0) {
-		fprintf(stderr, "Could not open output file: %s: %m\n",
-			out_a);
-		exit(EXIT_FAILURE);
-	}
-
 	rtp_session_init(&rs, userinfo, path, server, atoi(port));
 
 	fprintf(stderr, "Conecting to rtsp://%s%s%s:%s%s\n",
@@ -232,8 +376,8 @@ int main(int argc, char* argv[])
 				continue;
 			got_vop = 1;
 		}
-		do_vid_out(&rs, fd_v);
-		do_aud_out(&rs, fd_a);
+		do_vid_out(&rs);
+		do_aud_out(&rs);
 	}
 
 	exit(0);
