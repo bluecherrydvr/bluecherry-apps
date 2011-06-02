@@ -4,4 +4,4 @@ CREATE TABLE `userLayouts` (
   `layout_name` varchar(50) DEFAULT NULL,
   `layout` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
-)
+);
