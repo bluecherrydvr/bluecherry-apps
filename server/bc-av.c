@@ -436,6 +436,9 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 		return 0;
 
 	c = avcodec_alloc_context();
+	c->time_base.num = *fnum;
+	c->time_base.den = *fden;
+
 	picture = avcodec_alloc_frame();
 
 	if (avcodec_open(c, codec) < 0) {
