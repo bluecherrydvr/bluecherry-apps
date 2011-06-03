@@ -348,6 +348,71 @@ static void bc_check_db(void)
 	bc_db_free_table(dbres);
 }
 
+static void bc_check_inprogress(void)
+{
+	BC_DB_RES dbres;
+
+	dbres = bc_db_get_table("SELECT EventsCam.id, EventsCam.media_id, "
+				"Media.filepath FROM EventsCam LEFT JOIN "
+				"Media ON (EventsCam.media_id=Media.id) "
+				"WHERE length=-1");
+
+	if (dbres == NULL)
+		return;
+
+	while (!bc_db_fetch_row(dbres)) {
+		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+		int duration = 0;
+		char cmd[4096];
+		char *line = NULL;
+		size_t len;
+		FILE *fp;
+
+		if (!filepath)
+			continue;
+
+		sprintf(cmd, "mkvinfo -v %s", filepath);
+
+		fp = popen(cmd, "r");
+		if (fp == NULL)
+			continue;
+
+		while (getline(&line, &len, fp) >= 0) {
+			char *p;
+			if ((p = strstr(line, "timecode ")))
+				sscanf(p, "timecode %d.", &duration);
+			free(line);
+			line = NULL;
+		}
+
+		if (!duration) {
+			unsigned int e_id, m_id;
+
+			e_id = bc_db_get_val_int(dbres, "id");
+			m_id = bc_db_get_val_int(dbres, "media_id");
+
+			bc_log("Media %s has zero time so deleting",
+			       filepath);
+
+			bc_db_query("DELETE FROM EventsCam WHERE id=%u", e_id);
+			bc_db_query("DELETE FROM Media WHERE id=%u", m_id);
+
+			unlink(filepath);
+		} else {
+			unsigned int id = bc_db_get_val_int(dbres, "id");
+
+			bc_log("Media %s left in-progress so updating length "
+			       "to %d", filepath, duration);
+			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
+				    "id=%d", duration, id);
+		}
+
+		pclose(fp);
+        }
+
+	bc_db_free_table(dbres);
+}
+
 static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [-s]\n", __progname);
@@ -426,6 +491,9 @@ int main(int argc, char **argv)
 
 	/* Set these from the start */
 	bc_check_globals();
+
+	/* Do some cleanup */
+	bc_check_inprogress();
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {
