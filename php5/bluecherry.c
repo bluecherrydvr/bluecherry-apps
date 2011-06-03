@@ -137,6 +137,9 @@ PHP_FUNCTION(bc_db_get_table)
 				  &sql, &sql_len) == FAILURE)
 		RETURN_FALSE;
 
+	if (bc_db_open())
+		RETURN_FALSE;
+
 	dbres = bc_db_get_table("%s", sql);
 	if (dbres == NULL)
 		RETURN_FALSE;
