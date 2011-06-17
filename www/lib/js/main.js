@@ -120,8 +120,13 @@ DVRPageScript = new Class({
 							}
 						});
 					});
-					
-				};
+				} else {
+					buttonMorph($('addEmail'), '#8bb8');
+					$('addEmail').addEvent('click', function(){
+						var el = new Element('span', {'html': "<span><label>"+var_email+"<span class='sub'>"+var_email_ex+"</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><br />"});
+						el.inject($('addEmail'), 'before');
+					});
+				}
 			break;//end users
 			case 'ptzsettings':
 				var ptzSettingsForm = new DVRSettingsForm('settingsForm');
@@ -130,6 +135,24 @@ DVRPageScript = new Class({
 				});
 			break;
 			case 'addip':
+				if ($('updatelist')){
+					$('updatelist').addEvent('click', function(){
+						var request = new Request({
+							url: 'ajax/updateiplist.php',
+							method: 'post',
+							onRequest: function(){
+							},
+							onSuccess: function(html, xml){
+								var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+								var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+								var showMessage = new DVRMessage(status, msg);
+								if (status=='OK'){
+									$('updatelistContainer').dispose();
+								}
+							}
+						}).send();
+					});
+				};
 				expandAdvancedSettings = function(a){
 					var s = (($('advancedSettings').getStyle('display') == 'none' && a!='close') || (a=='open')) ? 'block' : 'none';
 					$('advancedSettings').setStyle('display', s);
@@ -665,6 +688,9 @@ var localMotionGrid = new Class({
 		initialize: function(el, value, type){
 			var self = this;
 			switch(type){
+				case 'notifications':
+					//
+				break; //end notifications
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
 					$(el).addEvent('load', function(){

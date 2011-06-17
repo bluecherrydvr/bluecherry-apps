@@ -10,7 +10,9 @@ $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('backup');
 #/auth check
 
-bc_db_open() or die("Could not open database\n");
+$number_of_recs =  data::query("SELECT COUNT(*) as n From EventsCam");
+$memory_limit = (intval($number_of_recs[0]['n']/20000)*256).'M';
+ini_set('memory_limit', $memory_limit);
 
 $query = "SELECT EventsCam.*, EventsCamSnapshot.id AS snapshot_id, EventsCamSnapshot.file_size AS snapshot_size, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
          "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
@@ -33,7 +35,7 @@ $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
 if ($limit > 0)
 	$query .= "LIMIT ".$limit;
 	
-$events = bc_db_get_table($query);
+$events = data::query($query);
 
 
 # Output header for this feed
@@ -103,5 +105,5 @@ foreach ($events as $item) {
 # Close it out
 print "</feed>\n";
 
-bc_db_close();
+
 ?>

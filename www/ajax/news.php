@@ -13,9 +13,9 @@ class News{
 		$this->GetNews(VAR_NEWS_XML);
 	}
 	private function GetNews($path_to_xml){
-		$xml = simplexml_load_file($path_to_xml);
+		$xml = @simplexml_load_file($path_to_xml);
 		$cnt = 0;
-		if (!$xml->channel->item) { return false; }
+		if (!$xml->channel->item || !$xml) { return false; }
 		foreach ($xml->channel->item as $posting){
 			$cnt++;
 			foreach($posting->children() as $child){

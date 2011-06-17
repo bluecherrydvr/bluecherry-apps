@@ -26,7 +26,11 @@ if ($mode) {
 <hr />
 <p><?php echo AIP_SUBHEADER; ?></p>
 
-<div id="ajaxMessage" class="INFO"><?php echo IPCAM_WIKI_LINK; ?></div>
+<div id="ajaxMessage" class="INFO"><?php echo IPCAM_WIKI_LINK; 
+	if ($new_list_available) {
+		echo '<div id="updatelistContainer"><hr>'.AIP_NEW_LIST_AVAILABLE." <div id='updatelist'>".CLICK_HERE_TO_UPDATE."</div>.</div>";
+	};
+?></div>
 <FORM id="settingsForm" action="/ajax/addip.php" method="post">
 <div id="aip">
 	<input type="hidden" name="mode" value="addip" />

@@ -15,7 +15,7 @@ class Users {
 	function __construct($id){
 		if (!$id) { $this->data = $this->GetAllUsersInfo(); $this->all = true; }
 			elseif  ($id=='new') { $this->data['name'] = USERS_NEW; $this->all = false; $this->data['new'] = true; } //enter only name
-			else { $this->GetUserInfo($id); $this->data = $this->GetUserInfo($id); $this->all = false; }
+			else { $this->data = $this->GetUserInfo($id); $this->all = false; }
 	}
 	
 	private function GetAllUsersInfo(){
@@ -24,7 +24,15 @@ class Users {
 	}
 	
 	private function GetUserInfo($id){
-		return data::getObject('Users', 'id', $id);
+		$user_data = data::getObject('Users', 'id', $id);
+		$tmp = explode('|', $user_data[0]['email']);
+		
+		foreach($tmp as $key => $value){
+			$value = explode(':', $value);
+			$user_data[0]['emails'][$key]['addrs'] = $value[0];
+			$user_data[0]['emails'][$key]['limit'] = $value[1];
+		}
+		return $user_data;
 	}
 }
 

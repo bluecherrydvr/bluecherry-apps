@@ -25,9 +25,15 @@
 						".((!empty($dvr_users->data['new'])) ? "" : "<div id='editAccessList'>Edit access list</div>")."
 					</div>
 					<div><label>".USERS_NAME."<span class='sub'>".USERS_NAME_EX."</span></label><input type='text' name='name' value='{$dvr_users->data[0]['name']}'  /></div><br />
-					<div><label>".USERS_LOGIN."<span class='sub'>".USERS_LOGIN_EX."</span></label><input type='text' name='username' value='".((!empty($dvr_users->data['new'])) ? '' : $dvr_users->data[0]['username'])."' /></div><br />
+					<div><label>".USERS_LOGIN."<span class='sub'>".USERS_LOGIN_EX."</span></label><input type='text' name='username' value='".((!empty($dvr_users->data['new'])) ? '' : $dvr_users->data[0]['username'])."' /><br />
 					<div><label>".USERS_PASSWORD."<span class='sub'>".USERS_PASSWORD_EX."</span></label><input type='password' name='password' value='".((!empty($dvr_users->data['new'])) ? '' : '__default__')."' /></div><br />
-					<div><label>".USERS_EMAIL."<span class='sub'>".USERS_EMAIL_EX."</span></label><input type='text' name='email' value='".((!empty($dvr_users->data[0]['email'])) ? $dvr_users->data[0]['email'] : '')."' /></div><br />
+					<div id='emails'>";
+					foreach($dvr_users->data[0]['emails'] as $key => $email){
+						echo "
+							<span><label>".USERS_EMAIL."<span class='sub'>".USERS_EMAIL_EX."</span></label><input type='text' class='email' name='email[]' value='{$email['addrs']}' /><input type='text' class='limit' name='limit[]' value='{$email['limit']}' /></span><br />
+						";
+					}
+					echo "<br /><label></label><span id='addEmail'>Add email</span></div>
 					<div><label>".USERS_PHONE."<span class='sub'>".USERS_PHONE."</span></label><input type='text' name='phone' value='".((!empty($dvr_users->data[0]['phone'])) ? $dvr_users->data[0]['phone'] : '')."' /></div><br />
 					<div><label>".USERS_ACCESS_SETUP."<span class='sub'>".USERS_ACCESS_SETUP_EX."</span></label><input type='checkbox' name='access_setup' ".((!empty($dvr_users->data[0]['access_setup'])) ? 'checked' : '')." /></div><br />
 					<div><label>".USERS_ACCESS_WEB."<span class='sub'>".USERS_ACCESS_WEB_EX."</span></label><input type='checkbox' name='access_web' ".((!empty($dvr_users->data[0]['access_web'])) ? 'checked' : '')." /></div><br />

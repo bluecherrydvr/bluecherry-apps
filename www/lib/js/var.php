@@ -6,7 +6,10 @@ include("../lang.php");
 
 echo "
 
-var layoutToLoad = '".CHOOSE_LAYOUT."';
+var_layoutToLoad = '".CHOOSE_LAYOUT."';
+var_email = '".USERS_EMAIL."'
+var_email_ex = '".USERS_EMAIL_EX."'
+
 
 ";
 

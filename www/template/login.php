@@ -15,8 +15,8 @@
 	<div><img id="login-logo" src="/img/logo.png" /></div>
 	<div id="login-window"><br />
 		<FORM id="login-form" method="post" action="/ajax/login.php">
-   			<img src="/img/username_header.png" /><br /><INPUT name="login" type="Text" value=""><br />
-   			<img src="/img/password_header.png" /><br /><INPUT name="password" type="Password"><br />
+   			<img src="/img/username_header.png" /><br /><INPUT name="login" type="Text" value="" id="login"><br />
+   			<img src="/img/password_header.png" /><br /><INPUT name="password" type="Password" id="password"><br />
   			<INPUT id="login-button" type="Submit" value="Login"><br /><br />
 		</FORM>
 		<div id="login-message"><?php if (!empty($_SESSION['message'])) echo $_SESSION['message'];?></div>

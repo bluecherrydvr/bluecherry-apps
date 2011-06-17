@@ -35,16 +35,20 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm #saveButton 			{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #saveButton 						{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #button								{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#button.add							{ float: left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
-#button.save						{ float: right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
-#button.deleteShort					{ width: 25px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
-#button.showHideImg					{ float: right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
+#button.add, #button.addEmail		{ float:left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
+#addEmail							{ float:left; width:auto; padding-right:10px; cursor:pointer; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); margin-bottom:10px; display:block; margin-left:150px; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px;  }
+#button.save						{ float:right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
+#button.deleteShort					{ width:25px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+#button.showHideImg					{ float:right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
 #settingsForm div #editAccessList	{ width:230px; padding:5px 5px 5px 35px; margin:4px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #deleteButton						{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm label					{ display:block; font-weight:bold; text-align:right; width:140px; float:left; }
+#settingsForm label.second			{ width:50px; }
 #settingsForm .sub					{ color:#666; display:block; font-size:0.8em; text-align:right; width:140px; }
 #settingsForm input 				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
+#settingsForm input.email			{ width:235px; }
+#settingsForm input.limit			{ width:50px; }
 #settingsForm input:focus 			{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]		{ background:#ccc; color:#333; }
 #settingsForm select				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; margin-left:20px; }
@@ -89,6 +93,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 /*server stats styles*/
 #serverStats { padding-top:3px; width:100%; margin-top:20px; display:none; border:1px solid gray; background:#fefefe;  padding-top:5px; text-align:center; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #serverStats div.label 	{ font-size:1em;  color:#666; margin-top:15px; }
+second
 #serverStats #meminfo	{ margin-top:0px; font-size:0.8em; }
 #serverStats .progressBar { background:url('/img/pbar-green.png'); margin:3px 0 0 50px; width:100px; height:13px; border:1px #ccc solid; position:relative; display:block;  text-align:center; z-index:1;}
 #serverStats .progressBar div.text{ float:left; position:absolute; width:100%; font-size:10px; top:0px; left:0px; z-index:2; font-weight:bold; }
@@ -281,3 +286,5 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm #advancedSettingsSwitch { color:green; padding:3px; cursor:pointer; border:none; }
 
 .enableAll { display:inline; color:green; border-bottom:1px dotted gray; cursor:pointer; }
+
+#updatelist { border-bottom:1px dotted gray; width:auto; display:inline; color:green; cursor:pointer; }

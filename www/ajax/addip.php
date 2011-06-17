@@ -15,6 +15,10 @@ if (!empty($_POST)){
 	$ipCamData = new ipCameras($m);
 }
 
+$new_list_available = $version->checkIpTablesVersion();
+
 #template
 include_once('../template/ajax/addip.php');
 ?>
+
+

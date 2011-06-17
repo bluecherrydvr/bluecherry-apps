@@ -1,5 +1,6 @@
 var loginPage = new Class({
 	initialize: function(){
+		$('login').focus();
 		if ($('login-message').get('html')!=''){
 			$('login-message').fade('in');
 		}
