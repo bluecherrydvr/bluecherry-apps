@@ -35,7 +35,16 @@ $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('basic');
 
 if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id']))
-	image_err("No permission");
+	image_err(str_replace('%ID%', $_GET['id'], MJPEG_NO_PERMISSION));
+
+$this_camera = data::getObject('Devices', 'id', $_GET['id']);
+if ($this_camera[0]['disabled'] == true){
+	image_err(MJPEG_DISABLED);
+} elseif (!$this_camera){
+	image_err(str_replace('%ID%', $_GET['id'], MJPEG_DEVICE_NOT_FOUND));
+}
+exit;
+
 
 function get_boundary($url_full)
 {

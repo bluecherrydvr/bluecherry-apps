@@ -6,6 +6,8 @@ define('VAR_CONF_PATH', "/etc/bluecherry.conf");
 define('VAR_ROOT_PATH', '/');
 
 define('VAR_LOG_PATH', '/var/log/bluecherry.log');
+define('VAR_WWW_LOG_PATH', '/var/lib/bluecherry/www-error.log');
+define('VAR_APACHE_LOG_PATH', '/var/log/apache2/error.log');
 
 define('VAR_NEWS_XML', 'http://forums.bluecherrydvr.com/index.php?app=core&module=global&section=rss&type=forums&id=2');
 
@@ -16,7 +18,9 @@ define('JS_RELOAD', '<script>window.location = "/";</script>');
 define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
 define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
 define('VAR_PATH_TO_IPCAMLIST_VERSION', 'http://www.bluecherrydvr.com/version');
-define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://www.bluecherrydvr.com/ipcamlistupdate.php');
+
+define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://lizard.bluecherry.net/~alex/ipcamlistupdate.php');
+define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
 
 define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 #local card props

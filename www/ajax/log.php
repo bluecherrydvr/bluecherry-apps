@@ -13,28 +13,34 @@ $current_user->checkAccessPermissions('admin');
 class DVRLog{
 	public $log;
 	public $log_size;
-	function __construct(){
-		$this->log = $this->GetLog();
-		$this->log_size = (file_exists(VAR_LOG_PATH)) ? intval(filesize(VAR_LOG_PATH)/1024) : LOG_FILE_DOES_NOT_EXIST;
+	function __construct($log_type, $lines){
+		$log_path = '';
+		switch ($log_type){
+			case 'www':	$log_path = VAR_WWW_LOG_PATH;
+				break;
+			default:		$log_path = VAR_LOG_PATH;
+				break;
+			
+		}
+		$this->log = $this->GetLog($log_path, $lines);
+		$this->log_size = (file_exists($log_path)) ? intval(filesize($log_path)/1024) : LOG_FILE_DOES_NOT_EXIST;
 	}
-	function GetLog(){
-		if (!empty($_GET['lines']) && $_GET['lines'] == 'all'){
-			$content = file(VAR_LOG_PATH);
+	function GetLog($log_path, $lines){
+		if (!empty($lines) && $lines=='all'){
+			$content = file($log_path);
+			echo 'all';
 		} else {
-			$lines = empty($_GET['lines']) ? 20 : intval($_GET['lines']);
+			$lines = empty($lines) ? 20 : intval($lines);
 			# get VAR_LOG_PATH file {$lines} last lines, explode by
 			# new line chars and filter out empty lines
-			$content = array_filter(explode("\n" ,
-				nl2br(shell_exec("tail -n $lines ".
-				VAR_LOG_PATH))), 'strlen');
+			$content = array_filter(explode("\n" ,	nl2br(shell_exec("tail -n $lines ".$log_path))), 'strlen');
 		}
-		
 		return (empty($content)) ? array(LOG_EMPTY) : $content;
 	}
 }
 
 #run class/get data
-$log = new DVRLog;
+$log = new DVRLog($_GET['type'], $_GET['lines']);
 
 #require template to show data
 require('../template/ajax/log.php');

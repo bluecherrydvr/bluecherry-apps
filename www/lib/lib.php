@@ -6,13 +6,15 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
  
-//defined('INDVR') or exit();
+defined('INDVR') or exit();
 
 include("lang.php");
 include("var.php");
 
 session_name(VAR_SESSION_NAME);
 session_start();
+
+init();
 
 //debug
 function var_dump_pre($mixed = null) {
@@ -21,7 +23,16 @@ function var_dump_pre($mixed = null) {
 	echo '</pre>';
 	return null;
 }
+function init(){
+	#strip extra spaces from post inputs
+	foreach($_POST as $key => $value){
+		if (!is_array($value)) { $_POST[$key] = trim($value); };
+	};
+}
 
+function is_assoc($array){
+	return array_keys($array) !== range(0, count($array) - 1);
+}
 
 #classes
 
@@ -204,6 +215,12 @@ class user{
 						$ud = data::query("SELECT salt FROM Users WHERE id='{$id}'");
 						$data['password'] = md5($data['password'].$ud[0]['salt']);
 					}
+				$tmp = '';
+				foreach($data['email'] as $key => $email){
+					if (!empty($email)) {$tmp .=$email.':'.$data['limit'][$key].'|'; };
+				}
+				unset($data['limit']);
+				$data['email'] = trim($tmp, '|');
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;
 			}
@@ -442,12 +459,16 @@ class ipCameras{
 class softwareVersion{
 	public $version;
 	public function __construct(){
-		$current = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
-		$installed = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		if ($current===$installed){
+		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
+		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
+		
+	}
+	function checkSoftwareVersion(){
+		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		if ($this->version['current']===$this->version['installed']){
 			$ret = true;
 		} else {
-			system("dpkg --compare-versions ".escapeshellarg($installed)." lt ".escapeshellarg($current), $ret);
+			system("dpkg --compare-versions ".escapeshellarg($this->version['installed'])." lt ".escapeshellarg($this->version['current']), $ret);
 		}
 		$this->version['up_to_date'] = $ret != 0;
 		$this->version['current'] = substr($current,
@@ -455,7 +476,22 @@ class softwareVersion{
 		$this->version['installed'] = substr($installed,
 						strpos($installed, ":") + 1);
 	}
+	function getIpTablesVersion(){
+		$installed = data::getObject('GlobalSettings', 'parameter', 'G_IPCAMLIST_VERSION');
+		$installed = $installed[0]['value'];
+		
+		$current = @fopen(VAR_PATH_TO_IPCAMLIST_UPDATE.'?t='.VAR_IPCAMLIST_UPDATE_TOKEN.'&m=version', 'r');
+		if (!$current) return true;
+		$current = trim(@fgets($current, 1024));
+		return array($installed, $current);
+	}
+	function checkIpTablesVersion(){
+		$versions = $this->getIpTablesVersion();
+		return (version_compare($versions[1], $versions[0], '>'));
+	}
 }
+
+
 
 $version = new softwareVersion;
 ?>
