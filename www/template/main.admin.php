@@ -51,11 +51,12 @@
 			<div id="ncn"><div id="message" class="F"><? echo NO_CONNECTION; ?></div></div>
 			<div id="ftw"><div id="message" class="F"><? echo WRITE_FAILED; ?><div id="writeFailTime"></div></div></div>
 			<?php
+				if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
 				if (!$version->version['up_to_date']){
 					echo '<div id="version"><div id="message" class="INFO">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div></div>';
 				} else {
 					echo '<div id="version"><div id="message" class="OK">'.UP_TO_DATE.': '.$version->version['installed'].'</div></div>';
-				}
+				};
 			?>
 			<div class='bClear'></div>
 		</div>
