@@ -43,8 +43,6 @@ if ($this_camera[0]['disabled'] == true){
 } elseif (!$this_camera){
 	image_err(str_replace('%ID%', $_GET['id'], MJPEG_DEVICE_NOT_FOUND));
 }
-exit;
-
 
 function get_boundary($url_full)
 {
