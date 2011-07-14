@@ -228,13 +228,13 @@ if ($multi)
 $intv_low = false;
 $intv_time = 0;
 $intv_cnt = 0;
-$invt = 1;
+$intv = 1;
 
 if (!empty($_GET['interval'])) {
 	if ($_GET['interval'] == "low")
 		$intv_low = true;
 	else
-		$invt = intval($_GET['interval']);
+		$intv = intval($_GET['interval']);
 }
 
 $is_active = false;
@@ -265,7 +265,7 @@ function print_image() {
 		$intv_time = $tm;
 	} else {
 		$intv_cnt++;
-		if ($intv_cnt <= $intv)
+		if ($intv_cnt < $intv)
 			return;
 		$intv_cnt = 0;
 	}
