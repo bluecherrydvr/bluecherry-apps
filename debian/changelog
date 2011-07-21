@@ -1,3 +1,9 @@
+bluecherry (1:2.0.0-0beta7.2) lucid; urgency=low
+
+  * Increase beta expiration date
+
+ -- John Brooks <john.brooks@bluecherry.net>  Tue, 19 Jul 2011 18:32:00 -0600
+
 bluecherry (1:2.0.0-0beta7.0) lucid; urgency=low
 
   * Bug #750: Continuous recording from network cameras seriously truncates
