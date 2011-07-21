@@ -273,16 +273,18 @@ function print_image() {
 		$intv_cnt = 0;
 	}
 
-	if ($active_time >= 0 && $tm > $active_time) {
-		$is_active = check_active($id);
-		$active_time = $tm;
-	}
+	// $active_time < 0 means the peer isn't interested in activity at all
+	if ($active_time >= 0) {
+		if ($tm > $active_time) {
+			$is_active = check_active($id);
+			$active_time = $tm;
+		}
 
-	if ($is_active) {
+		$header = "Bluecherry-Active: ".($is_active ? "true" : "false");
 		if ($multi)
-			print "Bluecherry-Active: true\r\n";
+			print $header."\r\n";
 		else
-			header("Bluecherry-Active: true");
+			header($header);
 	}
 
 	if ($multi) {
