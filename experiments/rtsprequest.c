@@ -188,11 +188,6 @@ int main(int argc, char * const argv[]) {
                 rtsp_options(curl, uri);
 
                 // request session description and write response to sdp file
-
-
-                rtsp_describe(curl, uri, sdp_filename);
-
-                //navi test
                 rtsp_describe(curl, uri, sdp_filename);
 
                 // get media control attribute from sdp file
