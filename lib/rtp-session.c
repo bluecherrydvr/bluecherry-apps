@@ -524,6 +524,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	long http_code;
 	int port;
 	int use_udp = 0;
+        int err_code = 0;
 
 	if (check_curl())
 		RETERR("Failed to initialize cURL");
@@ -574,8 +575,10 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, handle_sdp);
 	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST,
 			 CURL_RTSPREQ_DESCRIBE);
-	if (curl_easy_perform(rs->curl))
+	if ((err_code = curl_easy_perform(rs->curl))) {
+		printf("RTSP DESRIBE Failed with error : %d\n", err_code);
 		GOTOERR("Failed DESCRIBE request");
+        }
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
 	if (http_code != 200 || rs->vid_uri[0] == '\0')
 		GOTOERR("Bad response from DESCRIBE request");
