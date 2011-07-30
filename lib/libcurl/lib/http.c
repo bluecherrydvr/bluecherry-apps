@@ -180,8 +180,9 @@ char *Curl_checkheaders(struct SessionHandle *data, const char *thisheader)
   size_t thislen = strlen(thisheader);
 
   for(head = data->set.headers; head; head=head->next) {
-    if(Curl_raw_nequal(head->data, thisheader, thislen))
-      return head->data;
+      if(Curl_raw_nequal(head->data, thisheader, thislen)) {
+          return head->data;
+      }
   }
   return NULL;
 }
@@ -3314,6 +3315,15 @@ CURLcode Curl_http_readwrite_headers(struct SessionHandle *data,
          */
         if(data->set.opt_no_body)
           *stop_reading = TRUE;
+#ifndef CURL_DISABLE_RTSP
+        /* If we get an unauthorized error during an RTSP DESCRIBE request,
+           then don't expect a body */
+        else if((conn->handler->protocol & CURLPROTO_RTSP) &&
+                (data->set.rtspreq == RTSPREQ_DESCRIBE) &&
+                ((k->httpcode == 401) || (k->httpcode == 407)))
+          *stop_reading = TRUE;
+#endif
+
         else {
           /* If we know the expected size of this document, we set the
              maximum download size to the size of the expected
