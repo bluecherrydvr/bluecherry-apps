@@ -16,6 +16,7 @@
 
 #include <pthread.h>
 #include <curl/curl.h>
+#include <stringify-curl-errors-codes.h>
 
 #include "rtp-session.h"
 
@@ -76,7 +77,7 @@ void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 
 static size_t null_write(void *ptr, size_t size, size_t nmemb,
 			 void *userdata)
-{
+{ 
 	return size * nmemb;
 }
 
@@ -567,7 +568,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 	curl_easy_setopt(rs->curl, CURLOPT_INTERLEAVEFUNCTION, null_write);
-	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 3);
+	curl_easy_setopt(rs->curl, CURLOPT_TIMEOUT, 30);
 	curl_easy_setopt(rs->curl, CURLOPT_VERBOSE, rtp_verbose);
 
 	/* First, get the SDP and parse it */
@@ -577,6 +578,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 			 CURL_RTSPREQ_DESCRIBE);
 	if ((err_code = curl_easy_perform(rs->curl))) {
 		printf("RTSP DESRIBE Failed with error : %d\n", err_code);
+		printf("[CURL ERROR] :: %s\n", stringify_curl_errors_codes(err_code));
 		GOTOERR("Failed DESCRIBE request");
         }
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
