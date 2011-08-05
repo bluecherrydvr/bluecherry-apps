@@ -270,17 +270,11 @@ static void check_motion_map(struct bc_record *bc_rec,
 	vh = strcasecmp(signal, "NTSC") ? 18 : 15;
 
 	if (!motion_map) {
-		for (i = 0; i < vh; i++) {
-			int j;
-			for (j = 0; j < 22; j++) {
-				int pos = (i * 22) + j;
-				int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
-				if (bc_rec->motion_map[pos] == '3')
-					continue;
-				bc_set_motion_thresh(bc, val, (i * 32) + j);
-				bc_rec->motion_map[pos] = '3';
-			}
-		}
+		int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
+		bc_set_motion_thresh_global(bc, val);
+
+		memset(bc_rec->motion_map, '3', 22*vh);
+		bc_rec->motion_map[22*vh] = 0;
 		return;
 	}
 
@@ -289,21 +283,24 @@ static void check_motion_map(struct bc_record *bc_rec,
 		return;
 	}
 
-	if (!memcmp(bc_rec->motion_map, motion_map, strlen(motion_map)))
+	if (!memcmp(bc_rec->motion_map, motion_map, 22*vh))
 		return;
 
-	for (i = 0; i < vh; i++) {
+	/* Our input map is 32x32, but the device is actually 64x64.
+	 * Fields are doubled accordingly. */
+	for (i = 0; i < (vh*2); i++) {
 		int j;
-		for (j = 0; j < 22; j++) {
-			int pos = (i * 22) + j;
-			int val = bc_motion_val(BC_MOTION_TYPE_SOLO,
-						motion_map[pos]);
+		for (j = 0; j < 44; j++) {
+			int pos = ((i/2)*22)+(j/2);
+			int val = bc_motion_val(BC_MOTION_TYPE_SOLO, motion_map[pos]);
 			if (bc_rec->motion_map[pos] == motion_map[pos])
 				continue;
-			bc_set_motion_thresh(bc, val, (i * 32) + j);
 			bc_rec->motion_map[pos] = motion_map[pos];
+			bc_set_motion_thresh(bc, val, (i*64)+j);
 		}
 	}
+
+	bc_rec->motion_map[22*vh] = 0;
 }
 
 static void check_schedule(struct bc_record *bc_rec, const char *sched)
