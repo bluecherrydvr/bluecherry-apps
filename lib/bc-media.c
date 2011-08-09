@@ -390,6 +390,10 @@ void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
 {
 	void *copy;
 
+	/* If there's no event - no need to add the snapshot */
+	if (!bce)
+		return;
+
 	/* Set it now, else retry later */
 	if (!__bc_media_set_snapshot(bce, file_data, file_size))
 		return;
