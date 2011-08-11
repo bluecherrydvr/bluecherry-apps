@@ -27,6 +27,12 @@ typedef enum {
 	LTP  = 4
 } mpeg_obj_type_t;
 
+typedef enum {
+	RTP_PROTO_UNKNOWN = 0,
+	RTP_PROTO_TCP,
+	RTP_PROTO_UDP
+} rtp_media_proto_t;
+
 #define RETERR(__msg) ({		\
 	if (err_msg)			\
 		*err_msg = __msg;	\
@@ -214,11 +220,20 @@ static void set_adts_header(unsigned char header[ADTS_HEADER_LENGTH],
 	header[3] |= ((val & 0x3) << 6);
 }
 
-static int sdp_check_type(const char *sdp, const char *type)
+static int sdp_get_type(char *res, size_t ressz, const char *sdp,
+                        const char *type)
 {
-	if (strcasestr(sdp, type) == NULL)
+	char *p = strcasestr(sdp, type);
+	if (!p)
 		return 0;
-
+	if (res) {
+		char *e = strpbrk(p, "\r\n");
+		if (!e)
+			e = p + strlen(p);
+		int len = (ressz-1 < e-p) ? ressz-1 : e-p;
+		strncpy(res, p, len);
+		res[len] = '\0';
+	}
 	return 1;
 }
 
@@ -589,16 +604,21 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	curl_easy_setopt(rs->curl, CURLOPT_WRITEFUNCTION, null_write);
 
 	/* Now setup the audio/video streams */
-	strcpy(trans, trans_fmt_tcp);
 	rs->setup_vid = 1;
-	curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
-	curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
-	curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->vid_uri);
-	curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
-	if (curl_easy_perform(rs->curl))
-		GOTOERR("Failed video SETUP request");
-	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
-	if (http_code != 200 || rs->tid_v < 0) {
+	if (rs->rtp_media_proto == RTP_PROTO_UNKNOWN ||
+	    rs->rtp_media_proto == RTP_PROTO_TCP) {
+		strcpy(trans, trans_fmt_tcp);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
+		curl_easy_setopt(rs->curl, CURLOPT_HEADERFUNCTION, handle_setup);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_STREAM_URI, rs->vid_uri);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_REQUEST, CURL_RTSPREQ_SETUP);
+		err_code = curl_easy_perform(rs->curl);
+		if (!err_code)
+			curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+	}
+	if (rs->rtp_media_proto == RTP_PROTO_UDP ||
+	    (rs->rtp_media_proto == RTP_PROTO_UNKNOWN &&
+	    (err_code || http_code != 200 || rs->tid_v < 0))) {
 		/* Try UDP next */
 		port = get_next_port();
 		sprintf(trans, trans_fmt_udp, port, port + 1);
@@ -790,8 +810,13 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 		printf(">> SDP >>\n%s\n", (char *)ptr);
 
 	media_type = "m=video ";
-	if (!sdp_check_type(ptr, media_type))
+	if (!sdp_get_type(buf, sizeof(buf), ptr, media_type))
 		return ret;
+
+	if (strcasestr(buf, "RTP/AVP/TCP"))
+		rs->rtp_media_proto = RTP_PROTO_TCP;
+	else if (strcasestr(buf, "RTP/AVP/UDP") || strcasestr(buf, "RTP/AVP "))
+		rs->rtp_media_proto = RTP_PROTO_UDP;
 
 	get_uri(rs->vid_uri, ptr, media_type, rs);
 	if (!strlen(rs->vid_uri))
@@ -821,7 +846,7 @@ static size_t handle_sdp(void *ptr, size_t size, size_t nmemb,
 
 	/* Now check for audio */
 	media_type = "m=audio ";
-	if (!sdp_check_type(ptr, media_type))
+	if (!sdp_get_type(0, 0, ptr, media_type))
 		return ret;
 
 	get_uri(rs->aud_uri, ptr, media_type, rs);
