@@ -19,6 +19,9 @@ int has_audio(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
+	if (bc_rec->aud_disabled)
+		return 0;
+
 	if (bc_rec->pcm != NULL)
 		return 1;
 
@@ -66,9 +69,6 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	snd_pcm_hw_params_t *params = NULL;
 	snd_pcm_t *pcm = NULL;
 	int err, fmt;
-
-	/* XXX Sounds disabled */
-	return 0;
 
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 0;

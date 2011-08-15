@@ -49,6 +49,7 @@ struct bc_record {
 	int			aud_rate;
 	int			aud_channels;
 	unsigned int		aud_format;
+	int			aud_disabled;
 
 	/* Event/Media handling */
 	bc_media_entry_t	media;

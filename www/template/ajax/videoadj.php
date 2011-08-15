@@ -1,6 +1,7 @@
 <?php defined('INDVR') or exit();
 echo "<div id='header'>".VA_HEADER."</div>";
 echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".(($device_data[0]['device_name']) ? $device_data[0]['device_name'] : $device_data[0]['id'])."</b></p>"; 
+$audio_disabled = $device_data[0]['audio_disabled']+0;
 		
 ?>
 <div id="liveViewContainer">
@@ -9,6 +10,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".((
 <div id="videoAdjControls">
 	<INPUT value="<?php echo $device_data[0]['id']; ?>" type="Hidden" id="device_id" />
 	<div id="videoAdjSliders">
+		<label><?php echo VA_AUDIO_DISABLE; ?>:<input type='Checkbox' id='audio_disabled' <?php echo $audio_disabled ? ' checked="checked"':''; ?>/></label>
 		<div class="control" id="audio_volume"><label><?php echo VA_AUDIO; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['audio_volume']; ?>" type="text" id="audio_volume_value" /></label><div id="audio_volume" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_BRIGHTNESS; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['brightness']; ?>" type="text" id="brightness_value" /></label><div id="brightness" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_HUE; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['hue']; ?>" type="text" id="hue_value" /></label><div id="hue" class="slider"><div class="knob"></div></div></div>

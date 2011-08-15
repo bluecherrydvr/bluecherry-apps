@@ -219,6 +219,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	strcpy(bc_rec->dev, dev);
 	strcpy(bc_rec->name, name);
 	strcpy(bc_rec->driver, driver);
+	bc_rec->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled");
 
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {

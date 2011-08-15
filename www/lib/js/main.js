@@ -498,6 +498,9 @@ DVRPageScript = new Class({
 					}
 					setTimeout("renewImg();", 500);
 				});
+				$("audio_disabled").addEvent('change', function(){
+					ajaxUpdateField('update_control', 'Devices', { 'audio_disabled' : ($("audio_disabled").get('checked')) ? 1:0 }, $('device_id').get('value'), 'none');
+				});
 				
 			break;
 			case 'cameraperms':
