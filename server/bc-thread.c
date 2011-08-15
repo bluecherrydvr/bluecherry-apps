@@ -108,7 +108,7 @@ static void *bc_device_thread(void *data)
 
 		if (bc_handle_start(bc, &err_msg)) {
 			if (!(bc_rec->start_failed++ % 60)) {
-				bc_event_cam(bc_rec->id, BC_EVENT_L_ALRM,
+				bc_event_cam_fire(bc_rec->id, BC_EVENT_L_ALRM,
 					     BC_EVENT_CAM_T_NOT_FOUND);
 				bc_dev_err(bc_rec, "Error starting stream: %s",
 					   err_msg);
