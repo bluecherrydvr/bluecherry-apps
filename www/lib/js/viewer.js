@@ -1,3 +1,5 @@
+
+
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
 		menu:	'layoutsMenu',
@@ -39,7 +41,6 @@ window.addEvent('load', function(){
 				var elParent = el.getParent();
 				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
 				el.set('src', '/media/mjpeg.php?multipart=true&id='+id);
-				el.set('class', 'lvImg');
 				if (item.get('class')){
 					addPtz(el, id);
 				};
@@ -158,6 +159,7 @@ layoutsUpdate = function(mode, layout){
 }
 
 makeGrid = function(){
+	
 	var lvRows = (Cookie.read('lvRows') || 2);
 	var lvCols = (Cookie.read('lvCols') || 2);
 	var gridTable = new Element('table', {
@@ -168,12 +170,12 @@ makeGrid = function(){
        	for(col = 1; col<=lvCols; col++){
 			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
-			var imgClass = (imgSrcId!='none') ? 'lvImg' : 'noImg';
-			//alert('#'+imgSrcId+' .ptz');
+			var imgClass = 'noImg'; //(imgSrcId!='none') ? 'lvImg' :
 			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
 			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg.php?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
 			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId});
 			lvImg.inject(thisCol);
+			
 			if (thisCam  && (thisCam.get('id')==id)) {
 				addPtz(lvImg, id);
 			}
@@ -232,10 +234,8 @@ setLayout = function(tp){
 sendPtzCommand = function(camId, command, d, cont, speed){
 	if (!speed) var speed = 32;
 	var data = 'id='+camId+'&panspeed='+speed+'&tiltspeed='+speed;
-	if (command == "stop"){
-		data += '&command=stop';
-	} else {
-		data += '&command='+command;
+	data += '&command='+command;
+	if (command != "stop"){		
 		data += (cont) ? '&duration=-1' : '&duration=250';
 		if (d!='t' && d!='w'){
 			if (d.substring(0,1)!='n') { data += '&pan='+d.substring(0,1); };
@@ -258,3 +258,5 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 		}
 	}).send();
 };
+
+

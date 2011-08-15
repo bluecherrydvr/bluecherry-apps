@@ -1,0 +1,1 @@
+<?php defined('INDVR') or exit(); ?>

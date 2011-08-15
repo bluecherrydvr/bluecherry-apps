@@ -10,7 +10,7 @@ $current_user->checkAccessPermissions('admin');
 
 
 
-class DVRLog{
+class logs{
 	public $log;
 	public $log_size;
 	function __construct($log_type, $lines){
@@ -28,7 +28,6 @@ class DVRLog{
 	function GetLog($log_path, $lines){
 		if (!empty($lines) && $lines=='all'){
 			$content = file($log_path);
-			echo 'all';
 		} else {
 			$lines = empty($lines) ? 20 : intval($lines);
 			# get VAR_LOG_PATH file {$lines} last lines, explode by
@@ -40,7 +39,7 @@ class DVRLog{
 }
 
 #run class/get data
-$log = new DVRLog($_GET['type'], $_GET['lines']);
+$log = new logs($_GET['type'], $_GET['lines']);
 
 #require template to show data
 require('../template/ajax/log.php');

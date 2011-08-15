@@ -1,4 +1,10 @@
-<?php //defined('INDVR') or exit();
+<?php defined('INDVR') or exit();
+
+/*
+    Copyright (c) 2010-2011 Bluecherry, LLC.
+    http://www.bluecherrydvr.com / support@bluecherrydvr.com
+    Confidential, all rights reserved. No distribution is permitted.
+ */
 
 #db
 define('VAR_CONF_PATH', "/etc/bluecherry.conf");
@@ -9,7 +15,7 @@ define('VAR_LOG_PATH', '/var/log/bluecherry.log');
 define('VAR_WWW_LOG_PATH', '/var/lib/bluecherry/www-error.log');
 define('VAR_APACHE_LOG_PATH', '/var/log/apache2/error.log');
 
-define('VAR_NEWS_XML', 'http://forums.bluecherrydvr.com/index.php?app=core&module=global&section=rss&type=forums&id=2');
+define('VAR_NEWS_XML', 'http://www.bluecherrydvr.com/category/v2announcements/feed/');
 
 define('VAR_SESSION_NAME', 'bluecherrydvr');
 
@@ -18,6 +24,8 @@ define('JS_RELOAD', '<script>window.location = "/";</script>');
 define('VAR_PATH_TO_CURRENT_VERSION', 'http://www.bluecherrydvr.com/version');
 define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
 define('VAR_PATH_TO_IPCAMLIST_VERSION', 'http://www.bluecherrydvr.com/version');
+
+define('VAR_TARRED_LOGS_TMP_LOCATION', '/tmp/bc-logs.tar'); #before logs are downloaded they will be compressed to this file
 
 define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://lizard.bluecherry.net/~alex/ipcamlistupdate.php');
 define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
@@ -49,7 +57,4 @@ $GLOBALS['ptz'] = array(
 	'STOP_BIT' => array(1, 2),
 	'PARITY' => array('None', 'Even', 'Odd')
 );
-
-$GLOBALS['storage_limits'] = array(100, 99.99, 99.98, 99.97, 99.96, 99.95, 99.94, 99.93, 99.92, 99.91, 99.9, 99.8, 99.7, 99.6, 99.5, 99.5, 99.4, 99.3, 99.2, 99.1, 99, 98, 96, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50);
-
 ?>

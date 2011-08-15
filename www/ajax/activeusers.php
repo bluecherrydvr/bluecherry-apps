@@ -1,4 +1,11 @@
 <?php DEFINE('INDVR', true);
+
+/*
+    Copyright (c) 2010-2011 Bluecherry, LLC.
+    http://www.bluecherrydvr.com / support@bluecherrydvr.com
+    Confidential, all rights reserved. No distribution is permitted.
+ */
+
 #lib
 
 include("../lib/lib.php");  #common functions

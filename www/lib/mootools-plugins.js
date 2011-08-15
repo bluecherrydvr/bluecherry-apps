@@ -28,7 +28,7 @@ var ContextMenu = new Class({
 		this.menu = $(this.options.menu);
 		
 		this.targets = (!this.options.targetElement) ? $$(this.options.targets) : this.options.targets;
-		//alert(this.targets.get('class'));
+		
 		//fx
 		this.fx = new Fx.Tween(this.menu, { property: 'opacity', duration:this.options.fadeSpeed });
 		

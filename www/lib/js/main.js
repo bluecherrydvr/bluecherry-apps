@@ -60,6 +60,41 @@ DVRContainerOverlay = new Class({
 DVRPageScript = new Class({
 	initialize: function(page){
 		switch (page){
+			case 'ptzpresetedit':
+				$('backToList').addEvent('click', function(){
+					var page = new DVRPage('devices');
+				});
+				$('backToPresetList').addEvent('click', function(){
+					var page = new DVRPage('ptzpresetlist', 'id='+$('ref').get('value'));
+				});
+				var userForm = new DVRSettingsForm('settingsForm');
+			break;
+			case 'ptzpresetlist':
+				$$('.add').addEvent('click', function(ev){
+					var page = new DVRPage('ptzpresetedit', 'id=new&ref='+$('cameraId').get('value'));
+				});
+				$$('.preset').addEvent('click', function(ev){
+					if (selected = $('selected')){ 
+						selected.set('id', '');
+					}
+					this.set('id', 'selected');
+					ajaxUpdateField('update', 'Devices', {'ptz_control_path' : this.getChildren('.name').get('id')}, $('cameraId').get('value'), false);
+				});
+				$$('.delete').addEvent('click', function(ev){
+					ev.stopPropagation();
+					var sureDelete = confirm(var_del_ipp_conf+this.getParent().getChildren('.name').get('html')+'"?');
+					if (sureDelete){
+						ajaxUpdateField('deleteIpPtzPreset', 'Devices', {'do' : true }, this.getParent().getChildren('.name').get('id'), 'ptzpresetlist', 'id='+$('cameraId').get('value'));
+					};
+				});
+				$$('.edit').addEvent('click', function(ev){
+					ev.stopPropagation();
+					var page = new DVRPage('ptzpresetedit', 'id='+this.getParent().getChildren('.name').get('id')+'&ref='+$('cameraId').get('value'));
+				});
+				$('backToList').addEvent('click', function(){
+					var page = new DVRPage('devices');
+				});
+			break; //end ptzpresets
 			case 'statistics':
 				$('sForm').set('send', { 
 					onComplete: function(text, xml){
@@ -123,7 +158,7 @@ DVRPageScript = new Class({
 				} else {
 					buttonMorph($('addEmail'), '#8bb8');
 					$('addEmail').addEvent('click', function(){
-						var el = new Element('span', {'html': "<span><label>"+var_email+"<span class='sub'>"+var_email_ex+"</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><br />"});
+						var el = new Element('span', {'html': "<span><label>"+var_email+"<span class='sub'>"+var_email_ex+"</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><div class='bClear'></div><br />"});
 						el.inject($('addEmail'), 'before');
 					});
 				}
@@ -244,7 +279,10 @@ DVRPageScript = new Class({
 					scrollLog.toBottom();
 				});
 				$('logLoader').addEvent('change', function(){
-					openPage = new DVRPage('log', 'lines='+this.get('value'));
+					openPage = new DVRPage('log', 'lines='+this.get('value')+'&type='+$('type').get('value'));
+				});
+				$('type').addEvent('change', function(){
+					openPage = new DVRPage('log', 'type='+this.get('value'));
 				});
 			break; //end log
 			case 'storage':
@@ -268,6 +306,20 @@ DVRPageScript = new Class({
 				
 			break; //end storage
 			case 'devices' :
+				if (ipAttn = $$('.ipAttn')){
+					ipAttn.each(function(el){
+						el.addEvents({
+							'mouseover': function(){
+								this.getParent().getChildren('.ipCamInfo').setStyle('display', 'inline');
+								this.getParent().getParent().setStyle('overflow', '');
+							},
+							'mouseout': function(){
+								this.getParent().getChildren('.ipCamInfo').setStyle('display', 'none');
+								this.getParent().getParent().setStyle('overflow', 'hidden');
+							}
+						});
+					});
+				}
 				if ($$('.enableAll')){
 					$$('.enableAll').addEvent('click', function(){
 						ajaxUpdateField('enableAll', 'Devices', {'card_id' : this.get('id')}, this.get('id'), 'devices');
@@ -331,23 +383,36 @@ DVRPageScript = new Class({
 						}
 					}
 				});
+				var ipContext = new ContextMenu({
+					offsets: { x:-250, y:-50 },
+					targets: '.ipSettingsOpen',
+					trigger: 'click',
+					menu:	'ipSettingsMenu',
+					actions: {
+						'delete':function(el, ref){
+							var sureDelete = confirm(var_del_can_conf+el.get('id')+')?');
+							if (sureDelete){
+								ajaxUpdateField('deleteIp', 'Devices', {'do' : true }, el.get('id'), 'devices');
+							};
+						},
+						'properties':function(el, ref){
+							var page = new DVRPage('editip', 'id='+el.get('id'));
+						},
+						'deviceschedule':function(el, ref){
+							var page = new DVRPage('deviceschedule', 'id='+el.get('id'));
+						},
+						'ptzsettings':function(el, ref){
+							var page = new DVRPage('ptzpresetlist', 'id='+el.get('id'));
+						}
+					}
+				})
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
 						var mode = (el.getParent().getParent().get('id') == 'ipDevice') ? 'changeStateIp' : 'changeState';
 						ajaxUpdateField(mode, 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
-				$$('.deleteIp').each(function(el){
-					el.addEvent('click', function(){
-						var sureDelete = confirm('Are you sure you want to delete this camera (ID: '+el.get('id')+')?');
-						ajaxUpdateField('deleteIp', 'Devices', {'do' : true }, el.get('id'), 'devices');
-					});
-				});				
-				$$('.deviceProps').each(function(el){
-					el.addEvent('click', function(){
-						var page = new DVRPage('editip', 'id='+el.get('id'));
-					});
-				});
+								
 				$$('.RES').each(function(el){
 					el.addEvent('change', function(ev){
 						upadteResFps(el);
@@ -465,10 +530,11 @@ DVRPageScript = new Class({
 					el.addEvent('change', function(){					
 						var newClass = (el.get('checked')) ? 'OK' : 'INFO';
 						el.getParent().set('class', newClass);
+						//ajaxUpdateField('update', 'Devices', {'buffer_prerecording' : this.value}, $('cameraID').get('value'), 'button');
 					});
 				};
 				var grid = new localMotionGrid('scheduleContainer', 'valueString', 'deviceSchedule');
-			break;//end deviceschedule
+			break; //end deviceschedule
 			case 'motionmap':
 				$('buffer_prerecording').addEvent('change', function(){
 					ajaxUpdateField('update', 'Devices', {'buffer_prerecording' : this.value}, $('cameraID').get('value'), 'button');
@@ -689,7 +755,6 @@ var localMotionGrid = new Class({
 			var self = this;
 			switch(type){
 				case 'notifications':
-					//
 				break; //end notifications
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
@@ -807,7 +872,7 @@ var localMotionGrid = new Class({
 				case 'mmap': ajaxUpdateField('update', 'Devices', {'motion_map' : output}, $('cameraID').get('value'), 'button'); break;
 				case 'deviceSchedule':
 					if ($('cameraID').get('value')!='global'){
-						if ($('overrideGlobal')) { ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : $('overrideGlobal').get('checked')}, $('cameraID').get('value'), 'button'); }
+						if ($('overrideGlobal')) { var v = $('overrideGlobal').get('checked') ? 1 : 0; ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : v}, $('cameraID').get('value'), 'button'); }
 						 else { ajaxUpdateField('update', 'Devices', {'schedule' : output}, $('cameraID').get('value'), 'button'); }
 					} else {
 						ajaxUpdateField('global', '', {'G_DEV_SCED' : output}, $('cameraID').get('value'), 'button');

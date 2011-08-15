@@ -8,15 +8,32 @@ require('../template/template.lib.php');
 		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
 		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
 </ul>
+<ul id="ipSettingsMenu">
+		<li class="separator"><a href="#properties" class="properties"><?php echo DEVICE_EDIT_DETAILS;?></a></li>
+		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
+		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
+		<li class="separator"><a href="#delete" class="delete"><?php echo DELETE_CAM;?></a></li>
+</ul>
+
 <?php
 echo "<div id='header'>".TOTAL_DEVICES.": <b>{$devices->info['total_devices']}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
 
 if ($devices->ipCameras){
 	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
 		foreach($devices->ipCameras as $key => $device){
-			echo "<div id='ipDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a href='#' class='deleteIp' id='{$device->info['id']}'>[".DELETE_CAM."]</a></div>";
-			echo "<div id='scheduling'><a href='#' id='{$device->info['id']}' class='ipDeviceSchedule'>".DEVICE_EDIT_SCHED."</a></div>";
-			echo "<div id='editing'><a href='#' id='{$device->info['id']}' class='deviceProps'>".DEVICE_EDIT_DETAILS."</a></div>";
+			echo "<div id='ipDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> 
+					| <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
+			if (!$device->info['disabled'])
+				if ($device->info['connection_status']){
+					echo "<div id='{$device->info['id']}' class='ipAttn'></div>";
+					echo "<div id='message' class='ipCamInfo'>";
+					foreach($device->info['connection_status'] as $type => $status){
+						if ($status!='OK'){
+							echo str_replace('%TYPE%', $type, constant('IP_ACCESS_STATUS_'.$status)).'<br /><br />';
+						}
+					};
+					echo '</div>';
+				};
 			echo "</div>";
 		}
 	echo "<div class='bClear'></div></div></div>"; #end ip cameras
@@ -41,7 +58,7 @@ foreach ($card->cameras as $key =>$device){
 	echo "&nbsp;<a href='#' class='change_state' id='"."{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a>";
 	if ($device->info['status'] != 'notconfigured') {
 		echo "&nbsp;<a class='settingsOpen' href='#' id='{$device->info['id']}'".
-			" name='{$device->info['device']}'>[Settings]</a>";
+			" name='{$device->info['device']}'>[".SETTINGS."]</a>";
 	}
 	echo "</div><div id='port'>{$device->info['port']}</div>";
 	if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) {

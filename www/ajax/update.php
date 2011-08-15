@@ -5,14 +5,15 @@ include("../lib/lib.php");  #common functions
 
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('admin');
-
 class update{
 	public $message;
 	public $status;
 	public $data;
+	private $result;
 	function __construct(){
 		$this->message = CHANGES_FAIL;
 		$mode = $_POST['mode']; unset($_POST['mode']);
+		$result = '';
 		switch ($mode) {
 			case 'global':	$this->updateGlobal(); break;
 			case 'kick':	$this->kickUser(); break;
@@ -21,7 +22,7 @@ class update{
 			case 'changeStateIp': $this->changeStateIp(); break;
 			case 'FPS': $this->changeFpsRes('FPS'); break;
 			case 'RES': $this->changeFpsRes('RES'); break;
-			case 'deleteUser' : $this->status = $this->deleteUser(); break;
+			case 'deleteUser' : $this->deleteUser(); break;
 			case 'update': $this->update(); break;
 			case 'update_control' : $this->update_control(); break;
 			case 'newUser': $this->newUser(); break;
@@ -30,17 +31,20 @@ class update{
 			case 'changeState': $this->changeState(); break;
 			case 'updateEncoding': $this->changeEncoding(); break;
 			case 'enableAll': $this->enableAll(); break;
+			case 'deleteIpPtzPreset': ipPtzPreset::remove(intval($_POST['id'])); break;
+		}
+		if (!empty($this->result)){
+			data::responseXml($this->result[0], $this->result[1]);
 		}
 	}
-	#update functions will be moved to individual files after template/js update in beta7
 	private function enableAll(){
-		if (!isset($_POST['card_id'])) { $result = false; } else {
+		if (empty($_POST['card_id']) && $_POST['card_id']!=0) { $result = false; } else {
 			$card_id = $_POST['card_id'];
 			$card = new card($card_id);
-			if ($card->info['encoding'] != 'notconfigured') { $result =  false; } else {
+			if ($card->info['encoding'] != 'notconfigured') { $result =  false; echo 'nncf';} else {
 				$result = $card->enableAllPorts();
-			}
-		}
+			} 
+		};
 		data::responseXml($result);
 	}
 	private function newUser(){
@@ -95,9 +99,11 @@ class update{
 	}
 	private function updateGlobal(){
 		$status = true;
+		$_POST['G_DISABLE_VERSION_CHECK'] = (empty($_POST['G_DISABLE_VERSION_CHECK'])) ? 1 : 0;
+		$_POST['G_DISABLE_IP_C_CHECK'] = (!empty($_POST['G_DISABLE_IP_C_CHECK'])) ? 1 : 0;
+		$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
 		foreach ($_POST as $parameter => $value){
 			$status = (data::query("UPDATE GlobalSettings SET value='{$value}' WHERE parameter='{$parameter}'", true)) ? $status : false;
-			
 		}
 		data::responseXml($status);
 	}

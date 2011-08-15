@@ -5,7 +5,7 @@
     http://www.bluecherrydvr.com / support@bluecherrydvr.com
     Confidential, all rights reserved. No distribution is permitted.
  */
- 
+
 defined('INDVR') or exit();
 
 include("lang.php");
@@ -23,6 +23,7 @@ function var_dump_pre($mixed = null) {
 	echo '</pre>';
 	return null;
 }
+
 function init(){
 	#strip extra spaces from post inputs
 	foreach($_POST as $key => $value){
@@ -241,6 +242,15 @@ class user{
 	}
 }
 
+function device($id){ #wrapper for camera/ipCamera
+	$device = data::getObject('Devices', 'id', $id);
+	if ($device[0]['protocol'] == 'IP'){
+		$device = new ipCamera($device[0]['id']);
+	} else {
+		$device = new camera($device[0]['device']);
+	};
+	return $device;
+}
 
 class camera {
 	public $info;
@@ -351,6 +361,7 @@ class camera {
 
 class ipCamera{
 	public $info;
+	public $ptzControl;
 	public function __construct($id = false){
 		if ($id) $this->getInfo(intval($id));
 	}
@@ -374,15 +385,38 @@ class ipCamera{
 				$this->info['mjpeg_path']  =	$tmp[2];
 			}
 		}
+		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
+			$this->ptzControl = new cameraPtz($this);
+		}
+		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK')){ #if not disabled, check is http/mjpeg paths exist
+			$this->checkConnection();
+		}
+		
 	}
-	public static function create(){
-		if (!$_POST['ipAddr'])	{ data::responseXml(false, AIP_NEEDIP); return false;};
-		if (!$_POST['port'])	{ data::responseXml(false, AIP_NEEDPORT); return false;};
-		if (!$_POST['rtsp'])	{ data::responseXml(false, AIP_RTSPPATH); return false;};
-		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$_POST['models']}'");
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('{$_POST['ipAddr']}', 'IP', '{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$_POST['user']}', '{$_POST['pass']}', 640, 480, '{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}', '{$_POST['models']}')", true);
+	public function checkConnection(){
+		#needs server to check for RTSP
+		#$paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+		$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
+		$paths['http'] = 'http://'.$this->info['ipAddr'];
+		foreach($paths as $type => $path){
+			$tmp = @get_headers($path);
+			if (!$tmp) { $this->info['connection_status'][$type] = 'F'; continue; }
+			preg_match("/([0-9]{3})/", $tmp[0], $response_code);
+			$this->info['connection_status'][$type] = ($response_code[0]=='200') ? 'OK' : $response_code[0];
+		}
+		return $this->info['connection_status'];
+	}
+	public static function create($data){
+		
+		if (!$data['ipAddr'])	{ return array(false, AIP_NEEDIP); };
+		if (!$data['port'])	{ return array(false, AIP_NEEDPORT);};
+		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
+		$data['device'] = "{$data['ipAddr']}|{$data['port']}|{$data['rtsp']}";
+		if (data::getObject('Devices', 'device', $data['device'])) { return array(false, str_replace('%IP%', $data['ipAddr'], AIP_ALREADY_EXISTS)); }
+		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$data['models']}'");
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{$data['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
 		$message = ($result) ? AIP_CAMADDED : false;
-		data::responseXml($result, $message);
+		return array($result, $message);
 	}
 	public static function remove($id){
 		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
@@ -422,8 +456,9 @@ class card {
 		$resolution_quarter = explode('x', $GLOBALS['resolutions'][$encoding][1]);
 		
 		if (!data::query("UPDATE Devices SET signal_type='{$encoding}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}')", true)) return false;
-		if (!data::query("UPDATE Devices SET resolutionY=$resolution_full[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY>300", true)) return false;
-		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[0] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
+		if (!data::query("UPDATE Devices SET resolutionY=$resolution_full[1] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY>300", true)) return false;
+		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[1] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
+		
 		return array(true, DEVICE_ENCODING_UPDATED);
 	}
 	public function enableAllPorts(){
@@ -461,7 +496,7 @@ class softwareVersion{
 	public function __construct(){
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
-		
+		$this->checkSoftwareVersion();
 	}
 	function checkSoftwareVersion(){
 		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
@@ -471,10 +506,10 @@ class softwareVersion{
 			system("dpkg --compare-versions ".escapeshellarg($this->version['installed'])." lt ".escapeshellarg($this->version['current']), $ret);
 		}
 		$this->version['up_to_date'] = $ret != 0;
-		$this->version['current'] = substr($current,
-						strpos($current, ":") + 1);
-		$this->version['installed'] = substr($installed,
-						strpos($installed, ":") + 1);
+		$this->version['current'] = substr($this->version['current'],
+						strpos($this->version['current'], ":") + 2);
+		$this->version['installed'] = substr($this->version['installed'],
+						strpos($this->version['installed'], ":") + 2);
 	}
 	function getIpTablesVersion(){
 		$installed = data::getObject('GlobalSettings', 'parameter', 'G_IPCAMLIST_VERSION');
@@ -491,7 +526,110 @@ class softwareVersion{
 	}
 }
 
+class ipPtzPreset{
+	public $preset;
+	public function __construct($id = 'new'){
+		if ($id!='new'){
+			$this->preset = data::getObject('ipPtzCommandPresets', 'id', $id);
+			$this->preset = $this->preset[0];
+		} else {
+			$this->preset['name'] = IPP_NEW;
+		}
+	}
+	public static function create($post){
+	}
+	public function update($post){
+	}
+	public static function remove($id){
+		$result = data::query("DELETE FROM ipPtzCommandPresets WHERE id='{$id}'", true);
+		data::responseXml($result);
+	}
+	
+}
+class cameraPtz{
+	private $preset;
+	protected $camera;
+	public $command; #debug
+	public function __construct($camera){
+		$this->camera = $camera;
+		if ($this->camera->info['protocol'] == 'IP'){ #load IP ptz command preset
+			$this->preset = $this->getIpCommandPreset($camera->info['ptz_control_path']);
+		}
+	}
+	public function move($command, $id=false){
+		if ($this->camera->info['protocol'] == 'IP'){ #prepare command URL
+			$this->command = $this->getCmd($command);
+			$this->command = $this->prepareCmd($this->command);
+			$result = @get_headers($this->command);
+		}
+	}
+	private function getIpCommandPreset($id){
+		return data::getObject("ipPtzCommandPresets", "id", $id);
+	}
+	private function prepareCmd($command, $id = false){
+		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
+			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);
+			$command = "http://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
+		}
+		return $command;
+	}
+	private function getCmd($direction){
+		var_dump_pre($direction);
+		if ($direction == 'stop'){
+			return $this->preset[0]['stop'];
+		}
+		switch ($direction['zoom']){
+			case 'w': return $this->preset[0]['wide']; break;
+			case 't': return $this->preset[0]['tight']; break;
+		}
+		switch ($direction['pan']){
+			case 'l':
+				switch ($direction['tilt']){
+					case 'u': return $this->preset[0]['up_left']; break;
+					case 'd': return $this->preset[0]['down_left']; break;
+					default: return $this->preset[0]['mleft']; break;
+				}
+			break;
+			case 'r':
+				switch ($direction['tilt']){
+					case 'u': return $this->preset[0]['up_right']; break;
+					case 'd': return $this->preset[0]['down_right']; break;
+					default: return $this->preset[0]['mright']; break;
+				}
+			break;
+			default: #pan not set, just tilt
+				switch ($direction['tilt']){
+					case 'u': return $this->preset[0]['up']; break;
+					case 'd': return $this->preset[0]['down']; break;
+				}
+			break;
+		}
+	}
+	public function preset($command, $value = ''){
+	}
+}
 
+class globalSettings{
+	var $data;
+	function __construct(){
+		$data = $this->getGlobalInfo();
+		foreach($data as $key => $entry){
+			$this->data[$entry['parameter']] = $entry['value'];
+		}
+	}
+	public static function getParameter($parameter){
+		$tmp = data::getObject('GlobalSettings', 'parameter', $parameter);
+		return $tmp[0]['value'];
+	}
+	private function getGlobalInfo(){
+		return data::getObject('GlobalSettings');
+	}
+}
 
-$version = new softwareVersion;
+$global_settings = new globalSettings;
+
+if (empty($global_settings->data['G_DISABLE_VERSION_CHECK']) || $global_settings->data['G_DISABLE_VERSION_CHECK']==0){
+	$version = new softwareVersion;
+}
+
 ?>

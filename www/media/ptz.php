@@ -158,6 +158,25 @@ if (!$current_user->camPermission($id)) {
 	exit;
 }
 
+#init vars
+$duration = intval($_GET['duration']);
+
+#ipPtz/will be merged
+$camera = device($id);
+
+if ($camera->info['protocol'] == 'IP'){
+	$command = ($_GET['command'] == 'stop') ? 
+		'stop' : array('pan' => $_GET['pan'], 'tilt' => $_GET['tilt'], 'zoom' => $_GET['zoom']);
+	$camera->ptzControl->move($command);
+	echo 'ptz_command:'.$camera->ptzControl->command;
+	if (!empty($duration) && $duration>0){
+		usleep(intval($_GET['duration'])*1000); #sleep for $duration/1000 of a second and stop
+		$camera->ptzControl->move('stop');
+	}
+	
+	exit;
+}
+
 if (empty($_GET['command']))
 	print_err("No command given");
 
@@ -179,3 +198,4 @@ default: print_err("Invalid command: " . $_GET['command']); break;
 }
 
 ?>
+

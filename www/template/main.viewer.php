@@ -22,7 +22,7 @@
 			<li class="separator"><a href="#delete" class="delete"><?php echo DELETE_CAM; ?></a></li>
 			<li class="separator"><a href="#clearAll" class="clearLyout"><?php echo CLEAR_LAYOUT; ?></a></li>
 			<?php 
-				$layouts =  (is_array($lv->layout_list[0])) ? $lv->layout_list : array(NO_SAVED_LAYOUTS);
+				$layouts =  (!empty($lv->layout_list[0])) ? $lv->layout_list : array(NO_SAVED_LAYOUTS);
 				foreach ($layouts as $key => $layout){
 					echo "<li>".(($layout==NO_SAVED_LAYOUTS) ? "<a class='disabled'>{$layouts[0]}</a>" : "<a href='#load' class='{$layout['layout_name']}'>{$layout['layout_name']}")."</a></li>";
 				}
@@ -33,7 +33,7 @@
 			<?php
 				foreach($lv->devices as $key => $device){
 					if (!in_array($device['id'], $lv->access_list))
-					echo "<li><a href='#loadCam' id='{$device['id']}' class='".((!empty($device['ptz_serial_values'])) ? "ptz" : "")."'>{$device['device_name']}</a></li>";
+					echo "<li><a href='#loadCam' id='{$device['id']}' class='".((!empty($device['ptz_control_path'])) ? "ptz" : "")."'>{$device['device_name']}</a></li>";
 				};
 			?>
 		</ul>

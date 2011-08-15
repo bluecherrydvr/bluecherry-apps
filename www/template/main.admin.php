@@ -19,7 +19,9 @@
 			var pageToOpen = (Cookie.read('currentPage') || 'news');
 			var pageToOpenData = (Cookie.read('currentPageData') || '');	
 			var openPage = new DVRPage(pageToOpen, pageToOpenData);
-			updateStatData();
+			<?php
+				echo (!globalSettings::getParameter('G_DISABLE_WEB_STATS')) ? "updateStatData();" : "";
+			?>
 		});
 	</script>
 </head>

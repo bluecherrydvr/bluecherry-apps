@@ -1,4 +1,10 @@
-<?php //defined('INDVR') or exit();
+<?php defined('INDVR') or exit();
+
+/*
+    Copyright (c) 2010-2011 Bluecherry, LLC.
+    http://www.bluecherrydvr.com / support@bluecherrydvr.com
+    Confidential, all rights reserved. No distribution is permitted.
+ */
 
 #company global
 define('DVR_COMPANY_NAME', 'Bluecherry');
@@ -23,6 +29,7 @@ define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
+
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
 define('COUND_NOT_OPEN_PAGE_EX', 'The page requested could not be loaded at this time. Please make sure you are able to connect to the DVR server and that the server is running.');
@@ -52,12 +59,18 @@ define('NEW_DEV_NEFPS', 'The device was configured using generic configuration, 
 
 #general settings
 define('GLOBAL_SETTINGS', 'DVR General settings');
+define('G_DISABLE_VERSION_CHECK', 'Check for available updates');
+define('G_DISABLE_VERSION_CHECK_EX', 'requires server to have internet access');
 define('G_DVR_NAME', 'DVR Name');
 define('G_DVR_NAME_EX', 'You can name you dvr after its location or usage');
 define('G_DVR_EMAIL', 'Email address');
 define('G_DVR_EMAIL_EX', 'Email for notifications');
 define('G_DEV_NOTES', 'Notes');
 define('G_DEV_NOTES_EX', 'dvr memos');
+define('G_DISABLE_IP_C_CHECK', 'Disable IP camera connectivity check');
+define('G_DISABLE_IP_C_CHECK_EX', 'May improve web UI performance');
+define('G_DISABLE_WEB_STATS', 'Disable Stats display in the web UI');
+define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 
 #users page
 define('EDIT_ACCESS_LIST', 'Camera access permissions');
@@ -97,7 +110,9 @@ define('USERS_ACCESS_WEB_EX', 'viewer web access');
 define('USERS_ACCESS_BACKUP', 'Backup access');
 define('USERS_ACCESS_BACKUP_EX', 'recorded videos');
 define('USERS_EMAIL', 'Email');
-define('USERS_EMAIL_EX', 'email');
+define('USERS_EMAIL_EX', 'number of emails per hour');
+define('EMAIL_LIMIT', 'Limit');
+define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
 define('USERS_NOTES_EX', 'visible only to admin');
 
@@ -115,6 +130,7 @@ define('LOG_ALL', 'Whole log');
 define('LOG_COULD_NOT_OPEN', 'Could not open log file');
 define('LOG_HOW_MANY', 'Bottom lines to load...');
 define('LOG_FILE_DOES_NOT_EXIST', 'Log file does not exist');
+define('LOG_DOWNLOAD', 'Download debugging information');
 
 define('SCROLL_TO_BOTTOM', 'scroll to bottom');
 define('SCROLL_TO_TOP', 'scroll to top');
@@ -127,6 +143,8 @@ define('LOGIN_WRONG', 'Wrong login/password combination, please try again.');
 define('LOGIN_OK', 'Please wait while you are redirected...');
 define('NA_WEB', 'You do not have permission to use web interface');
 define('NA_CLIENT', 'You do not have permission to use remote client');
+
+
 
 #devices
 define('CARD_HEADER', 'Bluecherry hardware compression');
@@ -149,7 +167,7 @@ define('DEVICE_EDIT_SCHED', 'Schedule');
 define('VIDEO_ADJ', 'Video adjustments for');
 define('DEVICE_UNNAMED', 'Unnamed');
 define('TOTAL_DEVICES', 'Total devices');
-define('ENABLE_ALL_PORTS', 'Enable all ports');
+define('ENABLE_ALL_PORTS', 'enable all ports');
 
 define('VA_HEADER', 'Video adjustments');
 define('VA_BRIGHTNESS', 'Brightness');
@@ -185,7 +203,7 @@ define('BACK_TO_ADMIN', 'Return to admin panel');
 
 define('NO_NEWS', 'There are no news right now.');
 
-define('NO_CARDS', 'No valid video devices were detected.');
+define('NO_CARDS', 'No valid local video devices were detected.');
 
 /*user page errors*/
 define('NO_USERNAME', 'Login field can not be empty.');
@@ -222,9 +240,16 @@ define('AU_INFO', 'Kicking user will end session from that IP address, ban user 
 define('RCLIENT', 'Remote Client');
 define('WEB', 'Web');
 define('AC_ACCESS', '');
+define('CLICK_HERE_TO_UPDATE', 'Click here to update');
 
 define('AIP_HEADER', 'Add an IP Camera');
+define('AIP_NEW_LIST_AVAILABLE', 'Updates ip camera list is available.');
+define('AIP_LIST_UPDATED_SUCCESSFULLY', 'Camera list updates sussessfully.');
+define('AIP_NEW_LIST_AVAIL', 'New ip camera tables are available.');
+define('AIP_NEW_LIST_MYSQL_E', 'Could not update the database, please check Apache logs for details');
+define('AIP_CAN_NOT_GET_NEW_LIST', 'Could not load the new tables from the server. Please try later');
 define('AIP_SUBHEADER', '');
+define('AIP_CAMERA_NAME', 'Camera name');
 define('AIP_CHOOSE_MANUF', 'Please choose manufacturer');
 define('AIP_CHOOSE_MODEL', 'Please choose model');
 define('AIP_CHOOSE_FPSRES', 'Please choose fps/resolution');
@@ -240,6 +265,7 @@ define('AIP_PASS', 'Password');
 define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_RTSP', 'Path to RTSP');
 define('AIP_ADD', 'Add camera');
+define('AIP_ALREADY_EXISTS', '<![CDATA[Camera with ip <b>%IP%</b> already exists in the list of the devices.]]>');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter port number');
 define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
@@ -261,6 +287,8 @@ define('NOT_UP_TO_DATE_LINK', 'For release notes and update instructions, please
 define('WANT_TO_LEARN_MORE', 'Learn more...');
 define('INSTALLED', 'Installed');
 define('CURR', 'Current');
+define('SETTINGS', 'Settings');
+define('DELTE_CAM_CONF', 'Are you sure you want to delete this camera (ID:');
 
 #layouts
 define('NO_SAVED_LAYOUTS', 'No saved layouts');
@@ -290,13 +318,65 @@ define('QUERY_FAILED', 'Could not execute query. Please check <i>/var/log/apache
 define('LOGOUT', 'Logout');
 define('WRITE_FAILED', 'Failed to write to storage folder at: ');
 
+#mjpeg
+define('MJPEG_DISABLED', 'This device was disabled.');
+define('MJPEG_DEVICE_NOT_FOUND', 'Device with ID %ID% was not found.');
+define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %ID%.');
 #storage 
 define('STRAGE_HEADER', 'Manage storage locations');
 define('ADD_LOCATION', 'Add location');
 define('LOCATION', 'Folder:');
 
 define('ON_CARD', ' on Card ');
-
 define('MAP_PRESET', 'New preset...');
 
+#logs
+define('LOG_APACHE', 'Apache web server log');
+define('LOG_PHP', 'PHP Error log');
+define('LOG_BC', 'Bluecherry log');
+
+#ipcam statuses
+define('IP_ACCESS_STATUS_F', 'Could not connect to the <b>%TYPE%</b>. Please verify that the camera is turned on and the IP address is correct.');
+define('IP_ACCESS_STATUS_404', 'Incorrect <b>%TYPE%</b> path, please check camera manual for correct paths.');
+define('IP_ACCESS_STATUS_401', 'Incorrect login or password.');
+define('IP_ACCESS_STATUS_303', 'Could not resolve the hostname.');
+define('IP_ACCESS_NCONFIG', 'Could not connect to the camera. Please verify hostname/ip address.');
+
+#ip ptz presets
+define('IPP_NEW', 'New preset');
+define('IPP_DELETE', 'Are you sure you want to delete preset "');
+define('IPP_HEADER', 'Select PTZ preset for');
+define('IPP_EDIT', 'Edit PTZ preset');
+define('IPP_EDIT_HELP', 'Please fill in the preset commands according to the manufacturers specifications. <br /><br />The following varialbes are accepted: <br /> 
+							<b>%USERNAME%</b> - Username to access the camera <br />
+							<b>%PASSWORD%</b> - Password to access the camera <br />
+							<b>%ID%</b> - ID for the command, e.g. position preset ID');
+define('IPP_PRESET_NAME', 'Preset name');
+define('IPP_PRESET_NAME_EX', 'preset name');
+
+
+define('IPP_PRESET_RIGHT', 'Right');
+define('IPP_PRESET_LEFT', 'Left');
+define('IPP_PRESET_UP', 'Up');
+define('IPP_PRESET_DOWN', 'Down');
+define('IPP_PRESET_UPRIGHT', 'Up-right');
+define('IPP_PRESET_UPLEFT', 'Up-left');
+define('IPP_PRESET_DOWNRIGHT', 'Down-right');
+define('IPP_PRESET_DOWNLEFT', 'Down-left');
+define('IPP_PRESET_TIGHT', 'Tight');
+define('IPP_PRESET_TIGHT_EX', 'zoom in');
+define('IPP_PRESET_WIDE', 'Wide');
+define('IPP_PRESET_WIDE_EX', 'zoom out');
+define('IPP_PRESET_FOCUSIN', 'Focus in');
+define('IPP_PRESET_FOCUSOUT', 'Focus out');
+define('IPP_PRESET_PRESET_SAVE', 'Save preset');
+define('IPP_PRESET_PRESET_GO', 'Go to preset');
+define('IPP_PRESET_STOP', 'Stop');
+define('IPP_PRESET_STOP_EX', 'stop moving');
+define('IPP_PRESET_NEEDS_STOP', 'Needs stop');
+define('IPP_PRESET_NEEDS_STOP_EX', 'whether camera needs a stop command');
+define('IPP_PRESET_HTTP_AUTH', 'Use http auth');
+define('IPP_PRESET_HTTP_AUTH_EX', 'use http auth or GET parameters');
+define('IPP_PRESET_PORT', 'Control port');
+define('IPP_PRESET_PORT_EX', 'if camera uses port!=80');
 ?>
