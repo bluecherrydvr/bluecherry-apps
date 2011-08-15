@@ -178,9 +178,9 @@ function get_one_jpeg($url_full)
 // Checks for in-progress event
 function check_active($id)
 {
-	$list = bc_db_get_table("SELECT id FROM EventsCam WHERE device_id=$id ".
-				"AND length=-1");
-	if (empty($list))
+	$list = bc_db_get_table("SELECT length FROM EventsCam WHERE device_id=$id ".
+				"ORDER BY id DESC LIMIT 1");
+	if (empty($list) || $list[0]['length'] != -1)
 		return FALSE;
 
 	return TRUE;
@@ -228,17 +228,20 @@ if ($multi)
 $intv_low = false;
 $intv_time = 0;
 $intv_cnt = 0;
-$invt = 1;
+$intv = 1;
 
 if (!empty($_GET['interval'])) {
 	if ($_GET['interval'] == "low")
 		$intv_low = true;
 	else
-		$invt = intval($_GET['interval']);
+		$intv = intval($_GET['interval']);
 }
 
 $is_active = false;
-$active_time = 0;
+$active_time = -1;
+
+if (isset($_GET['activity']))
+	$active_time = 0;
 
 function print_image() {
 	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
@@ -265,21 +268,23 @@ function print_image() {
 		$intv_time = $tm;
 	} else {
 		$intv_cnt++;
-		if ($intv_cnt <= $intv)
+		if ($intv_cnt < $intv)
 			return;
 		$intv_cnt = 0;
 	}
 
-	if ($tm > $intv_time) {
-		$is_active = check_active($id);
-		$active_time = $tm;
-	}
+	// $active_time < 0 means the peer isn't interested in activity at all
+	if ($active_time >= 0) {
+		if ($tm > $active_time) {
+			$is_active = check_active($id);
+			$active_time = $tm;
+		}
 
-	if ($is_active) {
+		$header = "Bluecherry-Active: ".($is_active ? "true" : "false");
 		if ($multi)
-			print "Bluecherry-Active: true\r\n";
+			print $header."\r\n";
 		else
-			header("Bluecherry-Active: true");
+			header($header);
 	}
 
 	if ($multi) {

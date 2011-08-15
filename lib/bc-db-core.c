@@ -75,14 +75,14 @@ int bc_db_open(void)
 {
 	struct config_t cfg;
 	long type;
-	int ret = 0;
+	int ret = -1;
 
 	if (db_ops != NULL)
 		return 0;
 
 	config_init(&cfg);
 	if (!config_read_file(&cfg, BC_CONFIG)) {
-		bc_log("E(%s): Error parsing config at line %d", BC_CONFIG,
+		bc_log("E(%s): %s at line %d", BC_CONFIG, config_error_text(&cfg),
 		       config_error_line(&cfg));
 		goto db_error;
 	}

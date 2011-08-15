@@ -256,6 +256,7 @@ int bc_set_mjpeg(struct bc_handle *bc);
 int bc_set_motion(struct bc_handle *bc, int on);
 int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 			 unsigned short block);
+int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val);
 /* Checks if the current buffer has motion on/detected */
 int bc_motion_is_on(struct bc_handle *bc);
 int bc_motion_is_detected(struct bc_handle *bc);

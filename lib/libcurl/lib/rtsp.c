@@ -179,6 +179,9 @@ CURLcode Curl_rtsp(struct connectdata *conn, bool *done)
   const char *p_stream_uri = NULL;
   const char *p_transport = NULL;
   const char *p_uagent = NULL;
+  const char *p_proxyuserpwd = NULL;
+  const char *p_userpwd = NULL;
+
 
   *done = TRUE;
 
@@ -283,7 +286,8 @@ CURLcode Curl_rtsp(struct connectdata *conn, bool *done)
   if(result)
     return result;
 
-  /* TODO: proxy? */
+  p_proxyuserpwd = conn->allocptr.proxyuserpwd;
+  p_userpwd = conn->allocptr.userpwd;
 
   /* Transport Header for SETUP requests */
   p_transport = Curl_checkheaders(data, "Transport:");
@@ -413,13 +417,25 @@ CURLcode Curl_rtsp(struct connectdata *conn, bool *done)
                             "%s" /* range */
                             "%s" /* referrer */
                             "%s" /* user-agent */
+                            "%s" /* proxyuserpwd */
+                            "%s" /* userpwd */
                             ,
                             p_transport ? p_transport : "",
                             p_accept ? p_accept : "",
                             p_accept_encoding ? p_accept_encoding : "",
                             p_range ? p_range : "",
                             p_referrer ? p_referrer : "",
-                            p_uagent ? p_uagent : "");
+                            p_uagent ? p_uagent : "",
+                            p_proxyuserpwd ? p_proxyuserpwd : "",
+                            p_userpwd ? p_userpwd : "");
+
+  /*
+   * Free userpwd now --- cannot reuse this for Negotiate and possibly NTLM
+   * with basic and digest, it will be freed anyway by the next request
+   */
+  Curl_safefree (conn->allocptr.userpwd);
+  conn->allocptr.userpwd = NULL;
+
   if(result)
     return result;
 

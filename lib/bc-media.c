@@ -390,6 +390,10 @@ void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
 {
 	void *copy;
 
+	/* If there's no event - no need to add the snapshot */
+	if (!bce)
+		return;
+
 	/* Set it now, else retry later */
 	if (!__bc_media_set_snapshot(bce, file_data, file_size))
 		return;
@@ -438,14 +442,14 @@ void bc_event_cam_end(bc_event_cam_t *__bce)
 		free(bce);
 }
 
-int bc_event_cam(int id, bc_event_level_t level,
+int bc_event_cam_fire(int id, bc_event_level_t level,
 		 bc_event_cam_type_t type)
 {
 	struct bc_event_cam *bce = __alloc_event_cam(id, level, type, NULL);
 
 	/* TODO: Failure probably needs to be sent somewhere */
 	if (bce == NULL)
-		return -1;
+		return -ENOMEM;
 
 	bce->end_time = bce->start_time;
 

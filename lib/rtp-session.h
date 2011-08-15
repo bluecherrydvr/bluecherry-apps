@@ -53,6 +53,7 @@ struct rtp_session {
 	int		framerate;
 	enum CodecID	vid_codec, aud_codec;
 	int		samplerate, bitrate, channels;
+	int		rtp_media_proto;
 
 	void		*sprop_cfg;
 	int		sprop_cfg_size;
