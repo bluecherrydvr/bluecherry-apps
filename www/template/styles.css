@@ -171,7 +171,7 @@ second
 #localDevice  #status a, #ipDevice	#localDevice  #status		{ display:inline; 	}
 
 #ipDevice		.ipAttn	{ background: url("/img/icons/excl.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; width:50px; height:50px; }
-#localDevice	#port	{ background: url("/img/icons/port.png") no-repeat center top; }
+#localDevice	#port	{ background: url("/img/icons/port.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:5px; right:0px; display:block; width:50px; height:50px; }
 
 
 /*motion|devices*/
