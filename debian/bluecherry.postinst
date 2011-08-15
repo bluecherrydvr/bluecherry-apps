@@ -20,6 +20,8 @@ case "$1" in
 		# Fixup some permissions
 		chown bluecherry:bluecherry /var/lib/bluecherry
 		chmod 770 /var/lib/bluecherry
+		chown bluecherry:bluecherry /var/run/bluecherry
+		chmod 750 /var/run/bluecherry
 
 		# Apache modules and sites
 		a2enmod ssl
