@@ -79,6 +79,7 @@ void rtp_session_init(struct rtp_session *rs, const char *userinfo,
 	strcpy(rs->server, server);
 	strcpy(rs->uri, uri);
 	rs->port = port;
+	rs->aud_fd = rs->vid_fd = -1;
 }
 
 static size_t null_write(void *ptr, size_t size, size_t nmemb,
@@ -555,6 +556,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 
 	rs->tid_v = rs->tid_a = rs->aud_port = rs->vid_port = -1;
 	rs->vid_len = rs->vid_valid = rs->aud_len = rs->aud_valid = 0;
+	rs->vid_fd = rs->aud_fd = -1;
 
 	rs->aud_codec = CODEC_ID_NONE;
 	rs->vid_codec = CODEC_ID_MPEG4;
