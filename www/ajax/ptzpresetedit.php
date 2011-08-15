@@ -11,6 +11,9 @@ DEFINE('INDVR', true);
 
 include("../lib/lib.php");  #common functions
 
+$current_user = new user('id', $_SESSION['id']);
+$current_user->checkAccessPermissions('admin');
+
 $camera_id = (!empty($_GET['ref'])) ? intval($_GET['ref']) : false;
 $camera = new ipCamera($camera_id);
 

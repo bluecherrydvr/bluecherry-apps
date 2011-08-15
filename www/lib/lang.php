@@ -164,6 +164,7 @@ define('DEVICE_VIDEO_RESFPS', 'Device resolution/FPS');
 define('DEVICE_EDIT_MMAP', 'Motion detection settings');
 define('DEVICE_EDIT_VIDADJ', 'Video/audio settings');
 define('DEVICE_EDIT_SCHED', 'Schedule');
+define('DEVICE_EDIT_ONCAM', 'On-camera configuration');
 define('VIDEO_ADJ', 'Video adjustments for');
 define('DEVICE_UNNAMED', 'Unnamed');
 define('TOTAL_DEVICES', 'Total devices');

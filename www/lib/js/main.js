@@ -403,6 +403,9 @@ DVRPageScript = new Class({
 						},
 						'ptzsettings':function(el, ref){
 							var page = new DVRPage('ptzpresetlist', 'id='+el.get('id'));
+						},
+						'oncam':function(el, ref){
+							window.open('/ajax/redirect.php?id='+el.get('id'));
 						}
 					}
 				})
@@ -501,7 +504,6 @@ DVRPageScript = new Class({
 				$("audio_disabled").addEvent('change', function(){
 					ajaxUpdateField('update_control', 'Devices', { 'audio_disabled' : ($("audio_disabled").get('checked')) ? 1:0 }, $('device_id').get('value'), 'none');
 				});
-				
 			break;
 			case 'cameraperms':
 				$('userInfo').addEvent('click', function(){
