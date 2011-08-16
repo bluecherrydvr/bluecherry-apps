@@ -390,7 +390,7 @@ class ipCamera{
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
 		}
-		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK') && !$this->options['no_c_check']){ #if not disabled, check is http/mjpeg paths exist
+		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK') && !$this->options['no_c_check'] && $this->info['status']!='disabled'){ #if not disabled, check is http/mjpeg paths exist
 			$this->checkConnection(); 
 		}
 		
