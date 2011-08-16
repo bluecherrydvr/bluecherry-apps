@@ -122,10 +122,8 @@ addPtz = function(el, id){
 	ptzTable.getChildren().each(function(el){
 		if (el.get('class')!='presets'){
 			el.addEvents({
-				'click': function(){
-					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), false);
-				},
-				'mousedown': function(){
+				'mousedown': function(ev){
+					ev.stopPropagation();
 					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), true);
 				},
 				'mouseup': function(){
