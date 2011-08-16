@@ -302,7 +302,7 @@ static size_t handle_setup(void *ptr, size_t size, size_t nmemb,
 
 		p = strcasestr(header, "server_port=");
 		if (!p || sscanf(p, "server_port=%d-", serv_port) != 1)
-			*id = -1;
+			*serv_port = -1;
 	}
 
 	return len;
@@ -914,7 +914,7 @@ static int read_listener(struct rtp_session *rs)
 	struct timeval tv;
 	int hi_fd = -1;
 	struct sockaddr_in sndr;
-	socklen_t socklen = sizeof(sndr);
+	socklen_t socklen;
 
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;
@@ -938,16 +938,18 @@ static int read_listener(struct rtp_session *rs)
 		return ret;
 
 	if (rs->vid_fd >= 0 && FD_ISSET(rs->vid_fd, &fds)) {
+		socklen = sizeof(sndr);
 		ret = recvfrom(rs->vid_fd, data, sizeof(data), 0, 
 				&sndr, &socklen);
-		if (ret >= 0 && ntohs(sndr.sin_port == rs->vid_port))
+		if (ret >= 0 && (rs->vid_serv_port <= 0 || ntohs(sndr.sin_port) == rs->vid_serv_port))
 			handle_vid(rs, data, ret);
 	}
 
 	if (rs->aud_fd >= 0 && FD_ISSET(rs->aud_fd, &fds)) {
+		socklen = sizeof(sndr);
 		ret = recvfrom(rs->aud_fd, data, sizeof(data), 0, 
 				&sndr, &socklen);
-		if (ret >= 0 && ntohs(sndr.sin_port == rs->aud_port))
+		if (ret >= 0 && (rs->aud_serv_port <= 0 || ntohs(sndr.sin_port) == rs->aud_serv_port))
 			handle_aud(rs, data, ret);
 	}
 
