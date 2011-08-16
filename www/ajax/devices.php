@@ -32,7 +32,8 @@ class devices{
 	private function getIpCameras(){
 		$info = data::query("SELECT * FROM Devices WHERE protocol='IP'");
 		foreach ($info as $key => $device) {
-			$this->ipCameras[$key] = new ipCamera($device['id']);
+			$options = (!empty($_GET['XML'])) ? array('no_c_check' => true) : false;
+			$this->ipCameras[$key] = new ipCamera($device['id'], $options);
 		}
 		$this->info['total_devices'] += count($this->ipCameras);
 	}
@@ -68,7 +69,7 @@ class devices{
 				    !in_array($prop, $short_props))
 					continue;
 
-				if (in_array($prop, $block_props) || is_array($val))
+				if (in_array($prop, $block_props))
 					continue;
 
 				$xml .= "    <$prop>".htmlspecialchars($val)."</$prop>\n";

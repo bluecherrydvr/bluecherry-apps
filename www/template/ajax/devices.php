@@ -10,6 +10,7 @@ require('../template/template.lib.php');
 </ul>
 <ul id="ipSettingsMenu">
 		<li class="separator"><a href="#properties" class="properties"><?php echo DEVICE_EDIT_DETAILS;?></a></li>
+		<li class="separator"><a href="#oncam" class=""><?php echo DEVICE_EDIT_ONCAM; ?></a></li>
 		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
 		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
 		<li class="separator"><a href="#delete" class="delete"><?php echo DELETE_CAM;?></a></li>
@@ -25,14 +26,16 @@ if ($devices->ipCameras){
 					| <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
 			if (!$device->info['disabled'])
 				if ($device->info['connection_status']){
-					echo "<div id='{$device->info['id']}' class='ipAttn'></div>";
-					echo "<div id='message' class='ipCamInfo'>";
+					$status_message = '';
 					foreach($device->info['connection_status'] as $type => $status){
 						if ($status!='OK'){
-							echo str_replace('%TYPE%', $type, constant('IP_ACCESS_STATUS_'.$status)).'<br /><br />';
+							$status_message .= str_replace('%TYPE%', $type, constant('IP_ACCESS_STATUS_'.$status)).'<br /><br />';
 						}
 					};
-					echo '</div>';
+					if (!empty($status_message)){
+						echo "<div id='{$device->info['id']}' class='ipAttn'></div>";
+						echo "<div id='message' class='ipCamInfo'>{$status_message }</div>";
+					}
 				};
 			echo "</div>";
 		}

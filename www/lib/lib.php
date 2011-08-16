@@ -361,8 +361,10 @@ class camera {
 
 class ipCamera{
 	public $info;
+	private $options;
 	public $ptzControl;
-	public function __construct($id = false){
+	public function __construct($id = false, $options = false){
+		$this->options = $options;
 		if ($id) $this->getInfo(intval($id));
 	}
 	public function getInfo($id){
@@ -388,8 +390,8 @@ class ipCamera{
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
 		}
-		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK')){ #if not disabled, check is http/mjpeg paths exist
-			$this->checkConnection();
+		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK') && !$this->options['no_c_check']){ #if not disabled, check is http/mjpeg paths exist
+			$this->checkConnection(); 
 		}
 		
 	}

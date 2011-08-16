@@ -164,7 +164,7 @@ define('DEVICE_VIDEO_RESFPS', 'Device resolution/FPS');
 define('DEVICE_EDIT_MMAP', 'Motion detection settings');
 define('DEVICE_EDIT_VIDADJ', 'Video/audio settings');
 define('DEVICE_EDIT_SCHED', 'Schedule');
-define('DEVICE_EDIT_ONCAM', 'On-camera configuration');
+define('DEVICE_EDIT_ONCAM', 'On-camera configuration'); 
 define('VIDEO_ADJ', 'Video adjustments for');
 define('DEVICE_UNNAMED', 'Unnamed');
 define('TOTAL_DEVICES', 'Total devices');
@@ -381,4 +381,5 @@ define('IPP_PRESET_HTTP_AUTH', 'Use http auth');
 define('IPP_PRESET_HTTP_AUTH_EX', 'use http auth or GET parameters');
 define('IPP_PRESET_PORT', 'Control port');
 define('IPP_PRESET_PORT_EX', 'if camera uses port!=80');
+define('IPP_DISABLE_PTZ', 'Disable PTZ for this camera');
 ?>
