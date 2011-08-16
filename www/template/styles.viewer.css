@@ -51,7 +51,7 @@ body { padding-top:0px; margin-top:0px; }
 
 /*PTZ*/
 #ptzControlsContainer { display: none;  }
-.ptzControls { height:100%; width:100%; position:absolute; float:left; z-order:20; }
+.ptzControls { height:100%; width:100%; position:absolute; float:left; z-order:20; top:0px; left:0px; }
 .ptzControls div {  }
 .ptzControls div { height:32%; width:32%; border: none; border-collapse:collapse; float:left; }
 .ptzControls .lu	{ cursor: nw-resize; }
