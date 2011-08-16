@@ -911,6 +911,8 @@ static int read_listener(struct rtp_session *rs)
 	fd_set fds;
 	struct timeval tv;
 	int hi_fd = -1;
+	struct sockaddr_in sndr;
+	socklen_t socklen = sizeof(sndr);
 
 	tv.tv_sec = 0;
 	tv.tv_usec = 1000;
@@ -934,17 +936,17 @@ static int read_listener(struct rtp_session *rs)
 		return ret;
 
 	if (rs->vid_fd >= 0 && FD_ISSET(rs->vid_fd, &fds)) {
-		ret = read(rs->vid_fd, data, sizeof(data));
-		if (ret < 0)
-			return -1;
-		handle_vid(rs, data, ret);
+		ret = recvfrom(rs->vid_fd, data, sizeof(data), 0, 
+				&sndr, &socklen);
+		if (ret >= 0 && ntohs(sndr.sin_port == rs->vid_port))
+			handle_vid(rs, data, ret);
 	}
 
 	if (rs->aud_fd >= 0 && FD_ISSET(rs->aud_fd, &fds)) {
-		ret = read(rs->aud_fd, data, sizeof(data));
-		if (ret < 0)
-			return -1;
-		handle_aud(rs, data, ret);
+		ret = recvfrom(rs->aud_fd, data, sizeof(data), 0, 
+				&sndr, &socklen);
+		if (ret >= 0 && ntohs(sndr.sin_port == rs->aud_port))
+			handle_aud(rs, data, ret);
 	}
 
 	return 0;
