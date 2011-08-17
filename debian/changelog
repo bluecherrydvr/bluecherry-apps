@@ -1,3 +1,46 @@
+bluecherry (1:2.0.0-0beta8.0) lucid; urgency=low
+
+  * Bug #763: D-Link cameras RTSP streaming doesn't work
+  * Bug #774: No logout in live view for viewer accounts
+  * Bug #785: Server: Error reading from sound device: Broken pipe
+  * Bug #840: Web: livewview.php missing ptz
+  * Bug #842: Axis MJPEG sub path is wrong in the pre-loaded database
+  * Bug #848: Web Live View unable to reset layout
+  * Bug #866: Web: remove disabled devices from the live view layout
+  * Bug #869: Events over 30,000 causes the client to return any events during search
+  * Bug #873: Server: Motion does not activate unless all grids are marked
+  * Bug #880: Continuous events are only being recorded for 5-8 seconds
+  * Bug #882: Web: Mjpeg port not saved from editip page
+  * Bug #889: Installation: Create /var/run/bluecherry
+  * Bug #894: Device-specific schedules do not properly save
+  * Bug #911: bc-server crashes instantly when enabling an Axis camera
+  * Bug #913: bluecherry Ubuntu 11.04 (natty) release depends on old dependancy (libavutil)
+  * Bug #914: Memory leak from mjpeg.php
+  * Bug #915: Recordings from IP cameras are not logged in EventsCam
+  * Bug #920: Audio is disabled on solo6x10 cards
+  * Bug #921: apache2: E(/etc/bluecherry.conf): Error parsing config at line 0
+  * Bug #923: 100% CPU related to RTP/UDP cameras
+  * Feature #587: Display red indicator in OSD for when bc-server is recording the feed
+  * Feature #659: PHP function to check access to an IP camera
+  * Feature #672: Support H.264 RTP streams
+  * Feature #770: Correctly identify if a network camera is not accessible
+  * Feature #784: Web: Option to enable / disable audio per device
+  * Feature #786: Server: Support network cameras where the web port != 80
+  * Feature #787: Web: Support network cameras where the web port != 80
+  * Feature #839: Web: update the ipCameras and ipCameraDriver (ipCameraPtz) from Bluecherry servers
+  * Feature #845: Support reduced frame rates for the MJPEG streams
+  * Feature #859: Utility: Clean up 'In Progress' events
+  * Feature #863: Web: Strip spaces from sub paths
+  * Feature #864: Web: Embed iframe from each network cameras motion detection page
+  * Feature #868: Web: Make text field the first active field in 'Login' field
+  * Feature #875: Multiple emails for users
+  * Feature #876: WWW: Allow viewing both server and www logs in the web UI
+  * Feature #883: Update RSS import location for Announcements
+  * Feature #903: Link to download debugging information
+  * Feature #922: Options to disable version check/ip camera connection check/stats display
+
+ -- John Brooks <john.brooks@bluecherry.net>  Wed, 17 Aug 2011 17:49:00 -0600
+
 bluecherry (1:2.0.0-0beta7.2) lucid; urgency=low
 
   * Increase beta expiration date

@@ -1,7 +1,7 @@
 Source: bluecherry
 Section: admin
 Priority: optional
-Maintainer: Ben Collins <bcollins@bluecherry.net>
+Maintainer: Bluecherry <maintainers@bluecherry.net>
 Build-Depends: debhelper (>= 7), libmysqlclient-dev, libavcodec-dev,
  libavformat-dev, libavutil-dev, php5-dev, libconfig8-dev, libasound2-dev,
  libsysfs-dev, libidn11-dev
@@ -13,5 +13,6 @@ Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
  libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix
 Recommends: solo6010-dkms
+Breaks: solo6010-dkms (<< 2.3.6)
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.
