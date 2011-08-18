@@ -509,9 +509,9 @@ class softwareVersion{
 		}
 		$this->version['up_to_date'] = $ret != 0;
 		$this->version['current'] = substr($this->version['current'],
-						strpos($this->version['current'], ":") + 2);
+						strpos($this->version['current'], ":") + 1);
 		$this->version['installed'] = substr($this->version['installed'],
-						strpos($this->version['installed'], ":") + 2);
+						strpos($this->version['installed'], ":") + 1);
 	}
 	function getIpTablesVersion(){
 		$installed = data::getObject('GlobalSettings', 'parameter', 'G_IPCAMLIST_VERSION');
