@@ -203,6 +203,13 @@ class user{
 		$check = false;
 		$response = self::checkUserData($data, $new);
 		if ($response === true){
+			$tmp = '';
+			foreach($data['email'] as $key => $email){
+				if (!empty($email)) {$tmp .=$email.':'.$data['limit'][$key].'|'; };
+			}
+			unset($data['limit']);
+			$data['email'] = trim($tmp, '|');
+			
 			if ($new){
 				$data['salt'] = data::getRandomString(4);
 				$data['password'] = md5($data['password'].$data['salt']);
@@ -216,12 +223,6 @@ class user{
 						$ud = data::query("SELECT salt FROM Users WHERE id='{$id}'");
 						$data['password'] = md5($data['password'].$ud[0]['salt']);
 					}
-				$tmp = '';
-				foreach($data['email'] as $key => $email){
-					if (!empty($email)) {$tmp .=$email.':'.$data['limit'][$key].'|'; };
-				}
-				unset($data['limit']);
-				$data['email'] = trim($tmp, '|');
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;
 			}

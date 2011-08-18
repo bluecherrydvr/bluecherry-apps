@@ -14,7 +14,7 @@ class Users {
 	public $all;
 	function __construct($id){
 		if (!$id) { $this->data = $this->GetAllUsersInfo(); $this->all = true; }
-			elseif  ($id=='new') { $this->data['name'] = USERS_NEW; $this->all = false; $this->data['new'] = true; } //enter only name
+			elseif  ($id=='new') { $this->data['name'] = USERS_NEW; $this->all = false; $this->data['new'] = true; $this->data[0]['emails'] = array(' : '); } //enter only name
 			else { $this->data = $this->GetUserInfo($id); $this->all = false; }
 	}
 	

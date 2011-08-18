@@ -10,6 +10,7 @@
 		echo '<table><tr class="header"><th>'.USERS_TABLE_HEADER_NAME.'</th><th>'.USERS_TABLE_HEADER_LOGIN.'</th><th>'.USERS_TABLE_HEADER_EMAIL.'</th><th>'.USERS_TABLE_HEADER_STATUS.'</th></tr>';
 		$f = 0;
 		foreach($dvr_users->data as $id => $info){
+			$email_list = ''; $emails = ''; $email = ''; $tmp = '';
 			$emails = explode('|', $info['email']);
 			foreach($emails as $id => $email){
 				$email = explode(':', $email);
