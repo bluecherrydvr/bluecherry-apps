@@ -54,7 +54,8 @@ static void __handle_motion_end(struct bc_handle *bc)
 	if (bc_rec->event == BC_EVENT_CAM_NULL)
 		return;
 
-	/* Do not stop event here, let that happen in bc-av.c */
+	/* Do not stop event here, let that happen in bc-thread.c
+         * where bc_buf_get returns ERESTART. */
 	bc_dev_info(bc_rec, "Motion event stopped");
 }
 
