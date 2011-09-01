@@ -39,7 +39,6 @@ struct bc_record {
 	char			name[256];
 	char			dev[256];
 	char			driver[256];
-	int			mot_cnt;
 	pthread_t		thread;
 	struct bc_list_struct	list;
 

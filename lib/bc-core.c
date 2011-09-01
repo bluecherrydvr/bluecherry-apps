@@ -333,8 +333,8 @@ int bc_buf_get(struct bc_handle *bc)
 	 * we never stall the buffer for motion. */
 	if (bc->vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG ||
 	    !bc_motion_is_on(bc)) {
-		/* Reset this counter in case motion gets turned back on */
-		bc->mot_cnt = 0;
+		/* Reset this timestamp in case motion gets turned back on */
+		bc->mot_last_ts = 0;
 
 		if (!bc->got_vop) {
 			if (!bc_buf_key_frame(bc))
@@ -349,31 +349,33 @@ int bc_buf_get(struct bc_handle *bc)
 	 * ERESTART for "motion just ended, stop this recording". */
         ret = EAGAIN;
 
+	time_t monotonic_now = bc_gettime_monotonic();
+
 	if (bc_motion_is_detected(bc)) {
-		if (bc->mot_cnt == 0) {
+		if (!bc->mot_last_ts) {
 			bc->got_vop = 0;
 			// First time, send event
 			__bc_start_motion_event(bc);
 		}
-		/* Reset this counter every time we get a new event */
-		bc->mot_cnt = 60;
+		/* Reset this timestamp every time we get a new event */
+		bc->mot_last_ts = monotonic_now;
+	} else if (!bc->mot_last_ts) {
+		return ret;
 	}
 
-	if (bc->mot_cnt && !bc->got_vop) {
+	if (!bc->got_vop) {
 		if (!bc_buf_key_frame(bc))
 			return EAGAIN;
 		bc->got_vop = 1;
 	}
 
-	if (bc->mot_cnt == 1) {
+	if (monotonic_now - bc->mot_last_ts >= 3) {
 		/* End of event */
-		bc->mot_cnt = 0;
+		bc->mot_last_ts = 0;
 		ret = ERESTART;
 		__bc_stop_motion_event(bc);
-	} else if (bc->mot_cnt) {
-		bc->mot_cnt--;
+	} else
 		ret = 0;
-	}
 
 	return ret;
 }

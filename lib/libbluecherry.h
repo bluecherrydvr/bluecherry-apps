@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <termios.h>
 #include <libconfig.h>
+#include <time.h>
 
 #include <linux/videodev2.h>
 
@@ -72,7 +73,7 @@ struct bc_handle {
 	int			started;
 	int			buf_idx;
 	int			got_vop;
-	int			mot_cnt;
+	time_t			mot_last_ts;
 	int			gop;
 	int			buffers;
 	int			card_id;
@@ -233,6 +234,9 @@ void bc_log(const char *msg, ...)
 	__attribute__ ((format (printf, 1, 2)));
 
 void bc_vlog(const char *msg, va_list va);
+
+/* Misc. Utilities */
+time_t bc_gettime_monotonic();
 
 /* Retrieves the next buffer from the device */
 int bc_buf_get(struct bc_handle *bc);

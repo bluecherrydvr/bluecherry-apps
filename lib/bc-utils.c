@@ -17,6 +17,7 @@
 #include <syslog.h>
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #include <libbluecherry.h>
 
@@ -206,4 +207,15 @@ void bc_vlog(const char *msg, va_list ap)
 	}
 
 	vsyslog(LOG_INFO | BC_LOG_SERVICE, msg, ap);
+}
+
+time_t bc_gettime_monotonic()
+{
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+		bc_log("E: clock_gettime failed: %d", (int)errno);
+		return 0;
+	}
+
+	return ts.tv_sec;
 }
