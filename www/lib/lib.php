@@ -400,7 +400,7 @@ class ipCamera{
 		#needs server to check for RTSP
 		#$paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
 		$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
-		$paths['http'] = 'http://'.$this->info['ipAddr'];
+		$paths['http'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']);
 		foreach($paths as $type => $path){
 			$tmp = @get_headers($path);
 			if (!$tmp) { $this->info['connection_status'][$type] = 'F'; continue; }
