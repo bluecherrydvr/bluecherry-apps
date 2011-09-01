@@ -88,7 +88,7 @@ PHP_FUNCTION(bc_db_escape_string)
 	zval *z_ctx;
 	char *str;
 	int str_len;
-	char *tmp_str;
+	char *tmp_str, *tmp_str_cpy;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
 				  &str, &str_len) == FAILURE)
@@ -102,11 +102,11 @@ PHP_FUNCTION(bc_db_escape_string)
 	if (tmp_str == NULL)
 		RETURN_FALSE;
 
-	/* We're supposed to be able to pass this to PHP and let it
-	 * free() it on it's own, but instead we have to let it copy
-	 * and free() ourselves, else it crashes in some weird way. */
-	RETURN_STRING(tmp_str, 1);
+	/* All returned values must be allocated by emalloc, so we must
+	 * copy the result. */
+	tmp_str_cpy = estrdup(tmp_str);
 	free(tmp_str);
+	RETURN_STRING(tmp_str_cpy, 0);
 }
 
 PHP_FUNCTION(bc_db_query)
@@ -408,7 +408,7 @@ PHP_FUNCTION(bc_buf_data)
 	if (data == NULL || size <= 0)
 		RETURN_FALSE;
 
-	RETURN_STRINGL(bc_buf_data(bch), bc_buf_size(bch), 1);
+	RETURN_STRINGL(data, size, 1);
 }
 
 PHP_FUNCTION(bc_set_mjpeg)
