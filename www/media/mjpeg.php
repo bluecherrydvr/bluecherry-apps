@@ -295,9 +295,12 @@ function print_image() {
 	}
 
 	print $myj;
+	unset($myj);
 
 	if ($multi)
 		print "\r\n--$boundary\r\n";
+
+	flush();
 }
 
 # For multi, let's do some weird stuff
@@ -305,10 +308,8 @@ if ($multi) {
 	set_time_limit(0);
 	@apache_setenv('no-gzip', 1);
 	@ini_set('zlib.output_compression', 0);
-	@ini_set('implicit_flush', 1);
-	for ($i = 0; $i < ob_get_level(); $i++)
+	while (ob_get_level())
 		ob_end_flush();
-	ob_implicit_flush(1);
 }
 
 # Cleanup some unused resources
@@ -329,6 +330,7 @@ do {
 } while($multi);
 
 bc_db_close();
-bc_handle_free($bch);
+if (!$url)
+	bc_handle_free($bch);
 
 ?>
