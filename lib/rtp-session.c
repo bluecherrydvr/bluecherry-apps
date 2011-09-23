@@ -561,6 +561,7 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	/* Setup the base cURL session */
 	curl_easy_setopt(rs->curl, CURLOPT_PRIVATE, (void *)rs);
 	curl_easy_setopt(rs->curl, CURLOPT_URL, uri);
+	curl_easy_setopt(rs->curl, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 	curl_easy_setopt(rs->curl, CURLOPT_USERPWD, rs->userinfo);
 	curl_easy_setopt(rs->curl, CURLOPT_RANGE, "npt=0.000-");
 	/* Defaults for data handlers do nothing */
