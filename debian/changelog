@@ -1,3 +1,15 @@
+bluecherry (1:2.0.0-0beta8.1) lucid; urgency=low
+
+  * Bug #909: Post-record time for motion events is too long at <30fps
+  * Bug #916: ACTi cameras fail with 'Failed video SETUP request'
+  * Bug #928: Unable to add new users
+  * Bug #933: IPv6 addresses show duplicate connected users
+  * Bug #947: Web: wrongly assume wrong login/password for some cameras (e.g. Grandstream)
+  * Bug #948: web: template array-to-select function bug
+  * Bug #961: Grandstream cameras return authentication error
+
+ -- John Brooks <john.brooks@bluecherry.net>  Fri, 23 Sep 2011 08:02:00 -0600
+
 bluecherry (1:2.0.0-0beta8.0) lucid; urgency=low
 
   * Bug #763: D-Link cameras RTSP streaming doesn't work
