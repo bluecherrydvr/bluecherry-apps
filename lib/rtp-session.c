@@ -40,6 +40,10 @@ int rtp_verbose = 0;
 static const char * const trans_fmt_tcpudp =
 	"RTP/AVP/TCP;unicast;interleaved=0-1,"
 	"RTP/AVP/UDP;unicast;client_port=%d-%d";
+/* Some devices can't handle comma-separated lists.
+ * Fall back to just UDP there. See comment at usage
+ * for details. */
+static const char * const trans_fmt_udp = "RTP/AVP/UDP;unicast;client_port=%d-%d";
 
 static const unsigned char sseq[] = { 0, 0, 0, 1 };
 
@@ -603,6 +607,22 @@ int rtp_session_start(struct rtp_session *rs, const char **err_msg)
 	if (curl_easy_perform(rs->curl))
 		GOTOERR("Failed video SETUP request");
 	curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+	if (http_code == 461) {
+		/* Unsupported transport. D-Link devices return this when given a
+		 * comma-separated list starting with an unsupported transport (TCP),
+		 * rather than properly choosing a fallback. Since the error, at least, is
+		 * well formed (unlike ACTi), we can handle this by attempting a UDP-only
+		 * setup, which should work everywhere. */
+		sprintf(trans, trans_fmt_udp, port, port + 1);
+		curl_easy_setopt(rs->curl, CURLOPT_RTSP_TRANSPORT, trans);
+		if (curl_easy_perform(rs->curl))
+			GOTOERR("Failed video SETUP request");
+
+		/* Fall through to the normal error handling if necessary */
+		curl_easy_getinfo(rs->curl, CURLINFO_RESPONSE_CODE, &http_code);
+	}
+
 	if (http_code != 200 || (rs->tid_v < 0 && rs->vid_port <= 0)) {
 		GOTOERR("Bad response from video SETUP request");
 	}
