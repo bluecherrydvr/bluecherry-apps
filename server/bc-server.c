@@ -438,12 +438,12 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 static void check_expire(void)
 {
 	time_t t = time(NULL);
-	time_t expire = 1317081600; /* Sep 27, 2011 */
+	time_t expire = 1321401600; /* November 16, 2011 */
 
 	if (t < expire)
 		return;
 
-	fprintf(stderr, "This beta expired %s", ctime(&expire));
+	fprintf(stderr, "This beta expired on %s", ctime(&expire));
 	exit(1);
 }
 
