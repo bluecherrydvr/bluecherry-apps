@@ -5,7 +5,7 @@ CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
 LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lavcodec -lavformat
 
 TARGETS		= getjpeg bc-checkkey getaudio rtsp-client pelcocmd ptzcmd \
-		  rtsp-streaminfo
+		  rtsp-record
 GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
 RTSP_CLIENT_OBJS = $(topdir)/lib/rtp-session.o rtsp-client.o
 
