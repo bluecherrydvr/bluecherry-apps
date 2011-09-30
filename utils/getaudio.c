@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 	avcodec_init();
 	av_register_all();
 
-	fmt_out = guess_format(NULL, outfile, NULL);
+	fmt_out = av_guess_format(NULL, outfile, NULL);
 	if (fmt_out == NULL)
 		err("opening fmt_out: %s", outfile);
 
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 		err("opening new stream");
 
 	st->codec->codec_id = CODEC_ID_MP2;
-	st->codec->codec_type = CODEC_TYPE_AUDIO;
+	st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 	st->codec->bit_rate = 32000;
 	st->codec->sample_rate = 16000;
 	st->codec->sample_fmt = SAMPLE_FMT_S16;
@@ -194,7 +194,7 @@ int main(int argc, char **argv)
 					       st->codec->time_base,
 					       st->time_base);
 
-		pkt.flags |= PKT_FLAG_KEY;
+		pkt.flags |= AV_PKT_FLAG_KEY;
 		pkt.stream_index = st->index;
 		pkt.data = mp2_out;
 

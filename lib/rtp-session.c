@@ -48,13 +48,13 @@ int rtp_session_start(struct rtp_session *rs)
 	}
 	
 	for (i = 0; i < rs->ctx->nb_streams; ++i) {
-		if (rs->ctx->streams[i]->codec->codec_type == CODEC_TYPE_VIDEO) {
+		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
 				fprintf(stderr, "Warning: session has multiple video streams\n");
 				continue;
 			}
 			rs->video_stream_index = i;
-		} else if (rs->ctx->streams[i]->codec->codec_type == CODEC_TYPE_AUDIO) {
+		} else if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (rs->audio_stream_index >= 0) {
 				fprintf(stderr, "Warning: session has multiple audio streams\n");
 				continue;

@@ -130,7 +130,7 @@ void setup_output(const char *file)
 {
 	AVCodec *codec = 0;
 
-	fmt_out = guess_format(NULL, file, NULL);
+	fmt_out = av_guess_format(NULL, file, NULL);
 	if (!fmt_out) {
 		fprintf(stderr, "Could not guess output format\n");
 		exit(1);
@@ -153,7 +153,7 @@ void setup_output(const char *file)
 
 	int i;
 	for (i = 0; i < in_ctx->nb_streams; ++i) {
-		if (in_ctx->streams[i]->codec->codec_type != CODEC_TYPE_VIDEO)
+		if (in_ctx->streams[i]->codec->codec_type != AVMEDIA_TYPE_VIDEO)
 			continue;
 			
 		printf("Found video codec!\n");

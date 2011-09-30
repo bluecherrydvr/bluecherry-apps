@@ -191,7 +191,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
 		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 				       bc_rec->audio_st->time_base);
-	pkt.flags |= PKT_FLAG_KEY;
+	pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
@@ -216,7 +216,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	av_init_packet(&pkt);
 
 	if (bc_buf_key_frame(bc))
-		pkt.flags |= PKT_FLAG_KEY;
+		pkt.flags |= AV_PKT_FLAG_KEY;
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
@@ -358,7 +358,7 @@ static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *
 	joc->height = oc->height;
 	joc->pix_fmt = PIX_FMT_YUVJ420P; // XXX 422 or 444?
 	joc->codec_id = CODEC_ID_MJPEG;
-	joc->codec_type = CODEC_TYPE_VIDEO;
+	joc->codec_type = AVMEDIA_TYPE_VIDEO;
 	joc->time_base.num = oc->time_base.num;
 	joc->time_base.den = oc->time_base.den;
 
@@ -400,6 +400,7 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	AVCodecContext *c;
 	int got_picture, len;
 	AVFrame *picture;
+	AVPacket packet;
 	enum CodecID codec_id = CODEC_ID_NONE;
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
@@ -434,15 +435,19 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	c->time_base.den = *fden;
 
 	picture = avcodec_alloc_frame();
+	av_init_packet(&packet);
+	packet.data = buf;
+	packet.size = size;
+	packet.flags = AV_PKT_FLAG_KEY; // XXX is this correct? necessary?
 
 	if (avcodec_open(c, codec) < 0) {
 		codec = NULL;
 		goto pic_info_fail;
 	}
 
-	len = avcodec_decode_video(c, picture, &got_picture, buf, size);
-
-        if (len < 0 || !got_picture)
+	len = avcodec_decode_video2(c, picture, &got_picture, &packet);
+	
+	if (len < 0 || !got_picture)
 		goto pic_info_fail;
 
 	*width = c->width;
@@ -458,6 +463,7 @@ pic_info_fail:
 	}
 	if (picture != NULL)
 		av_freep(&picture);
+	av_free_packet(&packet);
 
 	return 0;
 }
@@ -486,7 +492,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	}
 
 	/* Get the output format */
-	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);
+	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
 	if (!bc_rec->fmt_out) {
 		errno = EINVAL;
 		return -1;
@@ -498,7 +504,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	oc->oformat = bc_rec->fmt_out;
 	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
-	snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name);
+	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
 
 	/* Setup new video stream */
 	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
@@ -507,8 +513,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
-
-	snprintf(st->language, sizeof(st->language), "eng");
 
 	if (bc_rec->codec_id == CODEC_ID_NONE) {
 		if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
@@ -536,7 +540,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->b_frame_strategy = 1;
 	}
 
-	st->codec->codec_type = CODEC_TYPE_VIDEO;
+	st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
@@ -575,7 +579,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 			goto no_audio;
 		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
-		st->codec->codec_type = CODEC_TYPE_AUDIO;
+		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
 		if (bc_rec->pcm) {
 			st->codec->sample_rate = 8000;
@@ -588,8 +592,6 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 			st->codec->channels = rtsp_audio_stream->codec->channels;
 			st->codec->time_base = (AVRational){ 1, rtsp_audio_stream->codec->sample_rate };
 		}
-
-		snprintf(st->language, sizeof(st->language), "eng");
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
