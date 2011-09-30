@@ -25,11 +25,7 @@ int has_audio(struct bc_record *bc_rec)
 	if (bc_rec->pcm != NULL)
 		return 1;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_RTSP))
-		return 0;
-	if (bc->rtp_sess.tid_a >= 0)
-		return 1;
-	if (bc->rtp_sess.aud_port >= 0)
+	if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.audio_stream_index >= 0)
 		return 1;
 
 	return 0;
@@ -185,11 +181,11 @@ int bc_aud_out(struct bc_record *bc_rec)
 	} else {
 		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
 
-		if (!rs->aud_valid)
+		if (rs->frame.stream_index != rs->audio_stream_index)
 			return 0;
 
-		pkt.size = rs->aud_len;
-		pkt.data = rs->aud_buf;
+		pkt.data = rs->frame.data;
+		pkt.size = rs->frame.size;
 	}
 
 	if (c->coded_frame->pts != AV_NOPTS_VALUE)
@@ -231,7 +227,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		/* RTP is at a constant 90KHz time scale */
-		pkt.pts = av_rescale_q(bc->rtp_sess.vid_ts, (AVRational){1, 90000},
+		pkt.pts = av_rescale_q(bc->rtp_sess.frame.pts, (AVRational){1, 90000},
 				       bc_rec->video_st->time_base);
 	} else {
 		if (c->coded_frame->pts != AV_NOPTS_VALUE)
@@ -414,15 +410,13 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 		*width = bc->vfmt.fmt.pix.width;
 		*height = bc->vfmt.fmt.pix.height;
 		codec_id = bc_rec->codec_id;
-	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		*fnum = 1;
-		*fden = bc->rtp_sess.framerate;
-		/* Just a guess */
-		*width = 640;
-		*height = 480;
-		codec_id = bc->rtp_sess.vid_codec;
-		if (codec_id == CODEC_ID_NONE)
-			codec_id = CODEC_ID_MPEG4;
+	} else if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
+		AVStream *stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.video_stream_index];
+		*fnum = stream->time_base.num;
+		*fden = stream->time_base.den; /* XXX is this correct? */
+		*width = stream->codec->width;
+		*height = stream->codec->height;
+		codec_id = stream->codec->codec_id;
 	} else {
 		return -1;
 	}
@@ -517,8 +511,10 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	snprintf(st->language, sizeof(st->language), "eng");
 
 	if (bc_rec->codec_id == CODEC_ID_NONE) {
-		if (bc->cam_caps & BC_CAM_CAP_RTSP)
-			st->codec->codec_id = bc->rtp_sess.vid_codec;
+		if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
+			AVStream *stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.video_stream_index];
+			st->codec->codec_id = stream->codec->codec_id;
+		}
 
 		if (st->codec->codec_id == CODEC_ID_NONE) {
 			bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
@@ -558,12 +554,15 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
-		enum CodecID codec_id;
+		enum CodecID codec_id = CODEC_ID_NONE;
+		AVStream *rtsp_audio_stream = NULL;
 
 		if (bc_rec->pcm)
 			codec_id = CODEC_ID_PCM_S16LE;
-		else
-			codec_id = bc->rtp_sess.aud_codec;
+		else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+			rtsp_audio_stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.audio_stream_index];
+			codec_id = rtsp_audio_stream->codec->codec_id;
+		}
 
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
@@ -584,12 +583,10 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 			st->codec->channels = 1;
 			st->codec->time_base = (AVRational){1, 8000};
 		} else {
-			struct rtp_session *rs = &bc->rtp_sess;
-
-			st->codec->bit_rate = rs->bitrate;
-			st->codec->sample_rate = rs->samplerate;
-			st->codec->channels = rs->channels;
-			st->codec->time_base = (AVRational){1, rs->samplerate};
+			st->codec->bit_rate = rtsp_audio_stream->codec->bit_rate;
+			st->codec->sample_rate = rtsp_audio_stream->codec->sample_rate;
+			st->codec->channels = rtsp_audio_stream->codec->channels;
+			st->codec->time_base = (AVRational){ 1, rtsp_audio_stream->codec->sample_rate };
 		}
 
 		snprintf(st->language, sizeof(st->language), "eng");

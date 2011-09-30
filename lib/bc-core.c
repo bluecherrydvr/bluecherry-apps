@@ -123,8 +123,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	struct v4l2_buffer *vb;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		return mpeg4_is_key_frame(bc->rtp_sess.vid_buf,
-					  bc->rtp_sess.vid_len);
+		return rtp_session_frame_is_keyframe(&bc->rtp_sess);
 
 	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
 		return 1;
@@ -226,7 +225,7 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 		return 0;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP)
-		ret = rtp_session_start(&bc->rtp_sess, err_msg);
+		ret = rtp_session_start(&bc->rtp_sess);
 	else if (bc->cam_caps & BC_CAM_CAP_V4L2)
 		ret = v4l2_handle_start(bc, err_msg);
 
@@ -287,33 +286,7 @@ int bc_buf_get(struct bc_handle *bc)
 	int ret;
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		struct rtp_session *rs = &bc->rtp_sess;
-		int ret = 0;
-
-		/* Reset for next packet */
-		if (rs->vid_valid)
-			rs->vid_valid = rs->vid_len = 0;
-		if (rs->aud_valid)
-			rs->aud_valid = rs->aud_len = 0;
-
-		/* Loop till we get a whole packet */
-		for (;;) {
-			ret = rtp_session_read(rs);
-			if (ret)
-				return ret;
-
-			if (!bc->got_vop) {
-				if (!rs->vid_valid)
-					continue;
-				else
-					bc->got_vop = 1;
-			}
-
-			if (rs->vid_valid || rs->aud_valid)
-				break;
-		}
-
-		return 0;
+		return rtp_session_read(&bc->rtp_sess);
 	}
 
 	bc_buf_return(bc);
@@ -475,115 +448,84 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	return 0;
 }
 
-/* Internal rtp session init that uses a database result */
-static int rtp_session_init_dbres(struct rtp_session *rs,
-				  void *dbres)
-{
-	const char *val;
-	char *device;
-	char *p, *t;
-
-	memset(rs, 0, sizeof(*rs));
-
-	val = bc_db_get_val(dbres, "rtsp_username", NULL);
-	if (!val)
-		return -1;
-	strcpy(rs->userinfo, val);
-
-	strcat(rs->userinfo, ":");
-
-	val = bc_db_get_val(dbres, "rtsp_password", NULL);
-	if (!val)
-		return -1;
-	strcat(rs->userinfo, val);
-
-	val = bc_db_get_val(dbres, "device", NULL);
-	if (!val)
-		return -1;
-
-	device = strdupa(val);
-	if (!device)
-		return -1;
-
-	p = t = device;
-	while (*t != '|' && *t != '\0')
-		t++;
-	if (*t == '\0')
-		return -1;
-
-	*(t++) = '\0';
-
-	strcpy(rs->server, p);
-
-	p = t;
-	while (*t != '|' && *t != '\0')
-		t++;
-	if (*t == '\0')
-		return -1;
-
-	*(t++) = '\0';
-
-	rs->port = atoi(p);
-	strcpy(rs->uri, t);
-
-	return 0;
-}
-
-/* We always use the username:password from the RTSP connection */
-static int rtp_mjpeg_parse(struct bc_handle *bc, const char *mjpeg_dev)
-{
-	char *server, *port, *t;
-	char *device = strdupa(mjpeg_dev);
-
-	bc->mjpeg_url[0] = '\0';
-
-	if (!device)
-		return -1;
-
-	server = t = device;
-	while (*t != '|' && *t != '\0')
-		t++;
-
-	/* No pipe means just the path, so use port 80 and IP of RTSP */
-	if (*t == '\0') {
-		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
-			 "http://%s@%s%s", bc->rtp_sess.userinfo,
-			 bc->rtp_sess.server, mjpeg_dev);
-		return 0;
-	}
-
-	*(t++) = '\0';
-
-	port = t;
-	while (*t != '|' && *t != '\0')
-		t++;
-	if (*t == '\0')
-		return -1;
-
-	*(t++) = '\0';
-
-	snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
-		 "http://%s@%s:%d%s", bc->rtp_sess.userinfo,
-		 strlen(server) ? server : bc->rtp_sess.server,
-		 strlen(port) ? atoi(port) : 80, strlen(t) ? t : "/");
-
-	return 0;
-}
-
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	const char *val;
+	const char *username, *password, *val, *port = "554";
+	char *device, *path, *t;
+	char url[1024];
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
-	if (rtp_session_init_dbres(&bc->rtp_sess, dbres)) {
-		errno = ENOMEM;
+
+	username = bc_db_get_val(dbres, "rtsp_username", NULL);
+	password = bc_db_get_val(dbres, "rtsp_password", NULL);
+	val = bc_db_get_val(dbres, "device", NULL);
+	if (!username || !password || !val)
 		return -1;
+
+	/* Device is in the questionable format of 'hostname|port|path' */
+	device = strdupa(val);
+
+	path = 0;
+	int n = 0;
+	for (t = device; *t; t++) {
+		if (*t == '|') {
+			*t = '\0';
+			if (n == 0) {
+				port = t+1;
+			} else if (n == 1) {
+				path = t++;
+				break;
+			}
+			n++;
+		}
 	}
 
+	if (*t == '\0')
+		return -1;
+	
+	/* Create a URL */
+	int r = snprintf(url, sizeof(url), "rtsp://%s:%s@%s:%s%s", username,
+	                 password, device, port, path);
+	if (r >= sizeof(url))
+		return -1;
+
+	rtp_session_init(&bc->rtp_sess, url);
+
 	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
-	if (val && strlen(val)) {
-		if (!rtp_mjpeg_parse(bc, val))
-			bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
+	if (val && *val) {
+		char *mjpeg_val = strdupa(val), *v;
+		bc->mjpeg_url[0] = '\0';
+
+		port = "80";
+		path = 0;
+		int n = 0;
+		for (t = v = mjpeg_val; *t; t++) {
+			if (*t == '|') {
+				*t = '\0';
+				if (v != t && n == 0)
+					device = v;
+				else if (v != t && n == 1)
+					port = v;
+				v = t+1;
+				if (++n == 2) {
+					path = v;
+					break;
+				}
+			}
+		}
+		
+		if (v == mjpeg_val) {
+			/* No pipes means only the path */
+			path = mjpeg_val;
+		}
+		
+		if (!path)
+			return -1;
+
+		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+			 "http://%s:%s@%s:%s%s", username, password,
+			 device, port, ((*path) ? path : "/"));
+		bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
 	}
 
 	return 0;
