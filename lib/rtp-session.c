@@ -34,6 +34,8 @@ int rtp_session_start(struct rtp_session *rs)
 {
 	int i;
 
+	fprintf(stderr, "Opening RTSP from url: %s\n", rs->url);
+
 	if (av_open_input_file(&rs->ctx, rs->url, NULL, 0, NULL) != 0) {
 		/* XXX error handling */
 		fprintf(stderr, "Could not open URI\n");
@@ -86,5 +88,52 @@ int rtp_session_read(struct rtp_session *rs)
 int rtp_session_frame_is_keyframe(struct rtp_session *rs)
 {
 	return (rs->frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
+}
+
+int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
+{
+	if (rs->video_stream_index < 0) {
+		fprintf(stderr, "No video stream in RTP session\n");
+		return -1;
+	}
+
+	AVStream *vst = av_new_stream(out_ctx, 0);
+	if (!vst) {
+		fprintf(stderr, "Could not add video stream\n");
+		return -1;
+	}
+
+	AVCodecContext *ic = rs->ctx->streams[rs->video_stream_index]->codec;
+	vst->codec->codec_id = ic->codec_id;
+	vst->codec->codec_type = ic->codec_type;
+	vst->codec->pix_fmt = ic->pix_fmt;
+	vst->codec->width = ic->width;
+	vst->codec->height = ic->height;
+	vst->codec->time_base = ic->time_base;
+
+	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
+#if 0
+	if (rs->tid_a >= 0 || rs->aud_port >= 0) {
+		ast = av_new_stream(out_ctx, 1);
+		if (!ast) {
+			fprintf(stderr, "Could not add audio stream\n");
+			exit(1);
+		}
+
+		ast->codec->codec_id = rs->aud_codec;
+		ast->codec->codec_type = CODEC_TYPE_AUDIO;
+		ast->codec->bit_rate = rs->bitrate;
+		ast->codec->sample_rate = rs->samplerate;
+		ast->codec->channels = rs->channels;
+		ast->codec->time_base = (AVRational){1, rs->samplerate};
+
+		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
+			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+	}
+#endif
+
+	return 0;
 }
 

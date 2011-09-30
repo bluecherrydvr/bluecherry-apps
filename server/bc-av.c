@@ -468,43 +468,13 @@ pic_info_fail:
 	return 0;
 }
 
-static int __bc_open_avcodec(struct bc_record *bc_rec)
+static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 {
-	struct bc_handle *bc = bc_rec->bc;
-	AVCodec *codec;
 	AVStream *st;
-	AVFormatContext *oc;
 	int width = 0, height = 0, fnum, fden;
 
-	if (bc_rec->oc != NULL)
-		return 0;
-
-	bc_start_media_entry(bc_rec);
-
-	if (bc_rec->media == BC_MEDIA_NULL) {
-		errno = ENOMEM;
+	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden))
 		return -1;
-	}
-
-	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
-		errno = ENOMEM;
-		return -1;
-	}
-
-	/* Get the output format */
-	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
-	if (!bc_rec->fmt_out) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
-		return -1;
-	oc = bc_rec->oc;
-
-	oc->oformat = bc_rec->fmt_out;
-	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
-	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
 
 	/* Setup new video stream */
 	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
@@ -515,15 +485,8 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->time_base.num = fnum;
 
 	if (bc_rec->codec_id == CODEC_ID_NONE) {
-		if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
-			AVStream *stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.video_stream_index];
-			st->codec->codec_id = stream->codec->codec_id;
-		}
-
-		if (st->codec->codec_id == CODEC_ID_NONE) {
-			bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
-			st->codec->codec_id = CODEC_ID_MPEG4;
-		}
+		bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
+		st->codec->codec_id = CODEC_ID_MPEG4;
 	} else
 		st->codec->codec_id = bc_rec->codec_id;
 
@@ -544,7 +507,8 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
-	st->codec->time_base = st->time_base;
+	st->codec->time_base.num = fnum;
+	st->codec->time_base.den = fden;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -558,15 +522,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
-		enum CodecID codec_id = CODEC_ID_NONE;
-		AVStream *rtsp_audio_stream = NULL;
-
-		if (bc_rec->pcm)
-			codec_id = CODEC_ID_PCM_S16LE;
-		else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-			rtsp_audio_stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.audio_stream_index];
-			codec_id = rtsp_audio_stream->codec->codec_id;
-		}
+		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
 
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
@@ -581,22 +537,69 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->codec_id = codec_id;
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
-		if (bc_rec->pcm) {
-			st->codec->sample_rate = 8000;
-			st->codec->sample_fmt = SAMPLE_FMT_S16;
-			st->codec->channels = 1;
-			st->codec->time_base = (AVRational){1, 8000};
-		} else {
-			st->codec->bit_rate = rtsp_audio_stream->codec->bit_rate;
-			st->codec->sample_rate = rtsp_audio_stream->codec->sample_rate;
-			st->codec->channels = rtsp_audio_stream->codec->channels;
-			st->codec->time_base = (AVRational){ 1, rtsp_audio_stream->codec->sample_rate };
-		}
+		st->codec->sample_rate = 8000;
+		st->codec->sample_fmt = SAMPLE_FMT_S16;
+		st->codec->channels = 1;
+		st->codec->time_base = (AVRational){1, 8000};
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 no_audio:
 		st = NULL;
+	}
+	
+	return 0;
+}
+
+static int __bc_open_avcodec(struct bc_record *bc_rec)
+{
+	struct bc_handle *bc = bc_rec->bc;
+	AVCodec *codec;
+	AVStream *st;
+	AVFormatContext *oc;
+
+	if (bc_rec->oc != NULL)
+		return 0;
+
+	bc_start_media_entry(bc_rec);
+
+	if (bc_rec->media == BC_MEDIA_NULL) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	/* Get the output format */
+	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
+	if (!bc_rec->fmt_out) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
+		return -1;
+	oc = bc_rec->oc;
+
+	oc->oformat = bc_rec->fmt_out;
+	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
+	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		/* We don't need this information for RTSP, but this generates the event JPEG frame, so
+		 * it should be called anyway (refactor would be nice). */
+		int width = 0, height = 0, fnum, fden;
+		if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
+			errno = ENOMEM;
+			return -1;
+		}
+	
+		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
+			return -1;
+		
+		bc_rec->video_st = oc->streams[0];
+		bc_rec->audio_st = NULL; /* XXX audio support! */
+	} else {
+		if (setup_solo_output(bc_rec, oc) < 0)
+			return -1;
 	}
 
 	if (av_set_parameters(oc, NULL) < 0)

@@ -473,7 +473,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 			if (n == 0) {
 				port = t+1;
 			} else if (n == 1) {
-				path = t++;
+				path = ++t;
 				break;
 			}
 			n++;

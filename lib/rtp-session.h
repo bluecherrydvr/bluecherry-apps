@@ -24,7 +24,7 @@ void rtp_session_init(struct rtp_session *rs, const char *url);
 void rtp_session_stop(struct rtp_session *rs);
 int rtp_session_start(struct rtp_session *rs);
 int rtp_session_read(struct rtp_session *rs);
-
+int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx);
 int rtp_session_frame_is_keyframe(struct rtp_session *rs);
 
 #endif /* __RTP_SESSION_H */
