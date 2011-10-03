@@ -519,9 +519,6 @@ int main(int argc, char **argv)
 		/* And resolve un-committed events/media */
 		bc_media_event_clear();
 
-		if (!bg && loops >= 240)
-			break;
-
 		sleep(1);
 	}
 
