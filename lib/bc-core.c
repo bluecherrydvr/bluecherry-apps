@@ -453,6 +453,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *username, *password, *val, *port = "554";
 	char *device, *path, *t;
 	char url[1024];
+	int r;
 
 	bc->cam_caps |= BC_CAM_CAP_RTSP;
 
@@ -484,8 +485,12 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 	
 	/* Create a URL */
-	int r = snprintf(url, sizeof(url), "rtsp://%s:%s@%s:%s%s", username,
-	                 password, device, port, path);
+	if (*username || *password)
+		r = snprintf(url, sizeof(url), "rtsp://%s:%s@%s:%s%s", username,
+		             password, device, port, path);
+	else
+		r = snprintf(url, sizeof(url), "rtsp://%s:%s%s", device, port, path);
+
 	if (r >= sizeof(url))
 		return -1;
 
@@ -522,9 +527,15 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (!path)
 			return -1;
 
-		snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
-			 "http://%s:%s@%s:%s%s", username, password,
-			 device, port, ((*path) ? path : "/"));
+		if (*username || *password)
+			r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url), "http://%s:%s@%s:%s%s",
+			             username, password, device, port, ((*path) ? path : "/"));
+		else
+			r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url), "http://%s:%s%s",
+			             device, port, ((*path) ? path : "/"));
+		if (r >= sizeof(bc->mjpeg_url))
+			return -1;
+
 		bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
 	}
 
