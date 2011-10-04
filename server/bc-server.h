@@ -16,7 +16,7 @@
 #include "g723-dec.h"
 
 /* Maximum length of recording */
-#define BC_MAX_RECORD_TIME	900
+#define BC_MAX_RECORD_TIME 900
 
 struct bc_record {
 	struct bc_handle	*bc;

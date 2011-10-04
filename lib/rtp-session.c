@@ -28,11 +28,18 @@ void rtp_session_stop(struct rtp_session *rs)
 {
 	av_free_packet(&rs->frame);
 	av_close_input_file(rs->ctx);
+	rs->ctx = 0;
+	rs->video_stream_index = rs->audio_stream_index = -1;
 }
 
 int rtp_session_start(struct rtp_session *rs)
 {
 	int i;
+
+	if (rs->ctx) {
+		fprintf(stderr, "WARNING: rtp_session_start called for active session (%s)! Ignored.\n", rs->url);
+		return 0;
+	}
 
 	fprintf(stderr, "Opening RTSP from url: %s\n", rs->url);
 
@@ -45,7 +52,7 @@ int rtp_session_start(struct rtp_session *rs)
 	/* XXX Return value may be useful (AVERROR) */
 	if (av_find_stream_info(rs->ctx) < 0) {
 		fprintf(stderr, "Could not find stream info\n");
-		av_close_input_file(rs->ctx);
+		rtp_session_stop(rs);
 		return -1;
 	}
 	
@@ -67,7 +74,7 @@ int rtp_session_start(struct rtp_session *rs)
 	
 	if (rs->video_stream_index < 0 && rs->audio_stream_index < 0) {
 		fprintf(stderr, "Session opened successfully, but contains no valid media streams\n");
-		av_close_input_file(rs->ctx);
+		rtp_session_stop(rs);
 		return -1;
 	}
 	
