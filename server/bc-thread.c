@@ -120,6 +120,8 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
+		/* Is this primitive audio interleaving correct for RTP?
+		 * Can't this be handled entirely on the ffmpeg layer? */
 		if (bc_rec->oc && bc_rec->audio_st) {
 			audio_pts = (double)bc_rec->audio_st->pts.val *
 					bc_rec->audio_st->time_base.num /

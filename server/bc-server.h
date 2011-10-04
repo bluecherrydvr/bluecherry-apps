@@ -87,6 +87,7 @@ void bc_get_media_loc(char *stor);
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);
 
+int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
 

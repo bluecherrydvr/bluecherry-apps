@@ -10,10 +10,29 @@
 
 #include "bc-server.h"
 
-/* Used to maintain coherency between calls to avcodec open/close. The
- * libavcodec open/close is not thread safe and libavcodec will complain
- * (loudly) if it sees this occuring. */
-static pthread_mutex_t av_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+int bc_av_lockmgr(void **mutex, enum AVLockOp op)
+{
+	switch (op) {
+		case AV_LOCK_CREATE:
+			*mutex = malloc(sizeof(pthread_mutex_t));
+			if (!*mutex)
+				return 1;
+			return !!pthread_mutex_init(*mutex, NULL);
+		
+		case AV_LOCK_OBTAIN:
+			return !!pthread_mutex_lock(*mutex);
+		
+		case AV_LOCK_RELEASE:
+			return !!pthread_mutex_unlock(*mutex);
+			
+		case AV_LOCK_DESTROY:
+			pthread_mutex_destroy(*mutex);
+			free(*mutex);
+			return 0;
+	}
+
+	return 1;
+}
 
 int has_audio(struct bc_record *bc_rec)
 {
@@ -245,7 +264,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	return 0;
 }
 
-static void __bc_close_avcodec(struct bc_record *bc_rec)
+void bc_close_avcodec(struct bc_record *bc_rec)
 {
 	int i;
 
@@ -275,14 +294,6 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 	/* Close the media entry in the db */
 	bc_event_cam_end(&bc_rec->event);
 	bc_media_end(&bc_rec->media);
-}
-
-void bc_close_avcodec(struct bc_record *bc_rec)
-{
-	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec close!");
-	__bc_close_avcodec(bc_rec);
-	pthread_mutex_unlock(&av_lock);
 }
 
 void bc_mkdir_recursive(char *path)
@@ -551,7 +562,7 @@ no_audio:
 	return 0;
 }
 
-static int __bc_open_avcodec(struct bc_record *bc_rec)
+int bc_open_avcodec(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	AVCodec *codec;
@@ -565,18 +576,18 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	if (bc_rec->media == BC_MEDIA_NULL) {
 		errno = ENOMEM;
-		return -1;
+		goto error;
 	}
 
 	/* Get the output format */
 	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
 	if (!bc_rec->fmt_out) {
 		errno = EINVAL;
-		return -1;
+		goto error;
 	}
 
 	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
-		return -1;
+		goto error;
 	oc = bc_rec->oc;
 
 	oc->oformat = bc_rec->fmt_out;
@@ -589,21 +600,21 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		int width = 0, height = 0, fnum, fden;
 		if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
 			errno = ENOMEM;
-			return -1;
+			goto error;
 		}
 	
 		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
-			return -1;
+			goto error;
 		
 		bc_rec->video_st = oc->streams[0];
 		bc_rec->audio_st = NULL; /* XXX audio support! */
 	} else {
 		if (setup_solo_output(bc_rec, oc) < 0)
-			return -1;
+			goto error;
 	}
 
 	if (av_set_parameters(oc, NULL) < 0)
-		return -1;
+		goto error;
 
 	/* Open Video output */
 	st = bc_rec->video_st;
@@ -613,7 +624,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		/* Clear this */
 		if (bc_rec->audio_st)
 			bc_rec->audio_st = NULL;
-		return -1;
+		goto error;
 	}
 	st = NULL;
 
@@ -633,26 +644,17 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
 		bc_dev_err(bc_rec, "Failed to open outfile (perms?): %s",
 			   bc_rec->outfile);
-		return -1;
+		goto error;
 	}
 
 	av_write_header(oc);
 
 	return 0;
+	
+error:
+	/* XXX I dislike this. */
+	bc_media_destroy(&bc_rec->media);
+	bc_close_avcodec(bc_rec);
+	return -1;
 }
 
-int bc_open_avcodec(struct bc_record *bc_rec)
-{
-	int ret;
-
-	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec open!");
-	ret = __bc_open_avcodec(bc_rec);
-	if (ret) {
-		bc_media_destroy(&bc_rec->media);
-		__bc_close_avcodec(bc_rec);
-	}
-	pthread_mutex_unlock(&av_lock);
-
-	return ret;
-}

@@ -501,6 +501,11 @@ int main(int argc, char **argv)
 	bc_handle_motion_start = __handle_motion_start;
 	bc_handle_motion_end = __handle_motion_end;
 
+	if (av_lockmgr_register(bc_av_lockmgr)) {
+		bc_log("E: AV lock registration failed: %m");
+		exit(1);
+	}
+
 	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
@@ -557,6 +562,7 @@ int main(int argc, char **argv)
 
 	bc_stop_threads();
 	bc_db_close();
+	av_lockmgr_register(NULL);
 
 	exit(0);
 }
