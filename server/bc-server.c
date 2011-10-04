@@ -32,6 +32,38 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
 
 extern char *__progname;
 
+/* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
+ * so a real encoder isn't neeeded, but one must be present for the process to
+ * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
+ */
+static int fake_h264_init(AVCodecContext *ctx)
+{
+	return 0;
+}
+
+static int fake_h264_close(AVCodecContext *ctx)
+{
+	return 0;
+}
+
+static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void *data)
+{
+	return -1;
+}
+
+AVCodec fake_h264_encoder = {
+	.name           = "fakeh264",
+	.type           = AVMEDIA_TYPE_VIDEO,
+	.id             = CODEC_ID_H264,
+	.priv_data_size = 0,
+	.init           = fake_h264_init,
+	.encode         = fake_h264_frame,
+	.close          = fake_h264_close,
+	.capabilities   = CODEC_CAP_DELAY,
+	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
+	.long_name      = "Fake H.264 Encoder for RTP Muxing",
+};
+
 static void __handle_motion_start(struct bc_handle *bc)
 {
 	struct bc_record *bc_rec = bc->__data;
@@ -469,8 +501,9 @@ int main(int argc, char **argv)
 	bc_handle_motion_start = __handle_motion_start;
 	bc_handle_motion_end = __handle_motion_end;
 
-        avcodec_init();
-        av_register_all();
+	avcodec_init();
+	avcodec_register(&fake_h264_encoder);
+	av_register_all();
 	/* Help pipe av* log to our log */
 	av_log_set_callback(av_log_cb);
 
