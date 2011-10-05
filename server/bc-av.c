@@ -226,6 +226,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	AVCodecContext *c;
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
+	int re;
 
 	if (!bc_rec->oc)
 		return 0;
@@ -256,8 +257,10 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	pkt.stream_index = bc_rec->video_st->index;
 
-	if (av_write_frame(bc_rec->oc, &pkt)) {
-		errno = EIO;
+	if ((re = av_write_frame(bc_rec->oc, &pkt)) != 0) {
+		char averror[512] = { 0 };
+		av_strerror(re, averror, sizeof(averror));
+		bc_dev_err(bc_rec, "cannot write frame to recording (%s)", averror);
 		return -1;
 	}
 

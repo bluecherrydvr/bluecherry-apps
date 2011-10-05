@@ -93,6 +93,7 @@ static void *bc_device_thread(void *data)
 	int ret;
 
 	bc_dev_info(bc_rec, "Camera configured");
+	bc_av_log_set_handle_thread(bc_rec);
 
 	for (;;) {
 		double audio_pts = 0, video_pts = 0;
@@ -146,9 +147,10 @@ static void *bc_device_thread(void *data)
 					continue;
 				}
 				if (bc_vid_out(bc_rec)) {
-					bc_dev_err(bc_rec, "Error writing frame "
-						   "to outfile: %m");
-					/* XXX Do something */
+					/* Error is logged by bc_vid_out. Frame writing errors
+					 * are often non-fatal, but can be noisy when repeated.
+					 * It would be a good idea to delay-and-restart if enough
+					 * of them happen consecutively. */
 				}
 			} else if (ret == ERESTART) {
 				bc_close_avcodec(bc_rec);
@@ -229,6 +231,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	strcpy(bc_rec->dev, dev);
 	strcpy(bc_rec->name, name);
 	strcpy(bc_rec->driver, driver);
+	bc_rec->av_log_level = AV_LOG_ERROR;
 	bc_rec->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled");
 
 	bc = bc_handle_get(dbres);

@@ -29,6 +29,7 @@ struct bc_record {
 
 	time_t			osd_time;
 	unsigned int		start_failed;
+	int                 av_log_level;
 
 	struct g723_state	g723_state;
 	unsigned char		g723_data[48];
@@ -86,6 +87,9 @@ void bc_get_media_loc(char *stor);
 
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);
+
+/* Relate all libav logging on this thread to a given bc_record */
+void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
 
 int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);

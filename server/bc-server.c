@@ -456,14 +456,44 @@ static void usage(void)
 	exit(1);
 }
 
+static pthread_key_t av_log_current_handle_key;
+static const int av_log_without_handle = AV_LOG_INFO;
+
+void bc_av_log_set_handle_thread(struct bc_record *bc_rec)
+{
+	pthread_setspecific(av_log_current_handle_key, bc_rec);
+}
+
+/* Warning: Must be reentrant; this may be called from many device threads at once */
 static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
-	char msg[strlen(fmt) + 20];
-
-	if (level > AV_LOG_ERROR)
+	char msg[strlen(fmt) + 200];
+	const char *levelstr;
+	struct bc_record *bc_rec = (struct bc_record*)pthread_getspecific(av_log_current_handle_key);
+	
+	switch (level) {
+		case AV_LOG_PANIC: levelstr = "PANIC"; break;
+		case AV_LOG_FATAL: levelstr = "fatal"; break;
+		case AV_LOG_ERROR: levelstr = "error"; break;
+		case AV_LOG_WARNING: levelstr = "warning"; break;
+		case AV_LOG_INFO: levelstr = "info"; break;
+		case AV_LOG_VERBOSE: levelstr = "verbose"; break;
+		case AV_LOG_DEBUG: levelstr = "debug"; break;
+		default: levelstr = "???"; break;
+	}
+	
+	if (!bc_rec) {
+		if (level <= av_log_without_handle) {
+			sprintf(msg, "[avlib %s]: %s", levelstr, fmt);
+			bc_vlog(msg, ap);
+		}
+		return;
+	}
+	
+	if (level > bc_rec->av_log_level)
 		return;
 
-	sprintf(msg, "[avlib]: %s", fmt);
+	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->name, levelstr, fmt);
 	bc_vlog(msg, ap);
 }
 
@@ -509,7 +539,8 @@ int main(int argc, char **argv)
 	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
-	/* Help pipe av* log to our log */
+	
+	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
 
 	if (bg && daemon(0, 0) == -1) {
