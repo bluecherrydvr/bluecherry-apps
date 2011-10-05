@@ -197,6 +197,10 @@ int bc_aud_out(struct bc_record *bc_rec)
 				       bc_rec->pcm_data);
 
 		pkt.data = (void *)bc_rec->pcm_data;
+		
+		if (c->coded_frame->pts != AV_NOPTS_VALUE)
+			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
+		                           bc_rec->audio_st->time_base);
 	} else {
 		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
 
@@ -205,13 +209,14 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 		pkt.data = rs->frame.data;
 		pkt.size = rs->frame.size;
+/*		pkt.pts = av_rescale_q(rs->frame.pts, (AVRational){1, bc_rec->audio_st->codec->sample_rate},
+		                       bc_rec->audio_st->time_base);*/
 	}
 
-	if (c->coded_frame->pts != AV_NOPTS_VALUE)
-		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-				       bc_rec->audio_st->time_base);
 	pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
+
+//	bc_dev_info(bc_rec, "audio pts %lld (frame: %lld)", pkt.pts, bc_rec->bc->rtp_sess.frame.pts);
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
@@ -256,6 +261,8 @@ int bc_vid_out(struct bc_record *bc_rec)
 	}
 
 	pkt.stream_index = bc_rec->video_st->index;
+	
+//	bc_dev_info(bc_rec, "video pts %lld", pkt.pts);
 
 	if ((re = av_write_frame(bc_rec->oc, &pkt)) != 0) {
 		char averror[512] = { 0 };
@@ -571,6 +578,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
+	int i;
 
 	if (bc_rec->oc != NULL)
 		return 0;
@@ -605,12 +613,21 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 			errno = ENOMEM;
 			goto error;
 		}
+		
+		/* Don't include audio in the output if it's disabled by the user */
+		if (!has_audio(bc_rec))
+			bc->rtp_sess.audio_stream_index = -1;
 	
 		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
 			goto error;
 		
-		bc_rec->video_st = oc->streams[0];
-		bc_rec->audio_st = NULL; /* XXX audio support! */
+		bc_rec->audio_st = bc_rec->video_st = NULL;
+		for (i = 0; i < oc->nb_streams; ++i) {
+			if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+				bc_rec->video_st = oc->streams[i];
+			else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+				bc_rec->audio_st = oc->streams[i];
+		}
 	} else {
 		if (setup_solo_output(bc_rec, oc) < 0)
 			goto error;

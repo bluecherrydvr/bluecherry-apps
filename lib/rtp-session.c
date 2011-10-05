@@ -95,6 +95,8 @@ int rtp_session_read(struct rtp_session *rs)
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
+	
+	//bc_log("RTP read frame pts=%lld dts=%lld size=%d stream_index=%d %s", rs->frame.pts, rs->frame.dts, rs->frame.size, rs->frame.stream_index, (rs->frame.flags & AV_PKT_FLAG_KEY) ? "key" : "");
 	return 0;
 }
 
@@ -127,25 +129,26 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-#if 0
-	if (rs->tid_a >= 0 || rs->aud_port >= 0) {
-		ast = av_new_stream(out_ctx, 1);
+	if (rs->audio_stream_index >= 0) {
+		/* Audio recording errors are non-fatal; video will still be captured */
+		AVStream *ast = av_new_stream(out_ctx, 1);
 		if (!ast) {
-			fprintf(stderr, "Could not add audio stream\n");
-			exit(1);
+			av_log(out_ctx, AV_LOG_ERROR, "Cannot add audio stream to output context");
+			return 0;
 		}
-
-		ast->codec->codec_id = rs->aud_codec;
-		ast->codec->codec_type = CODEC_TYPE_AUDIO;
-		ast->codec->bit_rate = rs->bitrate;
-		ast->codec->sample_rate = rs->samplerate;
-		ast->codec->channels = rs->channels;
-		ast->codec->time_base = (AVRational){1, rs->samplerate};
-
+		
+		ic = rs->ctx->streams[rs->audio_stream_index]->codec;
+		ast->codec->codec_id = ic->codec_id;
+		ast->codec->codec_type = ic->codec_type;
+		ast->codec->bit_rate = ic->bit_rate;
+		ast->codec->sample_rate = ic->sample_rate;
+		ast->codec->sample_fmt = ic->sample_fmt;
+		ast->codec->channels = ic->channels;
+		ast->codec->time_base = (AVRational){1, ic->sample_rate};
+		
 		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
-#endif
 
 	return 0;
 }

@@ -15,7 +15,7 @@ struct rtp_session {
 	char error_message[512];
 
 	AVFormatContext *ctx;
-	/* -1 for no stream */
+	/* -1 for no stream. External code may set audio_stream_index to -1 after start to disable audio. */
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
 };

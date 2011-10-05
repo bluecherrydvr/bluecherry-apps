@@ -238,7 +238,8 @@ void bc_vlog(const char *msg, va_list va);
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();
 
-/* Retrieves the next buffer from the device */
+/* Retrieves the next buffer from the device.
+ * For RTSP devices, this buffer may not be video! */
 int bc_buf_get(struct bc_handle *bc);
 
 /* Get the data pointer for the current buffer */
@@ -249,6 +250,9 @@ unsigned int bc_buf_size(struct bc_handle *bc);
 
 /* Is the current buffer a key frame? */
 int bc_buf_key_frame(struct bc_handle *bc);
+
+/* Is the current buffer a video frame? */
+int bc_buf_is_video_frame(struct bc_handle *bc);
 
 /* Format and parameter settings */
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval);

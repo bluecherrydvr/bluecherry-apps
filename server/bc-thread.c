@@ -96,7 +96,6 @@ static void *bc_device_thread(void *data)
 	bc_av_log_set_handle_thread(bc_rec);
 
 	for (;;) {
-		double audio_pts = 0, video_pts = 0;
 		const char *err_msg;
 
 		if (bc_rec->thread_should_die)
@@ -121,54 +120,60 @@ static void *bc_device_thread(void *data)
 			bc_dev_info(bc_rec, "Device started after failure(s)");
 		}
 
-		/* Is this primitive audio interleaving correct for RTP?
-		 * Can't this be handled entirely on the ffmpeg layer? */
-		if (bc_rec->oc && bc_rec->audio_st) {
-			audio_pts = (double)bc_rec->audio_st->pts.val *
-					bc_rec->audio_st->time_base.num /
-					bc_rec->audio_st->time_base.den;
-			video_pts = (double)bc_rec->video_st->pts.val *
-					bc_rec->video_st->time_base.num /
-					bc_rec->video_st->time_base.den;
+		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
+		    && bc_rec->oc && bc_rec->audio_st)
+		{
+			double audio_pts = (double)bc_rec->audio_st->pts.val *
+			                   bc_rec->audio_st->time_base.num /
+			                   bc_rec->audio_st->time_base.den;
+			double video_pts = (double)bc_rec->video_st->pts.val *
+			                   bc_rec->video_st->time_base.num /
+			                   bc_rec->video_st->time_base.den;
+
+			if (audio_pts < video_pts) {
+				if (bc_aud_out(bc_rec))
+					/* Do nothing */;
+				continue;
+			}
 		}
 
-		if (has_audio(bc_rec) && audio_pts < video_pts) {
-			if (bc_aud_out(bc_rec))
-				/* Do nothing */;
-		} else {
-			ret = bc_buf_get(bc);
-			if (!ret) {
-				/* Do this after we get the first frame,
-				 * since we need that in order to decode
-				 * the first frame for avcodec params like
-				 * width, height and frame rate. */
-				if (bc_open_avcodec(bc_rec)) {
-					bc_dev_err(bc_rec, "Error opening avcodec");
-					continue;
-				}
-				if (bc_vid_out(bc_rec)) {
-					/* Error is logged by bc_vid_out. Frame writing errors
-					 * are often non-fatal, but can be noisy when repeated.
-					 * It would be a good idea to delay-and-restart if enough
-					 * of them happen consecutively. */
-				}
-			} else if (ret == ERESTART) {
-				bc_close_avcodec(bc_rec);
-			} else if (ret != EAGAIN) {
-				/* Try restarting the connection. Do not
-				 * report failure here. It will get reported
-				 * if we fail to reconnect. (XXX what?) */
-				
-				if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-					bc_dev_err(bc_rec, "RTSP read error: %s",
-					           (*bc->rtp_sess.error_message) ?
-					            bc->rtp_sess.error_message :
-					            "Unknown error");
-				}
-				
-				bc_close_avcodec(bc_rec);
-				bc_handle_stop(bc);
+		ret = bc_buf_get(bc);
+		if (!ret) {
+			/* Do this after we get the first frame,
+			 * since we need that in order to decode
+			 * the first frame for avcodec params like
+			 * width, height and frame rate. */
+			if (bc_open_avcodec(bc_rec)) {
+				bc_dev_err(bc_rec, "Error opening avcodec");
+				continue;
 			}
+
+			if (bc_buf_is_video_frame(bc)) {
+				bc_vid_out(bc_rec);
+				/* Error is logged by bc_vid_out. Frame writing errors
+				 * are often non-fatal, but can be noisy when repeated.
+				 * It would be a good idea to delay-and-restart if enough
+				 * of them happen consecutively. */
+			} else {
+				bc_aud_out(bc_rec);
+				/* Do nothing? XXX */
+			}
+		} else if (ret == ERESTART) {
+			bc_close_avcodec(bc_rec);
+		} else if (ret != EAGAIN) {
+			/* Try restarting the connection. Do not
+			 * report failure here. It will get reported
+			 * if we fail to reconnect. (XXX what?) */
+			
+			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+				bc_dev_err(bc_rec, "RTSP read error: %s",
+				           (*bc->rtp_sess.error_message) ?
+				            bc->rtp_sess.error_message :
+				            "Unknown error");
+			}
+			
+			bc_close_avcodec(bc_rec);
+			bc_handle_stop(bc);
 		}
 	}
 

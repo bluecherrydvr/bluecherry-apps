@@ -140,6 +140,13 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	return 0;
 }
 
+int bc_buf_is_video_frame(struct bc_handle *bc)
+{
+	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+		return bc->rtp_sess.frame.stream_index == bc->rtp_sess.video_stream_index;
+	return 1;
+}
+
 static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 {
 	struct v4l2_requestbuffers req;
