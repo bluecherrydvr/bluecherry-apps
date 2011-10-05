@@ -155,7 +155,15 @@ static void *bc_device_thread(void *data)
 			} else if (ret != EAGAIN) {
 				/* Try restarting the connection. Do not
 				 * report failure here. It will get reported
-				 * if we fail to reconnect. */
+				 * if we fail to reconnect. (XXX what?) */
+				
+				if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+					bc_dev_err(bc_rec, "RTSP read error: %s",
+					           (*bc->rtp_sess.error_message) ?
+					            bc->rtp_sess.error_message :
+					            "Unknown error");
+				}
+				
 				bc_close_avcodec(bc_rec);
 				bc_handle_stop(bc);
 			}

@@ -12,11 +12,11 @@
 
 struct rtp_session {
 	char url[1024];
+	char error_message[512];
 
 	AVFormatContext *ctx;
 	/* -1 for no stream */
 	int video_stream_index, audio_stream_index;
-	
 	AVPacket frame;
 };
 

@@ -26,6 +26,9 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 
 void rtp_session_stop(struct rtp_session *rs)
 {
+	if (!rs->ctx)
+		return;
+
 	av_free_packet(&rs->frame);
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
@@ -34,47 +37,45 @@ void rtp_session_stop(struct rtp_session *rs)
 
 int rtp_session_start(struct rtp_session *rs)
 {
-	int i;
+	int i, re;
 
-	if (rs->ctx) {
-		fprintf(stderr, "WARNING: rtp_session_start called for active session (%s)! Ignored.\n", rs->url);
+	if (rs->ctx)
 		return 0;
-	}
 
-	fprintf(stderr, "Opening RTSP from url: %s\n", rs->url);
+	bc_log("Opening RTSP session from URL: %s", rs->url);
 
-	if (av_open_input_file(&rs->ctx, rs->url, NULL, 0, NULL) != 0) {
-		/* XXX error handling */
-		fprintf(stderr, "Could not open URI\n");
+	if ((re = av_open_input_file(&rs->ctx, rs->url, NULL, 0, NULL)) != 0) {
+		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
 
-	/* XXX Return value may be useful (AVERROR) */
-	if (av_find_stream_info(rs->ctx) < 0) {
-		fprintf(stderr, "Could not find stream info\n");
+	if ((re = av_find_stream_info(rs->ctx)) < 0) {
 		rtp_session_stop(rs);
+		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
 	
 	for (i = 0; i < rs->ctx->nb_streams; ++i) {
 		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
-				fprintf(stderr, "Warning: session has multiple video streams\n");
+				bc_log("RTSP session for %s has multiple video streams. Only the "
+				       "first stream will be recorded.", rs->url);
 				continue;
 			}
 			rs->video_stream_index = i;
 		} else if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (rs->audio_stream_index >= 0) {
-				fprintf(stderr, "Warning: session has multiple audio streams\n");
+				bc_log("RTSP session for %s has multiple audio streams. Only the "
+				       "first stream will be recorded.", rs->url);
 				continue;
 			}
 			rs->audio_stream_index = i;
 		}
 	}
 	
-	if (rs->video_stream_index < 0 && rs->audio_stream_index < 0) {
-		fprintf(stderr, "Session opened successfully, but contains no valid media streams\n");
+	if (rs->video_stream_index < 0) {
 		rtp_session_stop(rs);
+		strcpy(rs->error_message, "RTSP session contains no valid video stream");
 		return -1;
 	}
 	
@@ -83,10 +84,15 @@ int rtp_session_start(struct rtp_session *rs)
 
 int rtp_session_read(struct rtp_session *rs)
 {
+	if (!rs->ctx) {
+		strcpy(rs->error_message, "No active RTSP session");
+		return -1;
+	}
+
 	av_free_packet(&rs->frame);
 	int re = av_read_frame(rs->ctx, &rs->frame);
 	if (re < 0) {
-		fprintf(stderr, "av_read_frame returned %d\n", re);	
+		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
 	return 0;
@@ -99,14 +105,14 @@ int rtp_session_frame_is_keyframe(struct rtp_session *rs)
 
 int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 {
-	if (rs->video_stream_index < 0) {
-		fprintf(stderr, "No video stream in RTP session\n");
+	if (!rs->ctx) {
+		strcpy(rs->error_message, "No active RTSP session");
 		return -1;
 	}
 
 	AVStream *vst = av_new_stream(out_ctx, 0);
 	if (!vst) {
-		fprintf(stderr, "Could not add video stream\n");
+		strcpy(rs->error_message, "Cannot add new stream");
 		return -1;
 	}
 

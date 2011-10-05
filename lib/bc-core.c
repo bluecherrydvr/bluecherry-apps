@@ -224,9 +224,11 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 	if (bc->started)
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		ret = rtp_session_start(&bc->rtp_sess);
-	else if (bc->cam_caps & BC_CAM_CAP_V4L2)
+		if (ret < 0)
+			*err_msg = bc->rtp_sess.error_message;
+	} else if (bc->cam_caps & BC_CAM_CAP_V4L2)
 		ret = v4l2_handle_start(bc, err_msg);
 
 	if (!ret) {
