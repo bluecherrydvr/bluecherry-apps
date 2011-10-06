@@ -623,8 +623,10 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		
 		/* We should already have the first frame from the stream; use it as the PTS base
 		 * value, so that recordings always start from a PTS of 0. */
-		bc->rtp_sess.pts_base += bc->rtp_sess.frame.pts;
-		bc->rtp_sess.frame.pts = 0;
+		if (bc->rtp_sess.frame.pts != AV_NOPTS_VALUE) {
+			bc->rtp_sess.pts_base += bc->rtp_sess.frame.pts;
+			bc->rtp_sess.frame.pts = 0;
+		}
 		
 		bc_rec->audio_st = bc_rec->video_st = NULL;
 		for (i = 0; i < oc->nb_streams; ++i) {
