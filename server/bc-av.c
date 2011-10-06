@@ -661,10 +661,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		codec = avcodec_find_encoder(st->codec->codec_id);
 		if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
 			bc_rec->audio_st = NULL;
-			bc_dev_warn(bc_rec, "Failed to open audio codec (%08x) "
-				    "so not recording", st->codec->codec_id);
+			goto error;
 		}
-		st = NULL;
 	}
 
 	/* Open output file */

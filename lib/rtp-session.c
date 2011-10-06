@@ -69,6 +69,9 @@ int rtp_session_start(struct rtp_session *rs)
 				bc_log("RTSP session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", rs->url);
 				continue;
+			} else if (rs->ctx->streams[i]->codec->codec_id == CODEC_ID_NONE) {
+				av_log(rs->ctx, AV_LOG_ERROR, "No matching audio codec for stream; ignoring audio");
+				continue;
 			}
 			rs->audio_stream_index = i;
 		}
