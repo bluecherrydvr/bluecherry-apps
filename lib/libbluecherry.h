@@ -228,6 +228,10 @@ void bc_handle_free(struct bc_handle *bc);
 /* Called to start and stop the stream */
 int bc_handle_start(struct bc_handle *bc, const char **err_msg);
 void bc_handle_stop(struct bc_handle *bc);
+/* Reset the handle to start a new recording.
+ * For solo devices, this is equivalent to stop, but
+ * for RTP, it has no effect. */
+void bc_handle_reset(struct bc_handle *bc);
 
 /* Standard logging function for all BC services */
 void bc_log(const char *msg, ...)

@@ -18,6 +18,7 @@ struct rtp_session {
 	/* -1 for no stream. External code may set audio_stream_index to -1 after start to disable audio. */
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
+	int64_t pts_base;
 };
 
 void rtp_session_init(struct rtp_session *rs, const char *url);

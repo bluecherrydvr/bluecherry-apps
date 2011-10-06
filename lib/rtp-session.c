@@ -33,6 +33,7 @@ void rtp_session_stop(struct rtp_session *rs)
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
+	rs->pts_base = 0;
 }
 
 int rtp_session_start(struct rtp_session *rs)
@@ -97,6 +98,8 @@ int rtp_session_read(struct rtp_session *rs)
 	}
 	
 	//bc_log("RTP read frame pts=%lld dts=%lld size=%d stream_index=%d %s", rs->frame.pts, rs->frame.dts, rs->frame.size, rs->frame.stream_index, (rs->frame.flags & AV_PKT_FLAG_KEY) ? "key" : "");
+	
+	rs->frame.pts -= rs->pts_base;
 	return 0;
 }
 

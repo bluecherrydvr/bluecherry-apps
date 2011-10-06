@@ -645,6 +645,12 @@ void bc_handle_stop(struct bc_handle *bc)
 	errno = save_err;
 }
 
+void bc_handle_reset(struct bc_handle *bc)
+{
+	if (bc->cam_caps & BC_CAM_CAP_V4L2)
+		bc_handle_stop(bc);
+}
+
 void bc_handle_free(struct bc_handle *bc)
 {
 	/* Don't want this call to change errno at all */

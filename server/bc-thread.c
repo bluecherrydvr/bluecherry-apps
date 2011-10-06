@@ -61,7 +61,7 @@ static int process_schedule(struct bc_record *bc_rec)
 			ret = 1;
 		}
 		bc_close_avcodec(bc_rec);
-		bc_handle_stop(bc);
+		bc_handle_reset(bc);
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
@@ -139,6 +139,14 @@ static void *bc_device_thread(void *data)
 
 		ret = bc_buf_get(bc);
 		if (!ret) {
+			if (!bc_rec->oc && (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc))) {
+				/* Always start a recording with a key video frame. This will result in
+				 * the lost of some video between recordings, up to the keyframe interval,
+				 * at least on RTP devices. XXX Ideally, we should move the recording split
+				 * slightly to allow a proper cut for both video and audio. */
+				continue;
+			}
+		
 			/* Do this after we get the first frame,
 			 * since we need that in order to decode
 			 * the first frame for avcodec params like
@@ -178,6 +186,7 @@ static void *bc_device_thread(void *data)
 	}
 
 	bc_close_avcodec(bc_rec);
+	bc_handle_stop(bc);
 	bc_set_osd(bc, " ");
 
 	return bc_rec->thread_should_die;
