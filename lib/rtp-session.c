@@ -22,6 +22,9 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 	
 	strncpy(rs->url, url, sizeof(rs->url));
 	rs->url[sizeof(rs->url)-1] = '\0';
+	
+	av_init_packet(&rs->frame);
+	rs->last_video_pts = rs->last_audio_pts = AV_NOPTS_VALUE;
 }
 
 void rtp_session_stop(struct rtp_session *rs)
@@ -30,10 +33,13 @@ void rtp_session_stop(struct rtp_session *rs)
 		return;
 
 	av_free_packet(&rs->frame);
+	av_init_packet(&rs->frame);
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
 	rs->pts_base = 0;
+	rs->last_video_pts = rs->last_audio_pts = AV_NOPTS_VALUE;
+	rs->last_video_pts_diff = rs->last_audio_pts_diff = 0;
 }
 
 int rtp_session_start(struct rtp_session *rs)
@@ -100,9 +106,80 @@ int rtp_session_read(struct rtp_session *rs)
 		return -1;
 	}
 	
-	//bc_log("RTP read frame pts=%lld dts=%lld size=%d stream_index=%d %s", rs->frame.pts, rs->frame.dts, rs->frame.size, rs->frame.stream_index, (rs->frame.flags & AV_PKT_FLAG_KEY) ? "key" : "");
-	
+	int64_t *lastpts = 0, *lastptsdiff = 0;
+	if (rs->frame.stream_index == rs->video_stream_index) {
+		lastpts = &rs->last_video_pts;
+		lastptsdiff = &rs->last_video_pts_diff;
+	}
+	else if (rs->frame.stream_index == rs->audio_stream_index) {
+		lastpts = &rs->last_audio_pts;
+		lastptsdiff = &rs->last_video_pts_diff;
+	}
+
+	/* Don't run offset logic against frames with no PTS */
+	if (rs->frame.pts == AV_NOPTS_VALUE)
+		return 0;
+
+	/* Correct the stream's PTS to provide an even, monotonic set of frames for
+	 * recording, regardless of network factors. Notably, this often comes into
+	 * effect after receiving RTCP packets, which may alter the PTS to adjust
+	 * inter-stream synchronization.
+	 *
+	 * We assume that the difference between the PTS of the last two frames,
+	 * lastptsdiff, is an accurate guess about the difference between this frame
+	 * and the previous, and adjust the base PTS accordingly. Calculation is
+	 * done against the raw, unadjusted PTS to prevent some feedback loops. pts_base
+	 * may be altered externally (but only by delta), because the recording logic wants
+	 * to start with the first frame of each recording as PTS 0.
+	 *
+	 * If the difference between the PTS of the last frame and the current is more
+	 * than 4x the difference of the previous two frames, we assume a forward jump
+	 * and correct in the same manner as with negative differences. I believe this
+	 * threshold is reasonable, but it may prove to cause false positives for real-world
+	 * cases and require adjustment. If the threshold is too high, we're risking a
+	 * relatively small gap in playback (and possibly accompanying audio
+	 * desynchronization).
+	 *
+	 * If the PTS of any two otherwise valid frames is less than 1/4th (i.e. the above
+	 * threshold) of the normal rate, we may never recover, and adjust all future frames
+	 * to match that too-fast rate. It would be reasonable to prevent this by discarding
+	 * the forward-jump check if it's triggered on X (2?) consecutive frames, which
+	 * shouldn't occur for the cases targetted here. Another approach is to adjust any
+	 * frames with a difference of equal or less than 1/4th the previous difference, but
+	 * that would not recover where the stream's first PTS difference is too small.
+	 *
+	 * If it is valid under any codec to have two frames with equal PTS, that will fail.
+	 * Variable framerates could be catastrophic.
+	 *
+	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
+	 */
+	if (lastpts && *lastpts != AV_NOPTS_VALUE) {
+		if (rs->frame.pts <= *lastpts || (*lastptsdiff &&
+		    (rs->frame.pts - *lastpts) >= (*lastptsdiff*4)))
+		{
+			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
+			       "delta %lld. Adjusting based on last interval of %lld.",
+			       rs->frame.stream_index,
+			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+			       rs->frame.pts - *lastpts, *lastptsdiff);
+			rs->pts_base -= (*lastpts - rs->frame.pts) + *lastptsdiff;
+		} else {
+			int64_t newptsdiff = rs->frame.pts - *lastpts;
+			if (newptsdiff < *lastptsdiff && (*lastptsdiff/newptsdiff) >= 4) {
+				av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) "
+				       "changed to %lld (delta %lld). This may cause framerate issues.",
+				       rs->frame.stream_index,
+				       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+				       newptsdiff, (newptsdiff - *lastptsdiff));
+			}
+			*lastptsdiff = newptsdiff;
+		}
+		*lastpts = rs->frame.pts;
+	} else if (lastpts)
+		*lastpts = rs->frame.pts;
+
 	rs->frame.pts -= rs->pts_base;
+
 	return 0;
 }
 

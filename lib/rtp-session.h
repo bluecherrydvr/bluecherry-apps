@@ -19,6 +19,7 @@ struct rtp_session {
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
 	int64_t pts_base;
+	int64_t last_video_pts, last_video_pts_diff, last_audio_pts, last_audio_pts_diff;
 };
 
 void rtp_session_init(struct rtp_session *rs, const char *url);
