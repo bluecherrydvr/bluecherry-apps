@@ -47,6 +47,7 @@ void rtp_session_stop(struct rtp_session *rs)
 		rs->stream_data[i].pts_base = 0;
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 		rs->stream_data[i].last_pts_diff = 0;
+		rs->stream_data[i].was_last_diff_skipped = 0;
 	}
 }
 
@@ -144,12 +145,12 @@ int rtp_session_read(struct rtp_session *rs)
 	 * desynchronization).
 	 *
 	 * If the PTS of any two otherwise valid frames is less than 1/4th (i.e. the above
-	 * threshold) of the normal rate, we may never recover, and adjust all future frames
-	 * to match that too-fast rate. It would be reasonable to prevent this by discarding
-	 * the forward-jump check if it's triggered on X (2?) consecutive frames, which
-	 * shouldn't occur for the cases targetted here. Another approach is to adjust any
-	 * frames with a difference of equal or less than 1/4th the previous difference, but
-	 * that would not recover where the stream's first PTS difference is too small.
+	 * threshold) of the normal rate, we may never recover, and would adjust all future
+	 * frames to match that too-fast rate. To help prevent that, especially in regards
+	 * to audio streams (where intervals are less even), we don't update the interval
+	 * when it is below 1/4th of the current unless it happens twice consecutively.
+	 * A reverse of this logic may also be desirable, to bypass forward jump detection
+	 * if we're seeing consecutive, consistently larger gaps than we expect.
 	 *
 	 * If it is valid under any codec to have two frames with equal PTS, that will fail.
 	 * Variable framerates could be catastrophic.
@@ -169,18 +170,39 @@ int rtp_session_read(struct rtp_session *rs)
 			                        + streamdata->last_pts_diff;
 		} else {
 			int64_t newptsdiff = rs->frame.pts - streamdata->last_pts;
+			/* Don't update last_pts_diff when this interval is 1/4th or less of the
+			 * last interval, corrosponding to the forward jump detection above.
+			 *
+			 * If we apply intervals this low, normal and valid frames after will be
+			 * seen as forward jumps, and we can never recover. Singular drops in the
+			 * interval are not uncommon, especially in audio streams, but consecutive
+			 * low intervals have not been observed as occuring normally. So, we will
+			 * update last_pts_diff, but only if two frames in a row have less than
+			 * 1/4th of the last interval. */
 			if (newptsdiff < streamdata->last_pts_diff &&
 			    (streamdata->last_pts_diff/newptsdiff) >= 4)
 			{
-				av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) "
-				       "changed to %lld (delta %lld). This may cause framerate issues.",
-				       rs->frame.stream_index,
-				       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-				       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
+				if (!streamdata->was_last_diff_skipped) {
+					av_log(rs->ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
+					       "to %lld (delta %lld); ignoring interval change unless repeated",
+					       rs->frame.stream_index,
+					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
+					streamdata->was_last_diff_skipped = 1;
+				} else {
+					av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
+					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
+					       "framerate or desynchronization issues.", rs->frame.stream_index,
+					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
+					streamdata->was_last_diff_skipped = 0;
+					streamdata->last_pts_diff = newptsdiff;
+				}
+			} else {
+				streamdata->was_last_diff_skipped = 0;
+				streamdata->last_pts_diff = newptsdiff;
 			}
-			streamdata->last_pts_diff = newptsdiff;
 		}
-		streamdata->last_pts = rs->frame.pts;
 	}
 
 	streamdata->last_pts = rs->frame.pts;
@@ -252,13 +274,23 @@ void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
 	if (rs->frame.stream_index < 0 || rs->frame.stream_index >= RTP_NUM_STREAMS)
 		return;
 
+	if (rs->frame.pts == AV_NOPTS_VALUE) {
+		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
+		       pts);
+		return;
+	}
+
 	offset = rs->frame.pts - pts;
 
-	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i)
-		rs->stream_data[i].pts_base += offset;
-	
 	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %lld to reset PTS on stream %d to %lld\n",
 	       offset, rs->frame.stream_index, pts);
+
+	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+		av_log(rs->ctx, AV_LOG_INFO, "Rescaled set_current_pts offset for stream %d is %lld\n",
+		       i, av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base));
+		rs->stream_data[i].pts_base += av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base);
+	}
+
 	rs->frame.pts = pts;
 }
 

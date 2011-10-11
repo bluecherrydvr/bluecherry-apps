@@ -209,8 +209,18 @@ int bc_aud_out(struct bc_record *bc_rec)
 
 		pkt.data = rs->frame.data;
 		pkt.size = rs->frame.size;
-/*		pkt.pts = av_rescale_q(rs->frame.pts, (AVRational){1, bc_rec->audio_st->codec->sample_rate},
-		                       bc_rec->audio_st->time_base);*/
+		pkt.pts = av_rescale_q(rs->frame.pts, rs->ctx->streams[rs->audio_stream_index]->time_base,
+		                       bc_rec->audio_st->time_base);
+	}
+	
+	/* Cutoff points can result in a few negative PTS frames, because often
+	 * the video will be cut before the audio for that time has been written.
+	 * We can drop these; they won't be played back, other than a very trivial
+	 * amount of time at the beginning of a recording. */
+	if (pkt.pts != AV_NOPTS_VALUE && pkt.pts < 0) {
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping audio frame with negative pts %lld, probably "
+		       "caused by recent PTS reset", pkt.pts);
+		return 0;
 	}
 
 	pkt.flags |= AV_PKT_FLAG_KEY;

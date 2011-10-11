@@ -14,6 +14,7 @@
 
 struct rtp_stream_data {
 	int64_t pts_base, last_pts, last_pts_diff;
+	int was_last_diff_skipped;
 };
 
 struct rtp_session {
