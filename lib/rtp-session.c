@@ -17,6 +17,7 @@
 
 void rtp_session_init(struct rtp_session *rs, const char *url)
 {
+	int i;
 	memset(rs, 0, sizeof(*rs));
 	rs->video_stream_index = rs->audio_stream_index = -1;
 	
@@ -24,11 +25,15 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 	rs->url[sizeof(rs->url)-1] = '\0';
 	
 	av_init_packet(&rs->frame);
-	rs->last_video_pts = rs->last_audio_pts = AV_NOPTS_VALUE;
+
+	for (i = 0; i < RTP_NUM_STREAMS; ++i)
+		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
 void rtp_session_stop(struct rtp_session *rs)
 {
+	int i;
+
 	if (!rs->ctx)
 		return;
 
@@ -37,9 +42,12 @@ void rtp_session_stop(struct rtp_session *rs)
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
-	rs->pts_base = 0;
-	rs->last_video_pts = rs->last_audio_pts = AV_NOPTS_VALUE;
-	rs->last_video_pts_diff = rs->last_audio_pts_diff = 0;
+	
+	for (i = 0; i < RTP_NUM_STREAMS; ++i) {
+		rs->stream_data[i].pts_base = 0;
+		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
+		rs->stream_data[i].last_pts_diff = 0;
+	}
 }
 
 int rtp_session_start(struct rtp_session *rs)
@@ -62,7 +70,7 @@ int rtp_session_start(struct rtp_session *rs)
 		return -1;
 	}
 	
-	for (i = 0; i < rs->ctx->nb_streams; ++i) {
+	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple video streams. Only the "
@@ -94,30 +102,25 @@ int rtp_session_start(struct rtp_session *rs)
 
 int rtp_session_read(struct rtp_session *rs)
 {
+	int re;
+	struct rtp_stream_data *streamdata = 0;
 	if (!rs->ctx) {
 		strcpy(rs->error_message, "No active RTSP session");
 		return -1;
 	}
 
 	av_free_packet(&rs->frame);
-	int re = av_read_frame(rs->ctx, &rs->frame);
+	re = av_read_frame(rs->ctx, &rs->frame);
 	if (re < 0) {
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
-	
-	int64_t *lastpts = 0, *lastptsdiff = 0;
-	if (rs->frame.stream_index == rs->video_stream_index) {
-		lastpts = &rs->last_video_pts;
-		lastptsdiff = &rs->last_video_pts_diff;
-	}
-	else if (rs->frame.stream_index == rs->audio_stream_index) {
-		lastpts = &rs->last_audio_pts;
-		lastptsdiff = &rs->last_video_pts_diff;
-	}
+
+	if (rs->frame.stream_index >= 0 && rs->frame.stream_index < RTP_NUM_STREAMS)
+		streamdata = &rs->stream_data[rs->frame.stream_index];
 
 	/* Don't run offset logic against frames with no PTS */
-	if (rs->frame.pts == AV_NOPTS_VALUE)
+	if (!streamdata || rs->frame.pts == AV_NOPTS_VALUE)
 		return 0;
 
 	/* Correct the stream's PTS to provide an even, monotonic set of frames for
@@ -153,32 +156,35 @@ int rtp_session_read(struct rtp_session *rs)
 	 *
 	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
 	 */
-	if (lastpts && *lastpts != AV_NOPTS_VALUE) {
-		if (rs->frame.pts <= *lastpts || (*lastptsdiff &&
-		    (rs->frame.pts - *lastpts) >= (*lastptsdiff*4)))
+	if (streamdata->last_pts != AV_NOPTS_VALUE) {
+		if (rs->frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
+		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
 			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
 			       "delta %lld. Adjusting based on last interval of %lld.",
 			       rs->frame.stream_index,
 			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-			       rs->frame.pts - *lastpts, *lastptsdiff);
-			rs->pts_base -= (*lastpts - rs->frame.pts) + *lastptsdiff;
+			       rs->frame.pts - streamdata->last_pts, streamdata->last_pts_diff);
+			streamdata->pts_base -= (streamdata->last_pts - rs->frame.pts)
+			                        + streamdata->last_pts_diff;
 		} else {
-			int64_t newptsdiff = rs->frame.pts - *lastpts;
-			if (newptsdiff < *lastptsdiff && (*lastptsdiff/newptsdiff) >= 4) {
+			int64_t newptsdiff = rs->frame.pts - streamdata->last_pts;
+			if (newptsdiff < streamdata->last_pts_diff &&
+			    (streamdata->last_pts_diff/newptsdiff) >= 4)
+			{
 				av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) "
 				       "changed to %lld (delta %lld). This may cause framerate issues.",
 				       rs->frame.stream_index,
 				       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-				       newptsdiff, (newptsdiff - *lastptsdiff));
+				       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
 			}
-			*lastptsdiff = newptsdiff;
+			streamdata->last_pts_diff = newptsdiff;
 		}
-		*lastpts = rs->frame.pts;
-	} else if (lastpts)
-		*lastpts = rs->frame.pts;
+		streamdata->last_pts = rs->frame.pts;
+	}
 
-	rs->frame.pts -= rs->pts_base;
+	streamdata->last_pts = rs->frame.pts;
+	rs->frame.pts -= streamdata->pts_base;
 
 	return 0;
 }
@@ -234,5 +240,25 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	}
 
 	return 0;
+}
+
+void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
+{
+	int64_t offset;
+	int i;
+
+	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
+	 * all other streams are adjusted accordingly. */
+	if (rs->frame.stream_index < 0 || rs->frame.stream_index >= RTP_NUM_STREAMS)
+		return;
+
+	offset = rs->frame.pts - pts;
+
+	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i)
+		rs->stream_data[i].pts_base += offset;
+	
+	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %lld to reset PTS on stream %d to %lld\n",
+	       offset, rs->frame.stream_index, pts);
+	rs->frame.pts = pts;
 }
 
