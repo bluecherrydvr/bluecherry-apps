@@ -106,18 +106,25 @@ static void *bc_device_thread(void *data)
 		if (process_schedule(bc_rec))
 			continue;
 
-		if (bc_handle_start(bc, &err_msg)) {
-			if (!(bc_rec->start_failed++ % 60)) {
-				bc_event_cam_fire(bc_rec->id, BC_EVENT_L_ALRM,
-					     BC_EVENT_CAM_T_NOT_FOUND);
-				bc_dev_err(bc_rec, "Error starting stream: %s",
-					   err_msg);
+		if (!bc->started) {
+			if (bc_handle_start(bc, &err_msg)) {
+				if (!(bc_rec->start_failed++ % 60)) {
+					bc_event_cam_fire(bc_rec->id, BC_EVENT_L_ALRM,
+							 BC_EVENT_CAM_T_NOT_FOUND);
+					bc_dev_err(bc_rec, "Error starting stream: %s",
+						   err_msg);
+				}
+				sleep(1);
+				continue;
+			} else if (bc_rec->start_failed) {
+				bc_rec->start_failed = 0;
+				bc_dev_info(bc_rec, "Device started after failure(s)");
 			}
-			sleep(1);
-			continue;
-		} else if (bc_rec->start_failed) {
-			bc_rec->start_failed = 0;
-			bc_dev_info(bc_rec, "Device started after failure(s)");
+			
+			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+				bc_dev_info(bc_rec, "RTP stream started: %s",
+				            rtp_session_stream_info(&bc->rtp_sess));
+			}
 		}
 
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)

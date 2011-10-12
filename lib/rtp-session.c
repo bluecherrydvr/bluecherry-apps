@@ -300,3 +300,25 @@ void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
 	rs->frame.pts = pts;
 }
 
+const char *rtp_session_stream_info(struct rtp_session *rs)
+{
+	if (rs->video_stream_index < 0) {
+		strcpy(rs->error_message, "No streams");
+		return rs->error_message;
+	}
+
+	/* Borrow the error_message field */
+	avcodec_string(rs->error_message, sizeof(rs->error_message)-2,
+	               rs->ctx->streams[rs->video_stream_index]->codec, 0);
+
+	if (rs->audio_stream_index >= 0) {
+		int off = strlen(rs->error_message);
+		rs->error_message[off++] = ';';
+		rs->error_message[off++] = ' ';
+		avcodec_string(rs->error_message+off, sizeof(rs->error_message)-off,
+		               rs->ctx->streams[rs->audio_stream_index]->codec, 0);
+	}
+
+	return rs->error_message;
+}	
+

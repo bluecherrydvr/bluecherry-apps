@@ -36,5 +36,6 @@ int rtp_session_read(struct rtp_session *rs);
 int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx);
 void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts);
 int rtp_session_frame_is_keyframe(struct rtp_session *rs);
+const char *rtp_session_stream_info(struct rtp_session *rs);
 
 #endif /* __RTP_SESSION_H */
