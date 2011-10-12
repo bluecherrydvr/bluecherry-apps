@@ -236,6 +236,9 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	vst->codec->width = ic->width;
 	vst->codec->height = ic->height;
 	vst->codec->time_base = ic->time_base;
+	vst->codec->extradata = ic->extradata;
+	vst->codec->extradata_size = ic->extradata_size;
+	vst->codec->profile = ic->profile;
 
 	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -256,6 +259,9 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 		ast->codec->sample_fmt = ic->sample_fmt;
 		ast->codec->channels = ic->channels;
 		ast->codec->time_base = (AVRational){1, ic->sample_rate};
+		ast->codec->extradata = ic->extradata;
+		ast->codec->extradata_size = ic->extradata_size;
+		ast->codec->profile = ic->profile;
 		
 		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
