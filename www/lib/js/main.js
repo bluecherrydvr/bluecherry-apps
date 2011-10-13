@@ -78,7 +78,8 @@ DVRPageScript = new Class({
 						selected.set('id', '');
 					}
 					this.set('id', 'selected');
-					ajaxUpdateField('update', 'Devices', {'ptz_control_path' : this.getChildren('.name').get('id')}, $('cameraId').get('value'), false);
+					var protocol = (this.getChildren('.name').get('id')) ? 'PELCO' : '';
+					ajaxUpdateField('update', 'Devices', {'ptz_control_path' : this.getChildren('.name').get('id'), 'ptz_control_protocol' : 'PELCO' }, $('cameraId').get('value'), false);
 				});
 				$$('.delete').addEvent('click', function(ev){
 					ev.stopPropagation();
@@ -768,7 +769,6 @@ var localMotionGrid = new Class({
 						tempOverlay.removeoverlay();
 						self.sensitivitySelector();
 					});
-					
 				break;//end mmap
 				default:
 					this.drawGrid($(el), $(value).get('value'), 24, 7);
