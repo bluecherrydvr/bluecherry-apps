@@ -499,13 +499,19 @@ class softwareVersion{
 	public function __construct(){
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
+		$tmp = data::getObject('GlobalSettings', 'parameter', 'G_LAST_CURRENT_VERSION');
 		if ($time[0]['value'] + 24*60*60 < time()){
+			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'");
-			$this->checkSoftwareVersion();
+			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'");
+				else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')"); //to avoid whole db update
+		} else {
+			$this->version['current'] = $tmp[0]['value'];
 		}
+		$this->checkSoftwareVersion();
 	}
 	function checkSoftwareVersion(){
-		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+		
 		if ($this->version['current']===$this->version['installed']){
 			$ret = true;
 		} else {
