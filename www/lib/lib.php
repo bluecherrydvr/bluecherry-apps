@@ -499,7 +499,10 @@ class softwareVersion{
 	public function __construct(){
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
-		$this->checkSoftwareVersion();
+		if ($time[0]['value'] + 24*60*60 < time()){
+			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'");
+			$this->checkSoftwareVersion();
+		}
 	}
 	function checkSoftwareVersion(){
 		$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
@@ -517,8 +520,8 @@ class softwareVersion{
 	function getIpTablesVersion(){
 		$installed = data::getObject('GlobalSettings', 'parameter', 'G_IPCAMLIST_VERSION');
 		$installed = $installed[0]['value'];
-		
 		$current = @fopen(VAR_PATH_TO_IPCAMLIST_UPDATE.'?t='.VAR_IPCAMLIST_UPDATE_TOKEN.'&m=version', 'r');
+		
 		if (!$current) return true;
 		$current = trim(@fgets($current, 1024));
 		return array($installed, $current);
