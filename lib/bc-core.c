@@ -668,3 +668,42 @@ void bc_handle_free(struct bc_handle *bc)
 
 	errno = save_err;
 }
+
+int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
+{
+	const char *dev = bc_db_get_val(dbres, "device", NULL);
+	const char *name = bc_db_get_val(dbres, "device_name", NULL);
+	const char *driver = bc_db_get_val(dbres, "driver", NULL);
+	const char *schedule = bc_db_get_val(dbres, "schedule", NULL);
+	const char *motion_map = bc_db_get_val(dbres, "motion_map", NULL);
+	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+
+	if (!dev || !name || !driver || !schedule || !motion_map)
+		return -1;
+
+	strncpy(cfg->dev, dev, sizeof(cfg->dev));
+	cfg->dev[sizeof(cfg->dev)-1] = '\0';
+	strncpy(cfg->name, name, sizeof(cfg->name));
+	cfg->name[sizeof(cfg->name)-1] = '\0';
+	strncpy(cfg->driver, driver, sizeof(cfg->driver));
+	cfg->driver[sizeof(cfg->driver)-1] = '\0';
+	strncpy(cfg->schedule, schedule, sizeof(cfg->schedule));
+	cfg->schedule[sizeof(cfg->schedule)-1] = '\0';
+	strncpy(cfg->motion_map, motion_map, sizeof(cfg->motion_map));
+	cfg->motion_map[sizeof(cfg->motion_map)-1] = '\0';
+	
+	if (signal_type) {
+		strncpy(cfg->signal_type, signal_type, sizeof(cfg->signal_type));
+		cfg->signal_type[sizeof(cfg->signal_type)-1] = '\0';
+	} else
+		cfg->signal_type[0] = '\0';
+
+	cfg->width = bc_db_get_val_int(dbres, "resolutionX");
+	cfg->height = bc_db_get_val_int(dbres, "resolutionY");
+	cfg->interval = bc_db_get_val_int(dbres, "video_interval");
+	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;
+	cfg->schedule_override_global = bc_db_get_val_int(dbres, "schedule_override_global") != 0;
+
+	return 0;
+}
+

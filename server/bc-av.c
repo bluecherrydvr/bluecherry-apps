@@ -38,7 +38,7 @@ int has_audio(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
-	if (bc_rec->aud_disabled)
+	if (bc_rec->cfg.aud_disabled)
 		return 0;
 
 	if (bc_rec->pcm != NULL)

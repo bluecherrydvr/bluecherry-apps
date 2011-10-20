@@ -92,6 +92,21 @@ struct bc_handle {
 	void			*__data;
 };
 
+/* Parameters for a device from the database; use through
+ * bc_record */
+struct bc_device_config {
+	char name[256];
+	char dev[256];
+	char driver[256];
+	char signal_type[16];
+	char motion_map[400];
+	char schedule[7 * 24];
+	int  width, height;
+	int  interval;
+	int  aud_disabled : 1;
+	int  schedule_override_global : 1;
+};
+
 /* Bluecherry License Key */
 
 enum bc_key_type {
@@ -232,6 +247,8 @@ void bc_handle_stop(struct bc_handle *bc);
  * For solo devices, this is equivalent to stop, but
  * for RTP, it has no effect. */
 void bc_handle_reset(struct bc_handle *bc);
+
+int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres);
 
 /* Standard logging function for all BC services */
 void bc_log(const char *msg, ...)

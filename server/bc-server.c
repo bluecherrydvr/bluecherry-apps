@@ -351,7 +351,7 @@ static void bc_check_db(void)
 
 		bc_rec = bc_record_exists(id);
 		if (bc_rec) {
-			bc_update_record(bc_rec, dbres);
+			bc_record_update_cfg(bc_rec, dbres);
 			continue;
 		}
 
@@ -493,7 +493,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	if (level > bc_rec->av_log_level)
 		return;
 
-	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->name, levelstr, fmt);
+	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->cfg.name, levelstr, fmt);
 	bc_vlog(msg, ap);
 }
 
