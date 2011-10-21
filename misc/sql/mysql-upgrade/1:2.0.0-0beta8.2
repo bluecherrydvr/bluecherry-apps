@@ -1,1 +1,6 @@
 ALTER TABLE Devices ADD COLUMN debug_level tinyint DEFAULT 0;
+
+-- Event snapshots aren't used currently, and storing them in the database
+-- without ever cleaning up uses massive amounts of space. Clean up existing
+-- databases, and snapshots will be placed on the filesystem later.
+DELETE FROM EventsCamSnapshot;

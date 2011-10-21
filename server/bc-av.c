@@ -368,6 +368,9 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *picture)
 {
+	/* Disabled for now, until snapshots can be done outside of the database and
+	 * cleaned up appropriately. */
+#if 0
 	AVCodecContext *joc = NULL;
 	AVCodec *codec;
 	unsigned char *buf = NULL;
@@ -421,6 +424,7 @@ save_fail:
 	}
 	if (buf != NULL)
 		free(buf);
+#endif
 }
 
 static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
