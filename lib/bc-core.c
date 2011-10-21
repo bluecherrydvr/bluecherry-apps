@@ -493,7 +493,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 	if (*t == '\0')
 		return -1;
-	
+
 	/* Create a URL */
 	if (*username || *password)
 		r = snprintf(url, sizeof(url), "rtsp://%s:%s@%s:%s%s", username,
@@ -528,12 +528,12 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 				}
 			}
 		}
-		
+
 		if (v == mjpeg_val) {
 			/* No pipes means only the path */
 			path = mjpeg_val;
 		}
-		
+
 		if (!path)
 			return -1;
 
@@ -678,6 +678,8 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	const char *schedule = bc_db_get_val(dbres, "schedule", NULL);
 	const char *motion_map = bc_db_get_val(dbres, "motion_map", NULL);
 	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+	const char *rtsp_username = bc_db_get_val(dbres, "rtsp_username", NULL);
+	const char *rtsp_password = bc_db_get_val(dbres, "rtsp_password", NULL);
 
 	if (!dev || !name || !driver || !schedule || !motion_map)
 		return -1;
@@ -690,6 +692,10 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 
 	if (signal_type)
 		strlcpy(cfg->signal_type, signal_type, sizeof(cfg->signal_type));
+	if (rtsp_username)
+		strlcpy(cfg->rtsp_username, rtsp_username, sizeof(cfg->rtsp_username));
+	if (rtsp_password)
+		strlcpy(cfg->rtsp_password, rtsp_password, sizeof(cfg->rtsp_password));
 
 	cfg->width = bc_db_get_val_int(dbres, "resolutionX");
 	cfg->height = bc_db_get_val_int(dbres, "resolutionY");

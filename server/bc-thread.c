@@ -399,16 +399,14 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	bc_dev_info(bc_rec, "Applying configuration changes");
 
 	if (strcmp(current->dev, new->dev) || strcmp(current->driver, new->driver) ||
-	      strcmp(current->signal_type, new->signal_type))
+	    strcmp(current->signal_type, new->signal_type) ||
+	    strcmp(current->rtsp_username, new->rtsp_username) ||
+	    strcmp(current->rtsp_password, new->rtsp_password) ||
+	    current->aud_disabled != new->aud_disabled)
 	{
-		bc_dev_err(bc_rec, "Device path or driver changed in configuration update. Aborting.");
+		bc_rec->thread_should_die = "configuration changed";
 		pthread_mutex_unlock(&bc_rec->cfg_mutex);
 		return -1;
-	}
-
-	if (current->aud_disabled != new->aud_disabled) {
-		bc_dev_warn(bc_rec, "Changing audio_disabled is not yet supported. Disable the device to apply.");
-		new->aud_disabled = current->aud_disabled;
 	}
 
 	motion_map_changed = memcmp(current->motion_map, new->motion_map, sizeof(new->motion_map));
