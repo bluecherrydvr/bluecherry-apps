@@ -1,7 +1,7 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm -lidn -lssl -lcrypto -lrt -lz
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lidn -lssl -lcrypto -lrt -lz -lbsd
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so

@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <limits.h>
+#include <bsd/string.h>
 
 #include <libbluecherry.h>
 
@@ -681,22 +682,14 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	if (!dev || !name || !driver || !schedule || !motion_map)
 		return -1;
 
-	strncpy(cfg->dev, dev, sizeof(cfg->dev));
-	cfg->dev[sizeof(cfg->dev)-1] = '\0';
-	strncpy(cfg->name, name, sizeof(cfg->name));
-	cfg->name[sizeof(cfg->name)-1] = '\0';
-	strncpy(cfg->driver, driver, sizeof(cfg->driver));
-	cfg->driver[sizeof(cfg->driver)-1] = '\0';
-	strncpy(cfg->schedule, schedule, sizeof(cfg->schedule));
-	cfg->schedule[sizeof(cfg->schedule)-1] = '\0';
-	strncpy(cfg->motion_map, motion_map, sizeof(cfg->motion_map));
-	cfg->motion_map[sizeof(cfg->motion_map)-1] = '\0';
-	
-	if (signal_type) {
-		strncpy(cfg->signal_type, signal_type, sizeof(cfg->signal_type));
-		cfg->signal_type[sizeof(cfg->signal_type)-1] = '\0';
-	} else
-		cfg->signal_type[0] = '\0';
+	strlcpy(cfg->dev, dev, sizeof(cfg->dev));
+	strlcpy(cfg->name, name, sizeof(cfg->name));
+	strlcpy(cfg->driver, driver, sizeof(cfg->driver));
+	strlcpy(cfg->schedule, schedule, sizeof(cfg->schedule));
+	strlcpy(cfg->motion_map, motion_map, sizeof(cfg->motion_map));
+
+	if (signal_type)
+		strlcpy(cfg->signal_type, signal_type, sizeof(cfg->signal_type));
 
 	cfg->width = bc_db_get_val_int(dbres, "resolutionX");
 	cfg->height = bc_db_get_val_int(dbres, "resolutionY");
