@@ -46,7 +46,6 @@ struct bc_record {
 
 	time_t			osd_time;
 	unsigned int		start_failed;
-	int                 av_log_level;
 
 	struct g723_state	g723_state;
 	unsigned char		g723_data[48];

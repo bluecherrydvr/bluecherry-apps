@@ -312,7 +312,6 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	bc_rec->id = id;
 	bc_rec->fmt = V4L2_PIX_FMT_MPEG;
-	bc_rec->av_log_level = AV_LOG_INFO;
 
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {

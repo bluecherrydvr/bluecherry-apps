@@ -103,10 +103,11 @@ struct bc_device_config {
 	char signal_type[16];
 	char motion_map[400];
 	char schedule[7 * 24];
-	int  width, height;
-	int  interval;
-	int  aud_disabled : 1;
-	int  schedule_override_global : 1;
+	int     width, height;
+	int     interval;
+	int8_t  debug_level;
+	int     aud_disabled : 1;
+	int     schedule_override_global : 1;
 };
 
 /* Bluecherry License Key */

@@ -470,7 +470,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	char msg[strlen(fmt) + 200];
 	const char *levelstr;
 	struct bc_record *bc_rec = (struct bc_record*)pthread_getspecific(av_log_current_handle_key);
-	
+
 	switch (level) {
 		case AV_LOG_PANIC: levelstr = "PANIC"; break;
 		case AV_LOG_FATAL: levelstr = "fatal"; break;
@@ -481,7 +481,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		case AV_LOG_DEBUG: levelstr = "debug"; break;
 		default: levelstr = "???"; break;
 	}
-	
+
 	if (!bc_rec) {
 		if (level <= av_log_without_handle) {
 			sprintf(msg, "[avlib %s]: %s", levelstr, fmt);
@@ -489,8 +489,10 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		}
 		return;
 	}
-	
-	if (level > bc_rec->av_log_level)
+
+	if ((bc_rec->cfg.debug_level < 0 && level > AV_LOG_FATAL) ||
+	    (bc_rec->cfg.debug_level == 0 && level > AV_LOG_ERROR) ||
+	    (bc_rec->cfg.debug_level == 1 && level > AV_LOG_INFO))
 		return;
 
 	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->cfg.name, levelstr, fmt);
