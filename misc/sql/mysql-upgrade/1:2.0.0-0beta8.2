@@ -4,3 +4,7 @@ ALTER TABLE Devices ADD COLUMN debug_level tinyint DEFAULT 0;
 -- without ever cleaning up uses massive amounts of space. Clean up existing
 -- databases, and snapshots will be placed on the filesystem later.
 DELETE FROM EventsCamSnapshot;
+
+-- #974 - disable audio by default
+ALTER TABLE Devices CHANGE COLUMN audio_disabled audio_disabled tinyint(1) DEFAULT 1;
+UPDATE Devices SET audio_disabled=1;
