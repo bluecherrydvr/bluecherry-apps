@@ -16,16 +16,33 @@
 #include "g723-dec.h"
 
 /* Maximum length of recording */
-#define BC_MAX_RECORD_TIME	900
+#define BC_MAX_RECORD_TIME 900
 
 struct bc_record {
-	struct bc_handle	*bc;
+	struct bc_handle        *bc;
+	/* bc_device_config holds configured parameters from the database.
+	 * We have two copies of this: cfg, which is almost always what you
+	 * want, is writable only by the device's thread and represents the
+	 * currently in use configuration.
+	 *
+	 * cfg_update is accessed only when holding the mutex, as it is written
+	 * by the main thread (for updating device config from the database) and
+	 * used by the device thread to update the active configuration.
+	 *
+	 * The cfg_dirty flag may be read without acquiring the mutex first, but
+	 * must always be written while holding the mutex. */
+	struct bc_device_config cfg;
+	struct bc_device_config cfg_update;
+	char                    cfg_dirty;
+	pthread_mutex_t		    cfg_mutex;
 
-	AVOutputFormat		*fmt_out;
-	AVStream		*video_st;
-	AVStream		*audio_st;
-	AVFormatContext		*oc;
-	enum CodecID		codec_id;
+	int id;
+
+	AVOutputFormat  *fmt_out;
+	AVStream        *video_st;
+	AVStream        *audio_st;
+	AVFormatContext *oc;
+	enum CodecID    codec_id;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
@@ -35,10 +52,6 @@ struct bc_record {
 	signed short		pcm_data[384];
 
 	char			outfile[PATH_MAX];
-	int			id;
-	char			name[256];
-	char			dev[256];
-	char			driver[256];
 	pthread_t		thread;
 	struct bc_list_struct	list;
 
@@ -48,25 +61,19 @@ struct bc_record {
 	int			aud_rate;
 	int			aud_channels;
 	unsigned int		aud_format;
-	int			aud_disabled;
 
 	/* Event/Media handling */
 	bc_media_entry_t	media;
 	bc_event_cam_t		event;
 
-	/* Motion, max 22 * 18 */
-	char			motion_map[400];
-
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
 	char			*thread_should_die;
-	pthread_mutex_t		sched_mutex;
 	int			file_started;
 
 	/* Notify thread to restart with new format */
-	int			reset_vid;
-	int			width, height, fmt;
-	int			interval;
+	int         reset_vid;
+	int         fmt;
 };
 
 /* Types for aud_format */
@@ -87,11 +94,15 @@ void bc_get_media_loc(char *stor);
 int bc_vid_out(struct bc_record *bc_rec);
 int bc_aud_out(struct bc_record *bc_rec);
 
+/* Relate all libav logging on this thread to a given bc_record */
+void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
+
+int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
-void bc_update_record(struct bc_record *bc_rec, BC_DB_RES dbres);
+int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
 
 typedef enum {
 	BC_MOTION_TYPE_SOLO = 0,
@@ -112,10 +123,10 @@ int has_audio(struct bc_record *bc_rec);
 #endif
 
 #define bc_dev_info(rec, fmt, args...) \
-	bc_log("I(%d/%s): " fmt, rec->id, rec->name, ## args)
+	bc_log("I(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
 #define bc_dev_warn(rec, fmt, args...) \
-	bc_log("W(%d/%s): " fmt, rec->id, rec->name, ## args)
+	bc_log("W(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
 #define bc_dev_err(rec, fmt, args...) \
-	bc_log("E(%d/%s): " fmt, rec->id, rec->name, ## args)
+	bc_log("E(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
 
 #endif /* __BC_SERVER_H */

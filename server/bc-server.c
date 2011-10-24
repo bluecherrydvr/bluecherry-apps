@@ -32,6 +32,38 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
 
 extern char *__progname;
 
+/* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
+ * so a real encoder isn't neeeded, but one must be present for the process to
+ * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
+ */
+static int fake_h264_init(AVCodecContext *ctx)
+{
+	return 0;
+}
+
+static int fake_h264_close(AVCodecContext *ctx)
+{
+	return 0;
+}
+
+static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void *data)
+{
+	return -1;
+}
+
+AVCodec fake_h264_encoder = {
+	.name           = "fakeh264",
+	.type           = AVMEDIA_TYPE_VIDEO,
+	.id             = CODEC_ID_H264,
+	.priv_data_size = 0,
+	.init           = fake_h264_init,
+	.encode         = fake_h264_frame,
+	.close          = fake_h264_close,
+	.capabilities   = CODEC_CAP_DELAY,
+	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
+	.long_name      = "Fake H.264 Encoder for RTP Muxing",
+};
+
 static void __handle_motion_start(struct bc_handle *bc)
 {
 	struct bc_record *bc_rec = bc->__data;
@@ -319,7 +351,7 @@ static void bc_check_db(void)
 
 		bc_rec = bc_record_exists(id);
 		if (bc_rec) {
-			bc_update_record(bc_rec, dbres);
+			bc_record_update_cfg(bc_rec, dbres);
 			continue;
 		}
 
@@ -424,14 +456,46 @@ static void usage(void)
 	exit(1);
 }
 
+static pthread_key_t av_log_current_handle_key;
+static const int av_log_without_handle = AV_LOG_INFO;
+
+void bc_av_log_set_handle_thread(struct bc_record *bc_rec)
+{
+	pthread_setspecific(av_log_current_handle_key, bc_rec);
+}
+
+/* Warning: Must be reentrant; this may be called from many device threads at once */
 static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
-	char msg[strlen(fmt) + 20];
+	char msg[strlen(fmt) + 200];
+	const char *levelstr;
+	struct bc_record *bc_rec = (struct bc_record*)pthread_getspecific(av_log_current_handle_key);
 
-	if (level > AV_LOG_ERROR)
+	switch (level) {
+		case AV_LOG_PANIC: levelstr = "PANIC"; break;
+		case AV_LOG_FATAL: levelstr = "fatal"; break;
+		case AV_LOG_ERROR: levelstr = "error"; break;
+		case AV_LOG_WARNING: levelstr = "warning"; break;
+		case AV_LOG_INFO: levelstr = "info"; break;
+		case AV_LOG_VERBOSE: levelstr = "verbose"; break;
+		case AV_LOG_DEBUG: levelstr = "debug"; break;
+		default: levelstr = "???"; break;
+	}
+
+	if (!bc_rec) {
+		if (level <= av_log_without_handle) {
+			sprintf(msg, "[avlib %s]: %s", levelstr, fmt);
+			bc_vlog(msg, ap);
+		}
+		return;
+	}
+
+	if ((bc_rec->cfg.debug_level < 0 && level > AV_LOG_FATAL) ||
+	    (bc_rec->cfg.debug_level == 0 && level > AV_LOG_ERROR) ||
+	    (bc_rec->cfg.debug_level == 1 && level > AV_LOG_INFO))
 		return;
 
-	sprintf(msg, "[avlib]: %s", fmt);
+	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->cfg.name, levelstr, fmt);
 	bc_vlog(msg, ap);
 }
 
@@ -469,9 +533,16 @@ int main(int argc, char **argv)
 	bc_handle_motion_start = __handle_motion_start;
 	bc_handle_motion_end = __handle_motion_end;
 
-        avcodec_init();
-        av_register_all();
-	/* Help pipe av* log to our log */
+	if (av_lockmgr_register(bc_av_lockmgr)) {
+		bc_log("E: AV lock registration failed: %m");
+		exit(1);
+	}
+
+	avcodec_init();
+	avcodec_register(&fake_h264_encoder);
+	av_register_all();
+	
+	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
 
 	if (bg && daemon(0, 0) == -1) {
@@ -519,14 +590,12 @@ int main(int argc, char **argv)
 		/* And resolve un-committed events/media */
 		bc_media_event_clear();
 
-		if (!bg && loops >= 240)
-			break;
-
 		sleep(1);
 	}
 
 	bc_stop_threads();
 	bc_db_close();
+	av_lockmgr_register(NULL);
 
 	exit(0);
 }

@@ -10,26 +10,41 @@
 
 #include "bc-server.h"
 
-/* Used to maintain coherency between calls to avcodec open/close. The
- * libavcodec open/close is not thread safe and libavcodec will complain
- * (loudly) if it sees this occuring. */
-static pthread_mutex_t av_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+int bc_av_lockmgr(void **mutex, enum AVLockOp op)
+{
+	switch (op) {
+		case AV_LOCK_CREATE:
+			*mutex = malloc(sizeof(pthread_mutex_t));
+			if (!*mutex)
+				return 1;
+			return !!pthread_mutex_init(*mutex, NULL);
+		
+		case AV_LOCK_OBTAIN:
+			return !!pthread_mutex_lock(*mutex);
+		
+		case AV_LOCK_RELEASE:
+			return !!pthread_mutex_unlock(*mutex);
+			
+		case AV_LOCK_DESTROY:
+			pthread_mutex_destroy(*mutex);
+			free(*mutex);
+			return 0;
+	}
+
+	return 1;
+}
 
 int has_audio(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
 
-	if (bc_rec->aud_disabled)
+	if (bc_rec->cfg.aud_disabled)
 		return 0;
 
 	if (bc_rec->pcm != NULL)
 		return 1;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_RTSP))
-		return 0;
-	if (bc->rtp_sess.tid_a >= 0)
-		return 1;
-	if (bc->rtp_sess.aud_port >= 0)
+	if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.audio_stream_index >= 0)
 		return 1;
 
 	return 0;
@@ -182,21 +197,36 @@ int bc_aud_out(struct bc_record *bc_rec)
 				       bc_rec->pcm_data);
 
 		pkt.data = (void *)bc_rec->pcm_data;
+		
+		if (c->coded_frame->pts != AV_NOPTS_VALUE)
+			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
+		                           bc_rec->audio_st->time_base);
 	} else {
 		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
 
-		if (!rs->aud_valid)
+		if (rs->frame.stream_index != rs->audio_stream_index)
 			return 0;
 
-		pkt.size = rs->aud_len;
-		pkt.data = rs->aud_buf;
+		pkt.data = rs->frame.data;
+		pkt.size = rs->frame.size;
+		pkt.pts = av_rescale_q(rs->frame.pts, rs->ctx->streams[rs->audio_stream_index]->time_base,
+		                       bc_rec->audio_st->time_base);
+	}
+	
+	/* Cutoff points can result in a few negative PTS frames, because often
+	 * the video will be cut before the audio for that time has been written.
+	 * We can drop these; they won't be played back, other than a very trivial
+	 * amount of time at the beginning of a recording. */
+	if (pkt.pts != AV_NOPTS_VALUE && pkt.pts < 0) {
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping audio frame with negative pts %lld, probably "
+		       "caused by recent PTS reset", pkt.pts);
+		return 0;
 	}
 
-	if (c->coded_frame->pts != AV_NOPTS_VALUE)
-		pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-				       bc_rec->audio_st->time_base);
-	pkt.flags |= PKT_FLAG_KEY;
+	pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
+
+//	bc_dev_info(bc_rec, "audio pts %lld (frame: %lld)", pkt.pts, bc_rec->bc->rtp_sess.frame.pts);
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
@@ -211,6 +241,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	AVCodecContext *c;
 	struct bc_handle *bc = bc_rec->bc;
 	AVPacket pkt;
+	int re;
 
 	if (!bc_rec->oc)
 		return 0;
@@ -220,7 +251,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	av_init_packet(&pkt);
 
 	if (bc_buf_key_frame(bc))
-		pkt.flags |= PKT_FLAG_KEY;
+		pkt.flags |= AV_PKT_FLAG_KEY;
 
 	pkt.data = bc_buf_data(bc);
 	pkt.size = bc_buf_size(bc);
@@ -231,7 +262,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		/* RTP is at a constant 90KHz time scale */
-		pkt.pts = av_rescale_q(bc->rtp_sess.vid_ts, (AVRational){1, 90000},
+		pkt.pts = av_rescale_q(bc->rtp_sess.frame.pts, (AVRational){1, 90000},
 				       bc_rec->video_st->time_base);
 	} else {
 		if (c->coded_frame->pts != AV_NOPTS_VALUE)
@@ -240,16 +271,20 @@ int bc_vid_out(struct bc_record *bc_rec)
 	}
 
 	pkt.stream_index = bc_rec->video_st->index;
+	
+//	bc_dev_info(bc_rec, "video pts %lld", pkt.pts);
 
-	if (av_write_frame(bc_rec->oc, &pkt)) {
-		errno = EIO;
+	if ((re = av_write_frame(bc_rec->oc, &pkt)) != 0) {
+		char averror[512] = { 0 };
+		av_strerror(re, averror, sizeof(averror));
+		bc_dev_err(bc_rec, "cannot write frame to recording (%s)", averror);
 		return -1;
 	}
 
 	return 0;
 }
 
-static void __bc_close_avcodec(struct bc_record *bc_rec)
+void bc_close_avcodec(struct bc_record *bc_rec)
 {
 	int i;
 
@@ -279,14 +314,6 @@ static void __bc_close_avcodec(struct bc_record *bc_rec)
 	/* Close the media entry in the db */
 	bc_event_cam_end(&bc_rec->event);
 	bc_media_end(&bc_rec->media);
-}
-
-void bc_close_avcodec(struct bc_record *bc_rec)
-{
-	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec close!");
-	__bc_close_avcodec(bc_rec);
-	pthread_mutex_unlock(&av_lock);
 }
 
 void bc_mkdir_recursive(char *path)
@@ -341,6 +368,9 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *picture)
 {
+	/* Disabled for now, until snapshots can be done outside of the database and
+	 * cleaned up appropriately. */
+#if 0
 	AVCodecContext *joc = NULL;
 	AVCodec *codec;
 	unsigned char *buf = NULL;
@@ -362,7 +392,7 @@ static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *
 	joc->height = oc->height;
 	joc->pix_fmt = PIX_FMT_YUVJ420P; // XXX 422 or 444?
 	joc->codec_id = CODEC_ID_MJPEG;
-	joc->codec_type = CODEC_TYPE_VIDEO;
+	joc->codec_type = AVMEDIA_TYPE_VIDEO;
 	joc->time_base.num = oc->time_base.num;
 	joc->time_base.den = oc->time_base.den;
 
@@ -394,6 +424,7 @@ save_fail:
 	}
 	if (buf != NULL)
 		free(buf);
+#endif
 }
 
 static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
@@ -404,6 +435,7 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	AVCodecContext *c;
 	int got_picture, len;
 	AVFrame *picture;
+	AVPacket packet;
 	enum CodecID codec_id = CODEC_ID_NONE;
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
@@ -414,15 +446,13 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 		*width = bc->vfmt.fmt.pix.width;
 		*height = bc->vfmt.fmt.pix.height;
 		codec_id = bc_rec->codec_id;
-	} else if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		*fnum = 1;
-		*fden = bc->rtp_sess.framerate;
-		/* Just a guess */
-		*width = 640;
-		*height = 480;
-		codec_id = bc->rtp_sess.vid_codec;
-		if (codec_id == CODEC_ID_NONE)
-			codec_id = CODEC_ID_MPEG4;
+	} else if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
+		AVStream *stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.video_stream_index];
+		*fnum = stream->time_base.num;
+		*fden = stream->time_base.den; /* XXX is this correct? */
+		*width = stream->codec->width;
+		*height = stream->codec->height;
+		codec_id = stream->codec->codec_id;
 	} else {
 		return -1;
 	}
@@ -440,15 +470,19 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	c->time_base.den = *fden;
 
 	picture = avcodec_alloc_frame();
+	av_init_packet(&packet);
+	packet.data = buf;
+	packet.size = size;
+	packet.flags = AV_PKT_FLAG_KEY; // XXX is this correct? necessary?
 
 	if (avcodec_open(c, codec) < 0) {
 		codec = NULL;
 		goto pic_info_fail;
 	}
 
-	len = avcodec_decode_video(c, picture, &got_picture, buf, size);
-
-        if (len < 0 || !got_picture)
+	len = avcodec_decode_video2(c, picture, &got_picture, &packet);
+	
+	if (len < 0 || !got_picture)
 		goto pic_info_fail;
 
 	*width = c->width;
@@ -464,47 +498,18 @@ pic_info_fail:
 	}
 	if (picture != NULL)
 		av_freep(&picture);
+	av_free_packet(&packet);
 
 	return 0;
 }
 
-static int __bc_open_avcodec(struct bc_record *bc_rec)
+static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 {
-	struct bc_handle *bc = bc_rec->bc;
-	AVCodec *codec;
 	AVStream *st;
-	AVFormatContext *oc;
 	int width = 0, height = 0, fnum, fden;
 
-	if (bc_rec->oc != NULL)
-		return 0;
-
-	bc_start_media_entry(bc_rec);
-
-	if (bc_rec->media == BC_MEDIA_NULL) {
-		errno = ENOMEM;
+	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden))
 		return -1;
-	}
-
-	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
-		errno = ENOMEM;
-		return -1;
-	}
-
-	/* Get the output format */
-	bc_rec->fmt_out = guess_format(NULL, bc_rec->outfile, NULL);
-	if (!bc_rec->fmt_out) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
-		return -1;
-	oc = bc_rec->oc;
-
-	oc->oformat = bc_rec->fmt_out;
-	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
-	snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name);
 
 	/* Setup new video stream */
 	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
@@ -514,16 +519,9 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
 
-	snprintf(st->language, sizeof(st->language), "eng");
-
 	if (bc_rec->codec_id == CODEC_ID_NONE) {
-		if (bc->cam_caps & BC_CAM_CAP_RTSP)
-			st->codec->codec_id = bc->rtp_sess.vid_codec;
-
-		if (st->codec->codec_id == CODEC_ID_NONE) {
-			bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
-			st->codec->codec_id = CODEC_ID_MPEG4;
-		}
+		bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
+		st->codec->codec_id = CODEC_ID_MPEG4;
 	} else
 		st->codec->codec_id = bc_rec->codec_id;
 
@@ -540,11 +538,12 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 		st->codec->b_frame_strategy = 1;
 	}
 
-	st->codec->codec_type = CODEC_TYPE_VIDEO;
+	st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
 	st->codec->pix_fmt = PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
-	st->codec->time_base = st->time_base;
+	st->codec->time_base.num = fnum;
+	st->codec->time_base.den = fden;
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -558,12 +557,7 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
-		enum CodecID codec_id;
-
-		if (bc_rec->pcm)
-			codec_id = CODEC_ID_PCM_S16LE;
-		else
-			codec_id = bc->rtp_sess.aud_codec;
+		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
 
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
@@ -576,32 +570,89 @@ static int __bc_open_avcodec(struct bc_record *bc_rec)
 			goto no_audio;
 		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
-		st->codec->codec_type = CODEC_TYPE_AUDIO;
+		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
-		if (bc_rec->pcm) {
-			st->codec->sample_rate = 8000;
-			st->codec->sample_fmt = SAMPLE_FMT_S16;
-			st->codec->channels = 1;
-			st->codec->time_base = (AVRational){1, 8000};
-		} else {
-			struct rtp_session *rs = &bc->rtp_sess;
-
-			st->codec->bit_rate = rs->bitrate;
-			st->codec->sample_rate = rs->samplerate;
-			st->codec->channels = rs->channels;
-			st->codec->time_base = (AVRational){1, rs->samplerate};
-		}
-
-		snprintf(st->language, sizeof(st->language), "eng");
+		st->codec->sample_rate = 8000;
+		st->codec->sample_fmt = SAMPLE_FMT_S16;
+		st->codec->channels = 1;
+		st->codec->time_base = (AVRational){1, 8000};
 
 		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 no_audio:
 		st = NULL;
 	}
+	
+	return 0;
+}
+
+int bc_open_avcodec(struct bc_record *bc_rec)
+{
+	struct bc_handle *bc = bc_rec->bc;
+	AVCodec *codec;
+	AVStream *st;
+	AVFormatContext *oc;
+	int i;
+
+	if (bc_rec->oc != NULL)
+		return 0;
+
+	bc_start_media_entry(bc_rec);
+
+	if (bc_rec->media == BC_MEDIA_NULL) {
+		errno = ENOMEM;
+		goto error;
+	}
+
+	/* Get the output format */
+	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
+	if (!bc_rec->fmt_out) {
+		errno = EINVAL;
+		goto error;
+	}
+
+	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
+		goto error;
+	oc = bc_rec->oc;
+
+	oc->oformat = bc_rec->fmt_out;
+	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
+	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
+
+	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+		/* We don't need this information for RTSP, but this generates the event JPEG frame, so
+		 * it should be called anyway (refactor would be nice). */
+		int width = 0, height = 0, fnum, fden;
+		if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
+			errno = ENOMEM;
+			goto error;
+		}
+		
+		/* Don't include audio in the output if it's disabled by the user */
+		if (!has_audio(bc_rec))
+			bc->rtp_sess.audio_stream_index = -1;
+	
+		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
+			goto error;
+		
+		/* Recordings must always start with a PTS of 0; this will adjust all future PTS
+		 * values accordingly. */
+		rtp_session_set_current_pts(&bc->rtp_sess, 0);
+		
+		bc_rec->audio_st = bc_rec->video_st = NULL;
+		for (i = 0; i < oc->nb_streams; ++i) {
+			if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+				bc_rec->video_st = oc->streams[i];
+			else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+				bc_rec->audio_st = oc->streams[i];
+		}
+	} else {
+		if (setup_solo_output(bc_rec, oc) < 0)
+			goto error;
+	}
 
 	if (av_set_parameters(oc, NULL) < 0)
-		return -1;
+		goto error;
 
 	/* Open Video output */
 	st = bc_rec->video_st;
@@ -611,7 +662,7 @@ no_audio:
 		/* Clear this */
 		if (bc_rec->audio_st)
 			bc_rec->audio_st = NULL;
-		return -1;
+		goto error;
 	}
 	st = NULL;
 
@@ -621,36 +672,25 @@ no_audio:
 		codec = avcodec_find_encoder(st->codec->codec_id);
 		if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
 			bc_rec->audio_st = NULL;
-			bc_dev_warn(bc_rec, "Failed to open audio codec (%08x) "
-				    "so not recording", st->codec->codec_id);
+			goto error;
 		}
-		st = NULL;
 	}
 
 	/* Open output file */
 	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
 		bc_dev_err(bc_rec, "Failed to open outfile (perms?): %s",
 			   bc_rec->outfile);
-		return -1;
+		goto error;
 	}
 
 	av_write_header(oc);
 
 	return 0;
+	
+error:
+	/* XXX I dislike this. */
+	bc_media_destroy(&bc_rec->media);
+	bc_close_avcodec(bc_rec);
+	return -1;
 }
 
-int bc_open_avcodec(struct bc_record *bc_rec)
-{
-	int ret;
-
-	if (pthread_mutex_lock(&av_lock) == EDEADLK)
-		bc_dev_err(bc_rec, "Deadlock detected in av_lock on avcodec open!");
-	ret = __bc_open_avcodec(bc_rec);
-	if (ret) {
-		bc_media_destroy(&bc_rec->media);
-		__bc_close_avcodec(bc_rec);
-	}
-	pthread_mutex_unlock(&av_lock);
-
-	return ret;
-}

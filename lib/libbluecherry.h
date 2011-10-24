@@ -92,6 +92,24 @@ struct bc_handle {
 	void			*__data;
 };
 
+/* Parameters for a device from the database; use through
+ * bc_record */
+struct bc_device_config {
+	char name[256];
+	char dev[256];
+	char driver[256];
+	char rtsp_username[64];
+	char rtsp_password[64];
+	char signal_type[16];
+	char motion_map[400];
+	char schedule[7 * 24];
+	int     width, height;
+	int     interval;
+	int8_t  debug_level;
+	int     aud_disabled : 1;
+	int     schedule_override_global : 1;
+};
+
 /* Bluecherry License Key */
 
 enum bc_key_type {
@@ -228,6 +246,12 @@ void bc_handle_free(struct bc_handle *bc);
 /* Called to start and stop the stream */
 int bc_handle_start(struct bc_handle *bc, const char **err_msg);
 void bc_handle_stop(struct bc_handle *bc);
+/* Reset the handle to start a new recording.
+ * For solo devices, this is equivalent to stop, but
+ * for RTP, it has no effect. */
+void bc_handle_reset(struct bc_handle *bc);
+
+int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres);
 
 /* Standard logging function for all BC services */
 void bc_log(const char *msg, ...)
@@ -238,7 +262,8 @@ void bc_vlog(const char *msg, va_list va);
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();
 
-/* Retrieves the next buffer from the device */
+/* Retrieves the next buffer from the device.
+ * For RTSP devices, this buffer may not be video! */
 int bc_buf_get(struct bc_handle *bc);
 
 /* Get the data pointer for the current buffer */
@@ -249,6 +274,9 @@ unsigned int bc_buf_size(struct bc_handle *bc);
 
 /* Is the current buffer a key frame? */
 int bc_buf_key_frame(struct bc_handle *bc);
+
+/* Is the current buffer a video frame? */
+int bc_buf_is_video_frame(struct bc_handle *bc);
 
 /* Format and parameter settings */
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval);

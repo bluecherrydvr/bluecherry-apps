@@ -1,0 +1,10 @@
+Whenever the SQL schema is changed, add a file in mysql-upgrade with a
+name of the package version where the upgrade should be applied and the
+.sql extension, e.g. "1:2.0.0-0beta8.sql". Migration SQL should always
+produce a result IDENTICAL to a newly-installed database from mysql/,
+and MUST preserve all data if the upgrade will run without manual
+intervention.
+
+Be sure it's noted that downgrades will not be possible if your change is
+not backwards compatible.
+

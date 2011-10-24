@@ -1,3 +1,9 @@
+bluecherry (1:2.0.0-0beta8.2) lucid; urgency=low
+
+  * DEVELOPMENT PLACEHOLDER
+
+ -- John Brooks <john.brooks@bluecherry.net>  Fri, 21 Oct 2011 08:50:00 -0600
+
 bluecherry (1:2.0.0-0beta8.1) lucid; urgency=low
 
   * Bug #909: Post-record time for motion events is too long at <30fps

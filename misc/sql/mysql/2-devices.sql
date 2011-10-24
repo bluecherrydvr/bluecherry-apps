@@ -67,7 +67,8 @@ CREATE TABLE Devices (
 	schedule_override_global boolean DEFAULT FALSE,
 						-- ^^ Whether to override the global
 	disabled boolean DEFAULT FALSE,		-- If this camera is disabled
-	audio_disabled boolean DEFAULT FALSE,	-- should audio be disabled or not
+	audio_disabled boolean DEFAULT TRUE,	-- should audio be disabled or not
+	debug_level tinyint DEFAULT 0,          -- debug output level; 0 is standard, positive is more verbose. 1 for standard debugging, more to be very loud.
 	UNIQUE (device_name),
 	UNIQUE (device,channel)
 );
