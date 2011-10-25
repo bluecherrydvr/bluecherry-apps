@@ -242,10 +242,10 @@ define('AU_INFO', 'Kicking user will end session from that IP address, ban user 
 define('RCLIENT', 'Remote Client');
 define('WEB', 'Web');
 define('AC_ACCESS', '');
-define('CLICK_HERE_TO_UPDATE', 'Click here to update');
+define('CLICK_HERE_TO_UPDATE', '[Yes]');
 
 define('AIP_HEADER', 'Add an IP Camera');
-define('AIP_NEW_LIST_AVAILABLE', 'Updates ip camera list is available.');
+define('AIP_NEW_LIST_AVAILABLE', 'It appears that a newer version of our supported camera list is available. Would you like to upgrade to this version?');
 define('AIP_LIST_UPDATED_SUCCESSFULLY', 'Camera list updates sussessfully.');
 define('AIP_NEW_LIST_AVAIL', 'New ip camera tables are available.');
 define('AIP_NEW_LIST_MYSQL_E', 'Could not update the database, please check Apache logs for details');
@@ -275,11 +275,12 @@ define('AIP_RTSPPATH', 'Please enter path to RTSP');
 define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 
+define('IPCAM_MODEL', 'Camera model');
 
 define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'Delete');
 define('PROPS_HEADER', 'IP Camera properties');
-define('IPCAM_WIKI_LINK', 'Please visit this <a href="http://improve.bluecherrydvr.com/projects/v2tracker/wiki/Ipcameras">WIKI</a> for information on supported "Generic" cameras, along with RTSP path and MJPEG path');
+define('IPCAM_WIKI_LINK', 'Is your IP camera not in the list? Try checking out our  <a href="http://improve.bluecherrydvr.com/projects/v2tracker/wiki/Ipcameras">wiki</a> to see if the configuration for your camera is available. If not, please email us (beta@bluecherrydvr.com) with the remote login and password to your camera and we\'ll see if we can add support for it. Make sure to open port 554 and port 80.');
 define('SERVER_NOT_RUNNING', 'Server process stopped.');
 define('SERVER_RUNNING', 'Server process running');
 define('NOT_UP_TO_DATE', 'New version available.');
