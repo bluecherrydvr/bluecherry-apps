@@ -197,8 +197,8 @@ int bc_aud_out(struct bc_record *bc_rec)
 				       bc_rec->pcm_data);
 
 		pkt.data = (void *)bc_rec->pcm_data;
-		
-		if (c->coded_frame->pts != AV_NOPTS_VALUE)
+
+		if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
 			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 		                           bc_rec->audio_st->time_base);
 	} else {
@@ -212,7 +212,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 		pkt.pts = av_rescale_q(rs->frame.pts, rs->ctx->streams[rs->audio_stream_index]->time_base,
 		                       bc_rec->audio_st->time_base);
 	}
-	
+
 	/* Cutoff points can result in a few negative PTS frames, because often
 	 * the video will be cut before the audio for that time has been written.
 	 * We can drop these; they won't be played back, other than a very trivial
@@ -265,14 +265,12 @@ int bc_vid_out(struct bc_record *bc_rec)
 		pkt.pts = av_rescale_q(bc->rtp_sess.frame.pts, (AVRational){1, 90000},
 				       bc_rec->video_st->time_base);
 	} else {
-		if (c->coded_frame->pts != AV_NOPTS_VALUE)
+		if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
 			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 					       bc_rec->video_st->time_base);
 	}
 
 	pkt.stream_index = bc_rec->video_st->index;
-	
-//	bc_dev_info(bc_rec, "video pts %lld", pkt.pts);
 
 	if ((re = av_write_frame(bc_rec->oc, &pkt)) != 0) {
 		char averror[512] = { 0 };
