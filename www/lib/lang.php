@@ -276,6 +276,7 @@ define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 
 define('IPCAM_MODEL', 'Camera model');
+define('IPCAM_DEBUG_LEVEL', 'Turn camera debugging on:');
 
 define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'Delete');

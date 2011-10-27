@@ -449,6 +449,13 @@ DVRPageScript = new Class({
 						$('saveButton').setStyle('background-image', iconStyle);
 					}
 				});
+				expandAdvancedSettings = function(a){
+					var s = (($('advancedSettings').getStyle('display') == 'none' && a!='close') || (a=='open')) ? 'block' : 'none';
+					$('advancedSettings').setStyle('display', s);
+				}
+				$('advancedSettingsSwitch').addEvent('click', function(){
+					expandAdvancedSettings();
+				});
 				$('saveButton').addEvent('click', function(ev){
 					ev.preventDefault();
 					$('settingsForm').send();
