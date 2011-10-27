@@ -15,7 +15,7 @@ Makefile: configure
 	./configure --with-php-config=php-config
 
 modules/$(MODULE).so: Makefile $(LIB) FORCE
-	$(MAKE) -f Makefile
+	$(MAKE) -f Makefile "CFLAGS=-I$(LIBAVPATH)/include"
 
 install: modules/$(MODULE).so $(MODULE).ini
 	$(INSTALL_DATA) -D modules/$(MODULE).so \

@@ -3,8 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Bluecherry <maintainers@bluecherry.net>
 Build-Depends: debhelper (>= 7), libmysqlclient-dev, php5-dev, libconfig8-dev,
- libasound2-dev, libsysfs-dev, libidn11-dev, libavcodec-dev (>= 0.8),
- libavformat-dev (>= 0.8), libavutil-dev (>= 0.8), libbsd-dev
+ libasound2-dev, libsysfs-dev, libidn11-dev, libbsd-dev, yasm
 Standards-Version: 3.8.4
 
 Package: bluecherry

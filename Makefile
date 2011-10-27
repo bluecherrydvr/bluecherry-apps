@@ -1,7 +1,7 @@
 topdir = .
 include $(topdir)/mk.conf
 
-SUBDIRS		= lib server utils
+SUBDIRS		= misc lib server utils
 
 all clean install:
 	set -e; for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@; done
