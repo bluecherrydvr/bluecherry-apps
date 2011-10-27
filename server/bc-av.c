@@ -550,7 +550,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 
 	/* We don't fail when this happens. Video with no sound is
 	 * better than no video at all. */
-	if (bc_alsa_open(bc_rec))
+	if (!bc_rec->cfg.aud_disabled && bc_alsa_open(bc_rec))
 		bc_alsa_close(bc_rec);
 
 	/* Setup new audio stream */
