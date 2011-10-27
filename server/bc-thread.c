@@ -149,6 +149,8 @@ static void *bc_device_thread(void *data)
 			}
 			
 			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+				if (!has_audio(bc_rec))
+					bc->rtp_sess.audio_stream_index = -1;
 				bc_dev_info(bc_rec, "RTP stream started: %s",
 				            rtp_session_stream_info(&bc->rtp_sess));
 			}

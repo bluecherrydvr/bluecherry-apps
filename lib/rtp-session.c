@@ -20,11 +20,14 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 	int i;
 	memset(rs, 0, sizeof(*rs));
 	rs->video_stream_index = rs->audio_stream_index = -1;
-	
+
 	strncpy(rs->url, url, sizeof(rs->url));
 	rs->url[sizeof(rs->url)-1] = '\0';
-	
-	av_init_packet(&rs->frame);
+
+	/* Currently, av_init_packet cannot be used here because it
+	 * is undefined in the php module. We don't really need it,
+	 * anyway. */
+	rs->frame.pts = AV_NOPTS_VALUE;
 
 	for (i = 0; i < RTP_NUM_STREAMS; ++i)
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
@@ -42,7 +45,7 @@ void rtp_session_stop(struct rtp_session *rs)
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
-	
+
 	for (i = 0; i < RTP_NUM_STREAMS; ++i) {
 		rs->stream_data[i].pts_base = 0;
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;

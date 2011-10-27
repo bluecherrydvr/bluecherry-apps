@@ -491,7 +491,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		}
 	}
 
-	if (*t == '\0')
+	if (*t == '\0' || !path)
 		return -1;
 
 	/* Create a URL */
