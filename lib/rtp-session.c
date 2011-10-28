@@ -61,10 +61,11 @@ int rtp_session_start(struct rtp_session *rs)
 	if (rs->ctx)
 		return 0;
 
-	bc_log("Opening RTSP session from URL: %s", rs->url);
+	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
 
 	if ((re = av_open_input_file(&rs->ctx, rs->url, NULL, 0, NULL)) != 0) {
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		rs->ctx = 0;
 		return -1;
 	}
 
