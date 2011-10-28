@@ -115,7 +115,7 @@ define('EMAIL_LIMIT', 'Limit');
 define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
 define('USERS_NOTES_EX', 'visible only to admin');
-
+define('VA_AUDIO_ENABLE', 'Enable audio');
 
 define('USERS_STATUS_ADMIN', 'Administrator');
 define('USERS_STATUS_VIEWER','Viewer');
