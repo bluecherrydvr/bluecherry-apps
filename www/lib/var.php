@@ -27,7 +27,7 @@ define('VAR_PATH_TO_IPCAMLIST_VERSION', 'http://www.bluecherrydvr.com/version');
 
 define('VAR_TARRED_LOGS_TMP_LOCATION', '/tmp/bc-logs.tar'); #before logs are downloaded they will be compressed to this file
 
-define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://lizard.bluecherry.net/~alex/ipcamlistupdate.php');
+define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://versioncheck.bluecherrydvr.com/ipcamlistupdate.php');
 define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
 
 define('DB_WRITABLE', '/var/run/bluecherry/db-writable');

@@ -115,7 +115,7 @@ define('EMAIL_LIMIT', 'Limit');
 define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
 define('USERS_NOTES_EX', 'visible only to admin');
-define('VA_AUDIO_ENABLE', 'Enable audio');
+
 
 define('USERS_STATUS_ADMIN', 'Administrator');
 define('USERS_STATUS_VIEWER','Viewer');
@@ -174,7 +174,7 @@ define('VA_HEADER', 'Video adjustments');
 define('VA_BRIGHTNESS', 'Brightness');
 define('VA_HUE', 'Hue');
 define('VA_AUDIO', 'Audio gain');
-define('VA_AUDIO_DISABLE', 'Disable audio');
+define('VA_AUDIO_ENABLE', 'Enable audio');
 define('VA_SATURATION', 'Staruration');
 define('VA_CONTRAST', 'Contrast');
 define('VA_SETDEFAULT', 'Reset values to default');
