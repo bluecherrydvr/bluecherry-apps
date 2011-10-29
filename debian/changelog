@@ -1,6 +1,21 @@
 bluecherry (1:2.0.0-0beta8.2) lucid; urgency=low
 
-  * DEVELOPMENT PLACEHOLDER
+  * Bug #841: Natty packages depend on libx264-85, however the Natty version is actually libx264-105
+  * Bug #877: Ubuntu 11.04: /usr/sbin/bc-server: symbol lookup error: /usr/lib/libavcodec.so.52: undefined symbol: x264_encoder_open_106
+  * Bug #929: Recordings last only 1 second, possibly related to media cleanup
+  * Bug #949: Natty (and other versions?) require libavcodec-extra-52 before recording works properly
+  * Bug #967: Missing dependency on libav?-extra
+  * Bug #970: Check for new version was running every page load
+  * Bug #973: Web: Change wording on the IP camera properties page
+  * Feature #223: Support for Airlive network cameras
+  * Feature #782: Disable audio completely for analog devices
+  * Feature #783: Disable audio completely for network cameras
+  * Feature #968: libav-based RTSP implementation
+  * Feature #974: Server: Disable audio by default
+  * Feature #975: Web: Disable audio by default
+  * Feature #976: Web: Add option to enable debugging for network cameras
+  * Feature #977: Server: Support for advanced logging (verbose) for network cameras
+  * Feature #978: Redesign device configuration updates for thread safety
 
  -- John Brooks <john.brooks@bluecherry.net>  Fri, 21 Oct 2011 08:50:00 -0600
 

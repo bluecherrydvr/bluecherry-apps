@@ -3,7 +3,7 @@
 # bc-server manages recording of cameras to disk based on rules setup in the db
 
 description	"Bluecherry DVR Server"
-author		"Ben Collins <bcollins@bluecherry.net>"
+author		"Bluecherry <maintainers@bluecherry.net>"
 
 start on runlevel [23]
 stop on runlevel [016]
