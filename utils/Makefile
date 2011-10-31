@@ -2,7 +2,7 @@ topdir = ..
 include $(topdir)/mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry -L$(LIBAVPATH)/lib -Wl,-rpath $(LIBAVPATH)/lib -lavcodec -lavformat -lavutil
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -L$(LIBAVPATH)/lib -Wl,-rpath=$(LIBAVPATH)/lib -lavcodec -lavformat -lavutil
 
 TARGETS		= getjpeg bc-checkkey getaudio pelcocmd ptzcmd \
 		  rtsp-record
