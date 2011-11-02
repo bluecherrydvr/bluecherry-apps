@@ -362,7 +362,7 @@ static int asf_read_stream_properties(AVFormatContext *s, int64_t size)
 
         /* Extract palette from extradata if bpp <= 8 */
         /* This code assumes that extradata contains only palette */
-        /* This is true for all paletted codecs implemented in ffmpeg */
+        /* This is true for all paletted codecs implemented in libavcodec */
         if (st->codec->extradata_size && (st->codec->bits_per_coded_sample <= 8)) {
             int av_unused i;
 #if HAVE_BIGENDIAN
@@ -1282,7 +1282,7 @@ static int asf_read_seek(AVFormatContext *s, int stream_index, int64_t pts, int 
         }
     }
     /* no index or seeking by index failed */
-    if(av_seek_frame_binary(s, stream_index, pts, flags)<0)
+    if (ff_seek_frame_binary(s, stream_index, pts, flags) < 0)
         return -1;
     asf_reset_header(s);
     return 0;

@@ -48,7 +48,7 @@
 typedef struct NellyMoserDecodeContext {
     AVCodecContext* avctx;
     float          *float_buf;
-    float           state[NELLY_BUF_LEN];
+    DECLARE_ALIGNED(16, float, state)[NELLY_BUF_LEN];
     AVLFG           random_state;
     GetBitContext   gb;
     float           scale_bias;
@@ -57,23 +57,6 @@ typedef struct NellyMoserDecodeContext {
     FmtConvertContext fmt_conv;
     DECLARE_ALIGNED(32, float, imdct_out)[NELLY_BUF_LEN * 2];
 } NellyMoserDecodeContext;
-
-static void overlap_and_window(NellyMoserDecodeContext *s, float *state, float *audio, float *a_in)
-{
-    int bot, top;
-
-    bot = 0;
-    top = NELLY_BUF_LEN-1;
-
-    while (bot < NELLY_BUF_LEN) {
-        audio[bot] = a_in [bot]*ff_sine_128[bot]
-                    +state[bot]*ff_sine_128[top];
-
-        bot++;
-        top--;
-    }
-    memcpy(state, a_in + NELLY_BUF_LEN, sizeof(float)*NELLY_BUF_LEN);
-}
 
 static void nelly_decode_block(NellyMoserDecodeContext *s,
                                const unsigned char block[NELLY_BLOCK_LEN],
@@ -125,7 +108,9 @@ static void nelly_decode_block(NellyMoserDecodeContext *s,
         s->imdct_ctx.imdct_calc(&s->imdct_ctx, s->imdct_out, aptr);
         /* XXX: overlapping and windowing should be part of a more
            generic imdct function */
-        overlap_and_window(s, s->state, aptr, s->imdct_out);
+        s->dsp.vector_fmul_reverse(s->state, s->state, ff_sine_128, NELLY_BUF_LEN);
+        s->dsp.vector_fmul_add(aptr, s->imdct_out, ff_sine_128, s->state, NELLY_BUF_LEN);
+        memcpy(s->state, s->imdct_out + NELLY_BUF_LEN, sizeof(float)*NELLY_BUF_LEN);
     }
 }
 
@@ -170,21 +155,19 @@ static int decode_tag(AVCodecContext * avctx,
     int16_t *samples_s16 = data;
     float   *samples_flt = data;
 
-    if (buf_size < avctx->block_align) {
-        *data_size = 0;
-        return buf_size;
-    }
-
-    if (buf_size % NELLY_BLOCK_LEN) {
-        av_log(avctx, AV_LOG_ERROR, "Tag size %d.\n", buf_size);
-        *data_size = 0;
-        return buf_size;
-    }
     block_size = NELLY_SAMPLES * av_get_bytes_per_sample(avctx->sample_fmt);
-    blocks     = FFMIN(buf_size / NELLY_BLOCK_LEN, *data_size / block_size);
+    blocks     = buf_size / NELLY_BLOCK_LEN;
     if (blocks <= 0) {
+        av_log(avctx, AV_LOG_ERROR, "Packet is too small\n");
+        return AVERROR_INVALIDDATA;
+    }
+    if (*data_size < blocks * block_size) {
         av_log(avctx, AV_LOG_ERROR, "Output buffer is too small\n");
         return AVERROR(EINVAL);
+    }
+    if (buf_size % NELLY_BLOCK_LEN) {
+        av_log(avctx, AV_LOG_WARNING, "Leftover bytes: %d.\n",
+               buf_size % NELLY_BLOCK_LEN);
     }
     /* Normal numbers of blocks for sample rates:
      *  8000 Hz - 1

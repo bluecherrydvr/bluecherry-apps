@@ -1,5 +1,5 @@
 /*
- * Various simple utilities for ffmpeg system
+ * various simple utilities for libavformat
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  *
  * This file is part of Libav.
@@ -24,7 +24,7 @@
 /* add one element to a dynamic array */
 void ff_dynarray_add(intptr_t **tab_ptr, int *nb_ptr, intptr_t elem)
 {
-    /* see similar ffmpeg.c:grow_array() */
+    /* see similar avconv.c:grow_array() */
     int nb, nb_alloc;
     intptr_t *tab;
 
