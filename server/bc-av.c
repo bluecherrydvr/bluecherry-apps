@@ -626,10 +626,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 			goto error;
 		}
 		
-		/* Don't include audio in the output if it's disabled by the user */
-		if (!has_audio(bc_rec))
-			bc->rtp_sess.audio_stream_index = -1;
-	
 		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
 			goto error;
 		

@@ -12,6 +12,7 @@
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
 
 #include "rtp-session.h"
 
@@ -57,24 +58,30 @@ void rtp_session_stop(struct rtp_session *rs)
 int rtp_session_start(struct rtp_session *rs)
 {
 	int i, re;
+	AVDictionary *avopt = NULL;
 
 	if (rs->ctx)
 		return 0;
 
 	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
 
-	if ((re = av_open_input_file(&rs->ctx, rs->url, NULL, 0, NULL)) != 0) {
+	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
+
+	if ((re = avformat_open_input(&rs->ctx, rs->url, NULL, &avopt)) != 0) {
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		rs->ctx = 0;
+		av_dict_free(&avopt);
 		return -1;
 	}
+
+	av_dict_free(&avopt);
 
 	if ((re = av_find_stream_info(rs->ctx)) < 0) {
 		rtp_session_stop(rs);
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
-	
+
 	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
@@ -95,13 +102,13 @@ int rtp_session_start(struct rtp_session *rs)
 			rs->audio_stream_index = i;
 		}
 	}
-	
+
 	if (rs->video_stream_index < 0) {
 		rtp_session_stop(rs);
 		strcpy(rs->error_message, "RTSP session contains no valid video stream");
 		return -1;
 	}
-	
+
 	return 0;
 }
 
@@ -254,7 +261,7 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 			av_log(out_ctx, AV_LOG_ERROR, "Cannot add audio stream to output context");
 			return 0;
 		}
-		
+
 		ic = rs->ctx->streams[rs->audio_stream_index]->codec;
 		ast->codec->codec_id = ic->codec_id;
 		ast->codec->codec_type = ic->codec_type;
@@ -324,5 +331,4 @@ const char *rtp_session_stream_info(struct rtp_session *rs)
 	}
 
 	return rs->error_message;
-}	
-
+}

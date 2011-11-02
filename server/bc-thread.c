@@ -147,10 +147,8 @@ static void *bc_device_thread(void *data)
 				bc_rec->start_failed = 0;
 				bc_dev_info(bc_rec, "Device started after failure(s)");
 			}
-			
+
 			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-				if (!has_audio(bc_rec))
-					bc->rtp_sess.audio_stream_index = -1;
 				bc_dev_info(bc_rec, "RTP stream started: %s",
 				            rtp_session_stream_info(&bc->rtp_sess));
 			}
@@ -334,6 +332,8 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
+
+	bc->rtp_sess.want_audio = !bc_rec->cfg.aud_disabled;
 
 	/* Initialize device state */
 	try_formats(bc_rec);
