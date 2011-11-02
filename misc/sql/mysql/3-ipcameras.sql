@@ -8,7 +8,7 @@ CREATE TABLE `ipCameraDriver` (
 );
 
 INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjpeg_port`) VALUES
-('RTSP-VAPIX-AUTO', '/mpeg4/media.amp', '/mjpg/video.mjpg?tcp', 554, 80),
+('RTSP-VAPIX-AUTO', '/mpeg4/media.amp?tcp', '/mjpg/video.mjpg', 554, 80),
 ('RTSP-ACTi', '/', '/cgi-bin/cmd/encoder?SNAPSHOT', 7070, 80),
 ('RTSP-Vivotek-V1', '/live.sdp', '/cgi-bin/video.jpg', 554, 80),
 ('RTSP-Vivotek-V2', '/live.sdp', '/video.mjpg', 554, 80),
@@ -19,7 +19,7 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-Linksys', '/img/video.sav', '/img/mjpeg.jpg', 554, 80),
 ('RTSP-DLink', '/play1.sdp', '/mjpeg.cgi', 554, 80),
 ('RTSP-Grandstream', '/', '/snapshot/view0.jpg', 554, 80),
-('RTSP-Trendnet-V1', '/mpeg4', '/cgi/mjpg/mjpeg.cgi', 554, 80),
+('RTSP-Trendnet-V1', '/mpeg4?tcp', '/cgi/jpg/image.cgi', 554, 80),
 ('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80);
 
 CREATE TABLE `ipCameras` (
