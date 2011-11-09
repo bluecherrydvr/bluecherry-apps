@@ -135,6 +135,11 @@ int rtp_session_read(struct rtp_session *rs)
 	if (!streamdata || rs->frame.pts == AV_NOPTS_VALUE)
 		return 0;
 
+	/* Don't run offset logic for single-stream sessions; the
+	 * RTP timestamps are more reliable. */
+	if (rs->ctx->nb_streams == 1)
+		return 0;
+
 	/* Correct the stream's PTS to provide an even, monotonic set of frames for
 	 * recording, regardless of network factors. Notably, this often comes into
 	 * effect after receiving RTCP packets, which may alter the PTS to adjust
