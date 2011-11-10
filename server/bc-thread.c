@@ -107,6 +107,46 @@ static int process_schedule(struct bc_record *bc_rec)
 	return ret;
 }
 
+static int check_motion(struct bc_record *bc_rec)
+{
+	time_t monotonic_now;
+	int ret;
+
+	if (bc_rec->sched_cur != 'M')
+		return 1;
+
+	monotonic_now = bc_gettime_monotonic();
+
+	ret = bc_motion_is_detected(bc_rec->bc);
+	if (ret) {
+		if (!bc_rec->oc) {
+			/* Starting a new motion recording */
+			/* If we already have an event in progress, keep it going */
+			if (bc_rec->event == BC_EVENT_CAM_NULL) {
+				bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+					BC_EVENT_CAM_T_MOTION, bc_rec->media);
+				bc_dev_info(bc_rec, "Motion event started");
+			}
+		}
+
+		/* Update the timestamp on every frame with motion */
+		bc_rec->mot_last_ts = monotonic_now;
+	} else {
+		if (bc_rec->oc) {
+			/* Active recording */
+			if (monotonic_now - bc_rec->mot_last_ts >= 3) {
+				/* End of event */
+				/* Do not stop event here, let that happen in bc-thread.c
+			         * where bc_buf_get returns ERESTART. */
+				bc_dev_info(bc_rec, "Motion event stopped");
+			} else
+				ret = 1; /* still recording (postrecord) */
+		}
+	}
+
+	return ret;
+}
+
 static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = data;
@@ -172,50 +212,55 @@ static void *bc_device_thread(void *data)
 		}
 
 		ret = bc_buf_get(bc);
-		if (!ret) {
-			if (!bc_rec->oc && (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc))) {
-				/* Always start a recording with a key video frame. This will result in
-				 * the lost of some video between recordings, up to the keyframe interval,
-				 * at least on RTP devices. XXX Ideally, we should move the recording split
-				 * slightly to allow a proper cut for both video and audio. */
-				continue;
-			}
-		
-			/* Do this after we get the first frame,
-			 * since we need that in order to decode
-			 * the first frame for avcodec params like
-			 * width, height and frame rate. */
-			if (bc_open_avcodec(bc_rec)) {
-				bc_dev_err(bc_rec, "Error opening avcodec");
-				continue;
-			}
-
-			if (bc_buf_is_video_frame(bc)) {
-				bc_vid_out(bc_rec);
-				/* Error is logged by bc_vid_out. Frame writing errors
-				 * are often non-fatal, but can be noisy when repeated.
-				 * It would be a good idea to delay-and-restart if enough
-				 * of them happen consecutively. */
-			} else {
-				bc_aud_out(bc_rec);
-				/* Do nothing? XXX */
-			}
-		} else if (ret == ERESTART) {
-			bc_close_avcodec(bc_rec);
-		} else if (ret != EAGAIN) {
-			/* Try restarting the connection. Do not
-			 * report failure here. It will get reported
-			 * if we fail to reconnect. (XXX what?) */
-			
+		if (ret == EAGAIN) {
+			continue;
+		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
 				bc_dev_err(bc_rec, "RTSP read error: %s",
 				           (*bc->rtp.error_message) ?
 				            bc->rtp.error_message :
 				            "Unknown error");
 			}
-			
+
 			bc_close_avcodec(bc_rec);
 			bc_handle_stop(bc);
+			continue;
+		}
+
+		if (!check_motion(bc_rec)) {
+			/* Motion recording is enabled and we should not record.
+			 * End the recording if there is one. */
+			if (bc_rec->oc)
+				bc_close_avcodec(bc_rec);
+			continue;
+		}
+
+		if (!bc_rec->oc && (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc))) {
+			/* Always start a recording with a key video frame. This will result in
+			 * the lost of some video between recordings, up to the keyframe interval,
+			 * at least on RTP devices. XXX Ideally, we should move the recording split
+			 * slightly to allow a proper cut for both video and audio. */
+			continue;
+		}
+
+		/* Do this after we get the first frame,
+		 * since we need that in order to decode
+		 * the first frame for avcodec params like
+		 * width, height and frame rate. */
+		if (bc_open_avcodec(bc_rec)) {
+			bc_dev_err(bc_rec, "Error opening avcodec");
+			continue;
+		}
+
+		if (bc_buf_is_video_frame(bc)) {
+			bc_vid_out(bc_rec);
+			/* Error is logged by bc_vid_out. Frame writing errors
+			 * are often non-fatal, but can be noisy when repeated.
+			 * It would be a good idea to delay-and-restart if enough
+			 * of them happen consecutively. */
+		} else {
+			bc_aud_out(bc_rec);
+			/* Do nothing? XXX */
 		}
 	}
 

@@ -31,9 +31,6 @@
 	return -1;			\
 })
 
-extern void (*bc_handle_motion_start)(struct bc_handle *bc);
-extern void (*bc_handle_motion_end)(struct bc_handle *bc);
-
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 {
 	if (bc->v4l2.buf_idx < 0)
@@ -222,75 +219,33 @@ static void bc_buf_return(struct bc_handle *bc)
 
 int bc_buf_get(struct bc_handle *bc)
 {
-	struct v4l2_buffer vb;
-	int ret;
+	int ret = EINVAL;
 
 	if (bc->type == BC_DEVICE_RTP) {
-		return rtp_device_read(&bc->rtp);
-	}
+		ret = rtp_device_read(&bc->rtp);
+	} else if (bc->type == BC_DEVICE_V4L2) {
+		struct v4l2_buffer vb;
+		bc_buf_return(bc);
+		reset_vbuf(&vb);
 
-	bc_buf_return(bc);
+		ret = ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb);
+		bc->v4l2.local_bufs++;
+		/* XXX better error handling here */
+		if (ret)
+			return EAGAIN;
 
-	reset_vbuf(&vb);
-
-	ret = ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb);
-	bc->v4l2.local_bufs++;
-	if (ret)
-		return EAGAIN;
-
-	/* Update and store this buffer */
-	bc->v4l2.buf_idx = vb.index;
-	bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
-
-	/* If no motion detection, then carry on normally. For MJPEG,
-	 * we never stall the buffer for motion. */
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG ||
-	    !bc_motion_is_on(bc)) {
-		/* Reset this timestamp in case motion gets turned back on */
-		bc->mot_last_ts = 0;
+		/* Update and store this buffer */
+		bc->v4l2.buf_idx = vb.index;
+		bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
 
 		if (!bc->got_vop) {
 			if (!bc_buf_key_frame(bc))
 				return EAGAIN;
 			bc->got_vop = 1;
 		}
-		return 0;
-        }
 
-	/* Normally for motion, we return EAGAIN, which means skip this,
-	 * frame. This can be 0 for "motion in progress, record frame" or
-	 * ERESTART for "motion just ended, stop this recording". */
-        ret = EAGAIN;
-
-	time_t monotonic_now = bc_gettime_monotonic();
-
-	if (bc_motion_is_detected(bc)) {
-		if (!bc->mot_last_ts) {
-			bc->got_vop = 0;
-			// First time, send event
-			if (bc_handle_motion_start)
-				bc_handle_motion_start(bc);
-		}
-		/* Reset this timestamp every time we get a new event */
-		bc->mot_last_ts = monotonic_now;
-	} else if (!bc->mot_last_ts) {
-		return ret;
-	}
-
-	if (!bc->got_vop) {
-		if (!bc_buf_key_frame(bc))
-			return EAGAIN;
-		bc->got_vop = 1;
-	}
-
-	if (monotonic_now - bc->mot_last_ts >= 3) {
-		/* End of event */
-		bc->mot_last_ts = 0;
-		ret = ERESTART;
-		if (bc_handle_motion_end)
-			bc_handle_motion_end(bc);
-	} else
 		ret = 0;
+	}
 
 	return ret;
 }

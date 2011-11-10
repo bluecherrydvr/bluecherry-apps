@@ -85,7 +85,6 @@ struct bc_handle {
 
 	int			started;
 	int			got_vop;
-	time_t			mot_last_ts;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
@@ -373,10 +372,6 @@ void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
 void bc_media_event_clear(void);
-
-/* Handlers for motion events */
-extern void (*bc_handle_motion_start)(struct bc_handle *bc);
-extern void (*bc_handle_motion_end)(struct bc_handle *bc);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);

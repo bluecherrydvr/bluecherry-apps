@@ -23,9 +23,6 @@
 
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
 
-void (*bc_handle_motion_start)(struct bc_handle *bc) = NULL;
-void (*bc_handle_motion_end)(struct bc_handle *bc) = NULL;
-
 int bc_set_motion(struct bc_handle *bc, int on)
 {
 	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
