@@ -31,43 +31,15 @@
 	return -1;			\
 })
 
-static struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
+extern void (*bc_handle_motion_start)(struct bc_handle *bc);
+extern void (*bc_handle_motion_end)(struct bc_handle *bc);
+
+struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 {
 	if (bc->v4l2.buf_idx < 0)
 		return NULL;
 
 	return &bc->v4l2.p_buf[bc->v4l2.buf_idx].vb;
-}
-
-int bc_motion_is_on(struct bc_handle *bc)
-{
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_buffer *vb;
-
-		vb = bc_buf_v4l2(bc);
-		if (vb == NULL)
-			return 0;
-
-		return vb->flags & V4L2_BUF_FLAG_MOTION_ON ? 1 : 0;
-	}
-	return 0;
-}
-
-int bc_motion_is_detected(struct bc_handle *bc)
-{
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_buffer *vb;
-
-		if (!bc_motion_is_on(bc))
-			return 0;
-
-		vb = bc_buf_v4l2(bc);
-		if (vb == NULL)
-			return 0;
-
-		return vb->flags & V4L2_BUF_FLAG_MOTION_DETECTED ? 1 : 0;
-	}
-	return 0;
 }
 
 static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
@@ -248,21 +220,6 @@ static void bc_buf_return(struct bc_handle *bc)
 		bc_log("E: Unable to queue any buffers!");
 }
 
-void (*bc_handle_motion_start)(struct bc_handle *bc) = NULL;
-void (*bc_handle_motion_end)(struct bc_handle *bc) = NULL;
-
-static void __bc_start_motion_event(struct bc_handle *bc)
-{
-	if (bc_handle_motion_start)
-		bc_handle_motion_start(bc);
-}
-
-static void __bc_stop_motion_event(struct bc_handle *bc)
-{
-	if (bc_handle_motion_end)
-		bc_handle_motion_end(bc);
-}
-
 int bc_buf_get(struct bc_handle *bc)
 {
 	struct v4l2_buffer vb;
@@ -311,7 +268,8 @@ int bc_buf_get(struct bc_handle *bc)
 		if (!bc->mot_last_ts) {
 			bc->got_vop = 0;
 			// First time, send event
-			__bc_start_motion_event(bc);
+			if (bc_handle_motion_start)
+				bc_handle_motion_start(bc);
 		}
 		/* Reset this timestamp every time we get a new event */
 		bc->mot_last_ts = monotonic_now;
@@ -329,7 +287,8 @@ int bc_buf_get(struct bc_handle *bc)
 		/* End of event */
 		bc->mot_last_ts = 0;
 		ret = ERESTART;
-		__bc_stop_motion_event(bc);
+		if (bc_handle_motion_end)
+			bc_handle_motion_end(bc);
 	} else
 		ret = 0;
 
