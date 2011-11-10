@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 	if ((bc = bc_handle_get(dbres)) == NULL)
 		print_error("Error opening device: %m");
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		print_error("Not a v4l2 device");
 
 	bc_db_free_table(dbres);

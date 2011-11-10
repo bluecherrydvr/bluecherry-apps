@@ -44,7 +44,7 @@ int has_audio(struct bc_record *bc_rec)
 	if (bc_rec->pcm != NULL)
 		return 1;
 
-	if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp.audio_stream_index >= 0)
+	if ((bc->type == BC_DEVICE_RTP) && bc->rtp.audio_stream_index >= 0)
 		return 1;
 
 	return 0;
@@ -85,7 +85,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	snd_pcm_t *pcm = NULL;
 	int err, fmt;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	/* No alsa device for this record */
@@ -260,7 +260,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 	if (!pkt.data || !pkt.size)
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		/* RTP is at a constant 90KHz time scale */
 		pkt.pts = av_rescale_q(bc->rtp.frame.pts, (AVRational){1, 90000},
 				       bc_rec->video_st->time_base);
@@ -438,13 +438,13 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	void *buf = bc_buf_data(bc);
 	int size = bc_buf_size(bc);
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
+	if (bc->type == BC_DEVICE_V4L2) {
 		*fden = bc->v4l2.vparm.parm.capture.timeperframe.denominator;
 		*fnum = bc->v4l2.vparm.parm.capture.timeperframe.numerator;
 		*width = bc->v4l2.vfmt.fmt.pix.width;
 		*height = bc->v4l2.vfmt.fmt.pix.height;
 		codec_id = bc_rec->codec_id;
-	} else if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp.video_stream_index >= 0) {
+	} else if ((bc->type == BC_DEVICE_RTP) && bc->rtp.video_stream_index >= 0) {
 		AVStream *stream = bc->rtp.ctx->streams[bc->rtp.video_stream_index];
 		*fnum = stream->time_base.num;
 		*fden = stream->time_base.den; /* XXX is this correct? */
@@ -617,7 +617,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
 	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		/* We don't need this information for RTSP, but this generates the event JPEG frame, so
 		 * it should be called anyway (refactor would be nice). */
 		int width = 0, height = 0, fnum, fden;

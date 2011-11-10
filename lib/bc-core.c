@@ -43,7 +43,7 @@ int bc_motion_is_on(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	vb = bc_buf_v4l2(bc);
@@ -60,7 +60,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 	if (!bc_motion_is_on(bc))
 		return 0;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	vb = bc_buf_v4l2(bc);
@@ -123,10 +123,10 @@ int bc_buf_key_frame(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+	if (bc->type == BC_DEVICE_RTP)
 		return rtp_device_frame_is_keyframe(&bc->rtp);
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 1;
 
 	vb = bc_buf_v4l2(bc);
@@ -143,7 +143,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 
 int bc_buf_is_video_frame(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_RTSP)
+	if (bc->type == BC_DEVICE_RTP)
 		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
 	return 1;
 }
@@ -232,11 +232,11 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 	if (bc->started)
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		ret = rtp_device_start(&bc->rtp);
 		if (ret < 0)
 			*err_msg = bc->rtp.error_message;
-	} else if (bc->cam_caps & BC_CAM_CAP_V4L2)
+	} else if (bc->type == BC_DEVICE_V4L2)
 		ret = v4l2_handle_start(bc, err_msg);
 
 	if (!ret) {
@@ -295,7 +295,7 @@ int bc_buf_get(struct bc_handle *bc)
 	struct v4l2_buffer vb;
 	int ret;
 
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		return rtp_device_read(&bc->rtp);
 	}
 
@@ -369,7 +369,7 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	double den = bc->v4l2.vparm.parm.capture.timeperframe.denominator;
 	double num = interval;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	if (!interval)
@@ -408,7 +408,7 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 	bc->card_id = bc_db_get_val_int(dbres, "card_id");
 
-	bc->cam_caps |= BC_CAM_CAP_V4L2;
+	bc->type = BC_DEVICE_V4L2;
 	if (!strncmp(bc->driver, "solo6", 5))
 		bc->cam_caps |= BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
 
@@ -465,7 +465,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	char url[1024];
 	int r;
 
-	bc->cam_caps |= BC_CAM_CAP_RTSP;
+	bc->type = BC_DEVICE_RTP;
 
 	username = bc_db_get_val(dbres, "rtsp_username", NULL);
 	password = bc_db_get_val(dbres, "rtsp_password", NULL);
@@ -637,9 +637,9 @@ void bc_handle_stop(struct bc_handle *bc)
 	if (!bc || !bc->started)
 		return;
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2)
+	if (bc->type == BC_DEVICE_V4L2)
 		v4l2_handle_stop(bc);
-	else if (bc->cam_caps & BC_CAM_CAP_RTSP)
+	else if (bc->type == BC_DEVICE_RTP)
 		rtp_device_stop(&bc->rtp);
 
 	bc->started = 0;
@@ -648,7 +648,7 @@ void bc_handle_stop(struct bc_handle *bc)
 
 void bc_handle_reset(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_V4L2)
+	if (bc->type == BC_DEVICE_V4L2)
 		bc_handle_stop(bc);
 }
 

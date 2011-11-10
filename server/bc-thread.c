@@ -148,7 +148,7 @@ static void *bc_device_thread(void *data)
 				bc_dev_info(bc_rec, "Device started after failure(s)");
 			}
 
-			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+			if (bc->type == BC_DEVICE_RTP) {
 				bc_dev_info(bc_rec, "RTP stream started: %s",
 				            rtp_device_stream_info(&bc->rtp));
 			}
@@ -207,7 +207,7 @@ static void *bc_device_thread(void *data)
 			 * report failure here. It will get reported
 			 * if we fail to reconnect. (XXX what?) */
 			
-			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+			if (bc->type == BC_DEVICE_RTP) {
 				bc_dev_err(bc_rec, "RTSP read error: %s",
 				           (*bc->rtp.error_message) ?
 				            bc->rtp.error_message :

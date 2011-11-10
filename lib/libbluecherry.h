@@ -43,11 +43,14 @@
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
-#define BC_CAM_CAP_RTSP		0x00000001
-#define BC_CAM_CAP_V4L2		0x00000002
 #define BC_CAM_CAP_OSD		0x00000004
 #define BC_CAM_CAP_SOLO		0x00000008
 #define BC_CAM_CAP_MJPEG_URL	0x00000010
+
+typedef enum {
+	BC_DEVICE_V4L2,
+	BC_DEVICE_RTP
+} bc_device_type_t;
 
 struct v4l2_device {
 	int			dev_fd;
@@ -68,10 +71,9 @@ struct bc_handle {
 	char			driver[512];
 	char			mjpeg_url[1024];
 
-	struct v4l2_device	v4l2;
-	/* Track info about the v4l2 device */
+	bc_device_type_t	type;
 
-	/* RTSP related information */
+	struct v4l2_device	v4l2;
 	struct rtp_device	rtp;
 
 	int			started;

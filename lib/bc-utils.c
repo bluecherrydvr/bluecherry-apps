@@ -25,7 +25,7 @@ int bc_set_motion(struct bc_handle *bc, int on)
 {
 	struct v4l2_control vc;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	vc.id = V4L2_CID_MOTION_ENABLE;
@@ -37,7 +37,7 @@ int bc_set_motion(struct bc_handle *bc, int on)
 int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val)
 {
 	struct v4l2_control vc;
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
@@ -52,7 +52,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 {
 	struct v4l2_control vc;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
@@ -65,7 +65,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 
 int bc_set_mjpeg(struct bc_handle *bc)
 {
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return -1;
 
 	bc->v4l2.vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
@@ -82,7 +82,7 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	struct v4l2_control vc;
 	float step;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	memset(&qctrl, 0, sizeof(qctrl));
@@ -101,7 +101,7 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 
 void *bc_buf_data(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		if (bc->rtp.frame.stream_index == bc->rtp.video_stream_index)
 			return bc->rtp.frame.data;
 		return NULL;
@@ -115,7 +115,7 @@ void *bc_buf_data(struct bc_handle *bc)
 
 unsigned int bc_buf_size(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+	if (bc->type == BC_DEVICE_RTP) {
 		if (bc->rtp.frame.stream_index == bc->rtp.video_stream_index)
 			return bc->rtp.frame.size;
 		return 0;
@@ -130,7 +130,7 @@ unsigned int bc_buf_size(struct bc_handle *bc)
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)
 {
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	if (bc->v4l2.vfmt.fmt.pix.pixelformat == fmt &&
@@ -161,7 +161,7 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	struct v4l2_ext_control ctrl;
 	struct v4l2_ext_controls ctrls;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	va_start(ap, fmt);
