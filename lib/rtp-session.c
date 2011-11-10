@@ -135,11 +135,6 @@ int rtp_session_read(struct rtp_session *rs)
 	if (!streamdata || rs->frame.pts == AV_NOPTS_VALUE)
 		return 0;
 
-	/* Don't run offset logic for single-stream sessions; the
-	 * RTP timestamps are more reliable. */
-	if (rs->ctx->nb_streams == 1)
-		return 0;
-
 	/* Correct the stream's PTS to provide an even, monotonic set of frames for
 	 * recording, regardless of network factors. Notably, this often comes into
 	 * effect after receiving RTCP packets, which may alter the PTS to adjust
@@ -171,9 +166,12 @@ int rtp_session_read(struct rtp_session *rs)
 	 * If it is valid under any codec to have two frames with equal PTS, that will fail.
 	 * Variable framerates could be catastrophic.
 	 *
+	 * This logic isn't used for single video only streams, because libav uses the
+	 * reliable RTP timestamp in that situation (#983).
+	 *
 	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
 	 */
-	if (streamdata->last_pts != AV_NOPTS_VALUE) {
+	if (streamdata->last_pts != AV_NOPTS_VALUE && rs->ctx->nb_streams > 1) {
 		if (rs->frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
 		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
