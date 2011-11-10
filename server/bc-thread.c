@@ -234,7 +234,7 @@ static void get_aud_dev(struct bc_record *bc_rec)
 		return;
 
 	sprintf(bc_rec->aud_dev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
-		bc_rec->bc->card_id, bc_rec->bc->dev_id);
+		bc_rec->bc->v4l2.card_id, bc_rec->bc->v4l2.dev_id);
 
 	bc_rec->aud_rate = 8000;
 	bc_rec->aud_channels = 1;

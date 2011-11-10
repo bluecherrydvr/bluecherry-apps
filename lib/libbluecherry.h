@@ -43,6 +43,7 @@
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
+#define BC_CAM_CAP_V4L2_MOTION	0x00000002
 #define BC_CAM_CAP_OSD		0x00000004
 #define BC_CAM_CAP_SOLO		0x00000008
 #define BC_CAM_CAP_MJPEG_URL	0x00000010
@@ -64,6 +65,11 @@ struct v4l2_device {
 		struct v4l2_buffer	vb;
 	}			p_buf[BC_BUFFERS];
 	int			local_bufs;
+	int			buf_idx;
+	int			gop;
+	int			buffers;
+	int			card_id;
+	int			dev_id;
 };
 
 struct bc_handle {
@@ -72,19 +78,14 @@ struct bc_handle {
 	char			mjpeg_url[1024];
 
 	bc_device_type_t	type;
+	unsigned int		cam_caps;
 
 	struct v4l2_device	v4l2;
 	struct rtp_device	rtp;
 
 	int			started;
-	int			buf_idx;
 	int			got_vop;
 	time_t			mot_last_ts;
-	int			gop;
-	int			buffers;
-	int			card_id;
-	int			dev_id;
-	unsigned int		cam_caps;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */

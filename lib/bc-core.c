@@ -33,48 +33,48 @@
 
 static struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 {
-	if (bc->buf_idx < 0)
+	if (bc->v4l2.buf_idx < 0)
 		return NULL;
 
-	return &bc->v4l2.p_buf[bc->buf_idx].vb;
+	return &bc->v4l2.p_buf[bc->v4l2.buf_idx].vb;
 }
 
 int bc_motion_is_on(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb;
+	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+		struct v4l2_buffer *vb;
 
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
+		vb = bc_buf_v4l2(bc);
+		if (vb == NULL)
+			return 0;
 
-	vb = bc_buf_v4l2(bc);
-	if (vb == NULL)
-		return 0;
-
-	return vb->flags & V4L2_BUF_FLAG_MOTION_ON ? 1 : 0;
+		return vb->flags & V4L2_BUF_FLAG_MOTION_ON ? 1 : 0;
+	}
+	return 0;
 }
 
 int bc_motion_is_detected(struct bc_handle *bc)
 {
-	struct v4l2_buffer *vb;
+	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+		struct v4l2_buffer *vb;
 
-	if (!bc_motion_is_on(bc))
-		return 0;
+		if (!bc_motion_is_on(bc))
+			return 0;
 
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
+		vb = bc_buf_v4l2(bc);
+		if (vb == NULL)
+			return 0;
 
-	vb = bc_buf_v4l2(bc);
-	if (vb == NULL)
-		return 0;
-
-	return vb->flags & V4L2_BUF_FLAG_MOTION_DETECTED ? 1 : 0;
+		return vb->flags & V4L2_BUF_FLAG_MOTION_DETECTED ? 1 : 0;
+	}
+	return 0;
 }
 
 static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 {
 	int i, c;
 
-	for (i = c = 0; i < bc->buffers; i++) {
+	for (i = c = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -154,15 +154,15 @@ static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 	int i;
 
 	reset_vbuf(&req);
-	req.count = bc->buffers;
+	req.count = bc->v4l2.buffers;
 
 	if (ioctl(bc->v4l2.dev_fd, VIDIOC_REQBUFS, &req) < 0)
 		RETERR("REQBUFS Failed");
 
-	if (req.count != bc->buffers)
+	if (req.count != bc->v4l2.buffers)
 		RETERR("REQBUFS Returned wrong buffer count");
 
-	for (i = 0; i < bc->buffers; i++) {
+	for (i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -189,9 +189,9 @@ static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 
 	/* For mpeg, we get the max, and for mjpeg the min */
 	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
-		bc->buffers = BC_BUFFERS;
+		bc->v4l2.buffers = BC_BUFFERS;
 	else
-		bc->buffers = BC_BUFFERS_JPEG;
+		bc->v4l2.buffers = BC_BUFFERS_JPEG;
 
 	if (bc_v4l2_bufs_prepare(bc, err_msg))
 		return -1;
@@ -200,7 +200,7 @@ static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 		RETERR("STREAMON Failed");
 
 	/* Queue all buffers */
-	for (i = 0; i < bc->buffers; i++) {
+	for (i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -217,7 +217,7 @@ static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 	}
 
 	bc->v4l2.local_bufs = 0;
-	bc->buf_idx = -1;
+	bc->v4l2.buf_idx = -1;
 
 	return 0;
 }
@@ -249,8 +249,8 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 
 static void bc_buf_return(struct bc_handle *bc)
 {
-	int local = (bc->buffers / 2) - 1;
-	int thresh = ((bc->buffers - local) / 2) + local;
+	int local = (bc->v4l2.buffers / 2) - 1;
+	int thresh = ((bc->v4l2.buffers - local) / 2) + local;
 	int i;
 
 	/* Maintain a balance of queued and dequeued buffers */
@@ -259,7 +259,7 @@ static void bc_buf_return(struct bc_handle *bc)
 
 	bc_v4l2_local_bufs(bc);
 
-	for (i = 0; i < bc->buffers && bc->v4l2.local_bufs > local; i++) {
+	for (i = 0; i < bc->v4l2.buffers && bc->v4l2.local_bufs > local; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -271,7 +271,7 @@ static void bc_buf_return(struct bc_handle *bc)
 		bc->v4l2.local_bufs--;
 	}
 
-	if (bc->v4l2.local_bufs == bc->buffers)
+	if (bc->v4l2.local_bufs == bc->v4l2.buffers)
 		bc_log("E: Unable to queue any buffers!");
 }
 
@@ -309,8 +309,8 @@ int bc_buf_get(struct bc_handle *bc)
 		return EAGAIN;
 
 	/* Update and store this buffer */
-	bc->buf_idx = vb.index;
-	bc->v4l2.p_buf[bc->buf_idx].vb = vb;
+	bc->v4l2.buf_idx = vb.index;
+	bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
 
 	/* If no motion detection, then carry on normally. For MJPEG,
 	 * we never stall the buffer for motion. */
@@ -389,11 +389,11 @@ int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 	ioctl(bc->v4l2.dev_fd, VIDIOC_G_PARM, &bc->v4l2.vparm);
 
 	/* Reset GOP */
-	bc->gop = lround(den / num);
-	if (!bc->gop)
-		bc->gop = 1;
+	bc->v4l2.gop = lround(den / num);
+	if (!bc->v4l2.gop)
+		bc->v4l2.gop = 1;
 	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-	vc.value = bc->gop;
+	vc.value = bc->v4l2.gop;
 	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc) < 0)
 		return -1;
 
@@ -406,11 +406,11 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	char dev_file[PATH_MAX];
 	int id = -1;
 
-	bc->card_id = bc_db_get_val_int(dbres, "card_id");
+	bc->v4l2.card_id = bc_db_get_val_int(dbres, "card_id");
 
 	bc->type = BC_DEVICE_V4L2;
 	if (!strncmp(bc->driver, "solo6", 5))
-		bc->cam_caps |= BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
+		bc->cam_caps |= BC_CAM_CAP_V4L2_MOTION | BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
 
 	while (p[0] != '\0' && p[0] != '|')
 		p++;
@@ -427,9 +427,9 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	}
 	id = atoi(p + 1);
 
-	bc->dev_id = id;
+	bc->v4l2.dev_id = id;
 
-	sprintf(dev_file, "/dev/video%d", bc->card_id + id + 1);
+	sprintf(dev_file, "/dev/video%d", bc->v4l2.card_id + id + 1);
 
 	/* Open the device */
 	if ((bc->v4l2.dev_fd = open(dev_file, O_RDWR)) < 0)
@@ -603,7 +603,7 @@ static void v4l2_handle_stop(struct bc_handle *bc)
 	if (bc->v4l2.dev_fd < 0)
 		return;
 
-	for (i = 0; i < bc->buffers; i++) {
+	for (i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -623,11 +623,11 @@ static void v4l2_handle_stop(struct bc_handle *bc)
 	ioctl(bc->v4l2.dev_fd, VIDIOC_STREAMOFF, &type);
 
 	/* Unmap all buffers */
-	for (i = 0; i < bc->buffers; i++)
+	for (i = 0; i < bc->v4l2.buffers; i++)
 		munmap(bc->v4l2.p_buf[i].data, bc->v4l2.p_buf[i].size);
 
-	bc->v4l2.local_bufs = bc->buffers;
-	bc->buf_idx = -1;
+	bc->v4l2.local_bufs = bc->v4l2.buffers;
+	bc->v4l2.buf_idx = -1;
 }
 
 void bc_handle_stop(struct bc_handle *bc)

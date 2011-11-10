@@ -23,44 +23,48 @@
 
 int bc_set_motion(struct bc_handle *bc, int on)
 {
-	struct v4l2_control vc;
+	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+		struct v4l2_control vc;
 
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
+		vc.id = V4L2_CID_MOTION_ENABLE;
+		vc.value = on ? 1 : 0;
 
-	vc.id = V4L2_CID_MOTION_ENABLE;
-	vc.value = on ? 1 : 0;
+		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	}
 
-	return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	return 0;
 }
 
 int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val)
 {
-	struct v4l2_control vc;
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
+	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+		struct v4l2_control vc;
 
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
-	vc.value = val;
-	/* Upper 16 bits left to 0 for global */
+		vc.id = V4L2_CID_MOTION_THRESHOLD;
+		vc.value = val;
+		/* Upper 16 bits left to 0 for global */
 
-	return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	}
+
+	return 0;
 }
 
 int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
 			 unsigned short block)
 {
-	struct v4l2_control vc;
+	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+		struct v4l2_control vc;
 
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
+		vc.id = V4L2_CID_MOTION_THRESHOLD;
+		vc.value = val;
+		/* 0 means global; we must add one to the actual block */
+		vc.value |= (unsigned int)(block+1) << 16;
 
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
-	vc.value = val;
-	/* 0 means global; we must add one to the actual block */
-	vc.value |= (unsigned int)(block+1) << 16;
+		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	}
 
-	return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	return 0;
 }
 
 int bc_set_mjpeg(struct bc_handle *bc)
@@ -107,10 +111,10 @@ void *bc_buf_data(struct bc_handle *bc)
 		return NULL;
 	}
 
-	if (bc->buf_idx < 0)
+	if (bc->v4l2.buf_idx < 0)
 		return NULL;
 
-	return bc->v4l2.p_buf[bc->buf_idx].data;
+	return bc->v4l2.p_buf[bc->v4l2.buf_idx].data;
 }
 
 unsigned int bc_buf_size(struct bc_handle *bc)
@@ -121,10 +125,10 @@ unsigned int bc_buf_size(struct bc_handle *bc)
 		return 0;
 	}
 
-	if (bc->buf_idx < 0)
+	if (bc->v4l2.buf_idx < 0)
 		return 0;
 
-	return bc->v4l2.p_buf[bc->buf_idx].vb.bytesused;
+	return bc->v4l2.p_buf[bc->v4l2.buf_idx].vb.bytesused;
 }
 
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
