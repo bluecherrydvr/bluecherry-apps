@@ -92,33 +92,6 @@ static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 	bc->v4l2.local_bufs = c;
 }
 
-static int mpeg4_is_key_frame(const unsigned char *data,
-			      int len)
-{
-	int key = 0;
-	int i;
-
-	for (i = 0; i < len; i++) {
-		if (len - i < 5)
-			return 0;
-
-		if (data[i] != 0x00)
-			continue;
-		if (data[i+1] != 0x00)
-			continue;
-		if (data[i+2] != 0x01)
-			continue;
-		if (data[i+3] != 0xb6)
-			continue;
-
-		if (!(data[i+4] & 0xc0))
-			key = 1;
-		break;
-	}
-
-	return key;
-}
-
 int bc_buf_key_frame(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;

@@ -13,7 +13,9 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
+#include <libavutil/mathematics.h>
 
+#include "libbluecherry.h"
 #include "rtp-session.h"
 
 void rtp_device_init(struct rtp_device *rs, const char *url)
@@ -176,7 +178,7 @@ int rtp_device_read(struct rtp_device *rs)
 		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
 			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
-			       "delta %lld. Adjusting based on last interval of %lld.",
+			       "delta %"PRId64". Adjusting based on last interval of %"PRId64".",
 			       rs->frame.stream_index,
 			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 			       rs->frame.pts - streamdata->last_pts, streamdata->last_pts_diff);
@@ -198,14 +200,14 @@ int rtp_device_read(struct rtp_device *rs)
 			{
 				if (!streamdata->was_last_diff_skipped) {
 					av_log(rs->ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld); ignoring interval change unless repeated",
+					       "to %"PRId64" (delta %"PRId64"); ignoring interval change unless repeated",
 					       rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 1;
 				} else {
 					av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
+					       "to %"PRId64" (delta %"PRId64") twice; accepting new interval. Could cause "
 					       "framerate or desynchronization issues.", rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
@@ -295,19 +297,17 @@ void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 		return;
 
 	if (rs->frame.pts == AV_NOPTS_VALUE) {
-		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
+		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %"PRId64" cannot occur\n",
 		       pts);
 		return;
 	}
 
 	offset = rs->frame.pts - pts;
 
-	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %lld to reset PTS on stream %d to %lld\n",
+	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
 	       offset, rs->frame.stream_index, pts);
 
 	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
-		av_log(rs->ctx, AV_LOG_INFO, "Rescaled set_current_pts offset for stream %d is %lld\n",
-		       i, av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base));
 		rs->stream_data[i].pts_base += av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base);
 	}
 

@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include "libavutil/mathematics.h"
+
 #include "bc-server.h"
 
 int bc_av_lockmgr(void **mutex, enum AVLockOp op)
@@ -218,7 +220,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
 	if (pkt.pts != AV_NOPTS_VALUE && pkt.pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping audio frame with negative pts %lld, probably "
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping audio frame with negative pts %"PRId64", probably "
 		       "caused by recent PTS reset", pkt.pts);
 		return 0;
 	}

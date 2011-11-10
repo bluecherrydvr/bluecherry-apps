@@ -342,6 +342,7 @@ int bc_key_process(struct bc_key_data *res, char *str);
 bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 				  bc_event_cam_type_t type,
 				  bc_media_entry_t media);
+int bc_event_cam_fire(int id, bc_event_level_t level, bc_event_cam_type_t type);
 /* Finish the event and inserts it into the database */
 void bc_event_cam_end(bc_event_cam_t *bce);
 /* Insert a cam event in one shot. It will have a 0 length */
