@@ -16,7 +16,7 @@
 
 #include "rtp-session.h"
 
-void rtp_session_init(struct rtp_session *rs, const char *url)
+void rtp_device_init(struct rtp_device *rs, const char *url)
 {
 	int i;
 	memset(rs, 0, sizeof(*rs));
@@ -34,7 +34,7 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
-void rtp_session_stop(struct rtp_session *rs)
+void rtp_device_stop(struct rtp_device *rs)
 {
 	int i;
 
@@ -55,7 +55,7 @@ void rtp_session_stop(struct rtp_session *rs)
 	}
 }
 
-int rtp_session_start(struct rtp_session *rs)
+int rtp_device_start(struct rtp_device *rs)
 {
 	int i, re;
 	AVDictionary *avopt = NULL;
@@ -77,7 +77,7 @@ int rtp_session_start(struct rtp_session *rs)
 	av_dict_free(&avopt);
 
 	if ((re = av_find_stream_info(rs->ctx)) < 0) {
-		rtp_session_stop(rs);
+		rtp_device_stop(rs);
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
@@ -104,7 +104,7 @@ int rtp_session_start(struct rtp_session *rs)
 	}
 
 	if (rs->video_stream_index < 0) {
-		rtp_session_stop(rs);
+		rtp_device_stop(rs);
 		strcpy(rs->error_message, "RTSP session contains no valid video stream");
 		return -1;
 	}
@@ -112,7 +112,7 @@ int rtp_session_start(struct rtp_session *rs)
 	return 0;
 }
 
-int rtp_session_read(struct rtp_session *rs)
+int rtp_device_read(struct rtp_device *rs)
 {
 	int re;
 	struct rtp_stream_data *streamdata = 0;
@@ -225,12 +225,12 @@ int rtp_session_read(struct rtp_session *rs)
 	return 0;
 }
 
-int rtp_session_frame_is_keyframe(struct rtp_session *rs)
+int rtp_device_frame_is_keyframe(struct rtp_device *rs)
 {
 	return (rs->frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
 }
 
-int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
+int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 {
 	if (!rs->ctx) {
 		strcpy(rs->error_message, "No active RTSP session");
@@ -284,7 +284,7 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	return 0;
 }
 
-void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
+void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 {
 	int64_t offset;
 	int i;
@@ -314,7 +314,7 @@ void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
 	rs->frame.pts = pts;
 }
 
-const char *rtp_session_stream_info(struct rtp_session *rs)
+const char *rtp_device_stream_info(struct rtp_device *rs)
 {
 	if (rs->video_stream_index < 0) {
 		strcpy(rs->error_message, "No streams");

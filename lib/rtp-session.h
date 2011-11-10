@@ -4,8 +4,8 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-#ifndef __RTP_SESSION_H
-#define __RTP_SESSION_H
+#ifndef __RTP_DEVICE_H
+#define __RTP_DEVICE_H
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -17,7 +17,7 @@ struct rtp_stream_data {
 	int was_last_diff_skipped;
 };
 
-struct rtp_session {
+struct rtp_device {
 	char url[1024];
 	char error_message[512];
 
@@ -30,13 +30,13 @@ struct rtp_session {
 	struct rtp_stream_data stream_data[RTP_NUM_STREAMS];
 };
 
-void rtp_session_init(struct rtp_session *rs, const char *url);
-void rtp_session_stop(struct rtp_session *rs);
-int rtp_session_start(struct rtp_session *rs);
-int rtp_session_read(struct rtp_session *rs);
-int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx);
-void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts);
-int rtp_session_frame_is_keyframe(struct rtp_session *rs);
-const char *rtp_session_stream_info(struct rtp_session *rs);
+void rtp_device_init(struct rtp_device *rs, const char *url);
+void rtp_device_stop(struct rtp_device *rs);
+int rtp_device_start(struct rtp_device *rs);
+int rtp_device_read(struct rtp_device *rs);
+int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx);
+void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts);
+int rtp_device_frame_is_keyframe(struct rtp_device *rs);
+const char *rtp_device_stream_info(struct rtp_device *rs);
 
-#endif /* __RTP_SESSION_H */
+#endif /* __RTP_DEVICE_H */

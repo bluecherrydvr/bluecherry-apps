@@ -44,7 +44,7 @@ int has_audio(struct bc_record *bc_rec)
 	if (bc_rec->pcm != NULL)
 		return 1;
 
-	if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.audio_stream_index >= 0)
+	if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp.audio_stream_index >= 0)
 		return 1;
 
 	return 0;
@@ -202,7 +202,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
 		                           bc_rec->audio_st->time_base);
 	} else {
-		struct rtp_session *rs = &bc_rec->bc->rtp_sess;
+		struct rtp_device *rs = &bc_rec->bc->rtp;
 
 		if (rs->frame.stream_index != rs->audio_stream_index)
 			return 0;
@@ -226,7 +226,7 @@ int bc_aud_out(struct bc_record *bc_rec)
 	pkt.flags |= AV_PKT_FLAG_KEY;
 	pkt.stream_index = bc_rec->audio_st->index;
 
-//	bc_dev_info(bc_rec, "audio pts %lld (frame: %lld)", pkt.pts, bc_rec->bc->rtp_sess.frame.pts);
+//	bc_dev_info(bc_rec, "audio pts %lld (frame: %lld)", pkt.pts, bc_rec->bc->rtp.frame.pts);
 
 	if (av_write_frame(bc_rec->oc, &pkt)) {
 		bc_dev_err(bc_rec, "Error encoding audio frame");
@@ -262,7 +262,7 @@ int bc_vid_out(struct bc_record *bc_rec)
 
 	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 		/* RTP is at a constant 90KHz time scale */
-		pkt.pts = av_rescale_q(bc->rtp_sess.frame.pts, (AVRational){1, 90000},
+		pkt.pts = av_rescale_q(bc->rtp.frame.pts, (AVRational){1, 90000},
 				       bc_rec->video_st->time_base);
 	} else {
 		if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
@@ -439,13 +439,13 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	int size = bc_buf_size(bc);
 
 	if (bc->cam_caps & BC_CAM_CAP_V4L2) {
-		*fden = bc->vparm.parm.capture.timeperframe.denominator;
-		*fnum = bc->vparm.parm.capture.timeperframe.numerator;
-		*width = bc->vfmt.fmt.pix.width;
-		*height = bc->vfmt.fmt.pix.height;
+		*fden = bc->v4l2.vparm.parm.capture.timeperframe.denominator;
+		*fnum = bc->v4l2.vparm.parm.capture.timeperframe.numerator;
+		*width = bc->v4l2.vfmt.fmt.pix.width;
+		*height = bc->v4l2.vfmt.fmt.pix.height;
 		codec_id = bc_rec->codec_id;
-	} else if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp_sess.video_stream_index >= 0) {
-		AVStream *stream = bc->rtp_sess.ctx->streams[bc->rtp_sess.video_stream_index];
+	} else if ((bc->cam_caps & BC_CAM_CAP_RTSP) && bc->rtp.video_stream_index >= 0) {
+		AVStream *stream = bc->rtp.ctx->streams[bc->rtp.video_stream_index];
 		*fnum = stream->time_base.num;
 		*fden = stream->time_base.den; /* XXX is this correct? */
 		*width = stream->codec->width;
@@ -626,12 +626,12 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 			goto error;
 		}
 		
-		if (rtp_session_setup_output(&bc->rtp_sess, oc) < 0)
+		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
 			goto error;
 		
 		/* Recordings must always start with a PTS of 0; this will adjust all future PTS
 		 * values accordingly. */
-		rtp_session_set_current_pts(&bc->rtp_sess, 0);
+		rtp_device_set_current_pts(&bc->rtp, 0);
 		
 		bc_rec->audio_st = bc_rec->video_st = NULL;
 		for (i = 0; i < oc->nb_streams; ++i) {

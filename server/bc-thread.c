@@ -150,7 +150,7 @@ static void *bc_device_thread(void *data)
 
 			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 				bc_dev_info(bc_rec, "RTP stream started: %s",
-				            rtp_session_stream_info(&bc->rtp_sess));
+				            rtp_device_stream_info(&bc->rtp));
 			}
 		}
 
@@ -209,8 +209,8 @@ static void *bc_device_thread(void *data)
 			
 			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
 				bc_dev_err(bc_rec, "RTSP read error: %s",
-				           (*bc->rtp_sess.error_message) ?
-				            bc->rtp_sess.error_message :
+				           (*bc->rtp.error_message) ?
+				            bc->rtp.error_message :
 				            "Unknown error");
 			}
 			
@@ -333,7 +333,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
-	bc->rtp_sess.want_audio = !bc_rec->cfg.aud_disabled;
+	bc->rtp.want_audio = !bc_rec->cfg.aud_disabled;
 
 	/* Initialize device state */
 	try_formats(bc_rec);

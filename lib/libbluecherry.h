@@ -49,12 +49,7 @@ typedef void * BC_DB_RES;
 #define BC_CAM_CAP_SOLO		0x00000008
 #define BC_CAM_CAP_MJPEG_URL	0x00000010
 
-struct bc_handle {
-	char			device[512];
-	char			driver[512];
-	char			mjpeg_url[1024];
-
-	/* Track info about the v4l2 device */
+struct v4l2_device {
 	int			dev_fd;
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
@@ -66,9 +61,18 @@ struct bc_handle {
 		struct v4l2_buffer	vb;
 	}			p_buf[BC_BUFFERS];
 	int			local_bufs;
+};
+
+struct bc_handle {
+	char			device[512];
+	char			driver[512];
+	char			mjpeg_url[1024];
+
+	struct v4l2_device	v4l2;
+	/* Track info about the v4l2 device */
 
 	/* RTSP related information */
-	struct rtp_session	rtp_sess;
+	struct rtp_device	rtp;
 
 	int			started;
 	int			buf_idx;
