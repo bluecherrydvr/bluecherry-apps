@@ -220,6 +220,10 @@ if (!$url) {
 } else {
 	# Get the boundary as well
 	get_boundary($url);
+	# Some devices (Axis) add an extra -- on the boundary that is not in the output.
+	# Strip it. Bug #992
+	if (substr($boundary, 0, 2) == "--")
+		$boundary = substr($boundary, 2);
 }
 
 if ($multi)
