@@ -81,26 +81,18 @@ function get_boundary($url_full)
 	while (($msg = fgets($fh)) != FALSE) {
 		if ($msg == "\r\n")
 			break;
-		if (stristr($msg, "Content-Type: "))
-			break;
-		if (sscanf($msg, "Content-Type: multipart/".
-			   "x-mixed-replace; boundary=%s",
-			   $myb) == 1)
+		$matches = array();
+		if (preg_match('/^Content-Type:\s*multipart\/x-mixed-replace\s*;.*boundary=(\S+)/i', $msg, $matches)) {
+			$boundary = $matches[1];
+			fclose($fh);
+			return;
+		} else if (stristr($msg, 'Content-Type:'))
 			break;
 	}
 	fclose($fh);
 
 	if ($msg == FALSE)
 		return;
-
-	if (stristr($msg, "Content-Type: ") == FALSE)
-		return;
-
-	if (sscanf($msg, "Content-Type: multipart/x-mixed-replace; boundary=%s",
-		   $myb) == 1) {
-		$boundary = $myb;
-		return;
-	}
 
 	/* The URL only supplies us one JPEG per request, so we make it a feed */
 	if (stristr($msg, "Content-Type: image/jpeg"))
