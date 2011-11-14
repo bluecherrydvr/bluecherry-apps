@@ -343,6 +343,7 @@ class camera {
 				}
 			break;
 			case 'notconfigured':
+				$required_capacity = 2; #2FPS min
 				$disabled = ($container_card->info['available_capacity']>=2) ? 0 : 1;
 				if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
 					$res['y']='240';
