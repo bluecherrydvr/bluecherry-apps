@@ -79,7 +79,7 @@ function get_boundary($url_full)
 	$myb = "";
 	// Read the header to get the Content-Type
 	while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n")
+		if ($msg == "\r\n" || $msg == "\n")
 			break;
 		$matches = array();
 		if (preg_match('/^Content-Type:\s*multipart\/x-mixed-replace\s*;.*boundary=(\S+)/i', $msg, $matches)) {
@@ -136,7 +136,7 @@ function get_one_jpeg($url_full)
 	// For multipart/mixed, skip the initial header
 	if ($single_url == FALSE) {
 		while (($msg = fgets($fh)) != FALSE) {
-			if ($msg == "\r\n")
+			if ($msg == "\r\n" || $msg == "\n")
 				break;
 		}
 		// Skip boundary
@@ -145,7 +145,7 @@ function get_one_jpeg($url_full)
 
         // Read the header to get the Content-Length
         while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n")
+		if ($msg == "\r\n" || $msg == "\n")
 			break;
 		sscanf($msg, "Content-Length: %d", $myl);
         }
