@@ -20,7 +20,7 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-DLink', '/play1.sdp', '/mjpeg.cgi', 554, 80),
 ('RTSP-Grandstream', '/', '/snapshot/view0.jpg', 554, 80),
 ('RTSP-Panasonic-BL', '/nphMpeg4/g726-640x480', '/nphMotionJpeg?Resolution=640x480&Quality=Standard', 554, 80),
-('RTSP-Panasonic-WV', '/MediaInput/h264, '/cgi-bin/camera', 554, 80),
+('RTSP-Panasonic-WV', '/MediaInput/h264', '/cgi-bin/camera', 554, 80),
 ('RTSP-Trendnet-V1', '/mpeg4?tcp', '/cgi/jpg/image.cgi', 554, 80),
 ('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80);
 
