@@ -1,3 +1,20 @@
+bluecherry (1:2.0.0-0beta8.3) lucid; urgency=low
+
+  * Bug #982: rtsp: all streams are setup, even when not recording from all streams
+  * Bug #984: Airlive H.264 stream does not work
+  * Bug #985: Brickcom H.264 stream framerate is wrong
+  * Bug #986: Arecont stream framerate is wrong
+  * Bug #987: rtsp: Crash caused by invalid H264 codec data
+  * Bug #990: Web: Audio enable|disable checkbox does not work
+  * Bug #992: Live view stuck at "buffering" for some IP cameras on reduced FPS
+  * Bug #993: PHP Notice: Undefined variable: required_capacity
+  * Bug #997: Live view doesn't work on Panasonic IP cameras, due to header parsing
+  * Bug #998: Live view doesn't work on Panasonic IP cameras, due to missing content-length
+  * Bug #999: rtsp: Use reliable timestamps for PTS calculation on video-only streams
+  * Feature #995: Bump expiration date to 12/15/2011
+
+ -- John Brooks <john.brooks@bluecherry.net>  Mon, 14 Nov 2011 19:52:00 -0600
+
 bluecherry (1:2.0.0-0beta8.2) lucid; urgency=low
 
   * Bug #841: Natty packages depend on libx264-85, however the Natty version is actually libx264-105
