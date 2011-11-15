@@ -101,7 +101,7 @@ function get_boundary($url_full)
 
 function get_one_jpeg($url_full)
 {
-	global $single_url;
+	global $single_url, $boundary;
 
 	$url = parse_url($url_full);
 	if (!$url)
@@ -150,17 +150,27 @@ function get_one_jpeg($url_full)
 		sscanf($msg, "Content-Length: %d", $myl);
         }
 
-	if ($myl) {
-		$myread = $myl;
-		$myj = "";
-		do {
-			$tmp = fread($fh, $myread);
-			if ($tmp == FALSE)
-				break;
-			$myj = $myj . $tmp;
+	$myread = max($myl, 512);
+	$myj = "";
+	$boundarystr = "\n--".$boundary;
+	do {
+		$tmp = fread($fh, $myread);
+		if ($tmp == FALSE || strlen($tmp) > 1024*1024*2)
+			break;
+		$myj .= $tmp;
+
+		if ($myl) {
 			$myread -= strlen($tmp);
-		} while ($myread > 0);
-	}
+		} else {
+			$bpos = strpos($myj, $boundarystr, strlen($myj)-strlen($tmp)-strlen($boundarystr)-1);
+			if ($bpos !== FALSE) {
+				if ($bpos > 0 && $tmp[$bpos-1] == '\r')
+					$bpos--;
+				$myj = substr($myj, 0, $bpos);
+				break;
+			}
+		}
+	} while ($myread > 0);
 
         fclose($fh);
 
