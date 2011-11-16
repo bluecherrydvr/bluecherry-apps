@@ -414,4 +414,4 @@ INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `
 (374, 'Camera', 'Panasonic', 'WV-SW395', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (375, 'Camera', 'Panasonic', 'WV-SF346', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (376, 'Camera', 'Airlive', 'OD-325HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1'),
-(377, 'Camera', 'Airlive', 'OD-600HD, 'MPEG4, H264', '', 'RTSP-Airlive-V1');
+(377, 'Camera', 'Airlive', 'OD-600HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1');
