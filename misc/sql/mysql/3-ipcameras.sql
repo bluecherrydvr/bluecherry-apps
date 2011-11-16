@@ -22,6 +22,7 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-Panasonic-BL', '/nphMpeg4/g726-640x480', '/nphMotionJpeg?Resolution=640x480&Quality=Standard', 554, 80),
 ('RTSP-Panasonic-WV', '/MediaInput/h264', '/cgi-bin/camera', 554, 80),
 ('RTSP-Trendnet-V1', '/mpeg4?tcp', '/cgi/jpg/image.cgi', 554, 80),
+('RTSP-Airlive-V1', '/h264/media.amp', '/video.cgi?resolution=vga', 554, 80),
 ('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80);
 
 CREATE TABLE `ipCameras` (
@@ -411,4 +412,6 @@ INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `
 (372, 'Camera', 'Panasonic', 'WV-SP305', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (373, 'Camera', 'Panasonic', 'WV-SP306', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (374, 'Camera', 'Panasonic', 'WV-SW395', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
-(375, 'Camera', 'Panasonic', 'WV-SF346', 'MPEG4, H264', '', 'RTSP-Panasonic-WV');
+(375, 'Camera', 'Panasonic', 'WV-SF346', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
+(376, 'Camera', 'Airlive', 'OD-325HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1'),
+(377, 'Camera', 'Airlive', 'OD-600HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1');
