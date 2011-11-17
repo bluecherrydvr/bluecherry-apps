@@ -79,28 +79,20 @@ function get_boundary($url_full)
 	$myb = "";
 	// Read the header to get the Content-Type
 	while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n")
+		if ($msg == "\r\n" || $msg == "\n")
 			break;
-		if (stristr($msg, "Content-Type: "))
-			break;
-		if (sscanf($msg, "Content-Type: multipart/".
-			   "x-mixed-replace; boundary=%s",
-			   $myb) == 1)
+		$matches = array();
+		if (preg_match('/^Content-Type:\s*multipart\/x-mixed-replace\s*;.*boundary=(\S+)/i', $msg, $matches)) {
+			$boundary = $matches[1];
+			fclose($fh);
+			return;
+		} else if (stristr($msg, 'Content-Type:'))
 			break;
 	}
 	fclose($fh);
 
 	if ($msg == FALSE)
 		return;
-
-	if (stristr($msg, "Content-Type: ") == FALSE)
-		return;
-
-	if (sscanf($msg, "Content-Type: multipart/x-mixed-replace; boundary=%s",
-		   $myb) == 1) {
-		$boundary = $myb;
-		return;
-	}
 
 	/* The URL only supplies us one JPEG per request, so we make it a feed */
 	if (stristr($msg, "Content-Type: image/jpeg"))
@@ -109,7 +101,7 @@ function get_boundary($url_full)
 
 function get_one_jpeg($url_full)
 {
-	global $single_url;
+	global $single_url, $boundary;
 
 	$url = parse_url($url_full);
 	if (!$url)
@@ -144,7 +136,7 @@ function get_one_jpeg($url_full)
 	// For multipart/mixed, skip the initial header
 	if ($single_url == FALSE) {
 		while (($msg = fgets($fh)) != FALSE) {
-			if ($msg == "\r\n")
+			if ($msg == "\r\n" || $msg == "\n")
 				break;
 		}
 		// Skip boundary
@@ -153,22 +145,32 @@ function get_one_jpeg($url_full)
 
         // Read the header to get the Content-Length
         while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n")
+		if ($msg == "\r\n" || $msg == "\n")
 			break;
 		sscanf($msg, "Content-Length: %d", $myl);
         }
 
-	if ($myl) {
-		$myread = $myl;
-		$myj = "";
-		do {
-			$tmp = fread($fh, $myread);
-			if ($tmp == FALSE)
-				break;
-			$myj = $myj . $tmp;
+	$myread = max($myl, 512);
+	$myj = "";
+	$boundarystr = "\n--".$boundary;
+	do {
+		$tmp = fread($fh, $myread);
+		if ($tmp == FALSE || strlen($tmp) > 1024*1024*2)
+			break;
+		$myj .= $tmp;
+
+		if ($myl) {
 			$myread -= strlen($tmp);
-		} while ($myread > 0);
-	}
+		} else {
+			$bpos = strpos($myj, $boundarystr, strlen($myj)-strlen($tmp)-strlen($boundarystr)-1);
+			if ($bpos !== FALSE) {
+				if ($bpos > 0 && $tmp[$bpos-1] == '\r')
+					$bpos--;
+				$myj = substr($myj, 0, $bpos);
+				break;
+			}
+		}
+	} while ($myread > 0);
 
         fclose($fh);
 
