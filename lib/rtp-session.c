@@ -45,6 +45,10 @@ void rtp_device_stop(struct rtp_device *rs)
 
 	av_free_packet(&rs->frame);
 	av_init_packet(&rs->frame);
+
+	for (i = 0; i < rs->ctx->nb_streams; ++i)
+		avcodec_close(rs->ctx->streams[i]->codec);
+
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
@@ -335,3 +339,32 @@ const char *rtp_device_stream_info(struct rtp_device *rs)
 
 	return rs->error_message;
 }
+
+int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
+{
+	AVStream *stream;
+	int re;
+	int have_picture = 0;
+
+	if (rs->frame.stream_index != rs->video_stream_index)
+		return -1;
+
+	stream = rs->ctx->streams[rs->frame.stream_index];
+
+	if (!stream->codec->codec) {
+		AVCodec *codec = avcodec_find_decoder(stream->codec->codec_id);
+		if ((re = avcodec_open2(stream->codec, codec, NULL)) < 0) {
+			av_strerror(re, rs->error_message, sizeof(rs->error_message));
+			return -1;
+		}
+	}
+
+	re = avcodec_decode_video2(stream->codec, frame, &have_picture, &rs->frame);
+	if (re < 0) {
+		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		return -1;
+	}
+
+	return have_picture;
+}
+

@@ -38,5 +38,10 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx);
 void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts);
 int rtp_device_frame_is_keyframe(struct rtp_device *rs);
 const char *rtp_device_stream_info(struct rtp_device *rs);
+/* Decode the current packet, if it is a video packet, and put the result in
+ * frame. frame must be allocated with avcodec_alloc_frame prior to calling.
+ * Returns -1 on error, 0 on no-picture (but no error), and 1 when frame
+ * contains a valid picture. */
+int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame);
 
 #endif /* __RTP_DEVICE_H */
