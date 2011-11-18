@@ -524,6 +524,9 @@ void bc_handle_stop(struct bc_handle *bc)
 	if (!bc || !bc->started)
 		return;
 
+	/* free motion detection resources */
+	bc_set_motion(bc, 0);
+
 	if (bc->type == BC_DEVICE_V4L2)
 		v4l2_handle_stop(bc);
 	else if (bc->type == BC_DEVICE_RTP)
@@ -535,8 +538,13 @@ void bc_handle_stop(struct bc_handle *bc)
 
 void bc_handle_reset(struct bc_handle *bc)
 {
-	if (bc->type == BC_DEVICE_V4L2)
-		bc_handle_stop(bc);
+	if (!bc || !bc->started)
+		return;
+
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_handle_stop(bc);
+		bc->started = 0;
+	}
 }
 
 void bc_handle_free(struct bc_handle *bc)

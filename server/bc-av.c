@@ -481,7 +481,7 @@ static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
 	}
 
 	len = avcodec_decode_video2(c, picture, &got_picture, &packet);
-	
+
 	if (len < 0 || !got_picture)
 		goto pic_info_fail;
 

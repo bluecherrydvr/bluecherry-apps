@@ -72,6 +72,14 @@ struct v4l2_device {
 	int			dev_id;
 };
 
+struct bc_motion_data {
+	int enabled;
+
+	/* State for generic motion detection */
+	struct SwsContext *convContext;
+	AVFrame *refFrame;
+};
+
 struct bc_handle {
 	char			device[512];
 	char			driver[512];
@@ -85,6 +93,9 @@ struct bc_handle {
 
 	int			started;
 	int			got_vop;
+
+	/* Motion detection; see bc_set_motion et al */
+	struct bc_motion_data motion_data;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
