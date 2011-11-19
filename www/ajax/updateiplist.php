@@ -5,7 +5,7 @@
 include("../lib/lib.php");  #common functions	
 
 function updateCamList($versions){
-	$file = array('ipCameras' => '', 'ipCameraDriver' => ''); //, 'ipCameraPTZDriver' => '');
+	$file = array('ipCameras' => '', 'ipCameraDriver' => ''); //, 'ipCameraPTZDriver' => ''); ptz not supported yet
 	data::query('BEGIN', true);
 	foreach ($file as $table => $v){
 		$file[$table] = @fopen(VAR_PATH_TO_IPCAMLIST_UPDATE.'?t='.VAR_IPCAMLIST_UPDATE_TOKEN.'&m='.$table, 'r');
@@ -15,9 +15,12 @@ function updateCamList($versions){
 			$tmp = explode('|', $tmp);
 			$query .= ' (';
 			foreach ($tmp as $key => $v){
-				$value .= "'".trim($v, '\'')."', ";
+				
+				$value .= "'".trim(str_replace('\'', '', $v))."', ";
+				
 			}
-			$query .= rtrim(trim($value, ' ,'), "'");
+			$value = trim($value, ' ,');
+			$query .= $value;
 			unset($value);
 			$query .= '), ';
 		}
