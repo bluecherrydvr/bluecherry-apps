@@ -366,150 +366,13 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 				       bc_rec->outfile, bc_rec->event);
 }
 
-static void bc_save_jpeg(struct bc_record *bc_rec, AVCodecContext *oc, AVFrame *picture)
-{
-	/* Disabled for now, until snapshots can be done outside of the database and
-	 * cleaned up appropriately. */
-#if 0
-	AVCodecContext *joc = NULL;
-	AVCodec *codec;
-	unsigned char *buf = NULL;
-	int buf_size;
-	int pic_size;
-
-	buf_size = avpicture_get_size(PIX_FMT_YUVJ420P, oc->width, oc->height);
-
-	buf = malloc(buf_size);
-	if (buf == NULL)
-		return;
-
-	joc = avcodec_alloc_context();
-	if (!joc)
-		goto save_fail;
-
-	joc->bit_rate = oc->bit_rate;
-	joc->width = oc->width;
-	joc->height = oc->height;
-	joc->pix_fmt = PIX_FMT_YUVJ420P; // XXX 422 or 444?
-	joc->codec_id = CODEC_ID_MJPEG;
-	joc->codec_type = AVMEDIA_TYPE_VIDEO;
-	joc->time_base.num = oc->time_base.num;
-	joc->time_base.den = oc->time_base.den;
-
-	codec = avcodec_find_encoder(joc->codec_id);
-	if (!codec)
-		goto save_fail;
-
-	if (avcodec_open(joc, codec) < 0) {
-		codec = NULL;
-		goto save_fail;
-	}
-
-	joc->mb_lmin = joc->lmin = joc->qmin * FF_QP2LAMBDA;
-	joc->mb_lmax = joc->lmax = joc->qmax * FF_QP2LAMBDA;
-	joc->flags = CODEC_FLAG_QSCALE;
-	joc->global_quality = joc->qmin * FF_QP2LAMBDA;
-
-	picture->pts = 1;
-	picture->quality = joc->global_quality;
-	pic_size = avcodec_encode_video(joc, buf, buf_size, picture);
-
-	bc_media_set_snapshot(bc_rec->event, buf, pic_size);
-
-save_fail:
-	if (joc != NULL) {
-		if (codec)
-			avcodec_close(joc);
-		av_freep(&joc);
-	}
-	if (buf != NULL)
-		free(buf);
-#endif
-}
-
-static int bc_get_frame_info(struct bc_record *bc_rec, int *width, int *height,
-			      int *fnum, int *fden)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	AVCodec *codec = NULL;
-	AVCodecContext *c;
-	int got_picture, len;
-	AVFrame *picture;
-	AVPacket packet;
-	enum CodecID codec_id = CODEC_ID_NONE;
-	void *buf = bc_buf_data(bc);
-	int size = bc_buf_size(bc);
-
-	if (bc->type == BC_DEVICE_V4L2) {
-		*fden = bc->v4l2.vparm.parm.capture.timeperframe.denominator;
-		*fnum = bc->v4l2.vparm.parm.capture.timeperframe.numerator;
-		*width = bc->v4l2.vfmt.fmt.pix.width;
-		*height = bc->v4l2.vfmt.fmt.pix.height;
-		codec_id = bc_rec->codec_id;
-	} else if ((bc->type == BC_DEVICE_RTP) && bc->rtp.video_stream_index >= 0) {
-		AVStream *stream = bc->rtp.ctx->streams[bc->rtp.video_stream_index];
-		*fnum = stream->time_base.num;
-		*fden = stream->time_base.den; /* XXX is this correct? */
-		*width = stream->codec->width;
-		*height = stream->codec->height;
-		codec_id = stream->codec->codec_id;
-	} else {
-		return -1;
-	}
-
-	if (buf == NULL || size <= 0)
-		return 0;
-
-	/* Decode the first picture to get frame size */
-	codec = avcodec_find_decoder(codec_id);
-	if (!codec)
-		return 0;
-
-	c = avcodec_alloc_context();
-	c->time_base.num = *fnum;
-	c->time_base.den = *fden;
-
-	picture = avcodec_alloc_frame();
-	av_init_packet(&packet);
-	packet.data = buf;
-	packet.size = size;
-	packet.flags = AV_PKT_FLAG_KEY; // XXX is this correct? necessary?
-
-	if (avcodec_open(c, codec) < 0) {
-		codec = NULL;
-		goto pic_info_fail;
-	}
-
-	len = avcodec_decode_video2(c, picture, &got_picture, &packet);
-
-	if (len < 0 || !got_picture)
-		goto pic_info_fail;
-
-	*width = c->width;
-	*height = c->height;
-
-	bc_save_jpeg(bc_rec, c, picture);
-
-pic_info_fail:
-	if (c != NULL) {
-		if (codec)
-			avcodec_close(c);
-		av_freep(&c);
-	}
-	if (picture != NULL)
-		av_freep(&picture);
-	av_free_packet(&packet);
-
-	return 0;
-}
-
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 {
 	AVStream *st;
-	int width = 0, height = 0, fnum, fden;
-
-	if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden))
-		return -1;
+	int fden   = bc_rec->bc->v4l2.vparm.parm.capture.timeperframe.denominator;
+	int fnum   = bc_rec->bc->v4l2.vparm.parm.capture.timeperframe.numerator;
+	int width  = bc_rec->bc->v4l2.vfmt.fmt.pix.width;
+	int height = bc_rec->bc->v4l2.vfmt.fmt.pix.height;
 
 	/* Setup new video stream */
 	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
@@ -617,17 +480,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 
 	oc->oformat = bc_rec->fmt_out;
 	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
-	/* snprintf(oc->title, sizeof(oc->title), "BC: %s", bc_rec->name); XXX replacement in 0.8? */
 
 	if (bc->type == BC_DEVICE_RTP) {
-		/* We don't need this information for RTSP, but this generates the event JPEG frame, so
-		 * it should be called anyway (refactor would be nice). */
-		int width = 0, height = 0, fnum, fden;
-		if (bc_get_frame_info(bc_rec, &width, &height, &fnum, &fden)) {
-			errno = ENOMEM;
-			goto error;
-		}
-		
 		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
 			goto error;
 		
