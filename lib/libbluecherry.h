@@ -77,7 +77,9 @@ struct bc_motion_data {
 
 	/* State for generic motion detection */
 	struct SwsContext *convContext;
-	AVFrame *refFrame;
+	AVFrame           *refFrame;
+	int                refFrameHeight;
+	int                refFrameWidth;
 };
 
 struct bc_handle {

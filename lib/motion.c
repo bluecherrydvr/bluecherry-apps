@@ -146,6 +146,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		frame = avcodec_alloc_frame();
 		bufSize = avpicture_get_size(PIX_FMT_GRAY8, cctx->width, cctx->height);
 		buf = av_malloc(bufSize);
+		if (!buf)
+			return -1;
 		avpicture_fill((AVPicture*)frame, buf, PIX_FMT_GRAY8, cctx->width, cctx->height);
 
 		sws_scale(md->convContext, rawFrame->data, rawFrame->linesize, 0,
@@ -153,11 +155,12 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 		av_free(rawFrame);
 
-		if (md->refFrame) {
+		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
+		{
 			uint8_t *r, *c, *end = frame->data[0] + (frame->linesize[0] * cctx->height);
 			int changed = 0;
 			for (r = md->refFrame->data[0], c = frame->data[0]; c != end; ++r, ++c) {
-				if (abs(*r - *c) > 20) // XXX magic sensitivity number
+				if (abs(*r - *c) > 10) // XXX magic sensitivity number
 					++changed;
 			}
 
@@ -167,6 +170,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			av_free(md->refFrame);
 		}
 		md->refFrame = frame;
+		md->refFrameHeight = cctx->height;
+		md->refFrameWidth  = cctx->width;
 	}
 
 	return ret;
