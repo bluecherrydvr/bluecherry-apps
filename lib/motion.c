@@ -127,6 +127,9 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		int bufSize;
 		int r;
 
+		if (!bc_buf_is_video_frame(bc))
+			return 0;
+
 		rawFrame = avcodec_alloc_frame();
 		r = rtp_device_decode_video(&bc->rtp, rawFrame);
 		if (r < 0) {

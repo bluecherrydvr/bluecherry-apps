@@ -85,6 +85,7 @@ static int process_schedule(struct bc_record *bc_rec)
 		}
 		bc_close_avcodec(bc_rec);
 		bc_handle_reset(bc);
+		bc_rec->mot_last_ts = 0;
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
@@ -92,6 +93,7 @@ static int process_schedule(struct bc_record *bc_rec)
 		bc_handle_stop(bc);
 		if (bc)
 			bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
+		bc_rec->mot_last_ts = 0;
 		bc_rec->sched_last = 0;
 		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
@@ -115,29 +117,28 @@ static int check_motion(struct bc_record *bc_rec)
 	if (bc_rec->sched_cur != 'M')
 		return 1;
 
+	if (!bc_buf_is_video_frame(bc_rec->bc))
+		return bc_rec->mot_last_ts > 0;
+
 	monotonic_now = bc_gettime_monotonic();
 
 	ret = bc_motion_is_detected(bc_rec->bc);
 	if (ret) {
-		if (!bc_rec->oc) {
+		if (bc_rec->event == BC_EVENT_CAM_NULL) {
 			/* Starting a new motion recording */
-			/* If we already have an event in progress, keep it going */
-			if (bc_rec->event == BC_EVENT_CAM_NULL) {
-				bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
-					BC_EVENT_CAM_T_MOTION, bc_rec->media);
-				bc_dev_info(bc_rec, "Motion event started");
-			}
+			bc_dev_info(bc_rec, "Motion event started");
+			bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+				BC_EVENT_CAM_T_MOTION, bc_rec->media);
 		}
 
 		/* Update the timestamp on every frame with motion */
 		bc_rec->mot_last_ts = monotonic_now;
 	} else {
-		if (bc_rec->oc) {
+		if (bc_rec->mot_last_ts) {
 			/* Active recording */
 			if (monotonic_now - bc_rec->mot_last_ts >= 3) {
 				/* End of event */
-				/* Do not stop event here, let that happen in bc-thread.c
-			         * where bc_buf_get returns ERESTART. */
+				bc_rec->mot_last_ts = 0;
 				bc_dev_info(bc_rec, "Motion event stopped");
 			} else
 				ret = 1; /* still recording (postrecord) */
