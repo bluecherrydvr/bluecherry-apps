@@ -65,12 +65,15 @@ int rtp_device_start(struct rtp_device *rs)
 {
 	int i, re;
 	AVDictionary *avopt = NULL;
+	char tmp[24];
 
 	if (rs->ctx)
 		return 0;
 
 	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
 
+	snprintf(tmp, sizeof(tmp), "%"PRId64, (int64_t)(0.7*AV_TIME_BASE));
+	av_dict_set(&avopt, "max_delay", tmp, 0);
 	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
 
 	if ((re = avformat_open_input(&rs->ctx, rs->url, NULL, &avopt)) != 0) {
@@ -79,6 +82,9 @@ int rtp_device_start(struct rtp_device *rs)
 		av_dict_free(&avopt);
 		return -1;
 	}
+
+	if (av_dict_get(avopt, "", NULL, 0))
+		av_log(rs->ctx, AV_LOG_WARNING, "Unable to set format options");
 
 	av_dict_free(&avopt);
 
