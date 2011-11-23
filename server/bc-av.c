@@ -204,13 +204,7 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 		pkt->data  = rs->frame.data;
 		pkt->size  = rs->frame.size;
 		pkt->flags = rs->frame.flags;
-
-		if (rs->frame.pts == AV_NOPTS_VALUE)
-			pkt->pts = AV_NOPTS_VALUE;
-		else
-			pkt->pts = av_rescale_q(rs->frame.pts,
-			                        rs->ctx->streams[rs->audio_stream_index]->time_base,
-			                        bc_rec->audio_st->time_base);
+		pkt->pts   = rs->frame.pts;
 	} else
 		return 0;
 
@@ -234,21 +228,24 @@ int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 	if (!pkt->data || !pkt->size)
 		return 0;
 
-	if (bc->type == BC_DEVICE_RTP && bc->rtp.frame.pts != AV_NOPTS_VALUE) {
-		/* RTP is at a constant 90KHz time scale */
-		pkt->pts = av_rescale_q(bc->rtp.frame.pts, (AVRational){1, 90000},
-		                        bc_rec->video_st->time_base);
-	}
+	if (bc->type == BC_DEVICE_RTP)
+		pkt->pts = bc->rtp.frame.pts;
 
 	return 1;
 }
 
 int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt)
 {
+	AVStream *s;
 	AVPacket opkt;
 	int re;
 
-	if (pkt->type == AVMEDIA_TYPE_AUDIO && !bc_rec->audio_st)
+	if (pkt->type == AVMEDIA_TYPE_AUDIO)
+		s = bc_rec->audio_st;
+	else
+		s = bc_rec->video_st;
+
+	if (!s)
 		return 0;
 
 	/* Cutoff points can result in a few negative PTS frames, because often
@@ -262,26 +259,30 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	}
 	
 	av_init_packet(&opkt);
-	opkt.flags = pkt->flags;
-	opkt.pts   = pkt->pts;
-	opkt.data  = pkt->data;
-	opkt.size  = pkt->size;
-
-	if (pkt->type == AVMEDIA_TYPE_AUDIO)
-		opkt.stream_index = bc_rec->audio_st->index;
-	else
-		opkt.stream_index = bc_rec->video_st->index;
+	opkt.flags        = pkt->flags;
+	opkt.pts          = pkt->pts;
+	opkt.data         = pkt->data;
+	opkt.size         = pkt->size;
+	opkt.stream_index = s->index;
 
 	if (bc_rec->bc->type == BC_DEVICE_V4L2 && opkt.pts == AV_NOPTS_VALUE) {
-		AVStream *s = (pkt->type == AVMEDIA_TYPE_AUDIO) ?
-		              bc_rec->audio_st : bc_rec->video_st;
-
 		if (s->codec->coded_frame && s->codec->coded_frame->pts != AV_NOPTS_VALUE)
 			opkt.pts = av_rescale_q(s->codec->coded_frame->pts, s->codec->time_base,
 			                        s->time_base); 
 	}
 
-	bc_log("stream %d pts %"PRId64, opkt.stream_index, opkt.pts);
+	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != AV_NOPTS_VALUE) {
+		struct rtp_device *rs = &bc_rec->bc->rtp;
+		/* RTP packets must be scaled to the output PTS */
+		if (pkt->type == AVMEDIA_TYPE_AUDIO) {
+			opkt.pts = av_rescale_q(opkt.pts,
+			                        rs->ctx->streams[rs->audio_stream_index]->time_base,
+			                        s->time_base);
+		} else {
+			/* RTP is at a constant 90KHz time scale */
+			opkt.pts = av_rescale_q(opkt.pts, (AVRational){1, 90000}, s->time_base);
+		}
+	}
 
 	re = av_write_frame(bc_rec->oc, &opkt);
 	if (re != 0) {
