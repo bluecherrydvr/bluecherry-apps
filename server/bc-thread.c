@@ -152,6 +152,7 @@ static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = data;
 	struct bc_handle *bc = bc_rec->bc;
+	struct bc_output_packet packet;
 	int ret;
 
 	bc_dev_info(bc_rec, "Camera configured");
@@ -206,9 +207,8 @@ static void *bc_device_thread(void *data)
 			                   bc_rec->video_st->time_base.den;
 
 			if (audio_pts < video_pts) {
-				if (bc_aud_out(bc_rec))
-					/* Do nothing */;
-				continue;
+				if (get_output_audio_packet(bc_rec, &packet) > 0)
+					bc_output_packet_write(bc_rec, &packet);
 			}
 		}
 
@@ -244,25 +244,18 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		/* Do this after we get the first frame,
-		 * since we need that in order to decode
-		 * the first frame for avcodec params like
-		 * width, height and frame rate. */
 		if (bc_open_avcodec(bc_rec)) {
 			bc_dev_err(bc_rec, "Error opening avcodec");
 			continue;
 		}
 
-		if (bc_buf_is_video_frame(bc)) {
-			bc_vid_out(bc_rec);
-			/* Error is logged by bc_vid_out. Frame writing errors
-			 * are often non-fatal, but can be noisy when repeated.
-			 * It would be a good idea to delay-and-restart if enough
-			 * of them happen consecutively. */
-		} else {
-			bc_aud_out(bc_rec);
-			/* Do nothing? XXX */
-		}
+		if (bc_buf_is_video_frame(bc))
+			ret = get_output_video_packet(bc_rec, &packet);
+		else
+			ret = get_output_audio_packet(bc_rec, &packet);
+
+		if (ret > 0)
+			bc_output_packet_write(bc_rec, &packet);
 	}
 
 	bc_close_avcodec(bc_rec);

@@ -162,20 +162,17 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	return 0;
 }
 
-/* Returns zero meaning "keep processing", or postive value meaning
- * "wrote one packet to file, can read more" or negative value meaning
- * "error occured or nothing to process". */
-int bc_aud_out(struct bc_record *bc_rec)
+/* The returned packet is only valid until the next bc_buf_get or the next call
+ * to this function. The data must be copied to remain valid.
+ *
+ * Return value is -1 for error, 0 for no packet, 1 for packet written
+ */
+int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt)
 {
-	AVCodecContext *c;
-	AVPacket pkt;
-
-	/* pcm can be null due to not being able to open the alsa dev. */
-	if (!has_audio(bc_rec) || !bc_rec->audio_st)
+	if (!has_audio(bc_rec))
 		return 0;
 
-	c = bc_rec->audio_st->codec;
-	av_init_packet(&pkt);
+	pkt->type = AVMEDIA_TYPE_AUDIO;
 
 	if (bc_rec->pcm) {
 		int size;
@@ -189,99 +186,112 @@ int bc_aud_out(struct bc_record *bc_rec)
 			bc_dev_err(bc_rec, "Error reading from sound device: %s",
 				   snd_strerror(size));
 			bc_alsa_close(bc_rec);
-			avcodec_close(bc_rec->audio_st->codec);
-			bc_rec->audio_st = NULL;
 			return -1;
 		}
 
-		pkt.size = g723_decode(&bc_rec->g723_state,
-				       bc_rec->g723_data, size,
-				       bc_rec->pcm_data);
+		pkt->size = g723_decode(&bc_rec->g723_state, bc_rec->g723_data,
+		                        size, bc_rec->pcm_data);
+		pkt->data = (void *)bc_rec->pcm_data;
 
-		pkt.data = (void *)bc_rec->pcm_data;
-
-		if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
-			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-		                           bc_rec->audio_st->time_base);
-	} else {
+		pkt->flags = AV_PKT_FLAG_KEY;
+		pkt->pts   = AV_NOPTS_VALUE;
+	} else if (bc_rec->bc->type == BC_DEVICE_RTP) {
 		struct rtp_device *rs = &bc_rec->bc->rtp;
 
 		if (rs->frame.stream_index != rs->audio_stream_index)
 			return 0;
 
-		pkt.data = rs->frame.data;
-		pkt.size = rs->frame.size;
-		pkt.pts = av_rescale_q(rs->frame.pts, rs->ctx->streams[rs->audio_stream_index]->time_base,
-		                       bc_rec->audio_st->time_base);
+		pkt->data  = rs->frame.data;
+		pkt->size  = rs->frame.size;
+		pkt->flags = rs->frame.flags;
+
+		if (rs->frame.pts == AV_NOPTS_VALUE)
+			pkt->pts = AV_NOPTS_VALUE;
+		else
+			pkt->pts = av_rescale_q(rs->frame.pts,
+			                        rs->ctx->streams[rs->audio_stream_index]->time_base,
+			                        bc_rec->audio_st->time_base);
+	} else
+		return 0;
+
+	return 1;
+}
+
+int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+{
+	struct bc_handle *bc = bc_rec->bc;
+	if (!bc_buf_is_video_frame(bc))
+		return 0;
+
+	pkt->type = AVMEDIA_TYPE_VIDEO;
+	pkt->pts  = AV_NOPTS_VALUE;
+	if (bc_buf_key_frame(bc))
+		pkt->flags = AV_PKT_FLAG_KEY;
+
+	pkt->data = bc_buf_data(bc);
+	pkt->size = bc_buf_size(bc);
+
+	if (!pkt->data || !pkt->size)
+		return 0;
+
+	if (bc->type == BC_DEVICE_RTP && bc->rtp.frame.pts != AV_NOPTS_VALUE) {
+		/* RTP is at a constant 90KHz time scale */
+		pkt->pts = av_rescale_q(bc->rtp.frame.pts, (AVRational){1, 90000},
+		                        bc_rec->video_st->time_base);
 	}
+
+	return 1;
+}
+
+int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+{
+	AVPacket opkt;
+	int re;
+
+	if (pkt->type == AVMEDIA_TYPE_AUDIO && !bc_rec->audio_st)
+		return 0;
 
 	/* Cutoff points can result in a few negative PTS frames, because often
 	 * the video will be cut before the audio for that time has been written.
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
-	if (pkt.pts != AV_NOPTS_VALUE && pkt.pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping audio frame with negative pts %"PRId64", probably "
-		       "caused by recent PTS reset", pkt.pts);
+	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %"PRId64", probably "
+		       "caused by recent PTS reset", pkt->pts);
 		return 0;
 	}
+	
+	av_init_packet(&opkt);
+	opkt.flags = pkt->flags;
+	opkt.pts   = pkt->pts;
+	opkt.data  = pkt->data;
+	opkt.size  = pkt->size;
 
-	pkt.flags |= AV_PKT_FLAG_KEY;
-	pkt.stream_index = bc_rec->audio_st->index;
+	if (pkt->type == AVMEDIA_TYPE_AUDIO)
+		opkt.stream_index = bc_rec->audio_st->index;
+	else
+		opkt.stream_index = bc_rec->video_st->index;
 
-//	bc_dev_info(bc_rec, "audio pts %lld (frame: %lld)", pkt.pts, bc_rec->bc->rtp.frame.pts);
+	if (bc_rec->bc->type == BC_DEVICE_V4L2 && opkt.pts == AV_NOPTS_VALUE) {
+		AVStream *s = (pkt->type == AVMEDIA_TYPE_AUDIO) ?
+		              bc_rec->audio_st : bc_rec->video_st;
 
-	if (av_write_frame(bc_rec->oc, &pkt)) {
-		bc_dev_err(bc_rec, "Error encoding audio frame");
+		if (s->codec->coded_frame && s->codec->coded_frame->pts != AV_NOPTS_VALUE)
+			opkt.pts = av_rescale_q(s->codec->coded_frame->pts, s->codec->time_base,
+			                        s->time_base); 
+	}
+
+	bc_log("stream %d pts %"PRId64, opkt.stream_index, opkt.pts);
+
+	re = av_write_frame(bc_rec->oc, &opkt);
+	if (re != 0) {
+		char err[512] = { 0 };
+		av_strerror(re, err, sizeof(err));
+		bc_dev_err(bc_rec, "Error when writing frame to recording: %s", err);
 		return -1;
 	}
 
-	return 0;
-}
-
-int bc_vid_out(struct bc_record *bc_rec)
-{
-	AVCodecContext *c;
-	struct bc_handle *bc = bc_rec->bc;
-	AVPacket pkt;
-	int re;
-
-	if (!bc_rec->oc)
-		return 0;
-
-	c = bc_rec->video_st->codec;
-
-	av_init_packet(&pkt);
-
-	if (bc_buf_key_frame(bc))
-		pkt.flags |= AV_PKT_FLAG_KEY;
-
-	pkt.data = bc_buf_data(bc);
-	pkt.size = bc_buf_size(bc);
-
-	/* See if there is data to send */
-	if (!pkt.data || !pkt.size)
-		return 0;
-
-	if (bc->type == BC_DEVICE_RTP) {
-		/* RTP is at a constant 90KHz time scale */
-		pkt.pts = av_rescale_q(bc->rtp.frame.pts, (AVRational){1, 90000},
-				       bc_rec->video_st->time_base);
-	} else {
-		if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
-			pkt.pts = av_rescale_q(c->coded_frame->pts, c->time_base,
-					       bc_rec->video_st->time_base);
-	}
-
-	pkt.stream_index = bc_rec->video_st->index;
-
-	if ((re = av_write_frame(bc_rec->oc, &pkt)) != 0) {
-		char averror[512] = { 0 };
-		av_strerror(re, averror, sizeof(averror));
-		bc_dev_err(bc_rec, "cannot write frame to recording (%s)", averror);
-		return -1;
-	}
-
-	return 0;
+	return 1;
 }
 
 void bc_close_avcodec(struct bc_record *bc_rec)
