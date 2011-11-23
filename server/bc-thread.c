@@ -109,13 +109,43 @@ static int process_schedule(struct bc_record *bc_rec)
 	return ret;
 }
 
-static int check_motion(struct bc_record *bc_rec)
+static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet *spkt)
 {
+	struct bc_output_packet *mpkt;
 	time_t monotonic_now;
 	int ret;
 
 	if (bc_rec->sched_cur != 'M')
 		return 1;
+
+	/* Update prerecording buffer */
+	mpkt = malloc(sizeof(struct bc_output_packet));
+	if (bc_output_packet_copy(mpkt, spkt) < 0) {
+		free(mpkt);
+		return 0;
+	}
+	mpkt->next = 0;
+
+	if (bc_buf_is_video_frame(bc_rec->bc) && bc_buf_key_frame(bc_rec->bc)) {
+		/* New video keyframe; drop the current prerecord buffer */
+		struct bc_output_packet *p, *n;
+		for (p = bc_rec->prerecord_head; p; p = n) {
+			n = p->next;
+			free(p->data);
+			free(p);
+		}
+		bc_rec->prerecord_head = bc_rec->prerecord_tail = mpkt;
+		bc_rec->prerecord_head_time = time(NULL);
+	} else if (bc_rec->prerecord_tail) {
+		/* Append this packet */
+		bc_rec->prerecord_tail->next = mpkt;
+		bc_rec->prerecord_tail = mpkt;
+	} else {
+		/* Drop this packet (no keyframe in the stream yet) */
+		free(mpkt->data);
+		free(mpkt);
+		mpkt = 0;
+	}
 
 	if (!bc_buf_is_video_frame(bc_rec->bc))
 		return bc_rec->mot_last_ts > 0;
@@ -126,7 +156,11 @@ static int check_motion(struct bc_record *bc_rec)
 	if (ret) {
 		if (bc_rec->event == BC_EVENT_CAM_NULL) {
 			/* Starting a new motion recording */
-			bc_dev_info(bc_rec, "Motion event started");
+			int c = 0;
+			struct bc_output_packet *p;
+			for (p = bc_rec->prerecord_head; p; p = p->next)
+				++c;
+			bc_dev_info(bc_rec, "Motion event started.. prerecord buffer has %d packets", c);
 			bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 				BC_EVENT_CAM_T_MOTION, bc_rec->media);
 		}
@@ -228,7 +262,13 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		if (!check_motion(bc_rec)) {
+		/* Prepare output packets; nothing is allocated. */
+		if (bc_buf_is_video_frame(bc))
+			ret = get_output_video_packet(bc_rec, &packet);
+		else
+			ret = get_output_audio_packet(bc_rec, &packet);
+
+		if (!check_motion(bc_rec, &packet)) {
 			/* Motion recording is enabled and we should not record.
 			 * End the recording if there is one. */
 			if (bc_rec->oc)
@@ -236,23 +276,27 @@ static void *bc_device_thread(void *data)
 			continue;
 		}
 
-		if (!bc_rec->oc && (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc))) {
-			/* Always start a recording with a key video frame. This will result in
-			 * the lost of some video between recordings, up to the keyframe interval,
-			 * at least on RTP devices. XXX Ideally, we should move the recording split
-			 * slightly to allow a proper cut for both video and audio. */
-			continue;
+		if (!bc_rec->oc) {
+			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
+				/* Dump the prerecording buffer */
+				struct bc_output_packet *p;
+				if (bc_open_avcodec(bc_rec))
+					continue;
+				/* Skip the last packet; it's identical to the current packet,
+				 * which we write in the normal path below. */
+				for (p = bc_rec->prerecord_head; p && p->next; p = p->next) {
+					bc_output_packet_write(bc_rec, p);
+			} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
+				/* Always start a recording with a key video frame. This will result in
+				 * the lost of some video between recordings, up to the keyframe interval,
+				 * at least on RTP devices. XXX Ideally, we should move the recording split
+				 * slightly to allow a proper cut for both video and audio. */
+				continue;
+			} else {
+				if (bc_open_avcodec(bc_rec))
+					continue;
+			}
 		}
-
-		if (bc_open_avcodec(bc_rec)) {
-			bc_dev_err(bc_rec, "Error opening avcodec");
-			continue;
-		}
-
-		if (bc_buf_is_video_frame(bc))
-			ret = get_output_video_packet(bc_rec, &packet);
-		else
-			ret = get_output_audio_packet(bc_rec, &packet);
 
 		if (ret > 0)
 			bc_output_packet_write(bc_rec, &packet);

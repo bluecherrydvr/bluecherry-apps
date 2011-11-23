@@ -257,7 +257,7 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 		       "caused by recent PTS reset", pkt->pts);
 		return 0;
 	}
-	
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt->flags;
 	opkt.pts          = pkt->pts;
@@ -293,6 +293,21 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	}
 
 	return 1;
+}
+
+int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src)
+{
+	if (dst != src)
+		memcpy(dst, src, sizeof(struct bc_output_packet));
+
+	if (src->size) {
+		dst->data = malloc(src->size);
+		if (!dst->data)
+			return -1;
+		memcpy(dst->data, src->data, src->size);
+	}
+
+	return 0;
 }
 
 void bc_close_avcodec(struct bc_record *bc_rec)
