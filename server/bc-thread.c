@@ -282,9 +282,10 @@ static void *bc_device_thread(void *data)
 				struct bc_output_packet *p;
 				if (bc_open_avcodec(bc_rec))
 					continue;
+				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
 				/* Skip the last packet; it's identical to the current packet,
 				 * which we write in the normal path below. */
-				for (p = bc_rec->prerecord_head; p && p->next; p = p->next) {
+				for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
 					bc_output_packet_write(bc_rec, p);
 			} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
 				/* Always start a recording with a key video frame. This will result in
@@ -295,6 +296,8 @@ static void *bc_device_thread(void *data)
 			} else {
 				if (bc_open_avcodec(bc_rec))
 					continue;
+				if (bc->type == BC_DEVICE_RTP)
+					rtp_device_set_current_pts(&bc->rtp, 0);
 			}
 		}
 

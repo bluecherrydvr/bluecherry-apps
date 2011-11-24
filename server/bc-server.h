@@ -43,6 +43,7 @@ struct bc_record {
 	AVStream        *audio_st;
 	AVFormatContext *oc;
 	enum CodecID    codec_id;
+	int64_t         output_pts_base;
 
 	time_t			osd_time;
 	unsigned int		start_failed;

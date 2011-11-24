@@ -248,16 +248,6 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	if (!s)
 		return 0;
 
-	/* Cutoff points can result in a few negative PTS frames, because often
-	 * the video will be cut before the audio for that time has been written.
-	 * We can drop these; they won't be played back, other than a very trivial
-	 * amount of time at the beginning of a recording. */
-	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %"PRId64", probably "
-		       "caused by recent PTS reset", pkt->pts);
-		return 0;
-	}
-
 	av_init_packet(&opkt);
 	opkt.flags        = pkt->flags;
 	opkt.pts          = pkt->pts;
@@ -282,6 +272,19 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 			/* RTP is at a constant 90KHz time scale */
 			opkt.pts = av_rescale_q(opkt.pts, (AVRational){1, 90000}, s->time_base);
 		}
+	}
+
+	if (bc_rec->output_pts_base && opkt.pts != AV_NOPTS_VALUE && bc_rec->bc->type == BC_DEVICE_RTP)
+		opkt.pts -= av_rescale_q(bc_rec->output_pts_base, (AVRational){1, 90000}, s->time_base);
+
+	/* Cutoff points can result in a few negative PTS frames, because often
+	 * the video will be cut before the audio for that time has been written.
+	 * We can drop these; they won't be played back, other than a very trivial
+	 * amount of time at the beginning of a recording. */
+	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %"PRId64", probably "
+		       "caused by recent PTS reset", pkt->pts);
+		return 0;
 	}
 
 	re = av_write_frame(bc_rec->oc, &opkt);
@@ -321,6 +324,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	if (bc_rec->audio_st)
 		avcodec_close(bc_rec->audio_st->codec);
 	bc_rec->video_st = bc_rec->audio_st = NULL;
+	bc_rec->output_pts_base = 0;
 
 	if (bc_rec->oc) {
 		if (bc_rec->oc->pb)
@@ -510,10 +514,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (bc->type == BC_DEVICE_RTP) {
 		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
 			goto error;
-		
-		/* Recordings must always start with a PTS of 0; this will adjust all future PTS
-		 * values accordingly. */
-		rtp_device_set_current_pts(&bc->rtp, 0);
 		
 		bc_rec->audio_st = bc_rec->video_st = NULL;
 		for (i = 0; i < oc->nb_streams; ++i) {
