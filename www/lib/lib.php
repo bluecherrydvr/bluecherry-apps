@@ -352,7 +352,12 @@ class camera {
 					$res['y'] = '288';
 					$signal_type = 'PAL';
 				};
-				$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['new_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+				#if the card was swapped pci id may have changed
+				if (data::getObject('Devices', 'device_name', $this->info['new_name'])){ #if camera with this default name exists, update the device field
+					$result = data::query("UPDATE Devices SET device='{$this->info['device']}' WHERE device_name='{$this->info['new_name']}'", true);
+				} else { #no such device existed
+					$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['new_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+				}
 				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
 				$data = ($result && !$disabled) ? $container_card->info['available_capacity'] : $container_card->info['available_capacity']-$required_capacity;
 				return array($result, $msg);
@@ -501,7 +506,7 @@ class softwareVersion{
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
 		$tmp = data::getObject('GlobalSettings', 'parameter', 'G_LAST_CURRENT_VERSION');
-		if ($time[0]['value'] + 24*60*60 < time()){
+		if ($time[0]['value'] + 24*60*60 < time()) {
 			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
 			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'");
 			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'");
