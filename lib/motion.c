@@ -163,7 +163,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			uint8_t *r, *c, *end = frame->data[0] + (frame->linesize[0] * cctx->height);
 			int changed = 0;
 			for (r = md->refFrame->data[0], c = frame->data[0]; c != end; ++r, ++c) {
-				if (abs(*r - *c) > 10) // XXX magic sensitivity number
+				if (abs(*r - *c) > 20) // XXX magic sensitivity number
 					++changed;
 			}
 
