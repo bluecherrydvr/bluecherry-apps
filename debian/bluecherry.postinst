@@ -29,8 +29,8 @@ case "$1" in
 		a2ensite bluecherry
 
 		# Reload some things
-		invoke-rc.d apache2 restart
-		invoke-rc.d rsyslog reload
+		service apache2 restart
+		reload rsyslog
 
 		# Remove old conf files
 		rm -f /etc/init/bc-server.conf
