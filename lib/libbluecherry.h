@@ -80,6 +80,9 @@ struct bc_motion_data {
 	AVFrame           *refFrame;
 	int                refFrameHeight;
 	int                refFrameWidth;
+#ifdef DEBUG_DUMP_MOTION_DATA
+	FILE              *dumpfile;
+#endif
 };
 
 struct bc_handle {

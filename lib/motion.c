@@ -46,6 +46,12 @@ int bc_set_motion(struct bc_handle *bc, int on)
 			av_free(bc->motion_data.refFrame);
 			bc->motion_data.refFrame = 0;
 		}
+#ifdef DEBUG_DUMP_MOTION_DATA
+		if (bc->motion_data.dumpfile) {
+			fclose(bc->motion_data.dumpfile);
+			bc->motion_data.dumpfile = 0;
+		}
+#endif
 	}
 
 	if (!ret)
@@ -158,13 +164,36 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 		av_free(rawFrame);
 
+#ifdef DEBUG_DUMP_MOTION_DATA
+		if (!md->dumpfile) {
+			char filename[128];
+			snprintf(filename, sizeof(filename), "/tmp/bc.motion.%d", (int)rand());
+			md->dumpfile = fopen(filename, "w");
+			if (md->dumpfile)
+				bc_log("Opened motion data file '%s'", filename);
+			else
+				bc_log("Failed to open motion data file '%s' (%m)", filename);
+		}
+
+		char *buf2 = av_malloc(bufSize);
+		char *buf2p = buf2;
+		memset(buf2, 0, bufSize);
+#endif
+
 		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
 		{
 			uint8_t *r, *c, *end = frame->data[0] + (frame->linesize[0] * cctx->height);
 			int changed = 0;
 			for (r = md->refFrame->data[0], c = frame->data[0]; c != end; ++r, ++c) {
-				if (abs(*r - *c) > 20) // XXX magic sensitivity number
+				if (abs(*r - *c) > 20) { // XXX magic sensitivity number
 					++changed;
+#ifdef DEBUG_DUMP_MOTION_DATA
+					*buf2p = 255;
+#endif
+				}
+#ifdef DEBUG_DUMP_MOTION_DATA
+				buf2p++;
+#endif
 			}
 
 			ret = (changed >= (cctx->height * cctx->width / 6)); // XXX magic threshold number
@@ -175,6 +204,15 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		md->refFrame = frame;
 		md->refFrameHeight = cctx->height;
 		md->refFrameWidth  = cctx->width;
+
+#ifdef DEBUG_DUMP_MOTION_DATA
+		if (md->dumpfile) {
+			size_t r = fwrite(buf2, 1, bufSize, md->dumpfile);
+			if (r < bufSize)
+				bc_log("Write error on motion dump file: %m");
+		}
+		av_free(buf2);
+#endif
 	}
 
 	return ret;
