@@ -182,21 +182,46 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
 		{
-			uint8_t *r, *c, *end = frame->data[0] + (frame->linesize[0] * cctx->height);
+			uint8_t *ref = md->refFrame->data[0];
+			uint8_t *cur = frame->data[0];
+			int w = frame->linesize[0], h = cctx->height;
+			int p = 0, total = w * h;
 			int changed = 0;
-			for (r = md->refFrame->data[0], c = frame->data[0]; c != end; ++r, ++c) {
-				if (abs(*r - *c) > 20) { // XXX magic sensitivity number
-					++changed;
+			for (; p < total; ++p) {
+				if (abs(ref[p] - cur[p]) > 20) { // XXX magic sensitivity number
+					int nearby_hits = 0;
+					if (p % w) { // west
+						nearby_hits += abs(ref[p-1] - cur[p-1]) > 20;
+						if (p >= w)
+							nearby_hits += abs(ref[p-w-1] - cur[p-w-1]) > 20; // northwest
+						if (p+w < total)
+							nearby_hits += abs(ref[p+w-1] - cur[p+w-1]) > 20; // southwest
+					}
+					if (p % (w-1)) { // east
+						nearby_hits += abs(ref[p+1] - cur[p+1]) > 20;
+						if (p >= w)
+							nearby_hits += abs(ref[p-w+1] - cur[p-w+1]) > 20; // northeast
+						if (p+w < total)
+							nearby_hits += abs(ref[p+w+1] - cur[p+w+1]) > 20; // southeast
+					}
+					if (p >= w)
+						nearby_hits += abs(ref[p-w] - cur[p-w]) > 20; // north
+					if (p+w < total)
+						nearby_hits += abs(ref[p+w] - cur[p+w]) > 20; // south
+
+					if (nearby_hits >= 6) {
+						++changed;
 #ifdef DEBUG_DUMP_MOTION_DATA
-					*buf2p = 255;
+						*buf2p = 255;
 #endif
+					}
 				}
 #ifdef DEBUG_DUMP_MOTION_DATA
 				buf2p++;
 #endif
 			}
 
-			ret = (changed >= (cctx->height * cctx->width / 6)); // XXX magic threshold number
+			ret = changed >= (total/128); // XXX magic threshold number
 
 			av_free(md->refFrame->data[0]);
 			av_free(md->refFrame);
