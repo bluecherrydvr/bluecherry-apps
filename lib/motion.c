@@ -217,19 +217,23 @@ int bc_motion_is_detected(struct bc_handle *bc)
 #endif
 					}
 				}
+				/* Merge the current frame into the reference frame */
+				ref[p] = (ref[p]*0.9f) + (cur[p]*0.1f);
 #ifdef DEBUG_DUMP_MOTION_DATA
 				buf2p++;
 #endif
 			}
 
-			ret = changed >= (total/128); // XXX magic threshold number
-
-			av_free(md->refFrame->data[0]);
-			av_free(md->refFrame);
+			ret = changed >= 2048; // XXX magic threshold number
+		} else {
+			if (md->refFrame) {
+				av_free(md->refFrame->data[0]);
+				av_free(md->refFrame);
+			}
+			md->refFrame = frame;
+			md->refFrameHeight = cctx->height;
+			md->refFrameWidth  = cctx->width;
 		}
-		md->refFrame = frame;
-		md->refFrameHeight = cctx->height;
-		md->refFrameWidth  = cctx->width;
 
 #ifdef DEBUG_DUMP_MOTION_DATA
 		if (md->dumpfile) {
