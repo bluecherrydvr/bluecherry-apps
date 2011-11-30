@@ -130,6 +130,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		AVFrame *rawFrame, *frame;
 		AVCodecContext *cctx;
 		uint8_t *buf;
+		uint32_t *result = 0;
 		int bufSize;
 		int r;
 
@@ -174,10 +175,6 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			else
 				bc_log("Failed to open motion data file '%s' (%m)", filename);
 		}
-
-		char *buf2 = av_malloc(bufSize);
-		char *buf2p = buf2;
-		memset(buf2, 0, bufSize);
 #endif
 
 		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
@@ -187,44 +184,62 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			uint8_t *cur = frame->data[0];
 			int w = frame->linesize[0], h = cctx->height;
 			int p = 0, total = w * h;
-			int changed = 0;
-			for (; p < total; ++p) {
-				if (abs(ref[p] - cur[p]) > threshold) { // XXX magic sensitivity number
-					int nearby_hits = 0;
-					if (p % w) { // west
-						nearby_hits += abs(ref[p-1] - cur[p-1]) > threshold;
-						if (p >= w)
-							nearby_hits += abs(ref[p-w-1] - cur[p-w-1]) > threshold; // northwest
-						if (p+w < total)
-							nearby_hits += abs(ref[p+w-1] - cur[p+w-1]) > threshold; // southwest
-					}
-					if (p % (w-1)) { // east
-						nearby_hits += abs(ref[p+1] - cur[p+1]) > threshold;
-						if (p >= w)
-							nearby_hits += abs(ref[p-w+1] - cur[p-w+1]) > threshold; // northeast
-						if (p+w < total)
-							nearby_hits += abs(ref[p+w+1] - cur[p+w+1]) > threshold; // southeast
-					}
-					if (p >= w)
-						nearby_hits += abs(ref[p-w] - cur[p-w]) > threshold; // north
-					if (p+w < total)
-						nearby_hits += abs(ref[p+w] - cur[p+w]) > threshold; // south
+			uint32_t rmax = 0;
 
-					if (nearby_hits >= 6) {
-						++changed;
-#ifdef DEBUG_DUMP_MOTION_DATA
-						*buf2p = 255;
-#endif
-					}
+			result = malloc(total*sizeof(uint32_t));
+
+			/* From the northwest corner, proceed east and south over each pixel.
+			 * The value for a pixel is the value from the pixels to the north,
+			 * northwest, and northeast (with no double counting). Add one to
+			 * that value for any pixel with change exceeding the threshold, and
+			 * halve it for any pixel that does not.
+			 *
+			 * The result is that we have high values on the south/east edges of
+			 * areas with many changes exceeding the threshold, and small changes
+			 * (which are likely irrelevant) are ignored.
+			 */
+			for (; p < total; ++p) {
+				if (p % w) {
+					/* west; value includes the northwest and north */
+					result[p] = result[p-1];
+				} else if (p >= w) {
+					/* north; there is nothing to the west or northwest */
+					result[p] = result[p-w];
+				} else
+					result[p] = 0;
+
+				if (p % (w-1) && p >= w) {
+					/* northeast; because it's value is based on the north,
+					 * we look for the difference from that. To avoid degrading
+					 * too fast on the edges, we drop negative differences. */
+					int r = result[p-w+1] - result[p-w];
+					if (r > 0)
+						result[p] += r;
 				}
-				/* Merge the current frame into the reference frame */
+
+				if (abs(ref[p] - cur[p]) >= threshold)
+					result[p]++;
+				else
+					result[p] /= 2;
+
+				if (result[p] > rmax)
+					rmax = result[p];
+
+				/* Merge the current frame into the reference frame. This
+				 * makes the reference a background that slowly adapts to
+				 * changes in the image, so instant changes will persist
+				 * longer and thus result in larger blobs of change. Consider,
+				 * for example, the case of a small, fast moving object.
+				 *
+				 * Currently, we add 10% of the new frame to 90% of the current
+				 * reference. */
 				ref[p] = (ref[p]*0.9f) + (cur[p]*0.1f);
-#ifdef DEBUG_DUMP_MOTION_DATA
-				buf2p++;
-#endif
 			}
 
-			ret = changed >= 2048; // XXX magic threshold number
+			ret = rmax >= 300; // XXX magic threshold number
+			
+			av_free(frame->data[0]);
+			av_free(frame);
 		} else {
 			if (md->refFrame) {
 				av_free(md->refFrame->data[0]);
@@ -236,13 +251,24 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		}
 
 #ifdef DEBUG_DUMP_MOTION_DATA
-		if (md->dumpfile) {
-			size_t r = fwrite(buf2, 1, bufSize, md->dumpfile);
+		if (md->dumpfile && result) {
+			int i;
+			uint8_t *z = (uint8_t*)result;
+			for (i = 0; i < bufSize; ++i, ++z) {
+				if (result[i] < 45)
+					*z = 0;
+				else if (result[i] > 300)
+					*z = 255;
+				else
+					*z = result[i] - 45;
+			}
+			size_t r = fwrite(result, 1, bufSize, md->dumpfile);
 			if (r < bufSize)
 				bc_log("Write error on motion dump file: %m");
 		}
-		av_free(buf2);
 #endif
+
+		free(result);
 	}
 
 	return ret;
