@@ -1,6 +1,6 @@
 CREATE TABLE Users (
 	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
-	username varchar(40),
+	username varchar(40) CHARACTER SET latin1 COLLATE latin1_general_cs,
 	password varchar(64),
 	salt CHAR(4),
 	name varchar(60),
