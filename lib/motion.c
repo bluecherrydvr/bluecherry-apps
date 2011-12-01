@@ -209,7 +209,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 					result[p] = 0;
 
 				if (p % (w-1) && p >= w) {
-					/* northeast; because it's value is based on the north,
+					/* northeast; because its value is based on the north,
 					 * we look for the difference from that. To avoid degrading
 					 * too fast on the edges, we drop negative differences. */
 					int r = result[p-w+1] - result[p-w];
