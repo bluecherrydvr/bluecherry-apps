@@ -83,7 +83,7 @@ static uint16_t solo_value_map[] = {
 };
 
 static uint8_t generic_value_map[] = {
-	255, 48, 32, 15, 10, 6
+	255, 48, 26, 12, 7, 3
 };
 
 int bc_set_motion_thresh_global(struct bc_handle *bc, char value)
@@ -144,6 +144,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 		size_t i;
 		if (size < 32*24)
 			return -1;
+		size = 32*24;
 
 		for (i = 0; i < size; ++i) {
 			if (map[i] < '0' || map[i] > '5')
@@ -224,12 +225,13 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
 		{
-			const int threshold = 15;
 			uint8_t *ref = md->refFrame->data[0];
 			uint8_t *cur = frame->data[0];
 			int w = frame->linesize[0], h = cctx->height;
 			int p = 0, total = w * h;
 			uint32_t rmax = 0;
+			int threshold_cell_w = ceil(w/32.0);
+			int threshold_cell_h = ceil(h/24.0);
 
 			result = malloc(total*sizeof(uint32_t));
 
@@ -244,6 +246,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			 * (which are likely irrelevant) are ignored.
 			 */
 			for (; p < total; ++p) {
+				int threshold_cell = (((p/w)/threshold_cell_h) * 32) + ((p%w)/threshold_cell_w);
+
 				if (p % w) {
 					/* west; value includes the northwest and north */
 					result[p] = result[p-1];
@@ -262,7 +266,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 						result[p] += r;
 				}
 
-				if (abs(ref[p] - cur[p]) >= threshold)
+				if (abs(ref[p] - cur[p]) >= md->thresholds[threshold_cell])
 					result[p]++;
 				else
 					result[p] /= 2;
@@ -281,7 +285,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 				ref[p] = (ref[p]*0.9f) + (cur[p]*0.1f);
 			}
 
-			ret = rmax >= 300; // XXX magic threshold number
+			ret = rmax >= 150; // XXX magic threshold number
 			
 			av_free(frame->data[0]);
 			av_free(frame);
