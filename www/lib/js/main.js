@@ -407,6 +407,9 @@ DVRPageScript = new Class({
 						},
 						'oncam':function(el, ref){
 							window.open('/ajax/redirect.php?id='+el.get('id'));
+						},
+						'editmap':function(el, ref){
+							var page = new DVRPage('motionmap', 'id='+el.get('id'));
 						}
 					}
 				})
@@ -569,7 +572,12 @@ DVRPageScript = new Class({
 					}
 					ev.stopPropagation();
 				});
-				var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');
+				if ($('cameraType').value == 'IP'){
+					var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap', 32, 24);
+				} else {
+					var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');
+				}
+				
 			break; //end motionmap
 			case 'general':
 				var generalForm  = new DVRSettingsForm('settingsForm'); 
@@ -764,7 +772,7 @@ DVRSettingsForm = new Class({
 
 //image overlay/save class for motion detection page
 var localMotionGrid = new Class({
-		initialize: function(el, value, type){
+		initialize: function(el, value, type, nc, nr){
 			var self = this;
 			switch(type){
 				case 'notifications':
@@ -772,7 +780,7 @@ var localMotionGrid = new Class({
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
 					$(el).addEvent('load', function(){
-						self.drawGrid($(el), $(value).get('value'));
+						self.drawGrid($(el), $(value).get('value'), nc, nr);
 						tempOverlay.removeoverlay();
 						self.sensitivitySelector();
 					});
@@ -841,7 +849,11 @@ var localMotionGrid = new Class({
                 };
                 thisRow.inject(gridTable, 'bottom');
             };
+            gridTable.addEvent('mouseleave', function(){
+				dragFlag = false;
+			});
             gridTable.inject(el.getParent());
+
 		},
 		
 		//sets up seinsitivity selector

@@ -4,16 +4,17 @@ require('../template/template.lib.php');
 ?>
 <ul id="settingsMenu">
 		<li><a href="#videoadj" class="videoadj"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
-		<li class="separator"><a href="#editmap" class="editmap"><?php echo DEVICE_EDIT_MMAP;?></a></li>
-		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
-		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
+		<li><a href="#editmap" class="editmap"><?php echo DEVICE_EDIT_MMAP;?></a></li>
+		<li><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
+		<li><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
 </ul>
 <ul id="ipSettingsMenu">
-		<li class="separator"><a href="#properties" class="properties"><?php echo DEVICE_EDIT_DETAILS;?></a></li>
-		<li class="separator"><a href="#oncam" class=""><?php echo DEVICE_EDIT_ONCAM; ?></a></li>
-		<li class="separator"><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
-		<li class="separator"><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
-		<li class="separator"><a href="#delete" class="delete"><?php echo DELETE_CAM;?></a></li>
+		<li><a href="#properties" class="properties"><?php echo DEVICE_EDIT_DETAILS;?></a></li>
+		<li><a href="#oncam" class=""><?php echo DEVICE_EDIT_ONCAM; ?></a></li>
+		<li><a href="#editmap" class="editmap"><?php echo DEVICE_EDIT_MMAP;?></a></li>
+		<li><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
+		<li><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
+		<li><a href="#delete" class="delete"><?php echo DELETE_CAM;?></a></li>
 </ul>
 
 <?php
@@ -73,9 +74,9 @@ foreach ($card->cameras as $key =>$device){
 				</div>
 			 </div>";
 	}
+	
 	echo	"</div>";
 }
-
 	echo "<div class='bClear'></div></div></div>"; #end card
 }
 
