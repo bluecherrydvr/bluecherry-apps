@@ -327,43 +327,6 @@ static void get_aud_dev(struct bc_record *bc_rec)
 	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
 }
 
-static void update_motion_map(struct bc_record *bc_rec)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	const char *motion_map = bc_rec->cfg.motion_map;
-	int vh;
-	int i;
-
-	vh = strcasecmp(bc_rec->cfg.signal_type, "NTSC") ? 18 : 15;
-
-#if 0 // Global threshold..
-	if (!motion_map) {
-		int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
-		bc_set_motion_thresh_global(bc, val);
-
-		memset(bc_rec->cfg.motion_map, '3', 22*vh);
-		bc_rec->cfg.motion_map[22*vh] = 0;
-		return;
-	}
-#endif
-
-	if (strlen(motion_map) < 22 * vh) {
-		bc_dev_warn(bc_rec, "Motion map is too short");
-		return;
-	}
-
-	/* Our input map is 32x32, but the device is actually 64x64.
-	 * Fields are doubled accordingly. */
-	for (i = 0; i < (vh*2); i++) {
-		int j;
-		for (j = 0; j < 44; j++) {
-			int pos = ((i/2)*22)+(j/2);
-			int val = bc_motion_val(BC_MOTION_TYPE_SOLO, motion_map[pos]);
-			bc_set_motion_thresh(bc, val, (i*64)+j);
-		}
-	}
-}
-
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
 	struct bc_handle *bc = NULL;
@@ -423,7 +386,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	/* Initialize device state */
 	try_formats(bc_rec);
-	update_motion_map(bc_rec);
+	if (bc_set_motion_thresh(bc, bc_rec->cfg.motion_map,
+	    sizeof(bc_rec->cfg.motion_map)))
+	{
+		bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
+	}
 	check_schedule(bc_rec);
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
@@ -503,8 +470,13 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
 	try_formats(bc_rec);
-	if (motion_map_changed)
-		update_motion_map(bc_rec);
+	if (motion_map_changed) {
+		if (bc_set_motion_thresh(bc_rec->bc, bc_rec->cfg.motion_map,
+		    sizeof(bc_rec->cfg.motion_map)))
+		{
+			bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
+		}
+	}
 	check_schedule(bc_rec);
 
 	return 0;

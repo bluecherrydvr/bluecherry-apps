@@ -78,34 +78,79 @@ int bc_motion_is_on(struct bc_handle *bc)
 	return 1;
 }
 
-int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val)
+static uint16_t solo_value_map[] = {
+	0xffff, 1152, 1024, 768, 512, 3842
+};
+
+static uint8_t generic_value_map[] = {
+	255, 48, 32, 15, 10, 6
+};
+
+int bc_set_motion_thresh_global(struct bc_handle *bc, char value)
 {
+	int val = value - '0';
+	if (val < 0 || val > 5)
+		return -1;
+
 	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
-
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
-		vc.value = val;
-		/* Upper 16 bits left to 0 for global */
+
+		/* Upper 16 bits are 0 for the global threshold */
+		vc.value = solo_value_map[val];
 
 		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	} else {
+		memset(bc->motion_data.thresholds, generic_value_map[val],
+		       sizeof(bc->motion_data.thresholds));
 	}
 
 	return 0;
 }
 
-int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
-			 unsigned short block)
+int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 {
 	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
-
+		int vh = 15;
+		int i;
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
-		vc.value = val;
-		/* 0 means global; we must add one to the actual block */
-		vc.value |= (unsigned int)(block+1) << 16;
 
-		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
-	}
+		if (bc->cam_caps & BC_CAM_CAP_V4L2_PAL)
+			vh = 18;
+
+		if (size < 22 * vh)
+			return -1;
+
+		/* Our input map is 22xvh, but the device is actually twice that.
+		 * Fields are doubled accordingly. */
+		for (i = 0; i < (vh*2); i++) {
+			int j;
+			for (j = 0; j < 44; j++) {
+				int pos = ((i/2)*22)+(j/2);
+				if (map[pos] < '0' || map[pos] > '5')
+					return -1;
+
+				/* One more than the actual block number, because the driver
+				 * expects this. 0 sets the global threshold. */
+				vc.value = (unsigned)(i*64+j+1) << 16;
+				vc.value |= solo_value_map[map[pos] - '0'];
+
+				if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc))
+					return -1;
+			}
+		}
+	} else {
+		size_t i;
+		if (size < 32*24)
+			return -1;
+
+		for (i = 0; i < size; ++i) {
+			if (map[i] < '0' || map[i] > '5')
+				return -1;
+			bc->motion_data.thresholds[i] = generic_value_map[map[i] - '0'];
+		}
+	} 
 
 	return 0;
 }

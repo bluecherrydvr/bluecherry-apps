@@ -83,6 +83,7 @@ struct bc_motion_data {
 	AVFrame           *refFrame;
 	int                refFrameHeight;
 	int                refFrameWidth;
+	uint8_t            thresholds[768];
 #ifdef DEBUG_DUMP_MOTION_DATA
 	FILE              *dumpfile;
 #endif
@@ -126,7 +127,7 @@ struct bc_device_config {
 	char rtsp_username[64];
 	char rtsp_password[64];
 	char signal_type[16];
-	char motion_map[400];
+	char motion_map[769];
 	char schedule[7 * 24];
 	int     width, height;
 	int     interval;
@@ -311,9 +312,8 @@ int bc_set_mjpeg(struct bc_handle *bc);
 
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
-int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
-			 unsigned short block);
-int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val);
+int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size);
+int bc_set_motion_thresh_global(struct bc_handle *bc, char value);
 /* Checks if the current buffer has motion on/detected */
 int bc_motion_is_on(struct bc_handle *bc);
 int bc_motion_is_detected(struct bc_handle *bc);
