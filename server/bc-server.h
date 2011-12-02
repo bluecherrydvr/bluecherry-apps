@@ -120,12 +120,6 @@ int bc_open_avcodec(struct bc_record *bc_rec);
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
 
-typedef enum {
-	BC_MOTION_TYPE_SOLO = 0,
-} bc_motion_type_t;
-
-int bc_motion_val(bc_motion_type_t type, const char v);
-
 void bc_check_avail(void);
 
 void bc_mkdir_recursive(char *path);
