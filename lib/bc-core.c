@@ -292,8 +292,11 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *p = bc->device;
 	char dev_file[PATH_MAX];
 	int id = -1;
+	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 
 	bc->v4l2.card_id = bc_db_get_val_int(dbres, "card_id");
+	if (signal_type && strcasecmp(signal_type, "PAL") == 0)
+		bc->cam_caps |= BC_CAM_CAP_V4L2_PAL;
 
 	bc->type = BC_DEVICE_V4L2;
 	if (!strncmp(bc->driver, "solo6", 5))

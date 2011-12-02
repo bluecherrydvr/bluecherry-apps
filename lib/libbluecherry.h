@@ -43,10 +43,13 @@
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
-#define BC_CAM_CAP_V4L2_MOTION	0x00000002
-#define BC_CAM_CAP_OSD		0x00000004
-#define BC_CAM_CAP_SOLO		0x00000008
-#define BC_CAM_CAP_MJPEG_URL	0x00000010
+#define BC_CAM_CAP_V4L2_MOTION 0x00000002
+#define BC_CAM_CAP_OSD         0x00000004
+#define BC_CAM_CAP_SOLO        0x00000008
+#define BC_CAM_CAP_MJPEG_URL   0x00000010
+/* Set for all BC_DEVICE_V4L2 handles operating
+ * in PAL. NTSC is assumed if unset. */
+#define BC_CAM_CAP_V4L2_PAL    0x00000020
 
 typedef enum {
 	BC_DEVICE_V4L2,
