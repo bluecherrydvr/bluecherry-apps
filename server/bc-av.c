@@ -221,6 +221,8 @@ int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 	pkt->pts  = AV_NOPTS_VALUE;
 	if (bc_buf_key_frame(bc))
 		pkt->flags = AV_PKT_FLAG_KEY;
+	else
+		pkt->flags = 0;
 
 	pkt->data = bc_buf_data(bc);
 	pkt->size = bc_buf_size(bc);
