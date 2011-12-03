@@ -234,11 +234,14 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			int threshold_cell_w = ceil(w/32.0);
 			int threshold_cell_h = ceil(h/24.0);
 			int threshold_cell = 0;
+			int ne_diff;
 
-			result = malloc(total*sizeof(uint32_t));
+#ifdef DEBUG_DUMP_MOTION_DATA
+			result = calloc(total+1, sizeof(uint32_t));
+#else
+			result = calloc(w+1, sizeof(uint32_t));
+#endif
 			val = result;
-			/* Initialize the first pixel. All others initialize from west or north */
-			*val = 0;
 
 			/* From the northwest corner, proceed east and south over each pixel.
 			 * The value for a pixel is the value from the pixels to the north,
@@ -251,15 +254,6 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			 * (which are likely irrelevant) are ignored.
 			 */
 			for (;;) {
-				if (y && w-1 > x) {
-					/* northeast; because its value is based on the north,
-					 * we look for the difference from that. To avoid degrading
-					 * too fast on the edges, we drop negative differences. */
-					int r = val[-w+1] - val[-w];
-					if (r > 0)
-						*val += r;
-				}
-
 				if (abs(*ref - *cur) >= md->thresholds[threshold_cell])
 					(*val)++;
 				else
@@ -291,21 +285,32 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 				ref++;
 				cur++;
-				val++;
 				if (++x == w) {
 					x = 0;
 					if (++y == h)
 						break;
 					threshold_cell = (y/threshold_cell_h) << 5;
-					/* Initialize the next value using the value to the north.
-					 * This case only comes after wrapping, because we use the
-					 * west when x>0 */
-					*val = val[-w];
+					/* No need to initialize the next value; the result array is
+					 * one line, and we just wrapped, so this pixel is already
+					 * initialized by the north value. */
+#ifdef DEBUG_DUMP_MOTION_DATA
+					val++;
+					memcpy(val, &val[-w], w*sizeof(*val));
+#else
+					val = result;
+#endif
+					/* Add the difference between northeast and north if positive */
+					if (val[1] > val[0])
+						val[0] = val[1];
 				} else {
 					if (!(x % threshold_cell_w))
 						threshold_cell++;
-					/* Initialize the next value based on this one (to the west) */
-					*val = val[-1];
+
+					val++;
+					ne_diff = val[1] - val[0];
+					val[0] = val[-1];
+					if (ne_diff > 0)
+						val[0] += ne_diff;
 				}
 			}
 			
