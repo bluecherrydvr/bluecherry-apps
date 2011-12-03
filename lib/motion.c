@@ -227,13 +227,18 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		{
 			uint8_t *ref = md->refFrame->data[0];
 			uint8_t *cur = frame->data[0];
+			uint32_t *val;
 			int w = frame->linesize[0], h = cctx->height;
-			int p = 0, total = w * h;
-			uint32_t rmax = 0;
+			int total = w * h;
+			int x = 0, y = 0;
 			int threshold_cell_w = ceil(w/32.0);
 			int threshold_cell_h = ceil(h/24.0);
+			int threshold_cell = 0;
 
 			result = malloc(total*sizeof(uint32_t));
+			val = result;
+			/* Initialize the first pixel. All others initialize from west or north */
+			*val = 0;
 
 			/* From the northwest corner, proceed east and south over each pixel.
 			 * The value for a pixel is the value from the pixels to the north,
@@ -245,34 +250,34 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			 * areas with many changes exceeding the threshold, and small changes
 			 * (which are likely irrelevant) are ignored.
 			 */
-			for (; p < total; ++p) {
-				int threshold_cell = (((p/w)/threshold_cell_h) * 32) + ((p%w)/threshold_cell_w);
-
-				if (p % w) {
-					/* west; value includes the northwest and north */
-					result[p] = result[p-1];
-				} else if (p >= w) {
-					/* north; there is nothing to the west or northwest */
-					result[p] = result[p-w];
-				} else
-					result[p] = 0;
-
-				if (p % (w-1) && p >= w) {
+			for (;;) {
+				if (y && w-1 > x) {
 					/* northeast; because its value is based on the north,
 					 * we look for the difference from that. To avoid degrading
 					 * too fast on the edges, we drop negative differences. */
-					int r = result[p-w+1] - result[p-w];
+					int r = val[-w+1] - val[-w];
 					if (r > 0)
-						result[p] += r;
+						*val += r;
 				}
 
-				if (abs(ref[p] - cur[p]) >= md->thresholds[threshold_cell])
-					result[p]++;
+				if (abs(*ref - *cur) >= md->thresholds[threshold_cell])
+					(*val)++;
 				else
-					result[p] /= 2;
+					*val >>= 1;
 
-				if (result[p] > rmax)
-					rmax = result[p];
+				if (*val >= 150) { // XXX magic threshold number
+					uint8_t *end = md->refFrame->data[0] + total;
+					ret = 1;
+#ifndef DEBUG_DUMP_MOTION_DATA
+					/* Quickly finish merging the reference frame (see below),
+					 * and break */
+					for (; ref != end; ++ref, ++cur)
+						*ref = ((*ref)*0.9f) + ((*cur)*0.1f);
+					break;
+#else
+					(void)end;
+#endif
+				}
 
 				/* Merge the current frame into the reference frame. This
 				 * makes the reference a background that slowly adapts to
@@ -282,10 +287,27 @@ int bc_motion_is_detected(struct bc_handle *bc)
 				 *
 				 * Currently, we add 10% of the new frame to 90% of the current
 				 * reference. */
-				ref[p] = (ref[p]*0.9f) + (cur[p]*0.1f);
-			}
+				*ref = ((*ref)*0.9f) + ((*cur)*0.1f);
 
-			ret = rmax >= 150; // XXX magic threshold number
+				ref++;
+				cur++;
+				val++;
+				if (++x == w) {
+					x = 0;
+					if (++y == h)
+						break;
+					threshold_cell = (y/threshold_cell_h) << 5;
+					/* Initialize the next value using the value to the north.
+					 * This case only comes after wrapping, because we use the
+					 * west when x>0 */
+					*val = val[-w];
+				} else {
+					if (!(x % threshold_cell_w))
+						threshold_cell++;
+					/* Initialize the next value based on this one (to the west) */
+					*val = val[-1];
+				}
+			}
 			
 			av_free(frame->data[0]);
 			av_free(frame);
