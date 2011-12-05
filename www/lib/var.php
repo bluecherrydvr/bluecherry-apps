@@ -31,6 +31,8 @@ define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://versioncheck.bluecherrydvr.com/ip
 define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
 
 define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
+
+define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 #local card props
 $GLOBALS['buffer'] = array(
 	'post' => array(1,2,3,4,5,10,15,20),

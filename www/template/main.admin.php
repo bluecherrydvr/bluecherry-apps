@@ -32,6 +32,7 @@
 		<div id="mainMenu">
 	  		<ul id="menuButtons">
 				<li class='liveView'><?php echo MMENU_LIVEVIEW; ?></li>
+				<li class='downloadClient'><?php echo MMENU_CLIENT_DOWNLOAD; ?></li>
 				<hr>
 				<li id="news" class="news"><? echo MMENU_NEWS; ?></li>
 				<hr>

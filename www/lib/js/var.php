@@ -11,6 +11,7 @@ var_email = '".USERS_EMAIL."';
 var_email_ex = '".USERS_EMAIL_EX."';
 var_del_can_conf = '".DELTE_CAM_CONF."';
 var_del_ipp_conf = '".IPP_DELETE."'
+var_rm_client_download = '".RM_CLIENT_DOWNLOAD."'
 ";
 
 

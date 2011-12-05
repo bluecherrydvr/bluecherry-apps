@@ -18,12 +18,9 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 	<ul>
 		<li id="liN">Off</li>
 		<li id="liC" class="on">Continuous</li>
-		<?php 
-			if ($device_schedule->schedule_data[0]['protocol']!='IP'){
-				echo '<li id="liM">Motion</li><li id="liS">Sensor</li>';
-			};
-		?>
-			<hr />
+		<li id="liM">Motion</li>
+		<li id="liS">Sensor</li>
+		<hr />
 		<li id="fillAll">Fill All</li>	
 	</ul>
 	

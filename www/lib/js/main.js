@@ -6,7 +6,11 @@ DVRmainMenu = new Class({
 			el.addEvents({
 				'mouseenter' : function() { morph.start({ 'background-color':'#ff8c00' }); el.setStyle('cursor', 'pointer');},
 				'mouseleave' : function() { morph.start({ 'background-color': original }); el.setStyle('cursor', ''); },
-				'click'		 : function(ev) { if (el.get('class')=='liveView') { window.location.href = '/?l=true'; return false; };  ev.preventDefault(); openPage = new DVRPage(this.get('id')); }
+				'click'		 : function(ev) { 
+												if (el.get('class')=='liveView') { window.location.href = '/?l=true'; return false; };
+												if (el.get('class')=='downloadClient') { window.location.href = var_rm_client_download; return false; };  
+												ev.preventDefault(); 
+												openPage = new DVRPage(this.get('id')); }
 
 			});
 		});

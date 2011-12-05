@@ -29,6 +29,7 @@ define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
+define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
