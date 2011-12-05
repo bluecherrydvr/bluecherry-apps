@@ -53,7 +53,7 @@ $GLOBALS['resolutions'] = array(
 
 #anaglog ptz properties
 $GLOBALS['ptz'] = array(
-	'PROTOCOLS' => array('PELCO'),
+	'PROTOCOLS' => array('PELCO-D'),
 	'BAUD' => array(1200, 2400, 4800, 9600, 19200, 38400),
 	'BIT' =>  array(8, 7),
 	'STOP_BIT' => array(1, 2),

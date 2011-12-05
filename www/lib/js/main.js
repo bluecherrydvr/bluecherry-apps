@@ -19,6 +19,11 @@ DVRmainMenu = new Class({
 				var openPage = new DVRPage('newversion');
 			});
 		}
+		if ($('updateAdminPassword')){
+			$('updateAdminPassword').addEvent('click', function(){
+				var openPage = new DVRPage('users', 'id=1');
+			});
+		}
 	}
 });
 

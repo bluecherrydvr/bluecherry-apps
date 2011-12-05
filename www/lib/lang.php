@@ -145,7 +145,7 @@ define('LOGIN_OK', 'Please wait while you are redirected...');
 define('NA_WEB', 'You do not have permission to use web interface');
 define('NA_CLIENT', 'You do not have permission to use remote client');
 
-
+define('WARN_DEFAULT_PASSWORD', 'You have not changed the default password on this system. For security we highly recommend <a id="updateAdminPassword" href="#">updating your password</a>.');
 
 #devices
 define('CARD_HEADER', 'Bluecherry hardware compression');
@@ -262,7 +262,7 @@ define('AIP_IP_ADDR_MJPEG', 'MJPEG IP Address');
 define('AIP_PORT_MJPEG', 'MJPEG Port');
 define('AIP_IP_ADDR', 'Camera IP or Host');
 define('AIP_CHOOSE_RES', 'Please choose framerate/resolution');
-define('AIP_PORT', 'Port');
+define('AIP_PORT', 'RTSP Port');
 define('AIP_USER', 'Username');
 define('AIP_PASS', 'Password');
 define('AIP_MJPATH', 'Path to MJPEG');

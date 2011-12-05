@@ -22,6 +22,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
 #sysMessages #snr, #sysMessages #sr, #sysMessages #ncn, #sysMessages #ftw { display:none; }
+#dismissDefaultPasswordWarning { float:right; }
 
 /*login*/
 #login-window-container  	 { margin:30px 0 20px 0; width:100%; height:100%; text-align:center; vertical-align:middle; z-index:9; position:absolute; top:0; left:0; }
@@ -66,7 +67,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 
 /*left column*/
 #leftColumn   { padding:20px; width:200px; float:left; }
-#centerColumn { padding:20px; float:left; position:relative; }
+#centerColumn { padding:20px; float:left; position:relative; width:655px; }
 
 /*main page-space*/
 #pageContainer { position:relative; border:1px solid #ddd; width:620px; height:auto; display:block; float:left; -moz-border-radius: 5px; -webkit-border-radius: 5px;  margin-left:5px; padding:10px; }
