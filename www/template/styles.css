@@ -22,6 +22,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
 #sysMessages #snr, #sysMessages #sr, #sysMessages #ncn, #sysMessages #ftw { display:none; }
+#dismissDefaultPasswordWarning { float:right; }
 
 /*login*/
 #login-window-container  	 { margin:30px 0 20px 0; width:100%; height:100%; text-align:center; vertical-align:middle; z-index:9; position:absolute; top:0; left:0; }
@@ -29,7 +30,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #login-window input 		 { width:70%; height:30px; margin:5px 5px 5px 5px; color:#2A2A2A; font-size:1em; text-align:center; vertical-align:middle; }
 #login-window #login-button  { background:#d5d7ef; color:#333; cursor:pointer; height:30px; width:70%; margin-top:15px; }
 #login-window #cancel-button { background:#efd5d5; color:#333; cursor:pointer; height:30px; width:20%; }
-#login-message				 { margin:5px; padding:5px; border:1px dotted red;  opacity:0; filter:alpha(opacity = 0); width:100%; background-color:#f99; color:#000; }
+#login-message				 { margin:5px; padding:5px; border:1px dotted red;  opacity:0; filter:alpha(opacity = 0); width:90%; background-color:#f99; color:#000; }
 
 /*forms*/
 #settingsForm div 					{ display:block; float:left; width:100%; padding:5px 0 5px 0; border-top:1px dotted #ccc; }
@@ -66,7 +67,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 
 /*left column*/
 #leftColumn   { padding:20px; width:200px; float:left; }
-#centerColumn { padding:20px; float:left; position:relative; }
+#centerColumn { padding:20px; float:left; position:relative; width:655px; }
 
 /*main page-space*/
 #pageContainer { position:relative; border:1px solid #ddd; width:620px; height:auto; display:block; float:left; -moz-border-radius: 5px; -webkit-border-radius: 5px;  margin-left:5px; padding:10px; }
@@ -89,6 +90,8 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #menuButtons .globalschedule  { background-image:url("/img/icons/schedule.png"); }
 #menuButtons .liveView		  { background-image:url("/img/icons/liveview.png"); }
 #menuButtons .activeUsers	  { background-image:url("/img/icons/activeusers.png"); }
+#menuButtons .downloadClient  { background-image:url("/img/icons/client.png"); font-size:14px; line-height:27px; vertical-align:middle; }
+
 
 /*message div*/
 #messageDiv { width:90%; padding:5px; font-size:1em; margin:10px; position:relative; float:left; display:inline; padding-left:35px; }
@@ -292,7 +295,7 @@ second
 #settingsMenu li a.disabled, #ipSettingsMenu li a.disabled { color:#ccc; font-style:italic; }
 #settingsMenu li a.disabled:hover, #ipSettingsMenu li a.disabled:hover { background-color:#eee; }
 #settingsMenu li a.videoadj, #ipSettingsMenu li a.properties	{ background-image:url(/img/icons/menu/config.png); }
-#settingsMenu li a.editmap	{ background-image:url(/img/icons/menu/motion.png); }
+#settingsMenu li a.editmap, #ipSettingsMenu li a.editmap	{ background-image:url(/img/icons/menu/motion.png); }
 #settingsMenu li a.ptzsettings, #ipSettingsMenu li a.ptzsettings	{ background-image:url(/img/icons/menu/ptz.png); }
 #settingsMenu li a.deviceschedule, #ipSettingsMenu li a.deviceschedule	{ background-image:url(/img/icons/menu/schedule.png); }
 #ipSettingsMenu li a.delete { background-image:url(/img/icons/menu/delete.png); }

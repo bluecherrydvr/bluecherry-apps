@@ -117,6 +117,7 @@ class user{
 	private function getInfo($parameter, $value){
 		$info = data::getObject('Users', $parameter, $value);
 		$this->info = $info[0];
+		$this->info['default_password'] = ($this->info['password']==md5('bluecherry'.$this->info['salt']) && $this->info['username']=='Admin') ? true : false;
 		$this->info['access_ptz_list'] = explode(',', $this->info['access_ptz_list']);
 		$this->info['access_device_list'] = explode(',', $this->info['access_device_list']);
 	}
@@ -220,8 +221,8 @@ class user{
 				unset($data['id']);
 				if ($data['password'] == '__default__') { unset($data['password']); }
 					else {
-						$ud = data::query("SELECT salt FROM Users WHERE id='{$id}'");
-						$data['password'] = md5($data['password'].$ud[0]['salt']);
+						$data['salt'] = data::getRandomString(4);
+						$data['password'] = md5($data['password'].$data['salt']);
 					}
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;

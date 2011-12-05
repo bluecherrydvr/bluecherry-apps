@@ -32,6 +32,7 @@
 		<div id="mainMenu">
 	  		<ul id="menuButtons">
 				<li class='liveView'><?php echo MMENU_LIVEVIEW; ?></li>
+				<li class='downloadClient'><?php echo MMENU_CLIENT_DOWNLOAD; ?></li>
 				<hr>
 				<li id="news" class="news"><? echo MMENU_NEWS; ?></li>
 				<hr>
@@ -78,7 +79,14 @@
 		</div>
 	</div>
 	<div id="centerColumn">
-		<div id="pageContainer"></div>
+		<?php
+			if ($current_user->info['default_password'] && !$_COOKIE['default_password_warning_dismiss']){
+				echo "<div id='message' class='INFO'>".WARN_DEFAULT_PASSWORD."</div>";
+			}
+		?>
+		<div id="pageContainer">
+
+		</div>
 	</div>
 	<div id="onLoadFailureContainer"><div id="onLoadFailure"><h1><?php echo COUND_NOT_OPEN_PAGE;  ?></h1><p><?php echo COUND_NOT_OPEN_PAGE_EX; ?></p></div></div>
 </body>

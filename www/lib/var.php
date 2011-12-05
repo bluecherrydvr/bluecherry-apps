@@ -31,6 +31,8 @@ define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://versioncheck.bluecherrydvr.com/ip
 define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
 
 define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
+
+define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 #local card props
 $GLOBALS['buffer'] = array(
 	'post' => array(1,2,3,4,5,10,15,20),
@@ -51,7 +53,7 @@ $GLOBALS['resolutions'] = array(
 
 #anaglog ptz properties
 $GLOBALS['ptz'] = array(
-	'PROTOCOLS' => array('PELCO'),
+	'PROTOCOLS' => array('PELCO-D'),
 	'BAUD' => array(1200, 2400, 4800, 9600, 19200, 38400),
 	'BIT' =>  array(8, 7),
 	'STOP_BIT' => array(1, 2),
