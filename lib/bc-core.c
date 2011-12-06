@@ -477,6 +477,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	else
 		ret = v4l2_handle_init(bc, dbres);
 
+	bc_set_motion_thresh_global(bc, '3');
+
 	if (ret) {
 		bc_handle_free(bc);
 		return NULL;
