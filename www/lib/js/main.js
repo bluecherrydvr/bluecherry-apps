@@ -210,51 +210,6 @@ DVRPageScript = new Class({
 				$('advancedSettingsSwitch').addEvent('click', function(){
 					expandAdvancedSettings();
 				});
-				getInfo = function(t, m, x, containerId){
-					var request = new Request({
-						url: 'ajax/addip.php',
-						data: 'm='+t+'&'+m+'='+x,
-						method: 'get',
-						onRequest: function(){
-						},
-						onSuccess: function(html, xml){
-							if (containerId) { 
-								$(containerId).set('html', html)}
-							else {
-								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
-								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
-								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
-								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
-								$('mjpeg').set('value', mjpegPath);
-								$('rtsppath').set('value', rtspPath);
-								$('port').set('value', rtspPort);
-								$('mjpegPort').set('value', mjpegPort);
-								if (mjpegPath=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
-									expandAdvancedSettings('open');
-								} else {
-									expandAdvancedSettings('close');
-								}
-							}
-							switch (containerId){
-								case 'modelSelector':
-									$('models').addEvent('change', function(){
-										if (this.value!='Please choose model'){
-											var w = false;
-											if (this.value == 'Generic'){
-												expandAdvancedSettings('open');
-											} else {
-												getInfo('ops', 'model', this.value, false);
-											};
-										} else {
-											var w = true;
-										}
-										$$('#aip input').set('disabled', w);
-									});
-								break;
-							}
-						}
-					}).send();
-				}
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
 					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
@@ -350,10 +305,10 @@ DVRPageScript = new Class({
 				});
 				$('addIPCamera').buttonAnimate("#aca");
 				initNames = function(){
-					$$('.name').each(function(el){
+					$$('.editName').each(function(el){
 						el.addEvent('click', function(){
 							var id = el.get('id');						
-							el.getParent().set('html', '<div class="name"><input type="text" class="cDevName" value="'+el.get('html')+'"></div>');
+							el.getParent().set('html', '<a class="editName"><input type="text" class="cDevName" value="'+el.get('html')+'"></a>');
 							$$('.cDevName').each(function(el){
 								el.addEvents({
 									'change': function(){
@@ -480,6 +435,9 @@ DVRPageScript = new Class({
 				});
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
+				});
+				$('manufacturers').addEvent('change', function(){
+					getInfo('model', 'manufacturer' , this.value, 'modelSelector', true);
 				});
 			break;
 			case 'activeusers':
@@ -989,4 +947,49 @@ updateStatBar = function(barId, val, y, r){
 
 
 
-
+getInfo = function(t, m, x, containerId, s){
+					var request = new Request({
+						url: 'ajax/addip.php',
+						data: 'm='+t+'&'+m+'='+x,
+						method: 'get',
+						onRequest: function(){
+						},
+						onSuccess: function(html, xml){
+							if (containerId) { 
+								$(containerId).set('html', html)}
+							else {
+								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
+								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
+								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
+								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
+								$('mjpeg').set('value', mjpegPath);
+								$('rtsppath').set('value', rtspPath);
+								$('port').set('value', rtspPort);
+								$('mjpegPort').set('value', mjpegPort);
+								if (mjpegPath=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
+									expandAdvancedSettings('open');
+								} else {
+									expandAdvancedSettings('close');
+								}
+							}
+							switch (containerId){
+								case 'modelSelector':
+									if (!s)
+									$('models').addEvent('change', function(){
+										if (this.value!='Please choose model'){
+											var w = false;
+											if (this.value == 'Generic'){
+												expandAdvancedSettings('open');
+											} else {
+												getInfo('ops', 'model', this.value, false);
+											};
+										} else {
+											var w = true;
+										}
+										$$('#aip input').set('disabled', w);
+									});
+								break;
+							}
+						}
+					}).send();
+}

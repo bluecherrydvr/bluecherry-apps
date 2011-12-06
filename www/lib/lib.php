@@ -35,6 +35,10 @@ function is_assoc($array){
 	return array_keys($array) !== range(0, count($array) - 1);
 }
 
+function getOs(){
+	$it = $_SERVER['HTTP_USER_AGENT'];
+}
+
 #classes
 
 #singleton database class, uses php5-bluecherry functions
@@ -70,8 +74,8 @@ class data{
 		$db = database::getInstance();
 		return ($resultless) ? $db->query($query) : $db->fetchAll($query);
 	}
-	public static function getObject($table, $parameter = false , $value = false, $condition = '='){
-		$data = self::query("SELECT * FROM ".database::escapeString($table).((!$parameter) ? '' : " WHERE ".database::escapeString($parameter).$condition." '".database::escapeString($value)."'"));
+	public static function getObject($table, $parameter = false , $value = false, $condition = '=', $other = ''){
+		$data = self::query("SELECT * FROM ".database::escapeString($table).((!$parameter) ? '' : " WHERE ".database::escapeString($parameter).$condition." '".database::escapeString($value)."'").' '.$other);
 		return ($data) ? $data : false;
 	}
 	public static function getRandomString($length = 4) {
@@ -395,6 +399,10 @@ class ipCamera{
 				$this->info['mjpeg_path']  =	$tmp[2];
 			}
 		}
+		#get manufacturer and model information
+		$tmp = data::query("SELECT * FROM ipCameras WHERE model='{$this->info['model']}'");
+		$this->info['manufacturer'] = $tmp[0]['manufacturer'];
+		
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
 		}
@@ -417,7 +425,6 @@ class ipCamera{
 		return $this->info['connection_status'];
 	}
 	public static function create($data){
-		
 		if (!$data['ipAddr'])	{ return array(false, AIP_NEEDIP); };
 		if (!$data['port'])	{ return array(false, AIP_NEEDPORT);};
 		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
@@ -479,25 +486,20 @@ class card {
 	}
 }
 
-class ipCameras{
-	public $camera;
-	public function __construct($m){
-		switch($m){
-			case 'model': $this->getModels($_GET['manufacturer']); break;
-			case 'ops': $this->getOptions($_GET['model']); break;
-			default: $this->getManufacturers(); break; 
-		};
-	}
-	private function getManufacturers(){
-		$this->data['manufacturers'] = data::query("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
-	}
-	private function getModels($m){
-		$this->data['models'] = data::query("SELECT model FROM ipCameras WHERE manufacturer='$m' ORDER BY model ASC");
-	}
-	private function getOptions($model){
-		$data = data::query("SELECT * FROM ipCameras WHERE model='$model'");
-		$driver = data::query("SELECT * FROM ipCameraDriver WHERE id='{$data[0]['driver']}'");
-		$this->data = (is_array($driver[0])) ? array_merge($data[0], $driver[0]) : $data[0];
+function ipCameras($type, $parameter = false){
+	$parameter = ($parameter) ? database::escapeString($parameter) : false;
+	switch($type){
+		case 'manufacturers':
+			return data::query("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
+		break;
+		case 'models':
+			return data::query("SELECT model FROM ipCameras WHERE manufacturer='{$parameter}' ORDER BY model ASC");
+		break;
+		case 'options':
+			$data = data::query("SELECT * FROM ipCameras WHERE model='{$parameter}'");
+			$driver = data::query("SELECT * FROM ipCameraDriver WHERE id='{$data[0]['driver']}'");
+			return (is_array($driver[0])) ? array_merge($data[0], $driver[0]) : $data[0];
+		break;
 	}
 }
 

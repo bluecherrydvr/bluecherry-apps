@@ -1,24 +1,24 @@
 <?php defined('INDVR') or exit(); 
 require('../template/template.lib.php');
-$mode = (!empty($_GET['m'])) ? $_GET['m'] : false;
-if ($mode) {
-	if ($mode=='model'){
-		
-		echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), $ipCamData->data['models']), '', 'models');
-		exit;
-	}
-	else {
-		$data = "
-			<mjpegPath><![CDATA[{$ipCamData->data['mjpeg_path']}]]></mjpegPath>
-			<rtspPath><![CDATA[{$ipCamData->data['rtsp_path']}]]></rtspPath>
-			<mjpegPort><![CDATA[{$ipCamData->data['mjpeg_port']}]]></mjpegPort>
-			<rtspPort><![CDATA[{$ipCamData->data['rtsp_port']}]]></rtspPort>
-			<resolutions><![CDATA[{$ipCamData->data['resolutions']}]]></resolutions>
-		";
-		data::responseXml(true, true, $data);
-		exit;
-	}
+
+
+if ($_GET['m']=='model'){
+	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), ipCameras('models', $_GET['manufacturer'])), '', 'models');
+	exit;
 };
+if ($_GET['m']=='ops') {
+	$data = ipCameras('options', $_GET['model']);
+	$data = "
+		<mjpegPath><![CDATA[{$data['mjpeg_path']}]]></mjpegPath>
+		<rtspPath><![CDATA[{$data['rtsp_path']}]]></rtspPath>
+		<mjpegPort><![CDATA[{$data['mjpeg_port']}]]></mjpegPort>
+		<rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
+		<resolutions><![CDATA[{$data['resolutions']}]]></resolutions>
+	";
+	data::responseXml(true, true, $data);
+	exit;
+};
+
 
 ?>
 	
@@ -34,7 +34,7 @@ if ($mode) {
 <FORM id="settingsForm" action="/ajax/addip.php" method="post">
 <div id="aip">
 	<input type="hidden" name="mode" value="addip" />
-	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(array_merge(array(AIP_CHOOSE_MANUF), $ipCamData->data['manufacturers']), '', 'manufacturers'); ?></div>
+	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(array_merge(array(AIP_CHOOSE_MANUF), ipCameras('manufacturers')), '', 'manufacturers'); ?></div>
 	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(array(AIP_CH_MAN_FIRST), AIP_CH_MAN_FIRST, 'models', '', true); ?></span></div>
 	<!--<div><label id="addipLabel"><?php echo AIP_CHOOSE_FPSRES; ?>:</label><span id="fpsresSelector"><?php echo arrayToSelect(array(AIP_CH_MOD_FIRST), AIP_CH_MOD_FIRST, 'fpsres', '', true); ?></span></div>!-->
 	<div><label id="addipLabel"><?php echo AIP_CAMERA_NAME; ?></label><input type="Text" disabled="disabled" id="camName" name="camName" /></div>

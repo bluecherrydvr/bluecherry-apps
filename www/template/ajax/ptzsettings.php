@@ -8,7 +8,7 @@ require('../template/template.lib.php');
 	<INPUT type="Hidden" name="id" value="<?php echo $this_camera->info['id']; ?>" />
 	<div id='saveButton'><?php echo SAVE_CHANGES; ?></div>
 	<div><label><?php echo PTZ_PROTOCOL; ?></label><?php echo arrayToSelect($ptz['PROTOCOLS'], $this_camera->info['ptz_config']['protocol'], 'protocol', 'protocol'); ?></div>
-	<div><label><?php echo PTZ_CONTOL_PATH; ?></label><INPUT type="Text" name="path" value="<?php echo $this_camera->info['ptz_config']['path']; ?>" /></div>
+	<div><label><?php echo PTZ_CONTOL_PATH; ?></label><INPUT type="Text" name="path" value="<?php echo (!empty($this_camera->info['ptz_config']['path'])) ? $this_camera->info['ptz_config']['path'] : $GLOBALS['ptz']['DEFAULT_PATH']; ?>" /></div>
 	<div><label><?php echo PTZ_ADDR; ?></label><INPUT type="Text" name="addr" value="<?php echo $this_camera->info['ptz_config']['addr']; ?>" /></div>
 	<div><label><?php echo PTZ_BAUD; ?></label><?php echo arrayToSelect($ptz['BAUD'], $this_camera->info['ptz_config']['baud'], 'baud', 'baud'); ?></div>
 	<div><label><?php echo PTZ_BIT; ?></label><?php echo arrayToSelect($ptz['BIT'], $this_camera->info['ptz_config']['bit'], 'bit', 'bit'); ?></div>
