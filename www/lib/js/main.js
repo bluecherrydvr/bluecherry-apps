@@ -106,10 +106,15 @@ DVRPageScript = new Class({
 				});
 			break; //end ptzpresets
 			case 'statistics':
+				new DatePicker('#start', { pickerClass: 'datepicker_vista', format: 'Y-m-d H:i:s' , timePicker: true });
+				new DatePicker('#end', { pickerClass: 'datepicker_vista', format: 'Y-m-d H:i:s' , timePicker: true });
 				$('sForm').set('send', { 
+					evalScripts : true,
 					onComplete: function(text, xml){
 						$('sResults').set('html', text);
-					},
+						//graph the results
+						///////////////////
+					},					
 					onFailure: function(){
 						$('sResults').set('html', 'Could not complete request, please try later.');
 					}
@@ -373,8 +378,9 @@ DVRPageScript = new Class({
 						ajaxUpdateField('updateEncoding', 'Devices', {'signal_type' : encoding }, el.get('id'), 'devices');
 					});
 				});
+				var menuOffset = -55 - parseInt($('generalMessage').getChildren('#message').getStyle('height'));
 				var context = new ContextMenu({
-					offsets: { x:-250, y:-50 },
+					offsets: { x:-250, y:menuOffset },
 					targets: '.settingsOpen',
 					trigger: 'click',
 					menu:	'settingsMenu',
@@ -394,7 +400,7 @@ DVRPageScript = new Class({
 					}
 				});
 				var ipContext = new ContextMenu({
-					offsets: { x:-250, y:-50 },
+					offsets: { x:-250, y:menuOffset },
 					targets: '.ipSettingsOpen',
 					trigger: 'click',
 					menu:	'ipSettingsMenu',

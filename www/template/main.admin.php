@@ -7,6 +7,7 @@
 <head>
 	<title><?php echo DVR_COMPANY_NAME.' '.DVR_DVR.PAGE_HEADER_SEPARATOR.PAGE_HEADER_MAIN; ?></title>
 	<link rel="stylesheet" href="template/styles.css">
+	<link rel="stylesheet" href="template/datepicker.css">
 	<script type="text/javascript" src="./lib/mootools.js"></script>
 	<script type="text/javascript" src="./lib/mootools-more.js"></script>
 	<script type="text/javascript" src="./lib/mootools-plugins.js"></script>
@@ -80,8 +81,8 @@
 	</div>
 	<div id="centerColumn">
 		<?php
-			if ($current_user->info['default_password'] && !$_COOKIE['default_password_warning_dismiss']){
-				echo "<div id='message' class='INFO'>".WARN_DEFAULT_PASSWORD."</div>";
+			if ($_GLOBALS['general_error']){
+				echo "<div id='generalMessage'><div id='message' class='{$_GLOBALS['general_error']['type']}'>".$_GLOBALS['general_error']['text']."</div></div>";
 			}
 		?>
 		<div id="pageContainer">

@@ -300,11 +300,25 @@ second
 #settingsMenu li a.deviceschedule, #ipSettingsMenu li a.deviceschedule	{ background-image:url(/img/icons/menu/schedule.png); }
 #ipSettingsMenu li a.delete { background-image:url(/img/icons/menu/delete.png); }
 
-#statisticsTable { border-collapse:collapse; }
-#statisticsTable tr th {border-bottom:1px solid black}
-#statisticsTable tr td.primarySeparator { border-top:2px solid black;  }
-#statisticsTable tr td.secondarySeparator { border-top:1px solid black; }
-#statisticsTable tr td {border:1px solid gray; border-collapse:collapse; padding:10px; }
+/*boxes*/
+#boxContainer { width:610px; -moz-border-radius: 5px; -webkit-border-radius: 5px; background-color:#ccc; color:#333; display:box; padding:5px; margin-bottom:20px; }
+#boxContainer #header { margin:5px; font-size:20px; }
+#boxSection { padding:10px; display:box; color:#444; background-color:#ddd; border:1px solid #bbb; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+
+/*statistics*/
+#statisticsForm { padding:10px; display:box; color:#444; border:1px solid #bbb; height:120px; width:590px; -moz-border-radius: 5px; -webkit-border-radius: 5px; background-image:url('/img/gradient_120_light.png'); }
+#statisticsForm .dates { float:left; }
+#statisticsForm .dates div { display:box; }
+#statisticsForm .grouping { float:right; display:inline; }
+#statisticsForm .grouping div { display:box; }
+#statisticsForm .eventTypes { float:left; margin-top:10px; }
+#statisticsForm .submitButton { float:right; margin-top:10px; }
+#statisticsForm .submitButton input { color:#444; background:#ccc; width:200px; -moz-border-radius: 3px; -webkit-border-radius: 3px;}
+#statisticsTable { border-collapse:collapse; border:1px solid black; }
+#statisticsTable tr th {border:1px solid black}
+#statisticsTable tr td.primarySeparator { border-top:1px solid black; border-bottom:none; }
+#statisticsTable tr td.nonSeparated { border:none; }
+#statisticsTable tr td {border:1px dotted gray; border-collapse:collapse; padding:3px; }
 
 
 #settingsForm #advancedSettings { display:none; border:none; padding:0px; }
