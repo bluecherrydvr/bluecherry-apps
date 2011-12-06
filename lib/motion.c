@@ -173,7 +173,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		return vb->flags & V4L2_BUF_FLAG_MOTION_DETECTED ? 1 : 0;
 	} else if (bc->type == BC_DEVICE_RTP) {
 		struct bc_motion_data *md = &bc->motion_data;
-		AVFrame *rawFrame, *frame;
+		AVFrame rawFrame, frame;
 		AVCodecContext *cctx;
 		uint8_t *buf;
 		uint32_t *result = 0;
@@ -183,8 +183,10 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		if (!bc_buf_is_video_frame(bc))
 			return 0;
 
-		rawFrame = avcodec_alloc_frame();
-		r = rtp_device_decode_video(&bc->rtp, rawFrame);
+		avcodec_get_frame_defaults(&rawFrame);
+		avcodec_get_frame_defaults(&frame);
+
+		r = rtp_device_decode_video(&bc->rtp, &rawFrame);
 		if (r < 0) {
 			// XXX report error
 			return 0;
@@ -199,17 +201,14 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			cctx->height, cctx->pix_fmt, cctx->width, cctx->height, PIX_FMT_GRAY8,
 			SWS_BICUBIC, NULL, NULL, NULL);
 
-		frame = avcodec_alloc_frame();
 		bufSize = avpicture_get_size(PIX_FMT_GRAY8, cctx->width, cctx->height);
 		buf = av_malloc(bufSize);
 		if (!buf)
 			return -1;
-		avpicture_fill((AVPicture*)frame, buf, PIX_FMT_GRAY8, cctx->width, cctx->height);
+		avpicture_fill((AVPicture*)&frame, buf, PIX_FMT_GRAY8, cctx->width, cctx->height);
 
-		sws_scale(md->convContext, rawFrame->data, rawFrame->linesize, 0,
-		          cctx->height, frame->data, frame->linesize);
-
-		av_free(rawFrame);
+		sws_scale(md->convContext, rawFrame.data, rawFrame.linesize, 0,
+		          cctx->height, frame.data, frame.linesize);
 
 #ifdef DEBUG_DUMP_MOTION_DATA
 		if (!md->dumpfile) {
@@ -226,9 +225,9 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		if (md->refFrame && md->refFrameHeight == cctx->height && md->refFrameWidth == cctx->width)
 		{
 			uint8_t *ref = md->refFrame->data[0];
-			uint8_t *cur = frame->data[0];
+			uint8_t *cur = frame.data[0];
 			uint32_t *val;
-			int w = frame->linesize[0], h = cctx->height;
+			int w = frame.linesize[0], h = cctx->height;
 			int total = w * h;
 			int x = 0, y = 0;
 			int threshold_cell_w = ceil(w/32.0);
@@ -313,15 +312,16 @@ int bc_motion_is_detected(struct bc_handle *bc)
 						val[0] += ne_diff;
 				}
 			}
-			
-			av_free(frame->data[0]);
-			av_free(frame);
+
+			av_free(buf);
 		} else {
 			if (md->refFrame) {
 				av_free(md->refFrame->data[0]);
 				av_free(md->refFrame);
 			}
-			md->refFrame = frame;
+			md->refFrame = avcodec_alloc_frame();
+			/* Using sizeof(AVFrame) is forbidden, but we link against our own libav. */
+			memcpy(md->refFrame, &frame, sizeof(frame));
 			md->refFrameHeight = cctx->height;
 			md->refFrameWidth  = cctx->width;
 		}
@@ -349,3 +349,4 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 	return ret;
 }
+
