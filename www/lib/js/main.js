@@ -975,18 +975,24 @@ getInfo = function(t, m, x, containerId, s){
 							switch (containerId){
 								case 'modelSelector':
 									if (!s)
+									if ($('models').get('value')=='Generic'){
+										$$('#aip input').set('disabled', false);
+										$('models').getParent().getParent().setStyle('display', 'none');
+									} else {
+										$$('#aip input').set('disabled', true);
+										$('models').getParent().getParent().setStyle('display', 'inline');
+									}
 									$('models').addEvent('change', function(){
 										if (this.value!='Please choose model'){
-											var w = false;
+											$$('#aip input').set('disabled', false);
 											if (this.value == 'Generic'){
 												expandAdvancedSettings('open');
 											} else {
 												getInfo('ops', 'model', this.value, false);
 											};
 										} else {
-											var w = true;
+											$$('#aip input').set('disabled', true);
 										}
-										$$('#aip input').set('disabled', w);
 									});
 								break;
 							}

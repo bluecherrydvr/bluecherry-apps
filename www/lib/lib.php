@@ -90,7 +90,9 @@ class data{
 		}
 		switch($type){
 			case 'insert': return "INSERT INTO {$table} (".implode(", ", array_keys($array)).") VALUES ('".implode("', '", $array)."')"; break;
-			case 'update': 
+			case 'update':
+				$parameter = database::escapeString($parameter);
+				$value = database::escapeString($value);
 				foreach ($array as $p => $v){
 					$tmp[$p]=database::escapeString($p)."='".database::escapeString($v)."'";
 				};

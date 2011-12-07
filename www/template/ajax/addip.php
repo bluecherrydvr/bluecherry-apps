@@ -3,6 +3,10 @@ require('../template/template.lib.php');
 
 
 if ($_GET['m']=='model'){
+	if ($_GET['manufacturer'] == 'Generic'){
+		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
+		exit();
+	}
 	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), ipCameras('models', $_GET['manufacturer'])), '', 'models');
 	exit;
 };
