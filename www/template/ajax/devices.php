@@ -27,7 +27,7 @@ if ($devices->ipCameras){
 				<div>
 				<div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>
 				</div>
-				<div class='model'>{$device->info['manufacturer']} {$device->info['model']}</div>
+				<div class='model'>{$device->info['manufacturer']} ".(($device->info['manufacturer']==$device->info['model']) ? '' : $device->info['model'])."</div>
 				<div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
 			if (!$device->info['disabled'])
 				if ($device->info['connection_status']){
