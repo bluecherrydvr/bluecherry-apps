@@ -23,6 +23,11 @@ case "$1" in
 		chown bluecherry:bluecherry /var/run/bluecherry
 		chmod 750 /var/run/bluecherry
 
+		# Create the logfile, because rsyslog might not be able to
+		touch /var/log/bluecherry.log
+		chown syslog:bluecherry /var/log/bluecherry.log
+		chmod 640 /var/log/bluecherry.log
+
 		# Apache modules and sites
 		a2enmod ssl
 		a2enmod php5
