@@ -27,7 +27,6 @@ class update{
 			case 'update_control' : $this->update_control(); break;
 			case 'newUser': $this->newUser(); break;
 			case 'user': $this->updateUser(); break;
-			case 'editIp': $this->editIp(); break;
 			case 'changeState': $this->changeState(); break;
 			case 'updateEncoding': $this->changeEncoding(); break;
 			case 'enableAll': $this->enableAll(); break;
@@ -54,11 +53,6 @@ class update{
 	private function updateUser(){
 		$result = user::update($_POST);
 		data::responseXml($result[0], $result[1]);
-	}
-	private function editIp(){
-		$id = intval($_POST['id']);
-		$result = data::query("UPDATE Devices SET device='{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', mjpeg_path='{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}', rtsp_username='{$_POST['user']}', rtsp_password='{$_POST['pass']}', debug_level=".(($_POST['debug_level']=='on') ? '1' : '0')." WHERE id={$id}", true);
-		data::responseXml($result);
 	}
 	private	function update_control(){
 		$id = intval($_POST['id']);

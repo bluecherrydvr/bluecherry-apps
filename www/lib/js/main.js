@@ -8,7 +8,7 @@ DVRmainMenu = new Class({
 				'mouseleave' : function() { morph.start({ 'background-color': original }); el.setStyle('cursor', ''); },
 				'click'		 : function(ev) { 
 												if (el.get('class')=='liveView') { window.location.href = '/?l=true'; return false; };
-												if (el.get('class')=='downloadClient') { window.location.href = var_rm_client_download; return false; };  
+												if (el.get('class')=='downloadClient') { window.open(var_rm_client_download); return false; };  
 												ev.preventDefault(); 
 												openPage = new DVRPage(this.get('id')); }
 
@@ -106,10 +106,15 @@ DVRPageScript = new Class({
 				});
 			break; //end ptzpresets
 			case 'statistics':
+				new DatePicker('#start', { pickerClass: 'datepicker_vista', format: 'Y-m-d H:i:s' , timePicker: true });
+				new DatePicker('#end', { pickerClass: 'datepicker_vista', format: 'Y-m-d H:i:s' , timePicker: true });
 				$('sForm').set('send', { 
+					evalScripts : true,
 					onComplete: function(text, xml){
 						$('sResults').set('html', text);
-					},
+						//graph the results
+						///////////////////
+					},					
 					onFailure: function(){
 						$('sResults').set('html', 'Could not complete request, please try later.');
 					}
@@ -205,51 +210,6 @@ DVRPageScript = new Class({
 				$('advancedSettingsSwitch').addEvent('click', function(){
 					expandAdvancedSettings();
 				});
-				getInfo = function(t, m, x, containerId){
-					var request = new Request({
-						url: 'ajax/addip.php',
-						data: 'm='+t+'&'+m+'='+x,
-						method: 'get',
-						onRequest: function(){
-						},
-						onSuccess: function(html, xml){
-							if (containerId) { 
-								$(containerId).set('html', html)}
-							else {
-								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
-								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
-								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
-								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
-								$('mjpeg').set('value', mjpegPath);
-								$('rtsppath').set('value', rtspPath);
-								$('port').set('value', rtspPort);
-								$('mjpegPort').set('value', mjpegPort);
-								if (mjpegPath=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
-									expandAdvancedSettings('open');
-								} else {
-									expandAdvancedSettings('close');
-								}
-							}
-							switch (containerId){
-								case 'modelSelector':
-									$('models').addEvent('change', function(){
-										if (this.value!='Please choose model'){
-											var w = false;
-											if (this.value == 'Generic'){
-												expandAdvancedSettings('open');
-											} else {
-												getInfo('ops', 'model', this.value, false);
-											};
-										} else {
-											var w = true;
-										}
-										$$('#aip input').set('disabled', w);
-									});
-								break;
-							}
-						}
-					}).send();
-				}
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
 					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
@@ -345,10 +305,10 @@ DVRPageScript = new Class({
 				});
 				$('addIPCamera').buttonAnimate("#aca");
 				initNames = function(){
-					$$('.name').each(function(el){
+					$$('.editName').each(function(el){
 						el.addEvent('click', function(){
 							var id = el.get('id');						
-							el.getParent().set('html', '<div class="name"><input type="text" class="cDevName" value="'+el.get('html')+'"></div>');
+							el.getParent().set('html', '<a class="editName"><input type="text" class="cDevName" value="'+el.get('html')+'"></a>');
 							$$('.cDevName').each(function(el){
 								el.addEvents({
 									'change': function(){
@@ -373,8 +333,9 @@ DVRPageScript = new Class({
 						ajaxUpdateField('updateEncoding', 'Devices', {'signal_type' : encoding }, el.get('id'), 'devices');
 					});
 				});
+				var menuOffset = -55 - parseInt($('generalMessage').getChildren('#message').getStyle('height'));
 				var context = new ContextMenu({
-					offsets: { x:-250, y:-50 },
+					offsets: { x:-250, y:menuOffset },
 					targets: '.settingsOpen',
 					trigger: 'click',
 					menu:	'settingsMenu',
@@ -394,7 +355,7 @@ DVRPageScript = new Class({
 					}
 				});
 				var ipContext = new ContextMenu({
-					offsets: { x:-250, y:-50 },
+					offsets: { x:-250, y:menuOffset },
 					targets: '.ipSettingsOpen',
 					trigger: 'click',
 					menu:	'ipSettingsMenu',
@@ -474,6 +435,9 @@ DVRPageScript = new Class({
 				});
 				$('backToList').addEvent('click', function(){
 					var page = new DVRPage('devices');
+				});
+				$('manufacturers').addEvent('change', function(){
+					getInfo('model', 'manufacturer' , this.value, 'modelSelector', true);
 				});
 			break;
 			case 'activeusers':
@@ -983,4 +947,55 @@ updateStatBar = function(barId, val, y, r){
 
 
 
-
+getInfo = function(t, m, x, containerId, s){
+					var request = new Request({
+						url: 'ajax/addip.php',
+						data: 'm='+t+'&'+m+'='+x,
+						method: 'get',
+						onRequest: function(){
+						},
+						onSuccess: function(html, xml){
+							if (containerId) { 
+								$(containerId).set('html', html)}
+							else {
+								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
+								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
+								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
+								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
+								$('mjpeg').set('value', mjpegPath);
+								$('rtsppath').set('value', rtspPath);
+								$('port').set('value', rtspPort);
+								$('mjpegPort').set('value', mjpegPort);
+								if (mjpegPath=='' || rtspPort=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
+									expandAdvancedSettings('open');
+								} else {
+									expandAdvancedSettings('close');
+								}
+							}
+							switch (containerId){
+								case 'modelSelector':
+									if (!s)
+									if ($('models').get('value')=='Generic'){
+										$$('#aip input').set('disabled', false);
+										$('models').getParent().getParent().setStyle('display', 'none');
+									} else {
+										$$('#aip input').set('disabled', true);
+										$('models').getParent().getParent().setStyle('display', 'inline');
+									}
+									$('models').addEvent('change', function(){
+										if (this.value!='Please choose model'){
+											$$('#aip input').set('disabled', false);
+											if (this.value == 'Generic'){
+												expandAdvancedSettings('open');
+											} else {
+												getInfo('ops', 'model', this.value, false);
+											};
+										} else {
+											$$('#aip input').set('disabled', true);
+										}
+									});
+								break;
+							}
+						}
+					}).send();
+}

@@ -23,8 +23,12 @@ echo "<div id='header'>".TOTAL_DEVICES.": <b>{$devices->info['total_devices']}</
 if ($devices->ipCameras){
 	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
 		foreach($devices->ipCameras as $key => $device){
-			echo "<div id='ipDevice' class='{$device->info['id']}'><div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div></div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> 
-					| <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
+			echo "<div id='ipDevice' class='{$device->info['id']}'>
+				<div>
+				<div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>
+				</div>
+				<div class='model'>{$device->info['manufacturer']} ".(($device->info['manufacturer']==$device->info['model']) ? '' : $device->info['model'])."</div>
+				<div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
 			if (!$device->info['disabled'])
 				if ($device->info['connection_status']){
 					$status_message = '';
@@ -56,8 +60,8 @@ foreach ($card->cameras as $key =>$device){
 	if (empty($device->info['id'])) { $device->info['id']=''; };
 	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
 	echo "<div id='localDevice' class='{$device->info['id']}'>";
-	echo "<div><div id='{$device->info['id']}' class='name'>{$device->info['device_name']}</div>";
-	if ($device->info['status'] != 'notconfigured') echo "<div style='display:inline;'>[id: {$device->info['id']}]</div>";
+	echo "<div><div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>";
+	if ($device->info['status'] != 'notconfigured') echo "<div <div class='portId'>id: {$device->info['id']}</div>";
 	echo "</div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])."";
 	echo "&nbsp;<a href='#' class='change_state' id='"."{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a>";
 	if ($device->info['status'] != 'notconfigured') {

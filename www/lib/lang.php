@@ -385,4 +385,19 @@ define('IPP_PRESET_HTTP_AUTH_EX', 'use http auth or GET parameters');
 define('IPP_PRESET_PORT', 'Control port');
 define('IPP_PRESET_PORT_EX', 'if camera uses port!=80');
 define('IPP_DISABLE_PTZ', 'Disable PTZ for this camera');
+
+#statistics
+define('STS_START_DATE', 'Start date');
+define('STS_END_DATE', 'End Date');
+define('STS_PR_GRP', 'Primary grouping');
+define('STS_SC_GRP', 'Secondary grouping');
+define('STS_ET_ALL', 'All events');
+define('STS_ET_M', 'Motion');
+define('STS_ET_C', 'Continuous');
+define('STS_SUBMIT', 'Get statistics');
+define('STS_TOTAL_EVENTS', 'Total <b>%TYPE%</b> events for the period:');
+define('STS_PICKER_HEADER', 'Choose date range and event types');
+define('STS_PERCENTAGE_OF_TOTAL', 'Percent of total');
+define('STS_NUM_EVENTS', 'Number of events');
+
 ?>

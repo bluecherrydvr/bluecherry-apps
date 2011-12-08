@@ -6,9 +6,11 @@ echo "<div id='header'>".PROPS_HEADER."</div>";
 echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['device_name']} </p>"; 	
 ?>
 
-
-<FORM id="settingsForm" action="/ajax/update.php" method="post">
+<FORM id="settingsForm" action="/ajax/editip.php" method="post">
 <div id="aip">
+	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(ipCameras('manufacturers'), $ipCamera->info['manufacturer'], 'manufacturers'); ?></div>
+	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(ipCameras('models', $ipCamera->info['manufacturer']), $ipCamera->info['model'], 'models', true); ?></span></div>
+	<div><label id="addipLabel"><?php echo VA_AUDIO_ENABLE; ?></label><input id='audio_enabled' type='Checkbox' name="audio_enabled"  <?php echo !($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''; ?>/></div>
 	<input type="hidden" name="mode" value="editIp" />
 	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
 	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><input type="Text" id="ipAddr" name="ipAddr" value="<?php echo $ipCamera->info['ipAddr'];?>" /></div>

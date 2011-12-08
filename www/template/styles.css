@@ -9,6 +9,7 @@ a:hover		{ color:#30528f; }
 a:visited	{ color:#5072af; }
 p			{ font-size:0.8em; color:#aaa;  padding-bottom:0px; margin:3px 3px 10px 3px; }
 h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:bold;  }
+ .bClear	{ clear:both; }
 
 #leftColumn #logo { background: url("/img/logo.png") no-repeat center center; height:90px; }
 
@@ -108,10 +109,10 @@ second
 #serverStats .progressBar div.text{ float:left; position:absolute; width:100%; font-size:10px; top:0px; left:0px; z-index:2; font-weight:bold; }
 
 /*loading failed*/
-#onLoadFailureContainer { visibility:hidden; }
-#onLoadFailure { width:600px; display:block; }
-#onLoadFailure h1 { font-size:1.2em; color:#777; margin:3px; font-weight:bold; border-bottom:solid 1px #97bdd2; }
-#onLoadFailure p  { font-size:1em; color:#000; }
+#onLoadFailureContainer 			{ visibility:hidden; }
+#onLoadFailure 						{ width:600px; display:block; }
+#onLoadFailure h1 					{ font-size:1.2em; color:#777; margin:3px; font-weight:bold; border-bottom:solid 1px #97bdd2; }
+#onLoadFailure p  					{ font-size:1em; color:#000; }
 
 /*users page styles*/
 #user-table					{ width:600px; display: block; }
@@ -125,12 +126,12 @@ second
 #user-table .deleteUser 	{ background-image:url("/img/icons/cross.png"); background-position: center center; background-repeat:no-repeat; width:20px; }
 
 /*active (connected) users*/
-#active-user-table tr.low { background-color:#eee; }
-#active-user-table td.kick { background-color:#ffd1a4; padding:3px; }
-#active-user-table td.kick:hover { background-color:#ff8000; cursor:pointer; }
-#active-user-table td.kicked { background-color:#ff8000; }
-#active-user-table td.ban { background-color:#ff9191; padding:3px; }
-#active-user-table td.ban:hover { background-color:#ff5555; cursor:pointer; }
+#active-user-table tr.low			{ background-color:#eee; }
+#active-user-table td.kick			{ background-color:#ffd1a4; padding:3px; }
+#active-user-table td.kick:hover	{ background-color:#ff8000; cursor:pointer; }
+#active-user-table td.kicked		{ background-color:#ff8000; }
+#active-user-table td.ban 			{ background-color:#ff9191; padding:3px; }
+#active-user-table td.ban:hover 	{ background-color:#ff5555; cursor:pointer; }
 
 /*news*/
 #dvrNews 			  				{ width:auto; }
@@ -144,37 +145,38 @@ second
 #dvrNews #newsText ul 				{ list-style:none; }
 
 /*log-styles*/
-#dvrlog			{ width:600px; height:500px; overflow:auto; border:2px solid #eee; margin-top:10px; }
-#dvrlog div 	{ width: 100%; padding:3px 0px 3px 0px;}
-#dvrlog div.bg 	{ background-color:#bbb; }
-#logControls 	{ display:block; padding:5px; }
-.downloadDebuggingInfo { padding:2px; color:green; background-color:#eFe; border:1px dotted #3f3; float:right; margin-right:15px; }
-.downloadDebuggingInfo:hover { background-color:#aFa;  }
+#dvrlog								{ width:600px; height:500px; overflow:auto; border:2px solid #eee; margin-top:10px; }
+#dvrlog div 						{ width: 100%; padding:3px 0px 3px 0px;}
+#dvrlog div.bg 						{ background-color:#bbb; }
+#logControls 						{ display:block; padding:5px; }
+.downloadDebuggingInfo 				{ padding:2px; color:green; background-color:#eFe; border:1px dotted #3f3; float:right; margin-right:15px; }
+.downloadDebuggingInfo:hover		{ background-color:#aFa;  }
 
 /*devices*/
-#dvrCard { border: 1px solid #ddd; -moz-border-radius: 5px; -webkit-border-radius: 5px; width:auto; padding:10px 10px 10px 10px; margin:10px 0 10px 0; }
-#dvrCard .cardHeader 				{ cursor:pointer; font-size:1.2em; padding-left:35px; color:#000; line-height:30px; background:url("/img/icons/dvr_card.png") no-repeat; background-position:left; }
-#dvrCard .cardHeader:hover 			{ color:#666;  }
-#dvrCard #cardInfo 					{ padding:3px; margin:5px 0 5px 0; border:1px solid #ccc; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#dvrCard #unusedCapacity 			{ font-weight:bold; display:inline; }
-#dvrCard #unusedCapacity:hover		{ cursor:help; }
-#dvrCard .cardEncoding 				{ display:inline; font-weight:bold; text-decoration:none; }
- .bClear							{ clear:both; }
-#localDevice, #ipDevice				{ position:relative; background-position:right top; background-repeat:no-repeat; float:left; background-color:#fefefe; border:1px solid #f2f2f2; width: 270px; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:5px; }
-#localDevice .name 					{ width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; background:url("/img/icons/bnc.png") no-repeat; background-position:left;}
-#ipDevice .name						{ width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; background:url("/img/icons/device.png") no-repeat; background-position:left;}
-#localDevice #resolutionFps 		{ background-color:#efefef; width:100%; margin: 5px 0 5px 0;}
-#localDevice #resolutionFps div 	{ display:inline; }
+#dvrCard 															{ border: 1px solid #ddd; -moz-border-radius: 5px; -webkit-border-radius: 5px; width:auto; padding:10px 10px 10px 10px; margin:10px 0 10px 0; }
+#dvrCard .cardHeader 												{ cursor:pointer; font-size:1.2em; padding-left:35px; color:#000; line-height:30px; background:url("/img/icons/dvr_card.png") no-repeat; background-position:left; }
+#dvrCard .cardHeader:hover 											{ color:#666;  }
+#dvrCard #cardInfo 													{ padding:3px; margin:5px 0 5px 0; border:1px solid #ccc; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+#dvrCard #unusedCapacity 											{ font-weight:bold; display:inline; }
+#dvrCard #unusedCapacity:hover										{ cursor:help; }
+#dvrCard .cardEncoding 												{ display:inline; font-weight:bold; text-decoration:none; }
+#localDevice, #ipDevice												{ position:relative; background-position:right top; background-repeat:no-repeat; float:left; background-color:#fefefe; border:1px solid #f2f2f2; width: 270px; margin:5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:5px; }
+#localDevice .name, #ipDevice .name									{ width:auto; cursor:pointer; font-size:1.2em; color:#555; padding-left:35px; line-height:30px; }
+#localDevice .name 													{ background:url("/img/icons/bnc.png") no-repeat; background-position:left;}
+#ipDevice a, #localDevice a											{ text-decoration:none; border-bottom:1px dotted green; }
+#ipDevice .name														{ background:url("/img/icons/device.png") no-repeat; background-position:left;}
+#localDevice #resolutionFps 										{ background-color:#efefef; width:100%; margin: 5px 0 5px 0;}
+#localDevice #resolutionFps div 									{ display:inline; }
 #localDevice #cameraSettingsHeader, #ipDevice #cameraSettingsHeader { width:100%; margin: 15px 0 5px 35px; }
-#localDevice a						{ margin:5px 0 5px 0; display:inline; }
-#localDevice #status, #ipDevice #status 	{ display:inline; width:100%; margin:3px 10px 10px 35px; }
-#localDevice .disabled, #ipDevice .disabled	{ color: red;  		}
-#localDevice .OK, #ipDevice .OK			{ color: green; width:300px; }
-#localDevice .notconfigured, #ipDevice .notconfigured { color: gray;	 	}
-#localDevice  #status a, #ipDevice	#localDevice  #status		{ display:inline; 	}
-
-#ipDevice		.ipAttn	{ background: url("/img/icons/excl.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; width:50px; height:50px; }
-#localDevice	#port	{ background: url("/img/icons/port.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:5px; right:0px; display:block; width:50px; height:50px; }
+#localDevice a														{ margin:5px 0 5px 0; display:inline; }
+#localDevice #status, #ipDevice #status 							{ display:inline; width:100%; margin:3px 10px 10px 35px; }
+#localDevice .disabled, #ipDevice .disabled							{ color: red;  		}
+#localDevice .OK, #ipDevice .OK										{ color: green; width:300px; }
+#localDevice .notconfigured, #ipDevice .notconfigured				{ color: gray;	 	}
+#localDevice  #status a, #ipDevice	#localDevice  #status			{ display:inline; 	}
+#ipDevice .ipAttn													{ background: url("/img/icons/excl.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:10px; right:0px; display:block; width:50px; height:50px; }
+#ipDevice .model, #localDevice  .portId								{ font-size:12px; font-color:#555; padding-left:35px; }
+#localDevice	#port												{ background: url("/img/icons/port.png") no-repeat center top; padding-top:25px; text-align:center; color:#afafaf; position:absolute; top:5px; right:0px; display:block; width:50px; height:50px; }
 
 
 /*motion|devices*/
@@ -257,6 +259,7 @@ second
 
 #addIPCamera										{ float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #addipLabel							{ width:200px; }
+#settingsForm #aip									{ border:none; }
 #settingsForm #aip input							{ margin:2px 0px 0px 5px; height:17px; }
 #settingsForm #aip #saveButton 						{ height:35px; width:150px; }
 #settingsForm #ipAddr, #settingsForm #ipAddrMjpeg 	{ width:150px; }
@@ -300,11 +303,25 @@ second
 #settingsMenu li a.deviceschedule, #ipSettingsMenu li a.deviceschedule	{ background-image:url(/img/icons/menu/schedule.png); }
 #ipSettingsMenu li a.delete { background-image:url(/img/icons/menu/delete.png); }
 
-#statisticsTable { border-collapse:collapse; }
-#statisticsTable tr th {border-bottom:1px solid black}
-#statisticsTable tr td.primarySeparator { border-top:2px solid black;  }
-#statisticsTable tr td.secondarySeparator { border-top:1px solid black; }
-#statisticsTable tr td {border:1px solid gray; border-collapse:collapse; padding:10px; }
+/*boxes*/
+#boxContainer { width:610px; -moz-border-radius: 5px; -webkit-border-radius: 5px; background-color:#ccc; color:#333; display:box; padding:5px; margin-bottom:20px; }
+#boxContainer #header { margin:5px; font-size:20px; }
+#boxSection { padding:10px; display:box; color:#444; background-color:#ddd; border:1px solid #bbb; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
+
+/*statistics*/
+#statisticsForm { padding:10px; display:box; color:#444; border:1px solid #bbb; height:120px; width:590px; -moz-border-radius: 5px; -webkit-border-radius: 5px; background-image:url('/img/gradient_120_light.png'); }
+#statisticsForm .dates { float:left; }
+#statisticsForm .dates div { display:box; }
+#statisticsForm .grouping { float:right; display:inline; }
+#statisticsForm .grouping div { display:box; }
+#statisticsForm .eventTypes { float:left; margin-top:10px; }
+#statisticsForm .submitButton { float:right; margin-top:10px; }
+#statisticsForm .submitButton input { color:#444; background:#ccc; width:200px; -moz-border-radius: 3px; -webkit-border-radius: 3px;}
+#statisticsTable { border-collapse:collapse; border:1px solid black; }
+#statisticsTable tr th {border:1px solid black}
+#statisticsTable tr td.primarySeparator { border-top:1px solid black; border-bottom:none; }
+#statisticsTable tr td.nonSeparated { border:none; }
+#statisticsTable tr td {border:1px dotted gray; border-collapse:collapse; padding:3px; }
 
 
 #settingsForm #advancedSettings { display:none; border:none; padding:0px; }
