@@ -32,9 +32,6 @@ case "$1" in
 		service apache2 restart
 		reload rsyslog
 
-		# Remove old conf files
-		rm -f /etc/init/bc-server.conf
-		rm -f /etc/init/bc-detect.conf
 		;;
 esac
 
