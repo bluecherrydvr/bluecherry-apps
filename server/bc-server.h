@@ -109,6 +109,7 @@ void bc_get_media_loc(char *stor);
 int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
 
 /* Relate all libav logging on this thread to a given bc_record */
 void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
