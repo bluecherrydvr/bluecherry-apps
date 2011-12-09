@@ -156,11 +156,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	if (ret) {
 		if (bc_rec->event == BC_EVENT_CAM_NULL) {
 			/* Starting a new motion recording */
-			int c = 0;
-			struct bc_output_packet *p;
-			for (p = bc_rec->prerecord_head; p; p = p->next)
-				++c;
-			bc_dev_info(bc_rec, "Motion event started.. prerecord buffer has %d packets", c);
+			bc_dev_info(bc_rec, "Motion event started");
 			bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
 				BC_EVENT_CAM_T_MOTION, bc_rec->media);
 		}
