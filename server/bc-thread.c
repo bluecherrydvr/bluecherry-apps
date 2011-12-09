@@ -268,6 +268,10 @@ static void *bc_device_thread(void *data)
 		else
 			ret = get_output_audio_packet(bc_rec, &packet);
 
+		/* Error, or no packet */
+		if (ret < 1)
+			continue;
+
 		if (!check_motion(bc_rec, &packet)) {
 			/* Motion recording is enabled and we should not record.
 			 * End the recording if there is one. */
