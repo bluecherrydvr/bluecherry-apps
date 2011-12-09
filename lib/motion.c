@@ -227,6 +227,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			uint8_t *ref = md->refFrame->data[0];
 			uint8_t *cur = frame.data[0];
 			uint32_t *val;
+			unsigned cv = 0; /* current value, for val[0] */
 			int w = frame.linesize[0], h = cctx->height;
 			int total = w * h;
 			int x = 0, y = 0;
@@ -254,11 +255,11 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			 */
 			for (;;) {
 				if (abs(*ref - *cur) >= md->thresholds[threshold_cell])
-					(*val)++;
+					cv++;
 				else
-					*val >>= 1;
+					cv >>= 1;
 
-				if (*val >= 150) { // XXX magic threshold number
+				if (cv >= 150) { // XXX magic threshold number
 					uint8_t *end = md->refFrame->data[0] + total;
 					ret = 1;
 #ifndef DEBUG_DUMP_MOTION_DATA
@@ -284,6 +285,9 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 				ref++;
 				cur++;
+
+				*val = cv;
+
 				if (++x == w) {
 					x = 0;
 					if (++y == h)
@@ -298,18 +302,18 @@ int bc_motion_is_detected(struct bc_handle *bc)
 #else
 					val = result;
 #endif
+					cv = val[0];
 					/* Add the difference between northeast and north if positive */
-					if (val[1] > val[0])
-						val[0] = val[1];
+					if (val[1] > cv)
+						cv = val[1];
 				} else {
 					if (!(x % threshold_cell_w))
 						threshold_cell++;
 
 					val++;
 					ne_diff = val[1] - val[0];
-					val[0] = val[-1];
 					if (ne_diff > 0)
-						val[0] += ne_diff;
+						cv += ne_diff;
 				}
 			}
 
