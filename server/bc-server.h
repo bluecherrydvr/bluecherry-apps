@@ -102,7 +102,7 @@ struct bc_output_packet {
 /* Flags for aud_format */
 #define AUD_FMT_FLAG_G723_24	0x01000000
 
-extern char global_sched[7 * 24];
+extern char global_sched[7 * 24 + 1];
 
 void bc_get_media_loc(char *stor);
 

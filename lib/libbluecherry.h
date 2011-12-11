@@ -128,7 +128,7 @@ struct bc_device_config {
 	char rtsp_password[64];
 	char signal_type[16];
 	char motion_map[769];
-	char schedule[7 * 24];
+	char schedule[7 * 24 + 1];
 	int     width, height;
 	int     interval;
 	int8_t  debug_level;

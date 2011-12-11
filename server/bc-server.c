@@ -18,7 +18,7 @@ static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 
-char global_sched[7 * 24];
+char global_sched[7 * 24 + 1];
 
 static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
@@ -84,6 +84,7 @@ static void bc_check_globals(void)
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
+		global_sched[sizeof(global_sched)-1] = 0;
 	}
 	bc_db_free_table(dbres);
 
