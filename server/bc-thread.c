@@ -13,6 +13,20 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
+static void stop_handle_properly(struct bc_record *bc_rec)
+{
+	struct bc_output_packet *p, *n;
+	bc_close_avcodec(bc_rec);
+	bc_handle_stop(bc_rec->bc);
+	bc_rec->mot_last_ts = 0;
+	for (p = bc_rec->prerecord_head; p; p = n) {
+		n = p->next;
+		free(p->data);
+		free(p);
+	}
+	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
+}
+
 static void try_formats(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
@@ -88,10 +102,8 @@ static int process_schedule(struct bc_record *bc_rec)
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
-		bc_close_avcodec(bc_rec);
-		bc_handle_stop(bc);
-		if (bc)
-			bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
+		stop_handle_properly(bc_rec);
+		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
 		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
@@ -107,10 +119,84 @@ static int process_schedule(struct bc_record *bc_rec)
 	return ret;
 }
 
+static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet *spkt)
+{
+	struct bc_output_packet *mpkt;
+	time_t monotonic_now;
+	int ret;
+
+	if (bc_rec->sched_cur != 'M')
+		return 1;
+
+	/* This may be necessary in some cases when the handle was stopped
+	 * (and thus, motion reset to off) without a schedule change. */
+	bc_set_motion(bc_rec->bc, 1);
+
+	/* Update prerecording buffer */
+	mpkt = malloc(sizeof(struct bc_output_packet));
+	if (bc_output_packet_copy(mpkt, spkt) < 0) {
+		free(mpkt);
+		return 0;
+	}
+	mpkt->next = 0;
+
+	if (bc_buf_is_video_frame(bc_rec->bc) && bc_buf_key_frame(bc_rec->bc)) {
+		/* New video keyframe; drop the current prerecord buffer */
+		struct bc_output_packet *p, *n;
+		for (p = bc_rec->prerecord_head; p; p = n) {
+			n = p->next;
+			free(p->data);
+			free(p);
+		}
+		bc_rec->prerecord_head = bc_rec->prerecord_tail = mpkt;
+		bc_rec->prerecord_head_time = time(NULL);
+	} else if (bc_rec->prerecord_tail) {
+		/* Append this packet */
+		bc_rec->prerecord_tail->next = mpkt;
+		bc_rec->prerecord_tail = mpkt;
+	} else {
+		/* Drop this packet (no keyframe in the stream yet) */
+		free(mpkt->data);
+		free(mpkt);
+		mpkt = 0;
+	}
+
+	if (!bc_buf_is_video_frame(bc_rec->bc))
+		return bc_rec->mot_last_ts > 0;
+
+	monotonic_now = bc_gettime_monotonic();
+
+	ret = bc_motion_is_detected(bc_rec->bc);
+	if (ret) {
+		if (bc_rec->event == BC_EVENT_CAM_NULL) {
+			/* Starting a new motion recording */
+			bc_dev_info(bc_rec, "Motion event started");
+			bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+				BC_EVENT_CAM_T_MOTION, bc_rec->media);
+		}
+
+		/* Update the timestamp on every frame with motion */
+		bc_rec->mot_last_ts = monotonic_now;
+	} else {
+		if (bc_rec->mot_last_ts) {
+			/* Active recording */
+			if (monotonic_now - bc_rec->mot_last_ts >= 3) {
+				/* End of event */
+				bc_rec->mot_last_ts = 0;
+				bc_dev_info(bc_rec, "Motion event stopped");
+			} else
+				ret = 1; /* still recording (postrecord) */
+		}
+	}
+
+	return ret;
+}
+
 static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = data;
 	struct bc_handle *bc = bc_rec->bc;
+	struct bc_output_packet packet;
 	int ret;
 
 	bc_dev_info(bc_rec, "Camera configured");
@@ -148,9 +234,9 @@ static void *bc_device_thread(void *data)
 				bc_dev_info(bc_rec, "Device started after failure(s)");
 			}
 
-			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
+			if (bc->type == BC_DEVICE_RTP) {
 				bc_dev_info(bc_rec, "RTP stream started: %s",
-				            rtp_session_stream_info(&bc->rtp_sess));
+				            rtp_device_stream_info(&bc->rtp));
 			}
 		}
 
@@ -165,62 +251,74 @@ static void *bc_device_thread(void *data)
 			                   bc_rec->video_st->time_base.den;
 
 			if (audio_pts < video_pts) {
-				if (bc_aud_out(bc_rec))
-					/* Do nothing */;
-				continue;
+				if (get_output_audio_packet(bc_rec, &packet) > 0)
+					bc_output_packet_write(bc_rec, &packet);
 			}
 		}
 
 		ret = bc_buf_get(bc);
-		if (!ret) {
-			if (!bc_rec->oc && (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc))) {
+		if (ret == EAGAIN) {
+			continue;
+		} else if (ret != 0) {
+			if (bc->type == BC_DEVICE_RTP) {
+				bc_dev_err(bc_rec, "RTSP read error: %s",
+				           (*bc->rtp.error_message) ?
+				            bc->rtp.error_message :
+				            "Unknown error");
+			}
+
+			stop_handle_properly(bc_rec);
+			continue;
+		}
+
+		/* Prepare output packets; nothing is allocated. */
+		if (bc_buf_is_video_frame(bc))
+			ret = get_output_video_packet(bc_rec, &packet);
+		else
+			ret = get_output_audio_packet(bc_rec, &packet);
+
+		/* Error, or no packet */
+		if (ret < 1)
+			continue;
+
+		if (!check_motion(bc_rec, &packet)) {
+			/* Motion recording is enabled and we should not record.
+			 * End the recording if there is one. */
+			if (bc_rec->oc)
+				bc_close_avcodec(bc_rec);
+			continue;
+		}
+
+		if (!bc_rec->oc) {
+			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
+				/* Dump the prerecording buffer */
+				struct bc_output_packet *p;
+				if (bc_open_avcodec(bc_rec))
+					continue;
+				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
+				/* Skip the last packet; it's identical to the current packet,
+				 * which we write in the normal path below. */
+				for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
+					bc_output_packet_write(bc_rec, p);
+			} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
 				/* Always start a recording with a key video frame. This will result in
 				 * the lost of some video between recordings, up to the keyframe interval,
 				 * at least on RTP devices. XXX Ideally, we should move the recording split
 				 * slightly to allow a proper cut for both video and audio. */
 				continue;
-			}
-		
-			/* Do this after we get the first frame,
-			 * since we need that in order to decode
-			 * the first frame for avcodec params like
-			 * width, height and frame rate. */
-			if (bc_open_avcodec(bc_rec)) {
-				bc_dev_err(bc_rec, "Error opening avcodec");
-				continue;
-			}
-
-			if (bc_buf_is_video_frame(bc)) {
-				bc_vid_out(bc_rec);
-				/* Error is logged by bc_vid_out. Frame writing errors
-				 * are often non-fatal, but can be noisy when repeated.
-				 * It would be a good idea to delay-and-restart if enough
-				 * of them happen consecutively. */
 			} else {
-				bc_aud_out(bc_rec);
-				/* Do nothing? XXX */
+				if (bc_open_avcodec(bc_rec))
+					continue;
+				if (bc->type == BC_DEVICE_RTP)
+					rtp_device_set_current_pts(&bc->rtp, 0);
 			}
-		} else if (ret == ERESTART) {
-			bc_close_avcodec(bc_rec);
-		} else if (ret != EAGAIN) {
-			/* Try restarting the connection. Do not
-			 * report failure here. It will get reported
-			 * if we fail to reconnect. (XXX what?) */
-			
-			if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-				bc_dev_err(bc_rec, "RTSP read error: %s",
-				           (*bc->rtp_sess.error_message) ?
-				            bc->rtp_sess.error_message :
-				            "Unknown error");
-			}
-			
-			bc_close_avcodec(bc_rec);
-			bc_handle_stop(bc);
 		}
+
+		if (ret > 0)
+			bc_output_packet_write(bc_rec, &packet);
 	}
 
-	bc_close_avcodec(bc_rec);
-	bc_handle_stop(bc);
+	stop_handle_properly(bc_rec);
 	bc_set_osd(bc, " ");
 
 	return bc_rec->thread_should_die;
@@ -234,48 +332,11 @@ static void get_aud_dev(struct bc_record *bc_rec)
 		return;
 
 	sprintf(bc_rec->aud_dev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
-		bc_rec->bc->card_id, bc_rec->bc->dev_id);
+		bc_rec->bc->v4l2.card_id, bc_rec->bc->v4l2.dev_id);
 
 	bc_rec->aud_rate = 8000;
 	bc_rec->aud_channels = 1;
 	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
-}
-
-static void update_motion_map(struct bc_record *bc_rec)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	const char *motion_map = bc_rec->cfg.motion_map;
-	int vh;
-	int i;
-
-	vh = strcasecmp(bc_rec->cfg.signal_type, "NTSC") ? 18 : 15;
-
-#if 0 // Global threshold..
-	if (!motion_map) {
-		int val = bc_motion_val(BC_MOTION_TYPE_SOLO, '3');
-		bc_set_motion_thresh_global(bc, val);
-
-		memset(bc_rec->cfg.motion_map, '3', 22*vh);
-		bc_rec->cfg.motion_map[22*vh] = 0;
-		return;
-	}
-#endif
-
-	if (strlen(motion_map) < 22 * vh) {
-		bc_dev_warn(bc_rec, "Motion map is too short");
-		return;
-	}
-
-	/* Our input map is 32x32, but the device is actually 64x64.
-	 * Fields are doubled accordingly. */
-	for (i = 0; i < (vh*2); i++) {
-		int j;
-		for (j = 0; j < 44; j++) {
-			int pos = ((i/2)*22)+(j/2);
-			int val = bc_motion_val(BC_MOTION_TYPE_SOLO, motion_map[pos]);
-			bc_set_motion_thresh(bc, val, (i*64)+j);
-		}
-	}
 }
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
@@ -333,11 +394,15 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
-	bc->rtp_sess.want_audio = !bc_rec->cfg.aud_disabled;
+	bc->rtp.want_audio = !bc_rec->cfg.aud_disabled;
 
 	/* Initialize device state */
 	try_formats(bc_rec);
-	update_motion_map(bc_rec);
+	if (bc_set_motion_thresh(bc, bc_rec->cfg.motion_map,
+	    sizeof(bc_rec->cfg.motion_map)))
+	{
+		bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
+	}
 	check_schedule(bc_rec);
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
@@ -417,8 +482,13 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
 	try_formats(bc_rec);
-	if (motion_map_changed)
-		update_motion_map(bc_rec);
+	if (motion_map_changed) {
+		if (bc_set_motion_thresh(bc_rec->bc, bc_rec->cfg.motion_map,
+		    sizeof(bc_rec->cfg.motion_map)))
+		{
+			bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
+		}
+	}
 	check_schedule(bc_rec);
 
 	return 0;

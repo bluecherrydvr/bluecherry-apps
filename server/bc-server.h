@@ -43,6 +43,7 @@ struct bc_record {
 	AVStream        *audio_st;
 	AVFormatContext *oc;
 	enum CodecID    codec_id;
+	int64_t         output_pts_base;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
@@ -74,6 +75,20 @@ struct bc_record {
 	/* Notify thread to restart with new format */
 	int         reset_vid;
 	int         fmt;
+
+	/* Motion detection */
+	time_t		mot_last_ts;
+	time_t      prerecord_head_time;
+	struct bc_output_packet *prerecord_head, *prerecord_tail;
+};
+
+struct bc_output_packet {
+	struct bc_output_packet *next;
+	void        *data;
+	int          size;
+	unsigned int flags;
+	int64_t      pts;
+	int          type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
 };
 
 /* Types for aud_format */
@@ -87,12 +102,14 @@ struct bc_record {
 /* Flags for aud_format */
 #define AUD_FMT_FLAG_G723_24	0x01000000
 
-extern char global_sched[7 * 24];
+extern char global_sched[7 * 24 + 1];
 
 void bc_get_media_loc(char *stor);
 
-int bc_vid_out(struct bc_record *bc_rec);
-int bc_aud_out(struct bc_record *bc_rec);
+int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
 
 /* Relate all libav logging on this thread to a given bc_record */
 void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
@@ -103,12 +120,6 @@ int bc_open_avcodec(struct bc_record *bc_rec);
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
-
-typedef enum {
-	BC_MOTION_TYPE_SOLO = 0,
-} bc_motion_type_t;
-
-int bc_motion_val(bc_motion_type_t type, const char v);
 
 void bc_check_avail(void);
 

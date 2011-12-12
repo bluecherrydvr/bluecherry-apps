@@ -1,7 +1,7 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-LIBAV_INSTALL = libav/lib/libavcodec.so.53 libav/lib/libavformat.so.53 libav/lib/libavutil.so.51
+LIBAV_INSTALL = libav/lib/libavcodec.so.53 libav/lib/libavformat.so.53 libav/lib/libavutil.so.51 libav/lib/libswscale.so.2
 
 all: libav/config.mak libav-build
 

@@ -21,55 +21,13 @@
 
 #include <libbluecherry.h>
 
-int bc_set_motion(struct bc_handle *bc, int on)
-{
-	struct v4l2_control vc;
-
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
-		return 0;
-
-	vc.id = V4L2_CID_MOTION_ENABLE;
-	vc.value = on ? 1 : 0;
-
-	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
-}
-
-int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val)
-{
-	struct v4l2_control vc;
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
-		return 0;
-
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
-	vc.value = val;
-	/* Upper 16 bits left to 0 for global */
-
-	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
-}
-
-int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
-			 unsigned short block)
-{
-	struct v4l2_control vc;
-
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
-		return 0;
-
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
-	vc.value = val;
-	/* 0 means global; we must add one to the actual block */
-	vc.value |= (unsigned int)(block+1) << 16;
-
-	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
-}
-
 int bc_set_mjpeg(struct bc_handle *bc)
 {
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return -1;
 
-	bc->vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
+	bc->v4l2.vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_FMT, &bc->v4l2.vfmt) < 0)
 		return -1;
 
 	return 0;
@@ -82,12 +40,12 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	struct v4l2_control vc;
 	float step;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	memset(&qctrl, 0, sizeof(qctrl));
 	qctrl.id = ctrl;
-	if (ioctl(bc->dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
+	if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
 		return -1;
 
 	step = (float)(qctrl.maximum - qctrl.minimum) / (float)101;
@@ -96,46 +54,46 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	vc.id = ctrl;
 	vc.value = val;
 
-	return ioctl(bc->dev_fd, VIDIOC_S_CTRL, &vc);
+	return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
 void *bc_buf_data(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		if (bc->rtp_sess.frame.stream_index == bc->rtp_sess.video_stream_index)
-			return bc->rtp_sess.frame.data;
+	if (bc->type == BC_DEVICE_RTP) {
+		if (bc->rtp.frame.stream_index == bc->rtp.video_stream_index)
+			return bc->rtp.frame.data;
 		return NULL;
 	}
 
-	if (bc->buf_idx < 0)
+	if (bc->v4l2.buf_idx < 0)
 		return NULL;
 
-	return bc->p_buf[bc->buf_idx].data;
+	return bc->v4l2.p_buf[bc->v4l2.buf_idx].data;
 }
 
 unsigned int bc_buf_size(struct bc_handle *bc)
 {
-	if (bc->cam_caps & BC_CAM_CAP_RTSP) {
-		if (bc->rtp_sess.frame.stream_index == bc->rtp_sess.video_stream_index)
-			return bc->rtp_sess.frame.size;
+	if (bc->type == BC_DEVICE_RTP) {
+		if (bc->rtp.frame.stream_index == bc->rtp.video_stream_index)
+			return bc->rtp.frame.size;
 		return 0;
 	}
 
-	if (bc->buf_idx < 0)
+	if (bc->v4l2.buf_idx < 0)
 		return 0;
 
-	return bc->p_buf[bc->buf_idx].vb.bytesused;
+	return bc->v4l2.p_buf[bc->v4l2.buf_idx].vb.bytesused;
 }
 
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)
 {
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
-	if (bc->vfmt.fmt.pix.pixelformat == fmt &&
-	    bc->vfmt.fmt.pix.width == width &&
-	    bc->vfmt.fmt.pix.height == height)
+	if (bc->v4l2.vfmt.fmt.pix.pixelformat == fmt &&
+	    bc->v4l2.vfmt.fmt.pix.width == width &&
+	    bc->v4l2.vfmt.fmt.pix.height == height)
 		return 0;
 
 	if (bc->started) {
@@ -143,13 +101,13 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		return -1;
 	}
 
-	bc->vfmt.fmt.pix.pixelformat = fmt;
-	bc->vfmt.fmt.pix.width = width;
-	bc->vfmt.fmt.pix.height = height;
+	bc->v4l2.vfmt.fmt.pix.pixelformat = fmt;
+	bc->v4l2.vfmt.fmt.pix.width = width;
+	bc->v4l2.vfmt.fmt.pix.height = height;
 
-	if (ioctl(bc->dev_fd, VIDIOC_S_FMT, &bc->vfmt) < 0)
+	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_FMT, &bc->v4l2.vfmt) < 0)
 		return -1;
-	ioctl(bc->dev_fd, VIDIOC_G_FMT, &bc->vfmt);
+	ioctl(bc->v4l2.dev_fd, VIDIOC_G_FMT, &bc->v4l2.vfmt);
 
 	return 0;
 }
@@ -161,7 +119,7 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	struct v4l2_ext_control ctrl;
 	struct v4l2_ext_controls ctrls;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_V4L2))
+	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
 	va_start(ap, fmt);
@@ -179,7 +137,7 @@ int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	ctrl.size = strlen(buf);
 	ctrl.string = buf;
 
-	if (ioctl(bc->dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
+	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
 		return -1;
 
 	return 0;

@@ -4,11 +4,10 @@ include $(topdir)/mk.conf
 CFLAGS		+= -pthread $(shell pkg-config --cflags libsysfs)
 LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound \
 		   $(shell pkg-config --libs libsysfs) -lbsd \
-		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil
+		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server
-SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-motion-tables.o \
-		  bc-detect.o
+SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o
 
 #CFLAGS		+= -DEBUG
 

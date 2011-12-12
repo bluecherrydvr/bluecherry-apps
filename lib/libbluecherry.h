@@ -43,18 +43,20 @@
 typedef void * BC_DB_RES;
 
 /* Camera capability flags */
-#define BC_CAM_CAP_RTSP		0x00000001
-#define BC_CAM_CAP_V4L2		0x00000002
-#define BC_CAM_CAP_OSD		0x00000004
-#define BC_CAM_CAP_SOLO		0x00000008
-#define BC_CAM_CAP_MJPEG_URL	0x00000010
+#define BC_CAM_CAP_V4L2_MOTION 0x00000002
+#define BC_CAM_CAP_OSD         0x00000004
+#define BC_CAM_CAP_SOLO        0x00000008
+#define BC_CAM_CAP_MJPEG_URL   0x00000010
+/* Set for all BC_DEVICE_V4L2 handles operating
+ * in PAL. NTSC is assumed if unset. */
+#define BC_CAM_CAP_V4L2_PAL    0x00000020
 
-struct bc_handle {
-	char			device[512];
-	char			driver[512];
-	char			mjpeg_url[1024];
+typedef enum {
+	BC_DEVICE_V4L2,
+	BC_DEVICE_RTP
+} bc_device_type_t;
 
-	/* Track info about the v4l2 device */
+struct v4l2_device {
 	int			dev_fd;
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
@@ -66,19 +68,43 @@ struct bc_handle {
 		struct v4l2_buffer	vb;
 	}			p_buf[BC_BUFFERS];
 	int			local_bufs;
-
-	/* RTSP related information */
-	struct rtp_session	rtp_sess;
-
-	int			started;
 	int			buf_idx;
-	int			got_vop;
-	time_t			mot_last_ts;
 	int			gop;
 	int			buffers;
 	int			card_id;
 	int			dev_id;
+};
+
+struct bc_motion_data {
+	int enabled;
+
+	/* State for generic motion detection */
+	struct SwsContext *convContext;
+	AVFrame           *refFrame;
+	int                refFrameHeight;
+	int                refFrameWidth;
+	uint8_t            thresholds[768];
+#ifdef DEBUG_DUMP_MOTION_DATA
+	FILE              *dumpfile;
+#endif
+};
+
+struct bc_handle {
+	char			device[512];
+	char			driver[512];
+	char			mjpeg_url[1024];
+
+	bc_device_type_t	type;
 	unsigned int		cam_caps;
+
+	struct v4l2_device	v4l2;
+	struct rtp_device	rtp;
+
+	int			started;
+	int			got_vop;
+
+	/* Motion detection; see bc_set_motion et al */
+	struct bc_motion_data motion_data;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
@@ -101,8 +127,8 @@ struct bc_device_config {
 	char rtsp_username[64];
 	char rtsp_password[64];
 	char signal_type[16];
-	char motion_map[400];
-	char schedule[7 * 24];
+	char motion_map[769];
+	char schedule[7 * 24 + 1];
 	int     width, height;
 	int     interval;
 	int8_t  debug_level;
@@ -286,9 +312,8 @@ int bc_set_mjpeg(struct bc_handle *bc);
 
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
-int bc_set_motion_thresh(struct bc_handle *bc, unsigned short val,
-			 unsigned short block);
-int bc_set_motion_thresh_global(struct bc_handle *bc, unsigned short val);
+int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size);
+int bc_set_motion_thresh_global(struct bc_handle *bc, char value);
 /* Checks if the current buffer has motion on/detected */
 int bc_motion_is_on(struct bc_handle *bc);
 int bc_motion_is_detected(struct bc_handle *bc);
@@ -335,6 +360,7 @@ int bc_key_process(struct bc_key_data *res, char *str);
 bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
 				  bc_event_cam_type_t type,
 				  bc_media_entry_t media);
+int bc_event_cam_fire(int id, bc_event_level_t level, bc_event_cam_type_t type);
 /* Finish the event and inserts it into the database */
 void bc_event_cam_end(bc_event_cam_t *bce);
 /* Insert a cam event in one shot. It will have a 0 length */
@@ -365,10 +391,6 @@ void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
 /* Should be called periodically to ensure events that failed to write
  * to the db are retried. */
 void bc_media_event_clear(void);
-
-/* Handlers for motion events */
-extern void (*bc_handle_motion_start)(struct bc_handle *bc);
-extern void (*bc_handle_motion_end)(struct bc_handle *bc);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);

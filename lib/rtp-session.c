@@ -13,10 +13,12 @@
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
+#include <libavutil/mathematics.h>
 
+#include "libbluecherry.h"
 #include "rtp-session.h"
 
-void rtp_session_init(struct rtp_session *rs, const char *url)
+void rtp_device_init(struct rtp_device *rs, const char *url)
 {
 	int i;
 	memset(rs, 0, sizeof(*rs));
@@ -34,7 +36,7 @@ void rtp_session_init(struct rtp_session *rs, const char *url)
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
-void rtp_session_stop(struct rtp_session *rs)
+void rtp_device_stop(struct rtp_device *rs)
 {
 	int i;
 
@@ -43,6 +45,10 @@ void rtp_session_stop(struct rtp_session *rs)
 
 	av_free_packet(&rs->frame);
 	av_init_packet(&rs->frame);
+
+	for (i = 0; i < rs->ctx->nb_streams; ++i)
+		avcodec_close(rs->ctx->streams[i]->codec);
+
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
@@ -55,16 +61,19 @@ void rtp_session_stop(struct rtp_session *rs)
 	}
 }
 
-int rtp_session_start(struct rtp_session *rs)
+int rtp_device_start(struct rtp_device *rs)
 {
 	int i, re;
 	AVDictionary *avopt = NULL;
+	char tmp[24];
 
 	if (rs->ctx)
 		return 0;
 
 	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
 
+	snprintf(tmp, sizeof(tmp), "%"PRId64, (int64_t)(0.7*AV_TIME_BASE));
+	av_dict_set(&avopt, "max_delay", tmp, 0);
 	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
 
 	if ((re = avformat_open_input(&rs->ctx, rs->url, NULL, &avopt)) != 0) {
@@ -74,10 +83,13 @@ int rtp_session_start(struct rtp_session *rs)
 		return -1;
 	}
 
+	if (av_dict_get(avopt, "", NULL, 0))
+		av_log(rs->ctx, AV_LOG_WARNING, "Unable to set format options");
+
 	av_dict_free(&avopt);
 
 	if ((re = av_find_stream_info(rs->ctx)) < 0) {
-		rtp_session_stop(rs);
+		rtp_device_stop(rs);
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
 	}
@@ -104,7 +116,7 @@ int rtp_session_start(struct rtp_session *rs)
 	}
 
 	if (rs->video_stream_index < 0) {
-		rtp_session_stop(rs);
+		rtp_device_stop(rs);
 		strcpy(rs->error_message, "RTSP session contains no valid video stream");
 		return -1;
 	}
@@ -112,7 +124,7 @@ int rtp_session_start(struct rtp_session *rs)
 	return 0;
 }
 
-int rtp_session_read(struct rtp_session *rs)
+int rtp_device_read(struct rtp_device *rs)
 {
 	int re;
 	struct rtp_stream_data *streamdata = 0;
@@ -176,7 +188,7 @@ int rtp_session_read(struct rtp_session *rs)
 		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
 			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
-			       "delta %lld. Adjusting based on last interval of %lld.",
+			       "delta %"PRId64". Adjusting based on last interval of %"PRId64".",
 			       rs->frame.stream_index,
 			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 			       rs->frame.pts - streamdata->last_pts, streamdata->last_pts_diff);
@@ -198,14 +210,14 @@ int rtp_session_read(struct rtp_session *rs)
 			{
 				if (!streamdata->was_last_diff_skipped) {
 					av_log(rs->ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld); ignoring interval change unless repeated",
+					       "to %"PRId64" (delta %"PRId64"); ignoring interval change unless repeated",
 					       rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 1;
 				} else {
 					av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
+					       "to %"PRId64" (delta %"PRId64") twice; accepting new interval. Could cause "
 					       "framerate or desynchronization issues.", rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
 					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
@@ -225,12 +237,12 @@ int rtp_session_read(struct rtp_session *rs)
 	return 0;
 }
 
-int rtp_session_frame_is_keyframe(struct rtp_session *rs)
+int rtp_device_frame_is_keyframe(struct rtp_device *rs)
 {
 	return (rs->frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
 }
 
-int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
+int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 {
 	if (!rs->ctx) {
 		strcpy(rs->error_message, "No active RTSP session");
@@ -250,9 +262,12 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	vst->codec->width = ic->width;
 	vst->codec->height = ic->height;
 	vst->codec->time_base = ic->time_base;
-	vst->codec->extradata = ic->extradata;
-	vst->codec->extradata_size = ic->extradata_size;
 	vst->codec->profile = ic->profile;
+	if (vst->codec->extradata && vst->codec->extradata_size) {
+		vst->codec->extradata_size = ic->extradata_size;
+		vst->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(vst->codec->extradata, ic->extradata, ic->extradata_size);
+	}
 
 	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -273,10 +288,13 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 		ast->codec->sample_fmt = ic->sample_fmt;
 		ast->codec->channels = ic->channels;
 		ast->codec->time_base = (AVRational){1, ic->sample_rate};
-		ast->codec->extradata = ic->extradata;
-		ast->codec->extradata_size = ic->extradata_size;
 		ast->codec->profile = ic->profile;
-		
+		if (ast->codec->extradata && ast->codec->extradata_size) {
+			ast->codec->extradata_size = ic->extradata_size;
+			ast->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+			memcpy(ast->codec->extradata, ic->extradata, ic->extradata_size);
+		}
+
 		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
@@ -284,7 +302,7 @@ int rtp_session_setup_output(struct rtp_session *rs, AVFormatContext *out_ctx)
 	return 0;
 }
 
-void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
+void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 {
 	int64_t offset;
 	int i;
@@ -295,26 +313,24 @@ void rtp_session_set_current_pts(struct rtp_session *rs, int64_t pts)
 		return;
 
 	if (rs->frame.pts == AV_NOPTS_VALUE) {
-		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
+		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %"PRId64" cannot occur\n",
 		       pts);
 		return;
 	}
 
 	offset = rs->frame.pts - pts;
 
-	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %lld to reset PTS on stream %d to %lld\n",
+	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
 	       offset, rs->frame.stream_index, pts);
 
 	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
-		av_log(rs->ctx, AV_LOG_INFO, "Rescaled set_current_pts offset for stream %d is %lld\n",
-		       i, av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base));
 		rs->stream_data[i].pts_base += av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base);
 	}
 
 	rs->frame.pts = pts;
 }
 
-const char *rtp_session_stream_info(struct rtp_session *rs)
+const char *rtp_device_stream_info(struct rtp_device *rs)
 {
 	if (rs->video_stream_index < 0) {
 		strcpy(rs->error_message, "No streams");
@@ -335,3 +351,32 @@ const char *rtp_session_stream_info(struct rtp_session *rs)
 
 	return rs->error_message;
 }
+
+int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
+{
+	AVStream *stream;
+	int re;
+	int have_picture = 0;
+
+	if (rs->frame.stream_index != rs->video_stream_index)
+		return -1;
+
+	stream = rs->ctx->streams[rs->frame.stream_index];
+
+	if (!stream->codec->codec) {
+		AVCodec *codec = avcodec_find_decoder(stream->codec->codec_id);
+		if ((re = avcodec_open2(stream->codec, codec, NULL)) < 0) {
+			av_strerror(re, rs->error_message, sizeof(rs->error_message));
+			return -1;
+		}
+	}
+
+	re = avcodec_decode_video2(stream->codec, frame, &have_picture, &rs->frame);
+	if (re < 0) {
+		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		return -1;
+	}
+
+	return have_picture;
+}
+

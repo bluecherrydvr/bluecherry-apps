@@ -18,7 +18,7 @@ static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 
-char global_sched[7 * 24];
+char global_sched[7 * 24 + 1];
 
 static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
@@ -64,33 +64,6 @@ AVCodec fake_h264_encoder = {
 	.long_name      = "Fake H.264 Encoder for RTP Muxing",
 };
 
-static void __handle_motion_start(struct bc_handle *bc)
-{
-	struct bc_record *bc_rec = bc->__data;
-
-	/* If we already have an event in progress, keep it going */
-	if (bc_rec->event != BC_EVENT_CAM_NULL)
-		return;
-
-	bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
-					   BC_EVENT_CAM_T_MOTION, bc_rec->media);
-
-	bc_dev_info(bc_rec, "Motion event started");
-}
-
-static void __handle_motion_end(struct bc_handle *bc)
-{
-	struct bc_record *bc_rec = bc->__data;
-
-	/* Ignore when no event is in progress */
-	if (bc_rec->event == BC_EVENT_CAM_NULL)
-		return;
-
-	/* Do not stop event here, let that happen in bc-thread.c
-         * where bc_buf_get returns ERESTART. */
-	bc_dev_info(bc_rec, "Motion event stopped");
-}
-
 /* XXX Create a function here so that we don't have to do so many
  * SELECT's in bc_check_globals() */
 
@@ -111,6 +84,7 @@ static void bc_check_globals(void)
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
+		global_sched[sizeof(global_sched)-1] = 0;
 	}
 	bc_db_free_table(dbres);
 
@@ -529,10 +503,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* Setup our motion event handlers */
-	bc_handle_motion_start = __handle_motion_start;
-	bc_handle_motion_end = __handle_motion_end;
-
 	if (av_lockmgr_register(bc_av_lockmgr)) {
 		bc_log("E: AV lock registration failed: %m");
 		exit(1);
@@ -541,7 +511,7 @@ int main(int argc, char **argv)
 	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
-	
+
 	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
 
