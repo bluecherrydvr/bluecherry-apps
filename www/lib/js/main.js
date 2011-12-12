@@ -718,7 +718,7 @@ settingsForm = new Class({
 });
 
 DVRSettingsForm = new Class({
-	initialize: function(formID){
+	initialize: function(formID, reload){
 		$(formID).set('send', { 
 			onRequest: function(){
 				var savebutton = ($('saveButton')) ? $('saveButton') : $('.save'); 
@@ -727,9 +727,16 @@ DVRSettingsForm = new Class({
 			onComplete: function(text, xml){
 				var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
 				var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+				var data = xml.getElementsByTagName("data")[0].childNodes[0].nodeValue;
 				var iconStyle = (status=="OK") ? 'url("/img/icons/check.png")' : 'url("/img/icons/cross.png")';
 				$('saveButton').setStyle('background-image', iconStyle);
 				var showMessage = new DVRMessage(status, msg);
+				if (reload){
+					window.location.reload(true);
+				}
+				if (data == 'disposeGeneralMessage'){
+					$('generalMessage').dispose();
+				}
 			}
 		});
 		$$('#'+formID).addEvent('click', function(){

@@ -102,6 +102,7 @@ class data{
 	}
 	public static function responseXml($status, $message = false, $data = ''){
 		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
+		if (empty($data)) { $data = '0'; };
 		$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"\x3f>
@@ -222,6 +223,7 @@ class user{
 				$data['password'] = md5($data['password'].$data['salt']);
 				$query = data::formQueryFromArray('insert', 'Users', $data);
 				$response = USER_CREATED;
+				$data = '';
 			} else {
 				$id = intval($data['id']);
 				unset($data['id']);
@@ -234,8 +236,10 @@ class user{
 				$response = false;
 			}
 			$check = (data::query($query, true)) ? true : false;
+			$info = data::getObject('Users', 'username', 'Admin');
+			$data = ($info[0]['password']!=md5('bluecherry'.$info[0]['salt'])) ? 'disposeGeneralMessage' : '';
 		}
-		return array($check, $response);
+		return array($check, $response, $data);
 	}
 	public static function remove($id){
 		return (data::query("DELETE FROM Users WHERE id='{$id}'", true));
@@ -537,7 +541,7 @@ class softwareVersion{
 	function getIpTablesVersion(){
 		$installed = data::getObject('GlobalSettings', 'parameter', 'G_IPCAMLIST_VERSION');
 		$installed = $installed[0]['value'];
-		$current = @fopen(VAR_PATH_TO_IPCAMLIST_UPDATE.'?t='.VAR_IPCAMLIST_UPDATE_TOKEN.'&m=version', 'r');
+		$current = @fopen(VAR_PATH_TO_IPCAMLIST_VERSION, 'r');
 		
 		if (!$current) return true;
 		$current = trim(@fgets($current, 1024));
