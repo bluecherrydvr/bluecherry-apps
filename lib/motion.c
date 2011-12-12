@@ -214,6 +214,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			cctx->height, fix_pix_fmt(cctx->pix_fmt), cctx->width, cctx->height,
 			PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
+		/* XXX preallocated buffer? */
 		bufSize = avpicture_get_size(PIX_FMT_GRAY8, cctx->width, cctx->height);
 		buf = av_malloc(bufSize);
 		if (!buf)
@@ -250,7 +251,14 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			int threshold_cell = 0;
 			int threshold_x_ctr = threshold_cell_w;
 
+			/* Would it be good to merge these loops again? My gut feeling is no,
+			 * because ref would be taking up cache space, but it might avoid
+			 * reading cur in twice if that gets pushed out of the cache. We
+			 * could also avoid the write to cur in that case, which might be
+			 * worthwhile. */
 			for (; x < total; ++x) {
+				/* XXX is the compiler smart about multiple loads from ref[x] and
+				 * cur[x]? */
 				cv = abs((int)ref[x] - (int)cur[x]);
 				/* Merge the current frame into the reference frame. This
 				 * makes the reference a background that slowly adapts to
@@ -259,11 +267,15 @@ int bc_motion_is_detected(struct bc_handle *bc)
 				 * for example, the case of a small, fast moving object.
 				 *
 				 * Currently, we add 10% of the new frame to 90% of the current
-				 * reference. */
+				 * reference.
+				 *
+				 * XXX is there a faster algorithm for this? Could we use the
+				 * difference already calculated to do something more clever? */
 				ref[x] = ((ref[x])*0.9) + ((cur[x])*0.1);
 				cur[x] = cv;
 			}
 
+			/* XXX preallocated buffer? it still has to be zero'd */
 			val = calloc(w+1, sizeof(uint8_t));
 			x = 0;
 			cv = 0;
@@ -285,7 +297,10 @@ int bc_motion_is_detected(struct bc_handle *bc)
 					threshold_cell++;
 				}
 
+				/* XXX this line causes a surprising number of cache misses
+				 * in one profile.. */
 				cv += val[x+1];
+				/* XXX store the current threshold instead of accessing it every time */
 				if (*(cur++) > ref[threshold_cell]) {
 					cv++;
 					val[x] = cv - lv;
@@ -295,7 +310,10 @@ int bc_motion_is_detected(struct bc_handle *bc)
 				}
 
 				lv = cv;
-				if (cv > 149) { // XXX magic threshold number
+				/* XXX magic threshold. This probably needs to be based on resolution,
+				 * or configurable somehow. This defines the minimum blob of change
+				 * needed to trigger motion. */
+				if (cv > 149) {
 					ret = 1;
 #ifndef DEBUG_DUMP_MOTION_DATA
 					/* Remember to comment this out if doing measurements; it will
@@ -312,6 +330,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 					x = 0;
 					if (__builtin_expect(++y == h, 0))
 						break;
+					/* XXX we could avoid this by storing the current y cell and
+					 * counting it as we do with x. Would that be helpful? */
 					threshold_cell = (y/threshold_cell_h) << 5;
 					cv = val[0];
 					lv = 0;
