@@ -190,7 +190,6 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		AVFrame rawFrame, frame;
 		AVCodecContext *cctx;
 		uint8_t *buf;
-		uint32_t *result = 0;
 		int bufSize;
 		int r;
 
@@ -240,22 +239,35 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		{
 			uint8_t *ref = md->refFrame->data[0];
 			uint8_t *cur = frame.data[0];
-			uint32_t *val;
-			unsigned cv = 0; /* current value, for val[0] */
+			uint8_t *val = 0;
+			uint8_t cv = 0; /* current value, for val[0] */
+			uint8_t lv = 0;
 			int w = frame.linesize[0], h = cctx->height;
 			int total = w * h;
 			int x = 0, y = 0;
 			int threshold_cell_w = ceil(w/32.0);
 			int threshold_cell_h = ceil(h/24.0);
 			int threshold_cell = 0;
-			int ne_diff;
+			int threshold_x_ctr = threshold_cell_w;
 
-#ifdef DEBUG_DUMP_MOTION_DATA
-			result = calloc(total+1, sizeof(uint32_t));
-#else
-			result = calloc(w+1, sizeof(uint32_t));
-#endif
-			val = result;
+			for (; x < total; ++x) {
+				cv = abs((int)ref[x] - (int)cur[x]);
+				/* Merge the current frame into the reference frame. This
+				 * makes the reference a background that slowly adapts to
+				 * changes in the image, so instant changes will persist
+				 * longer and thus result in larger blobs of change. Consider,
+				 * for example, the case of a small, fast moving object.
+				 *
+				 * Currently, we add 10% of the new frame to 90% of the current
+				 * reference. */
+				ref[x] = ((ref[x])*0.9) + ((cur[x])*0.1);
+				cur[x] = cv;
+			}
+
+			val = calloc(w+1, sizeof(uint8_t));
+			x = 0;
+			cv = 0;
+			ref = md->thresholds;
 
 			/* From the northwest corner, proceed east and south over each pixel.
 			 * The value for a pixel is the value from the pixels to the north,
@@ -268,69 +280,45 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			 * (which are likely irrelevant) are ignored.
 			 */
 			for (;;) {
-				if (abs(*ref - *cur) >= md->thresholds[threshold_cell])
-					cv++;
-				else
-					cv >>= 1;
+				if (!--threshold_x_ctr) {
+					threshold_x_ctr = threshold_cell_w;
+					threshold_cell++;
+				}
 
-				if (cv >= 150) { // XXX magic threshold number
-					uint8_t *end = md->refFrame->data[0] + total;
+				cv += val[x+1];
+				if (*(cur++) > ref[threshold_cell]) {
+					cv++;
+					val[x] = cv - lv;
+				} else {
+					cv /= 2;
+					val[x] = 0;
+				}
+
+				lv = cv;
+				if (cv > 149) { // XXX magic threshold number
 					ret = 1;
 #ifndef DEBUG_DUMP_MOTION_DATA
-					/* Quickly finish merging the reference frame (see below),
-					 * and break */
-					for (; ref != end; ++ref, ++cur)
-						*ref = ((*ref)*0.9f) + ((*cur)*0.1f);
+					/* Remember to comment this out if doing measurements; it will
+					 * confuse results when there is motion. */
 					break;
-#else
-					(void)end;
 #endif
 				}
 
-				/* Merge the current frame into the reference frame. This
-				 * makes the reference a background that slowly adapts to
-				 * changes in the image, so instant changes will persist
-				 * longer and thus result in larger blobs of change. Consider,
-				 * for example, the case of a small, fast moving object.
-				 *
-				 * Currently, we add 10% of the new frame to 90% of the current
-				 * reference. */
-				*ref = ((*ref)*0.9f) + ((*cur)*0.1f);
+#ifdef DEBUG_DUMP_MOTION_DATA
+				fwrite(&cv, 1, 1, md->dumpfile);
+#endif
 
-				ref++;
-				cur++;
-
-				*val = cv;
-
-				if (++x == w) {
+				if (__builtin_expect(++x == w, 0)) {
 					x = 0;
-					if (++y == h)
+					if (__builtin_expect(++y == h, 0))
 						break;
 					threshold_cell = (y/threshold_cell_h) << 5;
-					/* No need to initialize the next value; the result array is
-					 * one line, and we just wrapped, so this pixel is already
-					 * initialized by the north value. */
-#ifdef DEBUG_DUMP_MOTION_DATA
-					val++;
-					memcpy(val, &val[-w], w*sizeof(*val));
-#else
-					val = result;
-#endif
 					cv = val[0];
-					/* Add the difference between northeast and north if positive */
-					if (val[1] > cv)
-						cv = val[1];
-				} else {
-					if (!(x % threshold_cell_w))
-						threshold_cell++;
-
-					val++;
-					ne_diff = val[1] - val[0];
-					if (ne_diff > 0)
-						cv += ne_diff;
+					lv = 0;
 				}
 			}
 
+			free(val);
 			av_free(buf);
 		} else {
 			if (md->refFrame) {
@@ -343,26 +331,6 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			md->refFrameHeight = cctx->height;
 			md->refFrameWidth  = cctx->width;
 		}
-
-#ifdef DEBUG_DUMP_MOTION_DATA
-		if (md->dumpfile && result) {
-			int i;
-			uint8_t *z = (uint8_t*)result;
-			for (i = 0; i < bufSize; ++i, ++z) {
-				if (result[i] < 45)
-					*z = 0;
-				else if (result[i] > 300)
-					*z = 255;
-				else
-					*z = result[i] - 45;
-			}
-			size_t r = fwrite(result, 1, bufSize, md->dumpfile);
-			if (r < bufSize)
-				bc_log("Write error on motion dump file: %m");
-		}
-#endif
-
-		free(result);
 	}
 
 	return ret;
