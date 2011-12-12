@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/statvfs.h>
+#include <bsd/string.h>
 
 #include <libavutil/log.h>
 
@@ -79,8 +80,8 @@ static void bc_check_globals(void)
 
 	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
 		const char *sched = bc_db_get_val(dbres, "value", NULL);
-		if (sched && strlen(sched) == sizeof(global_sched))
-			memcpy(global_sched, sched, sizeof(global_sched));
+		if (sched)
+			strlcpy(global_sched, sched, sizeof(global_sched));
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
