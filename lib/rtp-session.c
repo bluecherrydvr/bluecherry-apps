@@ -262,9 +262,12 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 	vst->codec->width = ic->width;
 	vst->codec->height = ic->height;
 	vst->codec->time_base = ic->time_base;
-	vst->codec->extradata = ic->extradata;
-	vst->codec->extradata_size = ic->extradata_size;
 	vst->codec->profile = ic->profile;
+	if (vst->codec->extradata && vst->codec->extradata_size) {
+		vst->codec->extradata_size = ic->extradata_size;
+		vst->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(vst->codec->extradata, ic->extradata, ic->extradata_size);
+	}
 
 	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -285,10 +288,13 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 		ast->codec->sample_fmt = ic->sample_fmt;
 		ast->codec->channels = ic->channels;
 		ast->codec->time_base = (AVRational){1, ic->sample_rate};
-		ast->codec->extradata = ic->extradata;
-		ast->codec->extradata_size = ic->extradata_size;
 		ast->codec->profile = ic->profile;
-		
+		if (ast->codec->extradata && ast->codec->extradata_size) {
+			ast->codec->extradata_size = ic->extradata_size;
+			ast->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+			memcpy(ast->codec->extradata, ic->extradata, ic->extradata_size);
+		}
+
 		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
