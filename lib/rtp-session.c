@@ -263,7 +263,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 	vst->codec->height = ic->height;
 	vst->codec->time_base = ic->time_base;
 	vst->codec->profile = ic->profile;
-	if (vst->codec->extradata && vst->codec->extradata_size) {
+	if (ic->extradata && ic->extradata_size) {
 		vst->codec->extradata_size = ic->extradata_size;
 		vst->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
 		memcpy(vst->codec->extradata, ic->extradata, ic->extradata_size);
@@ -289,7 +289,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 		ast->codec->channels = ic->channels;
 		ast->codec->time_base = (AVRational){1, ic->sample_rate};
 		ast->codec->profile = ic->profile;
-		if (ast->codec->extradata && ast->codec->extradata_size) {
+		if (ic->extradata && ic->extradata_size) {
 			ast->codec->extradata_size = ic->extradata_size;
 			ast->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
 			memcpy(ast->codec->extradata, ic->extradata, ic->extradata_size);
