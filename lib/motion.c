@@ -156,6 +156,20 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 	return 0;
 }
 
+/* YUVJ* formats are deprecated in libav, but still used in some places,
+ * including h264. Because they're deprecated, swscale doesn't recognize
+ * that they are effectively identical to non-J variants, so the grayscale
+ * conversion is much slower than it should be. */
+static int fix_pix_fmt(int fmt)
+{
+	switch (fmt) {
+	case PIX_FMT_YUVJ420P: return PIX_FMT_YUV420P;
+	case PIX_FMT_YUVJ422P: return PIX_FMT_YUV422P;
+	case PIX_FMT_YUVJ444P: return PIX_FMT_YUV444P;
+	default: return fmt;
+	}
+}
+
 int bc_motion_is_detected(struct bc_handle *bc)
 {
 	int ret = 0;
@@ -198,8 +212,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		cctx = bc->rtp.ctx->streams[bc->rtp.video_stream_index]->codec;
 
 		md->convContext = sws_getCachedContext(md->convContext, cctx->width,
-			cctx->height, cctx->pix_fmt, cctx->width, cctx->height, PIX_FMT_GRAY8,
-			SWS_BICUBIC, NULL, NULL, NULL);
+			cctx->height, fix_pix_fmt(cctx->pix_fmt), cctx->width, cctx->height,
+			PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
 		bufSize = avpicture_get_size(PIX_FMT_GRAY8, cctx->width, cctx->height);
 		buf = av_malloc(bufSize);
