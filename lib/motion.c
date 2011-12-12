@@ -250,6 +250,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			int threshold_cell_h = ceil(h/24.0);
 			int threshold_cell = 0;
 			int threshold_x_ctr = threshold_cell_w;
+			int threshold_current;
 
 			/* Would it be good to merge these loops again? My gut feeling is no,
 			 * because ref would be taking up cache space, but it might avoid
@@ -280,6 +281,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			x = 0;
 			cv = 0;
 			ref = md->thresholds;
+			threshold_current = ref[0];
 
 			/* From the northwest corner, proceed east and south over each pixel.
 			 * The value for a pixel is the value from the pixels to the north,
@@ -294,14 +296,13 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			for (;;) {
 				if (!--threshold_x_ctr) {
 					threshold_x_ctr = threshold_cell_w;
-					threshold_cell++;
+					threshold_current = ref[++threshold_cell];
 				}
 
 				/* XXX this line causes a surprising number of cache misses
 				 * in one profile.. */
 				cv += val[x+1];
-				/* XXX store the current threshold instead of accessing it every time */
-				if (*(cur++) > ref[threshold_cell]) {
+				if (*(cur++) > threshold_current) {
 					cv++;
 					val[x] = cv - lv;
 				} else {
@@ -333,6 +334,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 					/* XXX we could avoid this by storing the current y cell and
 					 * counting it as we do with x. Would that be helpful? */
 					threshold_cell = (y/threshold_cell_h) << 5;
+					threshold_current = ref[threshold_cell];
 					cv = val[0];
 					lv = 0;
 				}
