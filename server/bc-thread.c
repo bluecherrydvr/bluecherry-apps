@@ -13,6 +13,20 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
+static void stop_handle_properly(struct bc_record *bc_rec)
+{
+	struct bc_output_packet *p, *n;
+	bc_close_avcodec(bc_rec);
+	bc_handle_stop(bc_rec->bc);
+	bc_rec->mot_last_ts = 0;
+	for (p = bc_rec->prerecord_head; p; p = n) {
+		n = p->next;
+		free(p->data);
+		free(p);
+	}
+	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
+}
+
 static void try_formats(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
@@ -85,15 +99,11 @@ static int process_schedule(struct bc_record *bc_rec)
 		}
 		bc_close_avcodec(bc_rec);
 		bc_handle_reset(bc);
-		bc_rec->mot_last_ts = 0;
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
-		bc_close_avcodec(bc_rec);
-		bc_handle_stop(bc);
-		if (bc)
-			bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
-		bc_rec->mot_last_ts = 0;
+		stop_handle_properly(bc_rec);
+		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
 		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
@@ -117,6 +127,10 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 
 	if (bc_rec->sched_cur != 'M')
 		return 1;
+
+	/* This may be necessary in some cases when the handle was stopped
+	 * (and thus, motion reset to off) without a schedule change. */
+	bc_set_motion(bc_rec->bc, 1);
 
 	/* Update prerecording buffer */
 	mpkt = malloc(sizeof(struct bc_output_packet));
@@ -253,8 +267,7 @@ static void *bc_device_thread(void *data)
 				            "Unknown error");
 			}
 
-			bc_close_avcodec(bc_rec);
-			bc_handle_stop(bc);
+			stop_handle_properly(bc_rec);
 			continue;
 		}
 
@@ -305,8 +318,7 @@ static void *bc_device_thread(void *data)
 			bc_output_packet_write(bc_rec, &packet);
 	}
 
-	bc_close_avcodec(bc_rec);
-	bc_handle_stop(bc);
+	stop_handle_properly(bc_rec);
 	bc_set_osd(bc, " ");
 
 	return bc_rec->thread_should_die;
