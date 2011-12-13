@@ -333,7 +333,11 @@ DVRPageScript = new Class({
 						ajaxUpdateField('updateEncoding', 'Devices', {'signal_type' : encoding }, el.get('id'), 'devices');
 					});
 				});
-				var menuOffset = -55 - parseInt($('generalMessage').getChildren('#message').getStyle('height'));
+				
+				var menuOffset = -55;
+				if ($('generalMessage')) {
+					var menuOffset = menuOffset - parseInt($('generalMessage').getChildren('#message').getStyle('height'));
+				};
 				var context = new ContextMenu({
 					offsets: { x:-250, y:menuOffset },
 					targets: '.settingsOpen',
