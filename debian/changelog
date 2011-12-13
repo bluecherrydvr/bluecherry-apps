@@ -1,8 +1,25 @@
 bluecherry (1:2.0.0-0beta9.0) lucid; urgency=low
 
-  * WIP
+  * Bug #1002: web: ipCameras list not updated properly
+  * Bug #1003: IP recordings may be cutoff during very long RTP streams
+  * Bug #1009: bluecherry.log is not created during installation on Ubuntu server
+  * Bug #1015: Events results should be limited to avoid running out of memory
+  * Bug #1021: Per-device schedule is always continuous from 11pm saturday to 12am sunday
+  * Feature #57: Server: Detect motion in RTSP streams
+  * Feature #637: (Web) Handle devices not associated with AvailableSources
+  * Feature #944: Web: Device re-name hint
+  * Feature #966: Web: Display IP camera type/selector
+  * Feature #1000: Add presets for Panasonic series cameras
+  * Feature #1001: Add presets for Airlive cameras
+  * Feature #1007: Add support for motion mapping for IP cameras
+  * Feature #1011: Web: Add link to the download the client
+  * Feature #1012: Default to /dev/ttyS0 for the serial port (PTZ control)
+  * Feature #1013: Web: Change protocol to show Pelco-D instead of PELCO
+  * Feature #1014: Disable IP camera connectivity checking by default
+  * Feature #1016: Web: Hide the model field for generic cameras
+  * Feature #1017: Web: Checkbox to enable audio for IP cameras
 
- -- John Brooks <john.brooks@bluecherry.net>  Thu, 01 Dec 2011 15:21:00 -0700
+ -- John Brooks <john.brooks@bluecherry.net>  Thu, 12 Dec 2011 15:58:00 -0700
 
 bluecherry (1:2.0.0-0beta8.3) lucid; urgency=low
 
