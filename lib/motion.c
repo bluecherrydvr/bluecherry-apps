@@ -46,6 +46,10 @@ int bc_set_motion(struct bc_handle *bc, int on)
 			av_free(bc->motion_data.refFrame);
 			bc->motion_data.refFrame = 0;
 		}
+		bc->motion_data.refFrameWidth = 0;
+		bc->motion_data.refFrameHeight = 0;
+		bc->motion_data.last_tested_pts = AV_NOPTS_VALUE;
+		bc->motion_data.skip_count = 0;
 #ifdef DEBUG_DUMP_MOTION_DATA
 		if (bc->motion_data.dumpfile) {
 			fclose(bc->motion_data.dumpfile);
@@ -209,6 +213,27 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		}
 
 		cctx = bc->rtp.ctx->streams[bc->rtp.video_stream_index]->codec;
+
+		/* For high framerates, we can achieve the same level of motion detection
+		 * with much less CPU by testing at a reduced framerate. This will only run
+		 * detection on frames with a PTS more than 45ms after the previous tested
+		 * frame. There is a limit of 3 consecutive frame skips, because that shouldn't
+		 * happen (other than a >60fps stream). */
+		if (md->refFrame && md->last_tested_pts && md->last_tested_pts != AV_NOPTS_VALUE) {
+			int64_t diff = av_rescale_q(rawFrame.pkt_pts - md->last_tested_pts,
+			                            (AVRational){1,90000},
+			                            AV_TIME_BASE_Q) / (AV_TIME_BASE / 1000);
+			if (diff > 0 && diff < 45) {
+				if (++md->skip_count > 3) {
+					av_log(bc->rtp.ctx, AV_LOG_WARNING, "Motion detection skipped too "
+					       "many consecutive frames (diff: %"PRId64". Buggy PTS?",
+					       diff);
+				} else
+					return 0;
+			}
+		}
+		md->last_tested_pts = rawFrame.pkt_pts;
+		md->skip_count = 0;
 
 		md->convContext = sws_getCachedContext(md->convContext, cctx->width,
 			cctx->height, fix_pix_fmt(cctx->pix_fmt), cctx->width, cctx->height,

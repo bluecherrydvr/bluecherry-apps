@@ -83,6 +83,8 @@ struct bc_motion_data {
 	AVFrame           *refFrame;
 	int                refFrameHeight;
 	int                refFrameWidth;
+	int64_t            last_tested_pts;
+	uint8_t            skip_count;
 	uint8_t            thresholds[768];
 #ifdef DEBUG_DUMP_MOTION_DATA
 	FILE              *dumpfile;
