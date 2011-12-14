@@ -124,6 +124,14 @@ int rtp_device_start(struct rtp_device *rs)
 	return 0;
 }
 
+/* Workaround because we cannot take the address of this function
+ * without breaking the link with the PHP extension (which does
+ * not know of libav). Ugly. */
+static void wrap_av_destruct_packet(AVPacket *pkt)
+{
+	av_destruct_packet(pkt);
+}
+
 int rtp_device_read(struct rtp_device *rs)
 {
 	int re;
@@ -142,6 +150,26 @@ int rtp_device_read(struct rtp_device *rs)
 
 	if (rs->frame.stream_index >= 0 && rs->frame.stream_index < RTP_NUM_STREAMS)
 		streamdata = &rs->stream_data[rs->frame.stream_index];
+
+	/* ACTi B2 frames are badly specified; they are MPEG4 user data elements which
+	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
+	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
+	 * everything. */
+	if (rs->ctx->streams[rs->frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
+		uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
+		if (rs->frame.size >= 47 && rs->frame.stream_index == rs->video_stream_index
+		    && memcmp(rs->frame.data, b2_header, sizeof(b2_header)) == 0
+		    && memcmp(rs->frame.data+44, b2_header, 3) == 0)
+		{
+			void *tmp = av_malloc(rs->frame.size); /* Let the extra 44 be buffer padding */
+			int size = rs->frame.size - 44;
+			memcpy(tmp, rs->frame.data+44, size);
+			av_free_packet(&rs->frame);
+			rs->frame.data = tmp;
+			rs->frame.size = size;
+			rs->frame.destruct = wrap_av_destruct_packet;
+		}
+	}
 
 	/* Don't run offset logic against frames with no PTS */
 	if (!streamdata || rs->frame.pts == AV_NOPTS_VALUE)
