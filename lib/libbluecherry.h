@@ -390,10 +390,6 @@ void bc_media_destroy(bc_media_entry_t *bcm);
 void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
 			   int file_size);
 
-/* Should be called periodically to ensure events that failed to write
- * to the db are retried. */
-void bc_media_event_clear(void);
-
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
 int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay, 

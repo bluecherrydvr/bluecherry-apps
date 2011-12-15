@@ -558,8 +558,6 @@ int main(int argc, char **argv)
 
 		/* Every second, check for dead threads */
 		bc_check_threads();
-		/* And resolve un-committed events/media */
-		bc_media_event_clear();
 
 		sleep(1);
 	}

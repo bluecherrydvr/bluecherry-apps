@@ -40,10 +40,6 @@ static const char *cont_type_to_str[] = {
 	"none", "mkv", "mp4", "mpeg2_ps", "mpeg2_ts", "avi"
 };
 
-/* Linked list if events that failed to write */
-static BC_DECLARE_LIST(cam_event_queue);
-static BC_DECLARE_LIST(sys_event_queue);
-
 static const char db_status_file[] = "/var/run/bluecherry/db-writable";
 
 static int bc_db_check_success(void)
@@ -72,7 +68,6 @@ struct bc_event_cam {
 	time_t end_time;
 	unsigned long inserted;
 	struct bc_media_entry *media;
-	struct bc_list_struct list;
 	/* For snapshot saving */
 	void *file_data;
 	int file_size;
@@ -82,7 +77,6 @@ struct bc_event_sys {
 	const char *level;
 	const char *type;
 	time_t time;
-	struct bc_list_struct list;
 };
 
 struct bc_media_entry {
@@ -92,7 +86,6 @@ struct bc_media_entry {
 	const char *video, *audio, *cont;
 	char filepath[PATH_MAX];
 	unsigned long bytes;
-	struct bc_list_struct list;
 };
 
 static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
@@ -285,18 +278,7 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 	bce.level = level_to_str[level];
 	bce.type = sys_type_to_str[type];
 
-	if (!__do_sys_insert(&bce))
-		return 0;
-
-	bu = malloc(sizeof(bce));
-	if (bu == NULL)
-		return -1;
-
-	memcpy(bu, &bce, sizeof(bce));
-
-	bc_list_add(&bu->list, &sys_event_queue);
-
-	return 0;
+	return __do_sys_insert(&bce);
 }
 
 bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
@@ -435,11 +417,8 @@ void bc_event_cam_end(bc_event_cam_t *__bce)
 	if (!bce->end_time)
 		bce->end_time = time(NULL);
 
-	/* On failure, we add it to the event_queue to try later */
-	if (do_cam(bce))
-		bc_list_add(&bce->list, &cam_event_queue);
-	else
-		free(bce);
+	do_cam(bce);
+	free(bce);
 }
 
 int bc_event_cam_fire(int id, bc_event_level_t level,
@@ -456,34 +435,4 @@ int bc_event_cam_fire(int id, bc_event_level_t level,
 	bc_event_cam_end(&bce);
 
 	return 0;
-}
-
-/* Run through the queues if needed */
-void bc_media_event_clear(void)
-{
-	struct bc_event_cam *bcec;
-	struct bc_event_sys *bces;
-	struct bc_list_struct *lh;
-
-	bc_list_for_each(lh, &cam_event_queue) {
-		bcec = bc_list_entry(lh, struct bc_event_cam, list);
-		/* On error, do nothing */
-		if (do_cam(bcec))
-			continue;
-
-		/* Finally, get this event out of the queue */
-		bc_list_del(lh);
-		free(bcec);
-	}
-
-	bc_list_for_each(lh, &sys_event_queue) {
-		bces = bc_list_entry(lh, struct bc_event_sys, list);
-		/* On error, do nothing */
-		if (__do_sys_insert(bces))
-			continue;
-
-		/* Get this one out too */
-		bc_list_del(lh);
-		free(bces);
-	}
 }
