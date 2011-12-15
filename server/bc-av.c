@@ -369,9 +369,6 @@ void bc_mkdir_recursive(char *path)
 
 static void bc_start_media_entry(struct bc_record *bc_rec)
 {
-	bc_media_video_type_t video = BC_MEDIA_VIDEO_M4V;
-	bc_media_audio_type_t audio = BC_MEDIA_AUDIO_NONE;
-	bc_media_cont_type_t cont = BC_MEDIA_CONT_MKV;
 	time_t t = time(NULL);
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
@@ -394,8 +391,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 					BC_EVENT_CAM_T_CONTINUOUS, bc_rec->media);
 
 	/* Now start the next one */
-	bc_rec->media = bc_media_start(bc_rec->id, video, audio, cont,
-				       bc_rec->outfile, bc_rec->event);
+	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, bc_rec->event);
 }
 
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)

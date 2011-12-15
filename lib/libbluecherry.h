@@ -183,28 +183,6 @@ typedef enum {
 typedef struct bc_event_cam * bc_event_cam_t;
 #define BC_EVENT_CAM_NULL ((bc_event_cam_t)NULL)
 
-typedef enum {
-	BC_MEDIA_VIDEO_H264 = 0,
-	BC_MEDIA_VIDEO_M4V,
-	BC_MEDIA_VIDEO_M2V,
-} bc_media_video_type_t;
-
-typedef enum {
-	BC_MEDIA_AUDIO_NONE = 0,
-	BC_MEDIA_AUDIO_MP2,
-	BC_MEDIA_AUDIO_MP3,
-	BC_MEDIA_AUDIO_WAV,
-} bc_media_audio_type_t;
-
-typedef enum {
-	BC_MEDIA_CONT_NONE = 0, // Means no audio, and video format raw
-	BC_MEDIA_CONT_MKV,
-	BC_MEDIA_CONT_MP4,
-	BC_MEDIA_CONT_MPEG2_PS,
-	BC_MEDIA_CONT_MPEG2_TS,
-	BC_MEDIA_CONT_AVI,
-} bc_media_cont_type_t;
-
 typedef struct bc_media_entry * bc_media_entry_t;
 #define BC_MEDIA_NULL ((bc_media_entry_t)NULL)
 
@@ -375,10 +353,7 @@ int bc_event_sys(bc_event_level_t level,
 /* ### Handle media entries ### */
 
 /* Returns a media entry handle for later passing to _end */
-bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
-				bc_media_audio_type_t audio,
-				bc_media_cont_type_t cont,
-				const char *filepath,
+bc_media_entry_t bc_media_start(int id, const char *filepath,
 				bc_event_cam_t bce);
 /* Called at the end of the media to mark end time. If this returns
  * non-zero, you cannot end the media. */

@@ -28,18 +28,6 @@ static const char *sys_type_to_str[] = {
 	"disk-space", "crash", "boot", "shutdown", "reboot", "power-outage"
 };
 
-static const char *video_type_to_str[] = {
-	"h264", "m4v", "m2v"
-};
-
-static const char *audio_type_to_str[] = {
-	"none", "mp2", "mp3", "wav"
-};
-
-static const char *cont_type_to_str[] = {
-	"none", "mkv", "mp4", "mpeg2_ps", "mpeg2_ts", "avi"
-};
-
 static const char db_status_file[] = "/var/run/bluecherry/db-writable";
 
 static int bc_db_check_success(void)
@@ -83,7 +71,6 @@ struct bc_media_entry {
 	int cam_id;
 	unsigned long table_id;
 	time_t start, end;
-	const char *video, *audio, *cont;
 	char filepath[PATH_MAX];
 	unsigned long bytes;
 };
@@ -131,21 +118,19 @@ static int __do_media(struct bc_media_entry *bcm)
 		/* Insert open ended for later update */
 		bcm->start = time(NULL);
 		res = __bc_db_query("INSERT INTO Media (start,device_id,"
-				  "container,video,audio,filepath) "
-				  "VALUES('%lu',%d,'%s','%s','%s','%s')",
-				  bcm->start, bcm->cam_id, bcm->cont,
-				  bcm->video, bcm->audio, bcm->filepath);
+				  "filepath) "
+				  "VALUES('%lu',%d,'%s')",
+				  bcm->start, bcm->cam_id, bcm->filepath);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid();
 	} else {
 		/* Insert fully. Usually means there was a failure */
 		__update_stat(bcm);
 		res = __bc_db_query("INSERT INTO Media (start,end,"
-				  "device_id,container,video,audio,filepath,"
-				  "size) VALUES('%lu','%lu','%d','%s','%s',"
-				  "'%s','%s',%lu)", bcm->start, time(NULL),
-				  bcm->cam_id, bcm->cont, bcm->video,
-				  bcm->audio, bcm->filepath, bcm->bytes);
+		                    "device_id,filepath,size) "
+		                    "VALUES('%lu','%lu','%d','%s',%lu)",
+		                    bcm->start, time(NULL), bcm->cam_id,
+		                    bcm->filepath, bcm->bytes);
 		if (!res)
 			bcm->table_id = bc_db_last_insert_rowid();
 	}
@@ -272,7 +257,7 @@ static int __do_sys_insert(struct bc_event_sys *bce)
 
 int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 {
-	struct bc_event_sys bce, *bu;
+	struct bc_event_sys bce;
 
 	bce.time = time(NULL);
 	bce.level = level_to_str[level];
@@ -281,10 +266,7 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 	return __do_sys_insert(&bce);
 }
 
-bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
-				bc_media_audio_type_t audio,
-				bc_media_cont_type_t cont,
-				const char *filepath,
+bc_media_entry_t bc_media_start(int id, const char *filepath,
 				bc_event_cam_t bce)
 {
 	struct bc_media_entry *bcm = malloc(sizeof(*bcm));
@@ -295,9 +277,6 @@ bc_media_entry_t bc_media_start(int id, bc_media_video_type_t video,
 	memset(bcm, 0, sizeof(*bcm));
 
 	bcm->cam_id = id;
-        bcm->video = video_type_to_str[video];
-        bcm->audio = audio_type_to_str[audio];
-        bcm->cont = cont_type_to_str[cont];
 	strcpy(bcm->filepath, filepath);
 
 	do_media(bcm);
