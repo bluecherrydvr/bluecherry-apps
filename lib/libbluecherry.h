@@ -362,8 +362,6 @@ int bc_media_end(bc_media_entry_t *bcm);
 time_t bc_media_length(bc_media_entry_t *bcm);
 /* Destroy a media object (that not got started) */
 void bc_media_destroy(bc_media_entry_t *bcm);
-void bc_media_set_snapshot(bc_event_cam_t bce, void *file_data,
-			   int file_size);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);

@@ -46,15 +46,6 @@ CREATE TABLE EventsCam (
         FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
 );
 
-CREATE TABLE EventsCamSnapshot (
-	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,
-	event_id integer NOT NULL,
-	file_size integer NOT NULL,
-	file_data BLOB NOT NULL,
-	file_type varchar(100) NOT NULL DEFAULT 'image/jpeg',
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id)
-);
-
 -- A separate table for system events
 CREATE TABLE EventsSystem (
 	id integer PRIMARY KEY NOT NULL AUTO_INCREMENT,

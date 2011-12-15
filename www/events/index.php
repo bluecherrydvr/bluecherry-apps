@@ -14,9 +14,8 @@ $number_of_recs =  data::query("SELECT COUNT(*) as n From EventsCam");
 $memory_limit = intval(max($number_of_recs[0]['n']/20000,1)*256).'M';
 ini_set('memory_limit', $memory_limit);
 
-$query = "SELECT EventsCam.*, EventsCamSnapshot.id AS snapshot_id, EventsCamSnapshot.file_size AS snapshot_size, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
+$query = "SELECT EventsCam.*, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
          "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
-	 "LEFT JOIN EventsCamSnapshot ON (EventsCam.id=EventsCamSnapshot.event_id) ".
 	 "WHERE ";
 if (isset($_GET['startDate']))
 	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
@@ -90,11 +89,6 @@ foreach ($events as $item) {
 		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
 		$item['type_id'] . "\"/>\n";
 
-	if (!empty($item['snapshot_id'])) {
-		print "    <content snapshot_id=\"".$item['snapshot_id']."\">";
-                print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/snapshot.php?id=".$item['snapshot_id'];
-                print "</content>\n";
-        }
 	if (!empty($item['media_id']) && $item['media_available']) {
 		print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
 		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
