@@ -342,10 +342,6 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 		av_free(bc_rec->oc);
 		bc_rec->oc = NULL;
 	}
-
-	/* Close the media entry in the db */
-	bc_event_cam_end(&bc_rec->event);
-	bc_media_end(&bc_rec->media);
 }
 
 void bc_mkdir_recursive(char *path)
@@ -365,33 +361,6 @@ void bc_mkdir_recursive(char *path)
 	*t = '/';
 
 	mkdir(path, 0750);
-}
-
-static void bc_start_media_entry(struct bc_record *bc_rec)
-{
-	time_t t = time(NULL);
-	struct tm tm;
-	char date[12], mytime[10], dir[PATH_MAX];
-	char stor[256];
-
-	bc_get_media_loc(stor);
-
-	/* XXX Need some way to reconcile time between media event and
-	 * filename. They should match. */
-	localtime_r(&t, &tm);
-
-	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
-	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
-	sprintf(dir, "%s/%s/%06d", stor, date, bc_rec->id);
-	bc_mkdir_recursive(dir);
-	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
-
-	if (bc_rec->sched_cur == 'C' && bc_rec->event == BC_EVENT_CAM_NULL)
-		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
-					BC_EVENT_CAM_T_CONTINUOUS, bc_rec->media);
-
-	/* Now start the next one */
-	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, bc_rec->event);
 }
 
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
@@ -488,15 +457,8 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (bc_rec->oc != NULL)
 		return 0;
 
-	bc_start_media_entry(bc_rec);
-
-	if (bc_rec->media == BC_MEDIA_NULL) {
-		errno = ENOMEM;
-		goto error;
-	}
-
 	/* Get the output format */
-	bc_rec->fmt_out = av_guess_format(NULL, bc_rec->outfile, NULL);
+	bc_rec->fmt_out = av_guess_format("matroska", NULL, NULL);
 	if (!bc_rec->fmt_out) {
 		errno = EINVAL;
 		goto error;
@@ -507,7 +469,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	oc = bc_rec->oc;
 
 	oc->oformat = bc_rec->fmt_out;
-	snprintf(oc->filename, sizeof(oc->filename), "%s", bc_rec->outfile);
 
 	if (bc->type == BC_DEVICE_RTP) {
 		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
@@ -562,8 +523,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	return 0;
 	
 error:
-	/* XXX I dislike this. */
-	bc_media_destroy(&bc_rec->media);
 	bc_close_avcodec(bc_rec);
 	return -1;
 }

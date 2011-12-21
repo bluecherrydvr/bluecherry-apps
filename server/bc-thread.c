@@ -13,10 +13,72 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
+static void bc_start_media_entry(struct bc_record *bc_rec)
+{
+	time_t t = time(NULL);
+	struct tm tm;
+	char date[12], mytime[10], dir[PATH_MAX];
+	char stor[256];
+
+	bc_get_media_loc(stor);
+
+	/* XXX Need some way to reconcile time between media event and
+	 * filename. They should match. */
+	localtime_r(&t, &tm);
+
+	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
+	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
+	sprintf(dir, "%s/%s/%06d", stor, date, bc_rec->id);
+	bc_mkdir_recursive(dir);
+	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
+}
+
+static void recording_end(struct bc_record *bc_rec)
+{
+	if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
+	    bc_rec->sched_last == 'M')
+		bc_dev_info(bc_rec, "Motion event stopped");
+
+	/* Close the media entry in the db */
+	if (bc_rec->event != BC_EVENT_CAM_NULL)
+		bc_event_cam_end(&bc_rec->event);
+	if (bc_rec->media != BC_MEDIA_NULL)
+		bc_media_end(&bc_rec->media);
+
+	bc_close_avcodec(bc_rec);
+}
+
+static int recording_start(struct bc_record *bc_rec)
+{
+	if (bc_rec->event != BC_EVENT_CAM_NULL)
+		recording_end(bc_rec);
+
+	bc_start_media_entry(bc_rec);
+
+	if (bc_open_avcodec(bc_rec))
+		return -1;
+
+	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, bc_rec->event);
+
+	if (bc_rec->sched_cur == 'M') {
+		bc_dev_info(bc_rec, "Motion event started");
+		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+		                                   BC_EVENT_CAM_T_MOTION,
+		                                   bc_rec->media);
+	} else if (bc_rec->sched_cur == 'C') {
+		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
+		                                   BC_EVENT_CAM_T_CONTINUOUS,
+		                                   bc_rec->media);
+	}
+
+	return 0;
+}
+
 static void stop_handle_properly(struct bc_record *bc_rec)
 {
 	struct bc_output_packet *p, *n;
-	bc_close_avcodec(bc_rec);
+
+	recording_end(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
 	for (p = bc_rec->prerecord_head; p; p = n) {
@@ -97,7 +159,7 @@ static int process_schedule(struct bc_record *bc_rec)
 			bc_rec->reset_vid = 0;
 			ret = 1;
 		}
-		bc_close_avcodec(bc_rec);
+		recording_end(bc_rec);
 		bc_handle_reset(bc);
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
@@ -168,13 +230,6 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 
 	ret = bc_motion_is_detected(bc_rec->bc);
 	if (ret) {
-		if (bc_rec->event == BC_EVENT_CAM_NULL) {
-			/* Starting a new motion recording */
-			bc_dev_info(bc_rec, "Motion event started");
-			bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
-				BC_EVENT_CAM_T_MOTION, bc_rec->media);
-		}
-
 		/* Update the timestamp on every frame with motion */
 		bc_rec->mot_last_ts = monotonic_now;
 	} else {
@@ -183,7 +238,6 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 			if (monotonic_now - bc_rec->mot_last_ts >= 3) {
 				/* End of event */
 				bc_rec->mot_last_ts = 0;
-				bc_dev_info(bc_rec, "Motion event stopped");
 			} else
 				ret = 1; /* still recording (postrecord) */
 		}
@@ -284,8 +338,7 @@ static void *bc_device_thread(void *data)
 		if (!check_motion(bc_rec, &packet)) {
 			/* Motion recording is enabled and we should not record.
 			 * End the recording if there is one. */
-			if (bc_rec->oc)
-				bc_close_avcodec(bc_rec);
+			recording_end(bc_rec);
 			continue;
 		}
 
@@ -293,7 +346,7 @@ static void *bc_device_thread(void *data)
 			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
 				/* Dump the prerecording buffer */
 				struct bc_output_packet *p;
-				if (bc_open_avcodec(bc_rec))
+				if (recording_start(bc_rec))
 					continue;
 				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
 				/* Skip the last packet; it's identical to the current packet,
@@ -307,7 +360,7 @@ static void *bc_device_thread(void *data)
 				 * slightly to allow a proper cut for both video and audio. */
 				continue;
 			} else {
-				if (bc_open_avcodec(bc_rec))
+				if (recording_start(bc_rec))
 					continue;
 				bc_rec->output_pts_base = packet.pts;
 			}
