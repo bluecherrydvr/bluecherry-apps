@@ -35,24 +35,22 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 static void recording_end(struct bc_record *bc_rec)
 {
-	if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
-	    bc_rec->sched_last == 'M')
-		bc_dev_info(bc_rec, "Motion event stopped");
-
 	/* Close the media entry in the db */
 	if (bc_rec->event != BC_EVENT_CAM_NULL)
 		bc_event_cam_end(&bc_rec->event);
-	if (bc_rec->media != BC_MEDIA_NULL)
+	if (bc_rec->media != BC_MEDIA_NULL) {
+		if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
+		    bc_rec->sched_last == 'M')
+			bc_dev_info(bc_rec, "Motion event stopped");
 		bc_media_end(&bc_rec->media);
+	}
 
 	bc_close_avcodec(bc_rec);
 }
 
 static int recording_start(struct bc_record *bc_rec)
 {
-	if (bc_rec->event != BC_EVENT_CAM_NULL)
-		recording_end(bc_rec);
-
+	recording_end(bc_rec);
 	bc_start_media_entry(bc_rec);
 
 	if (bc_open_avcodec(bc_rec))
