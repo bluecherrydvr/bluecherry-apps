@@ -254,11 +254,8 @@ static void *bc_device_thread(void *data)
 	bc_dev_info(bc_rec, "Camera configured");
 	bc_av_log_set_handle_thread(bc_rec);
 
-	for (;;) {
+	while (!bc_rec->thread_should_die) {
 		const char *err_msg;
-
-		if (bc_rec->thread_should_die)
-			break;
 
 		/* Set by bc_record_update_cfg */
 		if (bc_rec->cfg_dirty) {
