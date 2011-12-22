@@ -273,17 +273,20 @@ static void *bc_device_thread(void *data)
 
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
-				if (!(bc_rec->start_failed++ % 60)) {
-					bc_event_cam_fire(bc_rec->id, BC_EVENT_L_ALRM,
-							 BC_EVENT_CAM_T_NOT_FOUND);
-					bc_dev_err(bc_rec, "Error starting stream: %s",
-						   err_msg);
+				bc_rec->start_failed++;
+				if (!bc_rec->event) {
+					bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
+
+					bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_ALRM,
+					                                   BC_EVENT_CAM_T_NOT_FOUND,
+					                                   BC_MEDIA_NULL);
 				}
 				sleep(1);
 				continue;
 			} else if (bc_rec->start_failed) {
 				bc_rec->start_failed = 0;
 				bc_dev_info(bc_rec, "Device started after failure(s)");
+				bc_event_cam_end(&bc_rec->event);
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
