@@ -48,30 +48,6 @@ static int bc_db_check_fail(void)
 	return system(cmd);
 }
 
-struct bc_event_cam {
-	int id;
-	const char *level;
-	const char *type;
-	time_t start_time;
-	time_t end_time;
-	unsigned long inserted;
-	struct bc_media_entry *media;
-};
-
-struct bc_event_sys {
-	const char *level;
-	const char *type;
-	time_t time;
-};
-
-struct bc_media_entry {
-	int cam_id;
-	unsigned long table_id;
-	time_t start, end;
-	char filepath[PATH_MAX];
-	unsigned long bytes;
-};
-
 static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
 					      bc_event_cam_type_t type,
 					      bc_media_entry_t media)
@@ -83,8 +59,8 @@ static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
 
 	memset(bce, 0, sizeof(*bce));
 	bce->id = id;
-	bce->level = level_to_str[level];
-	bce->type = cam_type_to_str[type];
+	bce->level = level;
+	bce->type = type;
 	bce->start_time = time(NULL);
 	bce->media = media;
 
@@ -170,16 +146,16 @@ static int __do_cam(struct bc_event_cam *bce)
 		/* Insert with length, usually happens on failure, or singular */
 		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
-				"'%s','%lu')", bce->start_time, bce->level,
-				bce->id, bce->type, bce->end_time - bce->start_time);
+				"'%s','%lu')", bce->start_time, level_to_str[bce->level],
+				bce->id, cam_type_to_str[bce->type], bce->end_time - bce->start_time);
 		if (!res)
 			bce->inserted = bc_db_last_insert_rowid();
 	} else {
 		/* Insert open ended (for later update), common start point */
 		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
 				"device_id,type_id,length) VALUES('%lu','%s','%d',"
-				"'%s',-1)", bce->start_time, bce->level,
-				bce->id, bce->type);
+				"'%s',-1)", bce->start_time, level_to_str[bce->level],
+				bce->id, cam_type_to_str[bce->type]);
 		if (!res)
 			bce->inserted = bc_db_last_insert_rowid();
 	}
@@ -217,7 +193,7 @@ static int __do_sys_insert(struct bc_event_sys *bce)
 {
 	return bc_db_query("INSERT INTO EventsSystem (time,level_id,"
                            "type_id) VALUES('%lu','%s','%s')", bce->time,
-			   bce->level, bce->type);
+			   level_to_str[bce->level], sys_type_to_str[bce->type]);
 }
 
 int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
@@ -225,8 +201,8 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 	struct bc_event_sys bce;
 
 	bce.time = time(NULL);
-	bce.level = level_to_str[level];
-	bce.type = sys_type_to_str[type];
+	bce.level = level;
+	bce.type = type;
 
 	return __do_sys_insert(&bce);
 }

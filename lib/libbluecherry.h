@@ -180,6 +180,30 @@ typedef enum {
 	BC_EVENT_SYS_T_POWER_OUTAGE,
 } bc_event_sys_type_t;
 
+struct bc_event_cam {
+	int id;
+	bc_event_level_t level;
+	bc_event_cam_type_t type;
+	time_t start_time;
+	time_t end_time;
+	unsigned long inserted;
+	struct bc_media_entry *media;
+};
+
+struct bc_event_sys {
+	bc_event_level_t level;
+	bc_event_sys_type_t type;
+	time_t time;
+};
+
+struct bc_media_entry {
+	int cam_id;
+	unsigned long table_id;
+	time_t start, end;
+	char filepath[PATH_MAX];
+	unsigned long bytes;
+};
+
 typedef struct bc_event_cam * bc_event_cam_t;
 #define BC_EVENT_CAM_NULL ((bc_event_cam_t)NULL)
 
