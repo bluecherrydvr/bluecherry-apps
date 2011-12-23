@@ -309,13 +309,11 @@ static void *bc_device_thread(void *data)
 			} else {
 				if (bc_open_avcodec(bc_rec))
 					continue;
-				if (bc->type == BC_DEVICE_RTP)
-					rtp_device_set_current_pts(&bc->rtp, 0);
+				bc_rec->output_pts_base = packet.pts;
 			}
 		}
 
-		if (ret > 0)
-			bc_output_packet_write(bc_rec, &packet);
+		bc_output_packet_write(bc_rec, &packet);
 	}
 
 	stop_handle_properly(bc_rec);
