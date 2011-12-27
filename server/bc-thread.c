@@ -36,38 +36,61 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 static void recording_end(struct bc_record *bc_rec)
 {
 	/* Close the media entry in the db */
-	if (bc_rec->event != BC_EVENT_CAM_NULL)
-		bc_event_cam_end(&bc_rec->event);
 	if (bc_rec->media != BC_MEDIA_NULL) {
+		if (bc_rec->event != BC_EVENT_CAM_NULL)
+			bc_event_cam_end(&bc_rec->event);
+		bc_media_end(&bc_rec->media);
 		if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
 		    bc_rec->sched_last == 'M')
 			bc_dev_info(bc_rec, "Motion event stopped");
-		bc_media_end(&bc_rec->media);
 	}
 
 	bc_close_avcodec(bc_rec);
 }
 
+static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
+                           bc_event_cam_type_t type)
+{
+	if (!bc_rec->event || bc_rec->event->level != level || bc_rec->event->type != type) {
+		recording_end(bc_rec);
+		bc_event_cam_end(&bc_rec->event);
+
+		bc_rec->event = bc_event_cam_start(bc_rec->id, level, type, BC_MEDIA_NULL);
+	}
+}
+
 static int recording_start(struct bc_record *bc_rec)
 {
+	bc_event_cam_t event = BC_EVENT_CAM_NULL;
 	recording_end(bc_rec);
+	/* XXX needs to handle failure */
 	bc_start_media_entry(bc_rec);
 
-	if (bc_open_avcodec(bc_rec))
+	if (bc_open_avcodec(bc_rec)) {
+		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
+	}
 
-	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, bc_rec->event);
+	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, BC_EVENT_CAM_NULL);
 
 	if (bc_rec->sched_cur == 'M') {
 		bc_dev_info(bc_rec, "Motion event started");
-		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
-		                                   BC_EVENT_CAM_T_MOTION,
-		                                   bc_rec->media);
+		event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+		                           BC_EVENT_CAM_T_MOTION,
+		                           bc_rec->media);
 	} else if (bc_rec->sched_cur == 'C') {
-		bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
-		                                   BC_EVENT_CAM_T_CONTINUOUS,
-		                                   bc_rec->media);
+		event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
+		                           BC_EVENT_CAM_T_CONTINUOUS,
+		                           bc_rec->media);
 	}
+
+	if (event == BC_EVENT_CAM_NULL) {
+		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+		return -1;
+	}
+
+	bc_event_cam_end(&bc_rec->event);
+	bc_rec->event = event;
 
 	return 0;
 }
@@ -163,6 +186,7 @@ static int process_schedule(struct bc_record *bc_rec)
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
 		stop_handle_properly(bc_rec);
+		bc_event_cam_end(&bc_rec->event);
 		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
 		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
@@ -271,19 +295,13 @@ static void *bc_device_thread(void *data)
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
 				bc_rec->start_failed++;
-				if (!bc_rec->event) {
-					bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
-
-					bc_rec->event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_ALRM,
-					                                   BC_EVENT_CAM_T_NOT_FOUND,
-					                                   BC_MEDIA_NULL);
-				}
+				bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
+				do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				sleep(1);
 				continue;
 			} else if (bc_rec->start_failed) {
 				bc_rec->start_failed = 0;
 				bc_dev_info(bc_rec, "Device started after failure(s)");
-				bc_event_cam_end(&bc_rec->event);
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
@@ -320,6 +338,8 @@ static void *bc_device_thread(void *data)
 			}
 
 			stop_handle_properly(bc_rec);
+			/* XXX this should be something other than NOT_FOUND */
+			do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 			continue;
 		}
 
@@ -368,6 +388,7 @@ static void *bc_device_thread(void *data)
 	}
 
 	stop_handle_properly(bc_rec);
+	bc_event_cam_end(&bc_rec->event);
 	bc_set_osd(bc, " ");
 
 	return bc_rec->thread_should_die;
