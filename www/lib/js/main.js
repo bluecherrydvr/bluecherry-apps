@@ -530,10 +530,10 @@ DVRPageScript = new Class({
 			break; //end deviceschedule
 			case 'motionmap':
 				$('buffer_prerecording').addEvent('change', function(){
-					ajaxUpdateField('update', 'Devices', {'buffer_prerecording' : this.value}, $('cameraID').get('value'), 'button');
+					ajaxUpdateField('update', 'Devices', {'buffer_prerecording' : this.value}, $('cameraID').get('value'), false);
 				});
 				$('buffer_postrecording').addEvent('change', function(){
-					ajaxUpdateField('update', 'Devices', {'buffer_postrecording' : this.value}, $('cameraID').get('value'), 'button');
+					ajaxUpdateField('update', 'Devices', {'buffer_postrecording' : this.value}, $('cameraID').get('value'), false);
 				});
 				var imgOn = true;
 				$('backToList').addEvent('click', function(){
@@ -738,7 +738,7 @@ DVRSettingsForm = new Class({
 				if (reload){
 					window.location.reload(true);
 				}
-				if (data == 'disposeGeneralMessage'){
+				if (data == 'disposeGeneralMessage' && $('generalMessage')){
 					$('generalMessage').dispose();
 				}
 			}
@@ -877,13 +877,13 @@ var localMotionGrid = new Class({
 		
 		saveSetting: function(output, type){
 			switch(type){
-				case 'mmap': ajaxUpdateField('update', 'Devices', {'motion_map' : output}, $('cameraID').get('value'), 'button'); break;
+				case 'mmap': ajaxUpdateField('update', 'Devices', {'motion_map' : output}, $('cameraID').get('value'), false); break;
 				case 'deviceSchedule':
 					if ($('cameraID').get('value')!='global'){
 						if ($('overrideGlobal')) { var v = $('overrideGlobal').get('checked') ? 1 : 0; ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : v}, $('cameraID').get('value'), 'button'); }
-						 else { ajaxUpdateField('update', 'Devices', {'schedule' : output}, $('cameraID').get('value'), 'button'); }
+						 else { ajaxUpdateField('update', 'Devices', {'schedule' : output}, $('cameraID').get('value'), false); }
 					} else {
-						ajaxUpdateField('global', '', {'G_DEV_SCED' : output}, $('cameraID').get('value'), 'button');
+						ajaxUpdateField('global', '', {'G_DEV_SCED' : output}, $('cameraID').get('value'), false);
 					}
 				break;
 			};

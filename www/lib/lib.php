@@ -232,6 +232,10 @@ class user{
 						$data['salt'] = data::getRandomString(4);
 						$data['password'] = md5($data['password'].$data['salt']);
 					}
+				$data['access_web'] = ($_POST['access_web'] == 'on') ? 1 : 0;
+				$data['access_remote'] = ($_POST['access_remote'] == 'on') ? 1 : 0;
+				$data['access_backup'] = ($_POST['access_backup'] == 'on') ? 1 : 0;
+				$data['access_setup'] = ($_POST['access_setup'] == 'on') ? 1 : 0;
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;
 			}
@@ -252,6 +256,15 @@ class user{
 			return AU_CANT_EOS;
 		}
 	}
+}
+
+function devices(){ #wrapper for all cameras
+	$devices = data::query('SELECT id FROM Devices');
+	foreach($devices as $i => $device){
+		$tmp[$i] = device($device['id']);
+		$tmp[$i]->isPtz = (!empty($tmp[$i]->info['ptz_control_protocol'])) ? true : false;
+	}
+	return $tmp;
 }
 
 function device($id){ #wrapper for camera/ipCamera
@@ -572,6 +585,11 @@ class ipPtzPreset{
 		data::responseXml($result);
 	}
 	
+}
+
+class liveViewLayout{
+	public function __construct(){
+	}
 }
 class cameraPtz{
 	private $preset;
