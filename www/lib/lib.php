@@ -114,9 +114,8 @@ class data{
 				</response>";
 				
 	}
-	public static function last_id($table){ #wrapper instead of mysql_insert_id
-		$tmp = self::query("SELECT id FROM {$table} ORDER BY id DESC");
-		return $tmp[0]['id'];
+	public static function last_id(){ #wrapper instead of mysql_insert_id
+		return bc_db_last_insert_rowid();
 	}
 }
 
@@ -248,9 +247,10 @@ class user{
 			$check = (data::query($query, true)) ? true : false;
 			$info = data::getObject('Users', 'username', 'Admin');
 			$tmp = ($info[0]['password']!=md5('bluecherry'.$info[0]['salt'])) ? 'disposeGeneralMessage' : '';
-			$tmp = ($new) ? data::last_id("Users") : $tmp;
+			$tmp = ($new) ? data::last_id() : $tmp;
 		}
 		return array($check, $response, $tmp);
+		
 	}
 	public static function remove($id){
 		return (data::query("DELETE FROM Users WHERE id='{$id}'", true));
