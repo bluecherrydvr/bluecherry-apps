@@ -294,11 +294,11 @@ static void *bc_device_thread(void *data)
 
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
+				if (!bc_rec->start_failed)
+					bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
 				bc_rec->start_failed++;
-				bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
 				do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
-				sleep(1);
-				continue;
+				goto error;
 			} else if (bc_rec->start_failed) {
 				bc_rec->start_failed = 0;
 				bc_dev_info(bc_rec, "Device started after failure(s)");
@@ -340,7 +340,7 @@ static void *bc_device_thread(void *data)
 			stop_handle_properly(bc_rec);
 			/* XXX this should be something other than NOT_FOUND */
 			do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
-			continue;
+			goto error;
 		}
 
 		/* Prepare output packets; nothing is allocated. */
@@ -365,7 +365,7 @@ static void *bc_device_thread(void *data)
 				/* Dump the prerecording buffer */
 				struct bc_output_packet *p;
 				if (recording_start(bc_rec))
-					continue;
+					goto error;
 				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
 				/* Skip the last packet; it's identical to the current packet,
 				 * which we write in the normal path below. */
@@ -379,12 +379,16 @@ static void *bc_device_thread(void *data)
 				continue;
 			} else {
 				if (recording_start(bc_rec))
-					continue;
+					goto error;
 				bc_rec->output_pts_base = packet.pts;
 			}
 		}
 
 		bc_output_packet_write(bc_rec, &packet);
+		continue;
+
+error:
+		sleep(10);
 	}
 
 	stop_handle_properly(bc_rec);
