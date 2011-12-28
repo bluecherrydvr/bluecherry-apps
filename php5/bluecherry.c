@@ -125,6 +125,12 @@ PHP_FUNCTION(bc_db_query)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_db_last_insert_rowid)
+{
+	unsigned long id = bc_db_last_insert_rowid();
+	RETURN_LONG(id);
+}
+
 PHP_FUNCTION(bc_db_get_table)
 {
 	zval *z_ctx;
@@ -479,6 +485,7 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_db_close, NULL)
 	PHP_FE(bc_db_get_table, NULL)
 	PHP_FE(bc_db_query, NULL)
+	PHP_FE(bc_db_last_insert_rowid, NULL)
 	PHP_FE(bc_db_escape_string, NULL)
 	/* Bluecherry Video Handlers */
 	PHP_FE(bc_handle_get, NULL)
