@@ -39,6 +39,7 @@ function getOs(){
 	$it = $_SERVER['HTTP_USER_AGENT'];
 }
 
+
 #classes
 
 #singleton database class, uses php5-bluecherry functions
@@ -112,6 +113,10 @@ class data{
 					<data>{$data}</data>
 				</response>";
 				
+	}
+	public static function last_id($table){ #wrapper instead of mysql_insert_id
+		$tmp = self::query("SELECT id FROM {$table} ORDER BY id DESC");
+		return $tmp[0]['id'];
 	}
 }
 
@@ -209,6 +214,7 @@ class user{
 	}
 	public static function update($data, $new = false){
 		$check = false;
+		$tmp = -1;
 		$response = self::checkUserData($data, $new);
 		if ($response === true){
 			$tmp = '';
@@ -241,9 +247,10 @@ class user{
 			}
 			$check = (data::query($query, true)) ? true : false;
 			$info = data::getObject('Users', 'username', 'Admin');
-			$data = ($info[0]['password']!=md5('bluecherry'.$info[0]['salt'])) ? 'disposeGeneralMessage' : '';
+			$tmp = ($info[0]['password']!=md5('bluecherry'.$info[0]['salt'])) ? 'disposeGeneralMessage' : '';
+			$tmp = ($new) ? data::last_id("Users") : $tmp;
 		}
-		return array($check, $response, $data);
+		return array($check, $response, $tmp);
 	}
 	public static function remove($id){
 		return (data::query("DELETE FROM Users WHERE id='{$id}'", true));
@@ -256,9 +263,12 @@ class user{
 			return AU_CANT_EOS;
 		}
 	}
+	public function getLayouts(){
+		$this->info['layouts'] = data::query("SELECT layout_name FROM userLayouts WHERE user_id='{$this->info['id']}'");
+	}
 }
 
-function devices(){ #wrapper for all cameras
+function devices($access_list = false){ #wrapper for all cameras
 	$devices = data::query('SELECT id FROM Devices');
 	foreach($devices as $i => $device){
 		$tmp[$i] = device($device['id']);
@@ -274,6 +284,7 @@ function device($id){ #wrapper for camera/ipCamera
 	} else {
 		$device = new camera($device[0]['device']);
 	};
+	$device->info['ptz_presets'] = data::query("SELECT * FROM PTZPresets WHERE device_id=".$id);
 	return $device;
 }
 

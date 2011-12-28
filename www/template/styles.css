@@ -212,38 +212,6 @@ second
 #lvlSelect ul #li5, #liC 		{ background-color: red;    color:#fff; }
 #lvlSelect ul #liN 				{ background-color:#000; color:#fff; }
 
-/*liveView*/
-#leftColumn #lvControls, #lvCameras, #backToAdmin, #logout, #lvSavedLayouts { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
-#backToAdmin { text-align:center; }
-#backToAdmin a { text-decoration:none; font-size:1.1em; }
-#backToAdmin:hover { background-color:#efe; }
-#lvControls div, #lvCameras  div { margin-left:10px; }
-#lvSavedLayouts { padding-left:5px; }
-#lvSavedLayouts select { width:90%; }
-#lvSavedLayouts input { width:44%; cursor:pointer; margin-top:5px; }
-#lvSavedLayouts #saveLayout, #lvSavedLayouts #saveLayoutAs { background-color:#5f5; margin-left:2%; }
-#lvSavedLayouts #deleteLayout { background-color:#f55; }
-#lvSavedLayouts #clearAll { background-color:#55f; color:#fff; }
-
-#lvLayouts { display:inline; }
-#lvLayouts hr { background-color:gray; }
-#lvLayouts li { display:block; float:left; cursor:pointer; width:48px; height:48px; list-style-type:none; background-repeat:no-repeat; background-position:center center; }
-#lvLayouts .l1  { background-image:url('/img/icons/layouts/1.png'); }
-#lvLayouts .l4  { background-image:url('/img/icons/layouts/4.png'); }
-#lvLayouts .l9  { background-image:url('/img/icons/layouts/9.png'); }
-#lvLayouts .l16 { background-image:url('/img/icons/layouts/16.png'); }
-#lvLayouts .ar { background-image:url('/img/icons/layouts/add-row.png'); }
-#lvLayouts .dr { background-image:url('/img/icons/layouts/del-row.png'); }
-#lvLayouts .ac { background-image:url('/img/icons/layouts/add-column.png'); }
-#lvLayouts .dc { background-image:url('/img/icons/layouts/del-column.png'); }
-#lvCameras		{ position: relative; }
-.device { z-index:100; width:150px; background-color:#fff; position:relative; float:left; cursor:move; border:1px solid #ccc; padding:3px 3px 3px 15px; -moz-border-radius: 5px; -webkit-border-radius: 5px; margin:5px 2px 5px 2px; }
-#liveViewContainer { float:left; position:relative; }
-#liveViewContainer .lvImgOver { border:2px dashed gray; }
-#liveViewContainer .lvImg { border:none; }
-#liveViewContainer #lvGridTable { border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; }
-#liveViewContainer #lvGridTable td { border:1px solid #eee; }
-
 /*videoadj*/
 #liveViewContainer 						{ position:relative; display:inline; }
 #videoAdjSliders						{ display: block; width:370px; }

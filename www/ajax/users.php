@@ -9,7 +9,7 @@ $current_user->checkAccessPermissions('admin');
 #/auth check
 
 
-class Users {
+class users {
 	public $data;
 	public $all;
 	function __construct($id){
@@ -19,8 +19,7 @@ class Users {
 	}
 	
 	private function GetAllUsersInfo(){
-		return data::getObject('Users');
-		
+		return data::getObject('Users');	
 	}
 	
 	private function GetUserInfo($id){
@@ -37,7 +36,7 @@ class Users {
 }
 
 $id = empty($_GET['id']) ? false : $_GET['id'];
-$dvr_users = new Users($id);
+$dvr_users = new users($id);
 
 #template
 include_once('../template/ajax/users.php');

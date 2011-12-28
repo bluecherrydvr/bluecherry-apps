@@ -48,7 +48,7 @@ class update{
 	}
 	private function newUser(){
 		$result = user::update($_POST, true);
-		data::responseXml($result[0], $result[1]);
+		data::responseXml($result[0], $result[1], $result[2]);
 	}
 	private function updateUser(){
 		$result = user::update($_POST);
