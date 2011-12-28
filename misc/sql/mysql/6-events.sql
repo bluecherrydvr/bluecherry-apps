@@ -40,6 +40,7 @@ CREATE TABLE EventsCam (
 	length integer DEFAULT 0,		-- length of event in seconds
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
 	media_id integer,
+	details text DEFAULT NULL,
 	FOREIGN KEY (media_id) REFERENCES Media(id),
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
         FOREIGN KEY (device_id) REFERENCES Devices(id),
@@ -53,6 +54,7 @@ CREATE TABLE EventsSystem (
 	level_id varchar(10),
 	type_id varchar(10),
 	more varchar(64),	-- E.g. disk-space could have more='/dev/sdb1'
+	details text DEFAULT NULL,
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
 	FOREIGN KEY (type_id) REFERENCES EventTypesSys(id)
 );
