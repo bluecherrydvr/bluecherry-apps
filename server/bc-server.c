@@ -99,7 +99,7 @@ static void bc_check_globals(void)
 	memset(media_stor, 0, sizeof(media_stor));
 	i = 0;
 	if (dbres != NULL) {
-		while (!bc_db_fetch_row(dbres)) {
+		while (!bc_db_fetch_row(dbres) && i < MAX_STOR_LOCS) {
 			const char *path = bc_db_get_val(dbres, "path", NULL);
 			float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
 			float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
@@ -118,10 +118,10 @@ static void bc_check_globals(void)
 	}
 	if (i == 0) {
 		/* Fall back to one single default location */
-		bc_mkdir_recursive("/var/lib/bluecherry/recordings");
 		strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
+		bc_mkdir_recursive(media_stor[0].path);
 		media_stor[0].max_thresh = 95.00;
-		media_stor[i].min_thresh = 90.00;
+		media_stor[0].min_thresh = 90.00;
 	}
 
 	pthread_mutex_unlock(&media_lock);
