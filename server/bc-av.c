@@ -379,11 +379,11 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
 
-	if (bc_rec->codec_id == CODEC_ID_NONE) {
+	if (bc_rec->bc->v4l2.codec_id == CODEC_ID_NONE) {
 		bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
 		st->codec->codec_id = CODEC_ID_MPEG4;
 	} else
-		st->codec->codec_id = bc_rec->codec_id;
+		st->codec->codec_id = bc_rec->bc->v4l2.codec_id;
 
 	/* h264 requires us to work around libavcodec broken defaults */
 	if (st->codec->codec_id == CODEC_ID_H264) {

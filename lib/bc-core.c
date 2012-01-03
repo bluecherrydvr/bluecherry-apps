@@ -299,6 +299,8 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		bc->cam_caps |= BC_CAM_CAP_V4L2_PAL;
 
 	bc->type = BC_DEVICE_V4L2;
+	bc->v4l2.codec_id = CODEC_ID_NONE;
+
 	if (!strncmp(bc->driver, "solo6", 5))
 		bc->cam_caps |= BC_CAM_CAP_V4L2_MOTION | BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
 
@@ -333,6 +335,13 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	    !(bc->v4l2.vcap.capabilities & V4L2_CAP_STREAMING)) {
 		errno = EINVAL;
 		return -1;
+	}
+
+	if (bc->cam_caps & BC_CAM_CAP_SOLO) {
+		if (strstr((char*)bc->v4l2.vcap.card, "6010"))
+			bc->v4l2.codec_id = CODEC_ID_MPEG4;
+		else if (strstr((char*)bc->v4l2.vcap.card, "6110"))
+			bc->v4l2.codec_id = CODEC_ID_H264;
 	}
 
 	/* Get the parameters */

@@ -61,6 +61,7 @@ struct v4l2_device {
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
 	struct v4l2_streamparm	vparm;
+	enum   CodecID          codec_id;
 	/* Userspace buffer accounting */
 	struct {
 		void			*data;

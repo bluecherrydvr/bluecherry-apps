@@ -458,13 +458,6 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
 
-	if (!strcasecmp(bc_rec->cfg.driver, "solo6110"))
-		bc_rec->codec_id = CODEC_ID_H264;
-	else if (!strcasecmp(bc_rec->cfg.driver, "solo6010"))
-		bc_rec->codec_id = CODEC_ID_MPEG4;
-	else
-		bc_rec->codec_id = CODEC_ID_NONE;
-
 	get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
