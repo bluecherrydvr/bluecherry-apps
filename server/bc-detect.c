@@ -68,10 +68,12 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 		int ret = read(fd, video_type, sizeof(video_type));
 		close(fd);
 
-		if (ret <= 0)
-			strcpy(video_type, "NTSC");
+		if (ret >= 3 && strncmp(video_type, "PAL", 3) == 0)
+			video_type[3] = '\0';
+		else if (ret >= 4 && strncmp(video_type, "NTSC", 4) == 0)
+			video_type[4] = '\0';
 		else
-			video_type[ret] = '\0';
+			strcpy(video_type, "NTSC");
 	} else
 		strcpy(video_type, "NTSC");
 
