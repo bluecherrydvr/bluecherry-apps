@@ -17,4 +17,4 @@ pre-start script
     chown bluecherry.bluecherry /var/run/bluecherry
 end script
 
-exec /usr/bin/sudo -H -u bluecherry /usr/sbin/bc-server
+exec /usr/sbin/bc-server -u bluecherry -g bluecherry

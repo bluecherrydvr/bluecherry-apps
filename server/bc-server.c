@@ -8,6 +8,10 @@
 #include <stdarg.h>
 #include <sys/statvfs.h>
 #include <bsd/string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include <libavutil/log.h>
 
@@ -425,6 +429,8 @@ static void usage(void)
 {
 	fprintf(stderr, "Usage: %s [-s]\n", __progname);
 	fprintf(stderr, "  -s\tDo not background\n");
+	fprintf(stderr, "  -u\tDrop privileges to user\n");
+	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -m\tMax threads to start\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
 
@@ -492,17 +498,57 @@ int main(int argc, char **argv)
 	unsigned int loops;
 	int bg = 1;
 	int count;
+	const char *user = 0, *group = 0;
 
 	check_expire();
 
-	while ((opt = getopt(argc, argv, "hsm:r:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:u:g:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'm': max_threads = atoi(optarg); break;
 		case 'r': record_id = atoi(optarg); break;
+		case 'u': user = optarg; break;
+		case 'g': group = optarg; break;
 		case 'h': default: usage();
 		}
 	}
+
+	if (user || group) {
+		struct passwd *u   = 0;
+		gid_t          gid = 0;
+
+		if (group) {
+			struct group *g = 0;
+			if (!(g = getgrnam(group))) {
+				bc_log("E: Group '%s' does not exist", group);
+				exit(1);
+			}
+			gid = g->gr_gid;
+		}
+
+		if (user) {
+			if (!(u = getpwnam(user))) {
+				bc_log("E: User '%s' does not exist", user);
+				exit(1);
+			}
+			if (!group)
+				gid = u->pw_gid;
+			if (initgroups(user, gid) < 0) {
+				bc_log("E: Setting supplemental groups failed");
+				exit(1);
+			}
+		}
+
+		if (setregid(gid, gid) < 0) {
+			bc_log("E: Setting group failed");
+			exit(1);
+		}
+
+		if (u && setreuid(u->pw_uid, u->pw_uid) < 0) {
+			bc_log("E: Setting user failed");
+			exit(1);
+		}
+	}	
 
 	if (av_lockmgr_register(bc_av_lockmgr)) {
 		bc_log("E: AV lock registration failed: %m");
