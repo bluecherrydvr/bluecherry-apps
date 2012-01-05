@@ -220,7 +220,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	mpkt = malloc(sizeof(struct bc_output_packet));
 	if (bc_output_packet_copy(mpkt, spkt) < 0) {
 		free(mpkt);
-		return 0;
+		return bc_rec->mot_last_ts > 0;
 	}
 	mpkt->next = 0;
 
@@ -257,7 +257,8 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	} else {
 		if (bc_rec->mot_last_ts) {
 			/* Active recording */
-			if (monotonic_now - bc_rec->mot_last_ts >= 3) {
+			if (monotonic_now - bc_rec->mot_last_ts >=
+			    bc_rec->cfg.postrecord) {
 				/* End of event */
 				bc_rec->mot_last_ts = 0;
 			} else

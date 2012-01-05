@@ -134,6 +134,7 @@ struct bc_device_config {
 	char schedule[7 * 24 + 1];
 	int     width, height;
 	int     interval;
+	int16_t prerecord, postrecord;
 	int8_t  debug_level;
 	int     aud_disabled : 1;
 	int     schedule_override_global : 1;

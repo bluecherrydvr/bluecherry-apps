@@ -609,6 +609,8 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->width = bc_db_get_val_int(dbres, "resolutionX");
 	cfg->height = bc_db_get_val_int(dbres, "resolutionY");
 	cfg->interval = bc_db_get_val_int(dbres, "video_interval");
+	cfg->prerecord = bc_db_get_val_int(dbres, "buffer_prerecording");
+	cfg->postrecord = bc_db_get_val_int(dbres, "buffer_postrecording");
 	cfg->debug_level = bc_db_get_val_int(dbres, "debug_level");
 	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;
 	cfg->schedule_override_global = bc_db_get_val_int(dbres, "schedule_override_global") != 0;
