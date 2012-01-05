@@ -121,9 +121,10 @@ bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
 
 	bce->inserted = bc_db_last_insert_rowid();
 
-	bc_db_check_success();
-	bc_db_commit_trans();
-	return bce;
+	if (!bc_db_commit_trans()) {
+		bc_db_check_success();
+		return bce;
+	}
 
 error:
 	bc_db_check_fail();
@@ -164,14 +165,14 @@ void bc_event_cam_end(bc_event_cam_t *__bce)
 			goto error;
 	}
 
-	bc_db_check_success();
-	bc_db_commit_trans();
-	free(bce);
-	return;
-
+	if (!bc_db_commit_trans()) {
+		bc_db_check_success();
+	} else {
 error:
-	bc_db_check_fail();
-	bc_db_rollback_trans();
+		bc_db_check_fail();
+		bc_db_rollback_trans();
+	}
+
 	free(bce);
 	return;
 }

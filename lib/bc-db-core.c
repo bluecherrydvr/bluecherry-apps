@@ -48,18 +48,23 @@ int bc_db_start_trans(void)
 	return ret;
 }
 
-void bc_db_commit_trans(void)
+int bc_db_commit_trans(void)
 {
+	int ret = 0;
 	if (db_ops->commit_trans)
-		db_ops->commit_trans();
-	bc_db_unlock();
+		ret = db_ops->commit_trans();
+	if (!ret)
+		bc_db_unlock();
+	return ret;
 }
 
-void bc_db_rollback_trans(void)
+int bc_db_rollback_trans(void)
 {
+	int ret = 0;
 	if (db_ops->rollback_trans)
-		db_ops->rollback_trans();
+		ret = db_ops->rollback_trans();
 	bc_db_unlock();
+	return ret;
 }
 
 void bc_db_close(void)

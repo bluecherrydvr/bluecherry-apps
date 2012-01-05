@@ -176,7 +176,8 @@ void bc_check_avail(void)
 
 	__bc_check_avail();
 
-	bc_db_commit_trans();
+	if (bc_db_commit_trans())
+		bc_db_rollback_trans();
 
 	/* Check for cards gone missing */
 	for (i = 0; i < MAX_CARDS; i++) {

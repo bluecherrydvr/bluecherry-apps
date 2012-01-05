@@ -244,14 +244,14 @@ static int bc_db_mysql_start_trans(void)
 	return bc_db_mysql_query("START TRANSACTION");
 }
 
-static void bc_db_mysql_commit_trans(void)
+static int bc_db_mysql_commit_trans(void)
 {
-	bc_db_mysql_query("COMMIT");
+	return bc_db_mysql_query("COMMIT");
 }
 
-static void bc_db_mysql_rollback_trans(void)
+static int bc_db_mysql_rollback_trans(void)
 {
-	bc_db_mysql_query("ROLLBACK");
+	return bc_db_mysql_query("ROLLBACK");
 }
 
 struct bc_db_ops bc_db_mysql = {
