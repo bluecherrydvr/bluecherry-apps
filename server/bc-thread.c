@@ -203,9 +203,61 @@ static int process_schedule(struct bc_record *bc_rec)
 	return ret;
 }
 
+/* Append a packet to the prerecord buffer, making a deep copy in the process.
+ * The buffer will always start with a keyframe, and always be at least
+ * bc_rec->cfg.prerecord seconds in duration (walltime, which might not be ideal).
+ * Return negative on error, 0 if the packet was dropped, 1 otherwise.
+ */
+static int prerecord_append(struct bc_record *bc_rec, const struct bc_output_packet *pkt, time_t monotonic_now)
+{
+	struct bc_output_packet *mpkt = malloc(sizeof(struct bc_output_packet));
+	if (bc_output_packet_copy(mpkt, pkt) < 0) {
+		free(mpkt);
+		return -1;
+	}
+	mpkt->next = 0;
+	mpkt->ts_monotonic = monotonic_now;
+
+	if (mpkt->type == AVMEDIA_TYPE_VIDEO && (mpkt->flags & AV_PKT_FLAG_KEY)) {
+		struct bc_output_packet *p, *n;
+		struct bc_output_packet *keep_keyframe = 0;
+
+		if (bc_rec->cfg.prerecord > 0) {
+			keep_keyframe = bc_rec->prerecord_head;
+			for (p = bc_rec->prerecord_head; p; p = p->next) {
+				if (p->type != AVMEDIA_TYPE_VIDEO || !(p->flags & AV_PKT_FLAG_KEY))
+					continue;
+				if (monotonic_now - p->ts_monotonic >= bc_rec->cfg.prerecord)
+					keep_keyframe = p;
+			}
+		}
+
+		for (p = bc_rec->prerecord_head; p && p != keep_keyframe; p = n) {
+			n = p->next;
+			free(p->data);
+			free(p);
+		}
+
+		if (!p) {
+			bc_rec->prerecord_head = bc_rec->prerecord_tail = mpkt;
+			return 1;
+		} else
+			bc_rec->prerecord_head = p;
+	} else if (!bc_rec->prerecord_head) {
+		/* Drop this packet (no keyframe in the stream yet) */
+		free(mpkt->data);
+		free(mpkt);
+		return 0;
+	}
+
+	/* Append this packet */
+	bc_rec->prerecord_tail->next = mpkt;
+	bc_rec->prerecord_tail = mpkt;
+	return 1;
+}
+
 static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet *spkt)
 {
-	struct bc_output_packet *mpkt;
 	time_t monotonic_now;
 	int ret;
 
@@ -216,39 +268,11 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	 * (and thus, motion reset to off) without a schedule change. */
 	bc_set_motion(bc_rec->bc, 1);
 
-	/* Update prerecording buffer */
-	mpkt = malloc(sizeof(struct bc_output_packet));
-	if (bc_output_packet_copy(mpkt, spkt) < 0) {
-		free(mpkt);
-		return bc_rec->mot_last_ts > 0;
-	}
-	mpkt->next = 0;
-
-	if (bc_buf_is_video_frame(bc_rec->bc) && bc_buf_key_frame(bc_rec->bc)) {
-		/* New video keyframe; drop the current prerecord buffer */
-		struct bc_output_packet *p, *n;
-		for (p = bc_rec->prerecord_head; p; p = n) {
-			n = p->next;
-			free(p->data);
-			free(p);
-		}
-		bc_rec->prerecord_head = bc_rec->prerecord_tail = mpkt;
-		bc_rec->prerecord_head_time = time(NULL);
-	} else if (bc_rec->prerecord_tail) {
-		/* Append this packet */
-		bc_rec->prerecord_tail->next = mpkt;
-		bc_rec->prerecord_tail = mpkt;
-	} else {
-		/* Drop this packet (no keyframe in the stream yet) */
-		free(mpkt->data);
-		free(mpkt);
-		mpkt = 0;
-	}
-
-	if (!bc_buf_is_video_frame(bc_rec->bc))
-		return bc_rec->mot_last_ts > 0;
-
 	monotonic_now = bc_gettime_monotonic();
+
+	if (prerecord_append(bc_rec, spkt, monotonic_now) < 0 ||
+	    !bc_buf_is_video_frame(bc_rec->bc))
+		return bc_rec->mot_last_ts > 0;
 
 	ret = bc_motion_is_detected(bc_rec->bc);
 	if (ret) {

@@ -76,8 +76,7 @@ struct bc_record {
 	int         fmt;
 
 	/* Motion detection */
-	time_t		mot_last_ts;
-	time_t      prerecord_head_time;
+	time_t mot_last_ts;
 	struct bc_output_packet *prerecord_head, *prerecord_tail;
 };
 
@@ -88,6 +87,7 @@ struct bc_output_packet {
 	unsigned int flags;
 	int64_t      pts;
 	int          type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
+	time_t       ts_monotonic; // XXX used for prerecord; refactor with PTS
 };
 
 /* Types for aud_format */
