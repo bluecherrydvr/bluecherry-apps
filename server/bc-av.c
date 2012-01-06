@@ -172,7 +172,8 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 	if (!has_audio(bc_rec))
 		return 0;
 
-	pkt->type = AVMEDIA_TYPE_AUDIO;
+	pkt->type     = AVMEDIA_TYPE_AUDIO;
+	pkt->ts_clock = time(NULL);
 
 	if (bc_rec->pcm) {
 		int size;
@@ -217,8 +218,9 @@ int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 	if (!bc_buf_is_video_frame(bc))
 		return 0;
 
-	pkt->type = AVMEDIA_TYPE_VIDEO;
-	pkt->pts  = AV_NOPTS_VALUE;
+	pkt->ts_clock = time(NULL);
+	pkt->type     = AVMEDIA_TYPE_VIDEO;
+	pkt->pts      = AV_NOPTS_VALUE;
 	if (bc_buf_key_frame(bc))
 		pkt->flags = AV_PKT_FLAG_KEY;
 	else

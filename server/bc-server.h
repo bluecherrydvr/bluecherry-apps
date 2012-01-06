@@ -88,6 +88,7 @@ struct bc_output_packet {
 	int64_t      pts;
 	int          type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
 	time_t       ts_monotonic; // XXX used for prerecord; refactor with PTS
+	time_t       ts_clock; // Used for prerecord event start time
 };
 
 /* Types for aud_format */
