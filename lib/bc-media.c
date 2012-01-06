@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <fcntl.h>
+#include <bsd/string.h>
 
 #include <libbluecherry.h>
 
@@ -48,25 +49,6 @@ static int bc_db_check_fail(void)
 	return system(cmd);
 }
 
-static struct bc_event_cam *__alloc_event_cam(int id, bc_event_level_t level,
-					      bc_event_cam_type_t type,
-					      bc_media_entry_t media)
-{
-	struct bc_event_cam *bce = malloc(sizeof(*bce));
-
-	if (bce == NULL)
-		return NULL;
-
-	memset(bce, 0, sizeof(*bce));
-	bce->id = id;
-	bce->level = level;
-	bce->type = type;
-	bce->start_time = time(NULL);
-	bce->media = media;
-
-	return bce;
-}
-
 static void __update_stat(struct bc_media_entry *bcm)
 {
 	struct stat st;
@@ -75,118 +57,6 @@ static void __update_stat(struct bc_media_entry *bcm)
 		return;
 
 	bcm->bytes = st.st_size;
-}
-
-static int __do_media(struct bc_media_entry *bcm)
-{
-	int res;
-
-	if (bcm->table_id) {
-		__update_stat(bcm);
-		/* This is the common case to end a call */
-		res = __bc_db_query("UPDATE Media SET end='%lu',size=%lu "
-				  "WHERE id=%lu", time(NULL),
-				  bcm->bytes, bcm->table_id);
-	} else if (!bcm->start) {
-		/* Insert open ended for later update */
-		bcm->start = time(NULL);
-		res = __bc_db_query("INSERT INTO Media (start,device_id,"
-				  "filepath) VALUES('%lu',%d,'%s')",
-				  bcm->start, bcm->cam_id, bcm->filepath);
-		if (!res)
-			bcm->table_id = bc_db_last_insert_rowid();
-	} else {
-		/* Insert fully. Usually means there was a failure */
-		__update_stat(bcm);
-		res = __bc_db_query("INSERT INTO Media (start,end,"
-		                    "device_id,filepath,size) "
-		                    "VALUES('%lu','%lu','%d','%s',%lu)",
-		                    bcm->start, time(NULL), bcm->cam_id,
-		                    bcm->filepath, bcm->bytes);
-		if (!res)
-			bcm->table_id = bc_db_last_insert_rowid();
-	}
-
-	return res;
-}
-
-static int do_media(struct bc_media_entry *bcm)
-{
-	int ret;
-
-	if (bc_db_start_trans())
-		return -1;
-
-	ret = __do_media(bcm);
-	if (ret) {
-		bc_db_check_fail();
-		bc_db_rollback_trans();
-	} else {
-		bc_db_check_success();
-		bc_db_commit_trans();
-	}
-
-	return ret;
-}
-
-static int __do_cam(struct bc_event_cam *bce)
-{
-	int res;
-
-	/* If the media isn't inserted yet, don't worry about the event */
-	if (bce->media && !bce->media->table_id)
-		return -1;
-
-	if (bce->inserted) {
-		/* This is the common route to end a call */
-		res = __bc_db_query("UPDATE EventsCam SET length='%lu'"
-				  " WHERE id=%lu", bce->end_time - bce->start_time,
-				  bce->inserted);
-	} else if (bce->end_time) {
-		/* Insert with length, usually happens on failure, or singular */
-		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
-				"device_id,type_id,length) VALUES('%lu','%s','%d',"
-				"'%s','%lu')", bce->start_time, level_to_str[bce->level],
-				bce->id, cam_type_to_str[bce->type], bce->end_time - bce->start_time);
-		if (!res)
-			bce->inserted = bc_db_last_insert_rowid();
-	} else {
-		/* Insert open ended (for later update), common start point */
-		res = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
-				"device_id,type_id,length) VALUES('%lu','%s','%d',"
-				"'%s',-1)", bce->start_time, level_to_str[bce->level],
-				bce->id, cam_type_to_str[bce->type]);
-		if (!res)
-			bce->inserted = bc_db_last_insert_rowid();
-	}
-
-	/* If we have a media reference, update with that info */
-	if (bce->inserted && bce->media) {
-		__bc_db_query("UPDATE EventsCam SET media_id=%lu"
-			      " WHERE id=%lu", bce->media->table_id,
-			      bce->inserted);
-	}
-
-	return res;
-}
-
-static int do_cam(struct bc_event_cam *bce)
-{
-	int ret;
-
-	if (bc_db_start_trans())
-		return -1;
-
-	ret = __do_cam(bce);
-	if (ret) {
-		bc_db_check_fail();
-		bc_db_rollback_trans();
-	} else {
-		bc_db_check_success();
-		bc_db_commit_trans();
-	}
-
-	return ret;
 }
 
 static int __do_sys_insert(struct bc_event_sys *bce)
@@ -207,130 +77,118 @@ int bc_event_sys(bc_event_level_t level, bc_event_sys_type_t type)
 	return __do_sys_insert(&bce);
 }
 
-bc_media_entry_t bc_media_start(int id, const char *filepath,
-				bc_event_cam_t bce)
+bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
+                                  bc_event_level_t level,
+                                  bc_event_cam_type_t type,
+                                  const char *media_file)
 {
-	struct bc_media_entry *bcm = malloc(sizeof(*bcm));
+	struct bc_event_cam *bce = malloc(sizeof(*bce));
+	char media_id_str[24];
+	int re;
 
-	if (bcm == NULL)
-		return BC_MEDIA_NULL;
+	memset(bce, 0, sizeof(*bce));
 
-	memset(bcm, 0, sizeof(*bcm));
+	bce->id         = id;
+	bce->start_time = start_ts;
+	bce->level      = level;
+	bce->type       = type;
 
-	bcm->cam_id = id;
-	strcpy(bcm->filepath, filepath);
+	if (bc_db_start_trans()) {
+		free(bce);
+		return NULL;
+	}
 
-	do_media(bcm);
+	if (media_file) {
+		strlcpy(bce->media.filepath, media_file, PATH_MAX);
 
-	/* If no event associated with this, just carry on */
-	if (!bce || !bcm->table_id || !bce->inserted)
-		return bcm;
+		re = __bc_db_query("INSERT INTO Media (start,device_id,filepath) "
+		                   "VALUES(%lu,%d,'%s')", bce->start_time, bce->id,
+		                   bce->media.filepath);
+		if (re)
+			goto error;
 
-	/* Update to match */
-	bcm->start = bce->start_time;
+		bce->media.table_id = bc_db_last_insert_rowid();
+		snprintf(media_id_str, sizeof(media_id_str), "%lu", bce->media.table_id);
+	} else
+		strcpy(media_id_str, "NULL");
 
-	/* Update cam event to link to correct media id */
-	bc_db_query("UPDATE EventsCam SET media_id=%lu WHERE id=%lu",
-		    bcm->table_id, bce->inserted);
+	re = __bc_db_query("INSERT INTO EventsCam (time,level_id,"
+	                   "device_id,type_id,length,media_id) VALUES(%lu,'%s',%d,"
+	                   "'%s',-1,%s)", bce->start_time, level_to_str[bce->level],
+	                   bce->id, cam_type_to_str[bce->type], media_id_str);
+	if (re)
+		goto error;
 
-	/* Update media start time */
-	bc_db_query("UPDATE Media SET start=%lu WHERE id=%lu",
-		    bcm->start, bcm->table_id);
+	bce->inserted = bc_db_last_insert_rowid();
 
-	return bcm;
-}
-
-time_t bc_media_length(bc_media_entry_t *__bcm)
-{
-	bc_media_entry_t bcm = *__bcm;
-
-	if (!bcm)
-		return 0;
-
-	if (!bcm->end)
-		return time(NULL) - bcm->start;
-
-	return bcm->end - bcm->start;
-}
-
-int bc_media_end(bc_media_entry_t *__bcm)
-{
-	bc_media_entry_t bcm = *__bcm;
-
-	if (!bcm)
-		return -1;
-
-	*__bcm = NULL;
-
-	/* If we have no end time, set it here */
-	if (!bcm->end)
-		bcm->end = time(NULL);
-
-	/* On failure, we add it to the event_queue to try later */
-	if (do_media(bcm))
-		return -1;
-
-	free(bcm);
-
-	return 0;
-}
-
-void bc_media_destroy(bc_media_entry_t *__bcm)
-{
-	bc_media_entry_t bcm = *__bcm;
-
-	if (!bcm)
-		return;
-
-	*__bcm = NULL;
-
-	bc_db_query("DELETE FROM Media WHERE id=%lu", bcm->table_id);
-}
-
-bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
-				  bc_event_cam_type_t type,
-				  bc_media_entry_t media)
-{
-	struct bc_event_cam *bce = __alloc_event_cam(id, level, type, media);
-
-	/* TODO: This failure may need to be directed somewhere */
-	if (bce == NULL)
-		return BC_EVENT_CAM_NULL;
-
-	do_cam(bce);
-
+	bc_db_check_success();
+	bc_db_commit_trans();
 	return bce;
+
+error:
+	bc_db_check_fail();
+	bc_db_rollback_trans();
+	free(bce);
+	return NULL;
 }
 
 void bc_event_cam_end(bc_event_cam_t *__bce)
 {
 	bc_event_cam_t bce = *__bce;
-
+	int re;
 	if (!bce)
 		return;
-
 	*__bce = NULL;
 
 	/* If we have no end time, set it here */
 	if (!bce->end_time)
 		bce->end_time = time(NULL);
 
-	do_cam(bce);
+	if (bce->media.table_id)
+		__update_stat(&bce->media);
+
+	if (bc_db_start_trans()) {
+		free(bce);
+		return;
+	}
+
+	re = __bc_db_query("UPDATE EventsCam SET length=%ld WHERE id=%lu",
+	                   ((long)bce->end_time - (long)bce->start_time), bce->inserted);
+	if (re)
+		goto error;
+
+	if (bce->media.table_id) {
+		re = __bc_db_query("UPDATE Media SET end=%lu, size=%lu WHERE id=%lu",
+		                   bce->end_time, bce->media.bytes, bce->media.table_id);
+		if (re)
+			goto error;
+	}
+
+	bc_db_check_success();
+	bc_db_commit_trans();
 	free(bce);
+	return;
+
+error:
+	bc_db_check_fail();
+	bc_db_rollback_trans();
+	free(bce);
+	return;
 }
 
-int bc_event_cam_fire(int id, bc_event_level_t level,
-		 bc_event_cam_type_t type)
+int bc_event_has_media(bc_event_cam_t event)
 {
-	struct bc_event_cam *bce = __alloc_event_cam(id, level, type, NULL);
-
-	/* TODO: Failure probably needs to be sent somewhere */
-	if (bce == NULL)
-		return -ENOMEM;
-
-	bce->end_time = bce->start_time;
-
-	bc_event_cam_end(&bce);
-
-	return 0;
+	return event && event->media.table_id;
 }
+
+int bc_event_media_length(bc_event_cam_t event)
+{
+	if (!event || !event->media.table_id)
+		return 0;
+
+	if (event->end_time)
+		return event->end_time - event->start_time;
+	else
+		return time(NULL) - event->start_time;
+}
+

@@ -182,6 +182,12 @@ typedef enum {
 	BC_EVENT_SYS_T_POWER_OUTAGE,
 } bc_event_sys_type_t;
 
+struct bc_media_entry {
+	unsigned long table_id;
+	char filepath[PATH_MAX];
+	unsigned long bytes;
+};
+
 struct bc_event_cam {
 	int id;
 	bc_event_level_t level;
@@ -189,7 +195,7 @@ struct bc_event_cam {
 	time_t start_time;
 	time_t end_time;
 	unsigned long inserted;
-	struct bc_media_entry *media;
+	struct bc_media_entry media;
 };
 
 struct bc_event_sys {
@@ -198,19 +204,8 @@ struct bc_event_sys {
 	time_t time;
 };
 
-struct bc_media_entry {
-	int cam_id;
-	unsigned long table_id;
-	time_t start, end;
-	char filepath[PATH_MAX];
-	unsigned long bytes;
-};
-
 typedef struct bc_event_cam * bc_event_cam_t;
-#define BC_EVENT_CAM_NULL ((bc_event_cam_t)NULL)
-
 typedef struct bc_media_entry * bc_media_entry_t;
-#define BC_MEDIA_NULL ((bc_media_entry_t)NULL)
 
 /* These bits are setup in such a way as to avoid conflicting bits being
  * used together. Each nibble should only have one bit set. In addition,
@@ -362,32 +357,20 @@ int bc_key_process(struct bc_key_data *res, char *str);
 
 /* ### Handle events ### */
 
-/* Returns an event handle for later passing to _end */
-bc_event_cam_t bc_event_cam_start(int id, bc_event_level_t level,
-				  bc_event_cam_type_t type,
-				  bc_media_entry_t media);
-int bc_event_cam_fire(int id, bc_event_level_t level, bc_event_cam_type_t type);
-/* Finish the event and inserts it into the database */
+/* Create a camera event, optionally with a media file associated.
+ * Media should be created with bc_event_media_init. */
+bc_event_cam_t bc_event_cam_start(int device_id, time_t start_ts,
+                                  bc_event_level_t level,
+                                  bc_event_cam_type_t type,
+                                  const char *media_file);
+/* End a camera event returned by bc_event_cam_start */
 void bc_event_cam_end(bc_event_cam_t *bce);
-/* Insert a cam event in one shot. It will have a 0 length */
-int bc_event_cam(int id, bc_event_level_t level,
-		 bc_event_cam_type_t type);
 /* Insert a system event */
 int bc_event_sys(bc_event_level_t level,
 		 bc_event_sys_type_t type);
 
-/* ### Handle media entries ### */
-
-/* Returns a media entry handle for later passing to _end */
-bc_media_entry_t bc_media_start(int id, const char *filepath,
-				bc_event_cam_t bce);
-/* Called at the end of the media to mark end time. If this returns
- * non-zero, you cannot end the media. */
-int bc_media_end(bc_media_entry_t *bcm);
-/* Get the length of the current media object */
-time_t bc_media_length(bc_media_entry_t *bcm);
-/* Destroy a media object (that not got started) */
-void bc_media_destroy(bc_media_entry_t *bcm);
+int bc_event_has_media(bc_event_cam_t event);
+int bc_event_media_length(bc_event_cam_t event);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);

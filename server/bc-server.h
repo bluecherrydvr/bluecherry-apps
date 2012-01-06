@@ -63,7 +63,6 @@ struct bc_record {
 	unsigned int		aud_format;
 
 	/* Event/Media handling */
-	bc_media_entry_t	media;
 	bc_event_cam_t		event;
 
 	/* Scheduling, 24x7 */

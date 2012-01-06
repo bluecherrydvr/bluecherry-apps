@@ -13,9 +13,8 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
-static void bc_start_media_entry(struct bc_record *bc_rec)
+static void bc_start_media_entry(struct bc_record *bc_rec, time_t start_ts)
 {
-	time_t t = time(NULL);
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
 	char stor[256];
@@ -24,7 +23,7 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 
 	/* XXX Need some way to reconcile time between media event and
 	 * filename. They should match. */
-	localtime_r(&t, &tm);
+	localtime_r(&start_ts, &tm);
 
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
@@ -36,10 +35,8 @@ static void bc_start_media_entry(struct bc_record *bc_rec)
 static void recording_end(struct bc_record *bc_rec)
 {
 	/* Close the media entry in the db */
-	if (bc_rec->media != BC_MEDIA_NULL) {
-		if (bc_rec->event != BC_EVENT_CAM_NULL)
-			bc_event_cam_end(&bc_rec->event);
-		bc_media_end(&bc_rec->media);
+	if (bc_rec->event && bc_event_has_media(bc_rec->event)) {
+		bc_event_cam_end(&bc_rec->event);
 		if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
 		    bc_rec->sched_last == 'M')
 			bc_dev_info(bc_rec, "Motion event stopped");
@@ -55,36 +52,38 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 		recording_end(bc_rec);
 		bc_event_cam_end(&bc_rec->event);
 
-		bc_rec->event = bc_event_cam_start(bc_rec->id, level, type, BC_MEDIA_NULL);
+		bc_rec->event = bc_event_cam_start(bc_rec->id, time(NULL), level, type, NULL);
 	}
 }
 
-static int recording_start(struct bc_record *bc_rec)
+static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 {
-	bc_event_cam_t event = BC_EVENT_CAM_NULL;
+	bc_event_cam_t event = NULL;
+
+	if (!start_ts)
+		start_ts = time(NULL);
+
 	recording_end(bc_rec);
 	/* XXX needs to handle failure */
-	bc_start_media_entry(bc_rec);
+	bc_start_media_entry(bc_rec, start_ts);
 
 	if (bc_open_avcodec(bc_rec)) {
 		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
 	}
 
-	bc_rec->media = bc_media_start(bc_rec->id, bc_rec->outfile, BC_EVENT_CAM_NULL);
-
 	if (bc_rec->sched_cur == 'M') {
 		bc_dev_info(bc_rec, "Motion event started");
-		event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_WARN,
+		event = bc_event_cam_start(bc_rec->id, start_ts, BC_EVENT_L_WARN,
 		                           BC_EVENT_CAM_T_MOTION,
-		                           bc_rec->media);
+		                           bc_rec->outfile);
 	} else if (bc_rec->sched_cur == 'C') {
-		event = bc_event_cam_start(bc_rec->id, BC_EVENT_L_INFO,
+		event = bc_event_cam_start(bc_rec->id, start_ts, BC_EVENT_L_INFO,
 		                           BC_EVENT_CAM_T_CONTINUOUS,
-		                           bc_rec->media);
+		                           bc_rec->outfile);
 	}
 
-	if (event == BC_EVENT_CAM_NULL) {
+	if (event == NULL) {
 		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
 	}
@@ -174,7 +173,7 @@ static int process_schedule(struct bc_record *bc_rec)
 	check_schedule(bc_rec);
 
 	if (bc_rec->reset_vid ||
-	    (bc_media_length(&bc_rec->media) > BC_MAX_RECORD_TIME &&
+	    (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
 	    !bc_rec->sched_last)) {
 		if (bc_rec->reset_vid) {
 			bc_rec->reset_vid = 0;
@@ -389,7 +388,7 @@ static void *bc_device_thread(void *data)
 			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
 				/* Dump the prerecording buffer */
 				struct bc_output_packet *p;
-				if (recording_start(bc_rec))
+				if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
 					goto error;
 				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
 				/* Skip the last packet; it's identical to the current packet,
@@ -403,7 +402,7 @@ static void *bc_device_thread(void *data)
 				 * slightly to allow a proper cut for both video and audio. */
 				continue;
 			} else {
-				if (recording_start(bc_rec))
+				if (recording_start(bc_rec, 0))
 					goto error;
 				bc_rec->output_pts_base = packet.pts;
 			}
