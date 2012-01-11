@@ -63,7 +63,7 @@ define('GLOBAL_SETTINGS', 'DVR General settings');
 define('G_DISABLE_VERSION_CHECK', 'Check for available updates');
 define('G_DISABLE_VERSION_CHECK_EX', 'requires server to have internet access');
 define('G_DVR_NAME', 'DVR Name');
-define('G_DVR_NAME_EX', 'You can name you dvr after its location or usage');
+define('G_DVR_NAME_EX', 'You can name your dvr after its location or usage');
 define('G_DVR_EMAIL', 'Email address');
 define('G_DVR_EMAIL_EX', 'Email for notifications');
 define('G_DEV_NOTES', 'Notes');
@@ -348,7 +348,7 @@ define('IP_ACCESS_STATUS_303', 'Could not resolve the hostname.');
 define('IP_ACCESS_NCONFIG', 'Could not connect to the camera. Please verify hostname/ip address.');
 
 #ip ptz presets
-define('IPP_NEW', 'New preset');
+define('IPP_NEW', 'Create a custom PTZ commands set');
 define('IPP_DELETE', 'Are you sure you want to delete preset "');
 define('IPP_HEADER', 'Select PTZ preset for');
 define('IPP_EDIT', 'Edit PTZ preset');
