@@ -101,6 +101,7 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	recording_end(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
+	bc_rec->mot_first_buffered_packet = 0;
 	for (p = bc_rec->prerecord_head; p; p = n) {
 		n = p->next;
 		free(p->data);
@@ -274,18 +275,46 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 		return bc_rec->mot_last_ts > 0;
 
 	ret = bc_motion_is_detected(bc_rec->bc);
+
+	if (bc_rec->mot_first_buffered_packet) {
+		/* Don't end the event and close the recording until we've dropped
+		 * a frame out of the prerecording buffer that was not part of
+		 * the recording; this allows us to resume the current event if more
+		 * motion occurs within [prerecord] seconds. */
+		struct bc_output_packet *p = bc_rec->prerecord_head;
+		for (; p; p = p->next) {
+			if (p == bc_rec->mot_first_buffered_packet)
+				break;
+		}
+
+		if (!p) {
+			/* We exhausted the prerecord buffer without more motion;
+			 * end the current recording. If this frame had motion,
+			 * we'll start a new recording immediately. */
+			recording_end(bc_rec);
+			bc_rec->mot_last_ts = 0;
+			bc_rec->mot_first_buffered_packet = 0;
+		} else if (ret) {
+			/* There is new motion; we can resume this recording
+			 * using buffered packets. Dump them, excluding this packet. */
+			bc_dev_info(bc_rec, "Motion event continued");
+			for (; p && p->next; p = p->next)
+				bc_output_packet_write(bc_rec, p);
+			bc_rec->mot_first_buffered_packet = 0;
+		}
+	}
+
 	if (ret) {
-		/* Update the timestamp on every frame with motion */
+		/* Motion frame; update the timestamp */
 		bc_rec->mot_last_ts = monotonic_now;
-	} else {
-		if (bc_rec->mot_last_ts) {
-			/* Active recording */
-			if (monotonic_now - bc_rec->mot_last_ts >=
-			    bc_rec->cfg.postrecord) {
-				/* End of event */
-				bc_rec->mot_last_ts = 0;
-			} else
-				ret = 1; /* still recording (postrecord) */
+	} else if (bc_rec->mot_last_ts) {
+		/* Actively recording, but this frame has no motion */
+		if (monotonic_now - bc_rec->mot_last_ts <= bc_rec->cfg.postrecord)
+			ret = 1; /* Continue recording (postrecord time) */
+		else if (!bc_rec->mot_first_buffered_packet) {
+			bc_rec->mot_first_buffered_packet = bc_rec->prerecord_tail;
+			if (bc_rec->event)
+				bc_rec->event->end_time = time(NULL);
 		}
 	}
 
@@ -377,12 +406,8 @@ static void *bc_device_thread(void *data)
 		if (ret < 1)
 			continue;
 
-		if (!check_motion(bc_rec, &packet)) {
-			/* Motion recording is enabled and we should not record.
-			 * End the recording if there is one. */
-			recording_end(bc_rec);
+		if (!check_motion(bc_rec, &packet))
 			continue;
-		}
 
 		if (!bc_rec->oc) {
 			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {

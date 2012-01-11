@@ -77,6 +77,13 @@ struct bc_record {
 	/* Motion detection */
 	time_t mot_last_ts;
 	struct bc_output_packet *prerecord_head, *prerecord_tail;
+	/* Pointer to the first packet not written after the postrecord time in
+	 * the current motion recording. This may not be a valid pointer; the ONLY
+	 * correct usage is to check if this pointer is still in the prerecord_head
+	 * list. Be aware that if any new packet is added between a removal from the
+	 * list and a check against this pointer, a false positive is possible. That
+	 * is avoided in the current usage. */
+	void *mot_first_buffered_packet;
 };
 
 struct bc_output_packet {
