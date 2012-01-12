@@ -8,8 +8,8 @@ if (empty($_POST)){
 	data::query("DELETE FROM Storage");
 	$status = true;
 	foreach($_POST['path'] as $key => $path){
-		$min = intval($_POST['min'][$key]);
 		$max = intval($_POST['max'][$key]);
+		$min = $max - 10;
 		$status = (data::query("INSERT INTO Storage VALUES ({$key}, '{$path}', {$max}, {$min})", true)) ? $status : false;
 	}
 	data::responseXml($status);
