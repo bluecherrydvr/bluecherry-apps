@@ -7,9 +7,10 @@
  */
 
 defined('INDVR') or exit();
-
-include("lang.php");
-include("var.php");
+if (!$nload){
+	include("lang.php");
+	include("var.php");
+}
 
 session_name(VAR_SESSION_NAME);
 session_start();
@@ -27,9 +28,16 @@ function var_dump_pre($mixed = null) {
 function init(){
 	#strip extra spaces from post inputs
 	foreach($_POST as $key => $value){
-		if (!is_array($value)) { $_POST[$key] = trim($value); };
+		if (!is_array($value)) { $_POST[$key] = trim($value); $_POST['key'] = database::escapeString($_POST['key']); };
 	};
 }
+
+function init_user(){
+	$userId = (!empty($_SESSION['id'])) ? $_SESSION['id'] : false;
+	$current_user = new user('id', $_SESSION['id']);
+	$current_user->checkAccessPermissions('admin');
+	return $current_user;
+};
 
 function is_assoc($array){
 	return array_keys($array) !== range(0, count($array) - 1);
@@ -108,8 +116,8 @@ class data{
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"\x3f>
 				<response>
-					<status>{$status}</status>
-					<msg>{$message}</msg>
+					<status><![CDATA[{$status}]]></status>
+					<msg><![CDATA[{$message}]]></msg>
 					<data>{$data}</data>
 				</response>";
 				
@@ -436,33 +444,46 @@ class ipCamera{
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
 		}
-		if (!globalSettings::getParameter('G_DISABLE_IP_C_CHECK') && !$this->options['no_c_check'] && $this->info['status']!='disabled'){ #if not disabled, check is http/mjpeg paths exist
-			$this->checkConnection(); 
-		}
-		
 	}
 	public function checkConnection(){
-		#needs server to check for RTSP
-		#$paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+		ini_set('default_socket_timeout', 1);
+		#needs server to check for RTSP //// $paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
 		$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
 		$paths['http'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']);
 		foreach($paths as $type => $path){
-			$tmp = @get_headers($path);
-			if (!$tmp) { $this->info['connection_status'][$type] = 'F'; continue; }
+			$headers = @get_headers($path);
+			$contents = @file_get_contents($path);
+			if (!$headers) { $this->info['connection_status'][$type] = 'F'; continue; }
 			preg_match("/([0-9]{3})/", $tmp[0], $response_code);
 			$this->info['connection_status'][$type] = ($response_code[0]=='200') ? 'OK' : $response_code[0];
 		}
 		return $this->info['connection_status'];
+	}
+	protected static function setActiStreaming($info){ #1042, ACTi cameras are set to rtp over udp streaming on add or enable
+		include("ipcamlib.php");
+		$acti_camera = new RTSP_ACTI($info);
+		$result = $acti_camera->set_streaming_method(3); #3 for RTP over UDP
+		return $result;
 	}
 	public static function create($data){
 		if (!$data['ipAddr'])	{ return array(false, AIP_NEEDIP); };
 		if (!$data['port'])	{ return array(false, AIP_NEEDPORT);};
 		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
 		$data['device'] = "{$data['ipAddr']}|{$data['port']}|{$data['rtsp']}";
-		if (data::getObject('Devices', 'device', $data['device'])) { return array(false, str_replace('%IP%', $data['ipAddr'], AIP_ALREADY_EXISTS)); }
 		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$data['models']}'");
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{$data['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
+		#for acti to proper streaming method
+		$acti_config_result = false;
 		$message = ($result) ? AIP_CAMADDED : false;
+		if ($model_info[0]['driver']=='RTSP-ACTi' && $result){
+			$acti_config_result = self::setActiStreaming(array(
+				'ipAddr' =>$data['ipAddr'],
+				'portMjpeg' =>$data['portMjpeg'],
+				'rtsp_username' =>$data['user'],
+				'rtsp_password' =>$data['pass']
+			));
+			$message .= ($acti_config_result[0]) ? '<br /><br />'.ACTI_STREAMING_SET_3 : ACTI_STREAMING_N_SET_3;
+		};
 		return array($result, $message);
 	}
 	public static function remove($id){
@@ -664,6 +685,19 @@ class cameraPtz{
 	public function preset($command, $value = ''){
 	}
 }
+#ip camera API abstraction
+abstract class ipCameraControl{
+	abstract public function set_streaming_method();
+		/*
+		0 : TCP Only
+		1 : Multicast Over UDP
+		2 : TCP and Multicast
+		3. RTP Over UDP
+		4. RTP Over Multicast
+		5: RTP Over UDP and Multicast
+		*/
+}
+
 
 class globalSettings{
 	var $data;

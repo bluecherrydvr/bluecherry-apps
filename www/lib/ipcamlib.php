@@ -2,13 +2,13 @@
 
 #ACTi control class
 class RTSP_ACTI {//extends ipCameraControl{
-	const URL_BASE = 'http://%IP%:%PORT%/%FILE%?%OPTIONS&USER=%RTSP_USERNAME%&PWD=%RTSP_PASSWORD%';
+	const URL_BASE = 'http://%RTSP_USERNAME%:%RTSP_PASSWORD%@%IP%:%PORT%/%FILE%?%OPTIONS%';
 	public function __construct($info){
 		$this->info = $info;
 	}
 	private function construct_url($command){
 		return str_replace(
-							array('%IP%', '%PORT%', '%RTSP_USERNAME%', '%RTSP_PASSWORD%', '%FILE%', '%OPTIONS',), 
+							array('%IP%', '%PORT%', '%RTSP_USERNAME%', '%RTSP_PASSWORD%', '%FILE%', '%OPTIONS%',), 
 							array($this->info['ipAddr'], $this->info['portMjpeg'], $this->info['rtsp_username'], $this->info['rtsp_password'], $command['file'], $command['options']),
 							self::URL_BASE
 		);
@@ -20,10 +20,12 @@ class RTSP_ACTI {//extends ipCameraControl{
 		#if response is false -- connection failed
 		if (!$response) return array(false, COUND_NOT_CONNECT);
 		#if not, check whether change was successful or not
-		$std_resp = preg_match("/(OK|ERROR):(.*)/", "OK: V2_STREAMING_METHOD='0'", $response);
+		$std_resp = preg_match("/(OK|ERROR):(.*)/", $response, $response);
 		if ($std_resp){
-			if ($response == 'OK') { return array('OK', '') }
-				elseif ($response == 'ERROR') { return array('F', $response[1]);
+			if ($response[1] == 'OK') { return array(true, ''); }
+				elseif ($response[1] == 'ERROR') { return array(false, $response[2]); };
+		} else {
+			return array(false, COUND_NOT_CONNECT);
 		}
 	}
 	

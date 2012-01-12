@@ -989,7 +989,7 @@ getInfo = function(t, m, x, containerId, s){
 								$('mjpeg').set('value', mjpegPath);
 								$('rtsppath').set('value', rtspPath);
 								$('port').set('value', rtspPort);
-								$('mjpegPort').set('value', mjpegPort);
+								$('portMjpeg').set('value', mjpegPort);
 								if (mjpegPath=='' || rtspPort=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
 									expandAdvancedSettings('open');
 								} else {

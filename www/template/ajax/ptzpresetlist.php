@@ -2,7 +2,7 @@
 require('../template/template.lib.php');
 
 echo "<p> <a href='#' id='backToList'>".ALL_DEVICES."</a> &gt; ".IPP_HEADER." {$camera->info['device_name']}</p>";
-echo "<div id='button' class='add'>Create preset</div><div class='bClear'></div>";
+echo "<div id='button' class='addExt'>".IPP_NEW."</div><div class='bClear'></div>";
 echo "<input type='hidden' id='cameraId' value='{$camera->info['id']}'>";
 echo "<div id='ipPtzPresets'>";
 echo "<div class='preset' id='".((empty($camera->info['ptz_control_path'])) ? 'selected' : '')."'><div class='name' id=''>".IPP_DISABLE_PTZ."</div></div>";

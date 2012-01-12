@@ -39,8 +39,8 @@ define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 #local card props
 $GLOBALS['buffer'] = array(
-	'post' => array(1,2,3,4,5,10,15,20),
-	'pre' => array('Currently not supported')
+	'post' => array(0,1,2,3,4,5,10,15,20),
+	'pre' => array(0,1,2,3,4,6,8,10)
 );
 
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);

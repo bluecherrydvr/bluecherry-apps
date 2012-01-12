@@ -30,19 +30,6 @@ if ($devices->ipCameras){
 				</div>
 				<div class='model'>{$device->info['manufacturer']} ".(($device->info['manufacturer']==$device->info['model']) ? '' : $device->info['model'])."</div>
 				<div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
-			if (!$device->info['disabled'])
-				if ($device->info['connection_status']){
-					$status_message = '';
-					foreach($device->info['connection_status'] as $type => $status){
-						if ($status!='OK'){
-							$status_message .= str_replace('%TYPE%', $type, constant('IP_ACCESS_STATUS_'.$status)).'<br /><br />';
-						}
-					};
-					if (!empty($status_message)){
-						echo "<div id='{$device->info['id']}' class='ipAttn'></div>";
-						echo "<div id='message' class='ipCamInfo'>{$status_message }</div>";
-					}
-				};
 			echo "</div>";
 		}
 	echo "<div class='bClear'></div></div></div>"; #end ip cameras

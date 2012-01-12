@@ -402,4 +402,7 @@ define('STS_PICKER_HEADER', 'Choose date range and event types');
 define('STS_PERCENTAGE_OF_TOTAL', 'Percent of total');
 define('STS_NUM_EVENTS', 'Number of events');
 
+#ACTi
+define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
+define('ACTI_STREAMING_N_SET_3', 'Your ACTi camera could not be automatically configured for RTP over UDP streaming. Please do so manually.');
 ?>
