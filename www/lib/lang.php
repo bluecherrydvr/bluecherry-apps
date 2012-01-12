@@ -79,6 +79,8 @@ define('USERS_ALL_TABLE_HEADER', 'DVR Users');
 define('USERS_DETAIL_TABLE_HEADER', 'User details: ');
 
 define('CAMERA_PERMISSIONS_SUB', 'User camera access permissions');
+define('RESTRICT_ALL', 'Restrict all');
+define('ALLOW_ALL', 'Allow all');
 
 define('USERS_ALL_TABLE_SUBHEADER', 'Users currently registered in the DVR system.');
 define('USERS_DETAIL_TABLE_SUBHEADER', 'Edit user information and access rights. ');
@@ -348,7 +350,7 @@ define('IP_ACCESS_STATUS_303', 'Could not resolve the hostname.');
 define('IP_ACCESS_NCONFIG', 'Could not connect to the camera. Please verify hostname/ip address.');
 
 #ip ptz presets
-define('IPP_NEW', 'Create a custom PTZ commands set');
+define('IPP_NEW', 'Create a custom set of PTZ commands');
 define('IPP_DELETE', 'Are you sure you want to delete preset "');
 define('IPP_HEADER', 'Select PTZ preset for');
 define('IPP_EDIT', 'Edit PTZ preset');

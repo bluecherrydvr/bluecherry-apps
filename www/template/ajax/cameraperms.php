@@ -11,8 +11,13 @@ require('../template/template.lib.php');
 </div>
 <div id='settingsForm'>
 	<div id='saveButton'><?php echo SAVE_CHANGES; ?></div>
-	<div class='bClear'></div></div></div>
 </div>
+<div class='bClear'></div>
+<div id='allButtons'>
+	<div id='restrictAll' class='ra'><?php echo RESTRICT_ALL; ?></div>
+	<div id='allowAll' class='aa'><?php echo ALLOW_ALL; ?></div>
+</div>
+<div class='bClear'></div></div></div>
 <div id="camList">
 <?php
 foreach($p->camera_list as $key => $camera){

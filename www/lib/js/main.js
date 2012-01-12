@@ -504,6 +504,16 @@ DVRPageScript = new Class({
 					var newClass = (this.get('class')=='allowed') ? 'nallowed' : 'allowed';
 					this.set('class', newClass);
 				});
+				$('restrictAll').addEvent('click', function(){
+					$$('#camList').getChildren().each(function(el){
+						el.set('class', 'nallowed');
+					});
+				});
+				$('allowAll').addEvent('click', function(){
+					$$('#camList').getChildren().each(function(el){
+						el.set('class', 'allowed');
+					});
+				});
 				var sb = $('saveButton');
 				sb.buttonAnimate("#aca");
 				sb.addEvent('click', function(){
@@ -740,6 +750,9 @@ DVRSettingsForm = new Class({
 				}
 				if (data == 'disposeGeneralMessage' && $('generalMessage')){
 					$('generalMessage').dispose();
+				}
+				if (Cookie.read('currentPage')=='users' && data!=-1){
+					var openPage = new DVRPage('users', 'id='+data);
 				}
 			}
 		});

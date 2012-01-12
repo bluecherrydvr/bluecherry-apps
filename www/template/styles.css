@@ -38,8 +38,9 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #settingsForm #saveButton 			{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #saveButton 						{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/check.png") no-repeat; background-position:5px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #button								{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#button.add, #button.addEmail		{ float:left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
-#button.add:hover					{ cursor:pointer; background-color: #ded; }
+#button.add, #button.addEmail, #button.addExt	{ float:left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
+#button.addExt									{ width:250px; }
+#button.add:hover, #button.addExt:hover			{ cursor:pointer; background-color: #ded; }
 #addEmail							{ float:left; width:auto; padding-right:10px; cursor:pointer; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); margin-bottom:10px; display:block; margin-left:150px; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px;  }
 #button.save						{ float:right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
 #button.deleteShort					{ width:25px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
@@ -238,9 +239,10 @@ second
 #logout a 		{ text-decoration:none; font-size:1.1em; color:#933; }
 
 /*cameraperms*/
-#camList div		{cursor:pointer; float:left; margin-bottom:10px; display:block; margin-left:10px; width:200px; height:30px; padding-left:30px; line-height:30px; background-position:3px; background-repeat:no-repeat; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
-#camList .allowed	{ border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
-#camList .nallowed	{ border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+#allButtons								{ border-bottom:1px dotted black; border-top:1px dotted black; margin-bottom:15px; margin-top:10px; padding-top:10px; height:40px; }
+#camList div, #allButtons div			{cursor:pointer; float:left; margin-bottom:10px; display:block; margin-left:10px; width:200px; height:30px; padding-left:30px; line-height:30px; background-position:3px; background-repeat:no-repeat; -moz-border-radius: 5px; -webkit-border-radius: 5px;}
+#camList .allowed, #allButtons .aa		{ border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
+#camList .nallowed, #allButtons .ra		{ border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
 
 /*storage*/
 #storageForm #separator { border-top:1px dotted gray; padding:10px; }
