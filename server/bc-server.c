@@ -241,6 +241,7 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 {
 	BC_DB_RES dbres;
 	float used = storage_used(stor);
+	int removed = 0, error_count = 0;
 
 	if (used < stor->max_thresh)
 		return;
@@ -253,7 +254,7 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 				"ORDER BY start ASC", stor->path);
 
 	if (dbres == NULL) {
-		bc_log("W: Filesystem has no available media to delete!");
+		bc_log("E: Filesystem has no available media to delete!");
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
 		return;
 	}
@@ -262,15 +263,19 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
-		if (filepath == NULL || !strlen(filepath))
+		if (!filepath || !*filepath)
 			continue;
 
-		unlink(filepath);
+		if (unlink(filepath) < 0) {
+			bc_log("W: Cannot remove file %s for cleanup: %s",
+			       filepath, strerror(errno));
+			error_count++;
+			continue;
+		}
+
+		removed++;
 		__bc_db_query("UPDATE Media SET filepath='',size=0 "
 			      "WHERE id=%d", id);
-
-		bc_log("W: Removed media id %d, file '%s', to make space", id,
-		       filepath);
 
 		if ((used = storage_used(stor)) < 0)
 			break;
@@ -278,10 +283,13 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 
 	bc_db_free_table(dbres);
 
-	if (used < 0)
-		return;
+	if (error_count)
+		bc_log("W: Cleaned up %d files with %d errors on %s", removed,
+		       error_count, stor->path);
+	else
+		bc_log("I: Cleaned up %d files on %s", removed, stor->path);
 
-	if (used >= stor->min_thresh) {
+	if (used >= 0 && used >= stor->min_thresh) {
 		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
 		       "any more old media!", used);
 		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
