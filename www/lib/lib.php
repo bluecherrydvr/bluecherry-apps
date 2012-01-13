@@ -445,7 +445,7 @@ class ipCamera{
 			$this->ptzControl = new cameraPtz($this);
 		}
 	}
-	public function checkConnection(){
+	public function checkConnection(){ 
 		ini_set('default_socket_timeout', 1);
 		#needs server to check for RTSP //// $paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
 		$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
@@ -454,7 +454,7 @@ class ipCamera{
 			$headers = @get_headers($path);
 			$contents = @file_get_contents($path);
 			if (!$headers) { $this->info['connection_status'][$type] = 'F'; continue; }
-			preg_match("/([0-9]{3})/", $tmp[0], $response_code);
+			preg_match("/([0-9]{3})/", $headers[0], $response_code);
 			$this->info['connection_status'][$type] = ($response_code[0]=='200') ? 'OK' : $response_code[0];
 		}
 		return $this->info['connection_status'];
@@ -490,6 +490,7 @@ class ipCamera{
 		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
 	}
 	public function changeState(){
+		if ($this->info['driver'] == 'RTSP-ACTi' && !$this->info['disabled']) { self::setActiStreaming($this->info); }
 		return data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true);
 	}
 }
