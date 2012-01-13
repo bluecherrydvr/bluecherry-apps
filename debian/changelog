@@ -1,3 +1,25 @@
+bluecherry (1:2.0.0-0beta9.2) lucid; urgency=low
+
+  * Bug #912: upstart hangs in 11.04 (natty)
+  * Bug #932: Post-record value is currently hardcoded
+  * Bug #971: Web: Devices page loads very slowly with multiple IP cameras
+  * Bug #1025: The start time of motion events does not exactly match their first frame
+  * Bug #1029: Web: Edit access list / Delete user does not show after adding a user
+  * Bug #1039: Crash when SQL server goes down
+  * Bug #1041: Don't rely on the database 'driver' field to determine solo codec
+  * Bug #1061: Errors during media file cleanup should be logged
+  * Feature #870: Add dependancy on pear and pear::mail packages
+  * Feature #1030: Web: Add 'Restrict all' button for user camera access lists
+  * Feature #1042: Force ACTi cameras to RTP over UDP when they are added AND enabled
+  * Feature #1048: Allow configuration of the motion prerecord time
+  * Feature #1049: Use motion prerecord as a post-event buffer to avoid recording overlap
+  * Feature #1050: Web: Remove duplicate IP checking
+  * Feature #1051: web: Allow configuration of the motion pre-recording buffer time
+  * Feature #1053: Web: Hide or remove minimal percentage on the storage area
+  * Feature #1057: Web: Change wording on IP camera -> PTZ settings page
+
+ -- John Brooks <john.brooks@bluecherry.net>  Thu, 12 Jan 2012 19:33:00 -0700
+
 bluecherry (1:2.0.0-0beta9.1) lucid; urgency=low
 
   * Bug #956: 1-second events and avlib errors when recordings cannot be written
