@@ -8,7 +8,6 @@ bluecherry (1:2.0.0-0beta9.2) lucid; urgency=low
   * Bug #1039: Crash when SQL server goes down
   * Bug #1041: Don't rely on the database 'driver' field to determine solo codec
   * Bug #1061: Errors during media file cleanup should be logged
-  * Feature #870: Add dependancy on pear and pear::mail packages
   * Feature #1030: Web: Add 'Restrict all' button for user camera access lists
   * Feature #1042: Force ACTi cameras to RTP over UDP when they are added AND enabled
   * Feature #1048: Allow configuration of the motion prerecord time
