@@ -28,7 +28,7 @@ function var_dump_pre($mixed = null) {
 function init(){
 	#strip extra spaces from post inputs
 	foreach($_POST as $key => $value){
-		if (!is_array($value)) { $_POST[$key] = trim($value); $_POST['key'] = database::escapeString($_POST['key']); };
+		if (!is_array($value)) { $_POST[$key] = trim($value); $_POST[$key] = database::escapeString($_POST[$key]); };
 	};
 }
 
