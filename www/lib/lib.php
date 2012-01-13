@@ -7,7 +7,8 @@
  */
 
 defined('INDVR') or exit();
-if (!$nload){
+
+if (empty($nload)){
 	include("lang.php");
 	include("var.php");
 }

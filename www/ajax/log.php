@@ -39,7 +39,9 @@ class logs{
 }
 
 #run class/get data
-$log = new logs($_GET['type'], $_GET['lines']);
+$type = (!empty($_GET['type'])) ? $_GET['type'] : false;
+$lines = (!empty($_GET['lines'])) ? $_GET['lines'] : false;
+$log = new logs($type, $lines);
 
 #require template to show data
 require('../template/ajax/log.php');
