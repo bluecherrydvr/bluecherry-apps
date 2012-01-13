@@ -483,7 +483,8 @@ class ipCamera{
 				'rtsp_username' =>$data['user'],
 				'rtsp_password' =>$data['pass']
 			));
-			$message .= ($acti_config_result[0]) ? '<br /><br />'.ACTI_STREAMING_SET_3 : ACTI_STREAMING_N_SET_3;
+			$message .= '<br /><br />';
+			$message .= ($acti_config_result[0]) ? ACTI_STREAMING_SET_3 : ACTI_STREAMING_N_SET_3;
 		};
 		return array($result, $message);
 	}
