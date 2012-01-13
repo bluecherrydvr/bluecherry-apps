@@ -10,7 +10,7 @@ Package: bluecherry
 Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
- libapache2-mod-php5, sysstat, php5-gd, php-mail, mkvtoolnix
+ libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix
 Recommends: solo6010-dkms
 Breaks: solo6010-dkms (<< 2.3.6)
 Description: Bluecherry DVR Server
