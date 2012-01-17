@@ -24,7 +24,12 @@
 static struct card_list {
 	int valid;
 	int dirty;
-	char name[128];
+	int card_id;
+	int n_ports;
+	const char *uid_type;
+	char name[37];
+	char driver[64];
+	char video_type[8];
 } cards[MAX_CARDS];
 
 static void check_solo(struct sysfs_device *device, const char *dir)
@@ -91,19 +96,16 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 		for (i = 0; i < MAX_CARDS; i++) {
 			if (cards[i].valid)
 				continue;
-			cards[i].valid = 1;
-			cards[i].dirty = 0;
+			cards[i].valid    = 1;
+			cards[i].dirty    = 0;
+			cards[i].card_id  = id;
+			cards[i].n_ports  = ports;
+			cards[i].uid_type = uid_type;
+			strcpy(cards[i].driver, driver);
 			strcpy(cards[i].name, bcuid);
+			strcpy(cards[i].video_type, video_type);
 			break;
 		}
-	}
-
-	for (i = 0; i < ports; i++) {
-		__bc_db_query("INSERT INTO AvailableSources "
-			      "(device, driver, card_id, video_type) "
-			      "VALUES('%s|%s|%d', '%s', '%d', '%s')",
-			      uid_type, bcuid, i, driver, id,
-			      video_type);
 	}
 }
 
@@ -162,19 +164,31 @@ static void __bc_check_avail(void)
 
 void bc_check_avail(void)
 {
-	int i;
+	int i, j;
+
+	for (i = 0; i < MAX_CARDS; i++)
+		cards[i].dirty = cards[i].valid;
+
+	__bc_check_avail();
 
 	if (bc_db_start_trans())
 		return;
 
 	__bc_db_query("DELETE FROM AvailableSources");
-	for (i = 0; i < MAX_CARDS; i++) {
-		if (!cards[i].valid)
-			continue;
-		cards[i].dirty = 1;
-	}
 
-	__bc_check_avail();
+	for (i = 0; i < MAX_CARDS; i++) {
+		struct card_list *card = &cards[i];
+		if (!card->valid)
+			break;
+
+		for (j = 0; j < card->n_ports; j++) {
+			__bc_db_query("INSERT INTO AvailableSources "
+			              "(device, driver, card_id, video_type) "
+			              "VALUES('%s|%s|%d', '%s', '%d', '%s')",
+			              card->uid_type, card->name, j, card->driver,
+			              card->card_id, card->video_type);
+		}
+	}
 
 	if (bc_db_commit_trans())
 		bc_db_rollback_trans();
