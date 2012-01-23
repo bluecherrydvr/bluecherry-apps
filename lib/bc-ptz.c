@@ -93,7 +93,7 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 
 	ptz_proto = bc_db_get_val(dbres, "ptz_control_protocol", NULL);
 
-	if (!ptz_proto || strcasecmp(ptz_proto, "PELCO"))
+	if (!ptz_proto || strncasecmp(ptz_proto, "PELCO", 5))
 		return;
 
 	ptz_params = bc_db_get_val(dbres, "ptz_serial_values", NULL);
