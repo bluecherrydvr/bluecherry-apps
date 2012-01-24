@@ -566,6 +566,7 @@ int main(int argc, char **argv)
 	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
+	avformat_network_init();
 
 	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
