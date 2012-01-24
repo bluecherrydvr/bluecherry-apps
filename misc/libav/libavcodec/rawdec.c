@@ -59,6 +59,7 @@ static const PixelFormatTag pix_fmt_bps_mov[] = {
     { PIX_FMT_RGB555BE, 16 },
     { PIX_FMT_RGB24,    24 },
     { PIX_FMT_ARGB,     32 },
+    { PIX_FMT_MONOWHITE,33 },
     { PIX_FMT_NONE, 0 },
 };
 
@@ -122,6 +123,7 @@ static int raw_decode(AVCodecContext *avctx,
     AVFrame * frame = (AVFrame *) data;
     AVPicture * picture = (AVPicture *) data;
 
+    frame->pict_type        = avctx->coded_frame->pict_type;
     frame->interlaced_frame = avctx->coded_frame->interlaced_frame;
     frame->top_field_first = avctx->coded_frame->top_field_first;
     frame->reordered_opaque = avctx->reordered_opaque;

@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "avformat.h"
+#include "internal.h"
 #include "avi.h"
 #include "avio_internal.h"
 #include "riff.h"
@@ -256,7 +257,7 @@ static int avi_write_header(AVFormatContext *s)
 
         avio_wl32(pb, au_scale); /* scale */
         avio_wl32(pb, au_byterate); /* rate */
-        av_set_pts_info(s->streams[i], 64, au_scale, au_byterate);
+        avpriv_set_pts_info(s->streams[i], 64, au_scale, au_byterate);
 
         avio_wl32(pb, 0); /* start */
         avist->frames_hdr_strm = avio_tell(pb); /* remember this offset to fill later */
@@ -378,9 +379,9 @@ static int avi_write_header(AVFormatContext *s)
 
     list2 = ff_start_tag(pb, "LIST");
     ffio_wfourcc(pb, "INFO");
-    ff_metadata_conv(&s->metadata, ff_avi_metadata_conv, NULL);
-    for (i = 0; *ff_avi_tags[i]; i++) {
-        if ((t = av_dict_get(s->metadata, ff_avi_tags[i], NULL, AV_DICT_MATCH_CASE)))
+    ff_metadata_conv(&s->metadata, ff_riff_info_conv, NULL);
+    for (i = 0; *ff_riff_tags[i]; i++) {
+        if ((t = av_dict_get(s->metadata, ff_riff_tags[i], NULL, AV_DICT_MATCH_CASE)))
             avi_write_info_tag(s->pb, t->key, t->value);
     }
     ff_end_tag(pb, list2);

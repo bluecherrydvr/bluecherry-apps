@@ -20,8 +20,9 @@
  */
 
 #include "libavutil/intreadwrite.h"
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "avformat.h"
+#include "internal.h"
 
 typedef struct ThpDemuxContext {
     int              version;
@@ -68,7 +69,7 @@ static int thp_read_header(AVFormatContext *s,
                            avio_rb32(pb); /* Max buf size.  */
                            avio_rb32(pb); /* Max samples.  */
 
-    thp->fps             = av_d2q(av_int2flt(avio_rb32(pb)), INT_MAX);
+    thp->fps             = av_d2q(av_int2float(avio_rb32(pb)), INT_MAX);
     thp->framecnt        = avio_rb32(pb);
     thp->first_framesz   = avio_rb32(pb);
                            avio_rb32(pb); /* Data size.  */
@@ -100,7 +101,7 @@ static int thp_read_header(AVFormatContext *s,
 
             /* The denominator and numerator are switched because 1/fps
                is required.  */
-            av_set_pts_info(st, 64, thp->fps.den, thp->fps.num);
+            avpriv_set_pts_info(st, 64, thp->fps.den, thp->fps.num);
             st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
             st->codec->codec_id = CODEC_ID_THP;
             st->codec->codec_tag = 0;  /* no fourcc */
@@ -127,7 +128,7 @@ static int thp_read_header(AVFormatContext *s,
             st->codec->channels    = avio_rb32(pb); /* numChannels.  */
             st->codec->sample_rate = avio_rb32(pb); /* Frequency.  */
 
-            av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+            avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
 
             thp->audio_stream_index = st->index;
             thp->has_audio = 1;

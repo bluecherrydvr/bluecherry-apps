@@ -84,6 +84,7 @@ enum BandType {
 #define IS_CODEBOOK_UNSIGNED(x) ((x - 1) & 10)
 
 enum ChannelPosition {
+    AAC_CHANNEL_OFF   = 0,
     AAC_CHANNEL_FRONT = 1,
     AAC_CHANNEL_SIDE  = 2,
     AAC_CHANNEL_BACK  = 3,
@@ -251,6 +252,7 @@ typedef struct {
  */
 typedef struct {
     AVCodecContext *avctx;
+    AVFrame frame;
 
     MPEG4AudioConfig m4ac;
 

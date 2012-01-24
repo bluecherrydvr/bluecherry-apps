@@ -36,7 +36,7 @@ static int md5_open(URLContext *h, const char *filename, int flags)
         return -1;
     }
 
-    if (!flags & AVIO_FLAG_WRITE)
+    if (!(flags & AVIO_FLAG_WRITE))
         return AVERROR(EINVAL);
 
     av_md5_init(h->priv_data);
@@ -65,7 +65,8 @@ static int md5_close(URLContext *h)
     av_strstart(filename, "md5:", &filename);
 
     if (*filename) {
-        err = ffurl_open(&out, filename, AVIO_FLAG_WRITE);
+        err = ffurl_open(&out, filename, AVIO_FLAG_WRITE,
+                         &h->interrupt_callback, NULL);
         if (err)
             return err;
         err = ffurl_write(out, buf, i*2+1);
@@ -78,16 +79,11 @@ static int md5_close(URLContext *h)
     return err;
 }
 
-static int md5_get_handle(URLContext *h)
-{
-    return (intptr_t)h->priv_data;
-}
 
 URLProtocol ff_md5_protocol = {
     .name                = "md5",
     .url_open            = md5_open,
     .url_write           = md5_write,
     .url_close           = md5_close,
-    .url_get_file_handle = md5_get_handle,
     .priv_data_size      = PRIV_SIZE,
 };

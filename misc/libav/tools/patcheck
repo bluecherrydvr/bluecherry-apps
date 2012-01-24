@@ -55,6 +55,7 @@ hiegrep 'INIT_VLC_USE_STATIC' 'forbidden ancient vlc type' $*
 hiegrep '=[-+\*\&] ' 'looks like compound assignment' $*
 hiegrep2 '/\*\* *[a-zA-Z0-9].*' '\*/' 'Inconsistently formatted doxygen comment' $*
 hiegrep '; */\*\*[^<]' 'Misformatted doxygen comment' $*
+hiegrep '//!|/\*!' 'inconsistent doxygen syntax' $*
 
 hiegrep2 '(int|unsigned|static|void)[a-zA-Z0-9 _]*(init|end)[a-zA-Z0-9 _]*\(.*[^;]$' '(av_cold|:\+[^a-zA-Z_])' 'These functions may need av_cold, please review the whole patch for similar functions needing av_cold' $*
 
@@ -66,7 +67,7 @@ $EGREP $OPT '^\+ *(const *|)static' $*| $EGREP --color=always '[^=]= *(0|NULL)[^
 cat $TMP
 hiegrep '# *ifdef * (HAVE|CONFIG)_' 'ifdefs that should be #if' $*
 
-hiegrep '\b(awnser|cant|dont|quantised|quantisation|teh|wont)\b' 'common typos' $*
+hiegrep '\b(awnser|cant|dont|wont|usefull|successfull|occured|teh|alot|wether|skiped|heigth|informations|colums|loosy|loosing|seperate|preceed|upto|paket|posible)\b' 'common typos' $*
 
 hiegrep 'av_log\( *NULL' 'Missing context in av_log' $*
 hiegrep '[^sn]printf' 'Please use av_log' $*

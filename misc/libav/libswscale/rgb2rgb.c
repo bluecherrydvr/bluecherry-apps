@@ -183,6 +183,25 @@ void rgb16tobgr32(const uint8_t *src, uint8_t *dst, int src_size)
     }
 }
 
+void rgb12to15(const uint8_t *src, uint8_t *dst, int src_size)
+{
+    const uint16_t *end;
+    uint16_t *d = (uint16_t *)dst;
+    const uint16_t *s = (const uint16_t *)src;
+    uint16_t rgb, r, g, b;
+    end = s + src_size / 2;
+    while (s < end) {
+        rgb = *s++;
+        r = rgb & 0xF00;
+        g = rgb & 0x0F0;
+        b = rgb & 0x00F;
+        r = (r << 3) | ((r & 0x800) >> 1);
+        g = (g << 2) | ((g & 0x080) >> 2);
+        b = (b << 1) | ( b          >> 3);
+        *d++ = r | g | b;
+    }
+}
+
 void rgb16to24(const uint8_t *src, uint8_t *dst, int src_size)
 {
     const uint16_t *end;
@@ -282,6 +301,19 @@ void rgb15tobgr15(const uint8_t *src, uint8_t *dst, int src_size)
     }
 }
 
+void rgb12tobgr12(const uint8_t *src, uint8_t *dst, int src_size)
+{
+    uint16_t *d = (uint16_t*)dst;
+    uint16_t *s = (uint16_t*)src;
+    int i;
+    int num_pixels = src_size >> 1;
+
+    for (i = 0; i < num_pixels; i++) {
+        unsigned rgb = s[i];
+        d[i] = (rgb << 8 | rgb & 0xF0 | rgb >> 8) & 0xFFF;
+    }
+}
+
 void bgr8torgb8(const uint8_t *src, uint8_t *dst, int src_size)
 {
     int i;
@@ -310,8 +342,8 @@ void shuffle_bytes_##a##b##c##d(const uint8_t *src, uint8_t *dst, int src_size) 
     }                                                                   \
 }
 
-DEFINE_SHUFFLE_BYTES(0, 3, 2, 1);
-DEFINE_SHUFFLE_BYTES(1, 2, 3, 0);
-DEFINE_SHUFFLE_BYTES(3, 0, 1, 2);
-DEFINE_SHUFFLE_BYTES(3, 2, 1, 0);
+DEFINE_SHUFFLE_BYTES(0, 3, 2, 1)
+DEFINE_SHUFFLE_BYTES(1, 2, 3, 0)
+DEFINE_SHUFFLE_BYTES(3, 0, 1, 2)
+DEFINE_SHUFFLE_BYTES(3, 2, 1, 0)
 

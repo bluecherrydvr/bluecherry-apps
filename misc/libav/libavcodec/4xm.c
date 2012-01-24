@@ -132,8 +132,8 @@ typedef struct FourXContext{
     AVFrame current_picture, last_picture;
     GetBitContext pre_gb;          ///< ac/dc prefix
     GetBitContext gb;
-    const uint8_t *bytestream;
-    const uint16_t *wordstream;
+    GetByteContext g;
+    GetByteContext g2;
     int mv[256];
     VLC pre_vlc;
     int last_dc;
@@ -328,7 +328,7 @@ static void decode_p_block(FourXContext *f, uint16_t *dst, uint16_t *src, int lo
     assert(code>=0 && code<=6);
 
     if(code == 0){
-        src += f->mv[ *f->bytestream++ ];
+        src += f->mv[bytestream2_get_byte(&f->g)];
         if(start > src || src > end){
             av_log(f->avctx, AV_LOG_ERROR, "mv out of pic\n");
             return;
@@ -345,21 +345,21 @@ static void decode_p_block(FourXContext *f, uint16_t *dst, uint16_t *src, int lo
     }else if(code == 3 && f->version<2){
         mcdc(dst, src, log2w, h, stride, 1, 0);
     }else if(code == 4){
-        src += f->mv[ *f->bytestream++ ];
+        src += f->mv[bytestream2_get_byte(&f->g)];
         if(start > src || src > end){
             av_log(f->avctx, AV_LOG_ERROR, "mv out of pic\n");
             return;
         }
-        mcdc(dst, src, log2w, h, stride, 1, av_le2ne16(*f->wordstream++));
+        mcdc(dst, src, log2w, h, stride, 1, bytestream2_get_le16(&f->g2));
     }else if(code == 5){
-        mcdc(dst, src, log2w, h, stride, 0, av_le2ne16(*f->wordstream++));
+        mcdc(dst, src, log2w, h, stride, 0, bytestream2_get_le16(&f->g2));
     }else if(code == 6){
         if(log2w){
-            dst[0] = av_le2ne16(*f->wordstream++);
-            dst[1] = av_le2ne16(*f->wordstream++);
+            dst[0] = bytestream2_get_le16(&f->g2);
+            dst[1] = bytestream2_get_le16(&f->g2);
         }else{
-            dst[0     ] = av_le2ne16(*f->wordstream++);
-            dst[stride] = av_le2ne16(*f->wordstream++);
+            dst[0     ] = bytestream2_get_le16(&f->g2);
+            dst[stride] = bytestream2_get_le16(&f->g2);
         }
     }
 }
@@ -371,7 +371,7 @@ static int decode_p_frame(FourXContext *f, const uint8_t *buf, int length){
     uint16_t *src= (uint16_t*)f->last_picture.data[0];
     uint16_t *dst= (uint16_t*)f->current_picture.data[0];
     const int stride= f->current_picture.linesize[0]>>1;
-    unsigned int bitstream_size, bytestream_size, wordstream_size, extra;
+    unsigned int bitstream_size, bytestream_size, wordstream_size, extra, bytestream_offset, wordstream_offset;
 
     if(f->version>1){
         extra=20;
@@ -402,8 +402,10 @@ static int decode_p_frame(FourXContext *f, const uint8_t *buf, int length){
     memset((uint8_t*)f->bitstream_buffer + bitstream_size, 0, FF_INPUT_BUFFER_PADDING_SIZE);
     init_get_bits(&f->gb, f->bitstream_buffer, 8*bitstream_size);
 
-    f->wordstream= (const uint16_t*)(buf + extra + bitstream_size);
-    f->bytestream= buf + extra + bitstream_size + wordstream_size;
+    wordstream_offset = extra + bitstream_size;
+    bytestream_offset = extra + bitstream_size + wordstream_size;
+    bytestream2_init(&f->g2, buf + wordstream_offset, length - wordstream_offset);
+    bytestream2_init(&f->g,  buf + bytestream_offset, length - bytestream_offset);
 
     init_mv(f);
 
@@ -414,15 +416,6 @@ static int decode_p_frame(FourXContext *f, const uint8_t *buf, int length){
         src += 8*stride;
         dst += 8*stride;
     }
-
-    if(   bitstream_size != (get_bits_count(&f->gb)+31)/32*4
-       || (((const char*)f->wordstream - (const char*)buf + 2)&~2) != extra + bitstream_size + wordstream_size
-       || (((const char*)f->bytestream - (const char*)buf + 3)&~3) != extra + bitstream_size + wordstream_size + bytestream_size)
-        av_log(f->avctx, AV_LOG_ERROR, " %d %td %td bytes left\n",
-            bitstream_size - (get_bits_count(&f->gb)+31)/32*4,
-            -(((const char*)f->bytestream - (const char*)buf + 3)&~3) + (extra + bitstream_size + wordstream_size + bytestream_size),
-            -(((const char*)f->wordstream - (const char*)buf + 2)&~2) + (extra + bitstream_size + wordstream_size)
-        );
 
     return 0;
 }
@@ -621,16 +614,24 @@ static int decode_i2_frame(FourXContext *f, const uint8_t *buf, int length){
     int x, y, x2, y2;
     const int width= f->avctx->width;
     const int height= f->avctx->height;
+    const int mbs = (FFALIGN(width, 16) >> 4) * (FFALIGN(height, 16) >> 4);
     uint16_t *dst= (uint16_t*)f->current_picture.data[0];
     const int stride= f->current_picture.linesize[0]>>1;
+    GetByteContext g3;
+
+    if(length < mbs * 8) {
+        av_log(f->avctx, AV_LOG_ERROR, "packet size too small\n");
+        return AVERROR_INVALIDDATA;
+    }
+    bytestream2_init(&g3, buf, length);
 
     for(y=0; y<height; y+=16){
         for(x=0; x<width; x+=16){
             unsigned int color[4], bits;
             memset(color, 0, sizeof(color));
 //warning following is purely guessed ...
-            color[0]= bytestream_get_le16(&buf);
-            color[1]= bytestream_get_le16(&buf);
+            color[0]= bytestream2_get_le16u(&g3);
+            color[1]= bytestream2_get_le16u(&g3);
 
             if(color[0]&0x8000) av_log(NULL, AV_LOG_ERROR, "unk bit 1\n");
             if(color[1]&0x8000) av_log(NULL, AV_LOG_ERROR, "unk bit 2\n");
@@ -638,7 +639,7 @@ static int decode_i2_frame(FourXContext *f, const uint8_t *buf, int length){
             color[2]= mix(color[0], color[1]);
             color[3]= mix(color[1], color[0]);
 
-            bits= bytestream_get_le32(&buf);
+            bits= bytestream2_get_le32u(&g3);
             for(y2=0; y2<16; y2++){
                 for(x2=0; x2<16; x2++){
                     int index= 2*(x2>>2) + 8*(y2>>2);
@@ -647,7 +648,7 @@ static int decode_i2_frame(FourXContext *f, const uint8_t *buf, int length){
             }
             dst+=16;
         }
-        dst += 16*stride - width;
+        dst += 16 * stride - x;
     }
 
     return 0;
@@ -657,12 +658,19 @@ static int decode_i_frame(FourXContext *f, const uint8_t *buf, int length){
     int x, y;
     const int width= f->avctx->width;
     const int height= f->avctx->height;
-    uint16_t *dst= (uint16_t*)f->current_picture.data[0];
-    const int stride= f->current_picture.linesize[0]>>1;
     const unsigned int bitstream_size= AV_RL32(buf);
-    const int token_count av_unused = AV_RL32(buf + bitstream_size + 8);
-    unsigned int prestream_size= 4*AV_RL32(buf + bitstream_size + 4);
-    const uint8_t *prestream= buf + bitstream_size + 12;
+    int token_count av_unused;
+    unsigned int prestream_size;
+    const uint8_t *prestream;
+
+    if (length < bitstream_size + 12) {
+        av_log(f->avctx, AV_LOG_ERROR, "packet size too small\n");
+        return AVERROR_INVALIDDATA;
+    }
+
+    token_count    = AV_RL32(buf + bitstream_size + 8);
+    prestream_size = 4 * AV_RL32(buf + bitstream_size + 4);
+    prestream      = buf + bitstream_size + 12;
 
     if(prestream_size + bitstream_size + 12 != length
        || bitstream_size > (1<<26)
@@ -693,7 +701,6 @@ static int decode_i_frame(FourXContext *f, const uint8_t *buf, int length){
 
             idct_put(f, x, y);
         }
-        dst += 16*stride;
     }
 
     if(get_vlc2(&f->pre_gb, f->pre_vlc.table, ACDC_VLC_BITS, 3) != 256)
@@ -787,7 +794,7 @@ static int decode_frame(AVCodecContext *avctx,
 
     if(frame_4cc == AV_RL32("ifr2")){
         p->pict_type= AV_PICTURE_TYPE_I;
-        if(decode_i2_frame(f, buf-4, frame_size) < 0)
+        if(decode_i2_frame(f, buf-4, frame_size + 4) < 0)
             return -1;
     }else if(frame_4cc == AV_RL32("ifrm")){
         p->pict_type= AV_PICTURE_TYPE_I;

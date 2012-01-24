@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "avformat.h"
 #include "flv.h"
 #include "internal.h"
@@ -57,10 +57,10 @@ typedef struct FLVContext {
     int64_t duration_offset;
     int64_t filesize_offset;
     int64_t duration;
+    int64_t delay;      ///< first dts delay (needed for AVC & Speex)
 } FLVContext;
 
 typedef struct FLVStreamContext {
-    int     delay;      ///< first dts delay for each stream (needed for AVC & Speex)
     int64_t last_ts;    ///< last timestamp for each stream
 } FLVStreamContext;
 
@@ -90,6 +90,7 @@ static int get_audio_flags(AVCodecContext *enc){
         case    11025:
             flags |= FLV_SAMPLERATE_11025HZ;
             break;
+        case    16000: //nellymoser only
         case     8000: //nellymoser only
         case     5512: //not mp3
             if(enc->codec_id != CODEC_ID_MP3){
@@ -125,6 +126,8 @@ static int get_audio_flags(AVCodecContext *enc){
     case CODEC_ID_NELLYMOSER:
         if (enc->sample_rate == 8000) {
             flags |= FLV_CODECID_NELLYMOSER_8KHZ_MONO | FLV_SAMPLESSIZE_16BIT;
+        } else if (enc->sample_rate == 16000) {
+            flags |= FLV_CODECID_NELLYMOSER_16KHZ_MONO | FLV_SAMPLESSIZE_16BIT;
         } else {
             flags |= FLV_CODECID_NELLYMOSER | FLV_SAMPLESSIZE_16BIT;
         }
@@ -162,7 +165,7 @@ static void put_avc_eos_tag(AVIOContext *pb, unsigned ts) {
 static void put_amf_double(AVIOContext *pb, double d)
 {
     avio_w8(pb, AMF_DATA_TYPE_NUMBER);
-    avio_wb64(pb, av_dbl2int(d));
+    avio_wb64(pb, av_double2int(d));
 }
 
 static void put_amf_bool(AVIOContext *pb, int b) {
@@ -199,7 +202,7 @@ static int flv_write_header(AVFormatContext *s)
             if(get_audio_flags(enc)<0)
                 return -1;
         }
-        av_set_pts_info(s->streams[i], 32, 1, 1000); /* 32 bit pts in ms */
+        avpriv_set_pts_info(s->streams[i], 32, 1, 1000); /* 32 bit pts in ms */
 
         sc = av_mallocz(sizeof(FLVStreamContext));
         if (!sc)
@@ -207,6 +210,8 @@ static int flv_write_header(AVFormatContext *s)
         s->streams[i]->priv_data = sc;
         sc->last_ts = -1;
     }
+    flv->delay = AV_NOPTS_VALUE;
+
     avio_write(pb, "FLV", 3);
     avio_w8(pb,1);
     avio_w8(pb,   FLV_HEADER_FLAG_HASAUDIO * !!audio_enc
@@ -359,7 +364,7 @@ static int flv_write_trailer(AVFormatContext *s)
 
     file_size = avio_tell(pb);
 
-    /* update informations */
+    /* update information */
     avio_seek(pb, flv->duration_offset, SEEK_SET);
     put_amf_double(pb, flv->duration / (double)1000);
     avio_seek(pb, flv->filesize_offset, SEEK_SET);
@@ -410,16 +415,21 @@ static int flv_write_packet(AVFormatContext *s, AVPacket *pkt)
     }
 
     if (enc->codec_id == CODEC_ID_H264) {
-        /* check if extradata looks like mp4 formated */
+        /* check if extradata looks like MP4 */
         if (enc->extradata_size > 0 && *(uint8_t*)enc->extradata != 1) {
             if (ff_avc_parse_nal_units_buf(pkt->data, &data, &size) < 0)
                 return -1;
         }
     }
-    if (!sc->delay && pkt->dts < 0)
-        sc->delay = -pkt->dts;
+    if (flv->delay == AV_NOPTS_VALUE)
+        flv->delay = -pkt->dts;
+    if (pkt->dts < -flv->delay) {
+        av_log(s, AV_LOG_WARNING, "Packets are not in the proper order with "
+                                  "respect to DTS\n");
+        return AVERROR(EINVAL);
+    }
 
-    ts = pkt->dts + sc->delay; // add delay to force positive dts
+    ts = pkt->dts + flv->delay; // add delay to force positive dts
 
     /* check Speex packet duration */
     if (enc->codec_id == CODEC_ID_SPEEX && ts - sc->last_ts > 160) {
@@ -450,7 +460,7 @@ static int flv_write_packet(AVFormatContext *s, AVPacket *pkt)
     avio_write(pb, data ? data : pkt->data, size);
 
     avio_wb32(pb,size+flags_size+11); // previous tag size
-    flv->duration = FFMAX(flv->duration, pkt->pts + sc->delay + pkt->duration);
+    flv->duration = FFMAX(flv->duration, pkt->pts + flv->delay + pkt->duration);
 
     avio_flush(pb);
 

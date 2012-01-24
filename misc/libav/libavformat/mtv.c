@@ -27,6 +27,7 @@
 #include "libavutil/bswap.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
+#include "internal.h"
 
 #define MTV_ASUBCHUNK_DATA_SIZE 500
 #define MTV_HEADER_SIZE 512
@@ -52,7 +53,7 @@ typedef struct MTVDemuxContext {
 static int mtv_probe(AVProbeData *p)
 {
     /* Magic is 'AMV' */
-    if(*(p->buf) != 'A' || *(p->buf+1) != 'M' || *(p->buf+2) != 'V')
+    if (*p->buf != 'A' || *(p->buf + 1) != 'M' || *(p->buf + 2) != 'V')
         return 0;
 
     /* Check for nonzero in bpp and (width|height) header fields */
@@ -105,6 +106,12 @@ static int mtv_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
     avio_skip(pb, 4);
     audio_subsegments = avio_rl16(pb);
+
+    if (audio_subsegments == 0) {
+        av_log_ask_for_sample(s, "MTV files without audio are not supported\n");
+        return AVERROR_INVALIDDATA;
+    }
+
     mtv->full_segment_size =
         audio_subsegments * (MTV_AUDIO_PADDING_SIZE + MTV_ASUBCHUNK_DATA_SIZE) +
         mtv->img_segment_size;
@@ -120,7 +127,7 @@ static int mtv_read_header(AVFormatContext *s, AVFormatParameters *ap)
     if(!st)
         return AVERROR(ENOMEM);
 
-    av_set_pts_info(st, 64, 1, mtv->video_fps);
+    avpriv_set_pts_info(st, 64, 1, mtv->video_fps);
     st->codec->codec_type      = AVMEDIA_TYPE_VIDEO;
     st->codec->codec_id        = CODEC_ID_RAWVIDEO;
     st->codec->pix_fmt         = PIX_FMT_RGB565;
@@ -136,7 +143,7 @@ static int mtv_read_header(AVFormatContext *s, AVFormatParameters *ap)
     if(!st)
         return AVERROR(ENOMEM);
 
-    av_set_pts_info(st, 64, 1, AUDIO_SAMPLING_RATE);
+    avpriv_set_pts_info(st, 64, 1, AUDIO_SAMPLING_RATE);
     st->codec->codec_type      = AVMEDIA_TYPE_AUDIO;
     st->codec->codec_id        = CODEC_ID_MP3;
     st->codec->bit_rate        = mtv->audio_br;

@@ -21,6 +21,7 @@
  */
 
 #include "avformat.h"
+#include "internal.h"
 #include "avio_internal.h"
 #include "rawdec.h"
 #include "libavutil/opt.h"
@@ -62,7 +63,7 @@ int ff_raw_read_header(AVFormatContext *s, AVFormatParameters *ap)
             st->codec->bits_per_coded_sample = av_get_bits_per_sample(st->codec->codec_id);
             assert(st->codec->bits_per_coded_sample > 0);
             st->codec->block_align = st->codec->bits_per_coded_sample*st->codec->channels/8;
-            av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+            avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
             break;
             }
         case AVMEDIA_TYPE_VIDEO: {
@@ -84,7 +85,7 @@ int ff_raw_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 av_log(s, AV_LOG_ERROR, "Could not parse framerate: %s.\n", s1->framerate);
                 goto fail;
             }
-            av_set_pts_info(st, 64, framerate.den, framerate.num);
+            avpriv_set_pts_info(st, 64, framerate.den, framerate.num);
             st->codec->width  = width;
             st->codec->height = height;
             st->codec->pix_fmt = pix_fmt;
@@ -128,6 +129,7 @@ int ff_raw_audio_read_header(AVFormatContext *s,
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
     st->codec->codec_id = s->iformat->value;
     st->need_parsing = AVSTREAM_PARSE_FULL;
+    st->start_time = 0;
     /* the parameters will be extracted from the compressed bitstream */
 
     return 0;
@@ -158,8 +160,8 @@ int ff_raw_video_read_header(AVFormatContext *s,
         goto fail;
     }
 
-    st->codec->time_base = (AVRational){framerate.den, framerate.num};
-    av_set_pts_info(st, 64, 1, 1200000);
+    st->r_frame_rate = st->avg_frame_rate = framerate;
+    avpriv_set_pts_info(st, 64, 1, 1200000);
 
 fail:
     return ret;

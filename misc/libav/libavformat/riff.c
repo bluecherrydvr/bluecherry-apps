@@ -172,6 +172,7 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_RAWVIDEO,     MKTAG('2', 'V', 'u', '1') },
     { CODEC_ID_RAWVIDEO,     MKTAG('2', 'v', 'u', 'y') },
     { CODEC_ID_RAWVIDEO,     MKTAG('y', 'u', 'v', 's') },
+    { CODEC_ID_RAWVIDEO,     MKTAG('y', 'u', 'v', '2') },
     { CODEC_ID_RAWVIDEO,     MKTAG('P', '4', '2', '2') },
     { CODEC_ID_RAWVIDEO,     MKTAG('Y', 'V', '1', '2') },
     { CODEC_ID_RAWVIDEO,     MKTAG('Y', 'V', '1', '6') },
@@ -196,6 +197,7 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_R10K,         MKTAG('R', '1', '0', 'k') },
     { CODEC_ID_R210,         MKTAG('r', '2', '1', '0') },
     { CODEC_ID_V210,         MKTAG('v', '2', '1', '0') },
+    { CODEC_ID_V410,         MKTAG('v', '4', '1', '0') },
     { CODEC_ID_INDEO3,       MKTAG('I', 'V', '3', '1') },
     { CODEC_ID_INDEO3,       MKTAG('I', 'V', '3', '2') },
     { CODEC_ID_INDEO4,       MKTAG('I', 'V', '4', '1') },
@@ -264,7 +266,7 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_TARGA,        MKTAG('t', 'g', 'a', ' ') },
     { CODEC_ID_PNG,          MKTAG('M', 'P', 'N', 'G') },
     { CODEC_ID_PNG,          MKTAG('P', 'N', 'G', '1') },
-    { CODEC_ID_CLJR,         MKTAG('c', 'l', 'j', 'r') },
+    { CODEC_ID_CLJR,         MKTAG('C', 'L', 'J', 'R') },
     { CODEC_ID_DIRAC,        MKTAG('d', 'r', 'a', 'c') },
     { CODEC_ID_RPZA,         MKTAG('a', 'z', 'p', 'r') },
     { CODEC_ID_RPZA,         MKTAG('R', 'P', 'Z', 'A') },
@@ -279,6 +281,8 @@ const AVCodecTag ff_codec_bmp_tags[] = {
     { CODEC_ID_UTVIDEO,      MKTAG('U', 'L', 'R', 'G') },
     { CODEC_ID_UTVIDEO,      MKTAG('U', 'L', 'Y', '0') },
     { CODEC_ID_UTVIDEO,      MKTAG('U', 'L', 'Y', '2') },
+    { CODEC_ID_VBLE,         MKTAG('V', 'B', 'L', 'E') },
+    { CODEC_ID_DXTORY,       MKTAG('x', 't', 'o', 'r') },
     { CODEC_ID_NONE,         0 }
 };
 
@@ -323,8 +327,6 @@ const AVCodecTag ff_codec_wav_tags[] = {
     { CODEC_ID_AAC_LATM,        0x1602 },
     { CODEC_ID_AC3,             0x2000 },
     { CODEC_ID_DTS,             0x2001 },
-    { CODEC_ID_SONIC,           0x2048 },
-    { CODEC_ID_SONIC_LS,        0x2048 },
     { CODEC_ID_PCM_MULAW,       0x6c75 },
     { CODEC_ID_AAC,             0x706d },
     { CODEC_ID_AAC,             0x4143 },
@@ -339,6 +341,28 @@ const AVCodecTag ff_codec_wav_tags[] = {
     { CODEC_ID_MP3,       MKTAG('L', 'A', 'M', 'E') },
     { CODEC_ID_MP3,       MKTAG('M', 'P', '3', ' ') },
     { CODEC_ID_NONE,      0 },
+};
+
+const AVMetadataConv ff_riff_info_conv[] = {
+    { "IART", "artist"    },
+    { "ICMT", "comment"   },
+    { "ICOP", "copyright" },
+    { "ICRD", "date"      },
+    { "IGNR", "genre"     },
+    { "ILNG", "language"  },
+    { "INAM", "title"     },
+    { "IPRD", "album"     },
+    { "IPRT", "track"     },
+    { "ISFT", "encoder"   },
+    { "ITCH", "encoded_by"},
+    { 0 },
+};
+
+const char ff_riff_tags[][5] = {
+    "IARL", "IART", "ICMS", "ICMT", "ICOP", "ICRD", "ICRP", "IDIM", "IDPI",
+    "IENG", "IGNR", "IKEY", "ILGT", "ILNG", "IMED", "INAM", "IPLT", "IPRD",
+    "IPRT", "ISBJ", "ISFT", "ISHP", "ISRC", "ISRF", "ITCH",
+    {0}
 };
 
 #if CONFIG_MUXERS
@@ -611,4 +635,50 @@ void ff_parse_specific_params(AVCodecContext *stream, int *au_rate, int *au_ssiz
     gcd= av_gcd(*au_scale, *au_rate);
     *au_scale /= gcd;
     *au_rate /= gcd;
+}
+
+int ff_read_riff_info(AVFormatContext *s, int64_t size)
+{
+    int64_t start, end, cur;
+    AVIOContext *pb = s->pb;
+
+    start = avio_tell(pb);
+    end = start + size;
+
+    while ((cur = avio_tell(pb)) >= 0 && cur <= end - 8 /* = tag + size */) {
+        uint32_t chunk_code;
+        int64_t chunk_size;
+        char key[5] = {0};
+        char *value;
+
+        chunk_code = avio_rl32(pb);
+        chunk_size = avio_rl32(pb);
+        if (chunk_size > end || end - chunk_size < cur || chunk_size == UINT_MAX) {
+            av_log(s, AV_LOG_ERROR, "too big INFO subchunk\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        chunk_size += (chunk_size & 1);
+
+        value = av_malloc(chunk_size + 1);
+        if (!value) {
+            av_log(s, AV_LOG_ERROR, "out of memory, unable to read INFO tag\n");
+            return AVERROR(ENOMEM);
+        }
+
+        AV_WL32(key, chunk_code);
+
+        if (avio_read(pb, value, chunk_size) != chunk_size) {
+            av_freep(key);
+            av_freep(value);
+            av_log(s, AV_LOG_ERROR, "premature end of file while reading INFO tag\n");
+            return AVERROR_INVALIDDATA;
+        }
+
+        value[chunk_size] = 0;
+
+        av_dict_set(&s->metadata, key, value, AV_DICT_DONT_STRDUP_VAL);
+    }
+
+    return 0;
 }

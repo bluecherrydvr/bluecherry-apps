@@ -19,6 +19,8 @@
 #ifndef AVUTIL_PARSEUTILS_H
 #define AVUTIL_PARSEUTILS_H
 
+#include <time.h>
+
 #include "rational.h"
 
 /**
@@ -73,7 +75,7 @@ int av_parse_color(uint8_t *rgba_color, const char *color_string, int slen,
                    void *log_ctx);
 
 /**
- * Parses timestr and returns in *time a corresponding number of
+ * Parse timestr and return in *time a corresponding number of
  * microseconds.
  *
  * @param timeval puts here the number of microseconds corresponding
@@ -113,5 +115,10 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration);
  * Return 1 if found.
  */
 int av_find_info_tag(char *arg, int arg_size, const char *tag1, const char *info);
+
+/**
+ * Convert the decomposed UTC time in tm to a time_t value.
+ */
+time_t av_timegm(struct tm *tm);
 
 #endif /* AVUTIL_PARSEUTILS_H */

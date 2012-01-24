@@ -29,7 +29,6 @@
 #include "avformat.h"
 #include "avio_internal.h"
 #include "internal.h"
-#include <strings.h>
 
 typedef struct {
     const AVClass *class;  /**< Class for private options. */
@@ -121,7 +120,7 @@ static enum CodecID av_str2id(const IdStrMap *tags, const char *str)
     str++;
 
     while (tags->id) {
-        if (!strcasecmp(str, tags->str))
+        if (!av_strcasecmp(str, tags->str))
             return tags->id;
 
         tags++;
@@ -251,7 +250,7 @@ static int read_header(AVFormatContext *s1, AVFormatParameters *ap)
         st->need_parsing = AVSTREAM_PARSE_FULL;
     }
 
-    av_set_pts_info(st, 60, framerate.den, framerate.num);
+    avpriv_set_pts_info(st, 60, framerate.den, framerate.num);
 
     if (width && height) {
         st->codec->width  = width;
@@ -305,7 +304,8 @@ static int read_packet(AVFormatContext *s1, AVPacket *pkt)
                                   s->path, s->img_number)<0 && s->img_number > 1)
             return AVERROR(EIO);
         for(i=0; i<3; i++){
-            if (avio_open(&f[i], filename, AVIO_FLAG_READ) < 0) {
+            if (avio_open2(&f[i], filename, AVIO_FLAG_READ,
+                           &s1->interrupt_callback, NULL) < 0) {
                 if(i==1)
                     break;
                 av_log(s1, AV_LOG_ERROR, "Could not open file : %s\n",filename);
@@ -389,7 +389,8 @@ static int write_packet(AVFormatContext *s, AVPacket *pkt)
             return AVERROR(EIO);
         }
         for(i=0; i<3; i++){
-            if (avio_open(&pb[i], filename, AVIO_FLAG_WRITE) < 0) {
+            if (avio_open2(&pb[i], filename, AVIO_FLAG_WRITE,
+                           &s->interrupt_callback, NULL) < 0) {
                 av_log(s, AV_LOG_ERROR, "Could not open file : %s\n",filename);
                 return AVERROR(EIO);
             }
@@ -431,7 +432,7 @@ static int write_packet(AVFormatContext *s, AVPacket *pkt)
                      (!st->codec->extradata_size &&
                       AV_RL32(pkt->data+4) != MKTAG('j','P',' ',' '))){ // signature
             error:
-                av_log(s, AV_LOG_ERROR, "malformated jpeg2000 codestream\n");
+                av_log(s, AV_LOG_ERROR, "malformed JPEG 2000 codestream\n");
                 return -1;
             }
         }

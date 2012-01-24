@@ -2419,10 +2419,15 @@ void ff_vector_clip_int32_mmx     (int32_t *dst, const int32_t *src, int32_t min
                                    int32_t max, unsigned int len);
 void ff_vector_clip_int32_sse2    (int32_t *dst, const int32_t *src, int32_t min,
                                    int32_t max, unsigned int len);
-void ff_vector_clip_int32_sse2_int(int32_t *dst, const int32_t *src, int32_t min,
+void ff_vector_clip_int32_int_sse2(int32_t *dst, const int32_t *src, int32_t min,
                                    int32_t max, unsigned int len);
-void ff_vector_clip_int32_sse41   (int32_t *dst, const int32_t *src, int32_t min,
+void ff_vector_clip_int32_sse4    (int32_t *dst, const int32_t *src, int32_t min,
                                    int32_t max, unsigned int len);
+
+extern void ff_butterflies_float_interleave_sse(float *dst, const float *src0,
+                                                const float *src1, int len);
+extern void ff_butterflies_float_interleave_avx(float *dst, const float *src0,
+                                                const float *src1, int len);
 
 void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
 {
@@ -2558,7 +2563,7 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
         }
 
 #if HAVE_YASM
-        if (!high_bit_depth) {
+        if (!high_bit_depth && CONFIG_H264CHROMA) {
         c->put_h264_chroma_pixels_tab[0]= ff_put_h264_chroma_mc8_mmx_rnd;
         c->put_h264_chroma_pixels_tab[1]= ff_put_h264_chroma_mc4_mmx;
         }
@@ -2662,13 +2667,13 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
             SET_QPEL_FUNCS(avg_2tap_qpel, 1, 8, mmx2, );
 
 #if HAVE_YASM
-            if (!high_bit_depth) {
+            if (!high_bit_depth && CONFIG_H264CHROMA) {
             c->avg_h264_chroma_pixels_tab[0]= ff_avg_h264_chroma_mc8_mmx2_rnd;
             c->avg_h264_chroma_pixels_tab[1]= ff_avg_h264_chroma_mc4_mmx2;
             c->avg_h264_chroma_pixels_tab[2]= ff_avg_h264_chroma_mc2_mmx2;
             c->put_h264_chroma_pixels_tab[2]= ff_put_h264_chroma_mc2_mmx2;
             }
-            if (bit_depth == 10) {
+            if (bit_depth == 10 && CONFIG_H264CHROMA) {
                 c->put_h264_chroma_pixels_tab[2]= ff_put_h264_chroma_mc2_10_mmxext;
                 c->avg_h264_chroma_pixels_tab[2]= ff_avg_h264_chroma_mc2_10_mmxext;
                 c->put_h264_chroma_pixels_tab[1]= ff_put_h264_chroma_mc4_10_mmxext;
@@ -2739,7 +2744,7 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
             SET_QPEL_FUNCS(avg_2tap_qpel, 1, 8, 3dnow, );
 
 #if HAVE_YASM
-            if (!high_bit_depth) {
+            if (!high_bit_depth && CONFIG_H264CHROMA) {
             c->avg_h264_chroma_pixels_tab[0]= ff_avg_h264_chroma_mc8_3dnow_rnd;
             c->avg_h264_chroma_pixels_tab[1]= ff_avg_h264_chroma_mc4_3dnow;
             }
@@ -2792,8 +2797,10 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
                 H264_QPEL_FUNCS_10(2, 0, sse2_cache64)
                 H264_QPEL_FUNCS_10(3, 0, sse2_cache64)
 
-                c->put_h264_chroma_pixels_tab[0]= ff_put_h264_chroma_mc8_10_sse2;
-                c->avg_h264_chroma_pixels_tab[0]= ff_avg_h264_chroma_mc8_10_sse2;
+                if (CONFIG_H264CHROMA) {
+                    c->put_h264_chroma_pixels_tab[0] = ff_put_h264_chroma_mc8_10_sse2;
+                    c->avg_h264_chroma_pixels_tab[0] = ff_avg_h264_chroma_mc8_10_sse2;
+                }
             }
 #endif
         }
@@ -2822,7 +2829,7 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
 #endif
             c->add_png_paeth_prediction= add_png_paeth_prediction_ssse3;
 #if HAVE_YASM
-            if (!high_bit_depth) {
+            if (!high_bit_depth && CONFIG_H264CHROMA) {
             c->put_h264_chroma_pixels_tab[0]= ff_put_h264_chroma_mc8_ssse3_rnd;
             c->avg_h264_chroma_pixels_tab[0]= ff_avg_h264_chroma_mc8_ssse3_rnd;
             c->put_h264_chroma_pixels_tab[1]= ff_put_h264_chroma_mc4_ssse3;
@@ -2868,6 +2875,11 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
             c->vector_clipf = vector_clipf_sse;
 #if HAVE_YASM
             c->scalarproduct_float = ff_scalarproduct_float_sse;
+            c->butterflies_float_interleave = ff_butterflies_float_interleave_sse;
+
+            if (!high_bit_depth)
+                c->emulated_edge_mc = emulated_edge_mc_sse;
+            c->gmc = gmc_sse;
 #endif
         }
         if (HAVE_AMD3DNOW && (mm_flags & AV_CPU_FLAG_3DNOW))
@@ -2877,7 +2889,7 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
             c->scalarproduct_int16 = ff_scalarproduct_int16_sse2;
             c->scalarproduct_and_madd_int16 = ff_scalarproduct_and_madd_int16_sse2;
             if (mm_flags & AV_CPU_FLAG_ATOM) {
-                c->vector_clip_int32 = ff_vector_clip_int32_sse2_int;
+                c->vector_clip_int32 = ff_vector_clip_int32_int_sse2;
             } else {
                 c->vector_clip_int32 = ff_vector_clip_int32_sse2;
             }
@@ -2888,10 +2900,6 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
                     c->apply_window_int16 = ff_apply_window_int16_sse2;
                 }
             }
-
-            if (!high_bit_depth)
-            c->emulated_edge_mc = emulated_edge_mc_sse;
-            c->gmc= gmc_sse;
 #endif
         }
         if (mm_flags & AV_CPU_FLAG_SSSE3) {
@@ -2909,7 +2917,7 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
 
         if (mm_flags & AV_CPU_FLAG_SSE4 && HAVE_SSE) {
 #if HAVE_YASM
-            c->vector_clip_int32 = ff_vector_clip_int32_sse41;
+            c->vector_clip_int32 = ff_vector_clip_int32_sse4;
 #endif
         }
 
@@ -2922,9 +2930,12 @@ void dsputil_init_mmx(DSPContext* c, AVCodecContext *avctx)
                 H264_QPEL_FUNCS_10(2, 0, sse2)
                 H264_QPEL_FUNCS_10(3, 0, sse2)
 
-                c->put_h264_chroma_pixels_tab[0]= ff_put_h264_chroma_mc8_10_avx;
-                c->avg_h264_chroma_pixels_tab[0]= ff_avg_h264_chroma_mc8_10_avx;
+                if (CONFIG_H264CHROMA) {
+                    c->put_h264_chroma_pixels_tab[0] = ff_put_h264_chroma_mc8_10_avx;
+                    c->avg_h264_chroma_pixels_tab[0] = ff_avg_h264_chroma_mc8_10_avx;
+                }
             }
+            c->butterflies_float_interleave = ff_butterflies_float_interleave_avx;
         }
 #endif
     }

@@ -28,7 +28,7 @@
  * @see http://wiki.multimedia.cx/index.php?title=Apple_ProRes
  */
 
-#define A32_BITSTREAM_READER // some ProRes vlc codes require up to 28 bits to be read at once
+#define LONG_BITSTREAM_READER // some ProRes vlc codes require up to 28 bits to be read at once
 
 #include <stdint.h>
 
@@ -499,8 +499,9 @@ static void decode_slice_plane(ProresContext *ctx, ProresThreadData *td,
 }
 
 
-static int decode_slice(AVCodecContext *avctx, ProresThreadData *td)
+static int decode_slice(AVCodecContext *avctx, void *tdata)
 {
+    ProresThreadData *td = tdata;
     ProresContext *ctx = avctx->priv_data;
     int mb_x_pos  = td->x_pos;
     int mb_y_pos  = td->y_pos;
@@ -559,7 +560,7 @@ static int decode_slice(AVCodecContext *avctx, ProresThreadData *td)
     sf = sf > 128 ? (sf - 96) << 2 : sf;
 
     /* scale quantization matrixes according with slice's scale factor */
-    /* TODO: this can be SIMD-optimized alot */
+    /* TODO: this can be SIMD-optimized a lot */
     if (ctx->qmat_changed || sf != ctx->prev_slice_sf) {
         ctx->prev_slice_sf = sf;
         for (i = 0; i < 64; i++) {
@@ -621,7 +622,7 @@ static int decode_picture(ProresContext *ctx, int pic_num,
         }
     }
 
-    return avctx->execute(avctx, (void *) decode_slice,
+    return avctx->execute(avctx, decode_slice,
                           ctx->slice_data, NULL, slice_num,
                           sizeof(ctx->slice_data[0]));
 }

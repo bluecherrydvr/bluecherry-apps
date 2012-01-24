@@ -34,6 +34,7 @@
 
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
+#include "internal.h"
 
 #define CHUNK_PREAMBLE_SIZE 4
 #define OPCODE_PREAMBLE_SIZE 4
@@ -88,6 +89,7 @@ typedef struct IPMVEContext {
     int64_t video_pts;
     uint32_t     palette[256];
     int          has_palette;
+    int          changed;
 
     unsigned int audio_bits;
     unsigned int audio_channels;
@@ -115,6 +117,11 @@ static int load_ipmovie_packet(IPMVEContext *s, AVIOContext *pb,
     int chunk_type;
 
     if (s->audio_chunk_offset) {
+        if (s->audio_type == CODEC_ID_NONE) {
+            av_log(NULL, AV_LOG_ERROR, "Can not read audio packet before"
+                   "audio codec is known\n");
+                return CHUNK_BAD;
+        }
 
         /* adjust for PCM audio by skipping chunk header */
         if (s->audio_type != CODEC_ID_INTERPLAY_DPCM) {
@@ -137,7 +144,7 @@ static int load_ipmovie_packet(IPMVEContext *s, AVIOContext *pb,
             (s->audio_chunk_size / s->audio_channels / (s->audio_bits / 8));
         else
             s->audio_frame_count +=
-                (s->audio_chunk_size - 6) / s->audio_channels;
+                (s->audio_chunk_size - 6 - s->audio_channels) / s->audio_channels;
 
         av_dlog(NULL, "sending audio frame with pts %"PRId64" (%d audio frames)\n",
                 pkt->pts, s->audio_frame_count);
@@ -162,6 +169,10 @@ static int load_ipmovie_packet(IPMVEContext *s, AVIOContext *pb,
             }
         }
 
+        if (s->changed) {
+            ff_add_param_change(pkt, 0, 0, 0, s->video_width, s->video_height);
+            s->changed = 0;
+        }
         pkt->pos= s->decode_map_chunk_offset;
         avio_seek(pb, s->decode_map_chunk_offset, SEEK_SET);
         s->decode_map_chunk_offset = 0;
@@ -217,6 +228,7 @@ static int process_ipmovie_chunk(IPMVEContext *s, AVIOContext *pb,
     int first_color, last_color;
     int audio_flags;
     unsigned char r, g, b;
+    unsigned int width, height;
 
     /* see if there are any pending packets */
     chunk_type = load_ipmovie_packet(s, pb, pkt);
@@ -373,8 +385,16 @@ static int process_ipmovie_chunk(IPMVEContext *s, AVIOContext *pb,
                 chunk_type = CHUNK_BAD;
                 break;
             }
-            s->video_width = AV_RL16(&scratch[0]) * 8;
-            s->video_height = AV_RL16(&scratch[2]) * 8;
+            width  = AV_RL16(&scratch[0]) * 8;
+            height = AV_RL16(&scratch[2]) * 8;
+            if (width != s->video_width) {
+                s->video_width = width;
+                s->changed++;
+            }
+            if (height != s->video_height) {
+                s->video_height = height;
+                s->changed++;
+            }
             if (opcode_version < 2 || !AV_RL16(&scratch[6])) {
                 s->video_bpp = 8;
             } else {
@@ -562,7 +582,7 @@ static int ipmovie_read_header(AVFormatContext *s,
     st = avformat_new_stream(s, NULL);
     if (!st)
         return AVERROR(ENOMEM);
-    av_set_pts_info(st, 63, 1, 1000000);
+    avpriv_set_pts_info(st, 63, 1, 1000000);
     ipmovie->video_stream_index = st->index;
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
     st->codec->codec_id = CODEC_ID_INTERPLAY_VIDEO;
@@ -575,7 +595,7 @@ static int ipmovie_read_header(AVFormatContext *s,
         st = avformat_new_stream(s, NULL);
         if (!st)
             return AVERROR(ENOMEM);
-        av_set_pts_info(st, 32, 1, ipmovie->audio_sample_rate);
+        avpriv_set_pts_info(st, 32, 1, ipmovie->audio_sample_rate);
         ipmovie->audio_stream_index = st->index;
         st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
         st->codec->codec_id = ipmovie->audio_type;

@@ -86,6 +86,7 @@ typedef struct {
 } channel_unit;
 
 typedef struct {
+    AVFrame             frame;
     GetBitContext       gb;
     //@{
     /** stream data */
@@ -707,9 +708,10 @@ static int decodeChannelSoundUnit (ATRAC3Context *q, GetBitContext *gb, channel_
             memset(pSnd->IMDCT_buf, 0, 512 * sizeof(float));
 
         /* gain compensation and overlapping */
-        gainCompensateAndOverlap (pSnd->IMDCT_buf, &(pSnd->prevFrame[band*256]), &(pOut[band*256]),
-                                    &((pSnd->gainBlock[1 - (pSnd->gcBlkSwitch)]).gBlock[band]),
-                                    &((pSnd->gainBlock[pSnd->gcBlkSwitch]).gBlock[band]));
+        gainCompensateAndOverlap(pSnd->IMDCT_buf, &pSnd->prevFrame[band * 256],
+                                 &pOut[band * 256],
+                                 &pSnd->gainBlock[1 - pSnd->gcBlkSwitch].gBlock[band],
+                                 &pSnd->gainBlock[    pSnd->gcBlkSwitch].gBlock[band]);
     }
 
     /* Swap the gain control buffers for the next frame. */
@@ -740,7 +742,7 @@ static int decodeFrame(ATRAC3Context *q, const uint8_t* databuf,
 
         result = decodeChannelSoundUnit(q,&q->gb, q->pUnits, out_samples[0], 0, JOINT_STEREO);
         if (result != 0)
-            return (result);
+            return result;
 
         /* Framedata of the su2 in the joint-stereo mode is encoded in
          * reverse byte order so we need to swap it first. */
@@ -781,7 +783,7 @@ static int decodeFrame(ATRAC3Context *q, const uint8_t* databuf,
         /* Decode Sound Unit 2. */
         result = decodeChannelSoundUnit(q,&q->gb, &q->pUnits[1], out_samples[1], 1, JOINT_STEREO);
         if (result != 0)
-            return (result);
+            return result;
 
         /* Reconstruct the channel coefficients. */
         reverseMatrixing(out_samples[0], out_samples[1], q->matrix_coeff_index_prev, q->matrix_coeff_index_now);
@@ -794,11 +796,13 @@ static int decodeFrame(ATRAC3Context *q, const uint8_t* databuf,
         for (i=0 ; i<q->channels ; i++) {
 
             /* Set the bitstream reader at the start of a channel sound unit. */
-            init_get_bits(&q->gb, databuf+((i*q->bytes_per_frame)/q->channels), (q->bits_per_frame)/q->channels);
+            init_get_bits(&q->gb,
+                          databuf + i * q->bytes_per_frame / q->channels,
+                          q->bits_per_frame / q->channels);
 
             result = decodeChannelSoundUnit(q,&q->gb, &q->pUnits[i], out_samples[i], i, q->codingMode);
             if (result != 0)
-                return (result);
+                return result;
         }
     }
 
@@ -823,16 +827,16 @@ static int decodeFrame(ATRAC3Context *q, const uint8_t* databuf,
  * @param avctx     pointer to the AVCodecContext
  */
 
-static int atrac3_decode_frame(AVCodecContext *avctx,
-            void *data, int *data_size,
-            AVPacket *avpkt) {
+static int atrac3_decode_frame(AVCodecContext *avctx, void *data,
+                               int *got_frame_ptr, AVPacket *avpkt)
+{
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     ATRAC3Context *q = avctx->priv_data;
-    int result = 0, out_size;
+    int result;
     const uint8_t* databuf;
-    float   *samples_flt = data;
-    int16_t *samples_s16 = data;
+    float   *samples_flt;
+    int16_t *samples_s16;
 
     if (buf_size < avctx->block_align) {
         av_log(avctx, AV_LOG_ERROR,
@@ -840,12 +844,14 @@ static int atrac3_decode_frame(AVCodecContext *avctx,
         return AVERROR_INVALIDDATA;
     }
 
-    out_size = SAMPLES_PER_FRAME * q->channels *
-               av_get_bytes_per_sample(avctx->sample_fmt);
-    if (*data_size < out_size) {
-        av_log(avctx, AV_LOG_ERROR, "Output buffer is too small\n");
-        return AVERROR(EINVAL);
+    /* get output buffer */
+    q->frame.nb_samples = SAMPLES_PER_FRAME;
+    if ((result = avctx->get_buffer(avctx, &q->frame)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return result;
     }
+    samples_flt = (float   *)q->frame.data[0];
+    samples_s16 = (int16_t *)q->frame.data[0];
 
     /* Check if we need to descramble and what buffer to pass on. */
     if (q->scrambled_stream) {
@@ -875,7 +881,9 @@ static int atrac3_decode_frame(AVCodecContext *avctx,
                                               (const float **)q->outSamples,
                                               SAMPLES_PER_FRAME, q->channels);
     }
-    *data_size = out_size;
+
+    *got_frame_ptr   = 1;
+    *(AVFrame *)data = q->frame;
 
     return avctx->block_align;
 }
@@ -1047,6 +1055,9 @@ static av_cold int atrac3_decode_init(AVCodecContext *avctx)
         }
     }
 
+    avcodec_get_frame_defaults(&q->frame);
+    avctx->coded_frame = &q->frame;
+
     return 0;
 }
 
@@ -1060,6 +1071,6 @@ AVCodec ff_atrac3_decoder =
     .init = atrac3_decode_init,
     .close = atrac3_decode_close,
     .decode = atrac3_decode_frame,
-    .capabilities = CODEC_CAP_SUBFRAMES,
+    .capabilities = CODEC_CAP_SUBFRAMES | CODEC_CAP_DR1,
     .long_name = NULL_IF_CONFIG_SMALL("Atrac 3 (Adaptive TRansform Acoustic Coding 3)"),
 };

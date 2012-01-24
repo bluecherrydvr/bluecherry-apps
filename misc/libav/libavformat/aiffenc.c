@@ -19,8 +19,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "avformat.h"
+#include "internal.h"
 #include "aiff.h"
 #include "avio_internal.h"
 
@@ -35,7 +36,7 @@ static int aiff_write_header(AVFormatContext *s)
     AIFFOutputContext *aiff = s->priv_data;
     AVIOContext *pb = s->pb;
     AVCodecContext *enc = s->streams[0]->codec;
-    AVExtFloat sample_rate;
+    uint64_t sample_rate;
     int aifc = 0;
 
     /* First verify if format is ok */
@@ -81,8 +82,9 @@ static int aiff_write_header(AVFormatContext *s)
 
     avio_wb16(pb, enc->bits_per_coded_sample); /* Sample size */
 
-    sample_rate = av_dbl2ext((double)enc->sample_rate);
-    avio_write(pb, (uint8_t*)&sample_rate, sizeof(sample_rate));
+    sample_rate = av_double2int(enc->sample_rate);
+    avio_wb16(pb, (sample_rate >> 52) + (16383 - 1023));
+    avio_wb64(pb, UINT64_C(1) << 63 | sample_rate << 11);
 
     if (aifc) {
         avio_wl32(pb, enc->codec_tag);
@@ -96,7 +98,7 @@ static int aiff_write_header(AVFormatContext *s)
     avio_wb32(pb, 0);                    /* Data offset */
     avio_wb32(pb, 0);                    /* Block-size (block align) */
 
-    av_set_pts_info(s->streams[0], 64, 1, s->streams[0]->codec->sample_rate);
+    avpriv_set_pts_info(s->streams[0], 64, 1, s->streams[0]->codec->sample_rate);
 
     /* Data is starting here */
     avio_flush(pb);

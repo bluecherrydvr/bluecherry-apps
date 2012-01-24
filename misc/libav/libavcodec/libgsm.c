@@ -27,13 +27,10 @@
 
 // The idiosyncrasies of GSM-in-WAV are explained at http://kbs.cs.tu-berlin.de/~jutta/toast.html
 
-#include "avcodec.h"
 #include <gsm/gsm.h>
 
-// gsm.h misses some essential constants
-#define GSM_BLOCK_SIZE 33
-#define GSM_MS_BLOCK_SIZE 65
-#define GSM_FRAME_SIZE 160
+#include "avcodec.h"
+#include "gsm.h"
 
 static av_cold int libgsm_encode_init(AVCodecContext *avctx) {
     if (avctx->channels > 1) {
@@ -124,7 +121,14 @@ AVCodec ff_libgsm_ms_encoder = {
     .long_name = NULL_IF_CONFIG_SMALL("libgsm GSM Microsoft variant"),
 };
 
+typedef struct LibGSMDecodeContext {
+    AVFrame frame;
+    struct gsm_state *state;
+} LibGSMDecodeContext;
+
 static av_cold int libgsm_decode_init(AVCodecContext *avctx) {
+    LibGSMDecodeContext *s = avctx->priv_data;
+
     if (avctx->channels > 1) {
         av_log(avctx, AV_LOG_ERROR, "Mono required for GSM, got %d channels\n",
                avctx->channels);
@@ -139,7 +143,7 @@ static av_cold int libgsm_decode_init(AVCodecContext *avctx) {
 
     avctx->sample_fmt = AV_SAMPLE_FMT_S16;
 
-    avctx->priv_data = gsm_create();
+    s->state = gsm_create();
 
     switch(avctx->codec_id) {
     case CODEC_ID_GSM:
@@ -148,65 +152,81 @@ static av_cold int libgsm_decode_init(AVCodecContext *avctx) {
         break;
     case CODEC_ID_GSM_MS: {
         int one = 1;
-        gsm_option(avctx->priv_data, GSM_OPT_WAV49, &one);
+        gsm_option(s->state, GSM_OPT_WAV49, &one);
         avctx->frame_size  = 2 * GSM_FRAME_SIZE;
         avctx->block_align = GSM_MS_BLOCK_SIZE;
         }
     }
 
+    avcodec_get_frame_defaults(&s->frame);
+    avctx->coded_frame = &s->frame;
+
     return 0;
 }
 
 static av_cold int libgsm_decode_close(AVCodecContext *avctx) {
-    gsm_destroy(avctx->priv_data);
-    avctx->priv_data = NULL;
+    LibGSMDecodeContext *s = avctx->priv_data;
+
+    gsm_destroy(s->state);
+    s->state = NULL;
     return 0;
 }
 
-static int libgsm_decode_frame(AVCodecContext *avctx,
-                               void *data, int *data_size,
-                               AVPacket *avpkt) {
+static int libgsm_decode_frame(AVCodecContext *avctx, void *data,
+                               int *got_frame_ptr, AVPacket *avpkt)
+{
     int i, ret;
-    struct gsm_state *s = avctx->priv_data;
+    LibGSMDecodeContext *s = avctx->priv_data;
     uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
-    int16_t *samples = data;
-    int out_size = avctx->frame_size * av_get_bytes_per_sample(avctx->sample_fmt);
-
-    if (*data_size < out_size) {
-        av_log(avctx, AV_LOG_ERROR, "Output buffer is too small\n");
-        return AVERROR(EINVAL);
-    }
+    int16_t *samples;
 
     if (buf_size < avctx->block_align) {
         av_log(avctx, AV_LOG_ERROR, "Packet is too small\n");
         return AVERROR_INVALIDDATA;
     }
 
+    /* get output buffer */
+    s->frame.nb_samples = avctx->frame_size;
+    if ((ret = avctx->get_buffer(avctx, &s->frame)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return ret;
+    }
+    samples = (int16_t *)s->frame.data[0];
+
     for (i = 0; i < avctx->frame_size / GSM_FRAME_SIZE; i++) {
-        if ((ret = gsm_decode(s, buf, samples)) < 0)
+        if ((ret = gsm_decode(s->state, buf, samples)) < 0)
             return -1;
         buf     += GSM_BLOCK_SIZE;
         samples += GSM_FRAME_SIZE;
     }
 
-    *data_size = out_size;
+    *got_frame_ptr   = 1;
+    *(AVFrame *)data = s->frame;
+
     return avctx->block_align;
 }
 
 static void libgsm_flush(AVCodecContext *avctx) {
-    gsm_destroy(avctx->priv_data);
-    avctx->priv_data = gsm_create();
+    LibGSMDecodeContext *s = avctx->priv_data;
+    int one = 1;
+
+    gsm_destroy(s->state);
+    s->state = gsm_create();
+    if (avctx->codec_id == CODEC_ID_GSM_MS)
+        gsm_option(s->state, GSM_OPT_WAV49, &one);
 }
 
 AVCodec ff_libgsm_decoder = {
     .name           = "libgsm",
     .type           = AVMEDIA_TYPE_AUDIO,
     .id             = CODEC_ID_GSM,
+    .priv_data_size = sizeof(LibGSMDecodeContext),
     .init           = libgsm_decode_init,
     .close          = libgsm_decode_close,
     .decode         = libgsm_decode_frame,
     .flush          = libgsm_flush,
+    .capabilities   = CODEC_CAP_DR1,
     .long_name = NULL_IF_CONFIG_SMALL("libgsm GSM"),
 };
 
@@ -214,9 +234,11 @@ AVCodec ff_libgsm_ms_decoder = {
     .name           = "libgsm_ms",
     .type           = AVMEDIA_TYPE_AUDIO,
     .id             = CODEC_ID_GSM_MS,
+    .priv_data_size = sizeof(LibGSMDecodeContext),
     .init           = libgsm_decode_init,
     .close          = libgsm_decode_close,
     .decode         = libgsm_decode_frame,
     .flush          = libgsm_flush,
+    .capabilities   = CODEC_CAP_DR1,
     .long_name = NULL_IF_CONFIG_SMALL("libgsm GSM Microsoft variant"),
 };

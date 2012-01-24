@@ -6,21 +6,106 @@ libavcodec:  2011-04-18
 libavdevice: 2011-04-18
 libavfilter: 2011-04-18
 libavformat: 2011-04-18
-libpostproc: 2011-04-18
+libpostproc: 2011-04-18 (deprecated, to be removed later)
 libswscale:  2011-06-20
 libavutil:   2011-04-18
 
 
 API changes, most recent first:
 
-2011-xx-xx - xxxxxxx - lavc 53.15.0
+2012-01-15 - lavc 53.34.0
+  New audio encoding API:
+  b2c75b6 Add CODEC_CAP_VARIABLE_FRAME_SIZE capability for use by audio
+          encoders.
+  5ee5fa0 Add avcodec_fill_audio_frame() as a convenience function.
+  b2c75b6 Add avcodec_encode_audio2() and deprecate avcodec_encode_audio().
+          Add AVCodec.encode2().
+
+2012-01-12 - 3167dc9 - lavfi 2.15.0
+  Add a new installed header -- libavfilter/version.h -- with version macros.
+
+2011-01-03 - b73ec05 - lavu 51.21.0
+  Add av_popcount64
+
+2011-12-25 - lavfi 2.14.0
+  e1d9dbf Add a new installed header - buffersrc.h
+  It contains a new function av_buffersrc_buffer() that allows passing
+  frames to the 'buffer' filter, but unlike av_vsrc_buffer_add_frame()
+  it allows for direct rendering.
+  1c9e340 Add avfilter_copy_frame_props() for copying properties from
+  AVFrame to AVFilterBufferRef.
+
+2011-12-25 - lavc 53.31.0
+  Add the following new fields to AVFrame:
+    b58dbb5 sample_aspect_ratio
+    3a2ddf7 width, height
+    8a4a5f6 format
+
+2011-12-18 - 8400b12 - lavc 53.28.1
+  Deprecate AVFrame.age. The field is unused.
+
+2011-12-12 - 5266045 - lavf 53.17.0
+  Add avformat_close_input().
+  Deprecate av_close_input_file() and av_close_input_stream().
+
+2011-12-02 - 0eea212 - lavc 53.25.0
+  Add nb_samples and extended_data fields to AVFrame.
+  Deprecate AVCODEC_MAX_AUDIO_FRAME_SIZE.
+  Deprecate avcodec_decode_audio3() in favor of avcodec_decode_audio4().
+  avcodec_decode_audio4() writes output samples to an AVFrame, which allows
+  audio decoders to use get_buffer().
+
+2011-12-04 - 560f773 - lavc 53.24.0
+  Change AVFrame.data[4]/base[4]/linesize[4]/error[4] to [8] at next major bump.
+  Change AVPicture.data[4]/linesize[4] to [8] at next major bump.
+  Change AVCodecContext.error[4] to [8] at next major bump.
+  Add AV_NUM_DATA_POINTERS to simplify the bump transition.
+
+2011-11-23 - bbb46f3 - lavu 51.18.0
+  Add av_samples_get_buffer_size(), av_samples_fill_arrays(), and
+  av_samples_alloc(), to samplefmt.h.
+
+2011-11-23 - 8889cc4 - lavu 51.17.0
+  Add planar sample formats and av_sample_fmt_is_planar() to samplefmt.h.
+
+2011-11-19 - f3a29b7 - lavc 53.21.0
+  Move some AVCodecContext fields to a new private struct, AVCodecInternal,
+  which is accessed from a new field, AVCodecContext.internal.
+  - fields moved:
+      AVCodecContext.internal_buffer       --> AVCodecInternal.buffer
+      AVCodecContext.internal_buffer_count --> AVCodecInternal.buffer_count
+      AVCodecContext.is_copy               --> AVCodecInternal.is_copy
+
+2011-11-16 - 6270671 - lavu 51.16.0
+  Add av_timegm()
+
+2011-11-13 - lavf 53.15.0
+  New interrupt callback API, allowing per-AVFormatContext/AVIOContext
+  interrupt callbacks.
+  6aa0b98 Add AVIOInterruptCB struct and the interrupt_callback field to
+          AVFormatContext.
+  1dee0ac Add avio_open2() with additional parameters. Those are
+          an interrupt callback and an options AVDictionary.
+          This will allow passing AVOptions to protocols after lavf
+          54.0.
+
+2011-11-06 - ba04ecf - lavu 51.14.0
+  Add av_strcasecmp() and av_strncasecmp() to avstring.h.
+
+2011-11-06 - 07b172f - lavu 51.13.0
+  Add av_toupper()/av_tolower()
+
+2011-11-05 - b6d08f4 - lavf 53.13.0
+  Add avformat_network_init()/avformat_network_uninit()
+
+2011-10-27 - 512557b - lavc 53.15.0
   Remove avcodec_parse_frame.
   Deprecate AVCodecContext.parse_only and CODEC_CAP_PARSE_ONLY.
 
-2011-10-xx - xxxxxxx - lavf 53.10.0
+2011-10-19 - 569129a - lavf 53.10.0
   Add avformat_new_stream(). Deprecate av_new_stream().
 
-2011-xx-xx - xxxxxxx - lavf 53.9.0
+2011-10-13 - b631fba - lavf 53.9.0
   Add AVFMT_NO_BYTE_SEEK AVInputFormat flag.
 
 2011-10-12 - lavu 51.12.0
@@ -50,8 +135,10 @@ API changes, most recent first:
 2011-09-03 - c11fb82 - lavu 51.10.0
   Add AV_OPT_SEARCH_FAKE_OBJ flag for av_opt_find() function.
 
-2011-08-26 - f2011ed - lavu 51.9.0
-  Add av_fifo_peek2(), deprecate av_fifo_peek().
+2011-08-26 - lavu 51.9.0
+  - f2011ed Add av_fifo_peek2(), deprecate av_fifo_peek().
+  - add41de..abc78a5 Do not include intfloat_readwrite.h,
+    mathematics.h, rational.h, pixfmt.h, or log.h from avutil.h.
 
 2011-08-16 - 48f9e45 - lavf 53.4.0
   Add avformat_query_codec().

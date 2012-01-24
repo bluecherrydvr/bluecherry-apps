@@ -20,13 +20,13 @@
  */
 
 #include "libavutil/mathematics.h"
+#include "libavutil/avstring.h"
 #include "libavcodec/get_bits.h"
 #include "avformat.h"
 #include "mpegts.h"
 #include "url.h"
 
 #include <unistd.h>
-#include <strings.h>
 #include "network.h"
 
 #include "rtpdec.h"
@@ -83,6 +83,11 @@ void av_register_rtp_dynamic_payload_handlers(void)
     ff_register_dynamic_payload_handler(&ff_qt_rtp_vid_handler);
     ff_register_dynamic_payload_handler(&ff_quicktime_rtp_aud_handler);
     ff_register_dynamic_payload_handler(&ff_quicktime_rtp_vid_handler);
+
+    ff_register_dynamic_payload_handler(&ff_g726_16_dynamic_handler);
+    ff_register_dynamic_payload_handler(&ff_g726_24_dynamic_handler);
+    ff_register_dynamic_payload_handler(&ff_g726_32_dynamic_handler);
+    ff_register_dynamic_payload_handler(&ff_g726_40_dynamic_handler);
 }
 
 RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
@@ -91,7 +96,7 @@ RTPDynamicProtocolHandler *ff_rtp_handler_find_by_name(const char *name,
     RTPDynamicProtocolHandler *handler;
     for (handler = RTPFirstDynamicPayloadHandler;
          handler; handler = handler->next)
-        if (!strcasecmp(name, handler->enc_name) &&
+        if (!av_strcasecmp(name, handler->enc_name) &&
             codec_type == handler->codec_type)
             return handler;
     return NULL;
@@ -294,7 +299,7 @@ int ff_rtp_check_and_send_back_rr(RTPDemuxContext *s, int count)
     avio_w8(pb, RTCP_SDES);
     len = strlen(s->hostname);
     avio_wb16(pb, (6 + len + 3) / 4); /* length in words - 1 */
-    avio_wb32(pb, s->ssrc);
+    avio_wb32(pb, s->ssrc + 1);
     avio_w8(pb, 0x01);
     avio_w8(pb, len);
     avio_write(pb, s->hostname, len);

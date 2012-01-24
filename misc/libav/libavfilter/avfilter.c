@@ -25,6 +25,7 @@
 #include "libavutil/rational.h"
 #include "libavutil/audioconvert.h"
 #include "libavutil/imgutils.h"
+#include "libavcodec/avcodec.h"
 #include "avfilter.h"
 #include "internal.h"
 
@@ -332,8 +333,8 @@ avfilter_get_video_buffer_ref_from_arrays(uint8_t *data[4], int linesize[4], int
     picref->type = AVMEDIA_TYPE_VIDEO;
     pic->format = picref->format = format;
 
-    memcpy(pic->data,        data,          sizeof(pic->data));
-    memcpy(pic->linesize,    linesize,      sizeof(pic->linesize));
+    memcpy(pic->data,        data,          4*sizeof(data[0]));
+    memcpy(pic->linesize,    linesize,      4*sizeof(linesize[0]));
     memcpy(picref->data,     pic->data,     sizeof(picref->data));
     memcpy(picref->linesize, pic->linesize, sizeof(picref->linesize));
 
@@ -349,7 +350,7 @@ fail:
 
 AVFilterBufferRef *avfilter_get_audio_buffer(AVFilterLink *link, int perms,
                                              enum AVSampleFormat sample_fmt, int size,
-                                             int64_t channel_layout, int planar)
+                                             uint64_t channel_layout, int planar)
 {
     AVFilterBufferRef *ret = NULL;
 
@@ -681,3 +682,21 @@ int avfilter_init_filter(AVFilterContext *filter, const char *args, void *opaque
     return ret;
 }
 
+int avfilter_copy_frame_props(AVFilterBufferRef *dst, const AVFrame *src)
+{
+    if (dst->type != AVMEDIA_TYPE_VIDEO)
+        return AVERROR(EINVAL);
+
+    dst->pts    = src->pts;
+    dst->format = src->format;
+
+    dst->video->w                   = src->width;
+    dst->video->h                   = src->height;
+    dst->video->pixel_aspect        = src->sample_aspect_ratio;
+    dst->video->interlaced          = src->interlaced_frame;
+    dst->video->top_field_first     = src->top_field_first;
+    dst->video->key_frame           = src->key_frame;
+    dst->video->pict_type           = src->pict_type;
+
+    return 0;
+}

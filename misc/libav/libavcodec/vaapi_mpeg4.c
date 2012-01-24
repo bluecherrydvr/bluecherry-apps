@@ -98,7 +98,7 @@ static int vaapi_mpeg4_start_frame(AVCodecContext *avctx, av_unused const uint8_
         pic_param->forward_reference_picture  = ff_vaapi_get_surface_id(&s->last_picture);
 
     /* Fill in VAIQMatrixBufferMPEG4 */
-    /* Only the first inverse quantisation method uses the weighthing matrices */
+    /* Only the first inverse quantisation method uses the weighting matrices */
     if (pic_param->vol_fields.bits.quant_type) {
         iq_matrix = ff_vaapi_alloc_iq_matrix(vactx, sizeof(VAIQMatrixBufferMPEG4));
         if (!iq_matrix)
@@ -155,11 +155,9 @@ AVHWAccel ff_mpeg4_vaapi_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = CODEC_ID_MPEG4,
     .pix_fmt        = PIX_FMT_VAAPI_VLD,
-    .capabilities   = 0,
     .start_frame    = vaapi_mpeg4_start_frame,
     .end_frame      = vaapi_mpeg4_end_frame,
     .decode_slice   = vaapi_mpeg4_decode_slice,
-    .priv_data_size = 0,
 };
 #endif
 
@@ -169,10 +167,8 @@ AVHWAccel ff_h263_vaapi_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = CODEC_ID_H263,
     .pix_fmt        = PIX_FMT_VAAPI_VLD,
-    .capabilities   = 0,
     .start_frame    = vaapi_mpeg4_start_frame,
     .end_frame      = vaapi_mpeg4_end_frame,
     .decode_slice   = vaapi_mpeg4_decode_slice,
-    .priv_data_size = 0,
 };
 #endif

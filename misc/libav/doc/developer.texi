@@ -45,6 +45,103 @@ mailing list.
 @anchor{Coding Rules}
 @section Coding Rules
 
+@subsection Code formatting conventions
+The code is written in K&R C style. That means the following:
+@itemize @bullet
+@item
+The control statements are formatted by putting space between the statement
+and parenthesis in the following way:
+@example
+for (i = 0; i < filter->input_count; i++) @{
+@end example
+@item
+The case statement is always located at the same level as the switch itself:
+@example
+switch (link->init_state) @{
+case AVLINK_INIT:
+    continue;
+case AVLINK_STARTINIT:
+    av_log(filter, AV_LOG_INFO, "circular filter chain detected");
+    return 0;
+@end example
+@item
+Braces in function declarations are written on the new line:
+@example
+const char *avfilter_configuration(void)
+@{
+    return LIBAV_CONFIGURATION;
+@}
+@end example
+@item
+In case of a single-statement if, no curly braces are required:
+@example
+if (!pic || !picref)
+    goto fail;
+@end example
+@item
+Do not put spaces immediately inside parentheses. @samp{if (ret)} is
+a valid style; @samp{if ( ret )} is not.
+@end itemize
+
+There are the following guidelines regarding the indentation in files:
+@itemize @bullet
+@item
+Indent size is 4.
+@item
+The TAB character is forbidden outside of Makefiles as is any
+form of trailing whitespace. Commits containing either will be
+rejected by the git repository.
+@item
+You should try to limit your code lines to 80 characters; however, do so if
+and only if this improves readability.
+@end itemize
+The presentation is one inspired by 'indent -i4 -kr -nut'.
+
+The main priority in Libav is simplicity and small code size in order to
+minimize the bug count.
+
+@subsection Comments
+Use the JavaDoc/Doxygen  format (see examples below) so that code documentation
+can be generated automatically. All nontrivial functions should have a comment
+above them explaining what the function does, even if it is just one sentence.
+All structures and their member variables should be documented, too.
+
+Avoid Qt-style and similar Doxygen syntax with @code{!} in it, i.e. replace
+@code{//!} with @code{///} and similar.  Also @@ syntax should be employed
+for markup commands, i.e. use @code{@@param} and not @code{\param}.
+
+@example
+/**
+ * @@file
+ * MPEG codec.
+ * @@author ...
+ */
+
+/**
+ * Summary sentence.
+ * more text ...
+ * ...
+ */
+typedef struct Foobar@{
+    int var1; /**< var1 description */
+    int var2; ///< var2 description
+    /** var3 description */
+    int var3;
+@} Foobar;
+
+/**
+ * Summary sentence.
+ * more text ...
+ * ...
+ * @@param my_parameter description of my_parameter
+ * @@return return value description
+ */
+int myfunc(int my_parameter)
+...
+@end example
+
+@subsection C language features
+
 Libav is programmed in the ISO C90 language with a few additional
 features from ISO C99, namely:
 @itemize @bullet
@@ -76,55 +173,64 @@ mixing statements and declarations;
 GCC statement expressions (@samp{(x = (@{ int y = 4; y; @})}).
 @end itemize
 
-Indent size is 4.
-The presentation is one inspired by 'indent -i4 -kr -nut'.
-The TAB character is forbidden outside of Makefiles as is any
-form of trailing whitespace. Commits containing either will be
-rejected by the git repository.
+@subsection Naming conventions
+All names are using underscores (_), not CamelCase. For example,
+@samp{avfilter_get_video_buffer} is a valid function name and
+@samp{AVFilterGetVideo} is not. The only exception from this are structure
+names; they should always be in the CamelCase
 
-The main priority in Libav is simplicity and small code size in order to
-minimize the bug count.
+There are following conventions for naming variables and functions:
+@itemize @bullet
+@item
+For local variables no prefix is required.
+@item
+For variables and functions declared as @code{static} no prefixes are required.
+@item
+For variables and functions used internally by the library, @code{ff_} prefix
+should be used.
+For example, @samp{ff_w64_demuxer}.
+@item
+For variables and functions used internally across multiple libraries, use
+@code{avpriv_}. For example, @samp{avpriv_aac_parse_header}.
+@item
+For exported names, each library has its own prefixes. Just check the existing
+code and name accordingly.
+@end itemize
 
-Comments: Use the JavaDoc/Doxygen
-format (see examples below) so that code documentation
-can be generated automatically. All nontrivial functions should have a comment
-above them explaining what the function does, even if it is just one sentence.
-All structures and their member variables should be documented, too.
-@example
-/**
- * @@file
- * MPEG codec.
- * @@author ...
- */
-
-/**
- * Summary sentence.
- * more text ...
- * ...
- */
-typedef struct Foobar@{
-    int var1; /**< var1 description */
-    int var2; ///< var2 description
-    /** var3 description */
-    int var3;
-@} Foobar;
-
-/**
- * Summary sentence.
- * more text ...
- * ...
- * @@param my_parameter description of my_parameter
- * @@return return value description
- */
-int myfunc(int my_parameter)
-...
-@end example
-
+@subsection Miscellanous conventions
+@itemize @bullet
+@item
 fprintf and printf are forbidden in libavformat and libavcodec,
 please use av_log() instead.
-
+@item
 Casts should be used only when necessary. Unneeded parentheses
 should also be avoided if they don't make the code easier to understand.
+@end itemize
+
+@subsection Editor configuration
+In order to configure Vim to follow Libav formatting conventions, paste
+the following snippet into your @file{.vimrc}:
+@example
+" indentation rules for libav: 4 spaces, no tabs
+set expandtab
+set shiftwidth=4
+set softtabstop=4
+" allow tabs in Makefiles
+autocmd FileType make set noexpandtab shiftwidth=8 softtabstop=8
+" Trailing whitespace and tabs are forbidden, so highlight them.
+highlight ForbiddenWhitespace ctermbg=red guibg=red
+match ForbiddenWhitespace /\s\+$\|\t/
+" Do not highlight spaces at the end of line while typing on that line.
+autocmd InsertEnter * match ForbiddenWhitespace /\t\|\s\+\%#\@@<!$/
+@end example
+
+For Emacs, add these roughly equivalent lines to your @file{.emacs.d/init.el}:
+@example
+(setq c-default-style "k&r")
+(setq-default c-basic-offset 4)
+(setq-default indent-tabs-mode nil)
+(setq-default show-trailing-whitespace t)
+@end example
 
 @section Development Policy
 
@@ -408,6 +514,6 @@ Improvements to codec or demuxer might change the FATE results. Make sure
 to commit the update reference with the change and to explain in the comment
 why the expected result changed.
 
-Please refer to @file{doc/fate.txt}.
+Please refer to @url{fate.html}.
 
 @bye

@@ -45,9 +45,10 @@ typedef struct {
 } CryptoContext;
 
 #define OFFSET(x) offsetof(CryptoContext, x)
+#define D AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
-    {"key", "AES decryption key", OFFSET(key), AV_OPT_TYPE_BINARY },
-    {"iv",  "AES decryption initialization vector", OFFSET(iv),  AV_OPT_TYPE_BINARY },
+    {"key", "AES decryption key", OFFSET(key), AV_OPT_TYPE_BINARY, .flags = D },
+    {"iv",  "AES decryption initialization vector", OFFSET(iv),  AV_OPT_TYPE_BINARY, .flags = D },
     { NULL }
 };
 
@@ -61,7 +62,7 @@ static const AVClass crypto_class = {
 static int crypto_open(URLContext *h, const char *uri, int flags)
 {
     const char *nested_url;
-    int ret;
+    int ret = 0;
     CryptoContext *c = h->priv_data;
 
     if (!av_strstart(uri, "crypto+", &nested_url) &&
@@ -81,7 +82,8 @@ static int crypto_open(URLContext *h, const char *uri, int flags)
         ret = AVERROR(ENOSYS);
         goto err;
     }
-    if ((ret = ffurl_open(&c->hd, nested_url, AVIO_FLAG_READ)) < 0) {
+    if ((ret = ffurl_open(&c->hd, nested_url, AVIO_FLAG_READ,
+                          &h->interrupt_callback, NULL)) < 0) {
         av_log(h, AV_LOG_ERROR, "Unable to open input\n");
         goto err;
     }
@@ -95,10 +97,7 @@ static int crypto_open(URLContext *h, const char *uri, int flags)
 
     h->is_streamed = 1;
 
-    return 0;
 err:
-    av_freep(&c->key);
-    av_freep(&c->iv);
     return ret;
 }
 
@@ -157,8 +156,6 @@ static int crypto_close(URLContext *h)
     if (c->hd)
         ffurl_close(c->hd);
     av_freep(&c->aes);
-    av_freep(&c->key);
-    av_freep(&c->iv);
     return 0;
 }
 

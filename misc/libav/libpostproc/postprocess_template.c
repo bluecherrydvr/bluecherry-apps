@@ -1912,7 +1912,7 @@ MEDIAN((%%REGd, %1), (%%REGd, %1, 2), (%0, %1, 8))
 
 #if HAVE_MMX
 /**
- * transposes and shift the given 8x8 Block into dst1 and dst2
+ * Transpose and shift the given 8x8 Block into dst1 and dst2.
  */
 static inline void RENAME(transpose1)(uint8_t *dst1, uint8_t *dst2, uint8_t *src, int srcStride)
 {
@@ -1997,7 +1997,7 @@ static inline void RENAME(transpose1)(uint8_t *dst1, uint8_t *dst2, uint8_t *src
 }
 
 /**
- * transposes the given 8x8 block
+ * Transpose the given 8x8 block.
  */
 static inline void RENAME(transpose2)(uint8_t *dst, int dstStride, uint8_t *src)
 {
@@ -2472,7 +2472,7 @@ static av_always_inline void RENAME(do_a_deblock)(uint8_t *src, int step, int st
     int64_t dc_mask, eq_mask, both_masks;
     int64_t sums[10*8*2];
     src+= step*3; // src points to begin of the 8x8 Block
-//START_TIMER
+    //{ START_TIMER
     __asm__ volatile(
         "movq %0, %%mm7                         \n\t"
         "movq %1, %%mm6                         \n\t"
@@ -2998,7 +2998,8 @@ static av_always_inline void RENAME(do_a_deblock)(uint8_t *src, int step, int st
     STOP_TIMER("step16")
 }else{
     STOP_TIMER("stepX")
-}*/
+}
+    } */
 }
 #endif //HAVE_MMX
 
@@ -3372,14 +3373,14 @@ static void RENAME(postProcess)(const uint8_t src[], int srcStride, uint8_t dst[
             linecpy(tempSrc + srcStride*copyAhead, srcBlock + srcStride*copyAhead,
                     FFMAX(height-y-copyAhead, 0), srcStride);
 
-            /* duplicate last line of src to fill the void upto line (copyAhead+7) */
+            /* duplicate last line of src to fill the void up to line (copyAhead+7) */
             for(i=FFMAX(height-y, 8); i<copyAhead+8; i++)
                     memcpy(tempSrc + srcStride*i, src + srcStride*(height-1), FFABS(srcStride));
 
             /* copy up to (copyAhead+1) lines of dst (line -1 to (copyAhead-1))*/
             linecpy(tempDst, dstBlock - dstStride, FFMIN(height-y+1, copyAhead+1), dstStride);
 
-            /* duplicate last line of dst to fill the void upto line (copyAhead) */
+            /* duplicate last line of dst to fill the void up to line (copyAhead) */
             for(i=height-y+1; i<=copyAhead; i++)
                     memcpy(tempDst + dstStride*i, dst + dstStride*(height-1), FFABS(dstStride));
 
@@ -3518,9 +3519,10 @@ static void RENAME(postProcess)(const uint8_t src[], int srcStride, uint8_t dst[
                 else if(mode & H_DEBLOCK){
 #if HAVE_ALTIVEC
                     DECLARE_ALIGNED(16, unsigned char, tempBlock)[272];
+                    int t;
                     transpose_16x8_char_toPackedAlign_altivec(tempBlock, dstBlock - (4 + 1), stride);
 
-                    const int t=vertClassify_altivec(tempBlock-48, 16, &c);
+                    t = vertClassify_altivec(tempBlock-48, 16, &c);
                     if(t==1) {
                         doVertLowPass_altivec(tempBlock-48, 16, &c);
                         transpose_8x16_char_fromPackedAlign_altivec(dstBlock - (4 + 1), tempBlock, stride);
