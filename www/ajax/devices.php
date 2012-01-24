@@ -50,8 +50,7 @@ class devices{
 		if (!empty($this->ipCameras))
 			$devices = array_merge($devices, $this->ipCameras);
 
-		$short_props = array('protocol', 'device_name', 'resolutionX',
-				     'resolutionY');
+		$short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
 		$block_props = array('rtsp_password', 'rtsp_username');
 
 		foreach($devices as $device) {
@@ -85,7 +84,6 @@ class devices{
 
 $devices = new devices;
 
-//var_dump_pre($devices);
 if (isset($_GET['XML']))
 	$devices->MakeXML();
 else

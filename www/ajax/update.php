@@ -19,7 +19,7 @@ class update{
 			case 'kick':	$this->kickUser(); break;
 			case 'deleteIp': $this->deleteIp(); break;
 			case 'access_device_list': $this->editAccessList(); break;
-			case 'changeStateIp': $this->changeStateIp(); break;
+			case 'changeStateIp': $this->changeState(); break;
 			case 'FPS': $this->changeFpsRes('FPS'); break;
 			case 'RES': $this->changeFpsRes('RES'); break;
 			case 'deleteUser' : $this->deleteUser(); break;
@@ -86,11 +86,6 @@ class update{
 		$id = intval($_POST['id']);
 		data::responseXml(ipCamera::remove($id));
 	}
-	private function changeStateIp(){
-		$id = intval($_POST['id']);
-		$camera = new ipCamera($id);
-		data::responseXml($camera->changeState());
-	}
 	private function updateGlobal(){
 		$status = true;
 		$_POST['G_DISABLE_VERSION_CHECK'] = (empty($_POST['G_DISABLE_VERSION_CHECK'])) ? 1 : 0;
@@ -122,7 +117,13 @@ class update{
 	}
 	
 	private function changeState(){
-		$camera = new camera($_POST['id']);
+		$id = intval($_POST['id']);
+		if (!$id) {
+			$camera = new camera($_POST['id']);
+		} else {
+			$camera = device($id);
+		}
+		
 		$result = $camera->changeState();
 		data::responseXml($result[0], $result[1]);
 	}

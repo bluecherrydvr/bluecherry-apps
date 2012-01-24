@@ -311,8 +311,8 @@ class camera {
 		if (!$devices){ #if does not exist in Devices
 			$this->info['status'] = 'notconfigured';
 			$this->info = array_merge($this->info, $available[0]);
-			$tmp = explode('|', $this->info['device']); 
-			$this->info['new_name'] = PORT." ".($tmp[2] + 1).ON_CARD.$this->info['card_id'];
+			$tmp = explode('|', $this->info['device']);
+			$this->info['new_name'] = PORT." ".($tmp[2] + 1).ON_CARD.$this->info['order'];
 		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
 			$this->info['status'] = 'unmatched';
 			$this->info += $devices[0];
@@ -493,13 +493,14 @@ class ipCamera{
 	}
 	public function changeState(){
 		if ($this->info['driver'] == 'RTSP-ACTi' && !$this->info['disabled']) { self::setActiStreaming($this->info); }
-		return data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true);
+		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
 	}
 }
 
 class card {
 	public $info;
 	public $cameras;
+	public $order;
 	public function __construct($id){
 		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
 		$this->info['id'] = $id;
@@ -515,7 +516,12 @@ class card {
 				$used_capacity += ($this->cameras[$key]->info['resolutionX']>352) ? 4*(30/$this->cameras[$key]->info['video_interval']) : (30/$this->cameras[$key]->info['video_interval']);
 			}
 		}
-	
+		#get card order, since mysql does not support ROW_NUMBER
+		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
+		foreach($cards as $id => $card){
+			if ($card['card_id'] == $this->info['id']) 
+				$this->order = $id;
+		};
 		$this->info['ports'] = $port;
 		$this->info['driver'] = $this->cameras[0]->info['driver'];
 		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];

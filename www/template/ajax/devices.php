@@ -1,5 +1,6 @@
 <?php defined('INDVR') or exit();
-
+		
+		
 #template common functions
 require('../template/template.lib.php');
 ?>

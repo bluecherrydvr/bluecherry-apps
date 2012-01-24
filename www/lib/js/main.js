@@ -389,8 +389,7 @@ DVRPageScript = new Class({
 				})
 				$$('.change_state').each(function(el){
 					el.addEvent('click', function(){
-						var mode = (el.getParent().getParent().get('id') == 'ipDevice') ? 'changeStateIp' : 'changeState';
-						ajaxUpdateField(mode, 'Devices', {'do' : true }, el.get('id'), 'devices');
+						ajaxUpdateField('changeState', 'Devices', {'do' : true }, el.get('id'), 'devices');
 					});
 				});
 								
