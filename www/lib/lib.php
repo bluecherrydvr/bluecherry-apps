@@ -311,8 +311,6 @@ class camera {
 		if (!$devices){ #if does not exist in Devices
 			$this->info['status'] = 'notconfigured';
 			$this->info = array_merge($this->info, $available[0]);
-			$tmp = explode('|', $this->info['device']);
-			$this->info['new_name'] = PORT." ".($tmp[2] + 1).ON_CARD.$this->info['order'];
 		} elseif (!$available){ #if does not exist in AS -- i.e. card removed, unmatched group
 			$this->info['status'] = 'unmatched';
 			$this->info += $devices[0];
@@ -389,6 +387,9 @@ class camera {
 			case 'notconfigured':
 				$required_capacity = 2; #2FPS min
 				$disabled = ($container_card->info['available_capacity']>=2) ? 0 : 1;
+				#use standard name for new devices
+				$tmp = explode('|', $this->info['device']);
+				$new_name = PORT." ".($tmp[2] + 1).ON_CARD.$container_card->info['order'];
 				if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
 					$res['y']='240';
 					$signal_type = 'NTSC';
@@ -397,10 +398,10 @@ class camera {
 					$signal_type = 'PAL';
 				};
 				#if the card was swapped pci id may have changed
-				if (data::getObject('Devices', 'device_name', $this->info['new_name'])){ #if camera with this default name exists, update the device field
-					$result = data::query("UPDATE Devices SET device='{$this->info['device']}' WHERE device_name='{$this->info['new_name']}'", true);
+				if (data::getObject('Devices', 'device_name', $new_name)){ #if camera with this default name exists, update the device field
+					$result = data::query("UPDATE Devices SET device='{$this->info['device']}' WHERE device_name='{$new_name}'", true);
 				} else { #no such device existed
-					$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$this->info['new_name']}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
+					$result = data::query("INSERT INTO Devices (device_name, resolutionX, resolutionY, protocol, device, driver, video_interval, signal_type, disabled) VALUES ('{$new_name}', 352, {$res['y']}, 'V4L2', '{$this->info['device']}', '{$this->info['driver']}', 15, '{$signal_type}', '{$disabled}')", true);
 				}
 				$msg = ($result && $disabled) ? NEW_DEV_NEFPS : false;
 				$data = ($result && !$disabled) ? $container_card->info['available_capacity'] : $container_card->info['available_capacity']-$required_capacity;
@@ -500,7 +501,6 @@ class ipCamera{
 class card {
 	public $info;
 	public $cameras;
-	public $order;
 	public function __construct($id){
 		$devices = data::query("SELECT device FROM AvailableSources WHERE card_id='{$id}'");
 		$this->info['id'] = $id;
@@ -520,7 +520,7 @@ class card {
 		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
 		foreach($cards as $id => $card){
 			if ($card['card_id'] == $this->info['id']) 
-				$this->order = $id;
+				$this->info['order'] = $id+1;
 		};
 		$this->info['ports'] = $port;
 		$this->info['driver'] = $this->cameras[0]->info['driver'];
@@ -571,9 +571,9 @@ class softwareVersion{
 		$tmp = data::getObject('GlobalSettings', 'parameter', 'G_LAST_CURRENT_VERSION');
 		if ($time[0]['value'] + 24*60*60 < time()) {
 			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
-			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'");
-			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'");
-				else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')"); //to avoid whole db update
+			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'", true);
+			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'", true);
+				else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')", true); //to avoid whole db update
 		} else {
 			$this->version['current'] = $tmp[0]['value'];
 		}
@@ -617,10 +617,6 @@ class ipPtzPreset{
 			$this->preset['name'] = IPP_NEW;
 		}
 	}
-	public static function create($post){
-	}
-	public function update($post){
-	}
 	public static function remove($id){
 		$result = data::query("DELETE FROM ipPtzCommandPresets WHERE id='{$id}'", true);
 		data::responseXml($result);
@@ -660,9 +656,11 @@ class cameraPtz{
 		return $command;
 	}
 	private function getCmd($direction){
-		var_dump_pre($direction);
 		if ($direction == 'stop'){
 			return $this->preset[0]['stop'];
+		}
+		if ($direction == 'stop_zoom'){
+			return (!empty($this->preset[0]['stop_zoom'])) ? $this->preset[0]['stop_zoom'] : $this->preset[0]['stop'];
 		}
 		switch ($direction['zoom']){
 			case 'w': return $this->preset[0]['wide']; break;

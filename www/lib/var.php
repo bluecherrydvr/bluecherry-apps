@@ -57,7 +57,7 @@ $GLOBALS['resolutions'] = array(
 
 #anaglog ptz properties
 $GLOBALS['ptz'] = array(
-	'PROTOCOLS' => array('PELCO-D'),
+	'PROTOCOLS' => array('PELCO'),
 	'DEFAULT_PATH' => '/dev/ttyS0',
 	'BAUD' => array(1200, 2400, 4800, 9600, 19200, 38400),
 	'BIT' =>  array(8, 7),

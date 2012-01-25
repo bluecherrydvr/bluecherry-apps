@@ -68,8 +68,8 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #dschedule-window-header { color:#933; font-weight:bold; font-size:1.2em; margin-bottom:20px; }
 
 /*left column*/
-#leftColumn   { padding:20px; width:200px; float:left; }
-#centerColumn { padding:20px; float:left; position:relative; width:655px; }
+#leftColumn   { padding:20px 0 20px 20px; width:200px; float:left; }
+#centerColumn { padding:20px 0 20px 5px; float:left; position:relative; width:655px; }
 
 /*main page-space*/
 #pageContainer { position:relative; border:1px solid #ddd; width:620px; height:auto; display:block; float:left; -moz-border-radius: 5px; -webkit-border-radius: 5px;  margin-left:5px; padding:10px; }

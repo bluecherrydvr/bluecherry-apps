@@ -16,6 +16,7 @@ CREATE TABLE `ipPtzCommandPresets` (
   `preset_save` varchar(128) NOT NULL,
   `preset_go` varchar(128) NOT NULL,
   `stop` varchar(128) NOT NULL,
+  `stop_zoom` varchar(128) NOT NULL,
   `needs_stop` tinyint(1) NOT NULL DEFAULT '0',
   `http_auth` tinyint(1) NOT NULL DEFAULT '1',
   `custom` tinyint(1) NOT NULL DEFAULT '0',

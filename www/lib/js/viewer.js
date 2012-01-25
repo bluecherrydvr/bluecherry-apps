@@ -127,10 +127,12 @@ addPtz = function(el, id){
 					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), true);
 				},
 				'mouseup': function(){
-					sendPtzCommand(this.getParent().get('id'), 'stop', el.get('class'), true);
+					var cmd = (el.get('class')=='t' || el.get('class') == 'w') ? 'stop_zoom' : 'stop'; 				
+					sendPtzCommand(this.getParent().get('id'), cmd, el.get('class'), true);
 				},
 				'mouseout': function(){
-					sendPtzCommand(this.getParent().get('id'), 'stop', el.get('class'), true);
+					var cmd = (el.get('class')=='t' || el.get('class') == 'w') ? 'stop_zoom' : 'stop';
+					sendPtzCommand(this.getParent().get('id'), cmd, el.get('class'), true);
 				}
 			});
 		} else if ($('presets-'+id)==null) {

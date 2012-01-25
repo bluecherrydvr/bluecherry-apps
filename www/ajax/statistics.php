@@ -23,7 +23,7 @@ class stats{
 	public $total_records;
 	public function getData($data, $query_params){
 		$where = "WHERE type_id != 'not found' ";
-		if (!empty($data['start']) && !empty($data['end'])) $where .= "time>={$data['start']} AND time<={$data['end']} ";
+		if (!empty($data['start']) && !empty($data['end'])) $where .= (($where != 'WHERE ') ? ' AND ' : '')." time>={$data['start']} AND time<={$data['end']} ";
 		if (!$data['event_filter']['all_events'] && ($data['event_filter']['motion_events'] || $data['event_filter']['continuous_events']) && !($data['event_filter']['motion_events'] && $data['event_filter']['continuous_events'])) {
 			$this->event_type = ($data['event_filter']['motion_events']) ? "motion" : "continuous";
 			$where .= (($where != 'WHERE ') ? ' AND ' : '')."type_id = '".$this->event_type."'";		
