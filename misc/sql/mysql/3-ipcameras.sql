@@ -23,7 +23,8 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-Panasonic-WV', '/MediaInput/h264', '/cgi-bin/camera', 554, 80),
 ('RTSP-Trendnet-V1', '/mpeg4?tcp', '/cgi/jpg/image.cgi', 554, 80),
 ('RTSP-Airlive-V1', '/h264/media.amp', '/video.cgi?resolution=vga', 554, 80),
-('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80);
+('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80),
+('RTSP-ArecontVision', '/', '/mjpeg', 554, 80);
 
 CREATE TABLE `ipCameras` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
