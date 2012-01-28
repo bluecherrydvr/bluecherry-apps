@@ -331,6 +331,9 @@ int bc_db_open(void);
 void bc_db_close(void);
 BC_DB_RES bc_db_get_table(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
+/* Unlocked */
+BC_DB_RES __bc_db_get_table(const char *sql, ...)
+	__attribute__ ((format (printf, 1, 2)));
 void bc_db_free_table(BC_DB_RES dbres);
 int bc_db_fetch_row(BC_DB_RES dbres);
 int bc_db_query(const char *sql, ...)

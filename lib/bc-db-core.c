@@ -189,6 +189,23 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 	return dbres;
 }
 
+BC_DB_RES __bc_db_get_table(const char *sql, ...)
+{
+	va_list ap;
+	char *query;
+	BC_DB_RES dbres;
+
+	va_start(ap, sql);
+	if (vasprintf(&query, sql, ap) < 0)
+		return NULL;
+	va_end(ap);
+
+	dbres = db_ops->get_table(query);
+	free(query);
+
+	return dbres;
+}
+
 void bc_db_free_table(BC_DB_RES dbres)
 {
 	if (dbres)
