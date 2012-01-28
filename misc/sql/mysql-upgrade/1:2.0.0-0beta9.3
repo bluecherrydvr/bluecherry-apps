@@ -2,3 +2,9 @@ ALTER TABLE `ipPtzCommandPresets` ADD `stop_zoom` VARCHAR( 128 ) NOT NULL AFTER 
 
 ALTER TABLE Devices MODIFY COLUMN buffer_prerecording smallint DEFAULT 3; 
 UPDATE Devices SET buffer_prerecording=3 WHERE buffer_prerecording=0;
+
+CREATE TABLE ServerStatus (
+       pid integer NOT NULL,
+       timestamp integer NOT NULL,
+       message text
+);

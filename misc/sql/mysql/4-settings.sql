@@ -23,3 +23,10 @@ CREATE TABLE Storage (
 );
 
 INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00);
+
+
+CREATE TABLE ServerStatus (
+	pid integer NOT NULL,
+	timestamp integer NOT NULL,
+	message text
+);
