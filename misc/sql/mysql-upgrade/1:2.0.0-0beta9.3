@@ -1,1 +1,4 @@
-ALTER TABLE `ipPtzCommandPresets` ADD `stop_zoom` VARCHAR( 128 ) NOT NULL AFTER `stop`
+ALTER TABLE `ipPtzCommandPresets` ADD `stop_zoom` VARCHAR( 128 ) NOT NULL AFTER `stop`;
+
+ALTER TABLE Devices MODIFY COLUMN buffer_prerecording smallint DEFAULT 3; 
+UPDATE Devices SET buffer_prerecording=3 WHERE buffer_prerecording=0;
