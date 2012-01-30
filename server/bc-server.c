@@ -563,7 +563,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();

@@ -21,6 +21,7 @@
 
 #include <libbluecherry.h>
 #include <libswscale/swscale.h>
+#include <libavutil/mathematics.h>
 
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
 
@@ -246,7 +247,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			return -1;
 		avpicture_fill((AVPicture*)&frame, buf, PIX_FMT_GRAY8, cctx->width, cctx->height);
 
-		sws_scale(md->convContext, rawFrame.data, rawFrame.linesize, 0,
+		sws_scale(md->convContext, (const uint8_t **)rawFrame.data, rawFrame.linesize, 0,
 		          cctx->height, frame.data, frame.linesize);
 
 #ifdef DEBUG_DUMP_MOTION_DATA
