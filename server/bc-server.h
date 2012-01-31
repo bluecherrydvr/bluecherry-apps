@@ -97,6 +97,13 @@ struct bc_output_packet {
 	time_t       ts_clock; // Used for prerecord event start time
 };
 
+typedef enum {
+	STATUS_DB_POLLING1,
+	STATUS_DB_POLLING2,
+	STATUS_LICENSE,
+	NUM_STATUS_COMPONENTS // must be the last entry
+} bc_status_component;
+
 /* Types for aud_format */
 #define AUD_FMT_PCM_U8		0x00000001
 #define AUD_FMT_PCM_S8		0x00000002
@@ -107,6 +114,18 @@ struct bc_output_packet {
 
 /* Flags for aud_format */
 #define AUD_FMT_FLAG_G723_24	0x01000000
+
+/* Used to report on the status of critical system operations;
+ * Operations should be wrapped in calls to _begin and _end,
+ * and any errors recorded with _error. _end accepts an 'ok'
+ * flag which, if zero, will cause an error even if no calls to
+ * _error happened. An 'ok' status will not override specific
+ * errors. These functions may ONLY be used on the main startup
+ * thread. */
+void bc_status_component_begin(bc_status_component component);
+void bc_status_component_error(const char *error, ...);
+/* Returns the actual value of 'ok', e.g. 0 if any error occurred */
+int bc_status_component_end(bc_status_component component, int ok);
 
 extern char global_sched[7 * 24 + 1];
 

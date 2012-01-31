@@ -69,6 +69,136 @@ AVCodec fake_h264_encoder = {
 	.long_name      = "Fake H.264 Encoder for RTP Muxing",
 };
 
+static char *component_error[NUM_STATUS_COMPONENTS];
+static char *component_error_tmp;
+/* XXX XXX XXX thread-local */
+static int status_component_active = -1;
+
+void bc_status_component_begin(bc_status_component c)
+{
+	if (status_component_active >= 0) {
+		bc_status_component_error("BUG: Component status not properly "
+		                          "ended when starting %d", (int)c);
+		bc_status_component_end(status_component_active, 0);
+	}
+
+	status_component_active = c;
+	free(component_error_tmp);
+	component_error_tmp = NULL;
+}
+
+int bc_status_component_end(bc_status_component c, int ok)
+{
+	if (c != status_component_active) {
+		bc_status_component_error("BUG: Component end unexpectedly called "
+		                          "for %d", (int)c);
+		return 0;
+	}
+
+	if (!ok && !component_error_tmp)
+		component_error_tmp = strdup("Unknown error");
+
+	free(component_error[c]);
+	component_error[c]      = component_error_tmp;
+	component_error_tmp     = NULL;
+	status_component_active = -1;
+
+	return component_error[c] == NULL;
+}
+
+void bc_status_component_error(const char *error, ...)
+{
+	va_list args;
+	va_start(args, error);
+
+	if (component_error_tmp) {
+		int l = strlen(component_error_tmp);
+		component_error_tmp = realloc(component_error_tmp, l + 1024);
+		component_error_tmp[l++] = '\n';
+		vsnprintf(component_error_tmp + l, 1024, error, args);
+	} else {
+		component_error_tmp = malloc(1024);
+		vsnprintf(component_error_tmp, 1024, error, args);
+	}
+
+	va_end(args);
+}
+
+static const char *component_string(bc_status_component c)
+{
+	switch (c) {
+		case STATUS_DB_POLLING1: return "database-1";
+		case STATUS_DB_POLLING2: return "database-2";
+		case STATUS_LICENSE: return "licensing";
+		default: return "";
+	}
+}
+
+static void bc_update_server_status()
+{
+	int i;
+	int ok = 1;
+	char *full_error = NULL;
+	int full_error_sz = 0;
+	time_t ts;
+	BC_DB_RES dbres;
+
+	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		if (!component_error[i])
+			continue;
+
+		ok = 0;
+
+		if (full_error) {
+			int nl = strlen(component_error[i]);
+			full_error = realloc(full_error, full_error_sz + nl + 128);
+			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
+			         component_string(i), component_error[i]);
+			full_error_sz += nl + 128;
+		} else {
+			asprintf(&full_error, "[%s] %s", component_string(i), component_error[i]);
+			full_error_sz = strlen(full_error);
+		}
+
+		bc_log("E: [%s] %s", component_string(i), component_error[i]);
+	}
+
+	if (bc_db_start_trans())
+		goto error;
+
+	dbres = __bc_db_get_table("SELECT * FROM ServerStatus");
+	if (!dbres)
+		goto rollback;
+
+	ts = time(NULL);
+
+	if (!bc_db_fetch_row(dbres)) {
+		if (!ok)
+			ts = bc_db_get_val_int(dbres, "timestamp");
+		i = __bc_db_query("UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
+		                  "message=%s%s%s", (int)getpid(), ts,
+		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+	} else {
+		i = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
+		                  "VALUES (%d,%lu,%s%s%s)", (int)getpid(), ts,
+		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+	}
+
+	bc_db_free_table(dbres);
+
+	if (i)
+		goto rollback;
+
+	if (bc_db_commit_trans()) {
+	rollback:
+		bc_db_rollback_trans();
+	error:
+		bc_log("E: Unable to update server status");
+	}
+
+	free(full_error);
+}
+
 /* XXX Create a function here so that we don't have to do so many
  * SELECT's in bc_check_globals() */
 
@@ -612,6 +742,9 @@ int main(int argc, char **argv)
 
 		/* Every second, check for dead threads */
 		bc_check_threads();
+
+		if (!(loops % 60))
+			bc_update_server_status();
 
 		sleep(1);
 	}
