@@ -146,9 +146,9 @@ int bc_open_avcodec(struct bc_record *bc_rec);
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
 
-void bc_check_avail(void);
+int bc_check_avail(void);
 
-void bc_mkdir_recursive(char *path);
+int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
 

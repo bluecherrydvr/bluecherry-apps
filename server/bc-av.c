@@ -346,23 +346,25 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	}
 }
 
-void bc_mkdir_recursive(char *path)
+int bc_mkdir_recursive(char *path)
 {
 	char *t;
 
-	/* If we succeed, sweetness */
-	if (!mkdir(path, 0750))
-		return;
+	if (!mkdir(path, 0750) || errno == EEXIST)
+		return 0;
+	else if (errno != ENOENT)
+		return -1;
 
 	/* Try to make the parent directory */
 	t = strrchr(path, '/');
 	if (t == NULL || t == path)
-		return;
+		return -1;
 	*t = '\0';
-	bc_mkdir_recursive(path);
+	if (bc_mkdir_recursive(path))
+		return -1;
 	*t = '/';
 
-	mkdir(path, 0750);
+	return mkdir(path, 0750);
 }
 
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)

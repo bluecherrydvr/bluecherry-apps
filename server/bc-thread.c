@@ -473,22 +473,18 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		return NULL;
 
 	if (signal_type && video_type && strcasecmp(signal_type, video_type)) {
-		bc_log("E(%d): Video type mismatch, driver has %s and record wants %s",
-		       id, video_type, signal_type);
+		bc_status_component_error("Video type mismatch for device %d "
+			"(driver is %s, device is %s)", id, video_type, signal_type);
 		return NULL;
 	}
 
 	bc_rec = malloc(sizeof(*bc_rec));
-	if (bc_rec == NULL) {
-		bc_log("E(%d): Out of memory trying to start record", id);
-		return NULL;
-	}
 	memset(bc_rec, 0, sizeof(*bc_rec));
 
 	pthread_mutex_init(&bc_rec->cfg_mutex, NULL);
 
 	if (bc_device_config_init(&bc_rec->cfg, dbres)) {
-		bc_log("E(%d): Database error while initializing device", id);
+		bc_status_component_error("Database error while initializing device %d", id);
 		free(bc_rec);
 		return NULL;
 	}
@@ -499,7 +495,9 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {
+		/* XXX should be an event */
 		bc_dev_err(bc_rec, "Error opening device: %m");
+		bc_status_component_error("Error opening device %d: %m", id);
 		free(bc_rec);
 		return NULL;
 	}
@@ -523,7 +521,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
-		bc_dev_err(bc_rec, "Failed to start thread: %m");
+		bc_status_component_error("Failed to start thread: %m");
 		bc_handle_free(bc);
 		free(bc_rec);
 		bc_rec = NULL;
