@@ -662,16 +662,28 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	bc_vlog(msg, ap);
 }
 
-static void check_expire(void)
+/* Returns 0 if okay, otherwise -1 and outputs an error */
+static int check_expire(void)
 {
+	char date[128];
 	time_t t = time(NULL);
 	time_t expire = 1328659200; /* February 8, 2012 */
+	struct tm exp;
 
-	if (t < expire)
-		return;
+	localtime_r(&expire, &exp);
+	strftime(date, sizeof(date), "%A, %B %d %Y at %X", &exp);
 
-	fprintf(stderr, "This beta expired on %s", ctime(&expire));
-	exit(1);
+	if (t >= expire) {
+		bc_status_component_error("This Bluecherry beta version expired on %s. You must upgrade "
+		                          "to the latest version to continue recording.", date);
+		return -1;
+	} else if (expire - t < 172800) {
+		bc_status_component_error("This Bluecherry beta version expires on %s. You should "
+		                          "upgrade to the latest version to prevent any recording "
+		                          "interruptions.", date);
+	}
+
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -682,8 +694,6 @@ int main(int argc, char **argv)
 	int count;
 	const char *user = 0, *group = 0;
 	int error;
-
-	check_expire();
 
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:")) != -1) {
 		switch (opt) {
@@ -752,8 +762,6 @@ int main(int argc, char **argv)
 
 	bc_log("I: Started Bluecherry daemon");
 
-	bc_status_component_begin(STATUS_DB_POLLING1);
-
 	for (count = 1; bc_db_open(); count++) {
 		sleep(1);
 		if (count % 30)
@@ -763,12 +771,21 @@ int main(int argc, char **argv)
 
 	bc_log("I: SQL database connection opened");
 
-	/* Set these from the start */
-	error = bc_check_globals();
+	bc_status_component_begin(STATUS_LICENSE);
+	error = check_expire();
+	bc_status_component_end(STATUS_LICENSE, error == 0);
+	if (error) {
+		/* Expired; do nothing until killed (presumably for an upgrade) */
+		for (;;) {
+			bc_update_server_status();
+			sleep(60);
+		}
+	}
 
+	bc_status_component_begin(STATUS_DB_POLLING1);
+	error = bc_check_globals();
 	/* Do some cleanup */
 	bc_check_inprogress();
-
 	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
 
 	/* Main loop */
