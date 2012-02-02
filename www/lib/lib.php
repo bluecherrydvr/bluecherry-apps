@@ -113,7 +113,8 @@ class data{
 	public static function responseXml($status, $message = false, $data = ''){
 		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
 		if (empty($data)) { $data = '0'; };
-		$status = ($status) ? 'OK' : 'F'; #in compliance with interface
+		if (!in_array($status, array('F', 'INFO', 'OK')))
+			$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"\x3f>
 				<response>

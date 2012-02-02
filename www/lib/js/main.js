@@ -266,6 +266,25 @@ DVRPageScript = new Class({
 							el.getParent().dispose();
 						});
 					});
+					$$('.path').addEvent('keyup', function(ev){
+						var self = this;
+						var request = new Request({
+							url: 'ajax/storagecheck.php?',
+							data: 'path='+self.get('value'),
+							method: 'get',
+							onRequest: function(){
+							},
+							onSuccess: function(html, xml){
+								var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+								var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+								var el = new Element('div', {'id' : 'message', 'class' : status, 'html' : msg});
+								self.getParent().getChildren('#message').each(function(el){
+									el.dispose();
+								});
+								el.inject(self.getParent(), 'bottom');
+							}
+						}).send();
+					});
 				};
 				initDelete();
 				addButton.addEvent('click', function(ev){
@@ -966,9 +985,6 @@ updateStatBar = function(barId, val, y, r){
 	el.setStyle('background-image', 'url("/img/pbar-'+pBarColor+'.png")');
 	el.getChildren('.text').set('html', val+'%');
 }
-
-
-
 
 getInfo = function(t, m, x, containerId, s){
 					var request = new Request({
