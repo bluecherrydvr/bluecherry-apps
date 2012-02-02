@@ -13,7 +13,9 @@
 #include <pwd.h>
 #include <grp.h>
 
+extern "C" {
 #include <libavutil/log.h>
+}
 
 #include "bc-server.h"
 
@@ -58,22 +60,26 @@ static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void 
 }
 
 AVCodec fake_h264_encoder = {
-	.name           = "fakeh264",
-	.type           = AVMEDIA_TYPE_VIDEO,
-	.id             = CODEC_ID_H264,
-	.priv_data_size = 0,
-	.init           = fake_h264_init,
-	.encode         = fake_h264_frame,
-	.close          = fake_h264_close,
-	.capabilities   = CODEC_CAP_DELAY,
-	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
-	.long_name      = "Fake H.264 Encoder for RTP Muxing",
+	"fakeh264", /* name */
+	AVMEDIA_TYPE_VIDEO, /* type */
+	CODEC_ID_H264, /* id */
+	0, /* priv_data_size */ 
+	fake_h264_init, /* init */
+	fake_h264_frame, /* encode */
+	fake_h264_close, /* close */
+	0, /* decode */
+	CODEC_CAP_DELAY, /* capabilities */
+	0, /* next */
+	0, /* flush */
+	0, /* suipported_framerates */
+	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE }, /* pix_fmts */
+	"Fake H.264 Encoder for RTP Muxing", /* long_name */
 };
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
 /* XXX XXX XXX thread-local */
-static int status_component_active = -1;
+static bc_status_component status_component_active = (bc_status_component)-1;
 
 void bc_status_component_begin(bc_status_component c)
 {
@@ -102,7 +108,7 @@ int bc_status_component_end(bc_status_component c, int ok)
 	free(component_error[c]);
 	component_error[c]      = component_error_tmp;
 	component_error_tmp     = NULL;
-	status_component_active = -1;
+	status_component_active = (bc_status_component)-1;
 
 	return component_error[c] == NULL;
 }
@@ -114,11 +120,11 @@ void bc_status_component_error(const char *error, ...)
 
 	if (component_error_tmp) {
 		int l = strlen(component_error_tmp);
-		component_error_tmp = realloc(component_error_tmp, l + 1024);
+		component_error_tmp = (char*) realloc(component_error_tmp, l + 1024);
 		component_error_tmp[l++] = '\n';
 		vsnprintf(component_error_tmp + l, 1024, error, args);
 	} else {
-		component_error_tmp = malloc(1024);
+		component_error_tmp = (char*) malloc(1024);
 		vsnprintf(component_error_tmp, 1024, error, args);
 	}
 
@@ -146,6 +152,7 @@ static void bc_update_server_status()
 	BC_DB_RES dbres;
 
 	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		const char *component_str = component_string((bc_status_component)i);
 		if (!component_error[i])
 			continue;
 
@@ -153,16 +160,16 @@ static void bc_update_server_status()
 
 		if (full_error) {
 			int nl = strlen(component_error[i]);
-			full_error = realloc(full_error, full_error_sz + nl + 128);
+			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
 			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_string(i), component_error[i]);
+			         component_str, component_error[i]);
 			full_error_sz += nl + 128;
 		} else {
-			asprintf(&full_error, "[%s] %s", component_string(i), component_error[i]);
+			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
 			full_error_sz = strlen(full_error);
 		}
 
-		bc_log("E: [%s] %s", component_string(i), component_error[i]);
+		bc_log("E: [%s] %s", component_str, component_error[i]);
 	}
 
 	if (bc_db_start_trans())

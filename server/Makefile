@@ -8,12 +8,10 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o
 
-#CFLAGS		+= -DEBUG
-
 all: $(TARGETS)
 
 bc-server: $(LIB) $(SERVER_OBJS)
-	$(LD) $(LDFLAGS) $(SERVER_OBJS) -o $@
+	g++ $(LDFLAGS) $(SERVER_OBJS) -o $@
 
 install: all rsyslog.conf
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server

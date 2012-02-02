@@ -9,11 +9,13 @@
 
 #include <pthread.h>
 
+extern "C" {
 #include <libbluecherry.h>
 #include <libavformat/avformat.h>
-#include <alsa/asoundlib.h>
-
 #include "g723-dec.h"
+}
+
+#include <alsa/asoundlib.h>
 
 /* Maximum length of recording */
 #define BC_MAX_RECORD_TIME 900

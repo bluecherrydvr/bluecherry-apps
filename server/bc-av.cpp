@@ -8,15 +8,18 @@
 #include <sys/types.h>
 #include <time.h>
 
+extern "C" {
 #include "libavutil/mathematics.h"
+}
 
 #include "bc-server.h"
 
-int bc_av_lockmgr(void **mutex, enum AVLockOp op)
+int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 {
+	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
 	switch (op) {
 		case AV_LOCK_CREATE:
-			*mutex = malloc(sizeof(pthread_mutex_t));
+			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 			if (!*mutex)
 				return 1;
 			return !!pthread_mutex_init(*mutex, NULL);
@@ -125,7 +128,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	if ((err = snd_pcm_hw_params_set_format(pcm, params, fmt)) < 0) {
+	if ((err = snd_pcm_hw_params_set_format(pcm, params, (snd_pcm_format_t)fmt)) < 0) {
 		bc_dev_err(bc_rec, "Setting audio device format failed: %s",
 			   snd_strerror(err));
 		return -1;
@@ -255,7 +258,7 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	av_init_packet(&opkt);
 	opkt.flags        = pkt->flags;
 	opkt.pts          = pkt->pts;
-	opkt.data         = pkt->data;
+	opkt.data         = (uint8_t*)pkt->data;
 	opkt.size         = pkt->size;
 	opkt.stream_index = s->index;
 
@@ -286,8 +289,8 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
 	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %"PRId64", probably "
-		       "caused by recent PTS reset", pkt->pts);
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
+		       "caused by recent PTS reset", (long long int)pkt->pts);
 		return 0;
 	}
 
