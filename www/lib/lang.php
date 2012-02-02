@@ -333,6 +333,7 @@ define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %I
 define('STRAGE_HEADER', 'Manage storage locations');
 define('ADD_LOCATION', 'Add location');
 define('LOCATION', 'Folder:');
+define('STORAGE_INFO_MESSAGE', 'Please note that if you add a new storage location, you need to make sure that: <br /> - folder exists <br /> - folder is empty <br /> - folder belongs to user bluecherry, group bluecherry.');
 
 define('ON_CARD', ' on Card ');
 define('MAP_PRESET', 'New preset...');
@@ -405,4 +406,7 @@ define('STS_NUM_EVENTS', 'Number of events');
 #ACTi
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
 define('ACTI_STREAMING_N_SET_3', 'Your ACTi camera could not be automatically configured for RTP over UDP streaming. Please do so manually.');
+
+define('VIVOTEC_SETRAMING_SET', 'Your Vivotec camera has been automatically configured to use MJPEG codec on the second encoder.');
+define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automatically configured to use MJPEG codec on the second encoder. Please do so manually.');
 ?>

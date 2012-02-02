@@ -2,7 +2,12 @@
 
 	include("lib/lib.php");  #common functions
 	
-	if (!empty($_SESSION['id'])){
+	
+	
+	
+	if (empty($_SESSION['id']) || ($_SESSION['from_client'] && !$_SESSION['from_client_override'])){
+		include('template/login.php');
+	} else {
 		$current_user = new user('id', $_SESSION['id']);
 		#check for general errors
 		if ($current_user->info['default_password'] && !$_COOKIE['default_password_warning_dismiss']) {
@@ -14,9 +19,7 @@
 				include('template/main.admin.php') : include('liveview/liveview.php');
 		} else {
 				include('liveview/liveview.php');
-		}
-	} else {
-				include('template/login.php');
+		}		
 	};
 	
 

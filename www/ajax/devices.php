@@ -68,9 +68,8 @@ class devices{
 				    !in_array($prop, $short_props))
 					continue;
 
-				if (in_array($prop, $block_props) || is_array($prop))
+				if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
 					continue;
-
 				$xml .= "    <$prop>".htmlspecialchars($val)."</$prop>\n";
 			}
 			$xml .= "  </device>\n";

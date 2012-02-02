@@ -96,7 +96,7 @@ class data{
 	}
 	public static function formQueryFromArray($type, $table, $array, $parameter = false, $value = false){
 		foreach($array as $p => $v){
-			if ($v === true || $v === 'on' ) { $array[$p] = 1; } elseif ($v == false) {$array[$p] = 0; };
+			if ($v === true || $v === 'on' ) { $array[$p] = 1; } elseif ($v === false) {$array[$p] = 0; };
 		}
 		switch($type){
 			case 'insert': return "INSERT INTO {$table} (".implode(", ", array_keys($array)).") VALUES ('".implode("', '", $array)."')"; break;
@@ -207,7 +207,8 @@ class user{
 			if (!$this->info['access_remote'] && $from_client)	{ return NA_CLIENT; };
 		}
 		if ($this->checkPassword($password)) { 
-				$_SESSION['id'] = $this->info['id']; 
+				$_SESSION['id'] = $this->info['id'];
+				if (!empty($_SESSION['from_client'])) { $_SESSION['from_client_override'] = true; }
 				$_SESSION['from_client'] = $from_client; 
 				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
 				return 'OK'; } 
@@ -415,6 +416,7 @@ class ipCamera{
 	public $info;
 	private $options;
 	public $ptzControl;
+	private $control;
 	public function __construct($id = false, $options = false){
 		$this->options = $options;
 		if ($id) $this->getInfo(intval($id));
@@ -461,10 +463,10 @@ class ipCamera{
 		}
 		return $this->info['connection_status'];
 	}
-	protected static function setActiStreaming($info){ #1042, ACTi cameras are set to rtp over udp streaming on add or enable
+	protected function autoConfigure($driver, $info){ #auto configure known cameras
 		include("ipcamlib.php");
-		$acti_camera = new RTSP_ACTI($info);
-		$result = $acti_camera->set_streaming_method(3); #3 for RTP over UDP
+		$control = get_ipcam_control($driver, $info);
+		if ($control) { $result = $control->auto_configure(); };
 		return $result;
 	}
 	public static function create($data){
@@ -473,27 +475,23 @@ class ipCamera{
 		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
 		$data['device'] = "{$data['ipAddr']}|{$data['port']}|{$data['rtsp']}";
 		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$data['models']}'");
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
 		#for acti to proper streaming method
 		$acti_config_result = false;
 		$message = ($result) ? AIP_CAMADDED : false;
-		if ($model_info[0]['driver']=='RTSP-ACTi' && $result){
-			$acti_config_result = self::setActiStreaming(array(
+		$message .= '<hr />'.self::autoConfigure($model_info[0]['driver'], array(
 				'ipAddr' =>$data['ipAddr'],
 				'portMjpeg' =>$data['portMjpeg'],
 				'rtsp_username' =>$data['user'],
 				'rtsp_password' =>$data['pass']
-			));
-			$message .= '<br /><br />';
-			$message .= ($acti_config_result[0]) ? ACTI_STREAMING_SET_3 : ACTI_STREAMING_N_SET_3;
-		};
+		)); 
 		return array($result, $message);
 	}
 	public static function remove($id){
 		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
 	}
 	public function changeState(){
-		if ($this->info['driver'] == 'RTSP-ACTi' && !$this->info['disabled']) { self::setActiStreaming($this->info); }
+		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
 		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
 	}
 }

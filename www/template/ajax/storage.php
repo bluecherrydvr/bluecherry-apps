@@ -3,6 +3,7 @@
 require('../template/template.lib.php');
 ?>
 <h1 class="header"><?php echo STRAGE_HEADER; ?></h1><hr />
+<div id='message' class='INFO'><?php echo STORAGE_INFO_MESSAGE; ?></div>
 <div id='button' class='add'><?php echo ADD_LOCATION; ?></div>
 <div id='saveButton'><?php echo SAVE; ?></div>
 <div class='bClear'></div>
