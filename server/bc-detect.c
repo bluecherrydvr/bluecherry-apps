@@ -124,7 +124,7 @@ static struct sysfs_driver *try_driver(const char *driver)
 }
 
 /* Peruse sysfs for PCI devices associated with solo6010 driver */
-static void __bc_check_avail(void)
+static int __bc_check_avail(void)
 {
 	struct sysfs_driver *driver;
 	struct sysfs_device *device;
@@ -134,12 +134,12 @@ static void __bc_check_avail(void)
 	if (driver == NULL)
 		driver = try_driver("solo6010");
 	if (driver == NULL)
-		return;
+		return 0;
 
 	devlist = sysfs_get_driver_devices(driver);
 	if (devlist == NULL) {
 		sysfs_close_driver(driver);
-		return;
+		return 0;
 	}
 
 	dlist_for_each_data(devlist, device, struct sysfs_device) {
@@ -160,11 +160,13 @@ static void __bc_check_avail(void)
 	}
 
 	sysfs_close_driver(driver);
+	return 0;
 }
 
-void bc_check_avail(void)
+int bc_check_avail(void)
 {
 	int i, j;
+	int re = 0;
 
 	for (i = 0; i < MAX_CARDS; i++)
 		cards[i].dirty = cards[i].valid;
@@ -172,9 +174,10 @@ void bc_check_avail(void)
 	__bc_check_avail();
 
 	if (bc_db_start_trans())
-		return;
+		return -1;
 
-	__bc_db_query("DELETE FROM AvailableSources");
+	if (__bc_db_query("DELETE FROM AvailableSources"))
+		goto rollback;
 
 	for (i = 0; i < MAX_CARDS; i++) {
 		struct card_list *card = &cards[i];
@@ -182,16 +185,21 @@ void bc_check_avail(void)
 			break;
 
 		for (j = 0; j < card->n_ports; j++) {
-			__bc_db_query("INSERT INTO AvailableSources "
-			              "(device, driver, card_id, video_type) "
-			              "VALUES('%s|%s|%d', '%s', '%d', '%s')",
-			              card->uid_type, card->name, j, card->driver,
-			              card->card_id, card->video_type);
+			re |= __bc_db_query("INSERT INTO AvailableSources "
+			                    "(device, driver, card_id, video_type) "
+			                    "VALUES('%s|%s|%d', '%s', '%d', '%s')",
+			                    card->uid_type, card->name, j, card->driver,
+			                    card->card_id, card->video_type);
+			if (re)
+				goto rollback;
 		}
 	}
 
-	if (bc_db_commit_trans())
+	if (bc_db_commit_trans()) {
+	rollback:
 		bc_db_rollback_trans();
+		return -1;
+	}
 
 	/* Check for cards gone missing */
 	for (i = 0; i < MAX_CARDS; i++) {
@@ -200,4 +208,6 @@ void bc_check_avail(void)
 		bc_log("W: Card with name %s no longer found", cards[i].name);
 		memset(&cards[i], 0, sizeof(cards[i]));
 	}
+
+	return re;
 }

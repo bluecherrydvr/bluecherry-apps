@@ -26,10 +26,11 @@
  */
 
 #include "avformat.h"
+#include "internal.h"
 #include "riff.h"
 #include "isom.h"
 #include "libavutil/intreadwrite.h"
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "libavutil/dict.h"
 #include "caf.h"
 
@@ -67,7 +68,7 @@ static int read_desc_chunk(AVFormatContext *s)
 
     /* parse format description */
     st->codec->codec_type  = AVMEDIA_TYPE_AUDIO;
-    st->codec->sample_rate = av_int2dbl(avio_rb64(pb));
+    st->codec->sample_rate = av_int2double(avio_rb64(pb));
     st->codec->codec_tag   = avio_rb32(pb);
     flags = avio_rb32(pb);
     caf->bytes_per_packet  = avio_rb32(pb);
@@ -287,7 +288,7 @@ static int read_header(AVFormatContext *s,
         return AVERROR_INVALIDDATA;
     }
 
-    av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+    avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
     st->start_time = 0;
 
     /* position the stream at the start of data */

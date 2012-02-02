@@ -26,7 +26,7 @@
  * Indeo5 decoders.
  */
 
-#define ALT_BITSTREAM_READER_LE
+#define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "get_bits.h"
 #include "ivi_common.h"
@@ -610,6 +610,9 @@ void ff_ivi_output_plane(IVIPlaneDesc *plane, uint8_t *dst, int dst_pitch)
     int             x, y;
     const int16_t   *src  = plane->bands[0].buf;
     uint32_t        pitch = plane->bands[0].pitch;
+
+    if (!src)
+        return;
 
     for (y = 0; y < plane->height; y++) {
         for (x = 0; x < plane->width; x++)

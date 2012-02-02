@@ -192,7 +192,7 @@ static av_cold void uninit(AVFilterContext *ctx)
     if (movie->codec_ctx)
         avcodec_close(movie->codec_ctx);
     if (movie->format_ctx)
-        av_close_input_file(movie->format_ctx);
+        avformat_close_input(&movie->format_ctx);
     avfilter_unref_buffer(movie->picref);
     av_freep(&movie->frame);
 }
@@ -240,6 +240,7 @@ static int movie_get_frame(AVFilterLink *outlink)
                 av_image_copy(movie->picref->data, movie->picref->linesize,
                               movie->frame->data,  movie->frame->linesize,
                               movie->picref->format, outlink->w, outlink->h);
+                avfilter_copy_frame_props(movie->picref, movie->frame);
 
                 /* FIXME: use a PTS correction mechanism as that in
                  * ffplay.c when some API will be available for that */
@@ -248,12 +249,8 @@ static int movie_get_frame(AVFilterLink *outlink)
                     movie->frame->pkt_dts : movie->frame->pkt_pts;
 
                 movie->picref->pos                    = movie->frame->reordered_opaque;
-                movie->picref->video->pixel_aspect = st->sample_aspect_ratio.num ?
-                    st->sample_aspect_ratio : movie->codec_ctx->sample_aspect_ratio;
-                movie->picref->video->interlaced      = movie->frame->interlaced_frame;
-                movie->picref->video->top_field_first = movie->frame->top_field_first;
-                movie->picref->video->key_frame       = movie->frame->key_frame;
-                movie->picref->video->pict_type       = movie->frame->pict_type;
+                if (!movie->frame->sample_aspect_ratio.num)
+                    movie->picref->video->pixel_aspect = st->sample_aspect_ratio;
                 av_dlog(outlink->src,
                         "movie_get_frame(): file:'%s' pts:%"PRId64" time:%lf pos:%"PRId64" aspect:%d/%d\n",
                         movie->file_name, movie->picref->pts,

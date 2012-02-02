@@ -19,12 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <strings.h>
 #include "libavutil/intreadwrite.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/bswap.h"
 #include "libavutil/dict.h"
+#include "libavutil/avstring.h"
 #include "avformat.h"
+#include "internal.h"
 #include "avi.h"
 #include "dv.h"
 #include "riff.h"
@@ -77,6 +78,11 @@ static const char avi_headers[][8] = {
     { 'O', 'N', '2', ' ',    'O', 'N', '2', 'f' },
     { 'R', 'I', 'F', 'F',    'A', 'M', 'V', ' ' },
     { 0 }
+};
+
+static const AVMetadataConv avi_metadata_conv[] = {
+    { "strn", "title" },
+    { 0 },
 };
 
 static int avi_load_index(AVFormatContext *s);
@@ -261,15 +267,6 @@ static int avi_read_tag(AVFormatContext *s, AVStream *st, uint32_t tag, uint32_t
                             AV_DICT_DONT_STRDUP_VAL);
 }
 
-static void avi_read_info(AVFormatContext *s, uint64_t end)
-{
-    while (avio_tell(s->pb) < end) {
-        uint32_t tag  = avio_rl32(s->pb);
-        uint32_t size = avio_rl32(s->pb);
-        avi_read_tag(s, NULL, tag, size);
-    }
-}
-
 static const char months[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 
@@ -281,7 +278,7 @@ static void avi_metadata_creation_time(AVDictionary **metadata, char *date)
     if (sscanf(date, "%*3s%*[ ]%3s%*[ ]%2d%*[ ]%8s%*[ ]%4d",
                month, &day, time, &year) == 4) {
         for (i=0; i<12; i++)
-            if (!strcasecmp(month, months[i])) {
+            if (!av_strcasecmp(month, months[i])) {
                 snprintf(buffer, sizeof(buffer), "%.4d-%.2d-%.2d %s",
                          year, i+1, day, time);
                 av_dict_set(metadata, "creation_time", buffer, 0);
@@ -380,7 +377,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                 goto end_of_header;
             }
             else if (tag1 == MKTAG('I', 'N', 'F', 'O'))
-                avi_read_info(s, list_end);
+                ff_read_riff_info(s, size - 4);
             else if (tag1 == MKTAG('n', 'c', 'd', 't'))
                 avi_read_nikon(s, list_end);
 
@@ -506,7 +503,7 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
                     ast->scale = 1;
                 }
             }
-            av_set_pts_info(st, 64, ast->scale, ast->rate);
+            avpriv_set_pts_info(st, 64, ast->scale, ast->rate);
 
             ast->cum_len=avio_rl32(pb); /* start */
             st->nb_frames = avio_rl32(pb);
@@ -669,9 +666,9 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
         case MKTAG('i', 'n', 'd', 'x'):
             i= avio_tell(pb);
             if(pb->seekable && !(s->flags & AVFMT_FLAG_IGNIDX) &&
-               read_braindead_odml_indx(s, 0) < 0 && s->error_recognition >= FF_ER_EXPLODE){
+               read_braindead_odml_indx(s, 0) < 0 &&
+               (s->error_recognition & AV_EF_EXPLODE))
                 goto fail;
-            }
             avio_seek(pb, i+size, SEEK_SET);
             break;
         case MKTAG('v', 'p', 'r', 'p'):
@@ -708,7 +705,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
             if(size > 1000000){
                 av_log(s, AV_LOG_ERROR, "Something went wrong during header parsing, "
                                         "I will ignore it and try to continue anyway.\n");
-                if (s->error_recognition >= FF_ER_EXPLODE) goto fail;
+                if (s->error_recognition & AV_EF_EXPLODE)
+                    goto fail;
                 avi->movi_list = avio_tell(pb) - 4;
                 avi->movi_end  = avio_size(pb);
                 goto end_of_header;
@@ -745,7 +743,8 @@ static int avi_read_header(AVFormatContext *s, AVFormatParameters *ap)
         clean_index(s);
     }
 
-    ff_metadata_conv_ctx(s, NULL, ff_avi_metadata_conv);
+    ff_metadata_conv_ctx(s, NULL, avi_metadata_conv);
+    ff_metadata_conv_ctx(s, NULL, ff_riff_info_conv);
 
     return 0;
 }
@@ -787,7 +786,7 @@ static int read_gab2_sub(AVStream *st, AVPacket *pkt) {
             *st->codec = *ast->sub_ctx->streams[0]->codec;
             ast->sub_ctx->streams[0]->codec->extradata = NULL;
             time_base = ast->sub_ctx->streams[0]->time_base;
-            av_set_pts_info(st, 64, time_base.num, time_base.den);
+            avpriv_set_pts_info(st, 64, time_base.num, time_base.den);
         }
         ast->sub_buffer = pkt->data;
         memset(pkt, 0, sizeof(*pkt));
@@ -1367,7 +1366,7 @@ static int avi_read_close(AVFormatContext *s)
         if (ast) {
             if (ast->sub_ctx) {
                 av_freep(&ast->sub_ctx->pb);
-                av_close_input_file(ast->sub_ctx);
+                avformat_close_input(&ast->sub_ctx);
             }
             av_free(ast->sub_buffer);
             av_free_packet(&ast->sub_pkt);

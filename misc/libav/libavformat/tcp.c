@@ -39,7 +39,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
 {
     struct addrinfo hints, *ai, *cur_ai;
     int port, fd = -1;
-    TCPContext *s = NULL;
+    TCPContext *s = h->priv_data;
     int listen_socket = 0;
     const char *p;
     char buf[256];
@@ -100,7 +100,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
         struct pollfd p = {fd, POLLOUT, 0};
         ret = ff_neterrno();
         if (ret == AVERROR(EINTR)) {
-            if (url_interrupt_cb()) {
+            if (ff_check_interrupt(&h->interrupt_callback)) {
                 ret = AVERROR_EXIT;
                 goto fail1;
             }
@@ -112,7 +112,7 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
 
         /* wait until we are connected or until abort */
         while(timeout--) {
-            if (url_interrupt_cb()) {
+            if (ff_check_interrupt(&h->interrupt_callback)) {
                 ret = AVERROR_EXIT;
                 goto fail1;
             }
@@ -135,12 +135,6 @@ static int tcp_open(URLContext *h, const char *uri, int flags)
             goto fail;
         }
     }
-    s = av_malloc(sizeof(TCPContext));
-    if (!s) {
-        freeaddrinfo(ai);
-        return AVERROR(ENOMEM);
-    }
-    h->priv_data = s;
     h->is_streamed = 1;
     s->fd = fd;
     freeaddrinfo(ai);
@@ -193,7 +187,6 @@ static int tcp_close(URLContext *h)
 {
     TCPContext *s = h->priv_data;
     closesocket(s->fd);
-    av_free(s);
     return 0;
 }
 
@@ -210,4 +203,6 @@ URLProtocol ff_tcp_protocol = {
     .url_write           = tcp_write,
     .url_close           = tcp_close,
     .url_get_file_handle = tcp_get_file_handle,
+    .priv_data_size      = sizeof(TCPContext),
+    .flags               = URL_PROTOCOL_FLAG_NETWORK,
 };

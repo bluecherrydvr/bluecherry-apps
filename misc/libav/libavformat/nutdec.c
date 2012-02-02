@@ -20,7 +20,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <strings.h>
 #include "libavutil/avstring.h"
 #include "libavutil/bswap.h"
 #include "libavutil/dict.h"
@@ -375,7 +374,7 @@ static int decode_stream_header(NUTContext *nut){
         return -1;
     }
     stc->time_base= &nut->time_base[stc->time_base_id];
-    av_set_pts_info(s->streams[stream_id], 63, stc->time_base->num, stc->time_base->den);
+    avpriv_set_pts_info(s->streams[stream_id], 63, stc->time_base->num, stc->time_base->den);
     return 0;
 }
 
@@ -459,8 +458,8 @@ static int decode_info_header(NUTContext *nut){
                 set_disposition_bits(s, str_value, stream_id_plus1 - 1);
                 continue;
             }
-            if(metadata && strcasecmp(name,"Uses")
-               && strcasecmp(name,"Depends") && strcasecmp(name,"Replaces"))
+            if(metadata && av_strcasecmp(name,"Uses")
+               && av_strcasecmp(name,"Depends") && av_strcasecmp(name,"Replaces"))
                 av_dict_set(metadata, name, str_value, 0);
         }
     }

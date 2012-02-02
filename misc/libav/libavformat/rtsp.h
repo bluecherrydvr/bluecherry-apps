@@ -186,7 +186,7 @@ enum RTSPClientState {
 };
 
 /**
- * Identifies particular servers that require special handling, such as
+ * Identify particular servers that require special handling, such as
  * standards-incompliant "Transport:" lines in the SETUP request.
  */
 enum RTSPServerType {
@@ -359,6 +359,11 @@ typedef struct RTSPState {
      * Mask of all requested media types
      */
     int media_type_mask;
+
+    /**
+     * Minimum and maximum local UDP ports.
+     */
+    int rtp_port_min, rtp_port_max;
 } RTSPState;
 
 #define RTSP_FLAG_FILTER_SRC  0x1    /**< Filter incoming UDP packets -
@@ -366,7 +371,7 @@ typedef struct RTSPState {
                                           source address and port. */
 
 /**
- * Describes a single stream, as identified by a single m= line block in the
+ * Describe a single stream, as identified by a single m= line block in the
  * SDP content. In the case of RDT, one RTSPStream can represent multiple
  * AVStreams. In this case, each AVStream in this set has similar content
  * (but different codec/bitrate).
@@ -404,9 +409,6 @@ typedef struct RTSPStream {
 
 void ff_rtsp_parse_line(RTSPMessageHeader *reply, const char *buf,
                         RTSPState *rt, const char *method);
-
-extern int rtsp_rtp_port_min;
-extern int rtsp_rtp_port_max;
 
 /**
  * Send a command to the RTSP server without waiting for the reply.

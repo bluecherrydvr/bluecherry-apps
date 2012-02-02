@@ -26,6 +26,7 @@ Only mono files are supported.
 
 */
 #include "avformat.h"
+#include "internal.h"
 
 static const char AMR_header [] = "#!AMR\n";
 static const char AMRWB_header [] = "#!AMR-WB\n";
@@ -111,7 +112,7 @@ static int amr_read_header(AVFormatContext *s,
     }
     st->codec->channels = 1;
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-    av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+    avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
 
     return 0;
 }
@@ -176,7 +177,6 @@ static int amr_read_packet(AVFormatContext *s,
 AVInputFormat ff_amr_demuxer = {
     .name           = "amr",
     .long_name      = NULL_IF_CONFIG_SMALL("3GPP AMR file format"),
-    .priv_data_size = 0, /*priv_data_size*/
     .read_probe     = amr_probe,
     .read_header    = amr_read_header,
     .read_packet    = amr_read_packet,

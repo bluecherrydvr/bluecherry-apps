@@ -1,6 +1,4 @@
 /*
- * jfdctint.c
- *
  * This file is part of the Independent JPEG Group's software.
  *
  * The authors make NO WARRANTY or representation, either express or implied,
@@ -342,7 +340,7 @@ FUNC(ff_jpeg_fdct_islow)(DCTELEM *data)
 
 /*
  * The secret of DCT2-4-8 is really simple -- you do the usual 1-DCT
- * on the rows and then, instead of doing even and odd, part on the colums
+ * on the rows and then, instead of doing even and odd, part on the columns
  * you do even part two times.
  */
 GLOBAL(void)

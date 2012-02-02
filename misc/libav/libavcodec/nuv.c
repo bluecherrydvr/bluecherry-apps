@@ -107,8 +107,8 @@ static void get_quant_quality(NuvContext *c, int quality) {
 
 static int codec_reinit(AVCodecContext *avctx, int width, int height, int quality) {
     NuvContext *c = avctx->priv_data;
-    width = (width + 1) & ~1;
-    height = (height + 1) & ~1;
+    width  = FFALIGN(width,  2);
+    height = FFALIGN(height, 2);
     if (quality >= 0)
         get_quant_quality(c, quality);
     if (width != c->width || height != c->height) {
@@ -184,9 +184,9 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size,
     }
     if (c->codec_frameheader) {
         int w, h, q;
-        if (buf_size < 12) {
-            av_log(avctx, AV_LOG_ERROR, "invalid nuv video frame\n");
-            return -1;
+        if (buf[0] != 'V' || buf_size < 12) {
+            av_log(avctx, AV_LOG_ERROR, "invalid nuv video frame (wrong codec_tag?)\n");
+            return AVERROR_INVALIDDATA;
         }
         w = AV_RL16(&buf[6]);
         h = AV_RL16(&buf[8]);

@@ -20,6 +20,7 @@
  */
 
 #include "avformat.h"
+#include "internal.h"
 #include "riff.h"
 #include "isom.h"
 #include "matroska.h"
@@ -28,14 +29,14 @@
 #include "avlanguage.h"
 #include "libavutil/samplefmt.h"
 #include "libavutil/intreadwrite.h"
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/random_seed.h"
 #include "libavutil/lfg.h"
 #include "libavutil/dict.h"
+#include "libavutil/avstring.h"
 #include "libavcodec/xiph.h"
 #include "libavcodec/mpeg4audio.h"
-#include <strings.h>
 
 typedef struct ebml_master {
     int64_t         pos;                ///< absolute offset in the file where the master's elements start
@@ -184,7 +185,7 @@ static void put_ebml_float(AVIOContext *pb, unsigned int elementid, double val)
 {
     put_ebml_id(pb, elementid);
     put_ebml_num(pb, 8, 0);
-    avio_wb64(pb, av_dbl2int(val));
+    avio_wb64(pb, av_double2int(val));
 }
 
 static void put_ebml_binary(AVIOContext *pb, unsigned int elementid,
@@ -317,9 +318,12 @@ static int64_t mkv_write_seekhead(AVIOContext *pb, mkv_seekhead *seekhead)
 
     currentpos = avio_tell(pb);
 
-    if (seekhead->reserved_size > 0)
-        if (avio_seek(pb, seekhead->filepos, SEEK_SET) < 0)
-            return -1;
+    if (seekhead->reserved_size > 0) {
+        if (avio_seek(pb, seekhead->filepos, SEEK_SET) < 0) {
+            currentpos = -1;
+            goto fail;
+        }
+    }
 
     metaseek = start_ebml_master(pb, MATROSKA_ID_SEEKHEAD, seekhead->reserved_size);
     for (i = 0; i < seekhead->num_entries; i++) {
@@ -343,6 +347,7 @@ static int64_t mkv_write_seekhead(AVIOContext *pb, mkv_seekhead *seekhead)
 
         currentpos = seekhead->filepos;
     }
+fail:
     av_free(seekhead->entries);
     av_free(seekhead);
 
@@ -443,7 +448,8 @@ static void get_aac_sample_rates(AVFormatContext *s, AVCodecContext *codec, int 
 {
     MPEG4AudioConfig mp4ac;
 
-    if (avpriv_mpeg4audio_get_config(&mp4ac, codec->extradata, codec->extradata_size) < 0) {
+    if (avpriv_mpeg4audio_get_config(&mp4ac, codec->extradata,
+                                     codec->extradata_size * 8, 1) < 0) {
         av_log(s, AV_LOG_WARNING, "Error parsing AAC extradata, unable to determine samplerate.\n");
         return;
     }
@@ -658,7 +664,7 @@ static int mkv_write_tracks(AVFormatContext *s)
         end_ebml_master(pb, track);
 
         // ms precision is the de-facto standard timescale for mkv files
-        av_set_pts_info(st, 64, 1, 1000);
+        avpriv_set_pts_info(st, 64, 1, 1000);
     }
     end_ebml_master(pb, tracks);
     return 0;
@@ -760,7 +766,7 @@ static int mkv_write_tag(AVFormatContext *s, AVDictionary *m, unsigned int eleme
     end_ebml_master(s->pb, targets);
 
     while ((t = av_dict_get(m, "", t, AV_DICT_IGNORE_SUFFIX)))
-        if (strcasecmp(t->key, "title"))
+        if (av_strcasecmp(t->key, "title"))
             mkv_write_simpletag(s->pb, t);
 
     end_ebml_master(s->pb, tag);

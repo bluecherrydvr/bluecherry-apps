@@ -68,7 +68,7 @@ typedef struct {
     int index;               ///< index in mxf_essence_container_uls table
     const UID *codec_ul;
     int order;               ///< interleaving order if dts are equal
-    int interlaced;          ///< wether picture is interlaced
+    int interlaced;          ///< whether picture is interlaced
     int temporal_reordering;
     AVRational aspect_ratio; ///< display aspect ratio
     int closed_gop;          ///< gop is closed, used in mpeg-2 frame parsing
@@ -1285,6 +1285,8 @@ static const UID mxf_mpeg2_codec_uls[] = {
     { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x03,0x04,0x01,0x02,0x02,0x01,0x03,0x03,0x00 }, // MP-HL Long GOP
     { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x03,0x04,0x01,0x02,0x02,0x01,0x04,0x02,0x00 }, // 422P-HL I-Frame
     { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x03,0x04,0x01,0x02,0x02,0x01,0x04,0x03,0x00 }, // 422P-HL Long GOP
+    { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x03,0x04,0x01,0x02,0x02,0x01,0x05,0x02,0x00 }, // MP@H-14 I-Frame
+    { 0x06,0x0E,0x2B,0x34,0x04,0x01,0x01,0x03,0x04,0x01,0x02,0x02,0x01,0x05,0x03,0x00 }, // MP@H-14 Long GOP
 };
 
 static const UID *mxf_get_mpeg2_codec_ul(AVCodecContext *avctx)
@@ -1296,6 +1298,8 @@ static const UID *mxf_get_mpeg2_codec_ul(AVCodecContext *avctx)
             return &mxf_mpeg2_codec_uls[0+long_gop];
         else if (avctx->level == 4) // High
             return &mxf_mpeg2_codec_uls[4+long_gop];
+        else if (avctx->level == 6) // High 14
+            return &mxf_mpeg2_codec_uls[8+long_gop];
     } else if (avctx->profile == 0) { // 422
         if (avctx->level == 5) // Main
             return &mxf_mpeg2_codec_uls[2+long_gop];
@@ -1438,7 +1442,7 @@ static int mxf_write_header(AVFormatContext *s)
                 av_log(s, AV_LOG_ERROR, "unsupported video frame rate\n");
                 return -1;
             }
-            av_set_pts_info(st, 64, mxf->time_base.num, mxf->time_base.den);
+            avpriv_set_pts_info(st, 64, mxf->time_base.num, mxf->time_base.den);
             if (s->oformat == &ff_mxf_d10_muxer) {
                 if (st->codec->bit_rate == 50000000)
                     if (mxf->time_base.den == 25) sc->index = 3;
@@ -1466,7 +1470,7 @@ static int mxf_write_header(AVFormatContext *s)
                 av_log(s, AV_LOG_ERROR, "only 48khz is implemented\n");
                 return -1;
             }
-            av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+            avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
             if (s->oformat == &ff_mxf_d10_muxer) {
                 if (st->index != 1) {
                     av_log(s, AV_LOG_ERROR, "MXF D-10 only support one audio track\n");

@@ -69,20 +69,153 @@ AVCodec fake_h264_encoder = {
 	.long_name      = "Fake H.264 Encoder for RTP Muxing",
 };
 
+static char *component_error[NUM_STATUS_COMPONENTS];
+static char *component_error_tmp;
+/* XXX XXX XXX thread-local */
+static int status_component_active = -1;
+
+void bc_status_component_begin(bc_status_component c)
+{
+	if (status_component_active >= 0) {
+		bc_status_component_error("BUG: Component status not properly "
+		                          "ended when starting %d", (int)c);
+		bc_status_component_end(status_component_active, 0);
+	}
+
+	status_component_active = c;
+	free(component_error_tmp);
+	component_error_tmp = NULL;
+}
+
+int bc_status_component_end(bc_status_component c, int ok)
+{
+	if (c != status_component_active) {
+		bc_status_component_error("BUG: Component end unexpectedly called "
+		                          "for %d", (int)c);
+		return 0;
+	}
+
+	if (!ok && !component_error_tmp)
+		component_error_tmp = strdup("Unknown error");
+
+	free(component_error[c]);
+	component_error[c]      = component_error_tmp;
+	component_error_tmp     = NULL;
+	status_component_active = -1;
+
+	return component_error[c] == NULL;
+}
+
+void bc_status_component_error(const char *error, ...)
+{
+	va_list args;
+	va_start(args, error);
+
+	if (component_error_tmp) {
+		int l = strlen(component_error_tmp);
+		component_error_tmp = realloc(component_error_tmp, l + 1024);
+		component_error_tmp[l++] = '\n';
+		vsnprintf(component_error_tmp + l, 1024, error, args);
+	} else {
+		component_error_tmp = malloc(1024);
+		vsnprintf(component_error_tmp, 1024, error, args);
+	}
+
+	va_end(args);
+}
+
+static const char *component_string(bc_status_component c)
+{
+	switch (c) {
+		case STATUS_DB_POLLING1: return "database-1";
+		case STATUS_DB_POLLING2: return "database-2";
+		case STATUS_LICENSE: return "licensing";
+		default: return "";
+	}
+}
+
+static void bc_update_server_status()
+{
+	int i;
+	int ok = 1;
+	char *full_error = NULL;
+	int full_error_sz = 0;
+	time_t ts;
+	BC_DB_RES dbres;
+
+	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		if (!component_error[i])
+			continue;
+
+		ok = 0;
+
+		if (full_error) {
+			int nl = strlen(component_error[i]);
+			full_error = realloc(full_error, full_error_sz + nl + 128);
+			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
+			         component_string(i), component_error[i]);
+			full_error_sz += nl + 128;
+		} else {
+			asprintf(&full_error, "[%s] %s", component_string(i), component_error[i]);
+			full_error_sz = strlen(full_error);
+		}
+
+		bc_log("E: [%s] %s", component_string(i), component_error[i]);
+	}
+
+	if (bc_db_start_trans())
+		goto error;
+
+	dbres = __bc_db_get_table("SELECT * FROM ServerStatus");
+	if (!dbres)
+		goto rollback;
+
+	ts = time(NULL);
+
+	if (!bc_db_fetch_row(dbres)) {
+		if (!ok)
+			ts = bc_db_get_val_int(dbres, "timestamp");
+		i = __bc_db_query("UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
+		                  "message=%s%s%s", (int)getpid(), ts,
+		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+	} else {
+		i = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
+		                  "VALUES (%d,%lu,%s%s%s)", (int)getpid(), ts,
+		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+	}
+
+	bc_db_free_table(dbres);
+
+	if (i)
+		goto rollback;
+
+	if (bc_db_commit_trans()) {
+	rollback:
+		bc_db_rollback_trans();
+	error:
+		bc_log("E: Unable to update server status");
+	}
+
+	free(full_error);
+}
+
 /* XXX Create a function here so that we don't have to do so many
  * SELECT's in bc_check_globals() */
 
 /* Update our global settings */
-static void bc_check_globals(void)
+static int bc_check_globals(void)
 {
 	BC_DB_RES dbres;
-	int i;
+	int i = 0;
 
 	/* Get global schedule, default to continuous */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DEV_SCED'");
 
-	if (dbres != NULL && !bc_db_fetch_row(dbres)) {
+	if (!dbres)
+		bc_status_component_error("Database failure for global schedule");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
 		const char *sched = bc_db_get_val(dbres, "value", NULL);
 		if (sched)
 			strlcpy(global_sched, sched, sizeof(global_sched));
@@ -97,33 +230,43 @@ static void bc_check_globals(void)
 	dbres = bc_db_get_table("SELECT * from Storage ORDER BY "
 				"priority ASC");
 
+	if (!dbres) {
+		bc_status_component_error("Database failure for storage paths");
+		return -1;
+	}
+
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on db_check!");
 
 	memset(media_stor, 0, sizeof(media_stor));
-	i = 0;
-	if (dbres != NULL) {
-		while (!bc_db_fetch_row(dbres) && i < MAX_STOR_LOCS) {
-			const char *path = bc_db_get_val(dbres, "path", NULL);
-			float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
-			float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
 
-			if (!path || !strlen(path) || max_thresh <= 0 ||
-			    min_thresh <= 0)
-				continue;
+	while (!bc_db_fetch_row(dbres) && i < MAX_STOR_LOCS) {
+		const char *path = bc_db_get_val(dbres, "path", NULL);
+		float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
+		float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
 
-			strcpy(media_stor[i].path, path);
-			media_stor[i].max_thresh = max_thresh;
-			media_stor[i].min_thresh = min_thresh;
+		if (!path || !*path || max_thresh <= 0 || min_thresh <= 0)
+			continue;
 
-			bc_mkdir_recursive(media_stor[i].path);
+		strcpy(media_stor[i].path, path);
+		media_stor[i].max_thresh = max_thresh;
+		media_stor[i].min_thresh = min_thresh;
+
+		/* We should probably properly stat the directory */
+		if (bc_mkdir_recursive(media_stor[i].path)) {
+			bc_status_component_error("Cannot create storage path %s: %m",
+			                          media_stor[i].path);
+		} else
 			i++;
-		}
 	}
+
 	if (i == 0) {
 		/* Fall back to one single default location */
 		strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
-		bc_mkdir_recursive(media_stor[0].path);
+		if (bc_mkdir_recursive(media_stor[0].path)) {
+			bc_status_component_error("Cannot create storage path %s: %m",
+			                          media_stor[i].path);
+		}
 		media_stor[0].max_thresh = 95.00;
 		media_stor[0].min_thresh = 90.00;
 	}
@@ -131,6 +274,7 @@ static void bc_check_globals(void)
 	pthread_mutex_unlock(&media_lock);
 
 	bc_db_free_table(dbres);
+	return 0;
 }
 
 static void bc_stop_threads(void)
@@ -232,19 +376,23 @@ void bc_get_media_loc(char *stor)
 	pthread_mutex_unlock(&media_lock);
 }
 
-
 /* Check if our media directory is getting full (min_avail%) and delete old
  * events until there's more than or equal to min_thresh% available. Do not
  * delete archived events. If we've deleted everything we can and we still
  * don't have more than min_avail% available, then complain....LOUDLY! */
-static void bc_clear_media_one(const struct bc_storage *stor)
+static int bc_clear_media_one(const struct bc_storage *stor)
 {
 	BC_DB_RES dbres;
 	float used = storage_used(stor);
 	int removed = 0, error_count = 0;
 
-	if (used < stor->max_thresh)
-		return;
+	if (used < 0) {
+		bc_status_component_error("Cannot get free space for storage device %s: %m",
+		                          stor->path);
+		return -1;
+	}
+	else if (used < stor->max_thresh)
+		return 0;
 
 	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
 	       stor->path, used);
@@ -253,10 +401,9 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 				"end!=0 AND size>0 AND filepath LIKE '%s%%' "
 				"ORDER BY start ASC", stor->path);
 
-	if (dbres == NULL) {
-		bc_log("E: Filesystem has no available media to delete!");
-		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
-		return;
+	if (!dbres) {
+		bc_status_component_error("Database error during media cleanup");
+		return -1;
 	}
 
 	while (!bc_db_fetch_row(dbres) && used > stor->min_thresh) {
@@ -289,16 +436,25 @@ static void bc_clear_media_one(const struct bc_storage *stor)
 	else
 		bc_log("I: Cleaned up %d files on %s", removed, stor->path);
 
-	if (used >= 0 && used >= stor->min_thresh) {
-		bc_log("W: Filesystem is %0.2f%% full, but cannot delete "
-		       "any more old media!", used);
-		bc_event_sys(BC_EVENT_L_ALRM, BC_EVENT_SYS_T_DISK);
+	if (used < 0) {
+		bc_status_component_error("Cannot get free space for storage path %s: %m",
+		                          stor->path);
+		return -1;
 	}
+
+	if (used >= 0 && used >= stor->min_thresh) {
+		bc_status_component_error("Cannot delete any more media from storage path "
+		                          "%s (%0.2f%% full)", stor->path, used);
+		return -1;
+	}
+
+	return 0;
 }
 
-static void bc_check_media(void)
+static int bc_check_media(void)
 {
 	int i, free = 0;
+	int ret = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on check_media!");
@@ -311,34 +467,46 @@ static void bc_check_media(void)
 	}
 
 	if (!free) {
-		for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++)
-			bc_clear_media_one(&media_stor[i]);
+		for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+			if (bc_clear_media_one(&media_stor[i])) {
+				/* Failed */
+				ret = -1;
+				continue;
+			}
+			break;
+		}
 	}
 
 	pthread_mutex_unlock(&media_lock);
+	return ret;
 }
 
-static void bc_check_db(void)
+static int bc_check_db(void)
 {
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
+	int re = 0;
 
 	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
 				"AvailableSources USING (device)");
 
-	if (dbres == NULL)
-		return;
+	if (!dbres)
+		return -1;
 
 	while (!bc_db_fetch_row(dbres)) {
 		const char *proto = bc_db_get_val(dbres, "protocol", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
-		if ((id < 0) || !proto)
+		if (id < 0 || !proto)
 			continue;
 
 		bc_rec = bc_record_exists(id);
 		if (bc_rec) {
-			bc_record_update_cfg(bc_rec, dbres);
+			if (bc_record_update_cfg(bc_rec, dbres)) {
+				bc_status_component_error("Database error while updating"
+					"device configuration");
+				re |= -1;
+			}
 			continue;
 		}
 
@@ -357,15 +525,21 @@ static void bc_check_db(void)
 				continue;
 		}
 
-		bc_rec = bc_alloc_record(id, dbres);
-		if (bc_rec == NULL)
+		if (bc_db_get_val_bool(dbres, "disabled"))
 			continue;
+
+		bc_rec = bc_alloc_record(id, dbres);
+		if (!bc_rec) {
+			re |= -1;
+			continue;
+		}
 
 		cur_threads++;
 		bc_list_add(&bc_rec->list, &bc_rec_list);
 	}
 
 	bc_db_free_table(dbres);
+	return re;
 }
 
 static void bc_check_inprogress(void)
@@ -488,16 +662,28 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	bc_vlog(msg, ap);
 }
 
-static void check_expire(void)
+/* Returns 0 if okay, otherwise -1 and outputs an error */
+static int check_expire(void)
 {
+	char date[128];
 	time_t t = time(NULL);
 	time_t expire = 1328659200; /* February 8, 2012 */
+	struct tm exp;
 
-	if (t < expire)
-		return;
+	localtime_r(&expire, &exp);
+	strftime(date, sizeof(date), "%A, %B %d %Y at %X", &exp);
 
-	fprintf(stderr, "This beta expired on %s", ctime(&expire));
-	exit(1);
+	if (t >= expire) {
+		bc_status_component_error("This Bluecherry beta version expired on %s. You must upgrade "
+		                          "to the latest version to continue recording.", date);
+		return -1;
+	} else if (expire - t < 172800) {
+		bc_status_component_error("This Bluecherry beta version expires on %s. You should "
+		                          "upgrade to the latest version to prevent any recording "
+		                          "interruptions.", date);
+	}
+
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -507,8 +693,7 @@ int main(int argc, char **argv)
 	int bg = 1;
 	int count;
 	const char *user = 0, *group = 0;
-
-	check_expire();
+	int error;
 
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:")) != -1) {
 		switch (opt) {
@@ -563,9 +748,9 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	avcodec_init();
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
+	avformat_network_init();
 
 	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
@@ -586,32 +771,50 @@ int main(int argc, char **argv)
 
 	bc_log("I: SQL database connection opened");
 
-	/* Set these from the start */
-	bc_check_globals();
+	bc_status_component_begin(STATUS_LICENSE);
+	error = check_expire();
+	bc_status_component_end(STATUS_LICENSE, error == 0);
+	if (error) {
+		/* Expired; do nothing until killed (presumably for an upgrade) */
+		for (;;) {
+			bc_update_server_status();
+			sleep(60);
+		}
+	}
 
+	bc_status_component_begin(STATUS_DB_POLLING1);
+	error = bc_check_globals();
 	/* Do some cleanup */
 	bc_check_inprogress();
+	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {
 		/* Every 2 minutes */
 		if (!(loops % 120)) {
+			bc_status_component_begin(STATUS_DB_POLLING2);
 			/* Check for new devices */
-			bc_check_avail();
+			error = bc_check_avail();
 			/* Check media locations for full */
-			bc_check_media();
-		}
+			error |= bc_check_media();
+			bc_status_component_end(STATUS_DB_POLLING2, error == 0);
+	 	}
 
 		/* Every 10 seconds */
 		if (!(loops % 10)) {
+			bc_status_component_begin(STATUS_DB_POLLING1);
 			/* Check global vars */
-			bc_check_globals();
+			error = bc_check_globals();
 			/* Check for changes in cameras */
-			bc_check_db();
+			error |= bc_check_db();
+			bc_status_component_end(STATUS_DB_POLLING1, error == 0);
 		}
 
 		/* Every second, check for dead threads */
 		bc_check_threads();
+
+		if (!(loops % 60))
+			bc_update_server_status();
 
 		sleep(1);
 	}

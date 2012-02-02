@@ -340,29 +340,31 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 		}
 
 		if (bc_rec->oc->pb)
-			url_fclose(bc_rec->oc->pb);
+			avio_close(bc_rec->oc->pb);
 		av_free(bc_rec->oc);
 		bc_rec->oc = NULL;
 	}
 }
 
-void bc_mkdir_recursive(char *path)
+int bc_mkdir_recursive(char *path)
 {
 	char *t;
 
-	/* If we succeed, sweetness */
-	if (!mkdir(path, 0750))
-		return;
+	if (!mkdir(path, 0750) || errno == EEXIST)
+		return 0;
+	else if (errno != ENOENT)
+		return -1;
 
 	/* Try to make the parent directory */
 	t = strrchr(path, '/');
 	if (t == NULL || t == path)
-		return;
+		return -1;
 	*t = '\0';
-	bc_mkdir_recursive(path);
+	if (bc_mkdir_recursive(path))
+		return -1;
 	*t = '/';
 
-	mkdir(path, 0750);
+	return mkdir(path, 0750);
 }
 
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
@@ -374,7 +376,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	int height = bc_rec->bc->v4l2.vfmt.fmt.pix.height;
 
 	/* Setup new video stream */
-	if ((bc_rec->video_st = av_new_stream(oc, 0)) == NULL)
+	if ((bc_rec->video_st = avformat_new_stream(oc, NULL)) == NULL)
 		return -1;
 	st = bc_rec->video_st;
 
@@ -389,7 +391,6 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 
 	/* h264 requires us to work around libavcodec broken defaults */
 	if (st->codec->codec_id == CODEC_ID_H264) {
-		st->codec->crf = 20;
 		st->codec->me_range = 16;
 		st->codec->me_subpel_quality = 7;
 		st->codec->qmin = 10;
@@ -428,7 +429,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 			goto no_audio;
 		}
 
-		if ((bc_rec->audio_st = av_new_stream(oc, 1)) == NULL)
+		if ((bc_rec->audio_st = avformat_new_stream(oc, NULL)) == NULL)
 			goto no_audio;
 		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
@@ -488,13 +489,10 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 			goto error;
 	}
 
-	if (av_set_parameters(oc, NULL) < 0)
-		goto error;
-
 	/* Open Video output */
 	st = bc_rec->video_st;
 	codec = avcodec_find_encoder(st->codec->codec_id);
-	if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
+	if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
 		bc_rec->video_st = NULL;
 		/* Clear this */
 		if (bc_rec->audio_st)
@@ -507,20 +505,20 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	if (bc_rec->audio_st) {
 		st = bc_rec->audio_st;
 		codec = avcodec_find_encoder(st->codec->codec_id);
-		if (codec == NULL || avcodec_open(st->codec, codec) < 0) {
+		if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
 			bc_rec->audio_st = NULL;
 			goto error;
 		}
 	}
 
 	/* Open output file */
-	if (url_fopen(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
+	if (avio_open(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
 		bc_dev_err(bc_rec, "Failed to open outfile (perms?): %s",
 			   bc_rec->outfile);
 		goto error;
 	}
 
-	av_write_header(oc);
+	avformat_write_header(oc, NULL);
 
 	return 0;
 	

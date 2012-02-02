@@ -249,9 +249,12 @@ $active_time = -1;
 if (isset($_GET['activity']))
 	$active_time = 0;
 
+$start_time = time();
+
 function print_image() {
 	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
 	global $intv_cnt, $intv, $id, $is_active, $active_time;
+	global $start_time;
 
 	$myl = 0;
 	$myj = FALSE;
@@ -307,6 +310,13 @@ function print_image() {
 		print "\r\n--$boundary\r\n";
 
 	flush();
+
+	if ($tm - $start_time > 3600*2) {
+		/* Bug #914: Work around bad httpd memory allocation strategies by
+		 * dropping the connection every two hours to force a new request.
+		 * Won't be relevant after RTP anyway. */
+		$multi = false;
+	}
 }
 
 # For multi, let's do some weird stuff
@@ -324,7 +334,8 @@ if ($url) {
 
 	// For this case, we pass off to curl
 	if ($multi and $single_url == FALSE and !$intv_low and $intv == 1) {
-		passthru("curl -s " . escapeshellarg($url));
+		/* -m is for the bug #914 workaround; see print_image */
+		passthru("curl -s -m 7200 " . escapeshellarg($url));
 		exit;
 	}
 

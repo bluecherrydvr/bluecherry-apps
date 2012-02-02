@@ -286,4 +286,25 @@ int64_t ff_gen_search(AVFormatContext *s, int stream_index,
                       int flags, int64_t *ts_ret,
                       int64_t (*read_timestamp)(struct AVFormatContext *, int , int64_t *, int64_t ));
 
+/**
+ * Set the pts for a given stream. If the new values would be invalid
+ * (<= 0), it leaves the AVStream unchanged.
+ *
+ * @param s stream
+ * @param pts_wrap_bits number of bits effectively used by the pts
+ *        (used for wrap control, 33 is the value for MPEG)
+ * @param pts_num numerator to convert to seconds (MPEG: 1)
+ * @param pts_den denominator to convert to seconds (MPEG: 90000)
+ */
+void avpriv_set_pts_info(AVStream *s, int pts_wrap_bits,
+                         unsigned int pts_num, unsigned int pts_den);
+
+/**
+ * Add side data to a packet for changing parameters to the given values.
+ * Parameters set to 0 aren't included in the change.
+ */
+int ff_add_param_change(AVPacket *pkt, int32_t channels,
+                        uint64_t channel_layout, int32_t sample_rate,
+                        int32_t width, int32_t height);
+
 #endif /* AVFORMAT_INTERNAL_H */

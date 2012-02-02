@@ -25,27 +25,23 @@
  * @author 2005 David Hammerton
  * @see http://crazney.net/programs/itunes/alac.html
  *
- * Note: This decoder expects a 36- (0x24-)byte QuickTime atom to be
+ * Note: This decoder expects a 36-byte QuickTime atom to be
  * passed through the extradata[_size] fields. This atom is tacked onto
  * the end of an 'alac' stsd atom and has the following format:
- *  bytes 0-3   atom size (0x24), big-endian
- *  bytes 4-7   atom type ('alac', not the 'alac' tag from start of stsd)
- *  bytes 8-35  data bytes needed by decoder
  *
- * Extradata:
- * 32bit  size
- * 32bit  tag (=alac)
- * 32bit  zero?
- * 32bit  max sample per frame
- *  8bit  ?? (zero?)
+ * 32bit  atom size
+ * 32bit  tag                  ("alac")
+ * 32bit  tag version          (0)
+ * 32bit  samples per frame    (used when not set explicitly in the frames)
+ *  8bit  compatible version   (0)
  *  8bit  sample size
- *  8bit  history mult
- *  8bit  initial history
- *  8bit  kmodifier
- *  8bit  channels?
- * 16bit  ??
- * 32bit  max coded frame size
- * 32bit  bitrate?
+ *  8bit  history mult         (40)
+ *  8bit  initial history      (14)
+ *  8bit  kmodifier            (10)
+ *  8bit  channels
+ * 16bit  maxRun               (255)
+ * 32bit  max coded frame size (0 means unknown)
+ * 32bit  average bitrate      (0 means unknown)
  * 32bit  samplerate
  */
 
@@ -62,10 +58,10 @@
 typedef struct {
 
     AVCodecContext *avctx;
+    AVFrame frame;
     GetBitContext gb;
 
     int numchannels;
-    int bytespersample;
 
     /* buffers */
     int32_t *predicterror_buffer[MAX_CHANNELS];
@@ -351,9 +347,8 @@ static void interleave_stereo_24(int32_t *buffer[MAX_CHANNELS],
     }
 }
 
-static int alac_decode_frame(AVCodecContext *avctx,
-                             void *outbuffer, int *outputsize,
-                             AVPacket *avpkt)
+static int alac_decode_frame(AVCodecContext *avctx, void *data,
+                             int *got_frame_ptr, AVPacket *avpkt)
 {
     const uint8_t *inbuffer = avpkt->data;
     int input_buffer_size = avpkt->size;
@@ -366,7 +361,7 @@ static int alac_decode_frame(AVCodecContext *avctx,
     int isnotcompressed;
     uint8_t interlacing_shift;
     uint8_t interlacing_leftweight;
-    int i, ch;
+    int i, ch, ret;
 
     init_get_bits(&alac->gb, inbuffer, input_buffer_size * 8);
 
@@ -401,14 +396,17 @@ static int alac_decode_frame(AVCodecContext *avctx,
     } else
         outputsamples = alac->setinfo_max_samples_per_frame;
 
-    alac->bytespersample = channels * av_get_bytes_per_sample(avctx->sample_fmt);
-
-    if(outputsamples > *outputsize / alac->bytespersample){
-        av_log(avctx, AV_LOG_ERROR, "sample buffer too small\n");
-        return -1;
+    /* get output buffer */
+    if (outputsamples > INT32_MAX) {
+        av_log(avctx, AV_LOG_ERROR, "unsupported block size: %u\n", outputsamples);
+        return AVERROR_INVALIDDATA;
+    }
+    alac->frame.nb_samples = outputsamples;
+    if ((ret = avctx->get_buffer(avctx, &alac->frame)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return ret;
     }
 
-    *outputsize = outputsamples * alac->bytespersample;
     readsamplesize = alac->setinfo_sample_size - alac->extra_bits + channels - 1;
     if (readsamplesize > MIN_CACHE_BITS) {
         av_log(avctx, AV_LOG_ERROR, "readsamplesize too big (%d)\n", readsamplesize);
@@ -454,24 +452,29 @@ static int alac_decode_frame(AVCodecContext *avctx,
                                         ricemodifier[ch] * alac->setinfo_rice_historymult / 4,
                                         (1 << alac->setinfo_rice_kmodifier) - 1);
 
-            if (prediction_type[ch] == 0) {
-                /* adaptive fir */
-                predictor_decompress_fir_adapt(alac->predicterror_buffer[ch],
-                                               alac->outputsamples_buffer[ch],
-                                               outputsamples,
-                                               readsamplesize,
-                                               predictor_coef_table[ch],
-                                               predictor_coef_num[ch],
-                                               prediction_quantitization[ch]);
-            } else {
-                av_log(avctx, AV_LOG_ERROR, "FIXME: unhandled prediction type: %i\n", prediction_type[ch]);
-                /* I think the only other prediction type (or perhaps this is
-                 * just a boolean?) runs adaptive fir twice.. like:
-                 * predictor_decompress_fir_adapt(predictor_error, tempout, ...)
-                 * predictor_decompress_fir_adapt(predictor_error, outputsamples ...)
-                 * little strange..
+            /* adaptive FIR filter */
+            if (prediction_type[ch] == 15) {
+                /* Prediction type 15 runs the adaptive FIR twice.
+                 * The first pass uses the special-case coef_num = 31, while
+                 * the second pass uses the coefs from the bitstream.
+                 *
+                 * However, this prediction type is not currently used by the
+                 * reference encoder.
                  */
+                predictor_decompress_fir_adapt(alac->predicterror_buffer[ch],
+                                               alac->predicterror_buffer[ch],
+                                               outputsamples, readsamplesize,
+                                               NULL, 31, 0);
+            } else if (prediction_type[ch] > 0) {
+                av_log(avctx, AV_LOG_WARNING, "unknown prediction type: %i\n",
+                       prediction_type[ch]);
             }
+            predictor_decompress_fir_adapt(alac->predicterror_buffer[ch],
+                                           alac->outputsamples_buffer[ch],
+                                           outputsamples, readsamplesize,
+                                           predictor_coef_table[ch],
+                                           predictor_coef_num[ch],
+                                           prediction_quantitization[ch]);
         }
     } else {
         /* not compressed, easy case */
@@ -501,27 +504,32 @@ static int alac_decode_frame(AVCodecContext *avctx,
     switch(alac->setinfo_sample_size) {
     case 16:
         if (channels == 2) {
-            interleave_stereo_16(alac->outputsamples_buffer, outbuffer,
-                                 outputsamples);
+            interleave_stereo_16(alac->outputsamples_buffer,
+                                 (int16_t *)alac->frame.data[0], outputsamples);
         } else {
+            int16_t *outbuffer = (int16_t *)alac->frame.data[0];
             for (i = 0; i < outputsamples; i++) {
-                ((int16_t*)outbuffer)[i] = alac->outputsamples_buffer[0][i];
+                outbuffer[i] = alac->outputsamples_buffer[0][i];
             }
         }
         break;
     case 24:
         if (channels == 2) {
-            interleave_stereo_24(alac->outputsamples_buffer, outbuffer,
-                                 outputsamples);
+            interleave_stereo_24(alac->outputsamples_buffer,
+                                 (int32_t *)alac->frame.data[0], outputsamples);
         } else {
+            int32_t *outbuffer = (int32_t *)alac->frame.data[0];
             for (i = 0; i < outputsamples; i++)
-                ((int32_t *)outbuffer)[i] = alac->outputsamples_buffer[0][i] << 8;
+                outbuffer[i] = alac->outputsamples_buffer[0][i] << 8;
         }
         break;
     }
 
     if (input_buffer_size * 8 - get_bits_count(&alac->gb) > 8)
         av_log(avctx, AV_LOG_ERROR, "Error : %d bits left\n", input_buffer_size * 8 - get_bits_count(&alac->gb));
+
+    *got_frame_ptr   = 1;
+    *(AVFrame *)data = alac->frame;
 
     return input_buffer_size;
 }
@@ -567,7 +575,7 @@ static int alac_set_info(ALACContext *alac)
 
     ptr += 4; /* size */
     ptr += 4; /* alac */
-    ptr += 4; /* 0 ? */
+    ptr += 4; /* version */
 
     if(AV_RB32(ptr) >= UINT_MAX/4){
         av_log(alac->avctx, AV_LOG_ERROR, "setinfo_max_samples_per_frame too large\n");
@@ -576,15 +584,15 @@ static int alac_set_info(ALACContext *alac)
 
     /* buffer size / 2 ? */
     alac->setinfo_max_samples_per_frame = bytestream_get_be32(&ptr);
-    ptr++;                          /* ??? */
+    ptr++;                          /* compatible version */
     alac->setinfo_sample_size           = *ptr++;
     alac->setinfo_rice_historymult      = *ptr++;
     alac->setinfo_rice_initialhistory   = *ptr++;
     alac->setinfo_rice_kmodifier        = *ptr++;
     alac->numchannels                   = *ptr++;
-    bytestream_get_be16(&ptr);      /* ??? */
+    bytestream_get_be16(&ptr);      /* maxRun */
     bytestream_get_be32(&ptr);      /* max coded frame size */
-    bytestream_get_be32(&ptr);      /* bitrate ? */
+    bytestream_get_be32(&ptr);      /* average bitrate */
     bytestream_get_be32(&ptr);      /* samplerate */
 
     return 0;
@@ -637,6 +645,9 @@ static av_cold int alac_decode_init(AVCodecContext * avctx)
         return ret;
     }
 
+    avcodec_get_frame_defaults(&alac->frame);
+    avctx->coded_frame = &alac->frame;
+
     return 0;
 }
 
@@ -648,5 +659,6 @@ AVCodec ff_alac_decoder = {
     .init           = alac_decode_init,
     .close          = alac_decode_close,
     .decode         = alac_decode_frame,
+    .capabilities   = CODEC_CAP_DR1,
     .long_name = NULL_IF_CONFIG_SMALL("ALAC (Apple Lossless Audio Codec)"),
 };

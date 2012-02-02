@@ -27,13 +27,14 @@
 #include "avcodec.h"
 #include "libavutil/common.h" /* for av_reverse */
 #include "bytestream.h"
+#include "internal.h"
 #include "pcm_tablegen.h"
 
 #define MAX_CHANNELS 64
 
 static av_cold int pcm_encode_init(AVCodecContext *avctx)
 {
-    avctx->frame_size = 1;
+    avctx->frame_size = 0;
     switch(avctx->codec->id) {
     case CODEC_ID_PCM_ALAW:
         pcm_alaw_tableinit();
@@ -77,10 +78,10 @@ static av_cold int pcm_encode_close(AVCodecContext *avctx)
         bytestream_put_##endian(&dst, v); \
     }
 
-static int pcm_encode_frame(AVCodecContext *avctx,
-                            unsigned char *frame, int buf_size, void *data)
+static int pcm_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
+                            const AVFrame *frame, int *got_packet_ptr)
 {
-    int n, sample_size, v;
+    int n, sample_size, v, ret;
     const short *samples;
     unsigned char *dst;
     const uint8_t *srcu8;
@@ -91,9 +92,14 @@ static int pcm_encode_frame(AVCodecContext *avctx,
     const uint32_t *samples_uint32_t;
 
     sample_size = av_get_bits_per_sample(avctx->codec->id)/8;
-    n = buf_size / sample_size;
-    samples = data;
-    dst = frame;
+    n           = frame->nb_samples * avctx->channels;
+    samples     = (const short *)frame->data[0];
+
+    if ((ret = ff_alloc_packet(avpkt, n * sample_size))) {
+        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+        return ret;
+    }
+    dst = avpkt->data;
 
     switch(avctx->codec->id) {
     case CODEC_ID_PCM_U32LE:
@@ -130,7 +136,7 @@ static int pcm_encode_frame(AVCodecContext *avctx,
         ENCODE(uint16_t, be16, samples, dst, n, 0, 0x8000)
         break;
     case CODEC_ID_PCM_S8:
-        srcu8= data;
+        srcu8 = frame->data[0];
         for(;n>0;n--) {
             v = *srcu8++;
             *dst++ = v - 128;
@@ -186,12 +192,14 @@ static int pcm_encode_frame(AVCodecContext *avctx,
     default:
         return -1;
     }
-    //avctx->frame_size = (dst - frame) / (sample_size * avctx->channels);
 
-    return dst - frame;
+    avpkt->size = frame->nb_samples * avctx->channels * sample_size;
+    *got_packet_ptr = 1;
+    return 0;
 }
 
 typedef struct PCMDecode {
+    AVFrame frame;
     short table[256];
 } PCMDecode;
 
@@ -223,6 +231,9 @@ static av_cold int pcm_decode_init(AVCodecContext * avctx)
     if (avctx->sample_fmt == AV_SAMPLE_FMT_S32)
         avctx->bits_per_raw_sample = av_get_bits_per_sample(avctx->codec->id);
 
+    avcodec_get_frame_defaults(&s->frame);
+    avctx->coded_frame = &s->frame;
+
     return 0;
 }
 
@@ -243,22 +254,20 @@ static av_cold int pcm_decode_init(AVCodecContext * avctx)
         dst += size / 8; \
     }
 
-static int pcm_decode_frame(AVCodecContext *avctx,
-                            void *data, int *data_size,
-                            AVPacket *avpkt)
+static int pcm_decode_frame(AVCodecContext *avctx, void *data,
+                            int *got_frame_ptr, AVPacket *avpkt)
 {
     const uint8_t *src = avpkt->data;
     int buf_size = avpkt->size;
     PCMDecode *s = avctx->priv_data;
-    int sample_size, c, n, out_size;
+    int sample_size, c, n, ret, samples_per_block;
     uint8_t *samples;
     int32_t *dst_int32_t;
-
-    samples = data;
 
     sample_size = av_get_bits_per_sample(avctx->codec_id)/8;
 
     /* av_get_bits_per_sample returns 0 for CODEC_ID_PCM_DVD */
+    samples_per_block = 1;
     if (CODEC_ID_PCM_DVD == avctx->codec_id) {
         if (avctx->bits_per_coded_sample != 20 &&
             avctx->bits_per_coded_sample != 24) {
@@ -266,10 +275,13 @@ static int pcm_decode_frame(AVCodecContext *avctx,
             return AVERROR(EINVAL);
         }
         /* 2 samples are interleaved per block in PCM_DVD */
+        samples_per_block = 2;
         sample_size = avctx->bits_per_coded_sample * 2 / 8;
-    } else if (avctx->codec_id == CODEC_ID_PCM_LXF)
+    } else if (avctx->codec_id == CODEC_ID_PCM_LXF) {
         /* we process 40-bit blocks per channel for LXF */
+        samples_per_block = 2;
         sample_size = 5;
+    }
 
     if (sample_size == 0) {
         av_log(avctx, AV_LOG_ERROR, "Invalid sample_size\n");
@@ -288,14 +300,13 @@ static int pcm_decode_frame(AVCodecContext *avctx,
 
     n = buf_size/sample_size;
 
-    out_size = n * av_get_bytes_per_sample(avctx->sample_fmt);
-    if (avctx->codec_id == CODEC_ID_PCM_DVD ||
-        avctx->codec_id == CODEC_ID_PCM_LXF)
-        out_size *= 2;
-    if (*data_size < out_size) {
-        av_log(avctx, AV_LOG_ERROR, "output buffer too small\n");
-        return AVERROR(EINVAL);
+    /* get output buffer */
+    s->frame.nb_samples = n * samples_per_block / avctx->channels;
+    if ((ret = avctx->get_buffer(avctx, &s->frame)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+        return ret;
     }
+    samples = s->frame.data[0];
 
     switch(avctx->codec->id) {
     case CODEC_ID_PCM_U32LE:
@@ -382,7 +393,6 @@ static int pcm_decode_frame(AVCodecContext *avctx,
 #endif /* HAVE_BIGENDIAN */
     case CODEC_ID_PCM_U8:
         memcpy(samples, src, n*sample_size);
-        samples += n * sample_size;
         break;
     case CODEC_ID_PCM_ZORK:
         for (; n > 0; n--) {
@@ -402,7 +412,7 @@ static int pcm_decode_frame(AVCodecContext *avctx,
     case CODEC_ID_PCM_DVD:
     {
         const uint8_t *src8;
-        dst_int32_t = data;
+        dst_int32_t = (int32_t *)s->frame.data[0];
         n /= avctx->channels;
         switch (avctx->bits_per_coded_sample) {
         case 20:
@@ -428,14 +438,13 @@ static int pcm_decode_frame(AVCodecContext *avctx,
             }
             break;
         }
-        samples = (uint8_t *) dst_int32_t;
         break;
     }
     case CODEC_ID_PCM_LXF:
     {
         int i;
         const uint8_t *src8;
-        dst_int32_t = data;
+        dst_int32_t = (int32_t *)s->frame.data[0];
         n /= avctx->channels;
         //unpack and de-planerize
         for (i = 0; i < n; i++) {
@@ -451,13 +460,15 @@ static int pcm_decode_frame(AVCodecContext *avctx,
                                  ((src8[2] & 0xF0) << 8) | (src8[4] << 4) | (src8[3] >> 4);
             }
         }
-        samples = (uint8_t *) dst_int32_t;
         break;
     }
     default:
         return -1;
     }
-    *data_size = out_size;
+
+    *got_frame_ptr   = 1;
+    *(AVFrame *)data = s->frame;
+
     return buf_size;
 }
 
@@ -468,8 +479,9 @@ AVCodec ff_ ## name_ ## _encoder = {            \
     .type        = AVMEDIA_TYPE_AUDIO,          \
     .id          = id_,                         \
     .init        = pcm_encode_init,             \
-    .encode      = pcm_encode_frame,            \
+    .encode2     = pcm_encode_frame,            \
     .close       = pcm_encode_close,            \
+    .capabilities = CODEC_CAP_VARIABLE_FRAME_SIZE, \
     .sample_fmts = (const enum AVSampleFormat[]){sample_fmt_,AV_SAMPLE_FMT_NONE}, \
     .long_name = NULL_IF_CONFIG_SMALL(long_name_), \
 }
@@ -486,6 +498,7 @@ AVCodec ff_ ## name_ ## _decoder = {            \
     .priv_data_size = sizeof(PCMDecode),        \
     .init           = pcm_decode_init,          \
     .decode         = pcm_decode_frame,         \
+    .capabilities   = CODEC_CAP_DR1,            \
     .sample_fmts = (const enum AVSampleFormat[]){sample_fmt_,AV_SAMPLE_FMT_NONE}, \
     .long_name = NULL_IF_CONFIG_SMALL(long_name_), \
 }

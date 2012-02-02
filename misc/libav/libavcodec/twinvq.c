@@ -174,6 +174,7 @@ static const ModeTab mode_44_48 = {
 
 typedef struct TwinContext {
     AVCodecContext *avctx;
+    AVFrame frame;
     DSPContext      dsp;
     FFTContext mdct_ctx[3];
 
@@ -195,6 +196,7 @@ typedef struct TwinContext {
     float *curr_frame;               ///< non-interleaved output
     float *prev_frame;               ///< non-interleaved previous frame
     int last_block_pos[2];
+    int discarded_packets;
 
     float *cos_tabs[3];
 
@@ -665,8 +667,9 @@ static void imdct_output(TwinContext *tctx, enum FrameType ftype, int wtype,
                          float *out)
 {
     const ModeTab *mtab = tctx->mtab;
+    int size1, size2;
     float *prev_buf = tctx->prev_frame + tctx->last_block_pos[0];
-    int i, j;
+    int i;
 
     for (i = 0; i < tctx->avctx->channels; i++) {
         imdct_and_window(tctx, ftype, wtype,
@@ -675,27 +678,27 @@ static void imdct_output(TwinContext *tctx, enum FrameType ftype, int wtype,
                          i);
     }
 
+    if (!out)
+        return;
+
+    size2 = tctx->last_block_pos[0];
+    size1 = mtab->size - size2;
     if (tctx->avctx->channels == 2) {
-        for (i = 0; i < mtab->size - tctx->last_block_pos[0]; i++) {
-            float f1 = prev_buf[               i];
-            float f2 = prev_buf[2*mtab->size + i];
-            out[2*i    ] = f1 + f2;
-            out[2*i + 1] = f1 - f2;
-        }
-        for (j = 0; i < mtab->size; j++,i++) {
-            float f1 = tctx->curr_frame[               j];
-            float f2 = tctx->curr_frame[2*mtab->size + j];
-            out[2*i    ] = f1 + f2;
-            out[2*i + 1] = f1 - f2;
-        }
+        tctx->dsp.butterflies_float_interleave(out, prev_buf,
+                                               &prev_buf[2*mtab->size],
+                                               size1);
+
+        out += 2 * size1;
+
+        tctx->dsp.butterflies_float_interleave(out, tctx->curr_frame,
+                                               &tctx->curr_frame[2*mtab->size],
+                                               size2);
     } else {
-        memcpy(out, prev_buf,
-               (mtab->size - tctx->last_block_pos[0]) * sizeof(*out));
+        memcpy(out, prev_buf, size1 * sizeof(*out));
 
-        out +=  mtab->size - tctx->last_block_pos[0];
+        out += size1;
 
-        memcpy(out, tctx->curr_frame,
-               (tctx->last_block_pos[0]) * sizeof(*out));
+        memcpy(out, tctx->curr_frame, size2 * sizeof(*out));
     }
 
 }
@@ -813,16 +816,16 @@ static void read_and_decode_spectrum(TwinContext *tctx, GetBitContext *gb,
 }
 
 static int twin_decode_frame(AVCodecContext * avctx, void *data,
-                             int *data_size, AVPacket *avpkt)
+                             int *got_frame_ptr, AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     TwinContext *tctx = avctx->priv_data;
     GetBitContext gb;
     const ModeTab *mtab = tctx->mtab;
-    float *out = data;
+    float *out = NULL;
     enum FrameType ftype;
-    int window_type, out_size;
+    int window_type, ret;
     static const enum FrameType wtype_to_ftype_table[] = {
         FT_LONG,   FT_LONG, FT_SHORT, FT_LONG,
         FT_MEDIUM, FT_LONG, FT_LONG,  FT_MEDIUM, FT_MEDIUM
@@ -834,11 +837,14 @@ static int twin_decode_frame(AVCodecContext * avctx, void *data,
         return AVERROR(EINVAL);
     }
 
-    out_size = mtab->size * avctx->channels *
-               av_get_bytes_per_sample(avctx->sample_fmt);
-    if (*data_size < out_size) {
-        av_log(avctx, AV_LOG_ERROR, "output buffer is too small\n");
-        return AVERROR(EINVAL);
+    /* get output buffer */
+    if (tctx->discarded_packets >= 2) {
+        tctx->frame.nb_samples = mtab->size;
+        if ((ret = avctx->get_buffer(avctx, &tctx->frame)) < 0) {
+            av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
+            return ret;
+        }
+        out = (float *)tctx->frame.data[0];
     }
 
     init_get_bits(&gb, buf, buf_size * 8);
@@ -858,12 +864,14 @@ static int twin_decode_frame(AVCodecContext * avctx, void *data,
 
     FFSWAP(float*, tctx->curr_frame, tctx->prev_frame);
 
-    if (tctx->avctx->frame_number < 2) {
-        *data_size=0;
+    if (tctx->discarded_packets < 2) {
+        tctx->discarded_packets++;
+        *got_frame_ptr = 0;
         return buf_size;
     }
 
-    *data_size = out_size;
+    *got_frame_ptr   = 1;
+    *(AVFrame *)data = tctx->frame;;
 
     return buf_size;
 }
@@ -871,9 +879,9 @@ static int twin_decode_frame(AVCodecContext * avctx, void *data,
 /**
  * Init IMDCT and windowing tables
  */
-static av_cold void init_mdct_win(TwinContext *tctx)
+static av_cold int init_mdct_win(TwinContext *tctx)
 {
-    int i,j;
+    int i, j, ret;
     const ModeTab *mtab = tctx->mtab;
     int size_s = mtab->size / mtab->fmode[FT_SHORT].sub;
     int size_m = mtab->size / mtab->fmode[FT_MEDIUM].sub;
@@ -882,20 +890,29 @@ static av_cold void init_mdct_win(TwinContext *tctx)
 
     for (i = 0; i < 3; i++) {
         int bsize = tctx->mtab->size/tctx->mtab->fmode[i].sub;
-        ff_mdct_init(&tctx->mdct_ctx[i], av_log2(bsize) + 1, 1,
-                     -sqrt(norm/bsize) / (1<<15));
+        if ((ret = ff_mdct_init(&tctx->mdct_ctx[i], av_log2(bsize) + 1, 1,
+                                -sqrt(norm/bsize) / (1<<15))))
+            return ret;
     }
 
-    tctx->tmp_buf  = av_malloc(mtab->size            * sizeof(*tctx->tmp_buf));
+    FF_ALLOC_OR_GOTO(tctx->avctx, tctx->tmp_buf,
+                     mtab->size * sizeof(*tctx->tmp_buf), alloc_fail);
 
-    tctx->spectrum  = av_malloc(2*mtab->size*channels*sizeof(float));
-    tctx->curr_frame = av_malloc(2*mtab->size*channels*sizeof(float));
-    tctx->prev_frame  = av_malloc(2*mtab->size*channels*sizeof(float));
+    FF_ALLOC_OR_GOTO(tctx->avctx, tctx->spectrum,
+                     2 * mtab->size * channels * sizeof(*tctx->spectrum),
+                     alloc_fail);
+    FF_ALLOC_OR_GOTO(tctx->avctx, tctx->curr_frame,
+                     2 * mtab->size * channels * sizeof(*tctx->curr_frame),
+                     alloc_fail);
+    FF_ALLOC_OR_GOTO(tctx->avctx, tctx->prev_frame,
+                     2 * mtab->size * channels * sizeof(*tctx->prev_frame),
+                     alloc_fail);
 
     for (i = 0; i < 3; i++) {
         int m = 4*mtab->size/mtab->fmode[i].sub;
         double freq = 2*M_PI/m;
-        tctx->cos_tabs[i] = av_malloc((m/4)*sizeof(*tctx->cos_tabs));
+        FF_ALLOC_OR_GOTO(tctx->avctx, tctx->cos_tabs[i],
+                         (m / 4) * sizeof(*tctx->cos_tabs[i]), alloc_fail);
 
         for (j = 0; j <= m/8; j++)
             tctx->cos_tabs[i][j] = cos((2*j + 1)*freq);
@@ -907,6 +924,10 @@ static av_cold void init_mdct_win(TwinContext *tctx)
     ff_init_ff_sine_windows(av_log2(size_m));
     ff_init_ff_sine_windows(av_log2(size_s/2));
     ff_init_ff_sine_windows(av_log2(mtab->size));
+
+    return 0;
+alloc_fail:
+    return AVERROR(ENOMEM);
 }
 
 /**
@@ -1068,45 +1089,6 @@ static av_cold void init_bitstream_params(TwinContext *tctx)
         construct_perm_table(tctx, frametype);
 }
 
-static av_cold int twin_decode_init(AVCodecContext *avctx)
-{
-    TwinContext *tctx = avctx->priv_data;
-    int isampf = avctx->sample_rate/1000;
-    int ibps = avctx->bit_rate/(1000 * avctx->channels);
-
-    tctx->avctx       = avctx;
-    avctx->sample_fmt = AV_SAMPLE_FMT_FLT;
-
-    if (avctx->channels > CHANNELS_MAX) {
-        av_log(avctx, AV_LOG_ERROR, "Unsupported number of channels: %i\n",
-               avctx->channels);
-        return -1;
-    }
-
-    switch ((isampf << 8) +  ibps) {
-    case (8 <<8) +  8: tctx->mtab = &mode_08_08; break;
-    case (11<<8) +  8: tctx->mtab = &mode_11_08; break;
-    case (11<<8) + 10: tctx->mtab = &mode_11_10; break;
-    case (16<<8) + 16: tctx->mtab = &mode_16_16; break;
-    case (22<<8) + 20: tctx->mtab = &mode_22_20; break;
-    case (22<<8) + 24: tctx->mtab = &mode_22_24; break;
-    case (22<<8) + 32: tctx->mtab = &mode_22_32; break;
-    case (44<<8) + 40: tctx->mtab = &mode_44_40; break;
-    case (44<<8) + 48: tctx->mtab = &mode_44_48; break;
-    default:
-        av_log(avctx, AV_LOG_ERROR, "This version does not support %d kHz - %d kbit/s/ch mode.\n", isampf, isampf);
-        return -1;
-    }
-
-    dsputil_init(&tctx->dsp, avctx);
-    init_mdct_win(tctx);
-    init_bitstream_params(tctx);
-
-    memset_float(tctx->bark_hist[0][0], 0.1, FF_ARRAY_ELEMS(tctx->bark_hist));
-
-    return 0;
-}
-
 static av_cold int twin_decode_close(AVCodecContext *avctx)
 {
     TwinContext *tctx = avctx->priv_data;
@@ -1126,6 +1108,67 @@ static av_cold int twin_decode_close(AVCodecContext *avctx)
     return 0;
 }
 
+static av_cold int twin_decode_init(AVCodecContext *avctx)
+{
+    int ret;
+    TwinContext *tctx = avctx->priv_data;
+    int isampf, ibps;
+
+    tctx->avctx       = avctx;
+    avctx->sample_fmt = AV_SAMPLE_FMT_FLT;
+
+    if (!avctx->extradata || avctx->extradata_size < 12) {
+        av_log(avctx, AV_LOG_ERROR, "Missing or incomplete extradata\n");
+        return AVERROR_INVALIDDATA;
+    }
+    avctx->channels = AV_RB32(avctx->extradata    ) + 1;
+    avctx->bit_rate = AV_RB32(avctx->extradata + 4) * 1000;
+    isampf          = AV_RB32(avctx->extradata + 8);
+    switch (isampf) {
+    case 44: avctx->sample_rate = 44100;         break;
+    case 22: avctx->sample_rate = 22050;         break;
+    case 11: avctx->sample_rate = 11025;         break;
+    default: avctx->sample_rate = isampf * 1000; break;
+    }
+
+    if (avctx->channels > CHANNELS_MAX) {
+        av_log(avctx, AV_LOG_ERROR, "Unsupported number of channels: %i\n",
+               avctx->channels);
+        return -1;
+    }
+    ibps = avctx->bit_rate / (1000 * avctx->channels);
+
+    switch ((isampf << 8) +  ibps) {
+    case (8 <<8) +  8: tctx->mtab = &mode_08_08; break;
+    case (11<<8) +  8: tctx->mtab = &mode_11_08; break;
+    case (11<<8) + 10: tctx->mtab = &mode_11_10; break;
+    case (16<<8) + 16: tctx->mtab = &mode_16_16; break;
+    case (22<<8) + 20: tctx->mtab = &mode_22_20; break;
+    case (22<<8) + 24: tctx->mtab = &mode_22_24; break;
+    case (22<<8) + 32: tctx->mtab = &mode_22_32; break;
+    case (44<<8) + 40: tctx->mtab = &mode_44_40; break;
+    case (44<<8) + 48: tctx->mtab = &mode_44_48; break;
+    default:
+        av_log(avctx, AV_LOG_ERROR, "This version does not support %d kHz - %d kbit/s/ch mode.\n", isampf, isampf);
+        return -1;
+    }
+
+    dsputil_init(&tctx->dsp, avctx);
+    if ((ret = init_mdct_win(tctx))) {
+        av_log(avctx, AV_LOG_ERROR, "Error initializing MDCT\n");
+        twin_decode_close(avctx);
+        return ret;
+    }
+    init_bitstream_params(tctx);
+
+    memset_float(tctx->bark_hist[0][0], 0.1, FF_ARRAY_ELEMS(tctx->bark_hist));
+
+    avcodec_get_frame_defaults(&tctx->frame);
+    avctx->coded_frame = &tctx->frame;
+
+    return 0;
+}
+
 AVCodec ff_twinvq_decoder = {
     .name           = "twinvq",
     .type           = AVMEDIA_TYPE_AUDIO,
@@ -1134,5 +1177,6 @@ AVCodec ff_twinvq_decoder = {
     .init           = twin_decode_init,
     .close          = twin_decode_close,
     .decode         = twin_decode_frame,
+    .capabilities   = CODEC_CAP_DR1,
     .long_name      = NULL_IF_CONFIG_SMALL("VQF TwinVQ"),
 };

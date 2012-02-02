@@ -488,6 +488,7 @@ typedef struct H264Context{
     Picture *long_ref[32];
     Picture default_ref_list[2][32]; ///< base reference list for all slices of a coded picture
     Picture *delayed_pic[MAX_DELAYED_PIC_COUNT+2]; //FIXME size?
+    int last_pocs[MAX_DELAYED_PIC_COUNT];
     Picture *next_output_pic;
     int outputed_poc;
     int next_outputed_poc;
@@ -497,6 +498,7 @@ typedef struct H264Context{
      */
     MMCO mmco[MAX_MMCO_COUNT];
     int mmco_index;
+    int mmco_reset;
 
     int long_ref_count;  ///< number of actual long term references
     int short_ref_count; ///< number of actual short term references
@@ -666,13 +668,13 @@ av_cold void ff_h264_decode_init_vlc(void);
 
 /**
  * Decode a macroblock
- * @return 0 if OK, AC_ERROR / DC_ERROR / MV_ERROR if an error is noticed
+ * @return 0 if OK, ER_AC_ERROR / ER_DC_ERROR / ER_MV_ERROR if an error is noticed
  */
 int ff_h264_decode_mb_cavlc(H264Context *h);
 
 /**
  * Decode a CABAC coded macroblock
- * @return 0 if OK, AC_ERROR / DC_ERROR / MV_ERROR if an error is noticed
+ * @return 0 if OK, ER_AC_ERROR / ER_DC_ERROR / ER_MV_ERROR if an error is noticed
  */
 int ff_h264_decode_mb_cabac(H264Context *h);
 
@@ -760,14 +762,14 @@ static av_always_inline uint16_t pack8to16(int a, int b){
 }
 
 /**
- * gets the chroma qp.
+ * Get the chroma qp.
  */
 static av_always_inline int get_chroma_qp(H264Context *h, int t, int qscale){
     return h->pps.chroma_qp_table[t][qscale];
 }
 
 /**
- * gets the predicted intra4x4 prediction mode.
+ * Get the predicted intra4x4 prediction mode.
  */
 static av_always_inline int pred_intra_mode(H264Context *h, int n){
     const int index8= scan8[n];

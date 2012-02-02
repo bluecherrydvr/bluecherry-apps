@@ -34,6 +34,22 @@
 #   define T @
 #endif
 
+#if   HAVE_NEON
+        .arch           armv7-a
+#elif HAVE_ARMV6T2
+        .arch           armv6t2
+#elif HAVE_ARMV6
+        .arch           armv6
+#elif HAVE_ARMV5TE
+        .arch           armv5te
+#endif
+
+#if   HAVE_NEON
+        .fpu            neon
+#elif HAVE_ARMVFP
+        .fpu            vfp
+#endif
+
         .syntax unified
 T       .thumb
 
@@ -52,6 +68,7 @@ ELF     .size   \name, . - \name
         .purgem endfunc
     .endm
         .text
+        .align          2
     .if \export
         .global EXTERN_ASM\name
 EXTERN_ASM\name:
@@ -94,6 +111,12 @@ ELF     .size   \name, . - \name
 .macro  ldr_pre         rt,  rn,  rm:vararg
 A       ldr             \rt, [\rn, \rm]!
 T       add             \rn, \rn, \rm
+T       ldr             \rt, [\rn]
+.endm
+
+.macro  ldr_dpre        rt,  rn,  rm:vararg
+A       ldr             \rt, [\rn, -\rm]!
+T       sub             \rn, \rn, \rm
 T       ldr             \rt, [\rn]
 .endm
 

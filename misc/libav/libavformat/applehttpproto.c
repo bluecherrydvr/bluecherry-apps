@@ -114,7 +114,8 @@ static int parse_playlist(URLContext *h, const char *url)
     char line[1024];
     const char *ptr;
 
-    if ((ret = avio_open(&in, url, AVIO_FLAG_READ)) < 0)
+    if ((ret = avio_open2(&in, url, AVIO_FLAG_READ,
+                          &h->interrupt_callback, NULL)) < 0)
         return ret;
 
     read_chomp_line(in, line, sizeof(line));
@@ -173,19 +174,25 @@ fail:
     return ret;
 }
 
+static int applehttp_close(URLContext *h)
+{
+    AppleHTTPContext *s = h->priv_data;
+
+    free_segment_list(s);
+    free_variant_list(s);
+    ffurl_close(s->seg_hd);
+    return 0;
+}
+
 static int applehttp_open(URLContext *h, const char *uri, int flags)
 {
-    AppleHTTPContext *s;
+    AppleHTTPContext *s = h->priv_data;
     int ret, i;
     const char *nested_url;
 
     if (flags & AVIO_FLAG_WRITE)
         return AVERROR(ENOSYS);
 
-    s = av_mallocz(sizeof(AppleHTTPContext));
-    if (!s)
-        return AVERROR(ENOMEM);
-    h->priv_data = s;
     h->is_streamed = 1;
 
     if (av_strstart(uri, "applehttp+", &nested_url)) {
@@ -228,7 +235,7 @@ static int applehttp_open(URLContext *h, const char *uri, int flags)
     return 0;
 
 fail:
-    av_free(s);
+    applehttp_close(h);
     return ret;
 }
 
@@ -237,6 +244,7 @@ static int applehttp_read(URLContext *h, uint8_t *buf, int size)
     AppleHTTPContext *s = h->priv_data;
     const char *url;
     int ret;
+    int64_t reload_interval;
 
 start:
     if (s->seg_hd) {
@@ -249,12 +257,21 @@ start:
         s->seg_hd = NULL;
         s->cur_seq_no++;
     }
+    reload_interval = s->n_segments > 0 ?
+                      s->segments[s->n_segments - 1]->duration :
+                      s->target_duration;
+    reload_interval *= 1000000;
 retry:
     if (!s->finished) {
         int64_t now = av_gettime();
-        if (now - s->last_load_time >= s->target_duration*1000000)
+        if (now - s->last_load_time >= reload_interval) {
             if ((ret = parse_playlist(h, s->playlisturl)) < 0)
                 return ret;
+            /* If we need to reload the playlist again below (if
+             * there's still no more segments), switch to a reload
+             * interval of half the target duration. */
+            reload_interval = s->target_duration * 500000;
+        }
     }
     if (s->cur_seq_no < s->start_seq_no) {
         av_log(h, AV_LOG_WARNING,
@@ -265,8 +282,8 @@ retry:
     if (s->cur_seq_no - s->start_seq_no >= s->n_segments) {
         if (s->finished)
             return AVERROR_EOF;
-        while (av_gettime() - s->last_load_time < s->target_duration*1000000) {
-            if (url_interrupt_cb())
+        while (av_gettime() - s->last_load_time < reload_interval) {
+            if (ff_check_interrupt(&h->interrupt_callback))
                 return AVERROR_EXIT;
             usleep(100*1000);
         }
@@ -274,9 +291,10 @@ retry:
     }
     url = s->segments[s->cur_seq_no - s->start_seq_no]->url,
     av_log(h, AV_LOG_DEBUG, "opening %s\n", url);
-    ret = ffurl_open(&s->seg_hd, url, AVIO_FLAG_READ);
+    ret = ffurl_open(&s->seg_hd, url, AVIO_FLAG_READ,
+                     &h->interrupt_callback, NULL);
     if (ret < 0) {
-        if (url_interrupt_cb())
+        if (ff_check_interrupt(&h->interrupt_callback))
             return AVERROR_EXIT;
         av_log(h, AV_LOG_WARNING, "Unable to open %s\n", url);
         s->cur_seq_no++;
@@ -285,21 +303,11 @@ retry:
     goto start;
 }
 
-static int applehttp_close(URLContext *h)
-{
-    AppleHTTPContext *s = h->priv_data;
-
-    free_segment_list(s);
-    free_variant_list(s);
-    ffurl_close(s->seg_hd);
-    av_free(s);
-    return 0;
-}
-
 URLProtocol ff_applehttp_protocol = {
-    .name      = "applehttp",
-    .url_open  = applehttp_open,
-    .url_read  = applehttp_read,
-    .url_close = applehttp_close,
-    .flags     = URL_PROTOCOL_FLAG_NESTED_SCHEME,
+    .name           = "applehttp",
+    .url_open       = applehttp_open,
+    .url_read       = applehttp_read,
+    .url_close      = applehttp_close,
+    .flags          = URL_PROTOCOL_FLAG_NESTED_SCHEME,
+    .priv_data_size = sizeof(AppleHTTPContext),
 };

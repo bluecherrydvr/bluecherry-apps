@@ -88,7 +88,7 @@ int rtp_device_start(struct rtp_device *rs)
 
 	av_dict_free(&avopt);
 
-	if ((re = av_find_stream_info(rs->ctx)) < 0) {
+	if ((re = avformat_find_stream_info(rs->ctx, NULL)) < 0) {
 		rtp_device_stop(rs);
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
@@ -277,7 +277,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 		return -1;
 	}
 
-	AVStream *vst = av_new_stream(out_ctx, 0);
+	AVStream *vst = avformat_new_stream(out_ctx, NULL);
 	if (!vst) {
 		strcpy(rs->error_message, "Cannot add new stream");
 		return -1;
@@ -302,7 +302,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 
 	if (rs->audio_stream_index >= 0) {
 		/* Audio recording errors are non-fatal; video will still be captured */
-		AVStream *ast = av_new_stream(out_ctx, 1);
+		AVStream *ast = avformat_new_stream(out_ctx, NULL);
 		if (!ast) {
 			av_log(out_ctx, AV_LOG_ERROR, "Cannot add audio stream to output context");
 			return 0;

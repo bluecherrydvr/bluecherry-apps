@@ -27,6 +27,7 @@
 
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
+#include "internal.h"
 
 #define SCHl_TAG MKTAG('S', 'C', 'H', 'l')
 #define SEAD_TAG MKTAG('S', 'E', 'A', 'D')    /* Sxxx header */
@@ -433,12 +434,17 @@ static int ea_read_header(AVFormatContext *s,
             ea->audio_codec = 0;
             return 1;
         }
+        if (ea->bytes <= 0) {
+            av_log(s, AV_LOG_ERROR, "Invalid number of bytes per sample: %d\n", ea->bytes);
+            ea->audio_codec = CODEC_ID_NONE;
+            return 1;
+        }
 
         /* initialize the audio decoder stream */
         st = avformat_new_stream(s, NULL);
         if (!st)
             return AVERROR(ENOMEM);
-        av_set_pts_info(st, 33, 1, ea->sample_rate);
+        avpriv_set_pts_info(st, 33, 1, ea->sample_rate);
         st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
         st->codec->codec_id = ea->audio_codec;
         st->codec->codec_tag = 0;  /* no tag */

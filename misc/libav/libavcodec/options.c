@@ -208,14 +208,16 @@ static const AVOption options[]={
 {"very_aggressive", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_ER_VERY_AGGRESSIVE }, INT_MIN, INT_MAX, V|D, "er"},
 {"explode", "abort decoding on error recognition", 0, AV_OPT_TYPE_CONST, {.dbl = FF_ER_EXPLODE }, INT_MIN, INT_MAX, V|D, "er"},
 #endif /* FF_API_ER */
-{"err_filter", "set error detection filter flags", OFFSET(err_recognition), AV_OPT_TYPE_FLAGS, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, A|V|D, "err_filter"},
-{"crccheck", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, V|D, "err_filter"},
-{"bitstream", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BITSTREAM }, INT_MIN, INT_MAX, V|D, "err_filter"},
-{"buffer", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BUFFER }, INT_MIN, INT_MAX, V|D, "err_filter"},
-{"explode", "abort decoding on minor error recognition", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_EXPLODE }, INT_MIN, INT_MAX, V|D, "err_filter"},
+{"err_detect", "set error detection flags", OFFSET(err_recognition), AV_OPT_TYPE_FLAGS, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, A|V|D, "err_detect"},
+{"crccheck", "verify embedded CRCs", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, V|D, "err_detect"},
+{"bitstream", "detect bitstream specification deviations", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BITSTREAM }, INT_MIN, INT_MAX, V|D, "err_detect"},
+{"buffer", "detect improper bitstream length", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BUFFER }, INT_MIN, INT_MAX, V|D, "err_detect"},
+{"explode", "abort decoding on minor error detection", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_EXPLODE }, INT_MIN, INT_MAX, V|D, "err_detect"},
 {"has_b_frames", NULL, OFFSET(has_b_frames), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX},
 {"block_align", NULL, OFFSET(block_align), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX},
+#if FF_API_PARSE_FRAME
 {"parse_only", NULL, OFFSET(parse_only), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX},
+#endif
 {"mpeg_quant", "use MPEG quantizers instead of H.263", OFFSET(mpeg_quant), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 {"stats_out", NULL, OFFSET(stats_out), AV_OPT_TYPE_STRING, {.str = NULL}, CHAR_MIN, CHAR_MAX},
 {"stats_in", NULL, OFFSET(stats_in), AV_OPT_TYPE_STRING, {.str = NULL}, CHAR_MIN, CHAR_MAX},
@@ -329,7 +331,6 @@ static const AVOption options[]={
 {"ibias", "intra quant bias", OFFSET(intra_quant_bias), AV_OPT_TYPE_INT, {.dbl = FF_DEFAULT_QUANT_BIAS }, INT_MIN, INT_MAX, V|E},
 {"pbias", "inter quant bias", OFFSET(inter_quant_bias), AV_OPT_TYPE_INT, {.dbl = FF_DEFAULT_QUANT_BIAS }, INT_MIN, INT_MAX, V|E},
 {"color_table_id", NULL, OFFSET(color_table_id), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX},
-{"internal_buffer_count", NULL, OFFSET(internal_buffer_count), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX},
 {"global_quality", NULL, OFFSET(global_quality), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|A|E},
 {"coder", NULL, OFFSET(coder_type), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E, "coder"},
 {"vlc", "variable length coder / huffman coder", 0, AV_OPT_TYPE_CONST, {.dbl = FF_CODER_TYPE_VLC }, INT_MIN, INT_MAX, V|E, "coder"},
@@ -351,7 +352,17 @@ static const AVOption options[]={
 {"nr", "noise reduction", OFFSET(noise_reduction), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 {"rc_init_occupancy", "number of bits which should be loaded into the rc buffer before decoding starts", OFFSET(rc_initial_buffer_occupancy), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 {"inter_threshold", NULL, OFFSET(inter_threshold), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
-{"flags2", NULL, OFFSET(flags2), AV_OPT_TYPE_FLAGS, {.dbl = CODEC_FLAG2_FASTPSKIP|CODEC_FLAG2_BIT_RESERVOIR|CODEC_FLAG2_PSY|CODEC_FLAG2_MBTREE }, 0, UINT_MAX, V|A|E|D, "flags2"},
+#if FF_API_X264_GLOBAL_OPTS
+#define X264_DEFAULTS CODEC_FLAG2_FASTPSKIP|CODEC_FLAG2_PSY|CODEC_FLAG2_MBTREE
+#else
+#define X264_DEFAULTS 0
+#endif
+#if FF_API_LAME_GLOBAL_OPTS
+#define LAME_DEFAULTS CODEC_FLAG2_BIT_RESERVOIR
+#else
+#define LAME_DEFAULTS 0
+#endif
+{"flags2", NULL, OFFSET(flags2), AV_OPT_TYPE_FLAGS, {.dbl = X264_DEFAULTS|LAME_DEFAULTS }, 0, UINT_MAX, V|A|E|D, "flags2"},
 {"error", NULL, OFFSET(error_rate), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 #if FF_API_ANTIALIAS_ALGO
 {"antialias", "MP3 antialias algorithm", OFFSET(antialias_algo), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|D, "aa"},
@@ -361,7 +372,8 @@ static const AVOption options[]={
 {"float", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_AA_FLOAT }, INT_MIN, INT_MAX, V|D, "aa"},
 #endif
 {"qns", "quantizer noise shaping", OFFSET(quantizer_noise_shaping), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
-{"threads", NULL, OFFSET(thread_count), AV_OPT_TYPE_INT, {.dbl = 1 }, INT_MIN, INT_MAX, V|E|D},
+{"threads", NULL, OFFSET(thread_count), AV_OPT_TYPE_INT, {.dbl = 1 }, 0, INT_MAX, V|E|D, "threads"},
+{"auto", "detect a good number of threads", 0, AV_OPT_TYPE_CONST, {.dbl = 0 }, INT_MIN, INT_MAX, V|E|D, "threads"},
 {"me_threshold", "motion estimaton threshold", OFFSET(me_threshold), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 {"mb_threshold", "macroblock threshold", OFFSET(mb_threshold), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, INT_MIN, INT_MAX, V|E},
 {"dc", "intra_dc_precision", OFFSET(intra_dc_precision), AV_OPT_TYPE_INT, {.dbl = 0 }, INT_MIN, INT_MAX, V|E},
@@ -482,7 +494,7 @@ static const AVOption options[]={
 {"psy_trellis", "specify psycho visual trellis", OFFSET(psy_trellis), AV_OPT_TYPE_FLOAT, {.dbl = -1 }, -1, FLT_MAX, V|E},
 {"aq_mode", "specify aq method", OFFSET(aq_mode), AV_OPT_TYPE_INT, {.dbl = -1 }, -1, INT_MAX, V|E},
 {"aq_strength", "specify aq strength", OFFSET(aq_strength), AV_OPT_TYPE_FLOAT, {.dbl = -1.0 }, -1, FLT_MAX, V|E},
-{"rc_lookahead", "specify number of frames to look ahead for frametype", OFFSET(rc_lookahead), AV_OPT_TYPE_INT, {.dbl = 40 }, 0, INT_MAX, V|E},
+{"rc_lookahead", "specify number of frames to look ahead for frametype", OFFSET(rc_lookahead), AV_OPT_TYPE_INT, {.dbl = -1 }, -1, INT_MAX, V|E},
 {"ssim", "ssim will be calculated during encoding", 0, AV_OPT_TYPE_CONST, {.dbl = CODEC_FLAG2_SSIM }, INT_MIN, INT_MAX, V|E, "flags2"},
 {"intra_refresh", "use periodic insertion of intra blocks instead of keyframes", 0, AV_OPT_TYPE_CONST, {.dbl = CODEC_FLAG2_INTRA_REFRESH }, INT_MIN, INT_MAX, V|E, "flags2"},
 {"crf_max", "in crf mode, prevents vbv from lowering quality beyond this point", OFFSET(crf_max), AV_OPT_TYPE_FLOAT, {.dbl = DEFAULT }, 0, 51, V|E},
@@ -496,7 +508,7 @@ static const AVOption options[]={
 {"cholesky", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = AV_LPC_TYPE_CHOLESKY }, INT_MIN, INT_MAX, A|E, "lpc_type"},
 {"lpc_passes", "deprecated, use flac-specific options", OFFSET(lpc_passes), AV_OPT_TYPE_INT, {.dbl = -1 }, INT_MIN, INT_MAX, A|E},
 #endif
-{"slices", "number of slices, used in parallelized decoding", OFFSET(slices), AV_OPT_TYPE_INT, {.dbl = 0 }, 0, INT_MAX, V|E},
+{"slices", "number of slices, used in parallelized encoding", OFFSET(slices), AV_OPT_TYPE_INT, {.dbl = 0 }, 0, INT_MAX, V|E},
 {"thread_type", "select multithreading type", OFFSET(thread_type), AV_OPT_TYPE_FLAGS, {.dbl = FF_THREAD_SLICE|FF_THREAD_FRAME }, 0, INT_MAX, V|E|D, "thread_type"},
 {"slice", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_THREAD_SLICE }, INT_MIN, INT_MAX, V|E|D, "thread_type"},
 {"frame", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_THREAD_FRAME }, INT_MIN, INT_MAX, V|E|D, "thread_type"},
@@ -539,6 +551,7 @@ static const AVClass av_codec_context_class = {
 #if FF_API_ALLOC_CONTEXT
 void avcodec_get_context_defaults2(AVCodecContext *s, enum AVMediaType codec_type){
     avcodec_get_context_defaults3(s, NULL);
+    s->codec_type = codec_type;
 }
 #endif
 
@@ -570,15 +583,15 @@ int avcodec_get_context_defaults3(AVCodecContext *s, AVCodec *codec){
             }
         }
         if(codec->priv_class){
-            *(AVClass**)s->priv_data= codec->priv_class;
+            *(const AVClass**)s->priv_data = codec->priv_class;
             av_opt_set_defaults(s->priv_data);
         }
     }
     if (codec && codec->defaults) {
         int ret;
-        AVCodecDefault *d = codec->defaults;
+        const AVCodecDefault *d = codec->defaults;
         while (d->key) {
-            ret = av_set_string3(s, d->key, d->value, 0, NULL);
+            ret = av_opt_set(s, d->key, d->value, 0);
             av_assert0(ret >= 0);
             d++;
         }
@@ -633,9 +646,9 @@ int avcodec_copy_context(AVCodecContext *dest, const AVCodecContext *src)
     dest->priv_data       = NULL;
     dest->codec           = NULL;
     dest->slice_offset    = NULL;
-    dest->internal_buffer = NULL;
     dest->hwaccel         = NULL;
     dest->thread_opaque   = NULL;
+    dest->internal        = NULL;
 
     /* reallocate values that should be allocated separately */
     dest->rc_eq           = NULL;

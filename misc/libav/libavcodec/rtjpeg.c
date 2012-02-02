@@ -27,7 +27,7 @@
     i = scan[coeff--]; \
     block[i] = (c) * quant[i];
 
-//! aligns the bitstream to the give power of two
+/// aligns the bitstream to the given power of two
 #define ALIGN(a) \
     n = (-get_bits_count(gb)) & (a - 1); \
     if (n) {skip_bits(gb, n);}
@@ -56,7 +56,7 @@ static inline int get_block(GetBitContext *gb, DCTELEM *block, const uint8_t *sc
 
     // number of non-zero coefficients
     coeff = get_bits(gb, 6);
-    if (get_bits_count(gb) + (coeff << 1) >= gb->size_in_bits)
+    if (get_bits_left(gb) < (coeff << 1))
         return -1;
 
     // normally we would only need to clear the (63 - coeff) last values,
@@ -73,7 +73,7 @@ static inline int get_block(GetBitContext *gb, DCTELEM *block, const uint8_t *sc
 
     // 4 bits per coefficient
     ALIGN(4);
-    if (get_bits_count(gb) + (coeff << 2) >= gb->size_in_bits)
+    if (get_bits_left(gb) < (coeff << 2))
         return -1;
     while (coeff) {
         ac = get_sbits(gb, 4);
@@ -84,7 +84,7 @@ static inline int get_block(GetBitContext *gb, DCTELEM *block, const uint8_t *sc
 
     // 8 bits per coefficient
     ALIGN(8);
-    if (get_bits_count(gb) + (coeff << 3) >= gb->size_in_bits)
+    if (get_bits_left(gb) < (coeff << 3))
         return -1;
     while (coeff) {
         ac = get_sbits(gb, 8);
@@ -114,24 +114,25 @@ int rtjpeg_decode_frame_yuv420(RTJpegContext *c, AVFrame *f,
     init_get_bits(&gb, buf, buf_size * 8);
     for (y = 0; y < h; y++) {
         for (x = 0; x < w; x++) {
+#define BLOCK(quant, dst, stride) do { \
+    int res = get_block(&gb, block, c->scan, quant); \
+    if (res < 0) \
+        return res; \
+    if (res > 0) \
+        c->dsp->idct_put(dst, stride, block); \
+} while (0)
             DCTELEM *block = c->block;
-            if (get_block(&gb, block, c->scan, c->lquant) > 0)
-                c->dsp->idct_put(y1, f->linesize[0], block);
+            BLOCK(c->lquant, y1, f->linesize[0]);
             y1 += 8;
-            if (get_block(&gb, block, c->scan, c->lquant) > 0)
-                c->dsp->idct_put(y1, f->linesize[0], block);
+            BLOCK(c->lquant, y1, f->linesize[0]);
             y1 += 8;
-            if (get_block(&gb, block, c->scan, c->lquant) > 0)
-                c->dsp->idct_put(y2, f->linesize[0], block);
+            BLOCK(c->lquant, y2, f->linesize[0]);
             y2 += 8;
-            if (get_block(&gb, block, c->scan, c->lquant) > 0)
-                c->dsp->idct_put(y2, f->linesize[0], block);
+            BLOCK(c->lquant, y2, f->linesize[0]);
             y2 += 8;
-            if (get_block(&gb, block, c->scan, c->cquant) > 0)
-                c->dsp->idct_put(u, f->linesize[1], block);
+            BLOCK(c->cquant, u,  f->linesize[1]);
             u += 8;
-            if (get_block(&gb, block, c->scan, c->cquant) > 0)
-                c->dsp->idct_put(v, f->linesize[2], block);
+            BLOCK(c->cquant, v,  f->linesize[2]);
             v += 8;
         }
         y1 += 2 * 8 * (f->linesize[0] - w);

@@ -266,7 +266,7 @@ av_cold void ff_msmpeg4_encode_init(MpegEncContext *s)
 
         for(i=0; i<NB_RL_TABLES; i++){
             int level;
-            for(level=0; level<=MAX_LEVEL; level++){
+            for (level = 1; level <= MAX_LEVEL; level++) {
                 int run;
                 for(run=0; run<=MAX_RUN; run++){
                     int last;
@@ -1691,7 +1691,7 @@ int ff_msmpeg4_decode_block(MpegEncContext * s, DCTELEM * block,
                     if(s->msmpeg4_version<=3){
                         last=  SHOW_UBITS(re, &s->gb, 1); SKIP_CACHE(re, &s->gb, 1);
                         run=   SHOW_UBITS(re, &s->gb, 6); SKIP_CACHE(re, &s->gb, 6);
-                        level= SHOW_SBITS(re, &s->gb, 8); LAST_SKIP_CACHE(re, &s->gb, 8);
+                        level= SHOW_SBITS(re, &s->gb, 8);
                         SKIP_COUNTER(re, &s->gb, 1+6+8);
                     }else{
                         int sign;
@@ -1810,7 +1810,7 @@ int ff_msmpeg4_decode_block(MpegEncContext * s, DCTELEM * block,
             i-= 192;
             if(i&(~63)){
                 const int left= get_bits_left(&s->gb);
-                if(((i+192 == 64 && level/qmul==-1) || s->error_recognition<=1) && left>=0){
+                if(((i+192 == 64 && level/qmul==-1) || !(s->err_recognition&AV_EF_BITSTREAM)) && left>=0){
                     av_log(s->avctx, AV_LOG_ERROR, "ignoring overflow at %d %d\n", s->mb_x, s->mb_y);
                     break;
                 }else{

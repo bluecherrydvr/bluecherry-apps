@@ -26,8 +26,8 @@
 /** Reconstruct bitstream f_code */
 static inline int mpeg2_get_f_code(MpegEncContext *s)
 {
-    return ((s->mpeg_f_code[0][0] << 12) | (s->mpeg_f_code[0][1] << 8) |
-            (s->mpeg_f_code[1][0] <<  4) |  s->mpeg_f_code[1][1]);
+    return (s->mpeg_f_code[0][0] << 12) | (s->mpeg_f_code[0][1] << 8) |
+           (s->mpeg_f_code[1][0] <<  4) |  s->mpeg_f_code[1][1];
 }
 
 /** Determine frame start: first field for field picture or frame picture */
@@ -143,9 +143,7 @@ AVHWAccel ff_mpeg2_vaapi_hwaccel = {
     .type           = AVMEDIA_TYPE_VIDEO,
     .id             = CODEC_ID_MPEG2VIDEO,
     .pix_fmt        = PIX_FMT_VAAPI_VLD,
-    .capabilities   = 0,
     .start_frame    = vaapi_mpeg2_start_frame,
     .end_frame      = vaapi_mpeg2_end_frame,
     .decode_slice   = vaapi_mpeg2_decode_slice,
-    .priv_data_size = 0,
 };

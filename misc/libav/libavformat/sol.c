@@ -23,8 +23,9 @@
  * Based on documents from Game Audio Player and own research
  */
 
-#include "libavutil/bswap.h"
+#include "libavutil/intreadwrite.h"
 #include "avformat.h"
+#include "internal.h"
 #include "pcm.h"
 
 /* if we don't know the size in advance */
@@ -33,8 +34,7 @@
 static int sol_probe(AVProbeData *p)
 {
     /* check file header */
-    uint16_t magic;
-    magic=av_le2ne16(*((uint16_t*)p->buf));
+    uint16_t magic = AV_RL32(p->buf);
     if ((magic == 0x0B8D || magic == 0x0C0D || magic == 0x0C8D) &&
         p->buf[2] == 'S' && p->buf[3] == 'O' &&
         p->buf[4] == 'L' && p->buf[5] == 0)
@@ -118,7 +118,7 @@ static int sol_read_header(AVFormatContext *s,
     st->codec->codec_id = codec;
     st->codec->channels = channels;
     st->codec->sample_rate = rate;
-    av_set_pts_info(st, 64, 1, rate);
+    avpriv_set_pts_info(st, 64, 1, rate);
     return 0;
 }
 

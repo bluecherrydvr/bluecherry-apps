@@ -580,9 +580,9 @@ static int dnxhd_encode_thread(AVCodecContext *avctx, void *arg, int jobnr, int 
 
         for (i = 0; i < 8; i++) {
             DCTELEM *block = ctx->blocks[i];
-            int last_index, overflow;
-            int n = dnxhd_switch_matrix(ctx, i);
-            last_index = ctx->m.dct_quantize(&ctx->m, block, i, qscale, &overflow);
+            int overflow, n = dnxhd_switch_matrix(ctx, i);
+            int last_index = ctx->m.dct_quantize(&ctx->m, block, i,
+                                                 qscale, &overflow);
             //START_TIMER;
             dnxhd_encode_block(ctx, block, last_index, n);
             //STOP_TIMER("encode_block");
@@ -682,7 +682,8 @@ static int dnxhd_encode_rdo(AVCodecContext *avctx, DNXHDEncContext *ctx)
                 int qscale = 1;
                 int mb = y*ctx->m.mb_width+x;
                 for (q = 1; q < avctx->qmax; q++) {
-                    unsigned score = ctx->mb_rc[q][mb].bits*lambda+(ctx->mb_rc[q][mb].ssd<<LAMBDA_FRAC_BITS);
+                    unsigned score = ctx->mb_rc[q][mb].bits*lambda+
+                        ((unsigned)ctx->mb_rc[q][mb].ssd<<LAMBDA_FRAC_BITS);
                     if (score < min) {
                         min = score;
                         qscale = q;
@@ -709,7 +710,7 @@ static int dnxhd_encode_rdo(AVCodecContext *avctx, DNXHDEncContext *ctx)
                 lambda = (lambda+last_higher)>>1;
             else
                 lambda -= down_step;
-            down_step *= 5; // XXX tune ?
+            down_step = FFMIN((int64_t)down_step*5, INT_MAX);
             up_step = 1<<LAMBDA_FRAC_BITS;
             lambda = FFMAX(1, lambda);
             if (lambda == last_lower)

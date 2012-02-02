@@ -52,6 +52,7 @@ void av_register_all(void)
     REGISTER_DEMUXER  (AAC, aac);
     REGISTER_MUXDEMUX (AC3, ac3);
     REGISTER_MUXER    (ADTS, adts);
+    REGISTER_MUXDEMUX (ADX, adx);
     REGISTER_DEMUXER  (AEA, aea);
     REGISTER_MUXDEMUX (AIFF, aiff);
     REGISTER_MUXDEMUX (AMR, amr);
@@ -70,6 +71,7 @@ void av_register_all(void)
     REGISTER_DEMUXER  (BETHSOFTVID, bethsoftvid);
     REGISTER_DEMUXER  (BFI, bfi);
     REGISTER_DEMUXER  (BINK, bink);
+    REGISTER_DEMUXER  (BMV, bmv);
     REGISTER_DEMUXER  (C93, c93);
     REGISTER_DEMUXER  (CAF, caf);
     REGISTER_MUXDEMUX (CAVSVIDEO, cavsvideo);
@@ -154,7 +156,7 @@ void av_register_all(void)
     REGISTER_MUXDEMUX (NUT, nut);
     REGISTER_DEMUXER  (NUV, nuv);
     REGISTER_MUXDEMUX (OGG, ogg);
-    REGISTER_DEMUXER  (OMA, oma);
+    REGISTER_MUXDEMUX (OMA, oma);
     REGISTER_MUXDEMUX (PCM_ALAW,  pcm_alaw);
     REGISTER_MUXDEMUX (PCM_MULAW, pcm_mulaw);
     REGISTER_MUXDEMUX (PCM_F64BE, pcm_f64be);
@@ -175,6 +177,7 @@ void av_register_all(void)
     REGISTER_MUXDEMUX (PCM_U16BE, pcm_u16be);
     REGISTER_MUXDEMUX (PCM_U16LE, pcm_u16le);
     REGISTER_MUXDEMUX (PCM_U8,    pcm_u8);
+    REGISTER_DEMUXER  (PMP, pmp);
     REGISTER_MUXER    (PSP, psp);
     REGISTER_DEMUXER  (PVA, pva);
     REGISTER_DEMUXER  (QCP, qcp);
@@ -194,9 +197,11 @@ void av_register_all(void)
     av_register_rdt_dynamic_payload_handlers();
 #endif
     REGISTER_DEMUXER  (SEGAFILM, segafilm);
+    REGISTER_MUXER    (SEGMENT, segment);
     REGISTER_DEMUXER  (SHORTEN, shorten);
     REGISTER_DEMUXER  (SIFF, siff);
     REGISTER_DEMUXER  (SMACKER, smacker);
+    REGISTER_MUXDEMUX (SMJPEG, smjpeg);
     REGISTER_DEMUXER  (SOL, sol);
     REGISTER_MUXDEMUX (SOX, sox);
     REGISTER_MUXDEMUX (SPDIF, spdif);
@@ -241,6 +246,8 @@ void av_register_all(void)
     REGISTER_PROTOCOL (FILE, file);
     REGISTER_PROTOCOL (GOPHER, gopher);
     REGISTER_PROTOCOL (HTTP, http);
+    REGISTER_PROTOCOL (HTTPPROXY, httpproxy);
+    REGISTER_PROTOCOL (HTTPS, https);
     REGISTER_PROTOCOL (MMSH, mmsh);
     REGISTER_PROTOCOL (MMST, mmst);
     REGISTER_PROTOCOL (MD5,  md5);
@@ -254,5 +261,6 @@ void av_register_all(void)
 #endif
     REGISTER_PROTOCOL (RTP, rtp);
     REGISTER_PROTOCOL (TCP, tcp);
+    REGISTER_PROTOCOL (TLS, tls);
     REGISTER_PROTOCOL (UDP, udp);
 }

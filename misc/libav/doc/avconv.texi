@@ -26,12 +26,33 @@ avconv is a very fast video and audio converter that can also grab from
 a live audio/video source. It can also convert between arbitrary sample
 rates and resize video on the fly with a high quality polyphase filter.
 
+avconv reads from an arbitrary number of input "files" (which can be regular
+files, pipes, network streams, grabbing devices, etc.), specified by the
+@code{-i} option, and writes to an arbitrary number of output "files", which are
+specified by a plain output filename. Anything found on the command line which
+cannot be interpreted as an option is considered to be an output filename.
+
+Each input or output file can in principle contain any number of streams of
+different types (video/audio/subtitle/attachment/data). Allowed number and/or
+types of streams can be limited by the container format. Selecting, which
+streams from which inputs go into output, is done either automatically or with
+the @code{-map} option (see the Stream selection chapter).
+
+To refer to input files in options, you must use their indices (0-based). E.g.
+the first input file is @code{0}, the second is @code{1} etc. Similarly, streams
+within a file are referred to by their indices. E.g. @code{2:3} refers to the
+fourth stream in the third input file. See also the Stream specifiers chapter.
+
 As a general rule, options are applied to the next specified
 file. Therefore, order is important, and you can have the same
 option on the command line multiple times. Each occurrence is
 then applied to the next input or output file.
 Exceptions from this rule are the global options (e.g. verbosity level),
 which should be specified first.
+
+Do not mix input and output files -- first specify all input files, then all
+output files. Also do not mix options which belong to different files. All
+options apply ONLY to the next input or output file and are reset between files.
 
 @itemize
 @item
@@ -149,9 +170,9 @@ For example, for setting the title in the output file:
 avconv -i in.avi -metadata title="my title" out.flv
 @end example
 
-To set the language of the second stream:
+To set the language of the first audio stream:
 @example
-avconv -i INPUT -metadata:s:1 language=eng OUTPUT
+avconv -i INPUT -metadata:s:a:0 language=eng OUTPUT
 @end example
 
 @item -target @var{type} (@emph{output})
@@ -192,6 +213,39 @@ Specify the preset for matching stream(s).
 @item -stats (@emph{global})
 Print encoding progress/statistics. On by default.
 
+@item -attach @var{filename} (@emph{output})
+Add an attachment to the output file. This is supported by a few formats
+like Matroska for e.g. fonts used in rendering subtitles. Attachments
+are implemented as a specific type of stream, so this option will add
+a new stream to the file. It is then possible to use per-stream options
+on this stream in the usual way. Attachment streams created with this
+option will be created after all the other streams (i.e. those created
+with @code{-map} or automatic mappings).
+
+Note that for Matroska you also have to set the mimetype metadata tag:
+@example
+avconv -i INPUT -attach DejaVuSans.ttf -metadata:s:2 mimetype=application/x-truetype-font out.mkv
+@end example
+(assuming that the attachment stream will be third in the output file).
+
+@item -dump_attachment[:@var{stream_specifier}] @var{filename} (@emph{input,per-stream})
+Extract the matching attachment stream into a file named @var{filename}. If
+@var{filename} is empty, then the value of the @code{filename} metadata tag
+will be used.
+
+E.g. to extract the first attachment to a file named 'out.ttf':
+@example
+avconv -dump_attachment:t:0 out.ttf INPUT
+@end example
+To extract all attachments to files determined by the @code{filename} tag:
+@example
+avconv -dump_attachment:t "" INPUT
+@end example
+
+Technical note -- attachments are implemented as codec extradata, so this
+option can actually be used to extract extradata from any stream, not just
+attachments.
+
 @end table
 
 @section Video Options
@@ -202,7 +256,7 @@ Set the number of video frames to record. This is an alias for @code{-frames:v}.
 @item -r[:@var{stream_specifier}] @var{fps} (@emph{input/output,per-stream})
 Set frame rate (Hz value, fraction or abbreviation), (default = 25).
 @item -s[:@var{stream_specifier}] @var{size} (@emph{input/output,per-stream})
-Set frame size. The format is @samp{wxh} (avserver default = 160x128, avconv default = same as source).
+Set frame size. The format is @samp{wxh} (default - same as source).
 The following abbreviations are recognized:
 @table @samp
 @item sqcif
@@ -492,6 +546,10 @@ frames after each specified time.
 This option can be useful to ensure that a seek point is present at a
 chapter mark or any other designated place in the output file.
 The timestamps must be specified in ascending order.
+
+@item -copyinkf[:@var{stream_specifier}] (@emph{output,per-stream})
+When doing stream copy, copy also non-key frames found at the
+beginning.
 @end table
 
 @section Audio Options
@@ -516,7 +574,7 @@ Disable audio recording.
 @item -acodec @var{codec} (@emph{input/output})
 Set the audio codec. This is an alias for @code{-codec:a}.
 @item -sample_fmt[:@var{stream_specifier}] @var{sample_fmt} (@emph{output,per-stream})
-Set the audio sample format. Use @code{-help sample_fmts} to get a list
+Set the audio sample format. Use @code{-sample_fmts} to get a list
 of supported sample formats.
 @end table
 
@@ -619,14 +677,28 @@ avconv -i INPUT -map 0 -map -0:a:1 OUTPUT
 
 Note that using this option disables the default mappings for this output file.
 
-@item -map_metadata[:@var{metadata_type}][:@var{index}] @var{infile}[:@var{metadata_type}][:@var{index}] (@emph{output,per-metadata})
+@item -map_metadata[:@var{metadata_spec_out}] @var{infile}[:@var{metadata_spec_in}] (@emph{output,per-metadata})
 Set metadata information of the next output file from @var{infile}. Note that
 those are file indices (zero-based), not filenames.
-Optional @var{metadata_type} parameters specify, which metadata to copy - (g)lobal
-(i.e. metadata that applies to the whole file), per-(s)tream, per-(c)hapter or
-per-(p)rogram. All metadata specifiers other than global must be followed by the
-stream/chapter/program index. If metadata specifier is omitted, it defaults to
-global.
+Optional @var{metadata_spec_in/out} parameters specify, which metadata to copy.
+A metadata specifier can have the following forms:
+@table @option
+@item @var{g}
+global metadata, i.e. metadata that applies to the whole file
+
+@item @var{s}[:@var{stream_spec}]
+per-stream metadata. @var{stream_spec} is a stream specifier as described
+in the @ref{Stream specifiers} chapter. In an input metadata specifier, the first
+matching stream is copied from. In an output metadata specifier, all matching
+streams are copied to.
+
+@item @var{c}:@var{chapter_index}
+per-chapter metadata. @var{chapter_index} is the zero-based chapter index.
+
+@item @var{p}:@var{program_index}
+per-program metadata. @var{program_index} is the zero-based program index.
+@end table
+If metadata specifier is omitted, it defaults to global.
 
 By default, global metadata is copied from the first input file,
 per-stream and per-chapter metadata is copied along with streams/chapters. These
@@ -638,6 +710,14 @@ of the output file:
 @example
 avconv -i in.ogg -map_metadata 0:s:0 out.mp3
 @end example
+
+To do the reverse, i.e. copy global metadata to all audio streams:
+@example
+avconv -i in.mkv -map_metadata:s:a 0:g out.mkv
+@end example
+Note that simple @code{0} would work as well in this example, since global
+metadata is assumed by default.
+
 @item -map_chapters @var{input_file_index} (@emph{output})
 Copy chapters from input file with index @var{input_file_index} to the next
 output file. If no chapter mapping is specified, then chapters are copied from
@@ -666,15 +746,15 @@ Thread count.
 Video sync method.
 
 @table @option
-@item 0
+@item passthrough
 Each frame is passed with its timestamp from the demuxer to the muxer.
-@item 1
+@item cfr
 Frames will be duplicated and dropped to achieve exactly the requested
 constant framerate.
-@item 2
+@item vfr
 Frames are passed through with their timestamp or dropped so as to
 prevent 2 frames from having the same timestamp.
-@item -1
+@item auto
 Chooses between 1 and 2 depending on muxer capabilities. This is the
 default method.
 @end table
@@ -967,7 +1047,7 @@ the input file in reverse order.
 @settitle avconv video converter
 
 @c man begin SEEALSO
-avplay(1), avprobe(1), avserver(1) and the Libav HTML documentation
+avplay(1), avprobe(1) and the Libav HTML documentation
 @c man end
 
 @c man begin AUTHORS

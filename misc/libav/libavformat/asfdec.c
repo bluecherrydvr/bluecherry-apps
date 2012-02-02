@@ -28,6 +28,7 @@
 #include "libavutil/mathematics.h"
 #include "libavcodec/mpegaudio.h"
 #include "avformat.h"
+#include "internal.h"
 #include "avio_internal.h"
 #include "riff.h"
 #include "asf.h"
@@ -230,7 +231,7 @@ static int asf_read_stream_properties(AVFormatContext *s, int64_t size)
     st = avformat_new_stream(s, NULL);
     if (!st)
         return AVERROR(ENOMEM);
-    av_set_pts_info(st, 32, 1, 1000); /* 32 bit pts in ms */
+    avpriv_set_pts_info(st, 32, 1, 1000); /* 32 bit pts in ms */
     asf_st = av_mallocz(sizeof(ASFStream));
     if (!asf_st)
         return AVERROR(ENOMEM);
@@ -978,7 +979,7 @@ static int ff_asf_parse_packet(AVFormatContext *s, AVIOContext *pb, AVPacket *pk
             asf_st->packet_pos= asf->packet_pos;
             if (asf_st->pkt.data && asf_st->palette_changed) {
                 uint8_t *pal;
-                pal = av_packet_new_side_data(pkt, AV_PKT_DATA_PALETTE,
+                pal = av_packet_new_side_data(&asf_st->pkt, AV_PKT_DATA_PALETTE,
                                               AVPALETTE_SIZE);
                 if (!pal) {
                     av_log(s, AV_LOG_ERROR, "Cannot append palette to packet\n");
@@ -1167,12 +1168,12 @@ static int64_t asf_read_pts(AVFormatContext *s, int stream_index, int64_t *ppos,
 //printf("asf_read_pts\n");
     asf_reset_header(s);
     for(;;){
-        if (av_read_frame(s, pkt) < 0){
+        if (asf_read_packet(s, pkt) < 0){
             av_log(s, AV_LOG_INFO, "asf_read_pts failed\n");
             return AV_NOPTS_VALUE;
         }
 
-        pts= pkt->pts;
+        pts = pkt->dts;
 
         av_free_packet(pkt);
         if(pkt->flags&AV_PKT_FLAG_KEY){

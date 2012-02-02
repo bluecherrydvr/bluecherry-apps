@@ -28,6 +28,7 @@
 #include <string.h>
 #include "libavutil/intreadwrite.h"
 #include "libavutil/avstring.h"
+#include "libavutil/opt.h"
 #include "internal.h"
 #include "mms.h"
 #include "asf.h"
@@ -67,7 +68,6 @@ static int mmsh_close(URLContext *h)
         ffurl_close(mms->mms_hd);
     av_free(mms->streams);
     av_free(mms->asf_header);
-    av_freep(&h->priv_data);
     return 0;
 }
 
@@ -216,12 +216,9 @@ static int mmsh_open(URLContext *h, const char *uri, int flags)
     char httpname[256], path[256], host[128], location[1024];
     char *stream_selection = NULL;
     char headers[1024];
-    MMSHContext *mmsh;
+    MMSHContext *mmsh = h->priv_data;
     MMSContext *mms;
 
-    mmsh = h->priv_data = av_mallocz(sizeof(MMSHContext));
-    if (!h->priv_data)
-        return AVERROR(ENOMEM);
     mmsh->request_seq = h->is_streamed = 1;
     mms = &mmsh->mms;
     av_strlcpy(location, uri, sizeof(location));
@@ -232,7 +229,8 @@ static int mmsh_open(URLContext *h, const char *uri, int flags)
         port = 80; // default mmsh protocol port
     ff_url_join(httpname, sizeof(httpname), "http", NULL, host, port, "%s", path);
 
-    if (ffurl_alloc(&mms->mms_hd, httpname, AVIO_FLAG_READ) < 0) {
+    if (ffurl_alloc(&mms->mms_hd, httpname, AVIO_FLAG_READ,
+                    &h->interrupt_callback) < 0) {
         return AVERROR(EIO);
     }
 
@@ -245,9 +243,9 @@ static int mmsh_open(URLContext *h, const char *uri, int flags)
              CLIENTGUID
              "Connection: Close\r\n\r\n",
              host, port, mmsh->request_seq++);
-    ff_http_set_headers(mms->mms_hd, headers);
+    av_opt_set(mms->mms_hd->priv_data, "headers", headers, 0);
 
-    err = ffurl_connect(mms->mms_hd);
+    err = ffurl_connect(mms->mms_hd, NULL);
     if (err) {
         goto fail;
     }
@@ -260,8 +258,9 @@ static int mmsh_open(URLContext *h, const char *uri, int flags)
     // close the socket and then reopen it for sending the second play request.
     ffurl_close(mms->mms_hd);
     memset(headers, 0, sizeof(headers));
-    if (ffurl_alloc(&mms->mms_hd, httpname, AVIO_FLAG_READ) < 0) {
-        return AVERROR(EIO);
+    if ((err = ffurl_alloc(&mms->mms_hd, httpname, AVIO_FLAG_READ,
+                           &h->interrupt_callback)) < 0) {
+        goto fail;
     }
     stream_selection = av_mallocz(mms->stream_num * 19 + 1);
     if (!stream_selection)
@@ -291,9 +290,9 @@ static int mmsh_open(URLContext *h, const char *uri, int flags)
         goto fail;
     }
     av_dlog(NULL, "out_buffer is %s", headers);
-    ff_http_set_headers(mms->mms_hd, headers);
+    av_opt_set(mms->mms_hd->priv_data, "headers", headers, 0);
 
-    err = ffurl_connect(mms->mms_hd);
+    err = ffurl_connect(mms->mms_hd, NULL);
     if (err) {
           goto fail;
     }
@@ -360,10 +359,10 @@ static int mmsh_read(URLContext *h, uint8_t *buf, int size)
 }
 
 URLProtocol ff_mmsh_protocol = {
-    .name      = "mmsh",
-    .url_open  = mmsh_open,
-    .url_read  = mmsh_read,
-    .url_write = NULL,
-    .url_seek  = NULL,
-    .url_close = mmsh_close,
+    .name           = "mmsh",
+    .url_open       = mmsh_open,
+    .url_read       = mmsh_read,
+    .url_close      = mmsh_close,
+    .priv_data_size = sizeof(MMSHContext),
+    .flags          = URL_PROTOCOL_FLAG_NETWORK,
 };

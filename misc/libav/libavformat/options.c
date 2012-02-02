@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 #include "avformat.h"
+#include "avio_internal.h"
 #include "libavutil/opt.h"
 
 /**
@@ -40,6 +41,10 @@ static void *format_child_next(void *obj, void *prev)
         ((s->iformat && s->iformat->priv_class) ||
           s->oformat && s->oformat->priv_class))
         return s->priv_data;
+#if !FF_API_OLD_AVIO
+    if (s->pb && s->pb->av_class && prev != s->pb)
+        return s->pb;
+#endif
     return NULL;
 }
 
@@ -48,17 +53,26 @@ static const AVClass *format_child_class_next(const AVClass *prev)
     AVInputFormat  *ifmt = NULL;
     AVOutputFormat *ofmt = NULL;
 
-    while (prev && (ifmt = av_iformat_next(ifmt)))
+    if (!prev)
+#if !FF_API_OLD_AVIO
+        return &ffio_url_class;
+#else
+    prev = (void *)&ifmt; // Dummy pointer;
+#endif
+
+    while ((ifmt = av_iformat_next(ifmt)))
         if (ifmt->priv_class == prev)
             break;
-    if ((prev && ifmt) || (!prev))
+
+    if (!ifmt)
+        while ((ofmt = av_oformat_next(ofmt)))
+            if (ofmt->priv_class == prev)
+                break;
+    if (!ofmt)
         while (ifmt = av_iformat_next(ifmt))
             if (ifmt->priv_class)
                 return ifmt->priv_class;
 
-    while (prev && (ofmt = av_oformat_next(ofmt)))
-        if (ofmt->priv_class == prev)
-            break;
     while (ofmt = av_oformat_next(ofmt))
         if (ofmt->priv_class)
             return ofmt->priv_class;
@@ -95,10 +109,15 @@ static const AVOption options[]={
 {"fdebug", "print specific debug info", OFFSET(debug), AV_OPT_TYPE_FLAGS, {.dbl = DEFAULT }, 0, INT_MAX, E|D, "fdebug"},
 {"ts", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_FDEBUG_TS }, INT_MIN, INT_MAX, E|D, "fdebug"},
 {"max_delay", "maximum muxing or demuxing delay in microseconds", OFFSET(max_delay), AV_OPT_TYPE_INT, {.dbl = DEFAULT }, 0, INT_MAX, E|D},
-{"fer", "set error detection aggressivity", OFFSET(error_recognition), AV_OPT_TYPE_INT, {.dbl = FF_ER_CAREFUL }, INT_MIN, INT_MAX, D, "fer"},
-{"careful", NULL, 0, AV_OPT_TYPE_CONST, {.dbl = FF_ER_CAREFUL }, INT_MIN, INT_MAX, D, "fer"},
-{"explode", "abort decoding on error recognition", 0, AV_OPT_TYPE_CONST, {.dbl = FF_ER_EXPLODE }, INT_MIN, INT_MAX, D, "fer"},
 {"fpsprobesize", "number of frames used to probe fps", OFFSET(fps_probe_size), AV_OPT_TYPE_INT, {.dbl = -1}, -1, INT_MAX-1, D},
+/* this is a crutch for avconv, since it cannot deal with identically named options in different contexts.
+ * to be removed when avconv is fixed */
+{"f_err_detect", "set error detection flags (deprecated; use err_detect, save via avconv)", OFFSET(error_recognition), AV_OPT_TYPE_FLAGS, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, D, "err_detect"},
+{"err_detect", "set error detection flags", OFFSET(error_recognition), AV_OPT_TYPE_FLAGS, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, D, "err_detect"},
+{"crccheck", "verify embedded CRCs", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_CRCCHECK }, INT_MIN, INT_MAX, D, "err_detect"},
+{"bitstream", "detect bitstream specification deviations", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BITSTREAM }, INT_MIN, INT_MAX, D, "err_detect"},
+{"buffer", "detect improper bitstream length", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_BUFFER }, INT_MIN, INT_MAX, D, "err_detect"},
+{"explode", "abort decoding on minor error detection", 0, AV_OPT_TYPE_CONST, {.dbl = AV_EF_EXPLODE }, INT_MIN, INT_MAX, D, "err_detect"},
 {NULL},
 };
 

@@ -29,6 +29,7 @@
 #include "libavutil/opt.h"
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
+#include "libavformat/internal.h"
 #include "timefilter.h"
 
 /**
@@ -244,7 +245,7 @@ static int audio_read_header(AVFormatContext *context, AVFormatParameters *param
     stream->codec->sample_rate  = self->sample_rate;
     stream->codec->channels     = self->nports;
 
-    av_set_pts_info(stream, 64, 1, 1000000);  /* 64 bits pts in us */
+    avpriv_set_pts_info(stream, 64, 1, 1000000);  /* 64 bits pts in us */
     return 0;
 }
 
@@ -270,7 +271,7 @@ static int audio_read_packet(AVFormatContext *context, AVPacket *pkt)
         }
     }
 
-    /* Wait for a packet comming back from process_callback(), if one isn't available yet */
+    /* Wait for a packet coming back from process_callback(), if one isn't available yet */
     timeout.tv_sec = av_gettime() / 1000000 + 2;
     if (sem_timedwait(&self->packet_count, &timeout)) {
         if (errno == ETIMEDOUT) {

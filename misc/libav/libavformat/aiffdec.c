@@ -19,9 +19,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/mathematics.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
+#include "internal.h"
 #include "pcm.h"
 #include "aiff.h"
 
@@ -87,7 +88,8 @@ static void get_meta(AVFormatContext *s, const char *key, int size)
 static unsigned int get_aiff_header(AVIOContext *pb, AVCodecContext *codec,
                              int size, unsigned version)
 {
-    AVExtFloat ext;
+    int exp;
+    uint64_t val;
     double sample_rate;
     unsigned int num_frames;
 
@@ -98,8 +100,9 @@ static unsigned int get_aiff_header(AVIOContext *pb, AVCodecContext *codec,
     num_frames = avio_rb32(pb);
     codec->bits_per_coded_sample = avio_rb16(pb);
 
-    avio_read(pb, (uint8_t*)&ext, sizeof(ext));/* Sample rate is in */
-    sample_rate = av_ext2dbl(ext);          /* 80 bits BE IEEE extended float */
+    exp = avio_rb16(pb);
+    val = avio_rb64(pb);
+    sample_rate = ldexp(val, exp - 16383 - 63);
     codec->sample_rate = sample_rate;
     size -= 18;
 
@@ -268,7 +271,7 @@ static int aiff_read_header(AVFormatContext *s,
 
 got_sound:
     /* Now positioned, get the sound data start and end */
-    av_set_pts_info(st, 64, 1, st->codec->sample_rate);
+    avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
     st->start_time = 0;
     st->duration = st->codec->frame_size ?
         st->nb_frames * st->codec->frame_size : st->nb_frames;

@@ -22,10 +22,10 @@
 /**
  * @file
  * Matroska file demuxer
- * by Ronald Bultje <rbultje@ronald.bitfreak.net>
- * with a little help from Moritz Bunkus <moritz@bunkus.org>
- * totally reworked by Aurelien Jacobs <aurel@gnuage.org>
- * Specs available on the Matroska project page: http://www.matroska.org/.
+ * @author Ronald Bultje <rbultje@ronald.bitfreak.net>
+ * @author with a little help from Moritz Bunkus <moritz@bunkus.org>
+ * @author totally reworked by Aurelien Jacobs <aurel@gnuage.org>
+ * @see specs available on the Matroska project page: http://www.matroska.org/
  */
 
 #include <stdio.h>
@@ -38,7 +38,7 @@
 #include "rm.h"
 #include "matroska.h"
 #include "libavcodec/mpeg4audio.h"
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/avstring.h"
 #include "libavutil/lzo.h"
@@ -624,9 +624,9 @@ static int ebml_read_float(AVIOContext *pb, int size, double *num)
     if (size == 0) {
         *num = 0;
     } else if (size == 4) {
-        *num= av_int2flt(avio_rb32(pb));
-    } else if(size==8){
-        *num= av_int2dbl(avio_rb64(pb));
+        *num = av_int2float(avio_rb32(pb));
+    } else if (size == 8){
+        *num = av_int2double(avio_rb64(pb));
     } else
         return AVERROR_INVALIDDATA;
 
@@ -1188,7 +1188,6 @@ static int matroska_parse_seekhead_entry(MatroskaDemuxContext *matroska, int idx
 static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
 {
     EbmlList *seekhead_list = &matroska->seekhead;
-    MatroskaSeekhead *seekhead = seekhead_list->elem;
     int64_t before_pos = avio_tell(matroska->ctx->pb);
     int i;
 
@@ -1198,6 +1197,7 @@ static void matroska_execute_seekhead(MatroskaDemuxContext *matroska)
         return;
 
     for (i = 0; i < seekhead_list->nb_elem; i++) {
+        MatroskaSeekhead *seekhead = seekhead_list->elem;
         if (seekhead[i].pos <= before_pos)
             continue;
 
@@ -1506,7 +1506,7 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
         if (track->time_scale < 0.01)
             track->time_scale = 1.0;
-        av_set_pts_info(st, 64, matroska->time_scale*track->time_scale, 1000*1000*1000); /* 64 bit pts in ns */
+        avpriv_set_pts_info(st, 64, matroska->time_scale*track->time_scale, 1000*1000*1000); /* 64 bit pts in ns */
 
         st->codec->codec_id = codec_id;
         st->start_time = 0;
@@ -1518,10 +1518,6 @@ static int matroska_read_header(AVFormatContext *s, AVFormatParameters *ap)
             st->disposition |= AV_DISPOSITION_DEFAULT;
         if (track->flag_forced)
             st->disposition |= AV_DISPOSITION_FORCED;
-
-        if (track->default_duration)
-            av_reduce(&st->codec->time_base.num, &st->codec->time_base.den,
-                      track->default_duration, 1000000000, 30000);
 
         if (!st->codec->extradata) {
             if(extradata){
@@ -1679,11 +1675,12 @@ static int matroska_parse_block(MatroskaDemuxContext *matroska, uint8_t *data,
     size -= n;
 
     track = matroska_find_track_by_num(matroska, num);
-    if (size <= 3 || !track || !track->stream) {
+    if (!track || !track->stream) {
         av_log(matroska->ctx, AV_LOG_INFO,
                "Invalid stream %"PRIu64" or size %u\n", num, size);
         return AVERROR_INVALIDDATA;
-    }
+    } else if (size <= 3)
+        return 0;
     st = track->stream;
     if (st->discard >= AVDISCARD_ALL)
         return res;

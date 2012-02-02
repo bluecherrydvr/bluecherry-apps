@@ -26,14 +26,13 @@
  */
 
 #include "libavutil/intreadwrite.h"
-#include "libavutil/intfloat_readwrite.h"
+#include "libavutil/intfloat.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
 #include "internal.h"
 #include "riff.h"
 #include "asf.h"
 #include "mpegts.h"
-#include <strings.h>
 
 /* Macros for formating GUIDs */
 #define PRI_GUID \
@@ -303,6 +302,8 @@ static void wtvfile_close(AVIOContext *pb)
 {
     WtvFile *wf = pb->opaque;
     av_free(wf->sectors);
+    av_free(wf);
+    av_free(pb->buffer);
     av_free(pb);
 }
 
@@ -459,7 +460,7 @@ static void crazytime_to_iso8601(char *buf, int buf_size, int64_t value)
  */
 static void oledate_to_iso8601(char *buf, int buf_size, int64_t value)
 {
-    time_t t = 631112400LL + 86400*av_int2dbl(value);
+    time_t t = 631112400LL + 86400*av_int2double(value);
     strftime(buf, buf_size, "%Y-%m-%d %H:%M:%S", gmtime(&t));
 }
 
@@ -524,7 +525,7 @@ static void get_tag(AVFormatContext *s, AVIOContext *pb, const char *key, int ty
         else if (!strcmp(key, "WM/WMRVExpirationDate"))
             oledate_to_iso8601(buf, buf_size, num);
         else if (!strcmp(key, "WM/WMRVBitrate"))
-            snprintf(buf, buf_size, "%f", av_int2dbl(num));
+            snprintf(buf, buf_size, "%f", av_int2double(num));
         else
             snprintf(buf, buf_size, "%"PRIi64, num);
     } else if (type == 5 && length == 2) {
@@ -634,7 +635,7 @@ static AVStream * new_stream(AVFormatContext *s, AVStream *st, int sid, int code
     }
     st->codec->codec_type = codec_type;
     st->need_parsing      = AVSTREAM_PARSE_FULL;
-    av_set_pts_info(st, 64, 1, 10000000);
+    avpriv_set_pts_info(st, 64, 1, 10000000);
     return st;
 }
 
@@ -1094,6 +1095,7 @@ static int read_seek(AVFormatContext *s, int stream_index,
 static int read_close(AVFormatContext *s)
 {
     WtvContext *wtv = s->priv_data;
+    av_free(wtv->index_entries);
     wtvfile_close(wtv->pb);
     return 0;
 }

@@ -26,10 +26,14 @@
 #define AVCODEC_G722_H
 
 #include <stdint.h>
+#include "avcodec.h"
 
 #define PREV_SAMPLES_BUF_SIZE 1024
 
 typedef struct {
+    const AVClass *class;
+    AVFrame frame;
+    int     bits_per_codeword;
     int16_t prev_samples[PREV_SAMPLES_BUF_SIZE]; ///< memory of past decoded samples
     int     prev_samples_pos;        ///< the number of values in prev_samples
 
