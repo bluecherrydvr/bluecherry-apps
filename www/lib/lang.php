@@ -284,7 +284,7 @@ define('IPCAM_DEBUG_LEVEL', 'Turn camera debugging on:');
 define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'Delete');
 define('PROPS_HEADER', 'IP Camera properties');
-define('IPCAM_WIKI_LINK', 'Is your IP camera not in the list? Try checking out our  <a href="http://improve.bluecherrydvr.com/projects/v2tracker/wiki/Ipcameras">wiki</a> to see if the configuration for your camera is available. If not, please email us (beta@bluecherrydvr.com) with the remote login and password to your camera and we\'ll see if we can add support for it. Make sure to open port 554 and port 80.');
+define('IPCAM_WIKI_LINK', 'Is your IP camera not in the list?  We maintain a larger list of MJPEG and RTSP paths <a href="http://www.bluecherrydvr.com/2012/01/technical-information-list-of-mjpeg-and-rtsp-paths-for-network-cameras/">here</a>.  If you run into problems, please join us on IRC (www.bluecherrydvr.com/irc) and we\'ll see if we can add support for it.');
 define('SERVER_NOT_RUNNING', 'Server process stopped.');
 define('SERVER_RUNNING', 'Server process running');
 define('NOT_UP_TO_DATE', 'New version available.');
