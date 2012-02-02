@@ -7,10 +7,10 @@
 #ifndef __BC_SERVER_H
 #define __BC_SERVER_H
 
+#include <libbluecherry.h>
 #include <pthread.h>
 
 extern "C" {
-#include <libbluecherry.h>
 #include <libavformat/avformat.h>
 #include "g723-dec.h"
 }

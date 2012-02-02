@@ -20,8 +20,11 @@
 #include <time.h>
 
 #include <libbluecherry.h>
+
+extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
+}
 
 struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
 
@@ -165,13 +168,13 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
  * including h264. Because they're deprecated, swscale doesn't recognize
  * that they are effectively identical to non-J variants, so the grayscale
  * conversion is much slower than it should be. */
-static int fix_pix_fmt(int fmt)
+static enum PixelFormat fix_pix_fmt(enum PixelFormat fmt)
 {
 	switch (fmt) {
 	case PIX_FMT_YUVJ420P: return PIX_FMT_YUV420P;
 	case PIX_FMT_YUVJ422P: return PIX_FMT_YUV422P;
 	case PIX_FMT_YUVJ444P: return PIX_FMT_YUV444P;
-	default: return fmt;
+	default: return (enum PixelFormat)fmt;
 	}
 }
 
@@ -242,7 +245,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 
 		/* XXX preallocated buffer? */
 		bufSize = avpicture_get_size(PIX_FMT_GRAY8, cctx->width, cctx->height);
-		buf = av_malloc(bufSize);
+		buf = (uint8_t*)av_malloc(bufSize);
 		if (!buf)
 			return -1;
 		avpicture_fill((AVPicture*)&frame, buf, PIX_FMT_GRAY8, cctx->width, cctx->height);
@@ -303,7 +306,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			}
 
 			/* XXX preallocated buffer? it still has to be zero'd */
-			val = calloc(w+1, sizeof(uint8_t));
+			val = (uint8_t*)calloc(w+1, sizeof(uint8_t));
 			x = 0;
 			cv = 0;
 			ref = md->thresholds;

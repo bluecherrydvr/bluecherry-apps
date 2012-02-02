@@ -7,8 +7,10 @@
 #ifndef __RTP_DEVICE_H
 #define __RTP_DEVICE_H
 
+extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+}
 
 #define RTP_NUM_STREAMS 3
 

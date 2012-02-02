@@ -13,8 +13,12 @@
 #include <termios.h>
 #include <libconfig.h>
 #include <time.h>
-
+#include <inttypes.h>
 #include <linux/videodev2.h>
+
+#ifndef PRId64
+#define PRId64 "lld"
+#endif
 
 #include <rtp-session.h>
 
