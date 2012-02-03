@@ -1,6 +1,7 @@
 CREATE TABLE `ipPtzCommandPresets` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
+  `driver` varchar(12) NOT NULL,
   `mright` varchar(128) NOT NULL,
   `mleft` varchar(128) NOT NULL,
   `up` varchar(128) NOT NULL,
