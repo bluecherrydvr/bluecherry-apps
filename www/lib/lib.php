@@ -113,7 +113,7 @@ class data{
 	public static function responseXml($status, $message = false, $data = ''){
 		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
 		if (empty($data)) { $data = '0'; };
-		if (!in_array($status, array('F', 'INFO', 'OK')))
+		if (is_bool($status))
 			$status = ($status) ? 'OK' : 'F'; #in compliance with interface
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"\x3f>
@@ -480,6 +480,7 @@ class ipCamera{
 		#for acti to proper streaming method
 		$acti_config_result = false;
 		$message = ($result) ? AIP_CAMADDED : false;
+		if ($result)
 		$message .= '<hr />'.self::autoConfigure($model_info[0]['driver'], array(
 				'ipAddr' =>$data['ipAddr'],
 				'portMjpeg' =>$data['portMjpeg'],
