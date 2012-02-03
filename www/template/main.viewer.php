@@ -3,7 +3,7 @@
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 
-<html>
+<html> 
 <head>
 	<title><?php echo DVR_COMPANY_NAME.' '.DVR_DVR.PAGE_HEADER_SEPARATOR.PAGE_HEADER_VIEWER; ?></title>
 	<link rel="stylesheet" href="/template/styles.viewer.css">
@@ -51,7 +51,7 @@
 		?>
 	<div id='leftMenu'>
 		<div id='logout'><?php echo LOGOUT; ?></div>
-		<div id='backToAdmin'><?php echo BACK_TO_ADMIN; ?></div>
+		<?php if ($current_user->info['access_setup']) { echo "<div id='backToAdmin'>".BACK_TO_ADMIN."</div>"; }; ?>
 		<div id='layoutsControl'>
 			<?php echo LAYOUTS;?>
 		</div>
