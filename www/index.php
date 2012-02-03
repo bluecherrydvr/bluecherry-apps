@@ -2,10 +2,10 @@
 
 	include("lib/lib.php");  #common functions
 	
+	$from_client = (empty($_SESSION['from_client'])) ? false : $_SESSION['from_client'];
+	$from_client_override = (empty($_SESSION['from_client_override'])) ? false : $_SESSION['from_client_override'];
 	
-	
-	
-	if (empty($_SESSION['id']) || ($_SESSION['from_client'] && !$_SESSION['from_client_override'])){
+	if (empty($_SESSION['id']) || ($from_client && !$from_client_override)){
 		include('template/login.php');
 	} else {
 		$current_user = new user('id', $_SESSION['id']);

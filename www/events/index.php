@@ -6,7 +6,8 @@ DEFINE('INDVR', true);
 include("../lib/lib.php");  #common functions
 
 #auth check
-$current_user = new user('id', $_SESSION['id']);
+$current_user_id = empty($_SESSION['id']) ? false : $_SESSION['id'];
+$current_user = new user('id', $current_user_id);
 $current_user->checkAccessPermissions('backup');
 #/auth check
 
