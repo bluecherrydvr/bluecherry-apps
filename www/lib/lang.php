@@ -131,7 +131,7 @@ define('USERS_STATUS_SETUP', 'Admin');
 define('LOG_EMPTY', 'Current log file is empty.');
 define('LOG_ALL', 'Whole log');
 define('LOG_COULD_NOT_OPEN', 'Could not open log file');
-define('LOG_HOW_MANY', 'Bottom lines to load...');
+define('LOG_HOW_MANY', 'Lines to load');
 define('LOG_FILE_DOES_NOT_EXIST', 'Log file does not exist');
 define('LOG_DOWNLOAD', 'Download debugging information');
 
