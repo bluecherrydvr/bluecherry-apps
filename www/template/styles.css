@@ -43,7 +43,7 @@ h1.header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; font-weight:b
 #button.add:hover, #button.addExt:hover			{ cursor:pointer; background-color: #ded; }
 #addEmail							{ float:left; width:auto; padding-right:10px; cursor:pointer; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); margin-bottom:10px; display:block; margin-left:150px; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px;  }
 #button.save						{ float:right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
-#button.deleteShort					{ width:25px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+#button.deleteShort					{ width:50px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
 #button.showHideImg					{ float:right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
 #settingsForm div #editAccessList	{ width:230px; padding:5px 5px 5px 35px; margin:4px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }

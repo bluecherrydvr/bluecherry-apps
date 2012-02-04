@@ -413,10 +413,13 @@ define('STS_PICKER_HEADER', 'Choose date range and event types');
 define('STS_PERCENTAGE_OF_TOTAL', 'Percent of total');
 define('STS_NUM_EVENTS', 'Number of events');
 
-#ACTi
+#Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
 define('ACTI_STREAMING_N_SET_3', 'Your ACTi camera could not be automatically configured for RTP over UDP streaming. Please do so manually.');
 
 define('VIVOTEC_SETRAMING_SET', 'Your Vivotec camera has been automatically configured to use MJPEG codec on the second encoder.');
 define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automatically configured to use MJPEG codec on the second encoder. Please do so manually.');
+
+define('L_DELETE', 'delete');
+
 ?>
