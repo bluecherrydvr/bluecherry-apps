@@ -11,7 +11,7 @@ function directory_staus($path, $type){ #path -- path to storage dir, type -- ne
 	if (!file_exists($path)){
 		return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
 	}
-	if (!is_readable($path) || !is_writable($path)){
+	if (!is_readable($path)){
 		return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
 	}
 	if ($type == 'new'){
