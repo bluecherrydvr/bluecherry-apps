@@ -1,3 +1,26 @@
+bluecherry (1:2.0.0-0beta9.3) lucid; urgency=low
+
+  * Bug #914: Memory leak from mjpeg.php
+  * Bug #964: Typo in Settings area
+  * Bug #988: Axis streams over UDP have CSeq errors, RTCP BYE
+  * Bug #1033: Web: Prompt user to login if they are not an administrator when configuring the server from the client
+  * Bug #1052: web: properly count cards
+  * Bug #1068: Web: rtsp port was not saved
+  * Bug #1072: Pelco PTZ commands always use ID 1
+  * Bug #1074: web: empty variables treated as false
+  * Bug #1079: Server deb should not recommend solo6010-dkms
+  * Bug #1082: Web: Non administrators are shown 'Return to Admin panel' in live view.
+  * Feature #1004: Reliably indicate if the server is fully operational
+  * Feature #1040: Web: Add documentation text when selecting certain IP cameras.
+  * Feature #1055: Web: Add informational text when a storage path is changed
+  * Feature #1060: Update to latest libav
+  * Feature #1069: Increase the default motion prebuffer to 3 seconds
+  * Feature #1071: mysql/web: add column for zoom_stop in ipPtzPresets
+  * Feature #1075: Add Arecont Vision to the IP camera list
+  * Feature #1080: Add support for Panasonic PTZ command set
+
+ -- John Brooks <john.brooks@bluecherry.net>  Fri, 03 Feb 2012 15:18:00 -0700
+
 bluecherry (1:2.0.0-0beta9.2) lucid; urgency=low
 
   * Bug #912: upstart hangs in 11.04 (natty)
