@@ -14,7 +14,8 @@
 	<script type="text/javascript" src="./lib/js/main.js"></script>
 	<script type="text/javascript" src="./lib/js/var.php"></script>
 	<script>
-		window.addEvent('load', function(){
+		window.addEvent('load', function(){ 
+			
 			containerDivID = 'pageContainer';
 			var mainMenu = new DVRmainMenu();
 			var pageToOpen = (Cookie.read('currentPage') || 'news');
@@ -23,6 +24,7 @@
 			<?php
 				echo (!globalSettings::getParameter('G_DISABLE_WEB_STATS')) ? "updateStatData();" : "";
 			?>
+			
 		});
 	</script>
 </head>
@@ -81,7 +83,7 @@
 	</div>
 	<div id="centerColumn">
 		<?php
-			if ($_GLOBALS['general_error']){
+			if (!empty($_GLOBALS['general_error'])){
 				echo "<div id='generalMessage'><div id='message' class='{$_GLOBALS['general_error']['type']}'>".$_GLOBALS['general_error']['text']."</div></div>";
 			}
 		?>

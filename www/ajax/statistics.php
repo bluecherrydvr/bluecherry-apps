@@ -47,13 +47,13 @@ $statistics = new stats();
 
 if ($_POST){
 	#prepare data
-	$data['primary_grouping'] = $_POST['primary_grouping'];
-	$data['secondary_grouping'] = $_POST['secondary_grouping'];
+	$data['primary_grouping'] = (!empty($_POST['primary_grouping'])) ? $_POST['primary_grouping'] : false;
+	$data['secondary_grouping'] = (!empty($_POST['secondary_grouping'])) ? $_POST['secondary_grouping'] : false;
 	$data['start'] = @strtotime($_POST['start']);
 	$data['end'] = @strtotime($_POST['end']);
-	$data['event_filter']['all_events'] = ($_POST['all_events'] == 'on') ? true : false;
-	$data['event_filter']['motion_events'] = ($_POST['motion_events'] == 'on') ? true : false;
-	$data['event_filter']['continuous_events'] = ($_POST['continuous_events'] == 'on') ? true : false;
+	$data['event_filter']['all_events'] = (!empty($_POST['all_events']) && $_POST['all_events'] == 'on') ? true : false;
+	$data['event_filter']['motion_events'] = (!empty($_POST['motion_events']) && $_POST['motion_events'] == 'on') ? true : false;
+	$data['event_filter']['continuous_events'] = (!empty($_POST['continuous_events']) && $_POST['continuous_events'] == 'on') ? true : false;
 	#if type not set return html
 	$statistics->type = (!empty($_POST['type'])) ? $_POST['type'] : 'html';
 	#get data
