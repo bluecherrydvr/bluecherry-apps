@@ -771,16 +771,15 @@ int main(int argc, char **argv)
 			bc_status_component_begin(STATUS_SOLO_DETECT);
 			error = bc_check_avail();
 			solo_ready = (error == 0);
-			if (error == -EAGAIN) {
+			if (error == -EAGAIN && !loops) {
 				/* Only warn if it's not ready at startup; don't trigger an error. */
-				if (!loops) {
-					bc_log("W: Solo6x10 devices are not initialized yet");
-					error = 0;
-				} else {
-					/* If it's still not ready after 15sec, error */
-					bc_status_component_error("Solo6x10 devices are not initialized: %s",
-					                          strerror(-error));
-				}
+				bc_log("W: Solo6x10 devices are not initialized yet");
+				error = 0;
+			} else if (error) {
+				/* If it's still not ready after 15sec, error */
+				bc_status_component_error("Solo6x10 devices are not initialized: %s",
+				                          (error == -EAGAIN) ? "Driver not ready" :
+				                                               strerror(-error));
 			}
 			bc_status_component_end(STATUS_SOLO_DETECT, error == 0);
 		}
