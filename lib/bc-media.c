@@ -29,26 +29,6 @@ static const char *sys_type_to_str[] = {
 	"disk-space", "crash", "boot", "shutdown", "reboot", "power-outage"
 };
 
-static const char db_status_file[] = "/var/run/bluecherry/db-writable";
-
-static int bc_db_check_success(void)
-{
-	char cmd[256];
-
-	sprintf(cmd, "touch -m -t 197001010000.00 %s", db_status_file);
-
-	return system(cmd);
-}
-
-static int bc_db_check_fail(void)
-{
-	char cmd[256];
-
-	sprintf(cmd, "touch -m %s", db_status_file);
-	
-	return system(cmd);
-}
-
 static void __update_stat(struct bc_media_entry *bcm)
 {
 	struct stat st;
@@ -121,16 +101,14 @@ bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
 
 	bce->inserted = bc_db_last_insert_rowid();
 
-	if (!bc_db_commit_trans()) {
-		bc_db_check_success();
-		return bce;
+	if (bc_db_commit_trans()) {
+	error:
+		bc_db_rollback_trans();
+		free(bce);
+		return NULL;
 	}
 
-error:
-	bc_db_check_fail();
-	bc_db_rollback_trans();
-	free(bce);
-	return NULL;
+	return bce;
 }
 
 void bc_event_cam_end(bc_event_cam_t *__bce)
@@ -165,11 +143,8 @@ void bc_event_cam_end(bc_event_cam_t *__bce)
 			goto error;
 	}
 
-	if (!bc_db_commit_trans()) {
-		bc_db_check_success();
-	} else {
+	if (bc_db_commit_trans()) {
 error:
-		bc_db_check_fail();
 		bc_db_rollback_trans();
 	}
 
