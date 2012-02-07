@@ -1,9 +1,8 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-CFLAGS		+= -pthread $(shell pkg-config --cflags libsysfs)
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound \
-		   $(shell pkg-config --libs libsysfs) -lbsd \
+CFLAGS		+= -pthread
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
 		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server

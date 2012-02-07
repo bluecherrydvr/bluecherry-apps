@@ -10,8 +10,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
-
-#include <libsysfs.h>
+#include <dirent.h>
+#include <libudev.h>
+#include <bsd/string.h>
 
 #include <libbluecherry.h>
 
@@ -32,17 +33,41 @@ static struct card_list {
 	char video_type[8];
 } cards[MAX_CARDS];
 
-static void check_solo(struct sysfs_device *device, const char *dir)
+static struct udev *udev_instance;
+
+static int check_solo(struct udev_device *device)
 {
-	char path[SYSFS_PATH_MAX];
+	char path[PATH_MAX];
+	char card_name[32];
 	char bcuid[37];
 	char *uid_type;
 	char eeprom[128], driver[64], video_type[8];
 	int id, ports;
 	int fd;
 	int i;
+	const char *syspath;
+	DIR *dir;
+	struct dirent *de;
 
-	sprintf(path, "%s/%s/eeprom", device->path, dir);
+	*card_name = 0;
+	syspath = udev_device_get_syspath(device);
+	dir = opendir(syspath);
+	if (!dir)
+		return -1;
+	while ((de = readdir(dir))) {
+		if (!strncmp(de->d_name, "solo6", 5)) {
+			strlcpy(card_name, de->d_name, sizeof(card_name));
+			break;
+		}
+	}
+	closedir(dir);
+
+	if (!*card_name) {
+		errno = EAGAIN;
+		return -1;
+	}
+
+	sprintf(path, "%s/%s/eeprom", syspath, card_name);
 	fd = open(path, 0, O_RDONLY);
 	if (fd >= 0) {
 		int ret = read(fd, eeprom, sizeof(eeprom));
@@ -51,7 +76,7 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 		if (ret != sizeof(eeprom) ||
 		    strncmp(eeprom + BCUID_EEPROM_OFF, BCUID_EEPROM_PRE,
 			    strlen(BCUID_EEPROM_PRE))) {
-			strcpy(bcuid, device->bus_id);
+			strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
 			uid_type = BC_UID_TYPE_PCI;
 		} else {
 			memcpy(bcuid, eeprom + BCUID_EEPROM_OFF +
@@ -60,14 +85,16 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 			uid_type = BC_UID_TYPE_BC;
 		}
 	} else {
-		strcpy(bcuid, device->bus_id);
+		strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
 		uid_type = BC_UID_TYPE_PCI;
 	}
 
-	if (sscanf(dir, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
-		return;
+	if (sscanf(card_name, "%999[^-]-%d-%d", driver, &id, &ports) != 3) {
+		errno = EINVAL;
+		return -1;
+	}
 
-	sprintf(path, "%s/%s/video_type", device->path, dir);
+	sprintf(path, "%s/%s/video_type", syspath, card_name);
 	fd = open(path, 0, O_RDONLY);
 	if (fd >= 0) {
 		int ret = read(fd, video_type, sizeof(video_type));
@@ -107,60 +134,95 @@ static void check_solo(struct sysfs_device *device, const char *dir)
 			break;
 		}
 	}
+
+	return 0;
 }
 
-static struct sysfs_driver *try_driver(const char *driver)
-{
-	char path[SYSFS_PATH_MAX];
+/* To detect devices prior to driver initialization, we
+ * have to search by PCI IDs rather than the driver module.
+ * This is used to make sure that all solo cards are initialized
+ * before we update the database sources and begin using them. */
+struct solo_vendor {
+	const char *vendor;
+	const char ** const devices;
+};
 
-	memset(path, 0, sizeof(path));
-	if ((sysfs_get_mnt_path(path, SYSFS_PATH_MAX)) != 0)
-		return NULL;
+const struct solo_vendor vendors[] = {
+	{ "0x9413", (const char * []) /* Softlogic */
+		{
+			"0x6010", 0
+		}
+	},
+	{ "0x1bb3", (const char * []) /* Bluecherry */
+		{
+			"0x4304", "0x4309", "0x4310", /* Neugent */
+			"0x4e04", "0x4e09", "0x4e10", /* 6010 */
+			"0x5304", "0x5308", "0x5310", /* 6110 */
+			0
+		}
+	},
+	{ 0, 0 }
+};
 
-	strcat(path, "/" SYSFS_BUS_NAME "/pci/" SYSFS_DRIVERS_NAME "/");
-	strcat(path, driver);
-
-	return sysfs_open_driver_path(path);
-}
-
-/* Peruse sysfs for PCI devices associated with solo6010 driver */
+/* Enumerate matching PCI devices and, if they've been initialied
+ * by the driver, process them to update the database. */
 static int __bc_check_avail(void)
 {
-	struct sysfs_driver *driver;
-	struct sysfs_device *device;
-	struct dlist *devlist;
+	struct udev_enumerate *enumerate;
+	struct udev_list_entry *devices, *dev_list_entry;
+	int i, ret = 0;
+	int r_errno = EIO;
 
-        driver = try_driver("solo6x10");
-	if (driver == NULL)
-		driver = try_driver("solo6010");
-	if (driver == NULL)
-		return 0;
-
-	devlist = sysfs_get_driver_devices(driver);
-	if (devlist == NULL) {
-		sysfs_close_driver(driver);
-		return 0;
+	if (!udev_instance) {
+		udev_instance = udev_new();
+		if (!udev_instance) {
+			bc_status_component_error("Cannot initialize udev");
+			return -1;
+		}
 	}
 
-	dlist_for_each_data(devlist, device, struct sysfs_device) {
-		struct dlist *dirlist = sysfs_open_directory_list(device->path);
-		char *dir;
+	for (i = 0; vendors[i].vendor; i++) {
+		enumerate = udev_enumerate_new(udev_instance);
+		udev_enumerate_add_match_sysattr(enumerate, "vendor", vendors[i].vendor);
+		udev_enumerate_scan_devices(enumerate);
+		devices = udev_enumerate_get_list_entry(enumerate);
+		udev_list_entry_foreach(dev_list_entry, devices) {
+			struct udev_device *dev;
+			const char *path, *device_id;
+			const char **x;
 
-		if (dirlist == NULL)
-			continue;
+			path = udev_list_entry_get_name(dev_list_entry);
+			dev = udev_device_new_from_syspath(udev_instance, path);
 
-		dlist_for_each_data(dirlist, dir, char) {
-			if (!strncmp(dir, "solo6", 5)) {
-				check_solo(device, dir);
-				break;
+			device_id = udev_device_get_sysattr_value(dev, "device");
+			for (x = vendors[i].devices; device_id && *x; ++x) {
+				if (!strcmp(device_id, *x)) {
+					/* If there is no driver, this device isn't initialized yet */
+					if (!udev_device_get_driver(dev)) {
+						ret = -1;
+						r_errno = EAGAIN;
+					}
+					else if (check_solo(dev)) {
+						ret = -1;
+						r_errno = errno;
+					}
+					break;
+				}
 			}
+
+			udev_device_unref(dev);
+			if (ret)
+				break;
 		}
 
-		sysfs_close_list(dirlist);
+		udev_enumerate_unref(enumerate);
+		if (ret)
+			break;
 	}
 
-	sysfs_close_driver(driver);
-	return 0;
+	if (ret)
+		errno = r_errno;
+	return ret;
 }
 
 int bc_check_avail(void)
@@ -171,7 +233,14 @@ int bc_check_avail(void)
 	for (i = 0; i < MAX_CARDS; i++)
 		cards[i].dirty = cards[i].valid;
 
-	__bc_check_avail();
+	re = __bc_check_avail();
+	if (re < 0) {
+		if (errno == EAGAIN) {
+			bc_log("W: Waiting for all solo devices to initialize");
+			return 0;
+		}
+		return re;
+	}
 
 	if (bc_db_start_trans())
 		return -1;
