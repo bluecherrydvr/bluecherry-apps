@@ -346,12 +346,14 @@ static float storage_used(const struct bc_storage *stor)
 	return 100.0 - ((float)((float)st.f_bavail / (float)st.f_blocks) * 100);
 }
 
+/* Returns -1 on error, 0 for non-full, 1 for full */
 static int storage_full(const struct bc_storage *stor)
 {
-	if (storage_used(stor) >= stor->max_thresh)
-		return 1;
-
-	return 0;
+	float used = storage_used(stor);
+	if (used < 0)
+		return -1;
+	else
+		return (used >= stor->max_thresh);
 }
 
 void bc_get_media_loc(char *stor)
@@ -370,50 +372,35 @@ void bc_get_media_loc(char *stor)
 		}
 	}
 
+	/* XXX this is a bad fallback. We might not even want a fallback. */
 	if (stor[0] == 0)
 		strcpy(stor, media_stor[0].path);
 
 	pthread_mutex_unlock(&media_lock);
 }
 
-/* Check if our media directory is getting full (min_avail%) and delete old
- * events until there's more than or equal to min_thresh% available. Do not
- * delete archived events. If we've deleted everything we can and we still
- * don't have more than min_avail% available, then complain....LOUDLY! */
-static int bc_clear_media_one(const struct bc_storage *stor)
+static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
-	float used = storage_used(stor);
 	int removed = 0, error_count = 0;
-
-	if (used < 0) {
-		bc_status_component_error("Cannot get free space for storage device %s: %m",
-		                          stor->path);
-		return -1;
-	}
-	else if (used < stor->max_thresh)
-		return 0;
-
-	bc_log("I: Filesystem for %s is %0.2f%% full, starting cleanup",
-	       stor->path, used);
+	int i;
 
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"end!=0 AND size>0 AND filepath LIKE '%s%%' "
-				"ORDER BY start ASC", stor->path);
+				"end!=0 AND size>0 ORDER BY start ASC");
 
 	if (!dbres) {
 		bc_status_component_error("Database error during media cleanup");
 		return -1;
 	}
 
-	while (!bc_db_fetch_row(dbres) && used > stor->min_thresh) {
+	while (!bc_db_fetch_row(dbres)) {
 		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
 		if (!filepath || !*filepath)
 			continue;
 
-		if (unlink(filepath) < 0) {
+		if (unlink(filepath) < 0 && errno != ENOENT) {
 			bc_log("W: Cannot remove file %s for cleanup: %s",
 			       filepath, strerror(errno));
 			error_count++;
@@ -421,32 +408,27 @@ static int bc_clear_media_one(const struct bc_storage *stor)
 		}
 
 		removed++;
-		__bc_db_query("UPDATE Media SET filepath='',size=0 "
-			      "WHERE id=%d", id);
+		if (__bc_db_query("UPDATE Media SET filepath='',size=0 "
+		                  "WHERE id=%d", id)) {
+			bc_status_component_error("Database error during media cleanup");
+		}
 
-		if ((used = storage_used(stor)) < 0)
-			break;
+		if (!(removed % 5)) {
+			for (i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+				float used = storage_used(&media_stor[i]);
+				if (used >= 0 && used <= media_stor[i].min_thresh)
+					goto done;
+			}
+		}
         }
 
+done:
 	bc_db_free_table(dbres);
 
 	if (error_count)
-		bc_log("W: Cleaned up %d files with %d errors on %s", removed,
-		       error_count, stor->path);
+		bc_log("W: Cleaned up %d files with %d errors", removed, error_count);
 	else
-		bc_log("I: Cleaned up %d files on %s", removed, stor->path);
-
-	if (used < 0) {
-		bc_status_component_error("Cannot get free space for storage path %s: %m",
-		                          stor->path);
-		return -1;
-	}
-
-	if (used >= 0 && used >= stor->min_thresh) {
-		bc_status_component_error("Cannot delete any more media from storage path "
-		                          "%s (%0.2f%% full)", stor->path, used);
-		return -1;
-	}
+		bc_log("I: Cleaned up %d files", removed);
 
 	return 0;
 }
@@ -466,16 +448,8 @@ static int bc_check_media(void)
 		}
 	}
 
-	if (!free) {
-		for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-			if (bc_clear_media_one(&media_stor[i])) {
-				/* Failed */
-				ret = -1;
-				continue;
-			}
-			break;
-		}
-	}
+	if (!free)
+		ret = bc_cleanup_media();
 
 	pthread_mutex_unlock(&media_lock);
 	return ret;
