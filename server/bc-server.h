@@ -99,8 +99,9 @@ struct bc_output_packet {
 
 typedef enum {
 	STATUS_DB_POLLING1,
-	STATUS_DB_POLLING2,
+	STATUS_MEDIA_CHECK,
 	STATUS_LICENSE,
+	STATUS_SOLO_DETECT,
 	NUM_STATUS_COMPONENTS // must be the last entry
 } bc_status_component;
 

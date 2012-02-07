@@ -22,6 +22,7 @@ static BC_DECLARE_LIST(bc_rec_list);
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
+static int solo_ready = 0;
 
 char global_sched[7 * 24 + 1];
 
@@ -128,8 +129,9 @@ static const char *component_string(bc_status_component c)
 {
 	switch (c) {
 		case STATUS_DB_POLLING1: return "database-1";
-		case STATUS_DB_POLLING2: return "database-2";
+		case STATUS_MEDIA_CHECK: return "media";
 		case STATUS_LICENSE: return "licensing";
+		case STATUS_SOLO_DETECT: return "solo6x10";
 		default: return "";
 	}
 }
@@ -495,7 +497,7 @@ static int bc_check_db(void)
 		/* If this is a V4L2 device, it needs to be detected */
 		if (!strcasecmp(proto, "V4L2")) {
 			int card_id = bc_db_get_val_int(dbres, "card_id");
-			if (card_id < 0)
+			if (!solo_ready || card_id < 0)
 				continue;
 		}
 
@@ -764,14 +766,31 @@ int main(int argc, char **argv)
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {
+		/* Every 15 seconds until initialized, then every 5 minutes */
+		if ((!solo_ready && !(loops % 15)) || (solo_ready && !(loops % 300))) {
+			bc_status_component_begin(STATUS_SOLO_DETECT);
+			error = bc_check_avail();
+			solo_ready = (error == 0);
+			if (error == -EAGAIN) {
+				/* Only warn if it's not ready at startup; don't trigger an error. */
+				if (!loops) {
+					bc_log("W: Solo6x10 devices are not initialized yet");
+					error = 0;
+				} else {
+					/* If it's still not ready after 15sec, error */
+					bc_status_component_error("Solo6x10 devices are not initialized: %s",
+					                          strerror(-error));
+				}
+			}
+			bc_status_component_end(STATUS_SOLO_DETECT, error == 0);
+		}
+
 		/* Every 2 minutes */
 		if (!(loops % 120)) {
-			bc_status_component_begin(STATUS_DB_POLLING2);
-			/* Check for new devices */
-			error = bc_check_avail();
+			bc_status_component_begin(STATUS_MEDIA_CHECK);
 			/* Check media locations for full */
-			error |= bc_check_media();
-			bc_status_component_end(STATUS_DB_POLLING2, error == 0);
+			error = bc_check_media();
+			bc_status_component_end(STATUS_MEDIA_CHECK, error == 0);
 	 	}
 
 		/* Every 10 seconds */

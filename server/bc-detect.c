@@ -53,7 +53,7 @@ static int check_solo(struct udev_device *device)
 	syspath = udev_device_get_syspath(device);
 	dir = opendir(syspath);
 	if (!dir)
-		return -1;
+		return -errno;
 	while ((de = readdir(dir))) {
 		if (!strncmp(de->d_name, "solo6", 5)) {
 			strlcpy(card_name, de->d_name, sizeof(card_name));
@@ -62,10 +62,8 @@ static int check_solo(struct udev_device *device)
 	}
 	closedir(dir);
 
-	if (!*card_name) {
-		errno = EAGAIN;
-		return -1;
-	}
+	if (!*card_name)
+		return -EAGAIN;
 
 	sprintf(path, "%s/%s/eeprom", syspath, card_name);
 	fd = open(path, 0, O_RDONLY);
@@ -89,10 +87,8 @@ static int check_solo(struct udev_device *device)
 		uid_type = BC_UID_TYPE_PCI;
 	}
 
-	if (sscanf(card_name, "%999[^-]-%d-%d", driver, &id, &ports) != 3) {
-		errno = EINVAL;
-		return -1;
-	}
+	if (sscanf(card_name, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
+		return -EINVAL;
 
 	sprintf(path, "%s/%s/video_type", syspath, card_name);
 	fd = open(path, 0, O_RDONLY);
@@ -171,13 +167,12 @@ static int __bc_check_avail(void)
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
 	int i, ret = 0;
-	int r_errno = EIO;
 
 	if (!udev_instance) {
 		udev_instance = udev_new();
 		if (!udev_instance) {
 			bc_status_component_error("Cannot initialize udev");
-			return -1;
+			return -EIO;
 		}
 	}
 
@@ -198,14 +193,10 @@ static int __bc_check_avail(void)
 			for (x = vendors[i].devices; device_id && *x; ++x) {
 				if (!strcmp(device_id, *x)) {
 					/* If there is no driver, this device isn't initialized yet */
-					if (!udev_device_get_driver(dev)) {
-						ret = -1;
-						r_errno = EAGAIN;
-					}
-					else if (check_solo(dev)) {
-						ret = -1;
-						r_errno = errno;
-					}
+					if (!udev_device_get_driver(dev))
+						ret = -EAGAIN;
+					else
+						ret = check_solo(dev);
 					break;
 				}
 			}
@@ -220,30 +211,23 @@ static int __bc_check_avail(void)
 			break;
 	}
 
-	if (ret)
-		errno = r_errno;
 	return ret;
 }
 
 int bc_check_avail(void)
 {
 	int i, j;
-	int re = 0;
+	int ret = 0;
 
 	for (i = 0; i < MAX_CARDS; i++)
 		cards[i].dirty = cards[i].valid;
 
-	re = __bc_check_avail();
-	if (re < 0) {
-		if (errno == EAGAIN) {
-			bc_log("W: Waiting for all solo devices to initialize");
-			return 0;
-		}
-		return re;
-	}
+	ret = __bc_check_avail();
+	if (ret < 0)
+		return ret;
 
 	if (bc_db_start_trans())
-		return -1;
+		return -EIO;
 
 	if (__bc_db_query("DELETE FROM AvailableSources"))
 		goto rollback;
@@ -254,12 +238,12 @@ int bc_check_avail(void)
 			break;
 
 		for (j = 0; j < card->n_ports; j++) {
-			re |= __bc_db_query("INSERT INTO AvailableSources "
-			                    "(device, driver, card_id, video_type) "
-			                    "VALUES('%s|%s|%d', '%s', '%d', '%s')",
-			                    card->uid_type, card->name, j, card->driver,
-			                    card->card_id, card->video_type);
-			if (re)
+			ret |= __bc_db_query("INSERT INTO AvailableSources "
+			                     "(device, driver, card_id, video_type) "
+			                     "VALUES('%s|%s|%d', '%s', '%d', '%s')",
+			                     card->uid_type, card->name, j, card->driver,
+			                     card->card_id, card->video_type);
+			if (ret)
 				goto rollback;
 		}
 	}
@@ -267,7 +251,7 @@ int bc_check_avail(void)
 	if (bc_db_commit_trans()) {
 	rollback:
 		bc_db_rollback_trans();
-		return -1;
+		return -EIO;
 	}
 
 	/* Check for cards gone missing */
@@ -278,5 +262,6 @@ int bc_check_avail(void)
 		memset(&cards[i], 0, sizeof(cards[i]));
 	}
 
-	return re;
+	return ret;
 }
+
