@@ -15,3 +15,11 @@ Suggests: solo6010-dkms
 Breaks: solo6010-dkms (<< 2.3.6)
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.
+
+Package: bluecherry-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: bluecherry (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for Bluecherry DVR Server
+

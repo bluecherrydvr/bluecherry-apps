@@ -7,8 +7,13 @@ LD_LIBRARY_PATH+=:misc/libav/lib
 %:
 	dh --parallel $@
 
+.PHONY: override_dh_strip
+
+override_dh_strip:
+	dh_strip --dbg-package=bluecherry-dbg
+
 override_dh_auto_install:
-	dh_auto_install
+	dh_auto_install --destdir=debian/bluecherry
 	cat misc/sql/mysql/*.sql > \
 	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/install/mysql
 	cp misc/sql/mysql-upgrade/* \
