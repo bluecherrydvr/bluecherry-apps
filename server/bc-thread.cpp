@@ -91,6 +91,11 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 	bc_event_cam_end(&bc_rec->event);
 	bc_rec->event = event;
 
+	/* XXX this should not be recording dependent, but it uses oc at the moment XXX */
+	if (bc_streaming_setup(bc_rec))
+		bc_dev_err(bc_rec, "Error setting up live stream");
+
+
 	return 0;
 }
 
@@ -99,6 +104,7 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	struct bc_output_packet *p, *n;
 
 	recording_end(bc_rec);
+	bc_streaming_destroy(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
 	bc_rec->mot_first_buffered_packet = 0;
@@ -361,6 +367,7 @@ static void *bc_device_thread(void *data)
 				bc_dev_info(bc_rec, "RTP stream started: %s",
 				            rtp_device_stream_info(&bc->rtp));
 			}
+
 		}
 
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
@@ -405,6 +412,11 @@ static void *bc_device_thread(void *data)
 		/* Error, or no packet */
 		if (ret < 1)
 			continue;
+
+		/* XXX Requires schedule changes so we can always do this if needed */
+		if (bc_streaming_is_active(bc_rec)) {
+			bc_streaming_packet_write(bc_rec, &packet);
+		}
 
 		if (!check_motion(bc_rec, &packet))
 			continue;

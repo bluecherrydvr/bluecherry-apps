@@ -40,11 +40,15 @@ struct bc_record {
 
 	int id;
 
+	/* Recording */
 	AVOutputFormat  *fmt_out;
 	AVStream        *video_st;
 	AVStream        *audio_st;
 	AVFormatContext *oc;
 	int64_t         output_pts_base;
+
+	/* Streaming */
+	AVFormatContext *stream_ctx;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
@@ -138,6 +142,12 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
+
+/* Streaming */
+int bc_streaming_setup(struct bc_record *bc_rec);
+void bc_streaming_destroy(struct bc_record *bc_rec);
+int bc_streaming_is_active(struct bc_record *bc_rec);
+int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 
 /* Relate all libav logging on this thread to a given bc_record */
 void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
