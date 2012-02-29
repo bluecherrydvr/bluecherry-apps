@@ -6,6 +6,8 @@ MODULE		= bluecherry
 PHP_RPATH	= no
 export PHP_RPATH
 
+CXXFLAGS += -Wno-write-strings
+
 all: modules/$(MODULE).so
 
 configure: config.m4
@@ -15,7 +17,7 @@ Makefile: configure
 	./configure --with-php-config=php-config
 
 modules/$(MODULE).so: Makefile $(LIB) FORCE
-	$(MAKE) -f Makefile "CFLAGS=-I$(LIBAVPATH)/include"
+	$(MAKE) -f Makefile "CFLAGS=-I$(LIBAVPATH)/include" CXXFLAGS=-Wno-write-strings
 
 install: modules/$(MODULE).so $(MODULE).ini
 	$(INSTALL_DATA) -D modules/$(MODULE).so \

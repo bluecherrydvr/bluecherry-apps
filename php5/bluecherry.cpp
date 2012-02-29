@@ -11,9 +11,13 @@
 #include <sys/ioctl.h>
 
 #include "libbluecherry.h"
+extern "C" {
 #include "php.h"
+#include "ext/standard/php_standard.h"
+}
 
-#define BCH_NAME	"BC Handle"
+static char bch_name[] = "BC Handle";
+
 #define BCDB_NAME	"BC-DB Handle"
 
 static int bch_id;
@@ -31,7 +35,7 @@ static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 PHP_MINIT_FUNCTION(bluecherry)
 {
 	bch_id = zend_register_list_destructors_ex(bch_destructor, NULL,
-						   BCH_NAME, module_number);
+						   bch_name, module_number);
 
 	REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
 	REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
@@ -61,7 +65,7 @@ PHP_MINFO_FUNCTION(bluecherry)
 				  &z_ctx) == FAILURE)			\
 		RETURN_FALSE;						\
 	ZEND_FETCH_RESOURCE(bch, struct bc_handle *, &z_ctx, -1,	\
-			    BCH_NAME, bch_id);				\
+			    bch_name, bch_id);				\
 	if (bch == NULL) {						\
 		php_error_docref(NULL TSRMLS_CC, E_WARNING,		\
 			__func ": invalid context");			\
@@ -344,7 +348,7 @@ PHP_FUNCTION(bc_set_control)
 				  &ctrl, &val) == FAILURE)
 		RETURN_FALSE;
 	ZEND_FETCH_RESOURCE(bch, struct bc_handle *, &z_ctx, -1,
-			    BCH_NAME, bch_id);
+			    bch_name, bch_id);
 	if (bch == NULL) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING,
 				 "bc_set_control: invalid context");
@@ -409,12 +413,12 @@ PHP_FUNCTION(bc_buf_data)
 
 	BCH_GET_RES("bc_buf_data");
 
-	data = bc_buf_data(bch);
+	data = (unsigned char*)bc_buf_data(bch);
 	size = bc_buf_size(bch);
 	if (data == NULL || size <= 0)
 		RETURN_FALSE;
 
-	RETURN_STRINGL(data, size, 1);
+	RETURN_STRINGL((const char*)data, size, 1);
 }
 
 PHP_FUNCTION(bc_set_mjpeg)
