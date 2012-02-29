@@ -1,3 +1,10 @@
+bluecherry (1:2.0.0-0beta9.4) lucid; urgency=low
+
+  * Bug #1066: bc-server occasionally starts before the solo6010 module is loaded
+  * Bug #1083: Media cleanup deletes wrong files with multiple storage paths
+
+ -- John Brooks <john.brooks@bluecherry.net>  Wed, 29 Feb 2012 12:47:00 -0700
+
 bluecherry (1:2.0.0-0beta9.3) lucid; urgency=low
 
   * Bug #914: Memory leak from mjpeg.php
