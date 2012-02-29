@@ -18,6 +18,7 @@ debian/bluecherry.preinst.debhelper
 debian/bluecherry.prerm.debhelper
 debian/bluecherry.substvars
 debian/bluecherry/
+debian/bluecherry-dbg*
 debian/files
 
 misc/libav/lib
