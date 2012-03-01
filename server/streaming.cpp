@@ -7,6 +7,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "bc-server.h"
+#include "rtsp.h"
+
+#define RTP_MAX_PACKET_SIZE 1472
 
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
@@ -21,7 +24,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (!ctx)
 		return -1;
 
-	ctx->oformat = av_guess_format("rtsp", NULL, NULL);
+	ctx->oformat = av_guess_format("rtp", NULL, NULL);
 	if (!ctx->oformat)
 		goto error;
 
@@ -57,25 +60,18 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 			goto error;
 	}
 
-	snprintf(ctx->filename, sizeof(ctx->filename), "rtsp://127.0.0.1:5545/live_%d", bc_rec->id);
+	url_open_dyn_packet_buf(&ctx->pb, RTP_MAX_PACKET_SIZE);
 
 	if ((i = avformat_write_header(ctx, NULL)) < 0) {
 		char error[512];
 		av_strerror(i, error, sizeof(error));
 		bc_dev_err(bc_rec, "Failed to start live stream to %s: %s", ctx->filename, error);
+		bc_streaming_destroy(bc_rec);
 		return i;
 	}
 
-	char sdp[2048];
-	if ((i = av_sdp_create(&ctx, 1, sdp, sizeof(sdp))) < 0) {
-		char error[512];
-		av_strerror(i, error, sizeof(error));
-		bc_dev_err(bc_rec, "Cannot create SDP: %s", error);
-	}
-	else
-		bc_dev_info(bc_rec, "SDP: %s", sdp);
+	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, ctx);
 
-	bc_dev_info(bc_rec, "Opened stream to %s", ctx->filename);
 	return 0;
 
 error:
@@ -91,8 +87,12 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 	if (!ctx)
 		return;
 
-	if (ctx->pb)
+	if (ctx->pb) {
 		av_write_trailer(ctx);
+		uint8_t *buf = 0;
+		avio_close_dyn_buf(ctx->pb, &buf);
+		av_free(buf);
+	}
 
 	for (i = 0; i < ctx->nb_streams; ++i) {
 		avcodec_close(ctx->streams[i]->codec);
@@ -100,11 +100,11 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 		av_freep(&ctx->streams[i]);
 	}
 
-	if (ctx->pb)
-		avio_close(ctx->pb);
-
 	av_free(ctx);
 	bc_rec->stream_ctx = NULL;
+
+	rtsp_stream::remove(bc_rec);
+	bc_rec->rtsp_stream = NULL;
 }
 
 int bc_streaming_is_active(struct bc_record *bc_rec)
@@ -135,6 +135,13 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet 
 		bc_dev_err(bc_rec, "Error writing to live stream: %s", err);
 		return -1;
 	}
+
+	uint8_t *buf = 0;
+	int bufsz = avio_close_dyn_buf(bc_rec->stream_ctx->pb, &buf);
+
+	bc_rec->rtsp_stream->sendPackets(buf, bufsz);
+	av_free(buf);
+	url_open_dyn_packet_buf(&bc_rec->stream_ctx->pb, RTP_MAX_PACKET_SIZE);
 
 	return 1;
 }

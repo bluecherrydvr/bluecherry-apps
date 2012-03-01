@@ -18,6 +18,7 @@ extern "C" {
 }
 
 #include "bc-server.h"
+#include "rtsp.h"
 
 static BC_DECLARE_LIST(bc_rec_list);
 
@@ -689,6 +690,9 @@ int main(int argc, char **argv)
 		}
 	}
 
+	rtsp_server *rtsp = new rtsp_server;
+	rtsp->setup(554);
+
 	if (user || group) {
 		struct passwd *u   = 0;
 		gid_t          gid = 0;
@@ -770,6 +774,9 @@ int main(int argc, char **argv)
 	/* Do some cleanup */
 	bc_check_inprogress();
 	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
+
+	pthread_t rtsp_thread;
+	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {

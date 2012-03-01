@@ -49,6 +49,7 @@ struct bc_record {
 
 	/* Streaming */
 	AVFormatContext *stream_ctx;
+	class rtsp_stream *rtsp_stream;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
