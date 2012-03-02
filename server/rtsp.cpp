@@ -210,6 +210,11 @@ void rtsp_connection::removeSession(rtsp_session *session)
 
 int rtsp_connection::readable()
 {
+	if (rdbuf_len+1 >= sizeof(rdbuf)) {
+		bc_log("I(RTSP): Connection read buffer exceeded; dropped connection");
+		return -1;
+	}
+
 	int rd = read(fd, rdbuf + rdbuf_len, sizeof(rdbuf) - rdbuf_len - 1);
 	if (rd < 1)
 		return -1;
@@ -340,7 +345,7 @@ int rtsp_connection::parse()
 
 		char *value = strchr(ln, ':');
 		if (!value) {
-			/* XXX bad request */
+			sendResponse(rtsp_message(req, 400, "Bad request"));
 			return -1;
 		}
 		*value = 0;
@@ -359,7 +364,7 @@ int rtsp_connection::parse()
 
 	std::string t = req.header("content-length");
 	if (!t.empty() && t != "0") {
-		bc_log("W: RTSP server does not support request bodies");
+		bc_log("W(RTSP): RTSP server does not support request bodies");
 		sendResponse(rtsp_message(req, 500, "Request bodies not supported"));
 		return -1;
 	}
