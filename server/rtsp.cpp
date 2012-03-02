@@ -553,9 +553,25 @@ int rtsp_connection::handleSetup(rtsp_message &req)
 	return 0;
 }
 
+/* TEARDOWN is defined as operating on the URI, not the Session header;
+ * I'm not sure if it's appropriate to destroy all sessions matching the URI
+ * if no Session header is present, or what. Currently, we just destroy the
+ * single session provided by the header and ignore the URI. */
 int rtsp_connection::handleTeardown(rtsp_message &req)
 {
-	return -1;
+	int session_id = strtol(req.header("session").c_str(), NULL, 10);
+	std::map<int,rtsp_session*>::iterator it = sessions.find(session_id);
+	if (it == sessions.end()) {
+		sendResponse(rtsp_message(req, 454, "Session not found"));
+		return 0;
+	}
+
+	rtsp_session *session = it->second;
+	session->setActive(false);
+	delete session;
+
+	sendResponse(rtsp_message(req, 200, "OK"));
+	return 0;
 }
 
 int rtsp_connection::handlePlay(rtsp_message &req)
