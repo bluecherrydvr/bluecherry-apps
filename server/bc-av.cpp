@@ -379,9 +379,8 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	int height = bc_rec->bc->v4l2.vfmt.fmt.pix.height;
 
 	/* Setup new video stream */
-	if ((bc_rec->video_st = avformat_new_stream(oc, NULL)) == NULL)
+	if ((st = avformat_new_stream(oc, NULL)) == NULL)
 		return -1;
-	st = bc_rec->video_st;
 
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
@@ -432,9 +431,8 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 			goto no_audio;
 		}
 
-		if ((bc_rec->audio_st = avformat_new_stream(oc, NULL)) == NULL)
+		if ((st = avformat_new_stream(oc, NULL)) == NULL)
 			goto no_audio;
-		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
@@ -452,9 +450,19 @@ no_audio:
 	return 0;
 }
 
-int bc_open_avcodec(struct bc_record *bc_rec)
+int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 {
 	struct bc_handle *bc = bc_rec->bc;
+	if (bc->type == BC_DEVICE_RTP)
+		return rtp_device_setup_output(&bc->rtp, oc);
+	else if (bc->type == BC_DEVICE_V4L2 && (bc->cam_caps & BC_CAM_CAP_SOLO))
+		return setup_solo_output(bc_rec, oc);
+	else
+		return -1;
+}
+
+int bc_open_avcodec(struct bc_record *bc_rec)
+{
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
@@ -476,24 +484,21 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 
 	oc->oformat = bc_rec->fmt_out;
 
-	if (bc->type == BC_DEVICE_RTP) {
-		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
-			goto error;
-		
-		bc_rec->audio_st = bc_rec->video_st = NULL;
-		for (i = 0; i < oc->nb_streams; ++i) {
-			if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-				bc_rec->video_st = oc->streams[i];
-			else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-				bc_rec->audio_st = oc->streams[i];
-		}
-	} else {
-		if (setup_solo_output(bc_rec, oc) < 0)
-			goto error;
+	if (setup_output_context(bc_rec, oc) < 0)
+		goto error;
+
+	bc_rec->audio_st = bc_rec->video_st = NULL;
+	for (i = 0; i < oc->nb_streams; ++i) {
+		if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+			bc_rec->video_st = oc->streams[i];
+		else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+			bc_rec->audio_st = oc->streams[i];
 	}
 
 	/* Open Video output */
 	st = bc_rec->video_st;
+	if (!st)
+		goto error;
 	codec = avcodec_find_encoder(st->codec->codec_id);
 	if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
 		bc_rec->video_st = NULL;

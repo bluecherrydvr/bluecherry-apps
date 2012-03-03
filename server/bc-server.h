@@ -147,6 +147,7 @@ int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_p
 /* Streaming */
 int bc_streaming_setup(struct bc_record *bc_rec);
 void bc_streaming_destroy(struct bc_record *bc_rec);
+int bc_streaming_is_setup(struct bc_record *bc_rec);
 int bc_streaming_is_active(struct bc_record *bc_rec);
 int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 
@@ -165,6 +166,8 @@ int bc_check_avail(void);
 int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
+
+int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc);
 
 #ifdef EBUG
 #define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)

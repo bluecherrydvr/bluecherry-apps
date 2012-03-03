@@ -91,11 +91,6 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 	bc_event_cam_end(&bc_rec->event);
 	bc_rec->event = event;
 
-	/* XXX this should not be recording dependent, but it uses oc at the moment XXX */
-	if (bc_streaming_setup(bc_rec))
-		bc_dev_err(bc_rec, "Error setting up live stream");
-
-
 	return 0;
 }
 
@@ -175,38 +170,30 @@ static void check_schedule(struct bc_record *bc_rec)
 static int process_schedule(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	int ret = 0;
 
 	check_schedule(bc_rec);
 
 	if (bc_rec->reset_vid ||
 	    (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
 	    !bc_rec->sched_last)) {
-		if (bc_rec->reset_vid) {
+		if (bc_rec->reset_vid)
 			bc_rec->reset_vid = 0;
-			ret = 1;
-		}
 		recording_end(bc_rec);
 		bc_handle_reset(bc);
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
-		stop_handle_properly(bc_rec);
+		recording_end(bc_rec);
 		bc_event_cam_end(&bc_rec->event);
+		bc_handle_reset(bc);
 		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
-		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
+		bc_dev_info(bc_rec, "Switching to new recording schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
 		       == 'N' ? "stopped" : "continuous"));
 	}
 
-	if (bc_rec->sched_cur == 'N')
-		ret = 1;
-
-	if (ret)
-		sleep(1);
-
-	return ret;
+	return (bc_rec->sched_cur != 'N');
 }
 
 /* Append a packet to the prerecord buffer, making a deep copy in the process.
@@ -348,8 +335,7 @@ static void *bc_device_thread(void *data)
 
 		update_osd(bc_rec);
 
-		if (process_schedule(bc_rec))
-			continue;
+		int schedule_recording = process_schedule(bc_rec);
 
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
@@ -368,6 +354,8 @@ static void *bc_device_thread(void *data)
 				            rtp_device_stream_info(&bc->rtp));
 			}
 
+			if (bc_streaming_setup(bc_rec))
+				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
@@ -413,41 +401,44 @@ static void *bc_device_thread(void *data)
 		if (ret < 1)
 			continue;
 
-		/* XXX Requires schedule changes so we can always do this if needed */
-		if (bc_streaming_is_active(bc_rec)) {
+		/* Send packet to streaming clients */
+		if (bc_streaming_is_active(bc_rec))
 			bc_streaming_packet_write(bc_rec, &packet);
-		}
 
-		if (!check_motion(bc_rec, &packet))
-			continue;
-
-		if (!bc_rec->oc) {
-			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
-				/* Dump the prerecording buffer */
-				struct bc_output_packet *p;
-				if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
-					goto error;
-				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
-				/* Skip the last packet; it's identical to the current packet,
-				 * which we write in the normal path below. */
-				for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
-					bc_output_packet_write(bc_rec, p);
-			} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
-				/* Always start a recording with a key video frame. This will result in
-				 * the lost of some video between recordings, up to the keyframe interval,
-				 * at least on RTP devices. XXX Ideally, we should move the recording split
-				 * slightly to allow a proper cut for both video and audio. */
+		if (schedule_recording) {
+			/* If on the motion schedule, and there is no motion, skip recording */
+			if (!check_motion(bc_rec, &packet))
 				continue;
-			} else {
-				if (recording_start(bc_rec, 0))
-					goto error;
-				bc_rec->output_pts_base = packet.pts;
+
+			/* Setup and write to recordings */
+			if (!bc_rec->oc) {
+				if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
+					/* Dump the prerecording buffer */
+					struct bc_output_packet *p;
+					if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
+						goto error;
+					bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
+					/* Skip the last packet; it's identical to the current packet,
+					 * which we write in the normal path below. */
+					for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
+						bc_output_packet_write(bc_rec, p);
+				} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
+					/* Always start a recording with a key video frame. This will result in
+					 * the lost of some video between recordings, up to the keyframe interval,
+					 * at least on RTP devices. XXX Ideally, we should move the recording split
+					 * slightly to allow a proper cut for both video and audio. */
+					continue;
+				} else {
+					if (recording_start(bc_rec, 0))
+						goto error;
+					bc_rec->output_pts_base = packet.pts;
+				}
 			}
+
+			bc_output_packet_write(bc_rec, &packet);
 		}
 
-		bc_output_packet_write(bc_rec, &packet);
 		continue;
-
 error:
 		sleep(10);
 	}

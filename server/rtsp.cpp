@@ -636,6 +636,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 }
 
 rtsp_stream::rtsp_stream()
+	: _activeSessionCount(0)
 {
 	pthread_mutex_init(&sessions_lock, 0);
 }
@@ -670,19 +671,37 @@ void rtsp_stream::addSession(rtsp_session *session)
 {
 	pthread_mutex_lock(&sessions_lock);
 	sessions.push_back(session);
+	if (session->isActive())
+		_activeSessionCount++;
 	pthread_mutex_unlock(&sessions_lock);
 }
 
 void rtsp_stream::removeSession(rtsp_session *session)
 {
 	pthread_mutex_lock(&sessions_lock);
+
+	int active = 0;
+	std::vector<rtsp_session*>::iterator erase = sessions.end();
 	for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
-		if (*it == session) {
-			sessions.erase(it);
-			break;
-		}
+		if (*it == session)
+			erase = it;
+		else if ((*it)->isActive())
+			active++;
 	}
+
+	if (erase != sessions.end())
+		sessions.erase(erase);
+	_activeSessionCount = active;
+
 	pthread_mutex_unlock(&sessions_lock);
+}
+
+void rtsp_stream::sessionActiveChanged(rtsp_session *session)
+{
+	if (session->isActive())
+		_activeSessionCount++;
+	else
+		_activeSessionCount--;
 }
 
 void rtsp_stream::sendPackets(uint8_t *buf, int size)
@@ -782,5 +801,6 @@ void rtsp_session::setActive(bool on)
 		return;
 
 	active = on;
+	stream->sessionActiveChanged(this);
 }
 

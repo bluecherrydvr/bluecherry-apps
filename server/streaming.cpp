@@ -14,7 +14,6 @@
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx;
-	AVCodec *codec;
 	int i;
 
 	if (bc_rec->stream_ctx)
@@ -28,44 +27,40 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (!ctx->oformat)
 		goto error;
 
-	for (i = 0; i < bc_rec->oc->nb_streams; ++i) {
-		AVCodecContext *ic = bc_rec->oc->streams[i]->codec;
-		AVStream *st;
+	if (setup_output_context(bc_rec, ctx) < 0)
+		goto error;
 
-		/* XXX video only */
-		if (ic->codec_type != AVMEDIA_TYPE_VIDEO)
-			continue;
+	for (i = 0; i < ctx->nb_streams; ++i) {
+		AVStream *st = ctx->streams[i];
+		AVCodec *codec = avcodec_find_encoder(st->codec->codec_id);
+		if (!codec || codec->type != AVMEDIA_TYPE_VIDEO) {
+			/* Soft failure; remove this stream. We currently only support one video stream. */
+			av_freep(&st->codec);
+			av_freep(&st);
 
-		st = avformat_new_stream(ctx, NULL);
+			for (int j = i+1; j < ctx->nb_streams; ++j) {
+				ctx->streams[j]->index = j-1;
+				ctx->streams[j-1] = ctx->streams[j];
+			}
 
-		/* Copied from rtp_device_setup_output; video only. Won't work for audio. */ 
-		st->codec->codec_id = ic->codec_id;
-		st->codec->codec_type = ic->codec_type;
-		st->codec->pix_fmt = ic->pix_fmt;
-		st->codec->width = ic->width;
-		st->codec->height = ic->height;
-		st->codec->time_base = ic->time_base;
-		st->codec->profile = ic->profile;
-		if (ic->extradata && ic->extradata_size) {
-			st->codec->extradata_size = ic->extradata_size;
-			st->codec->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
-			memcpy(st->codec->extradata, ic->extradata, ic->extradata_size);
-		}
-
-		if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
-			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-		codec = avcodec_find_encoder(st->codec->codec_id);
-		if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0)
+			ctx->nb_streams--;
+			ctx->streams[ctx->nb_streams] = 0;
+			i--;
+		} else if (avcodec_open2(st->codec, codec, NULL) < 0)
 			goto error;
 	}
+
+	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
+	 * to do that, because the rtp muxer only handles one stream. */
+	if (ctx->nb_streams < 1)
+		goto error;
 
 	url_open_dyn_packet_buf(&ctx->pb, RTP_MAX_PACKET_SIZE);
 
 	if ((i = avformat_write_header(ctx, NULL)) < 0) {
 		char error[512];
 		av_strerror(i, error, sizeof(error));
-		bc_dev_err(bc_rec, "Failed to start live stream to %s: %s", ctx->filename, error);
+		bc_dev_err(bc_rec, "Failed to start live stream: %s", error);
 		bc_streaming_destroy(bc_rec);
 		return i;
 	}
@@ -107,9 +102,14 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 	bc_rec->rtsp_stream = NULL;
 }
 
+int bc_streaming_is_setup(struct bc_record *bc_rec)
+{
+	return bc_rec->rtsp_stream != NULL;
+}
+
 int bc_streaming_is_active(struct bc_record *bc_rec)
 {
-	return bc_rec->stream_ctx != NULL;
+	return (bc_rec->rtsp_stream && bc_rec->rtsp_stream->activeSessionCount());
 }
 
 /* XXX can this be merged with bc_output_packet_write? */

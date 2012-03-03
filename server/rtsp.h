@@ -98,6 +98,9 @@ public:
 
 	void addSession(rtsp_session *session);
 	void removeSession(rtsp_session *session);
+	void sessionActiveChanged(rtsp_session *session);
+
+	int activeSessionCount() { return _activeSessionCount; } 
 	void sendPackets(uint8_t *buf, int bufsz);
 
 private:
@@ -113,6 +116,7 @@ private:
 	struct bc_record *bc_rec;
 	pthread_mutex_t sessions_lock;
 	std::vector<rtsp_session*> sessions;
+	int _activeSessionCount;
 };
 
 class rtsp_session
