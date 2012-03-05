@@ -412,14 +412,24 @@ void rtsp_connection::sendResponse(const rtsp_message &response)
 	av_strlcat(buf, "\r\n", sizeof(buf));
 
 	bc_log("response: %s", buf);
+	/* XXX error handling */
 	send(buf, strlen(buf));
 }
+
+static const int wrbuf_max = 1024*1024; /* 1MB */
 
 int rtsp_connection::send(const char *buf, int size)
 {
 	int re = 0;
 	int wr;
 	pthread_mutex_lock(&write_lock);
+
+	if (wrbuf_max - wrbuf.size() < size) {
+		/* Write buffer (will be) exceeded; drop this write, but not the connection.
+		 * This may result in corruption temporarily. */
+		re = -1;
+		goto end;
+	}
 
 	if (!wrbuf.empty()) {
 		wrbuf.append(buf, size);
@@ -496,7 +506,8 @@ int rtsp_connection::handleDescribe(rtsp_message &req)
 	response.setHeader("Content-Type", "application/sdp");
 	response.setHeader("Content-Length", stream->sdp.size());
 	sendResponse(response);
-	send(stream->sdp.c_str(), stream->sdp.size());
+	if (send(stream->sdp.c_str(), stream->sdp.size()) < 0)
+		return -1;
 
 	return 0;
 }
