@@ -14,14 +14,24 @@
 
 #define FD_MAX 256
 
+enum WakeReason
+{
+	WAKE_REPOLL = 1 << 0, /* Restart the poll() call, probably due to setFdEvents */
+	WAKE_GC     = 1 << 1  /* Garbage collect, such as deleting dead streams and sessions */
+};
+
 class rtsp_server
 {
 public:
+	static rtsp_server *instance;
+
 	rtsp_server();
 	~rtsp_server();
 
 	int setup(int port);
 	void run();
+
+	void wake(int reason);
 
 	static void *runThread(void *p);
 
@@ -42,7 +52,6 @@ private:
 	void removeFd(int fd);
 	/* Threadsafe (as long as you can guarantee fd is open) */
 	void setFdEvents(int fd, int events);
-	void wake();
 };
 
 struct rtsp_message;
@@ -94,6 +103,7 @@ public:
 	/* Thread-safe; should be called from recording threads */
 	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx);
 	static void remove(struct bc_record *rec);
+
 	static rtsp_stream *findUri(const std::string &uri);
 
 	void addSession(rtsp_session *session);
@@ -103,6 +113,9 @@ public:
 	int activeSessionCount() { return _activeSessionCount; } 
 	void sendPackets(uint8_t *buf, int bufsz);
 
+	/* Invoked to delete dead streams on the RTSP thread after a (thread-safe) remove() */
+	static void collectGarbage();
+
 private:
 	friend class rtsp_connection;
 
@@ -110,6 +123,7 @@ private:
 	static std::map<std::string,rtsp_stream*> streams;
 
 	rtsp_stream();
+	~rtsp_stream();
 
 	/* Use with extreme caution; we cannot guarantee that it still exists
 	 * when running from the RTSP thread */

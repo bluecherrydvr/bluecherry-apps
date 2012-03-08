@@ -19,9 +19,14 @@ extern "C" {
 #include "libavutil/intreadwrite.h"
 }
 
+rtsp_server *rtsp_server::instance = 0;
+
 rtsp_server::rtsp_server()
 	: serverfd(-1), n_fds(0)
 {
+	if (!instance)
+		instance = this;
+
 	memset(fds, 0, sizeof(fds));
 	memset(connections, 0, sizeof(connections));
 	wakeupfd[0] = wakeupfd[1] = -1;
@@ -91,13 +96,22 @@ void rtsp_server::run()
 			bc_log("rtsp_server: poll on socket %d (fd %d) for %d", i, fds[i].fd, fds[i].revents);
 			rtsp_connection *c = connections[i];
 
+			/* It is not safe to write fds[i], or do much of anything, after calling into
+			 * other code, because FDs may have been added or removed in that time.
+			 *
+			 * We don't have to worry about missing events; if they aren't handled, they'll
+			 * poll again immediately. */
+
+			int revents = fds[i].revents;
+			fds[i].revents = 0;
+
 			if (fds[i].fd == serverfd) {
 				acceptConnection();
 			} else if (c) {
 				int re = -1;
-				if (fds[i].revents & POLLOUT)
+				if (revents & POLLOUT)
 					re = c->writable();
-				else if (fds[i].revents & POLLIN)
+				else if (revents & POLLIN)
 					re = c->readable();
 
 				if (re < 0) {
@@ -108,14 +122,19 @@ void rtsp_server::run()
 				}
 			} else if (fds[i].fd == wakeupfd[0]) {
 				char buf[128];
-				if (read(wakeupfd[0], buf, sizeof(buf)) < 0)
-					;
+				int rd = read(wakeupfd[0], buf, sizeof(buf));
+				int reason = 0;
+				if (rd < 0)
+					bc_log("W: Error on wake FD in rtsp_server");
+				for (int k = 0; k < rd; ++k)
+					reason |= buf[k];
+
+				if (reason & WAKE_GC)
+					rtsp_stream::collectGarbage();
 			} else {
 				bc_log("W: Unknown FD in rtsp_server");
 				fds[i].events = 0;
 			}
-
-			fds[i].revents = 0;
 		}
 	}
 }
@@ -166,9 +185,9 @@ void rtsp_server::setFdEvents(int fd, int events)
 	pthread_mutex_unlock(&poll_mutex);
 }
 
-void rtsp_server::wake()
+void rtsp_server::wake(int reason)
 {
-	char v = 0;
+	char v = reason;
 	if (write(wakeupfd[1], &v, 1) < 0)
 		;
 }
@@ -445,7 +464,7 @@ int rtsp_connection::send(const char *buf, int size)
 	if (wr < size) {
 		wrbuf.append(buf + wr, size - wr);
 		server->setFdEvents(fd, POLLIN | POLLOUT);
-		server->wake();
+		server->wake(WAKE_REPOLL);
 	}
 
 end:
@@ -652,15 +671,52 @@ rtsp_stream::rtsp_stream()
 	pthread_mutex_init(&sessions_lock, 0);
 }
 
+rtsp_stream::~rtsp_stream()
+{
+	while (!sessions.empty()) {
+		/* There's no way to signal the end of a particular interleaved channel to clients,
+		 * nor the end of a particular session. Since none of our use cases have more than
+		 * one session per connection right now, the easiest way to handle this is to close
+		 * the connection. If this is a problem in the future, RTCP BYE may help.
+		 * The destructor for rtsp_connection will delete the session, which will remove
+		 * itself from the sessions list on this stream. */
+		delete (*sessions.begin())->connection;
+	}
+	pthread_mutex_destroy(&sessions_lock);
+}
+
+/* This is called from arbitrary threads (the recording thread), but
+ * cleanup MUST be done on the RTSP thread, to properly resolve other relationships.
+ * We use the rtsp_server's wake() and WAKE_GC flag to call into collectGarbage on
+ * the RTSP thread. This pattern assumes that each rtsp_stream is only used from one
+ * arbitrary (recording) thread and the RTSP thread. */
 void rtsp_stream::remove(struct bc_record *bc)
 {
 	pthread_mutex_lock(&streams_lock);
 	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ++it) {
 		if (it->second->bc_rec == bc) {
-			/* XXX massive terrible leak XXX XXX XXX XXX XXX XXX */
-			streams.erase(it);
+			/* Flag for garbage collection */
+			it->second->bc_rec = 0;
 			break;
 		}
+	}
+	if (rtsp_server::instance)
+		rtsp_server::instance->wake(WAKE_GC);
+	pthread_mutex_unlock(&streams_lock);
+}
+
+void rtsp_stream::collectGarbage()
+{
+	pthread_mutex_lock(&streams_lock);
+	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ) {
+		if (it->second->bc_rec) {
+			it++;
+			continue;
+		}
+
+		delete it->second;
+		streams.erase(it);
+		it = streams.begin();
 	}
 	pthread_mutex_unlock(&streams_lock);
 }
