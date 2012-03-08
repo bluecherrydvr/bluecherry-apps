@@ -46,8 +46,10 @@ void rtp_device_stop(struct rtp_device *rs)
 	av_free_packet(&rs->frame);
 	av_init_packet(&rs->frame);
 
-	for (i = 0; i < rs->ctx->nb_streams; ++i)
-		avcodec_close(rs->ctx->streams[i]->codec);
+	for (i = 0; i < rs->ctx->nb_streams; ++i) {
+		if (rs->ctx->streams[i]->codec->codec)
+			avcodec_close(rs->ctx->streams[i]->codec);
+	}
 
 	av_close_input_file(rs->ctx);
 	rs->ctx = 0;
