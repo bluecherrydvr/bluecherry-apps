@@ -168,6 +168,7 @@ void rtsp_server::removeFd(int fd)
 		pthread_mutex_lock(&poll_mutex);
 		memmove(&fds[i], &fds[i+1], sizeof(fds) - (sizeof(pollfd) * (i+1)));
 		memmove(&connections[i], &connections[i+1], sizeof(connections) - (sizeof(*connections) * (i+1)));
+		n_fds--;
 		pthread_mutex_unlock(&poll_mutex);
 		break;
 	}
