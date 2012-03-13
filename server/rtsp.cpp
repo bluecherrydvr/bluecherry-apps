@@ -772,7 +772,7 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 		_activeSessionCount--;
 }
 
-void rtsp_stream::sendPackets(uint8_t *buf, int size)
+void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 {
 	pthread_mutex_lock(&sessions_lock);
 	for (int p = 0; p+4 <= size; ) {
@@ -786,10 +786,11 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size)
 		AV_WB16(pkt + 2, (uint16_t)pkt_sz);
 
 		for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
-			if (!(*it)->isActive())
+			if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
 				continue;
 			pkt[1] = (uint8_t) (*it)->channel_rtp;
 			(*it)->connection->send((char*)pkt, 4 + pkt_sz);
+			(*it)->needKeyframe = false;
 		}
 
 		p += 4 + pkt_sz;
@@ -799,7 +800,7 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size)
 
 rtsp_session::rtsp_session(rtsp_connection *c, rtsp_stream *s, int sid)
 	: connection(c), stream(s), stream_id(sid), session_id(generate_id()),
-	  channel_rtp(-1), channel_rtcp(-1), active(false)
+	  channel_rtp(-1), channel_rtcp(-1), needKeyframe(true), active(false)
 {
 	connection->addSession(this);
 	stream->addSession(this);
@@ -869,6 +870,7 @@ void rtsp_session::setActive(bool on)
 		return;
 
 	active = on;
+	needKeyframe = on;
 	stream->sessionActiveChanged(this);
 }
 

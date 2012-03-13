@@ -111,7 +111,7 @@ public:
 	void sessionActiveChanged(rtsp_session *session);
 
 	int activeSessionCount() { return _activeSessionCount; } 
-	void sendPackets(uint8_t *buf, int bufsz);
+	void sendPackets(uint8_t *buf, int bufsz, int flags);
 
 	/* Invoked to delete dead streams on the RTSP thread after a (thread-safe) remove() */
 	static void collectGarbage();
@@ -143,6 +143,7 @@ public:
 
 	/* For TCP interleaving */
 	int channel_rtp, channel_rtcp;
+	bool needKeyframe;
 
 	rtsp_session(rtsp_connection *connection, rtsp_stream *stream, int streamid);
 	~rtsp_session();

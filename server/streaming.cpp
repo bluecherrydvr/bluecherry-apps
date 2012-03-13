@@ -139,7 +139,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet 
 	uint8_t *buf = 0;
 	int bufsz = avio_close_dyn_buf(bc_rec->stream_ctx->pb, &buf);
 
-	bc_rec->rtsp_stream->sendPackets(buf, bufsz);
+	bc_rec->rtsp_stream->sendPackets(buf, bufsz, opkt.flags);
 	av_free(buf);
 	url_open_dyn_packet_buf(&bc_rec->stream_ctx->pb, RTP_MAX_PACKET_SIZE);
 
