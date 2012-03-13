@@ -91,6 +91,7 @@ private:
 	int handleSetup(rtsp_message &request);
 	int handleTeardown(rtsp_message &request);
 	int handlePlay(rtsp_message &request);
+	int handlePause(rtsp_message &request);
 };
 
 class rtsp_stream

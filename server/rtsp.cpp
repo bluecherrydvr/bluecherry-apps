@@ -413,9 +413,11 @@ int rtsp_connection::parse()
 		re = handleTeardown(req);
 	else if (req.method == "PLAY")
 		re = handlePlay(req);
+	else if (req.method == "PAUSE")
+		re = handlePause(req);
 	else {
 		rtsp_message response(req, 405, "Method not allowed");
-		response.setHeader("Allow", "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY");
+		response.setHeader("Allow", "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE");
 		sendResponse(response);
 	}
 
@@ -497,7 +499,7 @@ int rtsp_connection::writable()
 int rtsp_connection::handleOptions(rtsp_message &req)
 {
 	rtsp_message re(req, 200, "OK");
-	re.setHeader("Public", "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY");
+	re.setHeader("Public", "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE");
 	sendResponse(re);
 	return 0;
 }
@@ -626,6 +628,27 @@ int rtsp_connection::handlePlay(rtsp_message &req)
 	}
 
 	session->setActive(true);
+
+	sendResponse(rtsp_message(req, 200, "OK"));
+	return 0;
+}
+
+int rtsp_connection::handlePause(rtsp_message &req)
+{
+	int session_id = strtol(req.header("session").c_str(), NULL, 10);
+	std::map<int,rtsp_session*>::iterator it = sessions.find(session_id);
+	if (it == sessions.end()) {
+		sendResponse(rtsp_message(req, 454, "Session not found"));
+		return 0;
+	}
+
+	rtsp_session *session = it->second;
+	if (session->channel_rtp < 0 || session->channel_rtcp < 0) {
+		sendResponse(rtsp_message(req, 455, "Method not valid in this state"));
+		return 0;
+	}
+
+	session->setActive(false);
 
 	sendResponse(rtsp_message(req, 200, "OK"));
 	return 0;
