@@ -690,9 +690,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	rtsp_server *rtsp = new rtsp_server;
-	rtsp->setup(554);
-
 	if (user || group) {
 		struct passwd *u   = 0;
 		gid_t          gid = 0;
@@ -748,6 +745,9 @@ int main(int argc, char **argv)
 	}
 
 	bc_log("I: Started Bluecherry daemon");
+
+	rtsp_server *rtsp = new rtsp_server;
+	rtsp->setup(7002);
 
 	for (count = 1; bc_db_open(); count++) {
 		sleep(1);
