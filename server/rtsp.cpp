@@ -13,10 +13,12 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include "libbluecherry.h"
 
 extern "C" {
 #include "libavutil/avstring.h"
 #include "libavutil/intreadwrite.h"
+#include "libavutil/base64.h"
 }
 
 rtsp_server *rtsp_server::instance = 0;
@@ -496,6 +498,33 @@ int rtsp_connection::writable()
 	return re;
 }
 
+bool rtsp_connection::authenticate(rtsp_message &req, int device_id)
+{
+	std::string auth = req.header("authorization");
+	if (auth.size() > 6 && auth.substr(0, 6) == "Basic ") {
+		auth = auth.substr(6);
+		char *buf = new char[auth.size()];
+		int r = av_base64_decode((uint8_t*)buf, auth.c_str(), auth.size());
+		if (r > 0) {
+			buf[r] = 0;
+			char *password = buf;
+			char *username = strsep(&password, ":");
+			if (username && password &&
+			    bc_user_auth(username, password, ACCESS_REMOTE, device_id) == 1)
+			{
+				delete[] buf;
+				return true;
+			}
+		}
+		delete[] buf;
+	}
+
+	rtsp_message re(req, 401, "Authorization Required");
+	re.setHeader("WWW-Authenticate", "Basic realm=\"RTSP Server\"");
+	sendResponse(re);
+	return false;
+}
+
 int rtsp_connection::handleOptions(rtsp_message &req)
 {
 	rtsp_message re(req, 200, "OK");
@@ -519,6 +548,9 @@ int rtsp_connection::handleDescribe(rtsp_message &req)
 		path.erase(path.size()-1);
 
 	rtsp_stream *stream = rtsp_stream::findUri(path);
+	if (!authenticate(req, stream ? stream->id : -1))
+		return 0;
+
 	if (!stream) {
 		sendResponse(rtsp_message(req, 404, "Not found"));
 		return 0;
@@ -559,6 +591,9 @@ int rtsp_connection::handleSetup(rtsp_message &req)
 			path = (sep+1 < path.size()) ? path.substr(sep+1) : std::string();
 		}
 	}
+
+	if (!authenticate(req, stream ? stream->id : -1))
+		return 0;
 
 	if (path.size() > 9 && path.compare(0, 9, "streamid=") == 0) {
 		char *e = 0;
@@ -661,6 +696,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 {
 	rtsp_stream *st = new rtsp_stream;
 	st->bc_rec = bc;
+	st->id = bc->id;
 
 	std::ostringstream uris;
 	uris << "/live/" << bc->id;

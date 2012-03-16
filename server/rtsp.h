@@ -69,6 +69,8 @@ public:
 	void addSession(rtsp_session *session);
 	void removeSession(rtsp_session *session);
 
+	int send(const char *buf, int size);
+
 private:
 	rtsp_server * const server;
 	const int fd;
@@ -81,10 +83,8 @@ private:
 
 	int parse();
 	void sendResponse(const rtsp_message &response);
-	int send(const char *buf, int size);
 
-	/* TMP */
-	friend class rtsp_stream;
+	bool authenticate(rtsp_message &request, int device_id = -1);
 
 	int handleOptions(rtsp_message &request);
 	int handleDescribe(rtsp_message &request);
@@ -99,6 +99,7 @@ class rtsp_stream
 public:
 	std::string sdp;
 	std::string uri;
+	int id;
 	int nb_streams;
 
 	/* Thread-safe; should be called from recording threads */
