@@ -259,7 +259,10 @@ char *bc_db_escape_string(const char *from, int len)
 	if (to == NULL)
 		return NULL;
 
+	/* MySQL requires locking around mysql_real_escape_string */
+	bc_db_lock();
 	db_ops->escape_string(to, from, len);
+	bc_db_unlock();
 
 	return to;
 }
