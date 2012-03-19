@@ -140,8 +140,9 @@ class rtsp_session
 public:
 	rtsp_connection * const connection;
 	rtsp_stream * const stream;
-	int stream_id;
 	const int session_id;
+	int stream_id;
+	uint16_t rtp_seq;
 
 	/* For TCP interleaving */
 	int channel_rtp, channel_rtcp;

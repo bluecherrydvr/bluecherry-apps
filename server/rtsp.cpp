@@ -851,13 +851,35 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 		if (pkt_sz > size - p - 4)
 			pkt_sz = size - p - 4;
 
+		/* The packet must be at least 8 bytes to hold the RTP header */
+		if (pkt_sz < 12) {
+			p += 4 + pkt_sz;
+			continue;
+		}
+
+		/* The packet buffer is prefixed with a 4-byte length by the output
+		 * code; this is NOT part of the actual RTP stream. We can replace
+		 * this with the four-byte header used by RTSP's interleaved TCP mode.
+	 	 */
+		/* If the RTP packet_type is 200 or 201, this is a RTCP packet.
+		 * This data is totally wrong for clients; we need to rewrite these for
+		 * each stream. Drop them for now. */
+		if (pkt[5] == 200 || pkt[5] == 201) {
+			p += 4 + pkt_sz;
+			continue;
+		}
+
 		pkt[0] = '$';
 		AV_WB16(pkt + 2, (uint16_t)pkt_sz);
 
 		for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
 			if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
 				continue;
+			/* TCP interleaving channel */
 			pkt[1] = (uint8_t) (*it)->channel_rtp;
+			/* Rewrite RTP sequence number */
+			AV_WB16(pkt + 6, (*it)->rtp_seq++);
+			/* Send packet, including the interleaving header */
 			(*it)->connection->send((char*)pkt, 4 + pkt_sz);
 			/* If we're not on keyframe-only mode, unset the needKeyframe flag.
 			 * Otherwise, it always stays true. */
@@ -870,10 +892,12 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 }
 
 rtsp_session::rtsp_session(rtsp_connection *c, rtsp_stream *s, int sid)
-	: connection(c), stream(s), stream_id(sid), session_id(generate_id()),
+	: connection(c), stream(s), session_id(generate_id()), stream_id(sid),
 	  channel_rtp(-1), channel_rtcp(-1), needKeyframe(true), keyframeOnly(false),
 	  active(false)
 {
+	/* Sequence IDs start from a random value */
+	rtp_seq = (uint16_t)rand();
 	connection->addSession(this);
 	stream->addSession(this);
 }
