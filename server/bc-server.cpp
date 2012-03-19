@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+#include <signal.h>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -731,6 +732,8 @@ int main(int argc, char **argv)
 		bc_log("E: AV lock registration failed: %m");
 		exit(1);
 	}
+
+	signal(SIGPIPE, SIG_IGN);
 
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
