@@ -106,7 +106,7 @@ public:
 	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx);
 	static void remove(struct bc_record *rec);
 
-	static rtsp_stream *findUri(const std::string &uri);
+	static rtsp_stream *findUri(std::string uri);
 
 	void addSession(rtsp_session *session);
 	void removeSession(rtsp_session *session);
@@ -140,18 +140,20 @@ class rtsp_session
 public:
 	rtsp_connection * const connection;
 	rtsp_stream * const stream;
-	const int stream_id;
+	int stream_id;
 	const int session_id;
 
 	/* For TCP interleaving */
 	int channel_rtp, channel_rtcp;
-	bool needKeyframe;
+	bool needKeyframe, keyframeOnly;
 
-	rtsp_session(rtsp_connection *connection, rtsp_stream *stream, int streamid);
+	rtsp_session(rtsp_connection *connection, rtsp_stream *stream, int streamid = -1);
 	~rtsp_session();
 
 	bool parseTransport(std::string str);
 	std::string transport() const;
+
+	bool parseParameters(std::string str);
 
 	void setActive(bool active);
 	bool isActive() const { return active; }

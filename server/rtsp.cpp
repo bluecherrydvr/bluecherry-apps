@@ -595,22 +595,24 @@ int rtsp_connection::handleSetup(rtsp_message &req)
 	if (!authenticate(req, stream ? stream->id : -1))
 		return 0;
 
-	if (path.size() > 9 && path.compare(0, 9, "streamid=") == 0) {
-		char *e = 0;
-		streamid = strtol(path.substr(9).c_str(), &e, 10);
-		if (!e || *e)
-			streamid = -1;
-	}
-
-	if (!stream || streamid >= stream->nb_streams) {
+	if (!stream) {
 		sendResponse(rtsp_message(req, 404, "Not found"));
 		return 0;
-	} else if (streamid < 0) {
+	}
+
+	rtsp_session *session = new rtsp_session(this, stream);
+
+	if (!session->parseParameters(path) || session->stream_id < 0) {
 		sendResponse(rtsp_message(req, 451, "Parameter not understood"));
+		delete session;
 		return 0;
 	}
 
-	rtsp_session *session = new rtsp_session(this, stream, streamid);
+	if (streamid >= stream->nb_streams) {
+		sendResponse(rtsp_message(req, 404, "Not found"));
+		delete session;
+		return 0;
+	}
 
 	if (!session->parseTransport(req.header("transport"))) {
 		sendResponse(rtsp_message(req, 461, "Unsupported transport"));
@@ -781,9 +783,17 @@ void rtsp_stream::collectGarbage()
 	pthread_mutex_unlock(&streams_lock);
 }
 
-rtsp_stream *rtsp_stream::findUri(const std::string &uri)
+rtsp_stream *rtsp_stream::findUri(std::string uri)
 {
 	rtsp_stream *st = NULL;
+
+	/* for /live/ URLs, we ignore everything after the first two segments
+	 * to allow streamid and other parameters */
+	if (uri.size() > 6 && uri.compare(0, 6, "/live/") == 0) {
+		int p = uri.find('/', 6);
+		if (p != std::string::npos)
+			uri.erase(p);
+	}
 
 	pthread_mutex_lock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(uri);
@@ -849,7 +859,9 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 				continue;
 			pkt[1] = (uint8_t) (*it)->channel_rtp;
 			(*it)->connection->send((char*)pkt, 4 + pkt_sz);
-			(*it)->needKeyframe = false;
+			/* If we're not on keyframe-only mode, unset the needKeyframe flag.
+			 * Otherwise, it always stays true. */
+			(*it)->needKeyframe = (*it)->keyframeOnly;
 		}
 
 		p += 4 + pkt_sz;
@@ -859,7 +871,8 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 
 rtsp_session::rtsp_session(rtsp_connection *c, rtsp_stream *s, int sid)
 	: connection(c), stream(s), stream_id(sid), session_id(generate_id()),
-	  channel_rtp(-1), channel_rtcp(-1), needKeyframe(true), active(false)
+	  channel_rtp(-1), channel_rtcp(-1), needKeyframe(true), keyframeOnly(false),
+	  active(false)
 {
 	connection->addSession(this);
 	stream->addSession(this);
@@ -913,6 +926,32 @@ bool rtsp_session::parseTransport(std::string str)
 	}
 
 	return false;
+}
+
+bool rtsp_session::parseParameters(std::string str)
+{
+	char *p = const_cast<char*>(str.data());
+	char *param;
+
+	while ((param = strsep(&p, "/"))) {
+		char *value = param;
+		strsep(&value, "=");
+		/* value may be null, or empty */
+
+		if (strcasecmp(param, "streamid") == 0 && value) {
+			char *e = 0;
+			stream_id = strtol(value, &e, 10);
+			if (!e || *e)
+				stream_id = -1;
+		} else if (strcasecmp(param, "mode") == 0 && value) {
+			if (strcasecmp(value, "keyframe") == 0)
+				keyframeOnly = true;
+			else if (strcasecmp(value, "full") == 0)
+				keyframeOnly = false;
+		}
+	}
+
+	return true;
 }
 
 std::string rtsp_session::transport() const
