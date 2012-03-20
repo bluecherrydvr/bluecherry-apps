@@ -209,6 +209,11 @@ rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
 {
 	pthread_mutex_init(&write_lock, 0);
 	server->addFd(this, fd, POLLIN);
+
+	/* Increase the send buffer to 128kB, which should be large enough to hold at least one
+	 * frame. This is more efficient, because it doesn't require waking the poll thread twice. */
+	int value = 128*1024;
+	setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value));
 }
 
 rtsp_connection::~rtsp_connection()
