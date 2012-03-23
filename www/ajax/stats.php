@@ -58,20 +58,21 @@ class ServerStats{
 	private function isServerRunning(){
 		return (shell_exec('pidof bc-server')) ? true : false;
 	}
-	private function writeFailCheck(){
-		$time = file_exists(DB_WRITABLE) ? filemtime(DB_WRITABLE) : 0;
-		if ($time>43200){
-			return date("F d Y H:i:s.", $time);
+	private function serverStatus(){
+		$status = data::getObject('ServerStatus');
+		if (!$status){
+			return false;
 		} else {
-			return 'false';
-		};
+			return array($status[0]['pid'], $status[0]['timestamp'], $status[0]['message']);
+		}
+
 	}
 	function makeXML(){
 		$cpu = $this->getCPUUsage();
 		$mem = $this->getMemUse();
 		$uptime  = $this->getUpTime();
 		$server  = $this->isServerRunning();
-		$writefail = $this->writeFailCheck();
+		$serverstatus = $this->serverStatus();
 
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
@@ -82,7 +83,11 @@ class ServerStats{
 	<memory-used-percentage>{$mem[2]}</memory-used-percentage>
 	<bc-server-running>".(($server)? 'up' : 'down')."</bc-server-running>
 	<server-uptime>$uptime</server-uptime>
-	<failed-write>$writefail</failed-write>
+	<server-status>
+		<pid>{$serverstatus[0]}</pid>
+		<timestamp>{$serverstatus[1]}</timestamp>
+		<message>{$serverstatus[2]}</message>
+	</server-status>
 </server-status>\n";
 	}
 }
