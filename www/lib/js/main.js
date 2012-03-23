@@ -255,6 +255,9 @@ DVRPageScript = new Class({
 					openPage = new DVRPage('log', 'type='+this.get('value'));
 				});
 			break; //end log
+			case 'notifications':
+	
+			break; //end notifications
 			case 'storage':
 				var storageForm  = new DVRSettingsForm('storageForm');
 				var addButton = $$('#button.add');
@@ -790,8 +793,6 @@ var localMotionGrid = new Class({
 		initialize: function(el, value, type, nc, nr){
 			var self = this;
 			switch(type){
-				case 'notifications':
-				break; //end notifications
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
 					$(el).addEvent('load', function(){
@@ -935,7 +936,6 @@ updateStatData = function(){
 				var memPertg = (xml.getElementsByTagName("memory-used-percentage")[0].childNodes[0].nodeValue || 0);
 				var serverUp = (xml.getElementsByTagName("server-uptime")[0].childNodes[0].nodeValue || 0);
 				var serverRn = (xml.getElementsByTagName("bc-server-running")[0].childNodes[0].nodeValue || 0);
-				var writeFail= (xml.getElementsByTagName("failed-write")[0].childNodes[0].nodeValue || 0);
 				var sr  = $('sr');
 				var snr = $('snr');
 				var ncn = $('ncn');
@@ -947,12 +947,6 @@ updateStatData = function(){
 				} else {
 					snr.setStyle('display', 'none');
 					sr.setStyle('display', 'inline');
-				}
-				if (writeFail!='false'){
-					$('writeFailTime').set('html', writeFail); 
-					ftw.setStyle('display', 'inline');
-				} else {
-					ftw.setStyle('display', 'none');
 				}
 				ncn.setStyle('display', 'none');
 				$('serverStats').setStyle('display', 'block');

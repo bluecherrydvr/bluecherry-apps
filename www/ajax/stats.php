@@ -76,7 +76,7 @@ class ServerStats{
 
 		header('Content-type: text/xml');
 		echo "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>
-<server-status>
+<stats>
 	<cpu-usage>$cpu</cpu-usage>
 	<memory-total>{$mem[0]}</memory-total>
 	<memory-inuse>{$mem[1]}</memory-inuse>
@@ -88,7 +88,7 @@ class ServerStats{
 		<timestamp>{$serverstatus[1]}</timestamp>
 		<message>{$serverstatus[2]}</message>
 	</server-status>
-</server-status>\n";
+</stats>\n";
 	}
 }
 
