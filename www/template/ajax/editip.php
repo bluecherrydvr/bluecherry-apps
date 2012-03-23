@@ -10,7 +10,9 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 <div id="aip">
 	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(ipCameras('manufacturers'), $ipCamera->info['manufacturer'], 'manufacturers'); ?></div>
 	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(ipCameras('models', $ipCamera->info['manufacturer']), $ipCamera->info['model'], 'models', true); ?></span></div>
-	<div><label id="addipLabel"><?php echo VA_AUDIO_ENABLE; ?></label><input id='audio_enabled' type='Checkbox' name="audio_enabled"  <?php echo !($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''; ?>/></div>
+	<div><label id="addipLabel"><?php echo VA_AUDIO_ENABLE; ?></label><input id='audio_enabled' type='Checkbox' name="audio_enabled"  <?php echo !($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''; ?>/>
+		<div id='message' class='INFO'>Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
+	</div>
 	<input type="hidden" name="mode" value="editIp" />
 	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
 	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><input type="Text" id="ipAddr" name="ipAddr" value="<?php echo $ipCamera->info['ipAddr'];?>" /></div>

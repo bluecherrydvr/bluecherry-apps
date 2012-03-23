@@ -9,7 +9,9 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".((
 <div id="videoAdjControls">
 	<INPUT value="<?php echo $device_data[0]['id']; ?>" type="Hidden" id="device_id" />
 	<div id="videoAdjSliders">
-		<div><label><?php echo VA_AUDIO_ENABLE; ?>:</label><input type='Checkbox' id='audio_enabled' <?php echo !($device_data[0]['audio_disabled']) ? ' checked="checked"':''; ?>/></div>
+		<div><label><?php echo VA_AUDIO_ENABLE; ?>:</label><input type='Checkbox' id='audio_enabled' <?php echo !($device_data[0]['audio_disabled']) ? ' checked="checked"':''; ?>/>
+			<div id='message' class='INFO'>Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
+		</div>
 		<div class="control" id="audio_volume"><label><?php echo VA_AUDIO; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['audio_volume']; ?>" type="text" id="audio_volume_value" /></label><div id="audio_volume" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_BRIGHTNESS; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['brightness']; ?>" type="text" id="brightness_value" /></label><div id="brightness" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_HUE; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['hue']; ?>" type="text" id="hue_value" /></label><div id="hue" class="slider"><div class="knob"></div></div></div>
