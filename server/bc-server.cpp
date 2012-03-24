@@ -396,8 +396,7 @@ static int bc_cleanup_media()
 	int removed = 0, error_count = 0;
 	int i;
 
-	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"end!=0 AND size>0 ORDER BY start ASC");
+	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND filepath!='' ORDER BY start ASC");
 
 	if (!dbres) {
 		bc_status_component_error("Database error during media cleanup");
