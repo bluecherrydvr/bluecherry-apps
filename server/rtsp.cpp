@@ -84,18 +84,26 @@ void rtsp_server::run()
 	if (serverfd < 0)
 		return;
 
+	int errors = 0;
 	for (;;) {
 		int n = poll(fds, n_fds, -1);
 		if (n < 0) {
-			bc_log("rtsp_server: poll: %s", strerror(errno));
-			break;
+			if (errno == EINTR)
+				continue;
+			bc_log("E(RTSP): poll() error: %s", strerror(errno));
+			/* This is nowhere near ideal. We should reset everything instead, but
+			 * this is at least better than silent failure, because the process will
+			 * restart. */
+			if (++errors == 10)
+				exit(1);
+			else
+				continue;
 		}
 
 		for (int i = 0; i < n_fds; ++i) {
 			if (!fds[i].revents)
 				continue;
 
-			bc_log("rtsp_server: poll on socket %d (fd %d) for %d", i, fds[i].fd, fds[i].revents);
 			rtsp_connection *c = connections[i];
 
 			/* It is not safe to write fds[i], or do much of anything, after calling into
@@ -127,14 +135,14 @@ void rtsp_server::run()
 				int rd = read(wakeupfd[0], buf, sizeof(buf));
 				int reason = 0;
 				if (rd < 0)
-					bc_log("W: Error on wake FD in rtsp_server");
+					bc_log("W(RTSP): Error on wakeup fd: %s", strerror(errno));
 				for (int k = 0; k < rd; ++k)
 					reason |= buf[k];
 
 				if (reason & WAKE_GC)
 					rtsp_stream::collectGarbage();
 			} else {
-				bc_log("W: Unknown FD in rtsp_server");
+				bc_log("W(RTSP): BUG: Unknown FD");
 				fds[i].events = 0;
 			}
 		}
@@ -192,14 +200,16 @@ void rtsp_server::wake(int reason)
 {
 	char v = reason;
 	if (write(wakeupfd[1], &v, 1) < 0)
-		;
+		bc_log("W(RTSP): Error writing to wakeup fd: %s", strerror(errno));
 }
 
 void rtsp_server::acceptConnection()
 {
 	int fd = accept(serverfd, NULL, NULL);
-	if (fd < 0)
+	if (fd < 0) {
+		bc_log("E(RTSP): accept() failed: %s", strerror(errno));
 		return;
+	}
 
 	new rtsp_connection(this, fd);
 }
@@ -385,10 +395,6 @@ int rtsp_connection::parse()
 		req.headers[key] = value;
 	}
 
-	bc_log("request: '%s' '%s' '%s'", req.method.c_str(), req.uri.c_str(), req.version.c_str());
-	for (std::map<std::string,std::string>::iterator it = req.headers.begin(); it != req.headers.end(); ++it)
-		bc_log("header: '%s' = '%s'", it->first.c_str(), it->second.c_str());
-
 	std::string t = req.header("content-length");
 	if (!t.empty() && t != "0") {
 		bc_log("W(RTSP): RTSP server does not support request bodies");
@@ -440,7 +446,6 @@ void rtsp_connection::sendResponse(const rtsp_message &response)
 		av_strlcatf(buf, sizeof(buf), "%s: %s\r\n", it->first.c_str(), it->second.c_str());
 	av_strlcat(buf, "\r\n", sizeof(buf));
 
-	bc_log("response: %s", buf);
 	/* XXX error handling */
 	send(buf, strlen(buf));
 }
@@ -911,12 +916,13 @@ rtsp_session::~rtsp_session()
 {
 	connection->removeSession(this);
 	stream->removeSession(this);
+	bc_log("I(RTSP): Stream ended for device %d", stream->id);
 }
 
 int rtsp_session::generate_id()
 {
-	/* XXX */
-	return 1;
+	/* XXX this is supposed to be 8-octets of randomness */
+	return rand();
 }
 
 bool rtsp_session::parseTransport(std::string str)
@@ -934,7 +940,6 @@ bool rtsp_session::parseTransport(std::string str)
 
 		bool acceptable = true;
 		while ((param = strsep(&x, ";"))) {
-			bc_log("transport param: %s", param);
 			char *tmp;
 
 			if (av_strstart(param, "mode=", NULL) && !strstr(param, "PLAY")) {
@@ -999,5 +1004,7 @@ void rtsp_session::setActive(bool on)
 	active = on;
 	needKeyframe = on;
 	stream->sessionActiveChanged(this);
+
+	bc_log("I(RTSP): Stream %s for device %d", on ? "started" : "stopped", stream->id); 
 }
 
