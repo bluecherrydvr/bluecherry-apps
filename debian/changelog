@@ -1,3 +1,11 @@
+bluecherry (1:2.0.0-0beta9.5) lucid; urgency=low
+
+  * Bug #1091: Media for events with duration corrected at startup is never deleted
+  * Feature #689: RTSP live streaming support
+  * Other minor fixes
+
+ -- John Brooks <john.brooks@bluecherry.net>  Mon, 26 Mar 2012 17:20:00 -0600
+
 bluecherry (1:2.0.0-0beta9.4) lucid; urgency=low
 
   * Bug #1066: bc-server occasionally starts before the solo6010 module is loaded
