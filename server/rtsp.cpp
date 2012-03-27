@@ -47,7 +47,7 @@ rtsp_server::~rtsp_server()
 
 int rtsp_server::setup(int port)
 {
-	serverfd = socket(AF_INET, SOCK_STREAM, 0);
+	serverfd = socket(AF_INET6, SOCK_STREAM, 0);
 	if (serverfd < 0)
 		return -1;
 
@@ -55,10 +55,11 @@ int rtsp_server::setup(int port)
 	if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
 		goto error;
 
-	struct sockaddr_in addr;
+	struct sockaddr_in6 addr;
 	memset(&addr, 0, sizeof(addr));
-	addr.sin_port = htons(port);
-	addr.sin_family = AF_INET;
+	addr.sin6_port   = htons(port);
+	addr.sin6_family = AF_INET6;
+	addr.sin6_addr   = in6addr_any;
 	if (bind(serverfd, (sockaddr*)&addr, sizeof(addr)) < 0)
 		goto error;
 
