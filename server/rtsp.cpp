@@ -215,8 +215,91 @@ void rtsp_server::acceptConnection()
 	new rtsp_connection(this, fd);
 }
 
+/* To survive low bandwidth connections, we need to be smart about
+ * buffering; it's important to never drop RTSP commands, and we
+ * shouldn't drop partially sent frames either. When a new keyframe
+ * is buffered, we can skip sending any unsent inter-frames to avoid
+ * falling too far behind realtime.
+ *
+ * Each rtsp_write_buffer is one unit to send on an rtsp_connection,
+ * which will be sent in whole or (if applicable) dropped entirely.
+ * 
+ */
+struct rtsp_write_buffer
+{
+	enum Type
+	{
+		Control, /* Control data, not droppable */
+		Reference, /* Reference frame */
+		Inter, /* Inter frame, droppable if followed by a reference */
+	};
+
+	enum FrameFlag
+	{
+		Only, /* Only buffer in the frame */
+		First, /* First buffer in the frame */
+		Partial /* Following buffers in the same frame */
+	};
+
+	rtsp_write_buffer *next;
+	char *data;
+	int size, pos;
+	Type type;
+	FrameFlag flag;
+
+	rtsp_write_buffer(const char *d, int s, int t, int f)
+		: next(0), size(s), pos(0), type((Type)t), flag((FrameFlag)f)
+	{
+		data = new char[size];
+		memcpy(data, d, size);
+	}
+	
+	~rtsp_write_buffer()
+	{
+		delete[] data;
+	}
+
+	static int trim(rtsp_write_buffer *&head)
+	{
+		int size = 0;
+		for (rtsp_write_buffer *p = head; p; p = p->next) {
+			size += p->size - p->pos;
+			if (p->type != Reference)
+				continue;
+
+			/* On each reference frame, drop all previous unsent reference
+			 * or inter frames */
+			rtsp_write_buffer *last = 0;
+			bool hasFirst = false;
+			for (rtsp_write_buffer *c = head; c != p; ) {
+				rtsp_write_buffer *next = c->next;
+				if (!c->pos && (c->type == Reference || c->type == Inter) && (c->flag != Partial || hasFirst)) {
+					if (c->flag == First)
+						hasFirst = true;
+					else if (c->flag == Only)
+						hasFirst = false;
+					size -= c->size - c->pos;
+					delete c;
+				}
+				else if (last)
+					last->next = c;
+				else
+					last = head = c;
+				c = next;
+			}
+
+			if (last)
+				last->next = p;
+			else
+				last = head = p;
+		}
+
+		return size;
+	}
+};
+
 rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
-	: server(server), fd(fd), rdbuf_len(0)
+	: server(server), fd(fd), rdbuf_len(0), wrbuf(0), wrbuf_tail(0)
 {
 	pthread_mutex_init(&write_lock, 0);
 	server->addFd(this, fd, POLLIN);
@@ -233,6 +316,10 @@ rtsp_connection::~rtsp_connection()
 		delete sessions.begin()->second;
 	server->removeFd(fd);
 	close(fd);
+	for (rtsp_write_buffer *p = wrbuf, *n; p; p = n) {
+		n = p->next;
+		delete p;
+	}
 	pthread_mutex_destroy(&write_lock);
 }
 
@@ -451,23 +538,17 @@ void rtsp_connection::sendResponse(const rtsp_message &response)
 	send(buf, strlen(buf));
 }
 
-static const int wrbuf_max = 1024*1024; /* 1MB */
-
-int rtsp_connection::send(const char *buf, int size)
+int rtsp_connection::send(const char *buf, int size, int type, int flag)
 {
 	int re = 0;
 	int wr;
 	pthread_mutex_lock(&write_lock);
 
-	if (wrbuf_max - wrbuf.size() < size) {
-		/* Write buffer (will be) exceeded; drop this write, but not the connection.
-		 * This may result in corruption temporarily. */
-		re = -1;
-		goto end;
-	}
-
-	if (!wrbuf.empty()) {
-		wrbuf.append(buf, size);
+	if (wrbuf) {
+		/* rtsp_write_buffer makes a copy of the data */
+		rtsp_write_buffer *wbuf = new rtsp_write_buffer(buf, size, type, flag);
+		wrbuf_tail->next = wbuf;
+		wrbuf_tail = wbuf;
 		goto end;
 	}
 
@@ -478,12 +559,24 @@ int rtsp_connection::send(const char *buf, int size)
 	}
 
 	if (wr < size) {
-		wrbuf.append(buf + wr, size - wr);
+		/* Copy the entire buffer and set pos to mark it as partially sent */
+		wrbuf = new rtsp_write_buffer(buf, size, type, flag);
+		wrbuf->pos = wr;
+		wrbuf_tail = wrbuf;
+
 		server->setFdEvents(fd, POLLIN | POLLOUT);
 		server->wake(WAKE_REPOLL);
 	}
 
 end:
+	if (wrbuf && rtsp_write_buffer::trim(wrbuf) >= 1024*1024*2) {
+		/* If the buffer reaches 2MB and cannot be trimmed any further,
+		 * drop the connection. There is little hope in this case anyway. */
+		bc_log("I(RTSP): Buffer size exceeded on stream, dropping connection");
+		shutdown(fd, SHUT_RDWR);
+		re = -1;
+	}
+
 	pthread_mutex_unlock(&write_lock);
 	return re;
 }
@@ -492,18 +585,26 @@ int rtsp_connection::writable()
 {
 	int re = 0;
 	pthread_mutex_lock(&write_lock);
-	if (!wrbuf.empty()) {
-		int wr = write(fd, wrbuf.c_str(), wrbuf.size());
+
+	while (wrbuf) {
+		int wr = write(fd, wrbuf->data + wrbuf->pos, wrbuf->size - wrbuf->pos);
 		if (wr < 0) {
 			re = -1;
-		} else if ((unsigned)wr < wrbuf.size()) {
-			wrbuf.erase(0, wr);
+			break;
+		}
+		wrbuf->pos += wr;
+		if (wrbuf->pos >= wrbuf->size) {
+			rtsp_write_buffer *next = wrbuf->next;
+			delete wrbuf;
+			wrbuf = next;
 		} else
-			wrbuf.clear();
+			break;
 	}
 
-	if (wrbuf.empty())
+	if (!wrbuf) {
+		wrbuf_tail = 0;
 		server->setFdEvents(fd, POLLIN);
+	}
 
 	pthread_mutex_unlock(&write_lock);
 	return re;
@@ -855,6 +956,7 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 {
 	pthread_mutex_lock(&sessions_lock);
+	bool first = true;
 	for (int p = 0; p+4 <= size; ) {
 		uint8_t *pkt    = buf + p;
 		uint32_t pkt_sz = AV_RB32(pkt);
@@ -891,13 +993,19 @@ void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
 			/* Rewrite RTP sequence number */
 			AV_WB16(pkt + 6, (*it)->rtp_seq++);
 			/* Send packet, including the interleaving header */
-			(*it)->connection->send((char*)pkt, 4 + pkt_sz);
+			(*it)->connection->send((char*)pkt, 4 + pkt_sz, (flags & AV_PKT_FLAG_KEY) ?
+			                                                 rtsp_write_buffer::Reference :
+									 rtsp_write_buffer::Inter,
+									(first) ?
+									 rtsp_write_buffer::First :
+									 rtsp_write_buffer::Partial);
 			/* If we're not on keyframe-only mode, unset the needKeyframe flag.
 			 * Otherwise, it always stays true. */
 			(*it)->needKeyframe = (*it)->keyframeOnly;
 		}
 
 		p += 4 + pkt_sz;
+		first = false;
 	}
 	pthread_mutex_unlock(&sessions_lock);
 }

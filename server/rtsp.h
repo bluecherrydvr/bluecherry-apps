@@ -56,6 +56,7 @@ private:
 
 struct rtsp_message;
 class rtsp_session;
+class rtsp_write_buffer;
 
 class rtsp_connection
 {
@@ -69,7 +70,7 @@ public:
 	void addSession(rtsp_session *session);
 	void removeSession(rtsp_session *session);
 
-	int send(const char *buf, int size);
+	int send(const char *buf, int size, int type = 0, int flags = 0);
 
 private:
 	rtsp_server * const server;
@@ -77,7 +78,7 @@ private:
 	char rdbuf[10240];
 	int rdbuf_len;
 	pthread_mutex_t write_lock;
-	std::string wrbuf;
+	rtsp_write_buffer *wrbuf, *wrbuf_tail;
 
 	std::map<int,rtsp_session*> sessions;
 
