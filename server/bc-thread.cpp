@@ -90,6 +90,7 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 
 	bc_event_cam_end(&bc_rec->event);
 	bc_rec->event = event;
+	bc_rec->event_snapshot_done = 0;
 
 	return 0;
 }
@@ -433,6 +434,11 @@ static void *bc_device_thread(void *data)
 						goto error;
 					bc_rec->output_pts_base = packet.pts;
 				}
+			}
+
+			if (bc_buf_is_video_frame(bc) && bc_buf_key_frame(bc) && !bc_rec->event_snapshot_done) {
+				save_event_snapshot(bc_rec, &packet);
+				bc_rec->event_snapshot_done = 1;
 			}
 
 			bc_output_packet_write(bc_rec, &packet);

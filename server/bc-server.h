@@ -70,7 +70,8 @@ struct bc_record {
 	unsigned int		aud_format;
 
 	/* Event/Media handling */
-	bc_event_cam_t		event;
+	bc_event_cam_t          event;
+	int                     event_snapshot_done;
 
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
@@ -143,6 +144,11 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
+
+/* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
+ * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */
+int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt, struct AVFrame *frame);
+int save_event_snapshot(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 
 /* Streaming */
 int bc_streaming_setup(struct bc_record *bc_rec);
