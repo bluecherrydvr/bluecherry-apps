@@ -417,6 +417,16 @@ static int bc_cleanup_media()
 			continue;
 		}
 
+		std::string sidecar = filepath;
+		if (sidecar.size() > 3)
+			sidecar.replace(sidecar.size()-3, 3, "jpg");
+		if (unlink(sidecar.c_str()) < 0 && errno != ENOENT) {
+			bc_log("W: Cannot remove sidecar file %s for cleanup: %s",
+			       sidecar.c_str(), strerror(errno));
+			error_count++;
+			continue;
+		}
+
 		removed++;
 		if (__bc_db_query("UPDATE Media SET filepath='',size=0 "
 		                  "WHERE id=%d", id)) {
