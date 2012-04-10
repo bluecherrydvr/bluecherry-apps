@@ -292,6 +292,7 @@ void bc_vlog(const char *msg, va_list va);
 
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();
+int hex_encode(char *out, int out_sz, const char *in, int in_sz);
 
 /* Retrieves the next buffer from the device.
  * For RTSP devices, this buffer may not be video! */
@@ -372,6 +373,7 @@ int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
 char *bc_db_escape_string(const char *from, int len);
 
 /* Validate and process a license key to get values from it */
+int bc_license_machine_id(char *out, int out_sz);
 int bc_key_process(struct bc_key_data *res, char *str);
 
 /* ### Handle events ### */

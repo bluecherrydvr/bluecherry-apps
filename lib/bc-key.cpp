@@ -6,6 +6,12 @@
 
 #include <string.h>
 #include <errno.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/ether.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #include <libbluecherry.h>
 
@@ -189,3 +195,58 @@ int bc_key_process(struct bc_key_data *res, char *str)
 
 	return 0;
 }
+
+int bc_license_machine_id(char *out, int out_sz)
+{
+	char buf[1024];
+	char id_buf[6];
+	struct ifconf ifc;
+	struct ifreq *ifr;
+	int fd;
+	int re = -1;
+	int if_count;
+	int i;
+
+	if (out_sz < 13)
+		return -ENOBUFS;
+
+	memset(id_buf, 0, sizeof(id_buf));
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -errno;
+
+	memset(&ifc, 0, sizeof(ifc));
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_buf = buf;
+
+	if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
+		re = -errno;
+		goto end;
+	}
+
+	ifr = ifc.ifc_req;
+	if_count = ifc.ifc_len / sizeof(struct ifreq);
+
+	for (i = 0; i < if_count; ++i) {
+		if (ioctl(fd, SIOCGIFHWADDR, &ifr[i]) < 0) {
+			re = -errno;
+			continue;
+		}
+
+		if (i && strncmp(ifr[i].ifr_name, "eth", 3) && strncmp(ifr[i].ifr_name, "wlan", 4))
+			continue;
+
+		memcpy(id_buf, ifr[i].ifr_hwaddr.sa_data, 6);
+		if (i)
+			break;
+	}
+
+	hex_encode(out, 13, id_buf, 6);
+	re = 12;
+
+end:
+	close(fd);
+	return re;
+}
+

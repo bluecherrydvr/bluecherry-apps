@@ -183,8 +183,6 @@ time_t bc_gettime_monotonic()
 	return ts.tv_sec;
 }
 
-static const char *hex_table = "0123456789abcdef";
-
 int bc_user_auth(const char *username, const char *password, int access_type, int device_id)
 {
 	int re = 0;
@@ -202,12 +200,7 @@ int bc_user_auth(const char *username, const char *password, int access_type, in
 	strlcpy(s_password, password, sizeof(s_password));
 	strlcat(s_password, bc_db_get_val(dbres, "salt", NULL), sizeof(s_password));
 	av_md5_sum((uint8_t*)md5_pwd, (const uint8_t*)s_password, strlen(s_password));
-
-	for (int i = 0; i < 16; ++i) {
-		s_password[i*2]   = hex_table[(md5_pwd[i] >> 4) & 0xf];
-		s_password[i*2+1] = hex_table[md5_pwd[i] & 0xf];
-	}
-	s_password[32] = 0;
+	hex_encode(s_password, sizeof(s_password), md5_pwd, sizeof(md5_pwd));
 
 	tmp = bc_db_get_val(dbres, "password", NULL);
 	if (strcmp(tmp, s_password) != 0)
@@ -238,5 +231,24 @@ int bc_user_auth(const char *username, const char *password, int access_type, in
 end:
 	bc_db_free_table(dbres);
 	return re;
+}
+
+int hex_encode(char *out, int out_sz, const char *in, int in_sz)
+{
+	int i;
+	static const char table[] = "0123456789abcdef";
+
+	if (out_sz < in_sz * 2 + 1) {
+		*out = 0;
+		return 0;
+	}
+
+	for (i = 0; i < in_sz; ++i) {
+		*(out++) = table[(in[i] >> 4) & 0xf];
+		*(out++) = table[in[i] & 0xf];
+	}
+
+	*out = 0;
+	return in_sz*2;
 }
 
