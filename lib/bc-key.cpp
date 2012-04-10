@@ -174,7 +174,7 @@ int bc_key_process(struct bc_key_data *res, char *str)
 	if (res->major != 2 || res->minor != 1)
 		return EINVAL;
 
-	res->type = bc_key_pullbits(&c, 4);
+	res->type = (bc_key_type) bc_key_pullbits(&c, 4);
 	if (res->type == BC_KEY_TYPE_CAMERA) {
 		bc_key_pullbits(&c, 7);
 		res->eval_period = 0;

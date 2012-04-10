@@ -7,16 +7,21 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <string>
 
+extern "C" {
 #include "libavutil/mathematics.h"
+#include "libswscale/swscale.h"
+}
 
 #include "bc-server.h"
 
-int bc_av_lockmgr(void **mutex, enum AVLockOp op)
+int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 {
+	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
 	switch (op) {
 		case AV_LOCK_CREATE:
-			*mutex = malloc(sizeof(pthread_mutex_t));
+			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 			if (!*mutex)
 				return 1;
 			return !!pthread_mutex_init(*mutex, NULL);
@@ -125,7 +130,7 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 		return -1;
 	}
 
-	if ((err = snd_pcm_hw_params_set_format(pcm, params, fmt)) < 0) {
+	if ((err = snd_pcm_hw_params_set_format(pcm, params, (snd_pcm_format_t)fmt)) < 0) {
 		bc_dev_err(bc_rec, "Setting audio device format failed: %s",
 			   snd_strerror(err));
 		return -1;
@@ -255,7 +260,7 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	av_init_packet(&opkt);
 	opkt.flags        = pkt->flags;
 	opkt.pts          = pkt->pts;
-	opkt.data         = pkt->data;
+	opkt.data         = (uint8_t*)pkt->data;
 	opkt.size         = pkt->size;
 	opkt.stream_index = s->index;
 
@@ -286,8 +291,8 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
 	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %"PRId64", probably "
-		       "caused by recent PTS reset", pkt->pts);
+		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
+		       "caused by recent PTS reset", (long long int)pkt->pts);
 		return 0;
 	}
 
@@ -376,9 +381,8 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	int height = bc_rec->bc->v4l2.vfmt.fmt.pix.height;
 
 	/* Setup new video stream */
-	if ((bc_rec->video_st = avformat_new_stream(oc, NULL)) == NULL)
+	if ((st = avformat_new_stream(oc, NULL)) == NULL)
 		return -1;
-	st = bc_rec->video_st;
 
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
@@ -429,9 +433,8 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 			goto no_audio;
 		}
 
-		if ((bc_rec->audio_st = avformat_new_stream(oc, NULL)) == NULL)
+		if ((st = avformat_new_stream(oc, NULL)) == NULL)
 			goto no_audio;
-		st = bc_rec->audio_st;
 		st->codec->codec_id = codec_id;
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
@@ -449,9 +452,19 @@ no_audio:
 	return 0;
 }
 
-int bc_open_avcodec(struct bc_record *bc_rec)
+int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 {
 	struct bc_handle *bc = bc_rec->bc;
+	if (bc->type == BC_DEVICE_RTP)
+		return rtp_device_setup_output(&bc->rtp, oc);
+	else if (bc->type == BC_DEVICE_V4L2 && (bc->cam_caps & BC_CAM_CAP_SOLO))
+		return setup_solo_output(bc_rec, oc);
+	else
+		return -1;
+}
+
+int bc_open_avcodec(struct bc_record *bc_rec)
+{
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
@@ -473,24 +486,21 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 
 	oc->oformat = bc_rec->fmt_out;
 
-	if (bc->type == BC_DEVICE_RTP) {
-		if (rtp_device_setup_output(&bc->rtp, oc) < 0)
-			goto error;
-		
-		bc_rec->audio_st = bc_rec->video_st = NULL;
-		for (i = 0; i < oc->nb_streams; ++i) {
-			if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-				bc_rec->video_st = oc->streams[i];
-			else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-				bc_rec->audio_st = oc->streams[i];
-		}
-	} else {
-		if (setup_solo_output(bc_rec, oc) < 0)
-			goto error;
+	if (setup_output_context(bc_rec, oc) < 0)
+		goto error;
+
+	bc_rec->audio_st = bc_rec->video_st = NULL;
+	for (i = 0; i < oc->nb_streams; ++i) {
+		if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+			bc_rec->video_st = oc->streams[i];
+		else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
+			bc_rec->audio_st = oc->streams[i];
 	}
 
 	/* Open Video output */
 	st = bc_rec->video_st;
+	if (!st)
+		goto error;
 	codec = avcodec_find_encoder(st->codec->codec_id);
 	if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
 		bc_rec->video_st = NULL;
@@ -525,5 +535,155 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 error:
 	bc_close_avcodec(bc_rec);
 	return -1;
+}
+
+int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt, AVFrame *frame)
+{
+	AVCodecContext *ic = 0;
+	AVCodecContext *recctx = bc_rec->video_st->codec;
+	AVCodec *codec = avcodec_find_decoder(recctx->codec_id);
+	AVFrame tmpFrame;
+	int re = -1;
+	int have_picture = 0;
+	if (!codec || !(ic = avcodec_alloc_context3(codec))) {
+		bc_dev_err(bc_rec, "Cannot allocate decoder context for video");
+		return -1;
+	}
+
+	ic->width     = recctx->width;
+	ic->height    = recctx->height;
+	ic->pix_fmt   = recctx->pix_fmt;
+	ic->time_base = recctx->time_base;
+	if (recctx->extradata && recctx->extradata_size) {
+		ic->extradata_size = recctx->extradata_size;
+		ic->extradata = (uint8_t*)av_malloc(recctx->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(ic->extradata, recctx->extradata, recctx->extradata_size);
+	}
+
+	AVPacket packet;
+	av_init_packet(&packet);
+	packet.flags        = pkt->flags;
+	packet.pts          = pkt->pts;
+	packet.data         = (uint8_t*)pkt->data;
+	packet.size         = pkt->size;
+
+	if (avcodec_open2(ic, codec, NULL) < 0)
+		goto end;
+
+	re = avcodec_decode_video2(ic, &tmpFrame, &have_picture, &packet);
+	if (re < 0) {
+		char error[512];
+		av_strerror(re, error, sizeof(error));
+		bc_dev_err(bc_rec, "Cannot decode video frame: %s", error);
+		goto end;
+	}
+
+	if (have_picture) {
+		memcpy(frame, &tmpFrame, sizeof(AVFrame));
+		int size = avpicture_get_size(ic->pix_fmt, ic->width, ic->height);
+		uint8_t *buf = (uint8_t*) av_malloc(size);
+		avpicture_fill((AVPicture*)frame, buf, ic->pix_fmt, ic->width, ic->height);
+		av_picture_copy((AVPicture*)frame, (const AVPicture*)&tmpFrame, ic->pix_fmt,
+		                ic->width, ic->height);
+	}
+
+	re = 0;
+end:
+	avcodec_close(ic);
+	av_free(ic);
+	if (re < 0)
+		return re;
+	return have_picture;
+}
+
+int save_event_snapshot(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+{
+	std::string filename = bc_rec->event->media.filepath;
+	if (filename.empty()) {
+		bc_dev_err(bc_rec, "No filename for snapshot");
+		return -1;
+	}
+	filename.replace(filename.size()-3, 3, "jpg");
+
+	AVFrame rawFrame, frame;
+	if (decode_one_video_packet(bc_rec, pkt, &rawFrame) < 1) {
+		bc_dev_err(bc_rec, "No video frame for snapshot");
+		return -1;
+	}
+
+	AVCodec *codec = avcodec_find_encoder(CODEC_ID_MJPEG);
+	AVCodecContext *oc = 0;
+	uint8_t *buf = 0, *swsBuf = 0;
+	FILE *file = 0;
+	int size, re = -1;
+
+	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
+		bc_dev_err(bc_rec, "Cannot allocate encoder context for snapshot");
+		goto end;
+	}
+
+	oc->width   = rawFrame.width;
+	oc->height  = rawFrame.height;
+	oc->pix_fmt = PIX_FMT_YUVJ420P;
+	oc->mb_lmin = oc->lmin = oc->qmin * FF_QP2LAMBDA;
+	oc->mb_lmax = oc->lmax = oc->qmax * FF_QP2LAMBDA;
+	oc->flags  |= CODEC_FLAG_QSCALE;
+	oc->global_quality = oc->qmin * FF_QP2LAMBDA;
+	oc->time_base.num = 1;
+	oc->time_base.den = 30000;
+
+	if (avcodec_open2(oc, codec, NULL) < 0)
+		goto end;
+
+	size = avpicture_get_size(PIX_FMT_YUVJ420P, oc->width, oc->height);
+	memcpy(&frame, &rawFrame, sizeof(AVFrame));
+	if (rawFrame.format != PIX_FMT_YUVJ420P) {
+		SwsContext *sws = 0;
+		sws = sws_getCachedContext(0, rawFrame.width, rawFrame.height, (PixelFormat)rawFrame.format,
+		                           rawFrame.width, rawFrame.height, PIX_FMT_YUVJ420P,
+		                           SWS_BICUBIC, NULL, NULL, NULL);
+		if (!sws) {
+			bc_dev_err(bc_rec, "Cannot convert pixel format for JPEG snapshot (format is %d)", rawFrame.format);
+			goto end;
+		}
+
+		swsBuf = new uint8_t[size];
+		avpicture_fill((AVPicture*)&frame, swsBuf, PIX_FMT_YUVJ420P, rawFrame.width, rawFrame.height);
+		sws_scale(sws, (const uint8_t**)rawFrame.data, rawFrame.linesize, 0, rawFrame.height,
+		          frame.data, frame.linesize);
+		sws_freeContext(sws);
+	}
+
+	buf  = new uint8_t[size];
+	size = avcodec_encode_video(oc, buf, size, &frame);
+	if (size < 1) {
+		char error[512];
+		av_strerror(size, error, sizeof(error));
+		bc_dev_err(bc_rec, "JPEG encoding failed: %s", error);
+		goto end;
+	}
+
+	file = fopen(filename.c_str(), "w");
+	if (!file) {
+		bc_dev_err(bc_rec, "Cannot create snapshot file: %s", strerror(errno));
+		goto end;
+	}
+
+	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
+		bc_dev_err(bc_rec, "Cannot write snapshot file: %s", strerror(errno));
+		goto end;
+	}
+
+	file = 0;
+	re   = 0;
+end:
+	if (file)
+		fclose(file);
+	delete[] buf;
+	delete[] swsBuf;
+	av_free(rawFrame.data[0]);
+	avcodec_close(oc);
+	av_free(oc);
+	return re;
 }
 

@@ -10,13 +10,13 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
-#include <libavutil/mathematics.h>
-
 #include "libbluecherry.h"
 #include "rtp-session.h"
+
+extern "C" {
+#include <libavutil/opt.h>
+#include <libavutil/mathematics.h>
+}
 
 void rtp_device_init(struct rtp_device *rs, const char *url)
 {
@@ -74,7 +74,7 @@ int rtp_device_start(struct rtp_device *rs)
 
 	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
 
-	snprintf(tmp, sizeof(tmp), "%"PRId64, (int64_t)(0.7*AV_TIME_BASE));
+	snprintf(tmp, sizeof(tmp), "%lld", (long long int)(0.7*AV_TIME_BASE));
 	av_dict_set(&avopt, "max_delay", tmp, 0);
 	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
 
@@ -167,7 +167,7 @@ int rtp_device_read(struct rtp_device *rs)
 			int size = rs->frame.size - 44;
 			memcpy(tmp, rs->frame.data+44, size);
 			av_free_packet(&rs->frame);
-			rs->frame.data = tmp;
+			rs->frame.data = (uint8_t*)tmp;
 			rs->frame.size = size;
 			rs->frame.destruct = wrap_av_destruct_packet;
 		}
@@ -218,10 +218,11 @@ int rtp_device_read(struct rtp_device *rs)
 		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
 			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
-			       "delta %"PRId64". Adjusting based on last interval of %"PRId64".",
+			       "delta %lld. Adjusting based on last interval of %lld.",
 			       rs->frame.stream_index,
 			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-			       rs->frame.pts - streamdata->last_pts, streamdata->last_pts_diff);
+			       (long long int) rs->frame.pts - streamdata->last_pts,
+			       (long long int) streamdata->last_pts_diff);
 			streamdata->pts_base -= (streamdata->last_pts - rs->frame.pts)
 			                        + streamdata->last_pts_diff;
 		} else {
@@ -240,17 +241,18 @@ int rtp_device_read(struct rtp_device *rs)
 			{
 				if (!streamdata->was_last_diff_skipped) {
 					av_log(rs->ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
-					       "to %"PRId64" (delta %"PRId64"); ignoring interval change unless repeated",
+					       "to %lld (delta %lld); ignoring interval change unless repeated",
 					       rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
+					       (long long int)newptsdiff, (long long int)(newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 1;
 				} else {
 					av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
-					       "to %"PRId64" (delta %"PRId64") twice; accepting new interval. Could cause "
+					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
 					       "framerate or desynchronization issues.", rs->frame.stream_index,
 					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-					       newptsdiff, (newptsdiff - streamdata->last_pts_diff));
+					       (long long int)newptsdiff,
+					       (long long int)(newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 0;
 					streamdata->last_pts_diff = newptsdiff;
 				}
@@ -295,7 +297,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 	vst->codec->profile = ic->profile;
 	if (ic->extradata && ic->extradata_size) {
 		vst->codec->extradata_size = ic->extradata_size;
-		vst->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+		vst->codec->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
 		memcpy(vst->codec->extradata, ic->extradata, ic->extradata_size);
 	}
 
@@ -321,7 +323,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 		ast->codec->profile = ic->profile;
 		if (ic->extradata && ic->extradata_size) {
 			ast->codec->extradata_size = ic->extradata_size;
-			ast->codec->extradata = av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+			ast->codec->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
 			memcpy(ast->codec->extradata, ic->extradata, ic->extradata_size);
 		}
 
@@ -343,8 +345,8 @@ void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 		return;
 
 	if (rs->frame.pts == AV_NOPTS_VALUE) {
-		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %"PRId64" cannot occur\n",
-		       pts);
+		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
+		       (long long int)pts);
 		return;
 	}
 

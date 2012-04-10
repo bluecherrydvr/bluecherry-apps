@@ -90,6 +90,7 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 
 	bc_event_cam_end(&bc_rec->event);
 	bc_rec->event = event;
+	bc_rec->event_snapshot_done = 0;
 
 	return 0;
 }
@@ -99,6 +100,7 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	struct bc_output_packet *p, *n;
 
 	recording_end(bc_rec);
+	bc_streaming_destroy(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
 	bc_rec->mot_first_buffered_packet = 0;
@@ -150,7 +152,7 @@ static void check_schedule(struct bc_record *bc_rec)
 	const char *schedule = global_sched;
 	time_t t;
 	struct tm tm;
-	char new;
+	char sched_new;
 
 	if (bc_rec->cfg.schedule_override_global)
 		schedule = bc_rec->cfg.schedule;
@@ -158,49 +160,41 @@ static void check_schedule(struct bc_record *bc_rec)
 	time(&t);
 	localtime_r(&t, &tm);
 
-	new = schedule[tm.tm_hour + (tm.tm_wday * 24)];
-	if (bc_rec->sched_cur != new) {
+	sched_new = schedule[tm.tm_hour + (tm.tm_wday * 24)];
+	if (bc_rec->sched_cur != sched_new) {
 		if (!bc_rec->sched_last)
 			bc_rec->sched_last = bc_rec->sched_cur;
-		bc_rec->sched_cur = new;
+		bc_rec->sched_cur = sched_new;
 	}
 }
 
 static int process_schedule(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	int ret = 0;
 
 	check_schedule(bc_rec);
 
 	if (bc_rec->reset_vid ||
 	    (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
 	    !bc_rec->sched_last)) {
-		if (bc_rec->reset_vid) {
+		if (bc_rec->reset_vid)
 			bc_rec->reset_vid = 0;
-			ret = 1;
-		}
 		recording_end(bc_rec);
 		bc_handle_reset(bc);
 		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
-		stop_handle_properly(bc_rec);
+		recording_end(bc_rec);
 		bc_event_cam_end(&bc_rec->event);
+		bc_handle_reset(bc);
 		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
 		bc_rec->sched_last = 0;
-		bc_dev_info(bc_rec, "Switching to new schedule '%s'",
+		bc_dev_info(bc_rec, "Switching to new recording schedule '%s'",
 		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
 		       == 'N' ? "stopped" : "continuous"));
 	}
 
-	if (bc_rec->sched_cur == 'N')
-		ret = 1;
-
-	if (ret)
-		sleep(1);
-
-	return ret;
+	return (bc_rec->sched_cur != 'N');
 }
 
 /* Append a packet to the prerecord buffer, making a deep copy in the process.
@@ -210,7 +204,7 @@ static int process_schedule(struct bc_record *bc_rec)
  */
 static int prerecord_append(struct bc_record *bc_rec, const struct bc_output_packet *pkt, time_t monotonic_now)
 {
-	struct bc_output_packet *mpkt = malloc(sizeof(struct bc_output_packet));
+	struct bc_output_packet *mpkt = (struct bc_output_packet*) malloc(sizeof(struct bc_output_packet));
 	if (bc_output_packet_copy(mpkt, pkt) < 0) {
 		free(mpkt);
 		return -1;
@@ -323,7 +317,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 
 static void *bc_device_thread(void *data)
 {
-	struct bc_record *bc_rec = data;
+	struct bc_record *bc_rec = (struct bc_record*) data;
 	struct bc_handle *bc = bc_rec->bc;
 	struct bc_output_packet packet;
 	int ret;
@@ -342,8 +336,7 @@ static void *bc_device_thread(void *data)
 
 		update_osd(bc_rec);
 
-		if (process_schedule(bc_rec))
-			continue;
+		int schedule_recording = process_schedule(bc_rec);
 
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
@@ -361,6 +354,9 @@ static void *bc_device_thread(void *data)
 				bc_dev_info(bc_rec, "RTP stream started: %s",
 				            rtp_device_stream_info(&bc->rtp));
 			}
+
+			if (bc_streaming_setup(bc_rec))
+				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
@@ -406,36 +402,49 @@ static void *bc_device_thread(void *data)
 		if (ret < 1)
 			continue;
 
-		if (!check_motion(bc_rec, &packet))
-			continue;
+		/* Send packet to streaming clients */
+		if (bc_streaming_is_active(bc_rec))
+			bc_streaming_packet_write(bc_rec, &packet);
 
-		if (!bc_rec->oc) {
-			if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
-				/* Dump the prerecording buffer */
-				struct bc_output_packet *p;
-				if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
-					goto error;
-				bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
-				/* Skip the last packet; it's identical to the current packet,
-				 * which we write in the normal path below. */
-				for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
-					bc_output_packet_write(bc_rec, p);
-			} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
-				/* Always start a recording with a key video frame. This will result in
-				 * the lost of some video between recordings, up to the keyframe interval,
-				 * at least on RTP devices. XXX Ideally, we should move the recording split
-				 * slightly to allow a proper cut for both video and audio. */
+		if (schedule_recording) {
+			/* If on the motion schedule, and there is no motion, skip recording */
+			if (!check_motion(bc_rec, &packet))
 				continue;
-			} else {
-				if (recording_start(bc_rec, 0))
-					goto error;
-				bc_rec->output_pts_base = packet.pts;
+
+			/* Setup and write to recordings */
+			if (!bc_rec->oc) {
+				if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
+					/* Dump the prerecording buffer */
+					struct bc_output_packet *p;
+					if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
+						goto error;
+					bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
+					/* Skip the last packet; it's identical to the current packet,
+					 * which we write in the normal path below. */
+					for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
+						bc_output_packet_write(bc_rec, p);
+				} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
+					/* Always start a recording with a key video frame. This will result in
+					 * the lost of some video between recordings, up to the keyframe interval,
+					 * at least on RTP devices. XXX Ideally, we should move the recording split
+					 * slightly to allow a proper cut for both video and audio. */
+					continue;
+				} else {
+					if (recording_start(bc_rec, 0))
+						goto error;
+					bc_rec->output_pts_base = packet.pts;
+				}
 			}
+
+			if (bc_buf_is_video_frame(bc) && bc_buf_key_frame(bc) && !bc_rec->event_snapshot_done) {
+				save_event_snapshot(bc_rec, &packet);
+				bc_rec->event_snapshot_done = 1;
+			}
+
+			bc_output_packet_write(bc_rec, &packet);
 		}
 
-		bc_output_packet_write(bc_rec, &packet);
 		continue;
-
 error:
 		sleep(10);
 	}
@@ -478,7 +487,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		return NULL;
 	}
 
-	bc_rec = malloc(sizeof(*bc_rec));
+	bc_rec = (struct bc_record*) malloc(sizeof(*bc_rec));
+	if (bc_rec == NULL) {
+		bc_log("E(%d): Out of memory trying to start record", id);
+		return NULL;
+	}
 	memset(bc_rec, 0, sizeof(*bc_rec));
 
 	pthread_mutex_init(&bc_rec->cfg_mutex, NULL);
@@ -571,27 +584,27 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 static int apply_device_cfg(struct bc_record *bc_rec)
 {
 	struct bc_device_config *current = &bc_rec->cfg;
-	struct bc_device_config *new     = &bc_rec->cfg_update;
+	struct bc_device_config *update  = &bc_rec->cfg_update;
 	int motion_map_changed;
 
 	pthread_mutex_lock(&bc_rec->cfg_mutex);
 
 	bc_dev_info(bc_rec, "Applying configuration changes");
 
-	if (strcmp(current->dev, new->dev) || strcmp(current->driver, new->driver) ||
-	    strcmp(current->signal_type, new->signal_type) ||
-	    strcmp(current->rtsp_username, new->rtsp_username) ||
-	    strcmp(current->rtsp_password, new->rtsp_password) ||
-	    current->aud_disabled != new->aud_disabled)
+	if (strcmp(current->dev, update->dev) || strcmp(current->driver, update->driver) ||
+	    strcmp(current->signal_type, update->signal_type) ||
+	    strcmp(current->rtsp_username, update->rtsp_username) ||
+	    strcmp(current->rtsp_password, update->rtsp_password) ||
+	    current->aud_disabled != update->aud_disabled)
 	{
 		bc_rec->thread_should_die = "configuration changed";
 		pthread_mutex_unlock(&bc_rec->cfg_mutex);
 		return -1;
 	}
 
-	motion_map_changed = memcmp(current->motion_map, new->motion_map, sizeof(new->motion_map));
+	motion_map_changed = memcmp(current->motion_map, update->motion_map, sizeof(update->motion_map));
 
-	memcpy(current, new, sizeof(struct bc_device_config));
+	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 

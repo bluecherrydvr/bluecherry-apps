@@ -127,7 +127,7 @@ static BC_DB_RES bc_db_mysql_get_table(char *query)
 	if (my_con == NULL)
 		return NULL;
 
-	dbres = malloc(sizeof(*dbres));
+	dbres = (struct bc_db_mysql_res*) malloc(sizeof(*dbres));
 
 	if (dbres == NULL)
 		return NULL;
@@ -154,7 +154,7 @@ static BC_DB_RES bc_db_mysql_get_table(char *query)
 
 static void bc_db_mysql_free_table(BC_DB_RES __dbres)
 {
-	struct bc_db_mysql_res *dbres = __dbres;
+	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
 
 	mysql_free_result(dbres->res);
 	free(dbres);
@@ -162,7 +162,7 @@ static void bc_db_mysql_free_table(BC_DB_RES __dbres)
 
 static int bc_db_mysql_fetch_row(BC_DB_RES __dbres)
 {
-	struct bc_db_mysql_res *dbres = __dbres;
+	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
 
 	dbres->row = mysql_fetch_row(dbres->res);
 	if (dbres->row == NULL) {
@@ -177,7 +177,7 @@ static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 				       const char *colname,
 				       int *length)
 {
-	struct bc_db_mysql_res *dbres = __dbres;
+	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
 	unsigned long *lengths;
 	int i;
 
@@ -202,7 +202,7 @@ static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 
 static int bc_db_mysql_num_fields(BC_DB_RES __dbres)
 {
-	struct bc_db_mysql_res *dbres = __dbres;
+	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
 
 	return dbres->ncols;
 }
@@ -210,7 +210,7 @@ static int bc_db_mysql_num_fields(BC_DB_RES __dbres)
 static const char *bc_db_mysql_get_field(BC_DB_RES __dbres,
 					 int nfield)
 {
-	struct bc_db_mysql_res *dbres = __dbres;
+	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
 	MYSQL_FIELD *fields = mysql_fetch_fields(dbres->res);
 
 	if (!fields || nfield < 0 || nfield >= dbres->ncols)
@@ -255,18 +255,18 @@ static int bc_db_mysql_rollback_trans(void)
 }
 
 struct bc_db_ops bc_db_mysql = {
-	.open		= bc_db_mysql_open,
-	.close		= bc_db_mysql_close,
-	.get_table	= bc_db_mysql_get_table,
-	.free_table	= bc_db_mysql_free_table,
-	.fetch_row	= bc_db_mysql_fetch_row,
-	.get_val	= bc_db_mysql_get_val,
-	.query		= bc_db_mysql_query,
-	.num_fields	= bc_db_mysql_num_fields,
-	.get_field	= bc_db_mysql_get_field,
-	.last_insert_rowid = bc_db_mysql_last_insert_rowid,
-	.escape_string	= bc_db_mysql_escape_string,
-	.start_trans	= bc_db_mysql_start_trans,
-	.commit_trans	= bc_db_mysql_commit_trans,
-	.rollback_trans	= bc_db_mysql_rollback_trans,
+	bc_db_mysql_open,
+	bc_db_mysql_close,
+	bc_db_mysql_get_table,
+	bc_db_mysql_free_table,
+	bc_db_mysql_fetch_row,
+	bc_db_mysql_get_val,
+	bc_db_mysql_get_field,
+	bc_db_mysql_num_fields,
+	bc_db_mysql_query,
+	bc_db_mysql_last_insert_rowid,
+	bc_db_mysql_escape_string,
+	bc_db_mysql_start_trans,
+	bc_db_mysql_commit_trans,
+	bc_db_mysql_rollback_trans,
 };

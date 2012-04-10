@@ -7,13 +7,15 @@
 #ifndef __BC_SERVER_H
 #define __BC_SERVER_H
 
+#include <libbluecherry.h>
 #include <pthread.h>
 
-#include <libbluecherry.h>
+extern "C" {
 #include <libavformat/avformat.h>
-#include <alsa/asoundlib.h>
-
 #include "g723-dec.h"
+}
+
+#include <alsa/asoundlib.h>
 
 /* Maximum length of recording */
 #define BC_MAX_RECORD_TIME 900
@@ -38,11 +40,16 @@ struct bc_record {
 
 	int id;
 
+	/* Recording */
 	AVOutputFormat  *fmt_out;
 	AVStream        *video_st;
 	AVStream        *audio_st;
 	AVFormatContext *oc;
 	int64_t         output_pts_base;
+
+	/* Streaming */
+	AVFormatContext *stream_ctx;
+	class rtsp_stream *rtsp_stream;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
@@ -63,7 +70,8 @@ struct bc_record {
 	unsigned int		aud_format;
 
 	/* Event/Media handling */
-	bc_event_cam_t		event;
+	bc_event_cam_t          event;
+	int                     event_snapshot_done;
 
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
@@ -137,6 +145,18 @@ int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
 
+/* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
+ * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */
+int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt, struct AVFrame *frame);
+int save_event_snapshot(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+
+/* Streaming */
+int bc_streaming_setup(struct bc_record *bc_rec);
+void bc_streaming_destroy(struct bc_record *bc_rec);
+int bc_streaming_is_setup(struct bc_record *bc_rec);
+int bc_streaming_is_active(struct bc_record *bc_rec);
+int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+
 /* Relate all libav logging on this thread to a given bc_record */
 void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
 
@@ -152,6 +172,8 @@ int bc_check_avail(void);
 int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
+
+int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc);
 
 #ifdef EBUG
 #define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)

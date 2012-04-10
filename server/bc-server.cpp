@@ -12,10 +12,14 @@
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
+#include <signal.h>
 
+extern "C" {
 #include <libavutil/log.h>
+}
 
 #include "bc-server.h"
+#include "rtsp.h"
 
 static BC_DECLARE_LIST(bc_rec_list);
 
@@ -58,22 +62,26 @@ static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void 
 }
 
 AVCodec fake_h264_encoder = {
-	.name           = "fakeh264",
-	.type           = AVMEDIA_TYPE_VIDEO,
-	.id             = CODEC_ID_H264,
-	.priv_data_size = 0,
-	.init           = fake_h264_init,
-	.encode         = fake_h264_frame,
-	.close          = fake_h264_close,
-	.capabilities   = CODEC_CAP_DELAY,
-	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
-	.long_name      = "Fake H.264 Encoder for RTP Muxing",
+	"fakeh264", /* name */
+	AVMEDIA_TYPE_VIDEO, /* type */
+	CODEC_ID_H264, /* id */
+	0, /* priv_data_size */ 
+	fake_h264_init, /* init */
+	fake_h264_frame, /* encode */
+	fake_h264_close, /* close */
+	0, /* decode */
+	CODEC_CAP_DELAY, /* capabilities */
+	0, /* next */
+	0, /* flush */
+	0, /* suipported_framerates */
+	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE }, /* pix_fmts */
+	"Fake H.264 Encoder for RTP Muxing", /* long_name */
 };
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
 /* XXX XXX XXX thread-local */
-static int status_component_active = -1;
+static bc_status_component status_component_active = (bc_status_component)-1;
 
 void bc_status_component_begin(bc_status_component c)
 {
@@ -102,7 +110,7 @@ int bc_status_component_end(bc_status_component c, int ok)
 	free(component_error[c]);
 	component_error[c]      = component_error_tmp;
 	component_error_tmp     = NULL;
-	status_component_active = -1;
+	status_component_active = (bc_status_component)-1;
 
 	return component_error[c] == NULL;
 }
@@ -114,11 +122,11 @@ void bc_status_component_error(const char *error, ...)
 
 	if (component_error_tmp) {
 		int l = strlen(component_error_tmp);
-		component_error_tmp = realloc(component_error_tmp, l + 1024);
+		component_error_tmp = (char*) realloc(component_error_tmp, l + 1024);
 		component_error_tmp[l++] = '\n';
 		vsnprintf(component_error_tmp + l, 1024, error, args);
 	} else {
-		component_error_tmp = malloc(1024);
+		component_error_tmp = (char*) malloc(1024);
 		vsnprintf(component_error_tmp, 1024, error, args);
 	}
 
@@ -146,6 +154,7 @@ static void bc_update_server_status()
 	BC_DB_RES dbres;
 
 	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		const char *component_str = component_string((bc_status_component)i);
 		if (!component_error[i])
 			continue;
 
@@ -153,16 +162,16 @@ static void bc_update_server_status()
 
 		if (full_error) {
 			int nl = strlen(component_error[i]);
-			full_error = realloc(full_error, full_error_sz + nl + 128);
+			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
 			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_string(i), component_error[i]);
+			         component_str, component_error[i]);
 			full_error_sz += nl + 128;
 		} else {
-			asprintf(&full_error, "[%s] %s", component_string(i), component_error[i]);
+			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
 			full_error_sz = strlen(full_error);
 		}
 
-		bc_log("E: [%s] %s", component_string(i), component_error[i]);
+		bc_log("E: [%s] %s", component_str, component_error[i]);
 	}
 
 	if (bc_db_start_trans())
@@ -387,8 +396,7 @@ static int bc_cleanup_media()
 	int removed = 0, error_count = 0;
 	int i;
 
-	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"end!=0 AND size>0 ORDER BY start ASC");
+	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND filepath!='' ORDER BY start ASC");
 
 	if (!dbres) {
 		bc_status_component_error("Database error during media cleanup");
@@ -405,6 +413,16 @@ static int bc_cleanup_media()
 		if (unlink(filepath) < 0 && errno != ENOENT) {
 			bc_log("W: Cannot remove file %s for cleanup: %s",
 			       filepath, strerror(errno));
+			error_count++;
+			continue;
+		}
+
+		std::string sidecar = filepath;
+		if (sidecar.size() > 3)
+			sidecar.replace(sidecar.size()-3, 3, "jpg");
+		if (unlink(sidecar.c_str()) < 0 && errno != ENOENT) {
+			bc_log("W: Cannot remove sidecar file %s for cleanup: %s",
+			       sidecar.c_str(), strerror(errno));
 			error_count++;
 			continue;
 		}
@@ -643,7 +661,7 @@ static int check_expire(void)
 {
 	char date[128];
 	time_t t = time(NULL);
-	time_t expire = 1332979200; /* March 29, 2012 */
+	time_t expire = 1334188800; /* April 12, 2012 */
 	struct tm exp;
 
 	localtime_r(&expire, &exp);
@@ -724,6 +742,10 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	signal(SIGPIPE, SIG_IGN);
+	/* XXX This is not suitable for much of anything, really. */
+	srand((unsigned)(getpid() * time(NULL)));
+
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();
@@ -737,6 +759,9 @@ int main(int argc, char **argv)
 	}
 
 	bc_log("I: Started Bluecherry daemon");
+
+	rtsp_server *rtsp = new rtsp_server;
+	rtsp->setup(7002);
 
 	for (count = 1; bc_db_open(); count++) {
 		sleep(1);
@@ -763,6 +788,9 @@ int main(int argc, char **argv)
 	/* Do some cleanup */
 	bc_check_inprogress();
 	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
+
+	pthread_t rtsp_thread;
+	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
 	/* Main loop */
 	for (loops = 0 ;; loops++) {

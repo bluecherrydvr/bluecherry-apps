@@ -62,7 +62,7 @@ bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
                                   bc_event_cam_type_t type,
                                   const char *media_file)
 {
-	struct bc_event_cam *bce = malloc(sizeof(*bce));
+	struct bc_event_cam *bce = (struct bc_event_cam*) malloc(sizeof(*bce));
 	char media_id_str[24];
 	int re;
 

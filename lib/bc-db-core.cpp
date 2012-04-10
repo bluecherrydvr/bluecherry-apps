@@ -254,12 +254,15 @@ char *bc_db_escape_string(const char *from, int len)
 	if (from == NULL)
 		return NULL;
 
-	to = malloc((len * 2) + 1);
+	to = (char*) malloc((len * 2) + 1);
 
 	if (to == NULL)
 		return NULL;
 
+	/* MySQL requires locking around mysql_real_escape_string */
+	bc_db_lock();
 	db_ops->escape_string(to, from, len);
+	bc_db_unlock();
 
 	return to;
 }

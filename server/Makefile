@@ -6,14 +6,12 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
 		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server
-SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o
-
-#CFLAGS		+= -DEBUG
+SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o streaming.o rtsp.o
 
 all: $(TARGETS)
 
 bc-server: $(LIB) $(SERVER_OBJS)
-	$(LD) $(LDFLAGS) $(SERVER_OBJS) -o $@
+	g++ $(LDFLAGS) $(SERVER_OBJS) -o $@
 
 install: all rsyslog.conf
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server

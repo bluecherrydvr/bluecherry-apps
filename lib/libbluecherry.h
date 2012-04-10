@@ -13,8 +13,12 @@
 #include <termios.h>
 #include <libconfig.h>
 #include <time.h>
-
+#include <inttypes.h>
 #include <linux/videodev2.h>
+
+#ifndef PRId64
+#define PRId64 "lld"
+#endif
 
 #include <rtp-session.h>
 
@@ -325,6 +329,18 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val);
 /* Set the text of the OSD */
 int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
 	__attribute__ ((format (printf, 2, 3)));
+
+enum bc_access_type
+{
+	ACCESS_NONE,
+	ACCESS_SETUP,
+	ACCESS_REMOTE,
+	ACCESS_WEB,
+	ACCESS_BACKUP,
+	ACCESS_RELAY
+};
+
+int bc_user_auth(const char *username, const char *password, int access_type = 0, int device_id = -1);
 
 /* Database functions */
 int bc_db_open(void);

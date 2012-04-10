@@ -12,7 +12,7 @@ OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 all: $(SOLIBVER)
 
 $(SOLIBVER): $(OBJS)
-	$(LD) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
+	g++ $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
 	ln -sf $@ $(SOLIB)
 
 install: all

@@ -469,7 +469,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		return NULL;
 	}
 
-	if ((bc = malloc(sizeof(*bc))) == NULL) {
+	bc = (struct bc_handle*) malloc(sizeof(*bc));
+	if (bc == NULL) {
 		errno = ENOMEM;
 		return NULL;
 	}
