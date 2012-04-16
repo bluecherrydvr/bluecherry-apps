@@ -79,7 +79,7 @@ DVRPageScript = new Class({
 				var userForm = new DVRSettingsForm('settingsForm');
 			break;
 			case 'ptzpresetlist':
-				$$('.add').addEvent('click', function(ev){
+				$$('.addExt').addEvent('click', function(ev){
 					var page = new DVRPage('ptzpresetedit', 'id=new&ref='+$('cameraId').get('value'));
 				});
 				$$('.preset').addEvent('click', function(ev){
@@ -772,7 +772,7 @@ DVRSettingsForm = new Class({
 				if (data == 'disposeGeneralMessage' && $('generalMessage')){
 					$('generalMessage').dispose();
 				}
-				if (Cookie.read('currentPage')=='users' && data!=-1){
+				if (Cookie.read('currentPage')=='users' && data!=-1 && data!=0){
 					var openPage = new DVRPage('users', 'id='+data);
 				}
 			}
