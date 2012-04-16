@@ -772,7 +772,7 @@ DVRSettingsForm = new Class({
 				if (data == 'disposeGeneralMessage' && $('generalMessage')){
 					$('generalMessage').dispose();
 				}
-				if (Cookie.read('currentPage')=='users' && data!=-1 && data!=0){
+				if (Cookie.read('currentPage')=='users' && data!=-1 && data!=0 && !isNaN(data)){
 					var openPage = new DVRPage('users', 'id='+data);
 				}
 			}
