@@ -585,7 +585,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 {
 	struct bc_device_config *current = &bc_rec->cfg;
 	struct bc_device_config *update  = &bc_rec->cfg_update;
-	int motion_map_changed;
+	int motion_map_changed, format_changed;
 
 	pthread_mutex_lock(&bc_rec->cfg_mutex);
 
@@ -603,12 +603,19 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	}
 
 	motion_map_changed = memcmp(current->motion_map, update->motion_map, sizeof(update->motion_map));
+	format_changed = (current->width != update->width || current->height != update->height ||
+	                  current->interval != update->interval);
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
-	try_formats(bc_rec);
+	if (format_changed) {
+		stop_handle_properly(bc_rec);
+		bc_streaming_destroy(bc_rec);
+		try_formats(bc_rec);
+	}
+
 	if (motion_map_changed) {
 		if (bc_set_motion_thresh(bc_rec->bc, bc_rec->cfg.motion_map,
 		    sizeof(bc_rec->cfg.motion_map)))
@@ -616,8 +623,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 			bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
 		}
 	}
-	check_schedule(bc_rec);
 
+	check_schedule(bc_rec);
 	return 0;
 }
 

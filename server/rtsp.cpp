@@ -259,12 +259,35 @@ struct rtsp_write_buffer
 		delete[] data;
 	}
 
+	void print_buffer(const char *prefix)
+	{
+		char msg[1024];
+		strcpy(msg, prefix);
+		int i = strlen(msg);
+
+		for (rtsp_write_buffer *p = this; p; p = p->next) {
+			char c = '?';
+			switch (p->type) {
+			case Control:   c = 'c'; break;
+			case Reference: c = 'r'; break;
+			case Inter:     c = 'i'; break;
+			}
+			if (p->flag == Only || p->flag == First)
+				c = toupper(c);
+			else if (p->flag != Partial)
+				c = '!';
+			msg[i++] = c;
+		}
+		msg[i] = 0;
+		bc_log("%s", msg);
+	}
+
 	static int trim(rtsp_write_buffer *&head)
 	{
 		int size = 0;
 		for (rtsp_write_buffer *p = head; p; p = p->next) {
 			size += p->size - p->pos;
-			if (p->type != Reference)
+			if (p->type != Reference || p->flag == Partial)
 				continue;
 
 			/* On each reference frame, drop all previous unsent reference
@@ -276,14 +299,12 @@ struct rtsp_write_buffer
 				if (!c->pos && (c->type == Reference || c->type == Inter) && (c->flag != Partial || hasFirst)) {
 					if (c->flag == First)
 						hasFirst = true;
-					else if (c->flag == Only)
-						hasFirst = false;
 					size -= c->size - c->pos;
 					delete c;
-				}
-				else if (last)
+				} else if (last) {
 					last->next = c;
-				else
+					last = c;
+				} else
 					last = head = c;
 				c = next;
 			}

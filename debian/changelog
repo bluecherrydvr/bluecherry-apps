@@ -1,3 +1,12 @@
+bluecherry (1:2.0.0-0beta9.6) lucid; urgency=low
+
+  * Bug #1093: IPv6 is not bound for RTSP
+  * Bug #1097: RTP over TCP buffer handling causes stream corruption for low bandwidth connections
+  * Bug #1100: Live streams must reset after solo format changes
+  * Feature #411: Save JPEG image from each event
+
+ -- John Brooks <john.brooks@bluecherry.net>  Wed, 11 Apr 2012 14:49:00 -0600
+
 bluecherry (1:2.0.0-0beta9.5) lucid; urgency=low
 
   * Bug #1091: Media for events with duration corrected at startup is never deleted
