@@ -15,6 +15,7 @@
 #include <time.h>
 #include <inttypes.h>
 #include <linux/videodev2.h>
+#include <vector>
 
 #ifndef PRId64
 #define PRId64 "lld"
@@ -143,6 +144,14 @@ struct bc_device_config {
 	int     aud_disabled : 1;
 	int     schedule_override_global : 1;
 };
+
+struct bc_license {
+	char license[32];
+	char authorization[32];
+	int n_devices;
+};
+
+int bc_read_licenses(std::vector<bc_license> &licenses);
 
 /* Bluecherry License Key */
 

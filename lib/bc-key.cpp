@@ -12,6 +12,9 @@
 #include <netinet/ether.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <set>
+#include <string>
+#include <bsd/string.h>
 
 #include <libbluecherry.h>
 
@@ -248,5 +251,40 @@ int bc_license_machine_id(char *out, int out_sz)
 end:
 	close(fd);
 	return re;
+}
+
+int bc_read_licenses(std::vector<bc_license> &out)
+{
+	out.clear();
+
+	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Licenses");
+	if (!dbres)
+		return -1;
+
+	std::set<std::string> uniqueset;
+	while (!bc_db_fetch_row(dbres)) {
+		const char *license = bc_db_get_val(dbres, "license", NULL);
+		const char *auth    = bc_db_get_val(dbres, "authorization", NULL);
+		if (!license)
+			break;
+
+		if (uniqueset.find(license) != uniqueset.end()) {
+			bc_log("W(License): Ignoring duplicate license %s", license);
+			continue;
+		}
+
+		bc_log("Found license: %s auth %s", license, auth);
+		bc_license l;
+		strlcpy(l.license, license, sizeof(l.license));
+		strlcpy(l.authorization, auth, sizeof(l.authorization));
+		l.n_devices = atoi(license);
+
+		out.push_back(l);
+
+		uniqueset.insert(license);
+	}
+
+	bc_db_free_table(dbres);
+	return out.size(); 
 }
 

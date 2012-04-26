@@ -42,6 +42,8 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
 
 extern char *__progname;
 
+static std::vector<bc_license> licenses;
+
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
  * so a real encoder isn't neeeded, but one must be present for the process to
  * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
@@ -508,9 +510,15 @@ static int bc_check_db(void)
 		if (record_id >= 0 && id != record_id)
 			continue;
 
-		/* Caller asked us to only start so many threads */
-		if (max_threads && cur_threads >= max_threads)
+		if (bc_db_get_val_bool(dbres, "disabled"))
 			continue;
+
+		/* Maximum threads, used for licensing control */
+		if (max_threads >= 0 && cur_threads >= max_threads) {
+			bc_status_component_error("Device disabled due to licensing restrictions");
+			re |= -1;
+			continue;
+		}
 
 		/* If this is a V4L2 device, it needs to be detected */
 		if (!strcasecmp(proto, "V4L2")) {
@@ -518,9 +526,6 @@ static int bc_check_db(void)
 			if (!solo_ready || card_id < 0)
 				continue;
 		}
-
-		if (bc_db_get_val_bool(dbres, "disabled"))
-			continue;
 
 		bc_rec = bc_alloc_record(id, dbres);
 		if (!bc_rec) {
@@ -607,7 +612,6 @@ static void usage(void)
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
-	fprintf(stderr, "  -m\tMax threads to start\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
 
 	exit(1);
@@ -692,7 +696,6 @@ int main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
-		case 'm': max_threads = atoi(optarg); break;
 		case 'r': record_id = atoi(optarg); break;
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
@@ -772,17 +775,6 @@ int main(int argc, char **argv)
 
 	bc_log("I: SQL database connection opened");
 
-	bc_status_component_begin(STATUS_LICENSE);
-	error = check_expire();
-	bc_status_component_end(STATUS_LICENSE, error == 0);
-	if (error) {
-		/* Expired; do nothing until killed (presumably for an upgrade) */
-		for (;;) {
-			bc_update_server_status();
-			sleep(60);
-		}
-	}
-
 	bc_status_component_begin(STATUS_DB_POLLING1);
 	error = bc_check_globals();
 	/* Do some cleanup */
@@ -814,6 +806,20 @@ int main(int argc, char **argv)
 
 		/* Every 2 minutes */
 		if (!(loops % 120)) {
+			bc_status_component_begin(STATUS_LICENSE);
+			int old_n_devices = max_threads;
+			max_threads = 0;
+			error = check_expire();
+			error |= (bc_read_licenses(licenses) < 0);
+			bc_status_component_end(STATUS_LICENSE, error == 0);
+
+			if (!error) {
+				for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
+					max_threads += it->n_devices;
+				if (old_n_devices != max_threads)
+					bc_log("I: Licensed for %d devices", max_threads);
+			}
+
 			bc_status_component_begin(STATUS_MEDIA_CHECK);
 			/* Check media locations for full */
 			error = bc_check_media();
