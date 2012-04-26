@@ -92,6 +92,5 @@ CREATE TABLE EventTags (
 	tag_id varchar(10),
 	user_id integer,
 	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
-	FOREIGN KEY (tag_id) REFERENCES TagNames(name),
 	FOREIGN KEY (user_id) REFERENCES Users(id)
 );
