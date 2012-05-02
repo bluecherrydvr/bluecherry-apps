@@ -18,18 +18,9 @@
 
 #include <libbluecherry.h>
 
-#define BC_KEY_LEN		10
-#define BC_KEY_MAGIC		0xBC
-
-struct bc_key_ctx {
-	int idx;
-	unsigned char bytes[BC_KEY_LEN];
-};
-
-/* Our super secret passcode, used for license key codec */
-static unsigned char segment_end[BC_KEY_LEN] =
-	{ 0x32, 0x14, 0xfe, 0xed, 0xf0, 0x0c, 0x43, 0x25, 0xf4, 0x27 };
-
+extern "C" {
+#include <libavutil/md5.h>
+}
 
 static unsigned short const crc16_table[256] = {
 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
@@ -82,121 +73,184 @@ static unsigned short crc16(unsigned char const *buf, size_t len)
 	return crc;
 }
 
-static unsigned int bc_key_pullbits(struct bc_key_ctx *ctx, int len);
+static const char base32_charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+// subtract 50
+static const char base32_charset_reverse[] = {
+	26, 27, 28, 29, 30, 31, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1,  0,  1,  2,  3,  4,
+	 5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+	15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+	25
+};
 
-static int bc_key_start(struct bc_key_ctx *ctx, unsigned char *key)
+/* Implements base32 encoding as in rfc3548. Requires that srclen*8 is a multiple of 5. */
+static void base32_encode(char *dest, unsigned destlen, const char *src, unsigned srclen)
 {
-	int i;
-	unsigned short crc;
+	unsigned i, bit, v, u;
+	unsigned nbits = srclen * 8;
 
-	ctx->idx = 0;
+	for (i = 0, bit = 0; bit < nbits; ++i, bit += 5) {
+		if (bit && !(bit % 20))
+			dest[i++] = '-';
 
-	/* Copy the current key, and transform it with passcode */
-	for (i = BC_KEY_LEN - 1; i >= 0; i--) {
-		unsigned short j = key[i];
+		/* set v to the 16-bit value starting at src[bits/8], 0-padded. */
+		v = ((uint8_t) src[bit / 8]) << 8;
+		if (bit + 5 < nbits)
+			v += (uint8_t) src[(bit/8)+1];
 
-		/* If this byte is too small, carry one from next byte */
-		if (j < segment_end[i]) {
-			j += 0x100;
-			if (i < BC_KEY_LEN - 1)
-				ctx->bytes[i + 1]--;
-		}
+		/* set u to the 5-bit value at the bit'th bit of src. */
+		u = (v >> (11 - (bit % 8))) & 0x1F;
+		dest[i] = base32_charset[u];
 
-		ctx->bytes[i] = j - segment_end[i];
 	}
 
-	/* Now check the crc */
-	crc = bc_key_pullbits(ctx, 16);
-	if (crc != crc16(ctx->bytes, BC_KEY_LEN))
-		return EINVAL;
-
-	return 0;
+	dest[i] = '\0';
 }
 
-static unsigned int bc_key_pullbits(struct bc_key_ctx *ctx, int len)
+/* Implements base32 decoding as in rfc3548. Requires that srclen*5 is a multiple of 8. */
+static bool base32_decode(char *dest, unsigned destlen, const char *src, unsigned srclen)
 {
-	unsigned int bits = 0;
-	int i;
+	unsigned int i, j, bit;
+	unsigned nbits = 0;
+	char *tmp = new char[srclen];
 
-	for (i = 0; i < len; i++) {
-		bits <<= 1;
-		bits |= ctx->bytes[ctx->idx] & 0x1;
-		ctx->bytes[ctx->idx] >>= 1;
-		ctx->idx = (ctx->idx + 1) % BC_KEY_LEN;
-	}
-
-	return bits;
-}
-
-/* Returns errno or 0 for success */
-int bc_key_process(struct bc_key_data *res, char *str)
-{
-	unsigned char key[BC_KEY_LEN];
-	struct bc_key_ctx c;
-	int i;
-	int len;
-
-	memset(key, 0, sizeof(key));
-
-	for (i = len = 0; str[i] != '\0'; i++) {
-		unsigned char t;
-
-		/* Means incoming string is too long */
-		if (len >= BC_KEY_LEN * 2)
-			return 0;
-
-		/* If it's valid hex, process it */
-		if (str[i] >= 'a' && str[i] <= 'f')
-			t = (str[i] - 'a') + 0x0a;
-		else if (str[i] >= 'A' && str[i] <= 'F')
-			t = (str[i] - 'A') + 0x0a;
-		else if (str[i] >= '0' && str[i] <= '9')
-			t = str[i] - '0';
-		else if (str[i] == '-')
+	/* Convert base32 encoded chars to the 5-bit values that they represent. */
+	for (i = 0, j = 0; j < srclen; ++j) {
+		if (src[j] >= 50 && src[j] < 91)
+			tmp[i++] = base32_charset_reverse[src[j] - 50];
+		else if (src[j] == '-')
 			continue;
 		else
-			return EINVAL;
+			tmp[i++] = -1;
 
-		/* Valid character and value now */
-		if (!(len & 0x1))
-			t <<= 4;
-
-		key[len / 2] |= t;
-		len++;
+		if (tmp[i-1] == -1) {
+			delete[] tmp;
+			return false;
+		}
+	
+		nbits = i * 5;
 	}
 
-	/* Too few characters */
-	if (len != BC_KEY_LEN * 2)
-		return EINVAL;
-
-	if (bc_key_start(&c, key))
-		return EINVAL;
-
-	/* ORDER MATTERS HERE! */
-	if (bc_key_pullbits(&c, 8) != BC_KEY_MAGIC)
-		return EINVAL;
-
-	res->major = bc_key_pullbits(&c, 4);
-	res->minor = bc_key_pullbits(&c, 4);
-
-	/* We don't know this license format yet */
-	if (res->major != 2 || res->minor != 1)
-		return EINVAL;
-
-	res->type = (bc_key_type) bc_key_pullbits(&c, 4);
-	if (res->type == BC_KEY_TYPE_CAMERA) {
-		bc_key_pullbits(&c, 7);
-		res->eval_period = 0;
-	} else if (res->type == BC_KEY_TYPE_CAMERA_EVAL) {
-		res->eval_period = bc_key_pullbits(&c, 7);
-	} else {
-		return EINVAL;
+	if ((nbits % 8) || (nbits/8) > destlen) {
+		delete[] tmp;
+		return false;
 	}
 
-	res->count = bc_key_pullbits(&c, 5);
-	res->id = bc_key_pullbits(&c, 32);
+	/* Assemble result byte-wise by applying five possible cases. */
+	for (i = 0, bit = 0; bit < nbits; ++i, bit += 8) {
+		switch (bit % 40) {
+		case 0:
+			dest[i] = (((uint8_t)tmp[(bit/5)]) << 3) + (((uint8_t)tmp[(bit/5)+1]) >> 2);
+			break;
+		case 8:
+			dest[i] = (((uint8_t)tmp[(bit/5)]) << 6) + (((uint8_t)tmp[(bit/5)+1]) << 1)
+			          + (((uint8_t)tmp[(bit/5)+2]) >> 4);
+			break;
+		case 16:
+			dest[i] = (((uint8_t)tmp[(bit/5)]) << 4) + (((uint8_t)tmp[(bit/5)+1]) >> 1);
+			break;
+		case 24:
+			dest[i] = (((uint8_t)tmp[(bit/5)]) << 7) + (((uint8_t)tmp[(bit/5)+1]) << 2)
+			          + (((uint8_t)tmp[(bit/5)+2]) >> 3);
+			break;
+		case 32:
+			dest[i] = (((uint8_t)tmp[(bit/5)]) << 5) + ((uint8_t)tmp[(bit/5)+1]);
+			break;
+		}
+	}
 
-	return 0;
+	delete[] tmp;
+	return true;
+}
+
+#define GENERATE_LICENSES
+#ifdef GENERATE_LICENSES
+int bc_license_generate(char *dest, int dest_sz, int ndev)
+{
+	uint8_t raw[10] = { 0 };
+
+	if (dest_sz < 21)
+		return -EINVAL;
+
+	for (int i = 5; i < sizeof(raw); ++i)
+		raw[i] = uint8_t(rand());
+
+	raw[2] = 'B' ^ raw[7];
+	raw[3] = 0 ^ raw[8];
+	raw[4] = uint8_t(ndev*4) ^ raw[9];
+
+	uint16_t crc = crc16(raw+2, sizeof(raw)-2);
+	raw[0] = uint8_t(crc >> 8) ^ raw[5];
+	raw[1] = uint8_t(crc & 0xff) ^ raw[6];
+
+	base32_encode(dest, 21, (const char*)raw, sizeof(raw));
+	return strlen(dest);
+}
+#endif
+
+int bc_license_check(const char *key)
+{
+	uint8_t data[10];
+	if (!base32_decode((char*)data, sizeof(data), key, strlen(key)))
+		return 0;
+
+	unsigned short crc = crc16(data+2, sizeof(data)-2);
+	unsigned short vcrc = data[0] ^ data[5];
+	vcrc = (vcrc << 8) | (data[1] ^ data[6]);
+
+	if (crc != vcrc)
+		return 0;
+
+	if ((data[2] ^ data[7]) != 'B' || (data[3] ^ data[8]) != 0)
+		return 0;
+
+	int ndev = data[4] ^ data[9];
+	ndev /= 4;
+
+	return ndev;
+}
+
+/* Ideally, auth should involve a one-way algorithm that is difficult
+ * for the client to calculate, but for simplicity's sake, this works. */
+#ifndef GENERATE_LICENSES
+static
+#endif
+int bc_license_generate_auth(char *dest, int dest_sz, const char *key, const char *machine)
+{
+	char md5[16], data[15], decoded[5];
+
+	if (dest_sz < 10)
+		return -EINVAL;
+
+	if (!base32_decode(data, 10, key, strlen(key)))
+		return 0;
+
+	if (!base32_decode(data+10, 5, machine, strlen(machine)))
+		return 0;
+
+	av_md5_sum((uint8_t*)md5, (const uint8_t*)data, 15);
+
+	base32_encode(dest, 10, md5, 5);
+	return 9;
+}
+
+int bc_license_check_auth(const char *key, const char *auth)
+{
+	char calc[10], machine[10], raw_u[5], raw_c[5];
+
+	if (!base32_decode(raw_u, 5, auth, strlen(auth)))
+		return 0;
+
+	if (bc_license_machine_id(machine, sizeof(machine)) < 9)
+		return -1;
+	if (bc_license_generate_auth(calc, sizeof(calc), key, machine) < 9)
+		return 0;
+	if (!base32_decode(raw_c, 5, calc, strlen(calc)))
+		return 0;
+
+	if (memcmp(raw_u, raw_c, 5) != 0)
+		return 0;
+	return 1;
 }
 
 int bc_license_machine_id(char *out, int out_sz)
@@ -210,7 +264,7 @@ int bc_license_machine_id(char *out, int out_sz)
 	int if_count;
 	int i;
 
-	if (out_sz < 13)
+	if (out_sz < 10)
 		return -ENOBUFS;
 
 	memset(id_buf, 0, sizeof(id_buf));
@@ -245,8 +299,8 @@ int bc_license_machine_id(char *out, int out_sz)
 			break;
 	}
 
-	hex_encode(out, 13, id_buf, 6);
-	re = 12;
+	base32_encode(out, 10, id_buf+1, 5);
+	re = 9;
 
 end:
 	close(fd);
@@ -273,11 +327,19 @@ int bc_read_licenses(std::vector<bc_license> &out)
 			continue;
 		}
 
-		bc_log("Found license: %s auth %s", license, auth);
 		bc_license l;
 		strlcpy(l.license, license, sizeof(l.license));
 		strlcpy(l.authorization, auth, sizeof(l.authorization));
-		l.n_devices = atoi(license);
+		l.n_devices = bc_license_check(license);
+		if (l.n_devices < 1) {
+			bc_log("W(License): Invalid license key: %s", license);
+			continue;
+		}
+		if (bc_license_check_auth(license, auth) < 1) {
+			bc_log("W(License): Invalid authorization '%s' for license "
+			       "'%s' (machine ID changed?)", auth, license);
+			continue;
+		}
 
 		out.push_back(l);
 
