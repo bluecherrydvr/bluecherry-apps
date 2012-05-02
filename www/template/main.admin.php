@@ -31,7 +31,7 @@
 <body>
 	<div id="leftColumn">
 		<div id="logo"></div>
-		<div id="logout"><a href="/ajax/logout.php"><?php echo LOGOUT; ?></a></div>
+		<div id="logout">[ <a href="/ajax/logout.php"><?php echo LOGOUT; ?></a> ]</div>
 		<div id="mainMenu">
 	  		<ul id="menuButtons">
 				<li class='liveView'><?php echo MMENU_LIVEVIEW; ?></li>
@@ -46,6 +46,7 @@
 				<hr>
 				<li id="devices" class="devices"><? echo MMENU_DEVICES; ?></li>
 				<li id="deviceschedule" class="globalschedule"><? echo MMENU_SCHED; ?></li>
+				<li id="notifications" class="notifications"><? echo MMENU_NOTFICATIONS; ?></li>
 				<hr>
 				<li id="statistics" class="eventStatistics"><? echo MMENU_STATISTICS; ?></li>
 				<li id="log" class="viewLog"><? echo MMENU_LOG; ?></li>

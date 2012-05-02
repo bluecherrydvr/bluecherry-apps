@@ -2,7 +2,7 @@
 #template common functions
 require('../template/template.lib.php');
 ?>
-<h1 class="header" id="header"><?php echo PTZ_SET_SUBHEADER; ?></h1><hr />
+<h1 class="header" id="header"><?php echo PTZ_SET_SUBHEADER; ?></h1>
 <p><?php echo "<a href='#' id='backToList'>".ALL_DEVICES."</a> &gt; ".PTZ_SET_HEADER." {$this_camera->info['device_name']}"; ?></p>
 <FORM method='Post' action='/ajax/ptzsettings.php' id='settingsForm'>
 	<INPUT type="Hidden" name="id" value="<?php echo $this_camera->info['id']; ?>" />

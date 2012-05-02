@@ -143,9 +143,10 @@ class user{
 		$this->info['access_device_list'] = explode(',', $this->info['access_device_list']);
 	}
 	private function checkUserData($data, $new=false){
-		if (empty($data['username']))	{ return NO_USERNAME;	}
-		if (empty($data['email']))		{ return NO_EMAIL;		}
-		if (empty($data['password']))	{ return NO_PASS;		}
+		if (empty($data['username']))	{ return NO_USERNAME;	};
+		if (empty($data['email']))		{ return NO_EMAIL;		};
+		if (empty($data['password']))	{ return NO_PASS;		};
+		if ($data['id'] == $_SESSION['id'] && ($data['access_setup'] == 0 || $data['access_web'] == 0)) { return CANT_REMOVE_ADMIN; };
 		if (data::getObject('Users', 'username', $data['username']) && $new) { return USERNAME_EXISTS; }
 		return true;
 	}
@@ -158,7 +159,7 @@ class user{
 			if (!$tmp) { #if user record does not exist -- insert new
 				data::query("INSERT INTO ActiveUsers VALUES ({$this->info['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)", true);
 			} else { #or update if it exists, i.e. reload within 5 minutes
-				data::query("UPDATE ActiveUsers SET time = ".time()." WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}", true);
+				data::query("UPDATE ActiveUsers SET time = ".time().", from_client='{$_SESSION['from_client']}' WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}", true);
 			}
 			data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
 			return (!empty($tmp[0]['kick'])) ? true : false;
@@ -203,6 +204,7 @@ class user{
 		return (in_array($id, $this->info['access_device_list'])) ? false : true;
 	}
 	public function doLogin($password, $from_client = false){
+		if (!$this->info) { return LOGIN_WRONG; };
 		if (!$this->info['access_setup']){ #if user is not admin check for permissions to use web/client
 			if (!$this->info['access_web'] && !$from_client)	{ return NA_WEB; };
 			if (!$this->info['access_remote'] && $from_client)	{ return NA_CLIENT; };
@@ -225,6 +227,10 @@ class user{
 	public static function update($data, $new = false){
 		$check = false;
 		$tmp = -1;
+		$data['access_web'] = ($_POST['access_web'] == 'on') ? 1 : 0;
+		$data['access_remote'] = ($_POST['access_remote'] == 'on') ? 1 : 0;
+		$data['access_backup'] = ($_POST['access_backup'] == 'on') ? 1 : 0;
+		$data['access_setup'] = ($_POST['access_setup'] == 'on') ? 1 : 0;
 		$response = self::checkUserData($data, $new);
 		if ($response === true){
 			$tmp = '';
@@ -248,10 +254,6 @@ class user{
 						$data['salt'] = data::getRandomString(4);
 						$data['password'] = md5($data['password'].$data['salt']);
 					}
-				$data['access_web'] = ($_POST['access_web'] == 'on') ? 1 : 0;
-				$data['access_remote'] = ($_POST['access_remote'] == 'on') ? 1 : 0;
-				$data['access_backup'] = ($_POST['access_backup'] == 'on') ? 1 : 0;
-				$data['access_setup'] = ($_POST['access_setup'] == 'on') ? 1 : 0;
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;
 			}
@@ -275,17 +277,8 @@ class user{
 		}
 	}
 	public function getLayouts(){
-		$this->info['layouts'] = data::query("SELECT layout_name FROM userLayouts WHERE user_id='{$this->info['id']}'");
+		$this->info['layouts'] = data::query("SELECT id as layout_id, layout_name, layout FROM userLayouts WHERE user_id='{$this->info['id']}'");
 	}
-}
-
-function devices($access_list = false){ #wrapper for all cameras
-	$devices = data::query('SELECT id FROM Devices');
-	foreach($devices as $i => $device){
-		$tmp[$i] = device($device['id']);
-		$tmp[$i]->isPtz = (!empty($tmp[$i]->info['ptz_control_protocol'])) ? true : false;
-	}
-	return $tmp;
 }
 
 function device($id){ #wrapper for camera/ipCamera
@@ -309,7 +302,7 @@ class camera {
 		$available = array();
 		$devices = data::getObject('Devices', 'device', $device);
 		$available = data::getObject('AvailableSources', 'device', $device);
-		unset($available[0]['id']);
+		if ($available) unset($available[0]['id']);
 		if (!$devices){ #if does not exist in Devices
 			$this->info['status'] = 'notconfigured';
 			$this->info = array_merge($this->info, $available[0]);
@@ -624,10 +617,6 @@ class ipPtzPreset{
 	
 }
 
-class liveViewLayout{
-	public function __construct(){
-	}
-}
 class cameraPtz{
 	private $preset;
 	protected $camera;
@@ -652,6 +641,8 @@ class cameraPtz{
 		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
 			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);
 			$command = "http://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
+			$tmp = fopen('/tmp/bcPtzCommands.txt', 'W+');
+			fwrite($tmp, $command);
 		}
 		return $command;
 	}
@@ -704,7 +695,6 @@ abstract class ipCameraControl{
 		5: RTP Over UDP and Multicast
 		*/
 }
-
 
 class globalSettings{
 	var $data;

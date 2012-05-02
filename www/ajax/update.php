@@ -88,9 +88,11 @@ class update{
 	}
 	private function updateGlobal(){
 		$status = true;
-		$_POST['G_DISABLE_VERSION_CHECK'] = (empty($_POST['G_DISABLE_VERSION_CHECK'])) ? 1 : 0;
-		$_POST['G_DISABLE_IP_C_CHECK'] = (!empty($_POST['G_DISABLE_IP_C_CHECK'])) ? 1 : 0;
-		$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
+		if (empty($_POST['G_DEV_SCED'])){
+			$_POST['G_DISABLE_VERSION_CHECK'] = (empty($_POST['G_DISABLE_VERSION_CHECK'])) ? 1 : 0;
+			$_POST['G_DISABLE_IP_C_CHECK'] = (!empty($_POST['G_DISABLE_IP_C_CHECK'])) ? 1 : 0;
+			$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
+		};
 		foreach ($_POST as $parameter => $value){
 			$status = (data::query("UPDATE GlobalSettings SET value='{$value}' WHERE parameter='{$parameter}'", true)) ? $status : false;
 		}

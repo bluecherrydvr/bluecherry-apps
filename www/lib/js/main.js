@@ -112,8 +112,9 @@ DVRPageScript = new Class({
 					evalScripts : true,
 					onComplete: function(text, xml){
 						$('sResults').set('html', text);
-						//graph the results
-						///////////////////
+						/////////////////////
+						//graph the results//
+						/////////////////////
 					},					
 					onFailure: function(){
 						$('sResults').set('html', 'Could not complete request, please try later.');
@@ -173,7 +174,7 @@ DVRPageScript = new Class({
 				} else {
 					buttonMorph($('addEmail'), '#8bb8');
 					$('addEmail').addEvent('click', function(){
-						var el = new Element('span', {'html': "<span><label>"+var_email+"<span class='sub'>"+var_email_ex+"</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><div class='bClear'></div><br />"});
+						var el = new Element('span', {'html': "<span><label>&nbsp;<span class='sub'>&nbsp;</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><div class='bClear'></div><br />"});
 						el.inject($('addEmail'), 'before');
 					});
 				}
@@ -256,7 +257,55 @@ DVRPageScript = new Class({
 				});
 			break; //end log
 			case 'notifications':
-	
+				$('new-rule-form').set('send', {
+					onComplete:function(text, xml){
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						var showMessage = new DVRMessage(status, msg);
+						if (status == 'OK') { 
+							loadExistingRules(); 
+							$('existing-rules-container').highlight();
+						};
+					}
+				});
+				
+				$$('.add-rule-button').addEvent('click', function(){
+					$('new-rule-form').send();
+				});
+				var loadExistingRules = function(){
+					var existingRulesContainer = $('existing-rules-container');
+					var request = new Request({
+								url: '/ajax/notifications.php',
+								data: 'mode=list',
+								method: 'get',
+								onRequest: function(){
+									existingRulesContainer.set('html', var_loading);
+								},
+								onSuccess: function(html){
+									existingRulesContainer.set('html', html);
+									$$('.delete-button').addEvent('click', function(){
+										var self = this;
+										var request = new Request({
+											url: '/ajax/notifications.php',
+											data: 'mode=delete&id='+self.get('id'),
+											method: 'get',
+											onSuccess: function(html, xml){
+												var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+												var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+												
+												if (status == 'OK') { 
+													self.getParent().fadeAndDestroy('1000');
+												} else {
+													var showMessage = new DVRMessage(status, msg);
+												}
+												
+											}
+										}).send();
+									});
+								}
+							}).send();
+				}
+				loadExistingRules();
 			break; //end notifications
 			case 'storage':
 				var storageForm  = new DVRSettingsForm('storageForm');
@@ -901,7 +950,7 @@ var localMotionGrid = new Class({
 		
 		prepareOutput: function(el){	
 			var stringToOutput = '';
-			$$('#'+el+' table tr td').each(function(el){
+			$$('#gridTable tr td').each(function(el){
 				if (el.get('class')!='gridColEx') { stringToOutput += el.get('class').substr(7,1); };
 			});
 			return stringToOutput;

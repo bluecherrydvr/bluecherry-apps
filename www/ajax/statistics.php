@@ -6,12 +6,12 @@ $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('admin');
 
 $query_params = array(
-	'day' => '%d',
-	'month' => '%m',
 	'year' => '%y',
-	'hour' => '%h',
-	'minute' => '%i',
-	'second' => '%s'
+	'month' => '%m',
+	'day' => '%d',
+	'hour' => '%h'//,
+	//'minute' => '%i',
+	//'second' => '%s'
 );
 
 $date_format = "Y-m-d H:i:s";

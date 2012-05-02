@@ -30,6 +30,7 @@ define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
+define('MMENU_NOTFICATIONS', 'Email notifications');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -81,6 +82,7 @@ define('USERS_DETAIL_TABLE_HEADER', 'User details: ');
 define('CAMERA_PERMISSIONS_SUB', 'User camera access permissions');
 define('RESTRICT_ALL', 'Restrict all');
 define('ALLOW_ALL', 'Allow all');
+define('CAMERA_PERMISSIONS_LIST_TITLE', 'click on camera names to allow/restict access');
 
 define('USERS_ALL_TABLE_SUBHEADER', 'Users currently registered in the DVR system.');
 define('USERS_DETAIL_TABLE_SUBHEADER', 'Edit user information and access rights. ');
@@ -131,7 +133,7 @@ define('USERS_STATUS_SETUP', 'Admin');
 define('LOG_EMPTY', 'Current log file is empty.');
 define('LOG_ALL', 'Whole log');
 define('LOG_COULD_NOT_OPEN', 'Could not open log file');
-define('LOG_HOW_MANY', 'Lines to load');
+define('LOG_HOW_MANY', 'Bottom lines to load...');
 define('LOG_FILE_DOES_NOT_EXIST', 'Log file does not exist');
 define('LOG_DOWNLOAD', 'Download debugging information');
 
@@ -186,9 +188,20 @@ define('DEVICE_ENCODING_UPDATED', '<![CDATA[Video standard setting changed. <hr 
 define('DB_FAIL_TRY_LATER', 'Could not apply changes. Please make sure you are able to connect to the DVR server and that the server is running.');
 
 define('MMAP_HEADER', 'Motion detection settings');
+define('MMAP_SELECTOR_TITLE', 'Use these selectors to choose sensitivity level to fill in the grid below');
+define('BUFFER_TITLE', 'Choose how many second to record before and after motion events');
 define('PRE_REC_BUFFER', 'Pre-event buffer');
 define('POST_REC_BUFFER', 'Post-event buffer');
+
 define('SCHED_HEADER','Device recording schedule');
+define('SCHED_SELECTOR_TITLE', 'Use these selectors to fill in the schedule below');
+define('SCHED_OFF', 'Off');
+define('SCHED_CONT', 'Continuous');
+define('SCHED_MOTION', 'Motion');
+define('SCHED_SENSOR', 'Sensor');
+define('SCHED_FILLALL', 'Fill');
+
+
 define('ALL_DEVICES', 'All devices');
 define('EDITING_MMAP', 'Motion detection settings for camera:');
 define('EDITING_SCHED', 'Recording schedule for camera:');
@@ -197,6 +210,7 @@ define('GLOBAL_SCHED_OG', 'Use device-specific schedule for this camera.');
 define('SIGNAL_TYPE_NOT_CONFD', 'Configure at least one device first');
 define('SCHED_GLOBAL', 'global');
 define('SCHED_SPEC', 'device specific');
+define('SCHED_SEL_TYPE', 'Please select use select the type of recording and click on desired day/hour to change recording type for that period.');
 
 define('HIDE_IMG', 'Show/hide image');
 
@@ -208,7 +222,7 @@ define('BACK_TO_ADMIN', 'Return to admin panel');
 
 define('NO_NEWS', 'There are no news right now.');
 
-define('NO_CARDS', 'No valid local video devices were detected.');
+define('NO_CARDS', 'There are no supported video capture cards detected on this system.');
 
 /*user page errors*/
 define('NO_USERNAME', 'Login field can not be empty.');
@@ -322,7 +336,7 @@ define('PTZ_PARITY', 'Parity:');
 
 ###
 define('QUERY_FAILED', 'Could not execute query. Please check <i>/var/log/apache2/error.log</i> for details.');
-define('LOGOUT', 'Logout');
+define('LOGOUT', 'logout');
 define('WRITE_FAILED', 'Failed to write to storage folder at: ');
 
 #mjpeg
@@ -400,6 +414,8 @@ define('IPP_PRESET_PORT_EX', 'if camera uses port!=80');
 define('IPP_DISABLE_PTZ', 'Disable PTZ for this camera');
 
 #statistics
+define('STS_SUBHEADER', 'distribution of events by type and date range');
+define('STS_HEADER', 'Event statistics');
 define('STS_START_DATE', 'Start date');
 define('STS_END_DATE', 'End Date');
 define('STS_PR_GRP', 'Primary grouping');
@@ -413,6 +429,43 @@ define('STS_PICKER_HEADER', 'Choose date range and event types');
 define('STS_PERCENTAGE_OF_TOTAL', 'Percent of total');
 define('STS_NUM_EVENTS', 'Number of events');
 
+#notifications
+define('NTF_HEADER', 'Email notifications');
+define('NTF_EXISTING', 'Current rules');
+define('NTF_SUBHEADER', 'set up email notification rules');
+define('NTF_ADD_RULE', 'Add a rule');
+define('NTF_ADD_RULE_TITLE', 'Add a new rule for notifications');
+define('NTF_ADD_RULE_DATETIME', 'Select days and time for notifications');
+define('NTF_DAY', 'Day of the week');
+define('NTF_START_TIME', 'Start time');
+define('NTF_END_TIME', 'End time');
+define('NTF_CAMERAS', 'choose cameras');
+define('NTF_USERS', 'users to notify');
+define('NTF_NO_RULES', 'There are currently no notification rules');
+define('NTF_EXISTING_RULES', 'Notification rules currently in place');
+
+define('NTF_E_USERS', 'You must select at least one user');
+define('NTF_E_DAYS', 'You must select at least one day of the week');
+define('NTF_E_TIME', 'Start time must be before end time');
+define('NTF_E_CAMS', 'You must select at least one camera');
+
+define('NTF_TEMPLATE', 'Send an email to <b>%USERS%</b> <br />on <b>%DAYS%</b> <br />between <b>%STIME%</b> and <b>%ETIME%</b> <br />for events on <b>%CAMERAS%</b>.');
+define('NTF_T_TO', 'Send email to');
+define('NTF_T_DOW', 'on days');
+define('NTF_T_TIME', 'between hours');
+define('NTD_T_CAMS', 'for events on');
+
+
+define('DW_M', 'Monday');
+define('DW_T', 'Tuesday');
+define('DW_W', 'Wednesday');
+define('DW_R', 'Thursday');
+define('DW_F', 'Friday');
+define('DW_S', 'Saturday');
+define('DW_U', 'Sunday');
+
+
+
 #Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
 define('ACTI_STREAMING_N_SET_3', 'Your ACTi camera could not be automatically configured for RTP over UDP streaming. Please do so manually.');
@@ -421,5 +474,6 @@ define('VIVOTEC_SETRAMING_SET', 'Your Vivotec camera has been automatically conf
 define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automatically configured to use MJPEG codec on the second encoder. Please do so manually.');
 
 define('L_DELETE', 'delete');
+define('U_LOADING', 'Loading...');
 
 ?>
