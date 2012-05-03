@@ -112,6 +112,27 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
 }
 
+static void event_trigger_notifications(struct bc_record *bc_rec)
+{
+	if (bc_rec->sched_cur != 'M')
+		return;
+
+	pid_t pid = fork();
+	if (pid < 0) {
+		bc_dev_warn(bc_rec, "Cannot fork for event notification");
+		return;
+	}
+
+	/* Parent process */
+	if (pid)
+		return;
+
+	char id[24] = { 0 };
+	snprintf(id, sizeof(id), "%d", bc_rec->event->media.table_id);
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
+	exit(1);
+}
+
 static void try_formats(struct bc_record *bc_rec)
 {
 	struct bc_handle *bc = bc_rec->bc;
@@ -439,6 +460,7 @@ static void *bc_device_thread(void *data)
 			if (bc_buf_is_video_frame(bc) && bc_buf_key_frame(bc) && !bc_rec->event_snapshot_done) {
 				save_event_snapshot(bc_rec, &packet);
 				bc_rec->event_snapshot_done = 1;
+				event_trigger_notifications(bc_rec);
 			}
 
 			bc_output_packet_write(bc_rec, &packet);
