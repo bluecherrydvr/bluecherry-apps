@@ -43,6 +43,9 @@ $query = ("SELECT * FROM notificationSchedules
 	)
 ");
 $rules = data::query($query);
+if (!$rules){
+	exit('I: No matching rules');
+}
 $rules_ids = '';
 
 #now get users who should get notified, and get the list of rules involved
