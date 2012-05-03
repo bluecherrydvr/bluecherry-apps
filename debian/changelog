@@ -1,3 +1,16 @@
+bluecherry (1:2.0.0-0beta9.7) lucid; urgency=low
+
+  * Bug #1088: web: clarify the motion threshold and scheduling settings/pages
+  * Bug #1098: IP camera On-camera configuration option doesn't work
+  * Bug #1099: web: button to add ip ptz preset does not work
+  * Bug #1102: Ubuntu 12.04 (precise) uses libmysqlclient18, package recommends libmysqlclient16
+  * Bug #1103: Regressions in RTP stream buffering
+  * Bug #1107: Package installation fails on Ubuntu 12.04
+  * Feature #852: Web: Support conditional events
+  * Feature #1106: web: add help pages to the web interface
+
+ -- John Brooks <john.brooks@bluecherry.net>  Wed, 02 May 2012 21:37:00 -0600
+
 bluecherry (1:2.0.0-0beta9.6) lucid; urgency=low
 
   * Bug #1093: IPv6 is not bound for RTSP
