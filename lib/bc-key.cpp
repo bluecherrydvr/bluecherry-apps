@@ -307,23 +307,29 @@ end:
 	return re;
 }
 
-int bc_read_licenses(std::vector<bc_license> &out)
+int bc_read_licenses(std::vector<bc_license> &licenses)
 {
-	out.clear();
+	std::set<std::string> existingset, newset;
+	for (int i = 0; i < licenses.size(); i++)
+		existingset.insert(licenses[i].license);
 
 	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Licenses");
 	if (!dbres)
 		return -1;
 
-	std::set<std::string> uniqueset;
 	while (!bc_db_fetch_row(dbres)) {
 		const char *license = bc_db_get_val(dbres, "license", NULL);
 		const char *auth    = bc_db_get_val(dbres, "authorization", NULL);
 		if (!license)
 			break;
 
-		if (uniqueset.find(license) != uniqueset.end()) {
+		if (newset.find(license) != newset.end()) {
 			bc_log("W(License): Ignoring duplicate license %s", license);
+			continue;
+		}
+
+		if (existingset.find(license) != existingset.end()) {
+			newset.insert(license);
 			continue;
 		}
 
@@ -336,17 +342,24 @@ int bc_read_licenses(std::vector<bc_license> &out)
 			continue;
 		}
 		if (bc_license_check_auth(license, auth) < 1) {
-			bc_log("W(License): Invalid authorization '%s' for license "
-			       "'%s' (machine ID changed?)", auth, license);
+			bc_log("W(License): Invalid license authorization for "
+			       "'%s' (machine ID changed?)", license);
 			continue;
 		}
 
-		out.push_back(l);
-
-		uniqueset.insert(license);
+		licenses.push_back(l);
+		newset.insert(license);
 	}
 
 	bc_db_free_table(dbres);
-	return out.size(); 
+
+	// Anything that is not in newset is removed
+	for (int i = 0; i < licenses.size(); ) {
+		if (newset.find(licenses[i].license) == newset.end())
+			licenses.erase(licenses.begin() + i);
+		else
+			i++;
+	}
+	return licenses.size(); 
 }
 
