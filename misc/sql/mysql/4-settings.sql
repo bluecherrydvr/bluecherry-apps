@@ -30,3 +30,11 @@ CREATE TABLE ServerStatus (
 	timestamp integer NOT NULL,
 	message text
 );
+
+CREATE TABLE Licenses (
+	`license` varchar(64) NOT NULL,
+	`authorization` varchar(64) NOT NULL,
+	`added` int(11) NOT NULL,
+	PRIMARY KEY (`license`)
+);
+
