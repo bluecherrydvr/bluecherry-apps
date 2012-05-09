@@ -163,7 +163,6 @@ static bool base32_decode(char *dest, unsigned destlen, const char *src, unsigne
 	return true;
 }
 
-#define GENERATE_LICENSES
 #ifdef GENERATE_LICENSES
 int bc_license_generate(char *dest, int dest_sz, int ndev)
 {
