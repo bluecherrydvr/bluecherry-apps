@@ -18,10 +18,6 @@
 
 #include <libbluecherry.h>
 
-extern "C" {
-#include <libavutil/md5.h>
-}
-
 static unsigned short const crc16_table[256] = {
 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
 	0xC601, 0x06C0, 0x0780, 0xC741, 0x0500, 0xC5C1, 0xC481, 0x0440,
@@ -216,7 +212,7 @@ static
 #endif
 int bc_license_generate_auth(char *dest, int dest_sz, const char *key, const char *machine)
 {
-	char md5[16], data[15], decoded[5];
+	char data[15];
 
 	if (dest_sz < 10)
 		return -EINVAL;
@@ -227,9 +223,16 @@ int bc_license_generate_auth(char *dest, int dest_sz, const char *key, const cha
 	if (!base32_decode(data+10, 5, machine, strlen(machine)))
 		return 0;
 
-	av_md5_sum((uint8_t*)md5, (const uint8_t*)data, 15);
+	uint16_t crcr = crc16((const uint8_t*)data, 15);
+	uint8_t crc[2] = { uint8_t(crcr << 8), uint8_t(crcr & 0xff) };
 
-	base32_encode(dest, 10, md5, 5);
+	data[0] ^= uint8_t(data[14] * crc[1]);
+	data[1] ^= uint8_t(data[13] * crc[0]);
+	data[2] ^= uint8_t(data[12] * crc[1]);
+	data[3] ^= uint8_t(data[11] * crc[0]);
+	data[4] ^= uint8_t(data[10] * crc[1]);
+
+	base32_encode(dest, 10, data, 5);
 	return 9;
 }
 

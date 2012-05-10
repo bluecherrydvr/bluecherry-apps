@@ -151,24 +151,6 @@ struct bc_license {
 	int n_devices;
 };
 
-int bc_read_licenses(std::vector<bc_license> &licenses);
-
-/* Bluecherry License Key */
-
-enum bc_key_type {
-	BC_KEY_TYPE_CAMERA = 0,
-	BC_KEY_TYPE_CAMERA_EVAL,
-};
-
-struct bc_key_data {
-	enum bc_key_type	type;
-	u_int8_t		major;
-	u_int8_t		minor;
-	u_int8_t		count;
-	u_int8_t		eval_period;
-	u_int32_t		id;
-};
-
 /* Events and Media */
 
 typedef enum {
@@ -383,7 +365,9 @@ char *bc_db_escape_string(const char *from, int len);
 
 /* Validate and process a license key to get values from it */
 int bc_license_machine_id(char *out, int out_sz);
-int bc_key_process(struct bc_key_data *res, char *str);
+int bc_read_licenses(std::vector<bc_license> &licenses);
+int bc_license_check(const char *license);
+int bc_license_check_auth(const char *license, const char *auth);
 
 /* ### Handle events ### */
 
