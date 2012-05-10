@@ -483,6 +483,58 @@ PHP_FUNCTION(bc_motion_is_detected)
 	RETURN_FALSE;
 }
 
+PHP_FUNCTION(bc_license_machine_id)
+{
+	char buf[64];
+	int re = bc_license_machine_id(buf, sizeof(buf));
+	if (re < 1)
+		RETURN_FALSE;
+
+	RETURN_STRING(buf, 1);
+}
+
+PHP_FUNCTION(bc_license_check)
+{
+	const char *key;
+	int key_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &key, &key_len) == FAILURE)
+		RETURN_FALSE;
+
+	int re = bc_license_check(key);
+	if (re == 0)
+		RETURN_FALSE;
+
+	RETURN_LONG(re);
+}
+
+PHP_FUNCTION(bc_license_check_auth)
+{
+	const char *key, *auth;
+	int key_len, auth_len;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ss", &key, &key_len,
+	    &auth, &auth_len) == FAILURE)
+	    RETURN_FALSE;
+
+	if (bc_license_check_auth(key, auth) == 1)
+		RETURN_TRUE;
+	RETURN_FALSE;
+}
+
+PHP_FUNCTION(bc_license_devices_allowed)
+{
+	std::vector<bc_license> licenses;
+	if (bc_read_licenses(licenses) < 0)
+		RETURN_FALSE;
+
+	int num = 0;
+	for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
+		num += it->n_devices;
+
+	RETURN_LONG(num);
+}
+
 static function_entry bluecherry_functions[] = {
 	/* Bluecherry DB Handlers */
 	PHP_FE(bc_db_open, NULL)
@@ -507,6 +559,11 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_ptz_cmd, NULL)
 	/* Miscellaneous */
 	PHP_FE(bc_log, NULL)
+	/* Licensing */
+	PHP_FE(bc_license_machine_id, NULL)
+	PHP_FE(bc_license_check, NULL)
+	PHP_FE(bc_license_check_auth, NULL)
+	PHP_FE(bc_license_devices_allowed, NULL)
 	{NULL, NULL, NULL}
 };
 
