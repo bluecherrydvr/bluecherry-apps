@@ -434,6 +434,7 @@ define('NTF_HEADER', 'Email notifications');
 define('NTF_EXISTING', 'Current rules');
 define('NTF_SUBHEADER', 'set up email notification rules');
 define('NTF_ADD_RULE', 'Add a rule');
+define('NTF_EDIT_RULE', 'Save changes');
 define('NTF_ADD_RULE_TITLE', 'Add a new rule for notifications');
 define('NTF_ADD_RULE_DATETIME', 'Select days and time for notifications');
 define('NTF_DAY', 'Day of the week');
@@ -441,6 +442,8 @@ define('NTF_START_TIME', 'Start time');
 define('NTF_END_TIME', 'End time');
 define('NTF_CAMERAS', 'choose cameras');
 define('NTF_USERS', 'users to notify');
+define('NTF_LIMIT', 'Maximum notification limit');
+define('NTF_LIMIT_LABEL', 'Limit of emails sent in the per hour [0 for unlimited]');
 define('NTF_NO_RULES', 'There are currently no notification rules');
 define('NTF_EXISTING_RULES', 'Notification rules currently in place');
 
@@ -454,6 +457,7 @@ define('NTF_T_TO', 'Send email to');
 define('NTF_T_DOW', 'on days');
 define('NTF_T_TIME', 'between hours');
 define('NTD_T_CAMS', 'for events on');
+define('NTD_T_LIM', 'emails per hour');
 
 
 define('DW_M', 'Monday');
@@ -474,6 +478,7 @@ define('VIVOTEC_SETRAMING_SET', 'Your Vivotec camera has been automatically conf
 define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automatically configured to use MJPEG codec on the second encoder. Please do so manually.');
 
 define('L_DELETE', 'delete');
+define('L_EDIT', 'edit');
 define('U_LOADING', 'Loading...');
 
 ?>

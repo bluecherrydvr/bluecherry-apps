@@ -8,4 +8,9 @@ CREATE TABLE IF NOT EXISTS `notificationSchedules` (
   `cameras` varchar(255) NOT NULL,
   `users` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=13 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `notificationsSent` (
+  `rule_id` smallint(5) unsigned NOT NULL,
+  `time` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;

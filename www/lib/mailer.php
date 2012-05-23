@@ -12,7 +12,7 @@
 include("/usr/share/bluecherry/www/lib/lib.php");  #common functions
 
 if (empty($argv[1])){
-	echo 'E: no argument';
+	exit('E: No argument, argv[1] is expcted to contain event id');
 }
 $dow = array('M', 'T', 'W', 'R', 'F', 'S', 'U');
 
@@ -48,15 +48,28 @@ if (!$rules){
 }
 $rules_ids = '';
 
+#clean up old (>1hr) notificationsSent records
+$tmp = data::query('DELETE FROM notificationsSent WHERE time < '.(time()-3600), true);
+
 #now get users who should get notified, and get the list of rules involved
 $users = array();
 
 foreach($rules as $id => $rule){
-	$rules_ids[$id] = $rule['id'];
-	$tmp = trim($rule['users'], '|');
-	$tmp = explode('|', $tmp);
-	$users = array_merge($users, $tmp);
+	$emails_sent = data::query("SELECT count(*) as n FROM notificationsSent WHERE rule_id={$rule['id']}");
+	if ($emails_sent[0]['n']<$rule['nlimit'] || $rule['nlimit']==0){ #if we are below limit(or unlim), use the rule, check next
+		$rules_ids[$id] = $rule['id'];
+		$tmp = trim($rule['users'], '|');
+		$tmp = explode('|', $tmp);
+		$users = array_merge($users, $tmp);
+		$tmp = data::query("INSERT INTO notificationsSent VALUES({$rule['id']}, ".time().")", true);
+	}
 }
+
+if (empty($rules_ids)){
+	exit('I: All applicable rules exhausted limit');
+}
+
+
 #get rid of user duplicates, if rules are overlapping
 $users = array_unique($users);
 
@@ -77,7 +90,6 @@ $emails = array_unique($emails);
 
 #get device details -- only name is currently used
 $device = data::getObject('Devices', 'id', $event[0]['device_id']);
-
 
 #PEAR::Mail mailer
 
@@ -129,5 +141,5 @@ foreach($emails as $email){
 		$mail->send($email, $headers, $body); 
 }
 
-exit();
+exit('OK');
 ?>

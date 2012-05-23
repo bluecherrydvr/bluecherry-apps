@@ -257,21 +257,28 @@ DVRPageScript = new Class({
 				});
 			break; //end log
 			case 'notifications':
-				$('new-rule-form').set('send', {
-					onComplete:function(text, xml){
-						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
-						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
-						var showMessage = new DVRMessage(status, msg);
-						if (status == 'OK') { 
-							loadExistingRules(); 
-							$('existing-rules-container').highlight();
-						};
-					}
-				});
+				//use dummy to fill the new rule form
+				$('blank-rule-container').set('html', $('blank-rule-dummy').get('html'));
 				
-				$$('.add-rule-button').addEvent('click', function(){
-					$('new-rule-form').send();
-				});
+				var attachFormEvent = function(id, buttonController){
+					$(id).set('send', {
+						onComplete:function(text, xml){
+							var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+							var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+							var showMessage = new DVRMessage(status, msg);
+							if (status == 'OK') { 
+								loadExistingRules(); 
+								$('existing-rules-container').highlight();
+							};
+						}
+					});
+					buttonController.addEvent('click', function(){
+						$(id).send();
+					});
+				};
+				
+				attachFormEvent('new-rule-form', $$('.add-rule-button'));
+				
 				var loadExistingRules = function(){
 					var existingRulesContainer = $('existing-rules-container');
 					var request = new Request({
@@ -294,11 +301,24 @@ DVRPageScript = new Class({
 												var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
 												
 												if (status == 'OK') { 
-													self.getParent().fadeAndDestroy('1000');
+													self.getParent().getParent().fadeAndDestroy('1000');
 												} else {
 													var showMessage = new DVRMessage(status, msg);
 												}
 												
+											}
+										}).send();
+									}); //end delete button
+									$$('.edit-button').addEvent('click', function(){
+										var self = this;
+										var request = new Request({
+											url: '/ajax/notifications.php',
+											data: 'mode=getedit&id='+self.get('id'),
+											method: 'get',
+											onSuccess: function(html, xml){
+												self.getParent().getParent().set('html', html);
+												var formId = 'edit-rule-form-'+self.get('id');
+												attachFormEvent(formId, $(formId).getChildren('.add-rule-button'));
 											}
 										}).send();
 									});

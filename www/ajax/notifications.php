@@ -29,9 +29,11 @@ if (!empty($_POST)){
 		$daysoftheweek = implode($_POST['daysofweek']);
 		$users = '|'.implode('|', $_POST['users']).'|';
 		$cameras = '|'.implode('|', $_POST['cameras']).'|';
-			if (empty($_POST['id'])) { #if id not set -- create new
-				$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}')";
+		$limit = intval($_POST['limit']);
+			if (empty($_GET['id'])) { #if id not set -- create new
+				$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit})";
 			} else { #if set update existing
+				$query = "UPDATE notificationSchedules SET day='{$daysoftheweek}', s_hr='{$_POST['s_hr']}', s_min='{$_POST['s_min']}', e_hr='{$_POST['e_hr']}', e_min='{$_POST['e_min']}', cameras='{$cameras}', users='{$users}', nlimit='{$limit}' WHERE id=".intval($_GET['id']);
 			}
 		$result = data::query($query, true);
 		data::responseXml($result);
@@ -51,7 +53,10 @@ if (!empty($_GET) && $_GET['mode']=='delete'){
 	exit();
 }
 
-$notifications = data::getObject('notificationSchedules');
+$tmp = data::getObject('notificationSchedules');
+foreach($tmp as $id => $notification){
+	$notifications[$notification['id']] = $notification;
+}
 
 $tmp = data::getObject('Users');
 foreach($tmp as $key => $user){

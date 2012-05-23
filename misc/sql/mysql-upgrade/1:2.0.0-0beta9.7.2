@@ -1,0 +1,6 @@
+ALTER TABLE `notificationSchedules` ADD `nlimit` MEDIUMINT UNSIGNED NOT NULL DEFAULT '0'
+
+CREATE TABLE IF NOT EXISTS `notificationsSent` (
+  `rule_id` smallint(5) unsigned NOT NULL,
+  `time` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
