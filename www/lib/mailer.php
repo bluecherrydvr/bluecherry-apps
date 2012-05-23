@@ -141,7 +141,7 @@ switch($global_settings->data['G_SMTP_SERVICE']){
 		$mail = Mail::factory('mail');
 	break;
 	case 'smtp': #user user supplied SMTP config
-		$smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? 'smtp://' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
+		$smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? '' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
 		$smtp_params['port'] = $global_settings->data['G_SMTP_PORT'];
 		$smtp_params['username'] = $global_settings->data['G_SMTP_USERNAME'];
 		$smtp_params['password'] = $global_settings->data['G_SMTP_PASSWORD'];
@@ -161,7 +161,7 @@ if (PEAR::isError($mail)) {
 	$tmp = data::query("UPDATE GlobalSettings set value='{$mail->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
 	exit("E: ".$mail->getMessage());
 } else {
-	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'". true);
+	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
 	exit('OK');
 }
 ?>
