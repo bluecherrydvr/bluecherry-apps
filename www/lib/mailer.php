@@ -136,10 +136,32 @@ $mime->setHTMLBody($html);
 $mime->addHTMLImage($path_to_image, "image/jpeg", "image.jpg", true, "camimage"); 
 $headers = $mime->headers($headers);
 $body = $mime->get();
-$mail = Mail::factory("mail");
+switch($global_settings->data['G_SMTP_SERVICE']){
+	case 'default': #use MTA
+		$mail = Mail::factory('mail');
+	break;
+	case 'smtp': #user user supplied SMTP config
+		$smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? 'smtp://' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
+		$smtp_params['port'] = $global_settings->data['G_SMTP_PORT'];
+		$smtp_params['username'] = $global_settings->data['G_SMTP_USERNAME'];
+		$smtp_params['password'] = $global_settings->data['G_SMTP_PASSWORD'];
+		$smtp_params['auth'] = true;
+		$mail = Mail::factory('smtp', $smtp_params);
+		if ($global_settings->data['G_SMTP_SSL'] == 'tls') {
+			$mail->SMTPSecure = "ssl";
+		};
+	break;
+}
+
 foreach($emails as $email){
 		$mail->send($email, $headers, $body); 
 }
 
-exit('OK');
+if (PEAR::isError($mail)) {
+	$tmp = data::query("UPDATE GlobalSettings set value='{$mail->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
+	exit("E: ".$mail->getMessage());
+} else {
+	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'". true);
+	exit('OK');
+}
 ?>

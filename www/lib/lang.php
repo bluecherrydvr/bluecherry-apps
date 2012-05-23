@@ -74,6 +74,25 @@ define('G_DISABLE_IP_C_CHECK_EX', 'May improve web UI performance');
 define('G_DISABLE_WEB_STATS', 'Disable Stats display in the web UI');
 define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 
+#mail
+define('G_SMTP_SERVICE', 'Mailing service');
+define('G_SMTP_USERNAME', 'Username');
+define('G_SMTP_PASSWORD', 'Password');
+define('G_SMTP_HOST', 'SMTP host');
+define('G_SMTP_PORT', 'SMTP port');
+define('G_SMTP_SSL', 'SSL');
+define('G_SMTP_SERVICE_EX', '');
+define('G_SMTP_USERNAME_EX', '');
+define('G_SMTP_PASSWORD_EX', '');
+define('G_SMTP_HOST_EX', 'e.g smtp.googlemail.com');
+define('G_SMTP_PORT_EX', '');
+define('G_SMTP_SSL_EX', '');
+define('G_SMTP_FAILED', 'Unable to send mail with this configuration.');
+
+define('G_SMTP_DEF_MTA', 'System default MTA');
+define('G_SMTP_SMTP', 'User configured SMTP');
+
+
 #users page
 define('EDIT_ACCESS_LIST', 'Camera access permissions');
 define('USERS_ALL_TABLE_HEADER', 'DVR Users');
@@ -479,6 +498,7 @@ define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automaticall
 
 define('L_DELETE', 'delete');
 define('L_EDIT', 'edit');
+define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
 
 ?>
