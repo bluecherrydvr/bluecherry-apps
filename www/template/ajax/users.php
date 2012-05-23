@@ -56,7 +56,7 @@
 	}
 ?>
 </div>
-<div id='email-dummy'>
+<div id='email-dummy' style='display:none;'>
 	<span>
 		<input type='text' class='email' name='email[]' value='' />
 		<div id='button' class='deleteShort'></div>
