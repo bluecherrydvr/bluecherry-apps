@@ -153,13 +153,16 @@ switch($global_settings->data['G_SMTP_SERVICE']){
 	break;
 }
 
+$error = null;
 foreach($emails as $email){
-		$mail->send($email, $headers, $body); 
+		$re = $mail->send($email, $headers, $body); 
+		if ($re !== TRUE)
+			$error = $re;
 }
 
-if (PEAR::isError($mail)) {
-	$tmp = data::query("UPDATE GlobalSettings set value='{$mail->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
-	exit("E: ".$mail->getMessage());
+if (PEAR::isError($error)) {
+	$tmp = data::query("UPDATE GlobalSettings set value='{$error->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
+	exit("E: ".$error->getMessage());
 } else {
 	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
 	exit('OK');
