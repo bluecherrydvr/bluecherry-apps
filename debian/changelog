@@ -1,3 +1,14 @@
+bluecherry (1:2.0.0-0beta9.7.2) lucid; urgency=low
+
+  * Bug #1108: Limit amount of emails per hour
+  * Bug #1109: It is not possible to edit a notification rule
+  * Bug #1110: Remove 'Sensor' from the recording schedule page
+  * Bug #1112: SQL connection fails on clean installation of Ubuntu 12.04
+  * Feature #386: Email user(s) on motion event(s)
+  * Feature #1114: web: allow use of custom smtp servers
+
+ -- John Broks <john.brooks@bluecherry.net>  Wed, 23 May 2012 19:24:00 -0400
+
 bluecherry (1:2.0.0-0beta9.7) lucid; urgency=low
 
   * Bug #1088: web: clarify the motion threshold and scheduling settings/pages
