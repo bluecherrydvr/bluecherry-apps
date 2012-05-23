@@ -36,7 +36,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #ajaxMessage.F, #message.F   		{ padding-left:35px; border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
 #ajaxMessage.OK, #message.OK	 	{ padding-left:35px; border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
-#sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
+#sysMessages #message			{ padding-left:35px; width:150px !important; margin:10px 5px 0 5px !important; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
 #sysMessages #snr, #sysMessages #sr, #sysMessages #ncn, #sysMessages #ftw { display:none; }
 #dismissDefaultPasswordWarning { float:right; }
