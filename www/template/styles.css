@@ -69,11 +69,28 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	border:1px solid #595; border-radius:5px;
 	background-color: #efe;
 }
-#button								{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  border-radius: 5px; }
-#button.add, #button.addEmail, #button.addExt	{ float:left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
+#button								{ 
+	margin-bottom:10px; 
+	display:block; 
+	float:right !important; 
+	width:100px; 
+	padding-left:30px; 
+	line-height:25px; 
+	height:25px; 
+	background-repeat: no-repeat; 
+	background-position:5px; 
+	border-radius: 5px; 
+}
+#button.add, #button.addEmail, #button.addExt	{ 
+	float:left; 
+	border:1px solid #595; 
+	background-color: #efe; 
+	background-image:url("/img/icons/plus.png"); 
+}
 #button.addExt									{ width:250px; }
 #button.add:hover, #button.addExt:hover			{ cursor:pointer; background-color: #ded; }
 #addEmail							{ float:left; width:auto; padding-right:10px; cursor:pointer; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); margin:0 0 10px 200px; display:block; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px;  }
+#addEmail:hover { background-color:#8b8; }
 #button.save						{ float:right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
 
 .notification-control-buttons {
@@ -105,7 +122,12 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 .edit-button:hover {
 	background-color: #aae;
 }
-#button.deleteShort					{ width:50px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+#button.deleteShort					{ 
+	width:50px; 
+	border:1px solid #955; 
+	background-color: #fee; 
+	background-image:url("/img/icons/cross.png"); 
+}
 #button.showHideImg					{ float:right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
 #settingsForm #editAccessList		{ width:230px; padding:5px 5px 5px 35px; margin-left:10px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
@@ -114,7 +136,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #settingsForm label.second			{ width:50px; }
 #settingsForm .sub					{ color:#666; display:block; font-size:0.8em; text-align:right; width:140px; }
 #settingsForm input 				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
-#settingsForm input.email			{ width:235px; float: left; }
+
 #settingsForm input.limit			{ width:70px; }
 #settingsForm input:focus 			{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]		{ background:#ccc; color:#333; }
@@ -188,6 +210,17 @@ second
 #user-table tr.low			{ background-color:#eee; }
 #newUser				 	{ float:right; margin-bottom:10px; width:130px; padding-left:30px; height:30px; line-height:30px; background:url("/img/icons/users_new.png") no-repeat; background-position:left; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #user-table .deleteUser 	{ background-image:url("/img/icons/cross.png"); background-position: center center; background-repeat:no-repeat; width:20px; }
+
+#emails input { margin:2px 5px 0 20px; }
+#emails #button.deleteShort { 
+	width:30px; 
+	height:30px; 
+	margin:0px; 
+	padding:0px; 
+	background-position:center center; 
+	cursor:pointer; 
+}
+#emails #button.deleteShort:hover { background-color:#faa; }
 
 /*active (connected) users*/
 #active-user-table {

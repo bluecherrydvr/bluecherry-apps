@@ -172,11 +172,17 @@ DVRPageScript = new Class({
 						});
 					});
 				} else {
-					buttonMorph($('addEmail'), '#8bb8');
 					$('addEmail').addEvent('click', function(){
-						var el = new Element('span', {'html': "<span><label>&nbsp;<span class='sub'>&nbsp;</span></label><input type='text' class='email' name='email[]' value='' /><input type='text' class='limit' name='limit[]' value='0' /></span><div class='bClear'></div><br />"});
-						el.inject($('addEmail'), 'before');
+						var el = new Element('span', {'html': $('email-dummy').get('html')});
+						el.inject($('emails'), 'bottom');
+						initDelete();
 					});
+					var initDelete = function(){
+						$$('.deleteShort').addEvent('click', function(){
+							this.getParent().dispose();
+						});
+					}
+					initDelete();
 				}
 			break;//end users
 			case 'ptzsettings':
@@ -853,7 +859,7 @@ DVRSettingsForm = new Class({
 		$('saveButton').addEvent('click', function(){
 			$(formID).send();	
 		});
-		buttonMorph($('saveButton'), '#8bb8');
+		buttonMorph($('saveButton'), '#8b8');
 	}
 });
 

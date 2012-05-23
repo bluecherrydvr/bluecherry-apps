@@ -78,12 +78,7 @@ $emails = array();
 
 foreach($users as $id => $user){
 	$user = data::getObject('Users', 'id', $user);
-	$es = explode('|', $user[0]['email']);
-	$tmp = array();
-	foreach($es as $id => $e){
-		$tmp[$id] = explode(':', $e);
-		$tmp[$id] = $tmp[$id][0];
-	}
+	$tmp = explode('|', $user[0]['email']);
 	$emails = array_merge($emails, $tmp);
 }
 $emails = array_unique($emails);

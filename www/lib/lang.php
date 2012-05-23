@@ -74,6 +74,9 @@ define('G_DISABLE_IP_C_CHECK_EX', 'May improve web UI performance');
 define('G_DISABLE_WEB_STATS', 'Disable Stats display in the web UI');
 define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 
+define('G_SMTP_TITLE', 'SMTP server configuration');
+define('G_PERF_TITLE', 'Performance/connectivity');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_USERNAME', 'Username');
@@ -133,8 +136,8 @@ define('USERS_ACCESS_WEB', 'Web access');
 define('USERS_ACCESS_WEB_EX', 'viewer web access');
 define('USERS_ACCESS_BACKUP', 'Backup access');
 define('USERS_ACCESS_BACKUP_EX', 'recorded videos');
-define('USERS_EMAIL', 'Email');
-define('USERS_EMAIL_EX', 'number of emails per hour');
+define('USERS_EMAIL', 'Emails');
+define('USERS_EMAIL_EX', 'for email notifications');
 define('EMAIL_LIMIT', 'Limit');
 define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
