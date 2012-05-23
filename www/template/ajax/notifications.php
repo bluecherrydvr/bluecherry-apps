@@ -8,8 +8,8 @@ if ($_GET['mode']=='list'){
 	} else {
 		foreach($notifications as $id => $notification){
 			#prepare hours
-			$notification['start'] = str_pad($notification['s_hr'], 2, '0').':'.str_pad($notification['s_min'], 2, '0');
-			$notification['end'] = str_pad($notification['e_hr'], 2, '0').':'.str_pad($notification['e_min'], 2, '0');
+			$notification['start'] = str_pad($notification['s_hr'], 2, '0', STR_PAD_LEFT).':'.str_pad($notification['s_min'], 2, '0');
+			$notification['end'] = str_pad($notification['e_hr'], 2, '0', STR_PAD_LEFT).':'.str_pad($notification['e_min'], 2, '0');
 			#prepare days
 			$notification['day'] = str_split($notification['day']);
 			$tmp = '';
