@@ -25,7 +25,7 @@ case "$1" in
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
-		chown syslog:bluecherry /var/log/bluecherry.log
+		chown bluecherry:adm /var/log/bluecherry.log
 		chmod 640 /var/log/bluecherry.log
 
 		# Apache modules and sites
@@ -33,9 +33,7 @@ case "$1" in
 		a2enmod php5
 		a2ensite bluecherry
 
-		# Reload some things
-		service apache2 restart
-		reload rsyslog
+#		reload rsyslog
 
 		;;
 esac
