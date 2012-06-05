@@ -235,10 +235,11 @@ class user{
 		if ($response === true){
 			$tmp = '';
 			foreach($data['email'] as $key => $email){
-				if (!empty($email)) {$tmp .=$email.':'.$data['limit'][$key].'|'; };
+				if (empty($email)){
+					unset($data['email'][$key]);
+				}
 			}
-			unset($data['limit']);
-			$data['email'] = trim($tmp, '|');
+			$data['email'] = implode('|', $data['email']);
 			
 			if ($new){
 				$data['salt'] = data::getRandomString(4);

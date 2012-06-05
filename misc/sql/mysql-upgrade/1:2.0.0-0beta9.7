@@ -1,7 +1,7 @@
-DROP TABLE NotificationsTemplates;
-DROP TABLE Notifications;
-DROP TABLE NotificationsSent;
-DROP TABLE NotificationsSchedules;
+DROP TABLE IF EXISTS NotificationsTemplates;
+DROP TABLE IF EXISTS Notifications;
+DROP TABLE IF EXISTS NotificationsSent;
+DROP TABLE IF EXISTS NotificationsSchedules;
 
 CREATE TABLE IF NOT EXISTS `notificationSchedules` (
   `id` mediumint(9) NOT NULL AUTO_INCREMENT,

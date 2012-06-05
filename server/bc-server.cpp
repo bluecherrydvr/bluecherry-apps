@@ -40,6 +40,10 @@ struct bc_storage {
 #define MAX_STOR_LOCS	10
 static struct bc_storage media_stor[MAX_STOR_LOCS];
 
+/* Timestamp of when the server was last known to be running prior to this
+ * instance; may be zero if unknown or never */
+time_t last_known_running;
+
 extern char *__progname;
 
 static std::vector<bc_license> licenses;
@@ -541,14 +545,25 @@ static int bc_check_db(void)
 	return re;
 }
 
+static void get_last_run_date()
+{
+	BC_DB_RES dbres;
+	dbres = bc_db_get_table("SELECT timestamp FROM ServerStatus");
+
+	if (dbres && !bc_db_fetch_row(dbres))
+		last_known_running = bc_db_get_val_int(dbres, "timestamp");
+
+	if (dbres)
+		bc_db_free_table(dbres);
+}
+
 static void bc_check_inprogress(void)
 {
 	BC_DB_RES dbres;
 
-	dbres = bc_db_get_table("SELECT EventsCam.id, EventsCam.media_id, "
-				"Media.filepath FROM EventsCam LEFT JOIN "
-				"Media ON (EventsCam.media_id=Media.id) "
-				"WHERE length=-1");
+	dbres = bc_db_get_table("SELECT EventsCam.*, Media.filepath FROM EventsCam "
+	                        "LEFT JOIN Media ON (EventsCam.media_id=Media.id) "
+	                        "WHERE length=-1");
 
 	if (dbres == NULL)
 		return;
@@ -560,9 +575,17 @@ static void bc_check_inprogress(void)
 		char *line = NULL;
 		size_t len;
 		FILE *fp;
+		int event_id = bc_db_get_val_int(dbres, "id");
 
-		if (!filepath)
+		if (!filepath) {
+			bc_log("Event %d left in-progress at shutdown; setting duration", event_id);
+			time_t start = bc_db_get_val_int(dbres, "time");
+			duration = int64_t(last_known_running) - int64_t(start);
+			if (duration < 0)
+				duration = 0;
+			bc_db_query("UPDATE EventsCam SET length=%d WHERE id=%d", duration, event_id);
 			continue;
+		}
 
 		sprintf(cmd, "mkvinfo -v %s", filepath);
 
@@ -665,7 +688,7 @@ static int check_expire(void)
 {
 	char date[128];
 	time_t t = time(NULL);
-	time_t expire = 1337817600; /* May 24, 2012 */
+	time_t expire = 1339718400; /* June 15, 2012 */
 	struct tm exp;
 
 	localtime_r(&expire, &exp);
@@ -778,6 +801,7 @@ int main(int argc, char **argv)
 	bc_status_component_begin(STATUS_DB_POLLING1);
 	error = bc_check_globals();
 	/* Do some cleanup */
+	get_last_run_date();
 	bc_check_inprogress();
 	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
 

@@ -49,6 +49,9 @@ static MYSQL *get_handle(void)
 		my_con_global = NULL;
 	}
 
+	if (!dbname || !dbuser || !dbpass)
+		return NULL;
+
 	if ((my_con_global = mysql_init(NULL)) == NULL) {
 		bc_log("(SQL ERROR): Initializing MySQL");
 		return NULL;

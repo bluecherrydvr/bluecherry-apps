@@ -21,13 +21,22 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #leftColumn #logo { background: url("/img/logo.png") no-repeat center center; height:90px; }
 
 /*messages*/
-#ajaxMessage, #message			  	{ width:90%; padding:5px; font-size:1em; margin:10px; position:relative; float:left; display:inline; padding-left:35px; }
+#ajaxMessage, #message			  	{ 
+	width:90% !important; 
+	padding:5px; 
+	font-size:1em; 
+	margin:10px !important; 
+	position:relative; 
+	float:left !important; 
+	display:inline !important; 
+	padding-left:35px; 
+}
 #ajaxMessage.INFO, #message.INFO 	{ padding-left:35px; width:90%; border:1px dashed #990; background-image:url("/img/icons/excl.png"); background-position:5px center; background-color:#ffc; background-repeat: no-repeat; }
 #message.ipCamInfo					{ z-index:10; position:absolute; right:0px; top:30px; display:none; width:75%; border:1px dashed #990; background-image:url("/img/icons/excl.png"); background-position:5px center; background-color:#ffc; background-repeat: no-repeat; }
-#ajaxMessage.F, #message.F   		{ border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
-#ajaxMessage.OK, #message.OK	 	{ border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
+#ajaxMessage.F, #message.F   		{ padding-left:35px; border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
+#ajaxMessage.OK, #message.OK	 	{ padding-left:35px; border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
-#sysMessages #message			{ padding-left:35px; width:150px; margin:10px 5px 0 5px; }
+#sysMessages #message			{ padding-left:35px; width:150px !important; margin:10px 5px 0 5px !important; }
 #sysMessages #message.F			{ background-image:url("/img/icons/excl.png"); }
 #sysMessages #snr, #sysMessages #sr, #sysMessages #ncn, #sysMessages #ftw { display:none; }
 #dismissDefaultPasswordWarning { float:right; }
@@ -41,7 +50,12 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #login-message				 { margin:5px; padding:5px; border:1px dotted red;  opacity:0; filter:alpha(opacity = 0); width:90%; background-color:#f99; color:#000; }
 
 /*forms*/
-#settingsForm div 							{ display:block; float:left; width:100%; padding:5px 0 5px 0; }
+#settingsForm div 							{ 
+	display:block; 
+	float:left; 
+	padding:5px 0 5px 0; 
+}
+#settingsForm div.container-separator		{ padding:10px; }
 #settingsForm #saveButton, #saveButton { 
 	padding:5px; 
 	margin-bottom:10px; 
@@ -55,25 +69,65 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	border:1px solid #595; border-radius:5px;
 	background-color: #efe;
 }
-#button								{ margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  border-radius: 5px; }
-#button.add, #button.addEmail, #button.addExt	{ float:left; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); }
+#button								{ 
+	margin-bottom:10px; 
+	display:block; 
+	float:right !important; 
+	width:100px; 
+	padding-left:30px; 
+	line-height:25px; 
+	height:25px; 
+	background-repeat: no-repeat; 
+	background-position:5px; 
+	border-radius: 5px; 
+}
+#button.add, #button.addEmail, #button.addExt	{ 
+	float:left; 
+	border:1px solid #595; 
+	background-color: #efe; 
+	background-image:url("/img/icons/plus.png"); 
+}
 #button.addExt									{ width:250px; }
 #button.add:hover, #button.addExt:hover			{ cursor:pointer; background-color: #ded; }
 #addEmail							{ float:left; width:auto; padding-right:10px; cursor:pointer; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/plus.png"); margin:0 0 10px 200px; display:block; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  -moz-border-radius: 5px; -webkit-border-radius: 5px;  }
+#addEmail:hover { background-color:#8b8; }
 #button.save						{ float:right; border:1px solid #595; background-color: #efe; background-image:url("/img/icons/check.png"); }
+
+.notification-control-buttons {
+	width:80px;
+	float:right; 
+}
+.notification-control-buttons div {
+	margin-bottom:10px; display:block; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  border-radius: 5px;
+	width:50px;
+	margin-left:5px;
+	cursor:pointer;
+	
+}
 .delete-button {
-	margin-bottom:10px; display:block; float:right; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  border-radius: 5px;
-	width:50px; 
+
 	border:1px solid #955; 
 	background-color: #fee; 
 	background-image:url("/img/icons/cross.png");
-	margin-left:5px;
-	cursor:pointer;
+
+}
+.edit-button {
+	border:1px solid #559; 
+	background-color: #eef; 
+	background-image:url("/img/icons/menu/edit.png");
 }
 .delete-button:hover { 
 	background-color: #eaa;
 }
-#button.deleteShort					{ width:50px; border:1px solid #955; background-color: #fee; background-image:url("/img/icons/cross.png"); }
+.edit-button:hover {
+	background-color: #aae;
+}
+#button.deleteShort					{ 
+	width:50px; 
+	border:1px solid #955; 
+	background-color: #fee; 
+	background-image:url("/img/icons/cross.png"); 
+}
 #button.showHideImg					{ float:right; border:1px solid #599; background-color: #eff; width:120px; cursor:pointer; padding-left: 5px; margin-top:10px; }
 #settingsForm #editAccessList		{ width:230px; padding:5px 5px 5px 35px; margin-left:10px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
@@ -82,7 +136,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #settingsForm label.second			{ width:50px; }
 #settingsForm .sub					{ color:#666; display:block; font-size:0.8em; text-align:right; width:140px; }
 #settingsForm input 				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
-#settingsForm input.email			{ width:235px; float: left; }
+
 #settingsForm input.limit			{ width:70px; }
 #settingsForm input:focus 			{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]		{ background:#ccc; color:#333; }
@@ -156,6 +210,17 @@ second
 #user-table tr.low			{ background-color:#eee; }
 #newUser				 	{ float:right; margin-bottom:10px; width:130px; padding-left:30px; height:30px; line-height:30px; background:url("/img/icons/users_new.png") no-repeat; background-position:left; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #user-table .deleteUser 	{ background-image:url("/img/icons/cross.png"); background-position: center center; background-repeat:no-repeat; width:20px; }
+
+#emails input { margin:2px 5px 0 20px; }
+#emails #button.deleteShort { 
+	width:30px; 
+	height:30px; 
+	margin:0px; 
+	padding:0px; 
+	background-position:center center; 
+	cursor:pointer; 
+}
+#emails #button.deleteShort:hover { background-color:#faa; }
 
 /*active (connected) users*/
 #active-user-table {
@@ -287,11 +352,11 @@ second
 #gridTable .gridColN 			{ background-color: black;  }
 
 .container-separator {
-	background-color:#fafafa; 
-	border:1px solid #bbb; border-radius:5px;
-	position:relative;
-	margin-top:20px;
-	padding:10px;
+	background-color:#fafafa !important; 
+	border:1px solid #bbb; border-radius:5px !important;
+	position:relative !important;
+	margin-top:20px !important;
+	padding:10px !important;
 }
 .container-separator .title {
 	position:absolute;
@@ -301,7 +366,7 @@ second
 	left:20px;
 	background-color:#fff;
 	display:block;
-	padding:0 3px 0 3px;
+	padding:0 3px 0 3px !important;
 	border:1px solid #bbb;
 	border-radius:2px;
 }
@@ -310,6 +375,9 @@ second
 	border-style:dashed;
 	float:left;
 	margin-right:5px;
+}
+.container-separator#users-list select {
+	width:125px;
 }
 #rule-date-time #day-of-week { float:left; }
 #rule-date-time #day-of-week select, #cameras-list select, #users-list select { border-radius:5px; }

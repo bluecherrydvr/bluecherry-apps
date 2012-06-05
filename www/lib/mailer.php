@@ -12,7 +12,7 @@
 include("/usr/share/bluecherry/www/lib/lib.php");  #common functions
 
 if (empty($argv[1])){
-	echo 'E: no argument';
+	exit('E: No argument, argv[1] is expcted to contain event id');
 }
 $dow = array('M', 'T', 'W', 'R', 'F', 'S', 'U');
 
@@ -48,15 +48,28 @@ if (!$rules){
 }
 $rules_ids = '';
 
+#clean up old (>1hr) notificationsSent records
+$tmp = data::query('DELETE FROM notificationsSent WHERE time < '.(time()-3600), true);
+
 #now get users who should get notified, and get the list of rules involved
 $users = array();
 
 foreach($rules as $id => $rule){
-	$rules_ids[$id] = $rule['id'];
-	$tmp = trim($rule['users'], '|');
-	$tmp = explode('|', $tmp);
-	$users = array_merge($users, $tmp);
+	$emails_sent = data::query("SELECT count(*) as n FROM notificationsSent WHERE rule_id={$rule['id']}");
+	if ($emails_sent[0]['n']<$rule['nlimit'] || $rule['nlimit']==0){ #if we are below limit(or unlim), use the rule, check next
+		$rules_ids[$id] = $rule['id'];
+		$tmp = trim($rule['users'], '|');
+		$tmp = explode('|', $tmp);
+		$users = array_merge($users, $tmp);
+		$tmp = data::query("INSERT INTO notificationsSent VALUES({$rule['id']}, ".time().")", true);
+	}
 }
+
+if (empty($rules_ids)){
+	exit('I: All applicable rules exhausted limit');
+}
+
+
 #get rid of user duplicates, if rules are overlapping
 $users = array_unique($users);
 
@@ -65,19 +78,13 @@ $emails = array();
 
 foreach($users as $id => $user){
 	$user = data::getObject('Users', 'id', $user);
-	$es = explode('|', $user[0]['email']);
-	$tmp = array();
-	foreach($es as $id => $e){
-		$tmp[$id] = explode(':', $e);
-		$tmp[$id] = $tmp[$id][0];
-	}
+	$tmp = explode('|', $user[0]['email']);
 	$emails = array_merge($emails, $tmp);
 }
 $emails = array_unique($emails);
 
 #get device details -- only name is currently used
 $device = data::getObject('Devices', 'id', $event[0]['device_id']);
-
 
 #PEAR::Mail mailer
 
@@ -124,10 +131,35 @@ $mime->setHTMLBody($html);
 $mime->addHTMLImage($path_to_image, "image/jpeg", "image.jpg", true, "camimage"); 
 $headers = $mime->headers($headers);
 $body = $mime->get();
-$mail = Mail::factory("mail");
-foreach($emails as $email){
-		$mail->send($email, $headers, $body); 
+switch($global_settings->data['G_SMTP_SERVICE']){
+	case 'default': #use MTA
+		$mail = Mail::factory('mail');
+	break;
+	case 'smtp': #user user supplied SMTP config
+		$smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? '' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
+		$smtp_params['port'] = $global_settings->data['G_SMTP_PORT'];
+		$smtp_params['username'] = $global_settings->data['G_SMTP_USERNAME'];
+		$smtp_params['password'] = $global_settings->data['G_SMTP_PASSWORD'];
+		$smtp_params['auth'] = true;
+		$mail = Mail::factory('smtp', $smtp_params);
+		if ($global_settings->data['G_SMTP_SSL'] == 'tls') {
+			$mail->SMTPSecure = "ssl";
+		};
+	break;
 }
 
-exit();
+$error = null;
+foreach($emails as $email){
+		$re = $mail->send($email, $headers, $body); 
+		if ($re !== TRUE)
+			$error = $re;
+}
+
+if (PEAR::isError($error)) {
+	$tmp = data::query("UPDATE GlobalSettings set value='{$error->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
+	exit("E: ".$error->getMessage());
+} else {
+	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
+	exit('OK');
+}
 ?>

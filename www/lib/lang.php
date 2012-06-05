@@ -74,6 +74,28 @@ define('G_DISABLE_IP_C_CHECK_EX', 'May improve web UI performance');
 define('G_DISABLE_WEB_STATS', 'Disable Stats display in the web UI');
 define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 
+define('G_SMTP_TITLE', 'SMTP server configuration');
+define('G_PERF_TITLE', 'Performance/connectivity');
+
+#mail
+define('G_SMTP_SERVICE', 'Mailing service');
+define('G_SMTP_USERNAME', 'Username');
+define('G_SMTP_PASSWORD', 'Password');
+define('G_SMTP_HOST', 'SMTP host');
+define('G_SMTP_PORT', 'SMTP port');
+define('G_SMTP_SSL', 'SSL');
+define('G_SMTP_SERVICE_EX', '');
+define('G_SMTP_USERNAME_EX', '');
+define('G_SMTP_PASSWORD_EX', '');
+define('G_SMTP_HOST_EX', 'e.g smtp.googlemail.com');
+define('G_SMTP_PORT_EX', '');
+define('G_SMTP_SSL_EX', '');
+define('G_SMTP_FAILED', 'Unable to send mail with this configuration.');
+
+define('G_SMTP_DEF_MTA', 'System default MTA');
+define('G_SMTP_SMTP', 'User configured SMTP');
+
+
 #users page
 define('EDIT_ACCESS_LIST', 'Camera access permissions');
 define('USERS_ALL_TABLE_HEADER', 'DVR Users');
@@ -114,8 +136,8 @@ define('USERS_ACCESS_WEB', 'Web access');
 define('USERS_ACCESS_WEB_EX', 'viewer web access');
 define('USERS_ACCESS_BACKUP', 'Backup access');
 define('USERS_ACCESS_BACKUP_EX', 'recorded videos');
-define('USERS_EMAIL', 'Email');
-define('USERS_EMAIL_EX', 'number of emails per hour');
+define('USERS_EMAIL', 'Emails');
+define('USERS_EMAIL_EX', 'for email notifications');
 define('EMAIL_LIMIT', 'Limit');
 define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
@@ -434,6 +456,7 @@ define('NTF_HEADER', 'Email notifications');
 define('NTF_EXISTING', 'Current rules');
 define('NTF_SUBHEADER', 'set up email notification rules');
 define('NTF_ADD_RULE', 'Add a rule');
+define('NTF_EDIT_RULE', 'Save changes');
 define('NTF_ADD_RULE_TITLE', 'Add a new rule for notifications');
 define('NTF_ADD_RULE_DATETIME', 'Select days and time for notifications');
 define('NTF_DAY', 'Day of the week');
@@ -441,6 +464,8 @@ define('NTF_START_TIME', 'Start time');
 define('NTF_END_TIME', 'End time');
 define('NTF_CAMERAS', 'choose cameras');
 define('NTF_USERS', 'users to notify');
+define('NTF_LIMIT', 'Maximum notification limit');
+define('NTF_LIMIT_LABEL', 'Limit of emails sent in the per hour [0 for unlimited]');
 define('NTF_NO_RULES', 'There are currently no notification rules');
 define('NTF_EXISTING_RULES', 'Notification rules currently in place');
 
@@ -454,6 +479,7 @@ define('NTF_T_TO', 'Send email to');
 define('NTF_T_DOW', 'on days');
 define('NTF_T_TIME', 'between hours');
 define('NTD_T_CAMS', 'for events on');
+define('NTD_T_LIM', 'emails per hour');
 
 
 define('DW_M', 'Monday');
@@ -474,6 +500,8 @@ define('VIVOTEC_SETRAMING_SET', 'Your Vivotec camera has been automatically conf
 define('VIVOTEC_SETRAMING_N_SET', 'Your Vivotec camera could not be automatically configured to use MJPEG codec on the second encoder. Please do so manually.');
 
 define('L_DELETE', 'delete');
+define('L_EDIT', 'edit');
+define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
 
 ?>
