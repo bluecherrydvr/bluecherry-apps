@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -16,7 +17,11 @@
 #include <string>
 #include <bsd/string.h>
 
+#ifndef BC_KEY_STANDALONE
 #include <libbluecherry.h>
+#endif
+
+int bc_license_machine_id(char *out, int out_sz);
 
 static unsigned short const crc16_table[256] = {
 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
@@ -309,6 +314,7 @@ end:
 	return re;
 }
 
+#ifndef BC_KEY_STANDALONE
 int bc_read_licenses(std::vector<bc_license> &licenses)
 {
 	std::set<std::string> existingset, newset;
@@ -364,4 +370,5 @@ int bc_read_licenses(std::vector<bc_license> &licenses)
 	}
 	return licenses.size(); 
 }
+#endif
 

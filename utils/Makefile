@@ -13,6 +13,9 @@ all: $(TARGETS)
 getaudio: $(GET_AUDIO_OBJS)
 	$(LD) -o $@ $(GET_AUDIO_OBJS) $(LDFLAGS) -lasound
 
+bc-license: bc-license.o
+	$(CXX) -o $@ bc-license.o
+
 $(topdir)/server/g723-dec.o: $(topdir)/server/g723-dec.c $(topdir)/server/g723-dec.h
 	$(MAKE) -C $(topdir)/server g723-dec.o
 

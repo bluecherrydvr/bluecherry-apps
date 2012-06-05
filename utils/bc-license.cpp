@@ -2,6 +2,7 @@
 
 // From lib/
 #define GENERATE_LICENSES 1
+#define BC_KEY_STANDALONE 1
 #include "bc-key.cpp"
 
 extern char *__progname;
