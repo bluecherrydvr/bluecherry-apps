@@ -766,6 +766,7 @@ int main(int argc, char **argv)
 	}
 
 	signal(SIGPIPE, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
 	/* XXX This is not suitable for much of anything, really. */
 	srand((unsigned)(getpid() * time(NULL)));
 
