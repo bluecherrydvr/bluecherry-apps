@@ -9,14 +9,6 @@ $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('admin');
 #/auth check
 
-/**********************************************/
-
-function bc_license_machine_id(){ return 'ABCD-1234'; };
-function bc_license_check($key){ return 16; };
-function bc_license_check_auth($key, $auth){ return true; };
-function bc_license_devices_allowed(){ return 16; };
-
-/**********************************************/
 
 
 $licenses = data::getObject('Licenses');
