@@ -7,7 +7,7 @@
  */
 
 #db
-define('VAR_CONF_PATH', "/etc/bluecherry.conf");
+define('VAR_CONF_PATH', '/etc/bluecherry.conf');
 
 define('VAR_ROOT_PATH', '/');
 
@@ -30,11 +30,10 @@ define('VAR_PATH_TO_IPCAMLIST_IPCAM', 'http://versioncheck.bluecherrydvr.com/ipc
 define('VAR_PATH_TO_IPCAMLIST_DRIVER', 'http://versioncheck.bluecherrydvr.com/ipcamdriver.csv');
 
 define('VAR_TARRED_LOGS_TMP_LOCATION', '/tmp/bc-logs.tar'); #before logs are downloaded they will be compressed to this file
+define('VAR_MYSQLDUMP_TMP_LOCATION', '/tmp/bluecherry-backup.tgz');
 
 define('VAR_PATH_TO_IPCAMLIST_UPDATE', 'http://versioncheck.bluecherrydvr.com/ipcamlistupdate.php');
 define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
-
-define('DB_WRITABLE', '/var/run/bluecherry/db-writable');
 
 define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 #local card props
