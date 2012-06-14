@@ -690,18 +690,18 @@ static int check_expire(void)
 {
 	char date[128];
 	time_t t = time(NULL);
-	time_t expire = 1339718400; /* June 15, 2012 */
+	time_t expire = 1341360000; /* July 3rd, 2012 (8pm EDT) */
 	struct tm exp;
 
 	localtime_r(&expire, &exp);
 	strftime(date, sizeof(date), "%A, %B %d %Y at %X", &exp);
 
 	if (t >= expire) {
-		bc_status_component_error("This Bluecherry beta version expired on %s. You must upgrade "
+		bc_status_component_error("This Bluecherry RC version expired on %s. You must upgrade "
 		                          "to the latest version to continue recording.", date);
 		return -1;
 	} else if (expire - t < 172800) {
-		bc_status_component_error("This Bluecherry beta version expires on %s. You should "
+		bc_status_component_error("This Bluecherry RC version expires on %s. You should "
 		                          "upgrade to the latest version to prevent any recording "
 		                          "interruptions.", date);
 	}

@@ -1,3 +1,16 @@
+bluecherry (1:2.0.0-0rc1) lucid; urgency=low
+
+
+  * Bug #1115: Event emails aren't interpreted as HTML
+  * Bug #1116: php-mail dependency causes installation failure on Ubuntu Server
+  * Bug #1117: web: mailer use of arbitrary from address may be rejected by some services
+  * Bug #1120: Event notification causes zombie PHP processes
+  * Feature #788: server: Handle License keys from the database and limit cameras per
+  * Feature #789: web: Page to handle adding/removing/verifying license keys
+  * Feature #1119: Packages for Debian systems with sysvinit
+
+ -- John Brooks <john.brooks@bluecherry.net>  Thu, 14 Jun 2012 17:07:07 -0400
+
 bluecherry (1:2.0.0-0beta9.7.2) lucid; urgency=low
 
   * Bug #1108: Limit amount of emails per hour
