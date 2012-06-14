@@ -46,6 +46,8 @@ time_t last_known_running;
 
 extern char *__progname;
 
+/* Prerelease */
+#define DONT_ENFORCE_LICENSING 1
 static std::vector<bc_license> licenses;
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
@@ -518,7 +520,7 @@ static int bc_check_db(void)
 			continue;
 
 		/* Maximum threads, used for licensing control */
-		if (max_threads >= 0 && cur_threads >= max_threads) {
+		if (!DONT_ENFORCE_LICENSING && max_threads >= 0 && cur_threads >= max_threads) {
 			bc_status_component_error("Device disabled due to licensing restrictions");
 			re |= -1;
 			continue;
