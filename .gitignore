@@ -17,6 +17,7 @@ debian/bluecherry.postrm.debhelper
 debian/bluecherry.preinst.debhelper
 debian/bluecherry.prerm.debhelper
 debian/bluecherry.substvars
+debian/bluecherry.upstart
 debian/bluecherry/
 debian/bluecherry-dbg*
 debian/files
