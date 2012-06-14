@@ -177,7 +177,10 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #menuButtons .liveView		  { background-image:url("/img/icons/liveview.png"); }
 #menuButtons .activeUsers	  { background-image:url("/img/icons/activeusers.png"); }
 #menuButtons .notifications	  { background-image:url("/img/icons/notifications.png"); }
+#menuButtons .backup		  { background-image:url("/img/icons/backup.png"); }
+#menuButtons .licensing		  { background-image:url("/img/icons/licensing.png"); }
 #menuButtons .downloadClient  { background-image:url("/img/icons/client.png"); font-size:14px; line-height:27px; vertical-align:middle; }
+
 
 
 /*message div*/
@@ -370,6 +373,11 @@ second
 	border:1px solid #bbb;
 	border-radius:2px;
 }
+.container-separator .title.main {
+	font-size:1.2em;
+	top:-13px;
+}
+
 .container-separator#rule-date-time, .container-separator#cameras-list, .container-separator#users-list {
 	background:#fff;
 	border-style:dashed;
@@ -558,8 +566,7 @@ second
 
 
 #notifications #button.add-rule-button { 
-	float:right; 
-	
+	float:right;
 	border:1px solid #595; 
 	background-color: #efe; 
 	background-image:url("/img/icons/add_rule.png");
@@ -569,6 +576,76 @@ second
 	cursor:pointer;
 }
 
+/*database backlup and restore*/
+
+#backup-container .container-separator, #restore-container .container-separator {
+	background-color:#f2f2fa !important;
+	border-style:dashed;
+}
+#restore-container {
+	margin-top:30px !important;
+	background-color:#fafffa !important;
+}
+#backup-container {
+	background-color:#fafaff !important;
+}
+#backup-container input#backup-form-submt, #restore-container input#restore-form-submt {
+	margin:10px;
+	padding:5px;
+}
+
+/*xhrMessage classes, supercede ajaxMessage and message classes*/
+.infoMessage {
+	position:relative;
+	padding-left:40px !important; 
+	width:535px;
+	margin:5px;
+	background-position:5px center; background-repeat: no-repeat;
+	padding:10px;
+}
+.infoMessage.working {
+	border:1px solid #66b;
+	background-color:#ccf;
+	line-height:25px;
+	vertical-align:middle;
+	background-image:url('/img/loading-progress.gif');
+}
+.infoMessage.INFO {
+	border:1px dashed #990; 
+	background-image:url("/img/icons/excl.png"); 
+	background-color:#ffc;
+}
+.infoMessage.OK {
+	border:1px dashed #393; 
+	background-image:url("/img/icons/check.png");
+	background-color:#efe;
+}
+.infoMessage.warn, .infoMessage.F {
+	border:1px dashed #933; 
+	background-image:url("/img/icons/cross.png"); 
+	background-color:#fee; 	
+}
+/*END xhrMessage*/
+
+
+/*licensing*/
+.add-license-container input {
+	margin-top:10px;
+}
+.add-license-container #machine-id {
+	font-weight:bold;
+}
+
+.container-separator .license {
+	width:100%;
+	margin-top:20px;
+	border-collapse:collapse;
+}
+
+.container-separator .license td {
+	border:1px solid #aaa;
+	
+}
 
 /*HELP*/
 #openHelp {

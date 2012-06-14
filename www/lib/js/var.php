@@ -17,6 +17,10 @@ var_del_ipp_conf = '".IPP_DELETE."'
 var_rm_client_download = '".RM_CLIENT_DOWNLOAD."'
 var_check_connectivity = '".((!globalSettings::getParameter('G_DISABLE_IP_C_CHECK')) ? '1': '0')."';
 var_loading = '".U_LOADING."';
+var_backup = '".U_BACKUP."';
+var_backup_conf = '".BACKUP_R_CONF."';
+var_backup_warn= '".BACKUP_R_WARN."';
+
 ";
 
 

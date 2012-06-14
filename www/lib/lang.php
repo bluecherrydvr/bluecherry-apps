@@ -31,6 +31,8 @@ define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_NOTFICATIONS', 'Email notifications');
+define('MMENU_BACKUP', 'Database backup');
+define('MMENU_LICENSING', 'License keys');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -490,7 +492,44 @@ define('DW_F', 'Friday');
 define('DW_S', 'Saturday');
 define('DW_U', 'Sunday');
 
+#backup/restore
+define('BACKUP_HEADER', 'Backup and restore your database');
+define('BACKUP_R_CONF', 'Restoring your database will permanently remove all current data. We sttongly suggest performing current backup before using restore.');
+define('BACKUP_SUBHEADER', 'save a backup of the database or restore from a saved backup');
+define('BACKUP_B_TITLE', 'Backup the database');
+define('BACKUP_PWD', 'Please enter the password for the database user <b>%USERS%</b> to for the <b>%DBNAME%</b> database:');
+define('BACKUP_B_OPT', 'Additional options');
+define('BACKUP_B_OPT_NE', 'Do not backup events data');
+define('BACKUP_B_OPT_ND', 'Do not backup device(s) configuration');
+define('BACKUP_B_OPT_NU', 'Do not backup user records');
+define('BACKUP_R_TITLE', 'Restore the database');
+define('BACKUP_R_WRONG_FILETYPE', 'File is expected to be a compressed tar archive. Please upload a proper backup file.');
+define('BACKUP_R_NOINFO', 'Could not read the backup information file. This may mean that the archive is corrupted or contains invalid data. Proceeding may cause loss of data.');
+define('BACKUP_R_LABEL', 'Please choose a previously saved backup:');
+define('BACKUP_R_INFO', 'Backup files uploaded. <br /> <b>Backup date:</b> %DATE% <br /> <b>Event data:</b> %E% <br /><b>Device data:</b> %D%<br /><b>User data:</b> %U%');
+define('BACKUP_FAILED', 'Could not perform the backup. Is the database password correct?');
+define('BACKUP_R_FAILED', 'Could not restore the database. Mysql returned the following error:<br />');
+define('BACKUP_R_SUCCESS', 'The database successfully restored. Please reload the page.');
+define('U_BACKUP', 'Backup');
+define('U_RESTORE', 'Restore');
+define('U_CANCEL', 'Cancel');
+define('U_INCLUDED', 'Included');
+define('U_NOTINCLUDED', 'Not included');
+define('BACKUP_R_WARN', 'Please note that all tables in the backup will be irreversibly overwritten once restore is complete. Please enter the database password to continue.');
 
+#licensing
+define('L_ADDCODE', 'Add a license code');
+define('L_ADD', 'Add');
+define('L_PORTS', 'Ports');
+define('L_CONFIRMCODE', 'Confirm a license code');
+define('L_CONFIRMCODE_MSG', 'NOTE: Currently automatic confirmation is <b>offline</b>. And you <b>will not need a license code until the final release</b>, but you <b>can</b> obtain confirmation from Bluecherry now, if you so wish. <hr /> Could not confirm the license code automatically. Please check your internet connection and try again, or contact Bluecherry to obtain authorization code using this unique id: ');
+define('L_INVALID_LICENSE', 'The license code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
+define('L_INVALID_LICENSE_EXISTS', 'The license code you entered is already in use on this system.');
+define('L_INVALID_CONFIRMATION', 'Confirmation code you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
+define('L_LICENSE_ADDED', 'License successfully added.');
+define('L_CURRENT',  'Active license codes');
+define('L_CONFIRM', 'Confirm');
+define('L_NO_LICENSES', 'You have no active licenses');
 
 #Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');

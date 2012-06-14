@@ -125,6 +125,134 @@ DVRPageScript = new Class({
 					$('sForm').send();
 				});
 			break;
+			case 'licensing':
+				$('add-license-form').set('send', {
+					onRequest: function(){
+						if ($('conf-message')){
+							$('conf-message').dispose();
+						}
+						addMessage = new xhrMessage('working',  var_loading, 'add-message').show('add-license-container');
+						$('addition').setStyle('display', 'none');
+						$('confirn-license-code').set('value', $('license-code').get('value'));
+					},
+					onComplete: function(text, xml){
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						if (status == 'CONF'){
+							$('add-message').dispose();
+							$('machine-id').set('html', msg);
+							$('confirmation').setStyle('display', 'inline');
+						}
+						if (status == 'F') {
+							badCode = new xhrMessage('F', msg , 'add-message').show('add-license-container');
+							$('addition').setStyle('display', 'inline');
+						};
+						
+					}
+				});
+				$('add-license-submit').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('add-license-form').send();
+				});
+				$('confirmation-form').set('send', {
+					onRequest: function(){
+						confMessage = new xhrMessage('working',  var_loading, 'conf-message').show('add-license-container');
+					},
+					onComplete: function(text, xml){
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						$('conf-message').dispose();
+						if (status == 'F'){
+							confMessage = new xhrMessage('F',  msg, 'conf-message').show('add-license-container');
+						}
+						if (status == 'OK'){
+							confMessage = new xhrMessage('OK',  msg, 'conf-message').show('add-license-container');
+							$$('.license').set('value', '');
+							$('addition').setStyle('display', 'inline');
+							$('confirmation').setStyle('display', 'none');
+						}					
+					}
+				});
+				$('confirmation-submit').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('confirmation-form').send();
+				});
+				$$('.removeLicense').addEvent('click', function(){
+					var request = new Request({
+							url: 'ajax/licensing.php?mode=delete&license='+this.get('id'),
+							method: 'get',
+							onSuccess: function(){
+								window.location.reload(true);
+							}
+					}).send();
+				});
+			break;
+			case 'backup':
+				$('backup-form').set('send', {
+					onRequest:function(){
+						$('backup-form-submt').set('value', var_loading);
+					},
+					onSuccess:function(text, xml){
+						$('backup-form-submt').set('value', var_backup);
+						var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+						var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+						if (status=='OK'){
+							window.location = '/ajax/backup.php?mode=download';
+						} else {
+							var showMessage = new DVRMessage(status, msg);
+						}
+					}
+				});
+				$('backup-form-submt').addEvent('click', function(ev){
+					ev.preventDefault();
+					$('backup-form').send();
+				});
+				$('restore-file').addEvent('change', function(ev){
+					var restoreData = new FormData($('restore-form'));
+					restoreData.append("restoreDataFile", $('restore-file').files[0]);
+					var xhr = new XMLHttpRequest();
+					xhr.open('post', "/ajax/backup.php?mode=restore");
+					xhr.send(restoreData);
+					restoreMessage = new xhrMessage('working',  var_loading, 'restore-message');
+					xhr.onreadystatechange = function(){
+						if (xhr.readyState == 4 && xhr.status == 200){
+							var xml = xhr.responseXML;
+							var responseMsg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+							var responseStatus = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+							restoreMessage.change(responseMsg, responseStatus);
+							if (responseStatus == 'INFO' || responseStatus == 'OK'){
+								$('restore-pwd-container').setStyle('display', 'block');
+								$('restore-form-button-container').setStyle('display', 'inline');
+								$('restore-file-container').setStyle('display', 'none');
+								 warnMessage = new xhrMessage('warn',  var_backup_warn, 'restore-warn-message').show('restore-container');
+							}
+						}
+						if (xhr.readyState == 3){
+							restoreMessage.show('restore-container');
+						}
+					}
+				});
+				$('restore-form-submt').addEvent('click', function(ev){
+					ev.preventDefault();
+					restoreMessage = new xhrMessage('working',  var_loading, 'restore-message')
+					$('restore-form').set('send', {
+						url: '/ajax/backup.php?mode=confirmRestore',
+						onRequest: function(){
+							if ($('restore-warn-message')){
+								$('restore-warn-message').dispose();
+								$('restore-message').dispose();
+							};
+							restoreMessage.show('restore-container');
+						},
+						onComplete: function(text, xml){
+							var responseMsg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+							var responseStatus = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+							restoreMessage.change(responseMsg, responseStatus);
+						}
+					}).send();
+				});
+
+			break;
 			//userspage
 			case 'users':
 				$$('#user-table tr').each(function(el){
@@ -744,9 +872,13 @@ ajaxUpdateField = function(mode, type, values, id, page, data){
 }
 
 Element.implement({
-	fadeAndDestroy: function(duration) {
-		var el = this;
-		this.set('tween', { duration: duration }).fade('out').get('tween').chain(function() { el.dispose(); });
+	fadeAndDestroy: function(duration, delay) {
+		var execute = function(){
+				var el = this;
+				el.set('tween', { duration: duration }).fade('out').get('tween').chain(function() { el.dispose(); });
+		}
+		delay = delay || 0;
+		execute.delay(delay, this);
 	},
 	deleteUserButton : function(){
 		this.buttonAnimate('#edd');
@@ -1107,3 +1239,35 @@ getInfo = function(t, m, x, containerId, s){
 						}
 					}).send();
 }
+
+var xhrMessage = new Class({ //supercedes dvrMessage class
+	initialize: function(type, message, id){
+		//dvrMessage compliance
+		if (type == 'F') { type = 'warn'; }
+		self = this;
+		msg = new Element('div', {'html': message, 'class': 'infoMessage '+type, 'id': id});
+	},
+	show: function(target, allowDuplicate, selfDestructDelay){
+		if(!allowDuplicate && $(msg.get('id'))){
+			$(msg.get('id')).dispose(); //if we do not allow duplicates, delete older message first
+		}
+		msg.inject(target, 'top');
+		if (selfDestructDelay){
+			self.selfDestruct(selfDestructDelay);
+		}
+		
+	},
+	change: function(message, type){
+		//dvrMessage compliance
+		if (type == 'F') { type = 'warn'; }
+		if (type){
+			msg.set('class', 'infoMessage '+type);
+		}
+		if (message){
+			msg.set('html', message);
+		}
+	},
+	selfDestruct: function(delay){
+		msg.fadeAndDestroy('1000', delay);
+	}
+});
