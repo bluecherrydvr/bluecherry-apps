@@ -550,4 +550,7 @@ define('L_EDIT', 'edit');
 define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
 
+
+define('BETA_LICENSE_WARNING', 'This server currently has no active license keys. <hr /> Please note that as we are preparing for the release, you can now enter your license keys. <br /><br /> If you have pre-ordered the software during the beta, you will receive an email with a key soon. <br /><br /> If you have not pre-ordered the software yet, now is your chance to use the beta tester discount, please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
+
 ?>
