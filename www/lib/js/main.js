@@ -126,6 +126,21 @@ DVRPageScript = new Class({
 				});
 			break;
 			case 'licensing':
+				var initLicenseList = function(){
+					$$('.removeLicense').addEvent('click', function(){
+						var self = this;
+						var sureDelete = confirm(var_confirm_remove_license);
+						if (sureDelete)
+						var request = new Request({
+								url: 'ajax/licensing.php?mode=delete&license='+this.get('id'),
+								method: 'get',
+								onSuccess: function(){
+									self.getParent().getParent().dispose();
+								}
+						}).send();
+					});
+				};
+				dynamicLoadElement('/ajax/licensing.php', 'mode=list', 'licenses-container', initLicenseList);
 				$('add-license-form').set('send', {
 					onRequest: function(){
 						if ($('conf-message')){
@@ -147,6 +162,12 @@ DVRPageScript = new Class({
 							badCode = new xhrMessage('F', msg , 'add-message').show('add-license-container');
 							$('addition').setStyle('display', 'inline');
 						};
+						if (status == 'OK') {
+							badCode = new xhrMessage('OK', msg , 'add-message').show('add-license-container');
+							$('addition').setStyle('display', 'inline');
+							dynamicLoadElement('/ajax/licensing.php', 'mode=list', 'licenses-container', initLicenseList);
+							$$('.license').set('value', '');
+						}
 						
 					}
 				});
@@ -170,6 +191,7 @@ DVRPageScript = new Class({
 							$$('.license').set('value', '');
 							$('addition').setStyle('display', 'inline');
 							$('confirmation').setStyle('display', 'none');
+							dynamicLoadElement('/ajax/licensing.php', 'mode=list', 'licenses-container', initLicenseList);
 						}					
 					}
 				});
@@ -177,17 +199,16 @@ DVRPageScript = new Class({
 					ev.preventDefault();
 					$('confirmation-form').send();
 				});
-				$$('.removeLicense').addEvent('click', function(){
-					var request = new Request({
-							url: 'ajax/licensing.php?mode=delete&license='+this.get('id'),
-							method: 'get',
-							onSuccess: function(){
-								window.location.reload(true);
-							}
-					}).send();
-				});
 			break;
 			case 'backup':
+				$('no-devices').addEvent('change', function(){
+					if (this.get('checked')) {
+						$('no-events').set('checked', true);
+						$('no-events').set('disabled', true);
+					} else {
+						$('no-events').set('disabled', false);
+					}
+				});
 				$('backup-form').set('send', {
 					onRequest:function(){
 						$('backup-form-submt').set('value', var_loading);
@@ -1271,3 +1292,19 @@ var xhrMessage = new Class({ //supercedes dvrMessage class
 		msg.fadeAndDestroy('1000', delay);
 	}
 });
+
+var dynamicLoadElement = function(url, data, target, action){
+	var target = $(target);
+	var request = new Request({
+				url: url,
+				data: data,
+				method: 'get',
+				onRequest: function(){
+					target.set('html', var_loading);
+				},
+				onSuccess: function(html){
+					target.set('html', html);
+					if (action) action();
+				}
+	}).send();	
+}

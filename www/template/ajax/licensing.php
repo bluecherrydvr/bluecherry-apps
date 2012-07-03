@@ -2,6 +2,24 @@
 #template common functions
 require('../template/template.lib.php');
 
+$mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
+
+if ($mode=='list'){
+	?>
+	
+	<div class='title main'><?php echo L_CURRENT;?></div>
+	<?php
+		if (empty($licenses)){
+			echo "<div class='infoMessage INFO'>".L_NO_LICENSES."</div>";
+		} else {
+			echo '<table class="license"><tr><th>License code</th><th>Type</th><th></th></tr>';
+			foreach($licenses as $license){
+				echo "<tr><td>{$license['license']}</td><td>".bc_license_check($license['license'])." ".L_PORTS."</td><td><div class='delete-button removeLicense' id='{$license['license']}'>".L_DELETE."</div></td></tr>";
+			}
+			echo '</table>';
+		}
+		exit();
+}
 ?>
 
 <div class='container-separator add-license-container' id='add-license-container'>
@@ -22,17 +40,5 @@ require('../template/template.lib.php');
 		</form>
 	</span>
 </div>
-<div class='container-separator'>
-	<div class='title main'><?php echo L_CURRENT;?></div>
-	<?php
-		if (empty($licenses)){
-			echo L_NO_LICENSES;
-		} else {
-			echo '<table class="license"><tr><th>License code</th><th>Type</th><th></th></tr>';
-			foreach($licenses as $license){
-				echo "<tr><td>{$license['license']}</td><td>".bc_license_check($license['license'])." ".L_PORTS."</td><td>[<a href='#' class='removeLicense' id='{$license['license']}'>x</a>]</td></tr>";
-			}
-			echo '</table>';
-		}
-	?>
+<div class='container-separator' id='licenses-container'>
 </div>

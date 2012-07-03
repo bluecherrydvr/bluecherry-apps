@@ -14,7 +14,9 @@ $database_parameters['usr'] = explode('@', $database_parameters['usr']);
 if (!empty($_GET['mode'])){
 	switch($_GET['mode']){
 		case 'prepare':
-			shell_exec("mysqldump -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} --ignore-table=\"".((!empty($_POST['noevents'])) ? $database_parameters['db'].'.EventsCam' : '').' '.((!empty($_POST['nousers'])) ? $database_parameters['db'].'.Users' : '').' '.((!empty($_POST['nodevices'])) ? $database_parameters['db'].'.Devices' : '')."\"> /tmp/bcbackup.sql");	
+			$_POST['noevents'] = (!empty($_POST['nodevices'])) ? 'on' : $_POST['noevents']; #make sure that events are not backed up if the devices are not
+			$ignore_tables = ((!empty($_POST['noevents'])) || (!empty($_POST['nodevices'])) || (!empty($_POST['nodevices']))) ? "--ignore-table=\"".((!empty($_POST['noevents'])) ? $database_parameters['db'].'.EventsCam' : '').' '.((!empty($_POST['nousers'])) ? $database_parameters['db'].'.Users' : '').' '.((!empty($_POST['nodevices'])) ? $database_parameters['db'].'.Devices' : '')."\"" : "";
+			shell_exec("mysqldump -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");	
 			if (filesize("/tmp/bcbackup.sql")==0){
 				data::responseXml(false, BACKUP_FAILED);
 			} else {

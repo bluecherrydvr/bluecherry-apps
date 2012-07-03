@@ -97,12 +97,14 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	width:80px;
 	float:right; 
 }
-.notification-control-buttons div {
+.notification-control-buttons div, .license div {
 	margin-bottom:10px; display:block; width:100px; padding-left:30px; line-height:25px; height:25px; background-repeat: no-repeat; background-position:5px;  border-radius: 5px;
 	width:50px;
 	margin-left:5px;
 	cursor:pointer;
-	
+}
+.license div {
+	margin:3px 0 3px 10px;
 }
 .delete-button {
 
@@ -640,10 +642,11 @@ second
 	width:100%;
 	margin-top:20px;
 	border-collapse:collapse;
+	border:1px solid #aaa;
 }
 
 .container-separator .license td {
-	border:1px solid #aaa;
+	border:1px dotted #aaa;
 	
 }
 

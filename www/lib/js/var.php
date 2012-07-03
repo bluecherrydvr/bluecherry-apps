@@ -20,7 +20,7 @@ var_loading = '".U_LOADING."';
 var_backup = '".U_BACKUP."';
 var_backup_conf = '".BACKUP_R_CONF."';
 var_backup_warn= '".BACKUP_R_WARN."';
-
+var_confirm_remove_license = '".L_CONFIRM_DELETE."';
 ";
 
 

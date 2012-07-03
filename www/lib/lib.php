@@ -484,7 +484,7 @@ class ipCamera{
 		return array($result, $message);
 	}
 	public static function remove($id){
-		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
+		return data::query("UPDATE Devices SET disabled='2' WHERE id='{$id}'", true);
 	}
 	public function changeState(){
 		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
