@@ -30,7 +30,7 @@ class devices{
 			}
 	}
 	private function getIpCameras(){
-		$info = data::query("SELECT * FROM Devices WHERE protocol='IP' AND disabled <> 2");
+		$info = data::query("SELECT * FROM Devices WHERE protocol='IP'");
 		foreach ($info as $key => $device) {
 			$options = (!empty($_GET['XML'])) ? array('no_c_check' => true) : false;
 			$this->ipCameras[$key] = new ipCamera($device['id'], $options);

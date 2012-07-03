@@ -49,7 +49,7 @@
 				<li id="notifications" class="notifications"><? echo MMENU_NOTFICATIONS; ?></li>
 				<hr>
 				<li id="statistics" class="eventStatistics"><? echo MMENU_STATISTICS; ?></li>
-				<li id="backup" class="backup"><? echo MMENU_BACKUP; ?></li>
+				<!--<li id="backup" class="backup"><? echo MMENU_BACKUP; ?></li>!-->
 				<li id="log" class="viewLog"><? echo MMENU_LOG; ?></li>
 				<li id="licensing" class="licensing"><? echo MMENU_LICENSING; ?></li>
 			</ul>
