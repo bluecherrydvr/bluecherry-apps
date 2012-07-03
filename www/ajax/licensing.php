@@ -34,6 +34,7 @@ if ($_GET['mode'] == 'add'){
 		data::responseXml('F', constant('L_AUTO_RESP_'.$confirmation));
 		exit();
 	} else {
+		$confirmation = preg_replace('/([^0-9a-zA-Z\-])/', '', $confirmation);
 		$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$confirmation}', UNIX_TIMESTAMP())", true);
 		if ($result){
 			data::responseXml(true, L_LICENSE_ADDED);
