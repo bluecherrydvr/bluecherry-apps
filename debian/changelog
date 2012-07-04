@@ -1,5 +1,10 @@
-bluecherry (1:2.0.0-0rc1) lucid; urgency=low
+bluecherry (1:2.0.0-0rc2) lucid; urgency=low
 
+  * Licensing and activation
+
+ -- John Brooks <john.brooks@bluecherry.net>  Tue, 03 Jul 2012 20:32:00 -0400
+
+bluecherry (1:2.0.0-0rc1) lucid; urgency=low
 
   * Bug #1115: Event emails aren't interpreted as HTML
   * Bug #1116: php-mail dependency causes installation failure on Ubuntu Server

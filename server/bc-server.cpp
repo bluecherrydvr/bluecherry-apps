@@ -690,7 +690,7 @@ static int check_expire(void)
 {
 	char date[128];
 	time_t t = time(NULL);
-	time_t expire = 1341360000; /* July 3rd, 2012 (8pm EDT) */
+	time_t expire = 1343512800; /* July 28th, 2012 (6pm EDT) */
 	struct tm exp;
 
 	localtime_r(&expire, &exp);
