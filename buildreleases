@@ -1,0 +1,38 @@
+#!/usr/bin/make -f
+PACKAGE = bluecherry
+VERSION = 2.0.0-0beta7.2
+
+DIST =	lucid \
+	maverick \
+	natty
+
+ARCH = i386 amd64
+
+O = ../releases
+
+#### Magic suff from here ####
+
+RELEASES :=
+
+.PHONY: all release-all
+all: release-all
+
+##
+## GEN_REL_TARGET dist arch
+##
+define GEN_REL_TARGET
+RELEASES += release-$(1)_$(2)
+.PHONY: release-$(1)_$(2)
+release-$(2)_$(1):
+	mkdir -p $O/$(1)
+	schroot -c $(1)_$(2) -u root fakeroot debian/rules clean
+	schroot -c $(1)_$(2) -u root fakeroot debian/rules binary
+	mv ../$(PACKAGE)_$(VERSION)_$(2).deb $O/$(1)
+
+endef
+
+$(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
+$(call GEN_REL_TARGET,$(dist),$(arch)))))
+
+release-all: $(RELEASES)
+	md5sum $O/*/* >> $O/md5sum.txt
