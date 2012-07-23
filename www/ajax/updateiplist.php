@@ -5,7 +5,7 @@
 include("../lib/lib.php");  #common functions	
 
 function updateCamList($versions){
-	$file = array('ipCameras' => VAR_PATH_TO_IPCAMLIST_IPCAM, 'ipCameraDriver' => VAR_PATH_TO_IPCAMLIST_DRIVER);
+	$file = array('ipCameras' => VAR_PATH_TO_IPCAMLIST_IPCAM, 'ipCameraDriver' => VAR_PATH_TO_IPCAMLIST_DRIVER, 'ipPtzCommandPresets' => VAR_PATH_TO_IPCAMLIST_PTZ);
 	data::query('BEGIN', true);
 	foreach ($file as $table => $v){
 		$file[$table] = @fopen($v, 'r');
@@ -25,7 +25,8 @@ function updateCamList($versions){
 			$query .= '), ';
 		}
 		$query = trim($query, ' ,');
-		if (!data::query('TRUNCATE TABLE '.$table, true) || !data::query($query, true)) { data::query('ROLLBACK', true); return array(false, AIP_NEW_LIST_MYSQL_E); } else { unset($query); }
+		$truncate = ($table == 'ipPtzCommandPresets') ? data::query('DELETE FROM ipPtzCommandPresets WHERE custom = 0') : data::query('TRUNCATE TABLE '.$table, true);
+		if (!$truncate || !data::query($query, true)) { data::query('ROLLBACK', true); return array(false, AIP_NEW_LIST_MYSQL_E); } else { unset($query); }
 		fclose($file[$table]);
 	}
 	

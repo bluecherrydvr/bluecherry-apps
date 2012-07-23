@@ -41,6 +41,8 @@ $query = ("SELECT * FROM notificationSchedules
 		OR 
 		(s_hr < {$p['hour']} AND e_hr > {$p['hour']})
 	)
+	AND
+		disabled = 0
 ");
 $rules = data::query($query);
 if (!$rules){

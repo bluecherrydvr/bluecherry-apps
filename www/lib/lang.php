@@ -58,7 +58,7 @@ define('CLEAR_ALL', 'Clear all');
 define('CHANGES_OK', 'Changes successfully saved');
 define('CHANGES_FAIL', 'Could not apply changes at this time, please try later.');
 
-define('ENABLE_DEVICE_NOTENOUGHCAP', '<![CDATA[<b>Card does not have sufficient capacity to accomodate this device. <br/></b>Please reduce Resolution/Framerate of other deivces on this card.]]>');
+define('ENABLE_DEVICE_NOTENOUGHCAP', '<b>Card does not have sufficient capacity to accomodate this device. <br/></b>Please reduce Resolution/Framerate of other deivces on this card.');
 define('NEW_DEV_NEFPS', 'The device was configured using generic configuration, but there is insufficient card capacity to enable it. Please reduce framerate/resolution of other devices and try again.');
 
 #general settings
@@ -273,7 +273,7 @@ define('NO_CONNECTION', 'Cound not connect to the server.<br /><br />Please make
 define('ACTIVE_USERS_HEADER', 'Connected users');
 define('ACTIVE_USERS_SUBHEADER', 'Users currently using this DVR server');
 define('AU_IP', 'IP address');
-define('AU_KICK', 'Kick (IP)');
+define('AU_KICK', 'End session (bans user for 5 minutes)');
 define('AU_BAN', 'Ban user');
 define('AU_CANT_EOS', 'You can not terminate your own session.');
 define('AU_KICKED', 'User session terminated');
@@ -315,6 +315,9 @@ define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
 define('AIP_RTSPPATH', 'Please enter path to RTSP');
 define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
+
+#ip cam lib
+define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');
 
 define('IPCAM_MODEL', 'Camera model');
 define('IPCAM_DEBUG_LEVEL', 'Turn camera debugging on:');
@@ -549,8 +552,9 @@ define('L_DELETE', 'delete');
 define('L_EDIT', 'edit');
 define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
+define('L_ENABLE', 'enable');
+define('L_DISABLE', 'disable');
 
-
-define('BETA_LICENSE_WARNING', 'This server has no active license keys. <hr /> While we prepare for the version 2 release, you can setup your license key for a smooth update. <br /><br /> If you have pre-ordered, you will receive an email with a key soon. Otherwise, please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license now with the beta tester discount. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
+define('BETA_LICENSE_WARNING', 'Pleae note that you are running a demo version of the Bluecherry software and it will be active for 30 days. Please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
 
 ?>

@@ -346,6 +346,8 @@ class camera {
 		data::responseXml($status);
 	}
 	public function changeResFps($type, $value){
+		$data = false;
+		$message = false;
 		if ($type == 'RES'){ $res = explode('x', $_POST['value']); $res['x'] = intval($res[0]); $res['y'] = intval($res[1]); } else {
 			$res['x'] = $this->info['resolutionX']; $res['y'] = $this->info['resolutionY']; 
 		}
@@ -362,7 +364,7 @@ class camera {
 			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='{$this->info['id']}'", true);
 			$data = $container_card->info['available_capacity']-$required_capacity;
 		}
-		return array($result, false, $data);
+		return array($result, $message, $data);
 	}
 	public function changeState(){
 		$container_card = new card($this->info['card_id']);
@@ -372,6 +374,7 @@ class camera {
 				return array($result, false);
 			break;
 			case 'disabled':
+				
 				$required_capacity = (30/$this->info['video_interval']) * (($this->info['resolutionX']>=704) ? 4 : 1);
 				if ($required_capacity > $container_card->info['available_capacity']){ #ns capacity to enable
 					return array(false, ENABLE_DEVICE_NOTENOUGHCAP);
@@ -460,6 +463,7 @@ class ipCamera{
 	}
 	protected function autoConfigure($driver, $info){ #auto configure known cameras
 		include("ipcamlib.php");
+		$result = false;
 		$control = get_ipcam_control($driver, $info);
 		if ($control) { $result = $control->auto_configure(); };
 		return $result;
@@ -468,9 +472,11 @@ class ipCamera{
 		if (!$data['ipAddr'])	{ return array(false, AIP_NEEDIP); };
 		if (!$data['port'])	{ return array(false, AIP_NEEDPORT);};
 		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
+		$data['rtsp'] = (substr($data['rtsp'][0], 0, 1) != '/') ? '/'.$data['rtsp'] : $data['rtsp'];
+		$data['mjpeg'] = (substr($data['mjpeg'][0], 0, 1) != '/') ? '/'.$data['mjpeg'] : $data['mjpeg'];
 		$data['device'] = "{$data['ipAddr']}|{$data['port']}|{$data['rtsp']}";
 		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$data['models']}'");
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['device']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
 		#for acti to proper streaming method
 		$acti_config_result = false;
 		$message = ($result) ? AIP_CAMADDED : false;

@@ -1,8 +1,9 @@
 <?php defined('INDVR') or exit(); 
 require('../template/template.lib.php');
 
+$mode = (!empty($_GET['m'])) ? $_GET['m'] : false;
 
-if ($_GET['m']=='model'){
+if ($mode=='model'){
 	if ($_GET['manufacturer'] == 'Generic'){
 		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
 		exit();
@@ -10,7 +11,7 @@ if ($_GET['m']=='model'){
 	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), ipCameras('models', $_GET['manufacturer'])), '', 'models');
 	exit;
 };
-if ($_GET['m']=='ops') {
+if ($mode=='ops') {
 	$data = ipCameras('options', $_GET['model']);
 	$data = "
 		<mjpegPath><![CDATA[{$data['mjpeg_path']}]]></mjpegPath>
@@ -31,7 +32,7 @@ if ($_GET['m']=='ops') {
 <p><?php echo AIP_SUBHEADER; ?></p>
 
 <div id="message" class="INFO"><?php echo IPCAM_WIKI_LINK; 
-	if ($new_list_available) {
+	if (!empty($new_list_available)) {
 		echo '<div id="updatelistContainer"><hr>'.AIP_NEW_LIST_AVAILABLE." <div id='updatelist'>".CLICK_HERE_TO_UPDATE."</div>.</div>";
 	};
 ?></div>
@@ -53,6 +54,7 @@ if ($_GET['m']=='ops') {
 		<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><input disabled="disabled" id="mjpeg" type="Text" name="mjpeg" /></div>
 		<div><label id="addipLabel"><?php echo AIP_PORT_MJPEG; ?></label><input disabled="disabled" id="portMjpeg" type="Text" name="portMjpeg" value="80" /></div>
 	</div>
+	<div class='bClear'></div>
 	<div><label id="addipLabel"></label><input disabled="disabled" id="saveButton" type="Submit" value="<?php echo AIP_ADD; ?>" /></div>
 	
 </div>

@@ -477,6 +477,27 @@ DVRPageScript = new Class({
 											}
 										}).send();
 									});
+									$$('.enable-button').addEvent('click', function(){
+										var self = this;
+										var request = new Request({
+											url: '/ajax/notifications.php',
+											data: 'mode=changeStatus&id='+self.get('id'),
+											method: 'get',
+											onSuccess: function(html, xml){
+												if (self.get('html') == var_enable){
+													self.set('html', var_disable);
+												} else {
+													self.set('html', var_enable);
+												}
+												var tbl = self.getParent().getParent().getChildren('#notification-data');
+												if (tbl.get('class') == 'disabled'){
+													tbl.set('class', '');
+												} else {
+													tbl.set('class', 'disabled');
+												}
+											}
+										}).send();
+									});
 								}
 							}).send();
 				}

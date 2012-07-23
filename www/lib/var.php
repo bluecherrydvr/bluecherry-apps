@@ -28,6 +28,7 @@ define('VAR_PATH_TO_INSTALLED_VERSION', '/usr/share/bluecherry/version');
 define('VAR_PATH_TO_IPCAMLIST_VERSION', 'http://versioncheck.bluecherrydvr.com/ipcamtableversion');
 define('VAR_PATH_TO_IPCAMLIST_IPCAM', 'http://versioncheck.bluecherrydvr.com/ipcam.csv');
 define('VAR_PATH_TO_IPCAMLIST_DRIVER', 'http://versioncheck.bluecherrydvr.com/ipcamdriver.csv');
+define('VAR_PATH_TO_IPCAMLIST_PTZ', 'http://versioncheck.bluecherrydvr.com/ipcamptz.csv');
 
 define('VAR_TARRED_LOGS_TMP_LOCATION', '/tmp/bc-logs.tar'); #before logs are downloaded they will be compressed to this file
 define('VAR_MYSQLDUMP_TMP_LOCATION', '/tmp/bluecherry-backup.tgz');
@@ -46,7 +47,7 @@ $GLOBALS['buffer'] = array(
 
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
 $GLOBALS['capacity'] = array(
-	'solo6010' => 480,
+	'solo6010' => 200,
 	'solo6110' => 600,
 	'solo6x10' => 480 #backward compatibility
 );

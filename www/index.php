@@ -11,11 +11,15 @@
 		$current_user = new user('id', $_SESSION['id']);
 		#check for general errors
 		$default_password_warning_dismiss = (!empty($_COOKIE['default_password_warning_dismiss'])) ? $_COOKIE['default_password_warning_dismiss'] : false;
-		if ($current_user->info['default_password'] && !$_COOKIE['default_password_warning_dismiss']) {
+		if ($current_user->info['default_password'] && !empty($_COOKIE['default_password_warning_dismiss'])) {
 			$_GLOBALS['general_error'] = array('type' => 'INFO', 'text' => WARN_DEFAULT_PASSWORD);
 		}
 		if (bc_license_devices_allowed() == 0){
 			$_GLOBALS['general_error'] = array('type' => 'INFO', 'text' => BETA_LICENSE_WARNING);
+		}
+		$status = data::getObject('ServerStatus');
+		if (!empty($status[0]['message'])) {
+			$_GLOBALS['general_error'] = array('type' => 'F', 'text' => $status[0]['message']);
 		}
 		#choose which template to display, if no setup access for current_user, display live view automatically
 		if ($current_user->info['access_setup']){

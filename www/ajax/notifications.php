@@ -23,6 +23,8 @@ function checkNotification($data){
 	return array(true, '');
 }
 
+$m = (!empty($_GET['mode'])) ? $_GET['mode'] : false;
+
 if (!empty($_POST)){
 	$result = checkNotification($_POST);
 	if ($result[0]){
@@ -30,8 +32,10 @@ if (!empty($_POST)){
 		$users = '|'.implode('|', $_POST['users']).'|';
 		$cameras = '|'.implode('|', $_POST['cameras']).'|';
 		$limit = intval($_POST['limit']);
+		var_dump_pre($_GET);
+		var_dump_pre($_POST);
 			if (empty($_GET['id'])) { #if id not set -- create new
-				$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit})";
+				$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit}, 0)";
 			} else { #if set update existing
 				$query = "UPDATE notificationSchedules SET day='{$daysoftheweek}', s_hr='{$_POST['s_hr']}', s_min='{$_POST['s_min']}', e_hr='{$_POST['e_hr']}', e_min='{$_POST['e_min']}', cameras='{$cameras}', users='{$users}', nlimit='{$limit}' WHERE id=".intval($_GET['id']);
 			}
@@ -43,11 +47,20 @@ if (!empty($_POST)){
 	exit();
 }
 
-if (!empty($_GET) && $_GET['mode']=='delete'){
+if (!empty($_GET) && ($m == 'delete' || $m == 'changeStatus')){
 	$result = false;
 	$id = intval($_GET['id']);
 	if (!empty($id)){
-		$result = data::query("DELETE FROM notificationSchedules WHERE id={$id}", true);
+		switch($m){
+			case 'delete':
+				$query = "DELETE FROM notificationSchedules WHERE id={$id}";
+			break;
+			case 'changeStatus':
+				$currentStatus = data::getObject('notificationSchedules', 'id', intval($_GET['id']));
+				$query = "UPDATE notificationSchedules SET disabled=".(($currentStatus[0]['disabled'] == 1) ? 0 : 1)." WHERE id=".intval($_GET['id']);
+			break;
+		}
+		$result = data::query($query, true);
 	};
 	data::responseXml($result);
 	exit();

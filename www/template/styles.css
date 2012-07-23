@@ -107,7 +107,6 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	margin:3px 0 3px 10px;
 }
 .delete-button {
-
 	border:1px solid #955; 
 	background-color: #fee; 
 	background-image:url("/img/icons/cross.png");
@@ -118,13 +117,24 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	background-color: #eef; 
 	background-image:url("/img/icons/menu/edit.png");
 }
+.enable-button {
+	border:1px solid #595; 
+	background-color: #efe; 
+	background-image:url("/img/icons/excl.png");
+	opacity:1;
+	z-index:99900;
+}
+
 .delete-button:hover { 
 	background-color: #eaa;
 }
 .edit-button:hover {
 	background-color: #aae;
 }
-#button.deleteShort					{ 
+.enable-button:hover {
+	background-color: #aea;
+}
+#button.deleteShort	{ 
 	width:50px; 
 	border:1px solid #955; 
 	background-color: #fee; 
@@ -405,6 +415,9 @@ second
 #existing-rules-container #existing-rule {
 	background:#f2f2fa;
 }
+#existing-rules-container #existing-rule table.disabled {
+	opacity:0.3;
+}
 #existing-rules-container #existing-rule table {
 	border-collapse:collapse;
 }
@@ -480,9 +493,9 @@ second
 #addIPCamera										{ float:right; margin-bottom:10px; display:block; margin-left:10px; font-size:1em; padding:3px 10px 3px 30px; line-height:24px; background:url("/img/icons/device.png") no-repeat; background-position:3px; border:1px solid #595; background-color: #efe; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #addipLabel							{ width:200px; }
 #settingsForm #aip									{ border:none; }
-#settingsForm #aip input							{ margin:2px 0px 0px 5px; height:17px; }
+#settingsForm #aip input							{ margin:2px 0px 0px 5px; }
 #settingsForm #aip #saveButton 						{ height:35px; width:150px; }
-#settingsForm #ipAddr, #settingsForm #ipAddrMjpeg 	{ width:150px; }
+/*#settingsForm #ipAddr, #settingsForm #ipAddrMjpeg 	{ width:150px; }*/
 #settingsForm #port	, #settingsForm #portMjpeg 		{ width:55px; }
 
 #logout 		{ 

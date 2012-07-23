@@ -2,7 +2,7 @@
 #template common functions
 require('../template/template.lib.php');
 
-if ($_GET['mode']=='list'){
+if ($m == 'list'){
 	if (!$notifications){
 		echo NTF_NO_RULES;
 	} else {
@@ -38,10 +38,11 @@ if ($_GET['mode']=='list'){
 			echo "
 				<div class='container-separator' id='existing-rule'>
 					<div class='notification-control-buttons'>
-					<div id='{$notification['id']}' class='delete-button'>".L_DELETE."</div>
-					<div id='{$notification['id']}' class='edit-button'>".L_EDIT."</div>
+						<div id='{$notification['id']}' class='delete-button'>".L_DELETE."</div>
+						<div id='{$notification['id']}' class='edit-button'>".L_EDIT."</div>
+						<div id='{$notification['id']}' class='enable-button'>".(($notification['disabled'] == true) ? L_ENABLE : L_DISABLE)."</div>
 					</div>
-					<table>
+					<table id='notification-data' class='".(($notification['disabled'] == true) ? "disabled" : "")."'>
 						<tr><td class='desc'>".NTF_T_TO.":</td><td class='cont'>{$notification['users']}</td></tr>
 						<tr><td class='desc'>".NTF_T_DOW.":</td><td class='cont'>{$notification['day']}</td></tr>
 						<tr><td class='desc'>".NTF_T_TIME.":</td><td class='cont'>{$notification['start']} - {$notification['end']}</td></tr>
@@ -54,7 +55,7 @@ if ($_GET['mode']=='list'){
 	}
 	exit();
 }
-if ($_GET['mode']=='getedit'){
+if ($m == 'getedit'){
 	$notification = $notifications[$_GET['id']];
 	$notification['day'] = str_split($notification['day']);
 	$notification['users'] = trim($notification['users'], '|');

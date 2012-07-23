@@ -29,7 +29,6 @@ class users {
 		foreach($tmp as $key => $value){
 			$value = explode(':', $value);
 			$user_data[0]['emails'][$key]['addrs'] = $value[0];
-			$user_data[0]['emails'][$key]['limit'] = $value[1];
 		}
 		return $user_data;
 	}
