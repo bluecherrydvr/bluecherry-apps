@@ -23,7 +23,7 @@ CREATE TABLE `ipPtzCommandPresets` (
   `custom` tinyint(1) NOT NULL DEFAULT '0',
   `port` varchar(5) NOT NULL DEFAULT '80',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=6 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=9999 ;
 
 INSERT INTO `ipPtzCommandPresets` (`id`, `name`, `mright`, `mleft`, `up`, `down`, `up_right`, `up_left`, `down_right`, `down_left`, `wide`, `tight`, `focus_in`, `focus_out`, `preset_save`, `preset_go`, `stop`, `needs_stop`, `http_auth`, `custom`, `port`) VALUES
 (1, 'Pixord', '/SetPTZ.cgi?Dir=Right', '/SetPTZ.cgi?Dir=Left', '/SetPTZ.cgi?Dir=Up', '/SetPTZ.cgi?Dir=Down', '', '', '', '', '/SetPTZ.cgi?Dir=ZoomOut', '/SetPTZ.cgi?Dir=ZoomIn', '/SetPTZ.cgi?Dir=FocusNear', '/SetPTZ.cgi?Dir=FocusFar', '', '', '', 0, 1, 0, '80'),
