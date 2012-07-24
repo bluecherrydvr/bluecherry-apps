@@ -35,6 +35,10 @@ case "$1" in
 
 #		reload rsyslog
 
+		if [ ! -e /var/lib/.bcins ]; then
+			date +'%s' > /var/lib/.bcins
+		fi
+
 		;;
 esac
 
