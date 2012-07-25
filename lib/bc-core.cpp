@@ -104,7 +104,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *username, *password, *val, *port = "554";
 	char *device, *path, *t;
 	char url[1024];
-	int r;
+	unsigned int r;
 
 	bc->type = BC_DEVICE_RTP;
 

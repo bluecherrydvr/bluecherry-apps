@@ -372,7 +372,7 @@ int rtsp_connection::readable()
 		return -1;
 	}
 
-	int rd = read(fd, rdbuf + rdbuf_len, sizeof(rdbuf) - rdbuf_len - 1);
+	unsigned int rd = read(fd, rdbuf + rdbuf_len, sizeof(rdbuf) - rdbuf_len - 1);
 	if (rd < 1)
 		return -1;
 
@@ -729,7 +729,7 @@ int rtsp_connection::handleSetup(rtsp_message &req)
 	rtsp_stream *stream = NULL;
 	int streamid = -1;
 	if (path.size() > 6 && path.compare(0, 6, "/live/") == 0) {
-		int sep = path.find('/', 6);
+		unsigned int sep = path.find('/', 6);
 		if (sep > 6) {
 			stream = rtsp_stream::findUri(path.substr(0, sep));
 			path = (sep+1 < path.size()) ? path.substr(sep+1) : std::string();
@@ -934,7 +934,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 	/* for /live/ URLs, we ignore everything after the first two segments
 	 * to allow streamid and other parameters */
 	if (uri.size() > 6 && uri.compare(0, 6, "/live/") == 0) {
-		int p = uri.find('/', 6);
+		unsigned int p = uri.find('/', 6);
 		if (p != std::string::npos)
 			uri.erase(p);
 	}
@@ -985,11 +985,11 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 		_activeSessionCount--;
 }
 
-void rtsp_stream::sendPackets(uint8_t *buf, int size, int flags)
+void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
 {
 	pthread_mutex_lock(&sessions_lock);
 	bool first = true;
-	for (int p = 0; p+4 <= size; ) {
+	for (unsigned int p = 0; p+4 <= size; ) {
 		uint8_t *pkt    = buf + p;
 		uint32_t pkt_sz = AV_RB32(pkt);
 
