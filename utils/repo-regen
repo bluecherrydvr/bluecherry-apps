@@ -1,6 +1,5 @@
 #!/usr/bin/make -f
 DIST = lucid \
-       oneiric \
        precise \
        squeeze
 
