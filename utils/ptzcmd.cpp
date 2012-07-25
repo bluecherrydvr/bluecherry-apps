@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	long id;
 	int delay, pan_speed, tilt_speed, pset_id;
 	char *cmd_str;
-	int ret, i;
+	int ret;
 	unsigned int cmd;
 	BC_DB_RES dbres;
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	bc_ptz_check(&bch, dbres);
 	bc_db_free_table(dbres);
 
-        for (i = 0, cmd = 0; i < strlen(cmd_str); i++) {
+        for (unsigned int i = 0, cmd = 0; i < strlen(cmd_str); i++) {
 		switch (cmd_str[i]) {
 		case 'S': cmd |= BC_PTZ_CMD_STOP; break;
 		case 'r': cmd |= BC_PTZ_CMD_RIGHT; break;
