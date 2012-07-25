@@ -41,9 +41,9 @@ struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
 
 static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 {
-	int i, c;
+	int c;
 
-	for (i = c = 0; i < bc->v4l2.buffers; i++) {
+	for (unsigned int i = c = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -93,7 +93,6 @@ int bc_buf_is_video_frame(struct bc_handle *bc)
 static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 {
 	struct v4l2_requestbuffers req;
-	int i;
 
 	reset_vbuf(&req);
 	req.count = bc->v4l2.buffers;
@@ -104,7 +103,7 @@ static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 	if (req.count != bc->v4l2.buffers)
 		RETERR("REQBUFS Returned wrong buffer count");
 
-	for (i = 0; i < bc->v4l2.buffers; i++) {
+	for (unsigned int i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -127,7 +126,6 @@ static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
 
 	/* For mpeg, we get the max, and for mjpeg the min */
 	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
@@ -142,7 +140,7 @@ static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 		RETERR("STREAMON Failed");
 
 	/* Queue all buffers */
-	for (i = 0; i < bc->v4l2.buffers; i++) {
+	for (unsigned int i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -191,9 +189,8 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 
 static void bc_buf_return(struct bc_handle *bc)
 {
-	int local = (bc->v4l2.buffers / 2) - 1;
-	int thresh = ((bc->v4l2.buffers - local) / 2) + local;
-	int i;
+	unsigned int local = (bc->v4l2.buffers / 2) - 1;
+	unsigned int thresh = ((bc->v4l2.buffers - local) / 2) + local;
 
 	/* Maintain a balance of queued and dequeued buffers */
 	if (bc->v4l2.local_bufs < thresh)
@@ -201,7 +198,7 @@ static void bc_buf_return(struct bc_handle *bc)
 
 	bc_v4l2_local_bufs(bc);
 
-	for (i = 0; i < bc->v4l2.buffers && bc->v4l2.local_bufs > local; i++) {
+	for (unsigned int i = 0; i < bc->v4l2.buffers && bc->v4l2.local_bufs > local; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -362,7 +359,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *username, *password, *val, *port = "554";
 	char *device, *path, *t;
 	char url[1024];
-	int r;
+	unsigned int r;
 
 	bc->type = BC_DEVICE_RTP;
 
@@ -500,12 +497,11 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 static void v4l2_handle_stop(struct bc_handle *bc)
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
 
 	if (bc->v4l2.dev_fd < 0)
 		return;
 
-	for (i = 0; i < bc->v4l2.buffers; i++) {
+	for (unsigned int i = 0; i < bc->v4l2.buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -525,7 +521,7 @@ static void v4l2_handle_stop(struct bc_handle *bc)
 	ioctl(bc->v4l2.dev_fd, VIDIOC_STREAMOFF, &type);
 
 	/* Unmap all buffers */
-	for (i = 0; i < bc->v4l2.buffers; i++)
+	for (unsigned int i = 0; i < bc->v4l2.buffers; i++)
 		munmap(bc->v4l2.p_buf[i].data, bc->v4l2.p_buf[i].size);
 
 	bc->v4l2.local_bufs = bc->v4l2.buffers;

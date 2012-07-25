@@ -73,10 +73,10 @@ struct v4l2_device {
 		size_t			size;
 		struct v4l2_buffer	vb;
 	}			p_buf[BC_BUFFERS];
-	int			local_bufs;
+	unsigned int		local_bufs;
 	int			buf_idx;
 	int			gop;
-	int			buffers;
+	unsigned int		buffers;
 	int			card_id;
 	int			dev_id;
 };
