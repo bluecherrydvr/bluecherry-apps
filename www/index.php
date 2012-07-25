@@ -19,7 +19,8 @@
 		}
 		$status = data::getObject('ServerStatus');
 		if (!empty($status[0]['message'])) {
-			$_GLOBALS['general_error'] = array('type' => 'F', 'text' => $status[0]['message']);
+			$m = preg_split( '/\r\n|\r|\n/', $status[0]['message']);
+			$_GLOBALS['general_error'] = array('type' => 'F', 'text' => $m[0]);
 		}
 		#choose which template to display, if no setup access for current_user, display live view automatically
 		if ($current_user->info['access_setup']){
