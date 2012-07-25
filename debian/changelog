@@ -1,3 +1,15 @@
+bluecherry (1:2.0.0-1) lucid; urgency=low
+
+  * 2.0.0 release
+  * Bug #1121: Web: Add option to disable email notifications without deleting them.
+  * Bug #1125: Web: specifically indicate when changes to 'devices' can not be applied due to insufficient capacity
+  * Bug #1127: web: add slashes for mjpeg/rtsp paths automatically
+  * Feature #1005: Web: Alert the user when the server is not functional
+  * Feature #1123: Server: Only run for 30 days without a license entered.
+  * Feature #1126: Download PTZ presets updates
+
+ -- John Brooks <john.brooks@bluecherry.net>  Wed, 25 Jul 2012 03:23:00 -0400
+
 bluecherry (1:2.0.0-0rc2) lucid; urgency=low
 
   * Licensing and activation
