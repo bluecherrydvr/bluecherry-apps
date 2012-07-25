@@ -32,8 +32,6 @@ if (!empty($_POST)){
 		$users = '|'.implode('|', $_POST['users']).'|';
 		$cameras = '|'.implode('|', $_POST['cameras']).'|';
 		$limit = intval($_POST['limit']);
-		var_dump_pre($_GET);
-		var_dump_pre($_POST);
 			if (empty($_GET['id'])) { #if id not set -- create new
 				$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit}, 0)";
 			} else { #if set update existing
