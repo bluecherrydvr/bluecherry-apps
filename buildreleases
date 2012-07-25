@@ -6,7 +6,6 @@ $(error Please specify VERSION)
 endif
 
 DIST =	lucid \
-	oneiric \
 	precise \
 	squeeze
 
