@@ -23,6 +23,7 @@ $preset = new ipPtzPreset($preset_id);
 if (!empty($_POST)){
 	$id = $_POST['presetId']; unset($_POST['presetId']); unset($_POST['ref']);
 	$type = ($id!='new') ? 'update' : 'insert';
+	$_POST['custom'] = ($id == 'new' || $id >=9000) ? 1 : 0;
 	$query = data::formQueryFromArray($type, 'ipPtzCommandPresets', $_POST, 'id', $id);
 	$result = data::query($query, true);
 	data::responseXml($result);
