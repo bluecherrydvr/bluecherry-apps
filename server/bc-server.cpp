@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/statvfs.h>
+#include <sys/stat.h>
 #include <bsd/string.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -47,7 +48,9 @@ time_t last_known_running;
 extern char *__progname;
 
 /* Prerelease */
-#define DONT_ENFORCE_LICENSING 1
+#define DONT_ENFORCE_LICENSING 0
+#define TRIAL_DAYS 30
+#define TRIAL_MAX_DEVICES 32
 static std::vector<bc_license> licenses;
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
@@ -686,27 +689,35 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 }
 
 /* Returns 0 if okay, otherwise -1 and outputs an error */
-static int check_expire(void)
+static int check_trial_expired()
 {
-	char date[128];
-	time_t t = time(NULL);
-	time_t expire = 1343512800; /* July 28th, 2012 (6pm EDT) */
-	struct tm exp;
+	struct stat d;
+	time_t now = time(NULL);
+	FILE *f;
 
-	localtime_r(&expire, &exp);
-	strftime(date, sizeof(date), "%A, %B %d %Y at %X", &exp);
-
-	if (t >= expire) {
-		bc_status_component_error("This Bluecherry RC version expired on %s. You must upgrade "
-		                          "to the latest version to continue recording.", date);
-		return -1;
-	} else if (expire - t < 172800) {
-		bc_status_component_error("This Bluecherry RC version expires on %s. You should "
-		                          "upgrade to the latest version to prevent any recording "
-		                          "interruptions.", date);
+	if (stat("/var/lib/bluecherry", &d) != 0 || d.st_ctime > now ||
+		(now - d.st_ctime >= TRIAL_DAYS*60*60*24)) {
+		goto fail;
 	}
 
-	return 0;
+	f = fopen("/var/lib/.bcins", "r");
+	if (f) {
+		char buf[16];
+		int64_t ftime = 0;
+
+		size_t len = fread(&buf, 1, sizeof(buf)-1, f);
+		buf[len] = 0;
+		fclose(f);
+
+		ftime = atoll(buf);
+		if (ftime <= now && (now - ftime < TRIAL_DAYS*60*60*24))
+			return 0;
+	}
+
+	fail:
+	bc_status_component_error("The %d day trial of Bluecherry has expired. You can "
+		"buy a license from http://www.bluecherrydvr.com/", TRIAL_DAYS);
+	return -1;
 }
 
 int main(int argc, char **argv)
@@ -836,9 +847,7 @@ int main(int argc, char **argv)
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;
-			error = check_expire();
-			error |= (bc_read_licenses(licenses) < 0);
-			bc_status_component_end(STATUS_LICENSE, error == 0);
+			error = (bc_read_licenses(licenses) < 0);
 
 			if (!error) {
 				for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
@@ -846,6 +855,17 @@ int main(int argc, char **argv)
 				if (old_n_devices != max_threads)
 					bc_log("I: Licensed for %d devices", max_threads);
 			}
+
+			if (!error && max_threads == 0) {
+				error |= check_trial_expired();
+				if (!error) {
+					max_threads = TRIAL_MAX_DEVICES;
+					if (!(loops % 1800))
+						bc_log("I: Not licensed; running in trial mode");
+				}
+			}
+
+			bc_status_component_end(STATUS_LICENSE, error == 0);
 
 			bc_status_component_begin(STATUS_MEDIA_CHECK);
 			/* Check media locations for full */
