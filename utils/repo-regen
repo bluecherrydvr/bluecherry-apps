@@ -1,0 +1,47 @@
+#!/usr/bin/make -f
+DIST = lucid \
+       oneiric \
+       precise \
+       squeeze
+
+ARCH = i386 amd64
+
+R = /data/debs/gen-ubuntu
+A = /sites/ubuntu.bluecherrydvr.com
+
+.PHONY: generate clean u-list u-conf u-gen u-sign u-fini
+
+generate: u-fini
+
+clean:
+	for d in $(DIST); do \
+		rm -f $R/$$d/cache/*; \
+		rm -f $A/dists/$$d/Release.gpg; \
+	done
+
+u-list: clean
+	for d in $(DIST); do \
+		for a in $(ARCH); do \
+			find $A/pool/$$d -name "*_$$a.deb" -o -name "*_all.deb" > $R/$$d/lists/$$a.list; \
+		done; \
+		find $A/pool/$$d -name "*.dsc" > $R/$$d/lists/source.list; \
+	done
+
+u-conf: u-list
+	sed -e "s,@ARCHIVE_DIR@,$A,g" \
+		-e "s,@CACHE_DIR@,$R/cache,g" \
+		-e "s,@LIST_DIR@,$R/lists,g" archive.conf.template > archive.conf
+
+u-gen: u-conf
+	apt-ftparchive generate archive.conf
+	for d in $(DIST); do \
+		apt-ftparchive -c=archive.conf release $A/dists/$$d > $A/dists/$$d/Release; \
+	done
+
+u-sign: u-gen
+	for d in $(DIST); do \
+		gpg -a --output $A/dists/$$d/Release.gpg --detach-sign $A/dists/$$d/Release; \
+	done
+
+u-fini: u-sign
+	su -c "chgrp www-data -R $A"
