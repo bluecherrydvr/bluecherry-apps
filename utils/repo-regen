@@ -1,47 +1,87 @@
 #!/usr/bin/make -f
 DIST = lucid \
-       oneiric \
        precise \
        squeeze
 
 ARCH = i386 amd64
 
 R = /data/debs/gen-ubuntu
-A = /sites/ubuntu.bluecherrydvr.com
+A = /sites/unstable.bluecherrydvr.com
 
-.PHONY: generate clean u-list u-conf u-gen u-sign u-fini
+.PHONY: all clean u-list u-conf u-index u-sign u-fini
 
-generate: u-fini
+all: clean u-fini
 
 clean:
-	for d in $(DIST); do \
-		rm -f $R/$$d/cache/*; \
-		rm -f $A/dists/$$d/Release.gpg; \
-	done
+	rm -f $(foreach d,$(DIST),$R/$d/cache/* $R/$d/archive.conf)
 
-u-list: clean
-	for d in $(DIST); do \
-		for a in $(ARCH); do \
-			find $A/pool/$$d -name "*_$$a.deb" -o -name "*_all.deb" > $R/$$d/lists/$$a.list; \
-		done; \
-		find $A/pool/$$d -name "*.dsc" > $R/$$d/lists/source.list; \
-	done
+##
+### Lists
+##
 
-u-conf: u-list
+## LIST_TARGET,dist,arch
+define LIST_TARGET
+
+LISTS += list-$1-$2
+.PHONY: list-$1-$2
+list-$1-$2:
+	find $A/pool/$1 -name "*_$2.deb" -o -name "*_all.deb" > \
+		$R/$1/lists/$2.list
+endef
+
+$(eval $(foreach d,$(DIST),$(foreach a,$(ARCH),$(call LIST_TARGET,$d,$a))))
+
+SLIST_FILES := $(foreach d,$(DIST),$R/$d/lists/source.list)
+
+.PHONY: $(SLIST_FILES)
+
+$(SLIST_FILES): $R/%/lists/source.list: $A/pool/%
+	find $< -name "*.dsc" > $@
+
+
+u-list: $(LISTS) $(SLIST_FILES)
+
+##
+### Configuration
+##
+
+CONF_FILES := $(foreach d,$(DIST), $R/$d/archive.conf)
+
+$(CONF_FILES): %:%.template
 	sed -e "s,@ARCHIVE_DIR@,$A,g" \
-		-e "s,@CACHE_DIR@,$R/cache,g" \
-		-e "s,@LIST_DIR@,$R/lists,g" archive.conf.template > archive.conf
+	    -e "s,@CACHE_DIR@,$R/cache,g" \
+	    -e "s,@LIST_DIR@,$R/lists,g" $< > $@
 
-u-gen: u-conf
-	apt-ftparchive generate archive.conf
-	for d in $(DIST); do \
-		apt-ftparchive -c=archive.conf release $A/dists/$$d > $A/dists/$$d/Release; \
-	done
+u-conf: u-list $(CONF_FILES)
 
-u-sign: u-gen
-	for d in $(DIST); do \
-		gpg -a --output $A/dists/$$d/Release.gpg --detach-sign $A/dists/$$d/Release; \
-	done
+##
+### Index files
+##
+
+REL_FILES := $(foreach d,$(DIST),$A/dists/$d/Release)
+
+.PHONY: $(REL_FILES)
+
+$(REL_FILES): $A/dists/%/Release: $R/%/archive.conf
+	apt-ftparchive generate $<
+	apt-ftparchive -c=$< release $(@D) > $@
+
+u-index: u-conf $(REL_FILES)
+
+##
+### Signatures
+##
+
+SIGN_FILES := $(foreach i,$(REL_FILES),$i.gpg)
+
+%.gpg: %
+	gpg -a -b $< -o $@
+
+u-sign: u-index $(SIGN_FILES)
+
+##
+### Finish
+##
 
 u-fini: u-sign
-	su -c "chgrp www-data -R $A"
+	chgrp www-data -R $A
