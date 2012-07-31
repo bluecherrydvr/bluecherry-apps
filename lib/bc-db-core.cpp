@@ -79,7 +79,7 @@ void bc_db_close(void)
 int bc_db_open(void)
 {
 	struct config_t cfg;
-	long type;
+	int type;
 	int ret = -1;
 
 	if (db_ops != NULL)
@@ -102,7 +102,7 @@ int bc_db_open(void)
 		db_ops = &bc_db_mysql;
 		break;
 	default:
-		bc_log("E(%s): DB type %ld is not supported", BC_CONFIG, type);
+		bc_log("E(%s): DB type %d is not supported", BC_CONFIG, type);
 	}
 
 	if (db_ops)

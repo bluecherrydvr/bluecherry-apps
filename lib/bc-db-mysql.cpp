@@ -19,7 +19,7 @@ struct bc_db_mysql_res {
 
 
 static char *dbname, *dbuser, *dbpass, *dbhost, *dbsock;
-static long dbport = 0;
+static int dbport = 0;
 static MYSQL *my_con_global;
 
 #define FREE_NULL(__x)		({ if (__x) { free(__x); __x = NULL; } })

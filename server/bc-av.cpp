@@ -324,8 +324,6 @@ int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_p
 
 void bc_close_avcodec(struct bc_record *bc_rec)
 {
-	int i;
-
 	bc_alsa_close(bc_rec);
 
 	if (bc_rec->video_st)
@@ -339,7 +337,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 		if (bc_rec->oc->pb)
 			av_write_trailer(bc_rec->oc);
 
-		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
+		for (unsigned int i = 0; i < bc_rec->oc->nb_streams; i++) {
 			av_freep(&bc_rec->oc->streams[i]->codec);
 			av_freep(&bc_rec->oc->streams[i]);
 		}
@@ -468,7 +466,6 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 	AVCodec *codec;
 	AVStream *st;
 	AVFormatContext *oc;
-	int i;
 
 	if (bc_rec->oc != NULL)
 		return 0;
@@ -490,7 +487,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 		goto error;
 
 	bc_rec->audio_st = bc_rec->video_st = NULL;
-	for (i = 0; i < oc->nb_streams; ++i) {
+	for (unsigned int i = 0; i < oc->nb_streams; ++i) {
 		if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
 			bc_rec->video_st = oc->streams[i];
 		else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)

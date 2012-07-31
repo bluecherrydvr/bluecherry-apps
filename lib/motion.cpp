@@ -120,7 +120,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 {
 	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
-		int vh = 15;
+		unsigned int vh = 15;
 		int i;
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
 

@@ -172,7 +172,7 @@ int bc_license_generate(char *dest, int dest_sz, int ndev)
 	if (dest_sz < 21)
 		return -EINVAL;
 
-	for (int i = 5; i < sizeof(raw); ++i)
+	for (unsigned int i = 5; i < sizeof(raw); ++i)
 		raw[i] = uint8_t(rand());
 
 	raw[2] = 'B' ^ raw[7];
@@ -318,7 +318,7 @@ end:
 int bc_read_licenses(std::vector<bc_license> &licenses)
 {
 	std::set<std::string> existingset, newset;
-	for (int i = 0; i < licenses.size(); i++)
+	for (unsigned int i = 0; i < licenses.size(); i++)
 		existingset.insert(licenses[i].license);
 
 	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Licenses");
@@ -362,7 +362,7 @@ int bc_read_licenses(std::vector<bc_license> &licenses)
 	bc_db_free_table(dbres);
 
 	// Anything that is not in newset is removed
-	for (int i = 0; i < licenses.size(); ) {
+	for (unsigned int i = 0; i < licenses.size(); ) {
 		if (newset.find(licenses[i].license) == newset.end())
 			licenses.erase(licenses.begin() + i);
 		else

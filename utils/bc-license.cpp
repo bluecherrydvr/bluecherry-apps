@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdio.h>
 
 // From lib/
 #define GENERATE_LICENSES 1

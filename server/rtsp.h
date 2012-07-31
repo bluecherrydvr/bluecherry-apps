@@ -76,7 +76,7 @@ private:
 	rtsp_server * const server;
 	const int fd;
 	char rdbuf[10240];
-	int rdbuf_len;
+	unsigned int rdbuf_len;
 	pthread_mutex_t write_lock;
 	rtsp_write_buffer *wrbuf, *wrbuf_tail;
 
@@ -114,7 +114,7 @@ public:
 	void sessionActiveChanged(rtsp_session *session);
 
 	int activeSessionCount() { return _activeSessionCount; } 
-	void sendPackets(uint8_t *buf, int bufsz, int flags);
+	void sendPackets(uint8_t *buf, unsigned int bufsz, int flags);
 
 	/* Invoked to delete dead streams on the RTSP thread after a (thread-safe) remove() */
 	static void collectGarbage();

@@ -14,7 +14,6 @@
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx;
-	int i;
 
 	if (bc_rec->stream_ctx)
 		return 0;
@@ -30,7 +29,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (setup_output_context(bc_rec, ctx) < 0)
 		goto error;
 
-	for (i = 0; i < ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		AVStream *st = ctx->streams[i];
 		AVCodec *codec = avcodec_find_encoder(st->codec->codec_id);
 		if (!codec || codec->type != AVMEDIA_TYPE_VIDEO) {
@@ -38,7 +37,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 			av_freep(&st->codec);
 			av_freep(&st);
 
-			for (int j = i+1; j < ctx->nb_streams; ++j) {
+			for (unsigned int j = i+1; j < ctx->nb_streams; ++j) {
 				ctx->streams[j]->index = j-1;
 				ctx->streams[j-1] = ctx->streams[j];
 			}
@@ -57,12 +56,15 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 
 	url_open_dyn_packet_buf(&ctx->pb, RTP_MAX_PACKET_SIZE);
 
-	if ((i = avformat_write_header(ctx, NULL)) < 0) {
-		char error[512];
-		av_strerror(i, error, sizeof(error));
-		bc_dev_err(bc_rec, "Failed to start live stream: %s", error);
-		bc_streaming_destroy(bc_rec);
-		return i;
+	{
+		int ret = avformat_write_header(ctx, NULL);
+		if (ret < 0) {
+			char error[512];
+			av_strerror(ret, error, sizeof(error));
+			bc_dev_err(bc_rec, "Failed to start live stream: %s", error);
+			bc_streaming_destroy(bc_rec);
+			return ret;
+		}
 	}
 
 	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, ctx);
@@ -77,7 +79,6 @@ error:
 void bc_streaming_destroy(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx = bc_rec->stream_ctx;
-	int i;
 
 	if (!ctx)
 		return;
@@ -89,7 +90,7 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 		av_free(buf);
 	}
 
-	for (i = 0; i < ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		avcodec_close(ctx->streams[i]->codec);
 		av_freep(&ctx->streams[i]->codec);
 		av_freep(&ctx->streams[i]);

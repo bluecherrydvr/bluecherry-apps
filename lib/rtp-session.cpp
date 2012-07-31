@@ -20,7 +20,6 @@ extern "C" {
 
 void rtp_device_init(struct rtp_device *rs, const char *url)
 {
-	int i;
 	memset(rs, 0, sizeof(*rs));
 	rs->video_stream_index = rs->audio_stream_index = -1;
 
@@ -32,21 +31,19 @@ void rtp_device_init(struct rtp_device *rs, const char *url)
 	 * anyway. */
 	rs->frame.pts = AV_NOPTS_VALUE;
 
-	for (i = 0; i < RTP_NUM_STREAMS; ++i)
+	for (int i = 0; i < RTP_NUM_STREAMS; ++i)
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
 void rtp_device_stop(struct rtp_device *rs)
 {
-	int i;
-
 	if (!rs->ctx)
 		return;
 
 	av_free_packet(&rs->frame);
 	av_init_packet(&rs->frame);
 
-	for (i = 0; i < rs->ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < rs->ctx->nb_streams; ++i) {
 		if (rs->ctx->streams[i]->codec->codec)
 			avcodec_close(rs->ctx->streams[i]->codec);
 	}
@@ -55,7 +52,7 @@ void rtp_device_stop(struct rtp_device *rs)
 	rs->ctx = 0;
 	rs->video_stream_index = rs->audio_stream_index = -1;
 
-	for (i = 0; i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < RTP_NUM_STREAMS; ++i) {
 		rs->stream_data[i].pts_base = 0;
 		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
 		rs->stream_data[i].last_pts_diff = 0;
@@ -65,7 +62,7 @@ void rtp_device_stop(struct rtp_device *rs)
 
 int rtp_device_start(struct rtp_device *rs)
 {
-	int i, re;
+	int re;
 	AVDictionary *avopt = NULL;
 	char tmp[24];
 
@@ -96,7 +93,7 @@ int rtp_device_start(struct rtp_device *rs)
 		return -1;
 	}
 
-	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple video streams. Only the "
@@ -337,7 +334,6 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 {
 	int64_t offset;
-	int i;
 
 	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
 	 * all other streams are adjusted accordingly. */
@@ -355,7 +351,7 @@ void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
 	       offset, rs->frame.stream_index, pts);
 
-	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		rs->stream_data[i].pts_base += av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base);
 	}
 
