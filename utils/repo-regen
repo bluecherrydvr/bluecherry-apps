@@ -19,65 +19,57 @@ clean:
 ### Lists
 ##
 
-## LIST_TARGET,dist,arch
-define LIST_TARGET
+lists  := $(foreach d,$(DIST),$(foreach a,$(ARCH),$R/$d/lists/$a.list))
+slists := $(foreach d,$(DIST),$R/$d/lists/source.list)
 
-LISTS += list-$1-$2
-.PHONY: list-$1-$2
-list-$1-$2:
-	find $A/pool/$1 -name "*_$2.deb" -o -name "*_all.deb" > \
-		$R/$1/lists/$2.list
-endef
+.PHONY: $(lists) $(slists)
+u-list: $(lists) $(slists)
 
-$(eval $(foreach d,$(DIST),$(foreach a,$(ARCH),$(call LIST_TARGET,$d,$a))))
+$(lists):
+	find $A/pool/$(patsubst $R/%/,%,$(dir $(@D)))    \
+		-name "*_$(patsubst %.list,%,$(@F)).deb" \
+		-o -name "*_all.deb" > $@
 
-SLIST_FILES := $(foreach d,$(DIST),$R/$d/lists/source.list)
-
-.PHONY: $(SLIST_FILES)
-
-$(SLIST_FILES): $R/%/lists/source.list: $A/pool/%
+$(slists): $R/%/lists/source.list: $A/pool/%
 	find $< -name "*.dsc" > $@
-
-
-u-list: $(LISTS) $(SLIST_FILES)
 
 ##
 ### Configuration
 ##
 
-CONF_FILES := $(foreach d,$(DIST), $R/$d/archive.conf)
+confs := $(foreach d,$(DIST), $R/$d/archive.conf)
 
-$(CONF_FILES): %:%.template
-	sed -e "s,@ARCHIVE_DIR@,$A,g" \
-	    -e "s,@CACHE_DIR@,$(@D)/cache,g" \
+$(confs): %:%.template
+	sed -e "s,@ARCHIVE_DIR@,$A,g"                 \
+	    -e "s,@CACHE_DIR@,$(@D)/cache,g"          \
 	    -e "s,@LIST_DIR@,$(@D)/lists,g" $< > $@
 
-u-conf: u-list $(CONF_FILES)
+u-conf: u-list $(confs)
 
 ##
 ### Index files
 ##
 
-REL_FILES := $(foreach d,$(DIST),$A/dists/$d/Release)
+rel_files := $(foreach d,$(DIST),$A/dists/$d/Release)
 
-.PHONY: $(REL_FILES)
+.PHONY: $(rel_files)
 
-$(REL_FILES): $A/dists/%/Release: $R/%/archive.conf
+$(rel_files): $A/dists/%/Release: $R/%/archive.conf
 	apt-ftparchive generate $<
 	apt-ftparchive -c=$< release $(@D) > $@
 
-u-index: u-conf $(REL_FILES)
+u-index: u-conf $(rel_files)
 
 ##
 ### Signatures
 ##
 
-SIGN_FILES := $(foreach i,$(REL_FILES),$i.gpg)
+sign_files := $(foreach i,$(rel_files),$i.gpg)
 
 %.gpg: %
 	gpg -a -b $< -o $@
 
-u-sign: u-index $(SIGN_FILES)
+u-sign: u-index $(sign_files)
 
 ##
 ### Finish
