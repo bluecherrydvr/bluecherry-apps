@@ -49,8 +49,8 @@ CONF_FILES := $(foreach d,$(DIST), $R/$d/archive.conf)
 
 $(CONF_FILES): %:%.template
 	sed -e "s,@ARCHIVE_DIR@,$A,g" \
-	    -e "s,@CACHE_DIR@,$R/cache,g" \
-	    -e "s,@LIST_DIR@,$R/lists,g" $< > $@
+	    -e "s,@CACHE_DIR@,$(@D)/cache,g" \
+	    -e "s,@LIST_DIR@,$(@D)/lists,g" $< > $@
 
 u-conf: u-list $(CONF_FILES)
 
