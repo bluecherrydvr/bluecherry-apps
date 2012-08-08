@@ -67,7 +67,7 @@ u-index: u-conf $(rel_files)
 sign_files := $(foreach i,$(rel_files),$i.gpg)
 
 %.gpg: %
-	gpg -a -b $< -o $@
+	gpg -o $@ -a -b $<
 
 u-sign: u-index $(sign_files)
 
