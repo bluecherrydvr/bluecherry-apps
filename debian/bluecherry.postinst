@@ -33,7 +33,12 @@ case "$1" in
 		a2enmod php5
 		a2ensite bluecherry
 
-#		reload rsyslog
+		if [ ! -z `which service` ]; then
+			service apache2 reload
+			service rsyslog reload
+		else
+			/etc/init.d/apache2 reload
+		fi
 
 		if [ ! -e /var/lib/.bcins ]; then
 			date +'%s' > /var/lib/.bcins
