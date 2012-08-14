@@ -204,7 +204,7 @@ define('VA_BRIGHTNESS', 'Brightness');
 define('VA_HUE', 'Hue');
 define('VA_AUDIO', 'Audio gain');
 define('VA_AUDIO_ENABLE', 'Enable audio');
-define('VA_SATURATION', 'Staruration');
+define('VA_SATURATION', 'Saturation');
 define('VA_CONTRAST', 'Contrast');
 define('VA_SETDEFAULT', 'Reset values to default');
 
