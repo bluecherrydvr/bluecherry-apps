@@ -349,7 +349,7 @@ define('PLEASE_LOGIN', 'You need');
 define('USERNAME_EXISTS', 'User with this username already exists.');
 
 #PTZ
-define('DEVICE_EDIT_PTZ', 'Edit PTZ settings');
+define('DEVICE_EDIT_PTZ', 'PTZ settings');
 
 define('PTZ_SET_HEADER', 'PTZ settings for camera: ');
 define('PTZ_PROTOCOL', 'Protocol:');
