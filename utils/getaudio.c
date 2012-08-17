@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <libavutil/mathematics.h>
 #include <libavformat/avformat.h>
 #include <alsa/asoundlib.h>
 
