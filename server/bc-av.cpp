@@ -362,11 +362,15 @@ int bc_mkdir_recursive(char *path)
 
 	/* Try to make the parent directory */
 	t = strrchr(path, '/');
-	if (t == NULL || t == path)
+	if (t == NULL || t == path) {
+		errno = EINVAL;
 		return -1;
+	}
 	*t = '\0';
-	if (bc_mkdir_recursive(path))
+	if (bc_mkdir_recursive(path)) {
+		*t = '/';
 		return -1;
+	}
 	*t = '/';
 
 	return mkdir(path, 0750);
