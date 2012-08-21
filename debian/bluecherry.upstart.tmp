@@ -8,7 +8,6 @@ author		"Bluecherry <maintainers@bluecherry.net>"
 start on runlevel [23]
 stop on runlevel [016]
 
-expect fork
 respawn
 umask 027
 
@@ -17,4 +16,4 @@ pre-start script
     chown bluecherry.bluecherry /var/run/bluecherry
 end script
 
-exec /usr/sbin/bc-server -u bluecherry -g bluecherry
+exec /usr/sbin/bc-server -s -u bluecherry -g bluecherry
