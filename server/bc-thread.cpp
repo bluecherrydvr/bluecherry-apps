@@ -27,9 +27,16 @@ static void bc_start_media_entry(struct bc_record *bc_rec, time_t start_ts)
 
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
-	sprintf(dir, "%s/%s/%06d", stor, date, bc_rec->id);
-	bc_mkdir_recursive(dir);
-	sprintf(bc_rec->outfile, "%s/%s.mkv", dir, mytime);
+	if (snprintf(dir, sizeof(dir), "%s/%s/%06d", stor, date, bc_rec->id) >= sizeof(dir))
+		return -1;
+	if (bc_mkdir_recursive(dir) < 0) {
+		bc_log("E: Cannot create media directory %s: %m", dir);
+		return -1;
+	}
+	if (snprintf(bc_rec->outfile, sizeof(bc_rec->outfile), "%s/%s.mkv", dir, mytime)
+	    >= sizeof(bc_rec->outfile))
+		return -1;
+	return 0;
 }
 
 static void recording_end(struct bc_record *bc_rec)
@@ -64,8 +71,10 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 		start_ts = time(NULL);
 
 	recording_end(bc_rec);
-	/* XXX needs to handle failure */
-	bc_start_media_entry(bc_rec, start_ts);
+	if (bc_start_media_entry(bc_rec, start_ts) < 0) {
+		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+		return -1;
+	}
 
 	if (bc_open_avcodec(bc_rec)) {
 		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
