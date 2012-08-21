@@ -138,7 +138,7 @@ int bc_status_component_end(bc_status_component component, int ok);
 
 extern char global_sched[7 * 24 + 1];
 
-void bc_get_media_loc(char *stor);
+int bc_get_media_loc(char *dest, size_t size);
 
 int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
 int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
