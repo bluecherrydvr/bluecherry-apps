@@ -13,13 +13,14 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
-static void bc_start_media_entry(struct bc_record *bc_rec, time_t start_ts)
+static int bc_start_media_entry(struct bc_record *bc_rec, time_t start_ts)
 {
 	struct tm tm;
 	char date[12], mytime[10], dir[PATH_MAX];
-	char stor[256];
+	char stor[PATH_MAX];
 
-	bc_get_media_loc(stor);
+	if (bc_get_media_loc(stor, sizeof(stor)) < 0)
+		return -1;
 
 	/* XXX Need some way to reconcile time between media event and
 	 * filename. They should match. */

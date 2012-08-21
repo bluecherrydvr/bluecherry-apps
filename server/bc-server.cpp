@@ -228,7 +228,6 @@ static void bc_update_server_status()
 static int bc_check_globals(void)
 {
 	BC_DB_RES dbres;
-	int i = 0;
 
 	/* Get global schedule, default to continuous */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
@@ -262,6 +261,7 @@ static int bc_check_globals(void)
 
 	memset(media_stor, 0, sizeof(media_stor));
 
+	int i = 0;
 	while (!bc_db_fetch_row(dbres) && i < MAX_STOR_LOCS) {
 		const char *path = bc_db_get_val(dbres, "path", NULL);
 		float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
@@ -270,17 +270,23 @@ static int bc_check_globals(void)
 		if (!path || !*path || max_thresh <= 0 || min_thresh <= 0)
 			continue;
 
-		strcpy(media_stor[i].path, path);
+		if (strlcpy(media_stor[i].path, path, sizeof(media_stor[i].path)) >=
+		    sizeof(media_stor[i].path))
+			continue;
+
 		media_stor[i].max_thresh = max_thresh;
 		media_stor[i].min_thresh = min_thresh;
 
-		/* We should probably properly stat the directory */
 		if (bc_mkdir_recursive(media_stor[i].path)) {
 			bc_status_component_error("Cannot create storage path %s: %m",
 			                          media_stor[i].path);
 		} else
 			i++;
 	}
+
+	/* Cleanup in case of the last location failing */
+	if (i < MAX_STOR_LOCS)
+		memset(&media_stor[i], 0, sizeof(media_stor[i]));
 
 	if (i == 0) {
 		/* Fall back to one single default location */
@@ -378,27 +384,39 @@ static int storage_full(const struct bc_storage *stor)
 		return (used >= stor->max_thresh);
 }
 
-void bc_get_media_loc(char *stor)
+int bc_get_media_loc(char *dest, size_t size)
 {
-	int i;
-
-	stor[0] = 0;
+	dest[0] = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on get_loc!");
 
-	for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (!storage_full(&media_stor[i])) {
-			strcpy(stor, media_stor[i].path);
+	/* Use the first storage path below its maximum threshold; combined with
+	 * cleanup deleting the oldest recordings first, this results in rotating
+	 * sequentially through the paths over time. If all are above the maximum,
+	 * choose the path with the least (by percentage, unfortunately) usage. */
+	int least = -1;
+	float least_value = 100;
+
+	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+		float used = storage_used(&media_stor[i]);
+		if (used >= media_stor[i].max_thresh) {
+			least = i;
 			break;
+		} else if (used >= 0 && used < least_value) {
+			least = i;
+			least_value = used;
 		}
 	}
 
-	/* XXX this is a bad fallback. We might not even want a fallback. */
-	if (stor[0] == 0)
-		strcpy(stor, media_stor[0].path);
+	int re = 0;
+	if (least < 0)
+		re = -1;
+	if (strlcpy(dest, media_stor[least].path, size) > size)
+		re = -1;
 
 	pthread_mutex_unlock(&media_lock);
+	return re;
 }
 
 static int bc_cleanup_media()
