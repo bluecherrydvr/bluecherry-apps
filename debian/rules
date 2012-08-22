@@ -29,6 +29,7 @@ override_dh_auto_install:
 		debian/bluecherry/usr/share/bluecherry/bluecherry.conf.in
 	install -m644 -D debian/apache.conf \
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
+	install -m644 debian/bluecherry.monit \
+		debian/bluecherry/etc/monit/conf.d/bluecherry
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www
 	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/version
-
