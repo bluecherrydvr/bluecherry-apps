@@ -4,3 +4,4 @@ var/lib/bluecherry
 var/run/bluecherry
 usr/share/dbconfig-common/data/bluecherry/install
 usr/share/dbconfig-common/data/bluecherry/upgrade/mysql
+etc/monit/conf.d
