@@ -17,7 +17,11 @@ case "$1" in
 			# And www-data will need it too
 			usermod -a -G video,audio,bluecherry,dialout www-data
 		fi
-		service bluecherry stop || true
+		if which service >/dev/null 2>&1; then
+			service bluecherry stop || true
+		else
+			/etc/init.d/bluecherry stop || true
+		fi
 		;;
 esac
 
