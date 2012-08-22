@@ -13,7 +13,10 @@ override_dh_strip:
 	dh_strip --dbg-package=bluecherry-dbg
 
 override_dh_installinit:
-	if [ -x /sbin/start ]; then echo "Upstart detected"; cp debian/bluecherry.upstart.tmp debian/bluecherry.upstart; fi
+	if [ -x /sbin/start ]; then \
+		echo "Upstart detected"; \
+		cp debian/bluecherry.upstart.tmp debian/bluecherry.upstart; \
+	fi
 	dh_installinit
 
 override_dh_auto_install:
