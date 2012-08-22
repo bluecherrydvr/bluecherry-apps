@@ -16,4 +16,4 @@ pre-start script
     chown bluecherry.bluecherry /var/run/bluecherry
 end script
 
-exec /usr/sbin/bc-server -s -u bluecherry -g bluecherry
+exec /sbin/start-stop-daemon -Sx /usr/sbin/bc-server -mp /var/run/bc-server.pid -- -s -u bluecherry -g bluecherry
