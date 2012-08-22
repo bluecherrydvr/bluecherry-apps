@@ -225,12 +225,12 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		 * happen (other than a >60fps stream). */
 		if (md->refFrame && md->last_tested_pts && md->last_tested_pts != AV_NOPTS_VALUE) {
 			int64_t diff = av_rescale_q(rawFrame.pkt_pts - md->last_tested_pts,
-			                            (AVRational){1,90000},
+			                            bc->rtp.ctx->streams[bc->rtp.video_stream_index]->time_base,
 			                            AV_TIME_BASE_Q) / (AV_TIME_BASE / 1000);
 			if (diff > 0 && diff < 45) {
 				if (++md->skip_count > 3) {
 					av_log(bc->rtp.ctx, AV_LOG_WARNING, "Motion detection skipped too "
-					       "many consecutive frames (diff: %"PRId64". Buggy PTS?",
+					       "many consecutive frames (diff: %"PRId64". Buggy PTS?)",
 					       diff);
 				} else
 					return 0;
