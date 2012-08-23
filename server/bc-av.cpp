@@ -278,13 +278,18 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 			                        rs->ctx->streams[rs->audio_stream_index]->time_base,
 			                        s->time_base);
 		} else {
-			/* RTP is at a constant 90KHz time scale */
-			opkt.pts = av_rescale_q(opkt.pts, (AVRational){1, 90000}, s->time_base);
+			opkt.pts = av_rescale_q(opkt.pts,
+			                        rs->ctx->streams[rs->video_stream_index]->time_base,
+			                        s->time_base);
+		}
+
+		// XXX This probably isn't correct when audio streams are present.
+		if (bc_rec->output_pts_base) {
+			opkt.pts -= av_rescale_q(bc_rec->output_pts_base,
+			                         rs->ctx->streams[rs->video_stream_index]->time_base,
+			                         s->time_base);
 		}
 	}
-
-	if (bc_rec->output_pts_base && opkt.pts != AV_NOPTS_VALUE && bc_rec->bc->type == BC_DEVICE_RTP)
-		opkt.pts -= av_rescale_q(bc_rec->output_pts_base, (AVRational){1, 90000}, s->time_base);
 
 	/* Cutoff points can result in a few negative PTS frames, because often
 	 * the video will be cut before the audio for that time has been written.

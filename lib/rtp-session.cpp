@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <bsd/string.h>
 
 #include "libbluecherry.h"
 #include "rtp-session.h"
@@ -97,19 +98,27 @@ int rtp_device_start(struct rtp_device *rs)
 	}
 
 	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
-		if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+		AVStream *stream = rs->ctx->streams[i];
+
+		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (rs->video_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", rs->url);
 				continue;
 			}
 			rs->video_stream_index = i;
-		} else if (rs->ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+
+			if (stream->time_base.num != 1 || stream->time_base.den != 90000) {
+				av_log(rs->ctx, AV_LOG_WARNING, "Video stream timebase is unusual (%d/%d). "
+				       "This could cause timing issues.", stream->time_base.num,
+				       stream->time_base.den);
+			}
+		} else if (stream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (rs->audio_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", rs->url);
 				continue;
-			} else if (rs->ctx->streams[i]->codec->codec_id == CODEC_ID_NONE) {
+			} else if (stream->codec->codec_id == CODEC_ID_NONE) {
 				av_log(rs->ctx, AV_LOG_ERROR, "No matching audio codec for stream; ignoring audio");
 				continue;
 			}
@@ -364,24 +373,32 @@ void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
 
 const char *rtp_device_stream_info(struct rtp_device *rs)
 {
+	char *buf = rs->error_message;
+	int size = sizeof(rs->error_message);
+
 	if (rs->video_stream_index < 0) {
-		strcpy(rs->error_message, "No streams");
-		return rs->error_message;
+		strlcpy(buf, "No streams", size);
+		return buf;
 	}
+
+	AVStream *stream = rs->ctx->streams[rs->video_stream_index];
 
 	/* Borrow the error_message field */
-	avcodec_string(rs->error_message, sizeof(rs->error_message)-2,
-	               rs->ctx->streams[rs->video_stream_index]->codec, 0);
+	avcodec_string(buf, size, stream->codec, 0);
 
-	if (rs->audio_stream_index >= 0) {
-		int off = strlen(rs->error_message);
-		rs->error_message[off++] = ';';
-		rs->error_message[off++] = ' ';
-		avcodec_string(rs->error_message+off, sizeof(rs->error_message)-off,
-		               rs->ctx->streams[rs->audio_stream_index]->codec, 0);
+	int off = strlen(buf);
+	off += snprintf(buf+off, size-off, ", %d/%d", stream->time_base.num,
+                        stream->time_base.den);
+
+	if (rs->audio_stream_index >= 0 && size - off > 2) {
+		stream = rs->ctx->streams[rs->audio_stream_index];
+		buf[off++] = ';';
+		buf[off++] = ' ';
+		avcodec_string(buf+off, size-off, stream->codec, 0);
 	}
 
-	return rs->error_message;
+	buf[size-1] = 0;
+	return buf;
 }
 
 int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
