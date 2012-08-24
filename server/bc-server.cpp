@@ -870,8 +870,6 @@ int main(int argc, char **argv)
 			if (!error) {
 				for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
 					max_threads += it->n_devices;
-				if (old_n_devices != max_threads)
-					bc_log("I: Licensed for %d devices", max_threads);
 			}
 
 			if (!error && max_threads == 0) {
@@ -881,6 +879,8 @@ int main(int argc, char **argv)
 					if (!(loops % 1800))
 						bc_log("I: Not licensed; running in trial mode");
 				}
+			} else if (!error && old_n_devices != max_threads) {
+				bc_log("I: Licensed for %d devices", max_threads);
 			}
 
 			bc_status_component_end(STATUS_LICENSE, error == 0);
