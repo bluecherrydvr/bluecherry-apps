@@ -540,18 +540,19 @@ static int bc_check_db(void)
 		if (bc_db_get_val_bool(dbres, "disabled"))
 			continue;
 
-		/* Maximum threads, used for licensing control */
-		if (!DONT_ENFORCE_LICENSING && max_threads >= 0 && cur_threads >= max_threads) {
-			bc_status_component_error("Device disabled due to licensing restrictions");
-			re |= -1;
-			continue;
-		}
-
 		/* If this is a V4L2 device, it needs to be detected */
 		if (!strcasecmp(proto, "V4L2")) {
 			int card_id = bc_db_get_val_int(dbres, "card_id");
 			if (!solo_ready || card_id < 0)
 				continue;
+		}
+
+		/* Maximum threads, used for licensing control */
+		if (!DONT_ENFORCE_LICENSING && max_threads >= 0 && cur_threads >= max_threads) {
+			bc_status_component_error("Device %d disabled due to licensing "
+				"restrictions (%d/%d devices used)", id, cur_threads, max_threads);
+			re |= -1;
+			continue;
 		}
 
 		bc_rec = bc_alloc_record(id, dbres);
