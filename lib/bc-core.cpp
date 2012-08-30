@@ -19,153 +19,7 @@
 
 #include <libbluecherry.h>
 #include "rtp-session.h"
-
-#define reset_vbuf(__vb) do {				\
-	memset((__vb), 0, sizeof(*(__vb)));		\
-	(__vb)->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;	\
-	(__vb)->memory = V4L2_MEMORY_MMAP;		\
-} while(0)
-
-#define RETERR(__msg) ({		\
-	if (err_msg)			\
-		*err_msg = __msg;	\
-	return -1;			\
-})
-
-struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc)
-{
-	if (bc->v4l2.buf_idx < 0)
-		return NULL;
-
-	return &bc->v4l2.p_buf[bc->v4l2.buf_idx].vb;
-}
-
-static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
-{
-	int i, c;
-
-	for (i = c = 0; i < bc->v4l2.buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
-
-		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
-			continue;
-
-		c++;
-	}
-
-	bc->v4l2.local_bufs = c;
-}
-
-#if 0
-int bc_buf_key_frame(struct bc_handle *bc)
-{
-	struct v4l2_buffer *vb;
-
-	if (bc->type == BC_DEVICE_RTP)
-		return rtp_device_frame_is_keyframe(&bc->rtp);
-
-	if (bc->type != BC_DEVICE_V4L2)
-		return 1;
-
-	vb = bc_buf_v4l2(bc);
-
-	/* For everything other than mpeg, every frame is a keyframe */
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
-		return 1;
-
-	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	return 0;
-}
-
-int bc_buf_is_video_frame(struct bc_handle *bc)
-{
-	if (bc->type == BC_DEVICE_RTP)
-		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
-	return 1;
-}
-#endif
-
-static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
-{
-	struct v4l2_requestbuffers req;
-	int i;
-
-	reset_vbuf(&req);
-	req.count = bc->v4l2.buffers;
-
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_REQBUFS, &req) < 0)
-		RETERR("REQBUFS Failed");
-
-	if (req.count != bc->v4l2.buffers)
-		RETERR("REQBUFS Returned wrong buffer count");
-
-	for (i = 0; i < bc->v4l2.buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			RETERR("QUERYBUF Failed");
-
-		bc->v4l2.p_buf[i].size = vb.length;
-		bc->v4l2.p_buf[i].data = mmap(NULL, vb.length,
-					 PROT_WRITE | PROT_READ, MAP_SHARED,
-					 bc->v4l2.dev_fd, vb.m.offset);
-		if (bc->v4l2.p_buf[i].data == MAP_FAILED)
-			RETERR("MMAP Failed");
-	}
-
-	return 0;
-}
-
-static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
-{
-	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
-
-	/* For mpeg, we get the max, and for mjpeg the min */
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
-		bc->v4l2.buffers = BC_BUFFERS;
-	else
-		bc->v4l2.buffers = BC_BUFFERS_JPEG;
-
-	if (bc_v4l2_bufs_prepare(bc, err_msg))
-		return -1;
-
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_STREAMON, &type) < 0)
-		RETERR("STREAMON Failed");
-
-	/* Queue all buffers */
-	for (i = 0; i < bc->v4l2.buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			RETERR("QUERYBUF Failed");
-
-		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
-			continue;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QBUF, &vb) < 0)
-			RETERR("QBUF Failed");
-	}
-
-	bc->v4l2.local_bufs = 0;
-	bc->v4l2.buf_idx = -1;
-
-	return 0;
-}
+#include "v4l2device.h"
 
 int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 {
@@ -177,12 +31,9 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 	if (bc->started)
 		return 0;
 
-	if (bc->type == BC_DEVICE_RTP) {
-		ret = bc->input->start();
-		if (ret < 0)
-			*err_msg = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
-	} else if (bc->type == BC_DEVICE_V4L2)
-		ret = v4l2_handle_start(bc, err_msg);
+	ret = bc->input->start();
+	if (ret < 0)
+		*err_msg = bc->input->get_error_message();
 
 	if (!ret) {
 		bc->started = 1;
@@ -190,176 +41,6 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 	}
 
 	return ret;
-}
-
-static void bc_buf_return(struct bc_handle *bc)
-{
-	int local = (bc->v4l2.buffers / 2) - 1;
-	int thresh = ((bc->v4l2.buffers - local) / 2) + local;
-	int i;
-
-	/* Maintain a balance of queued and dequeued buffers */
-	if (bc->v4l2.local_bufs < thresh)
-		return;
-
-	bc_v4l2_local_bufs(bc);
-
-	for (i = 0; i < bc->v4l2.buffers && bc->v4l2.local_bufs > local; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QBUF, &vb) < 0)
-			continue;
-
-		bc->v4l2.local_bufs--;
-	}
-
-	if (bc->v4l2.local_bufs == bc->v4l2.buffers)
-		bc_log("E: Unable to queue any buffers!");
-}
-
-#if 0
-int bc_buf_get(struct bc_handle *bc)
-{
-	int ret = EINVAL;
-
-	if (bc->type == BC_DEVICE_RTP) {
-		ret = rtp_device_read(&bc->rtp);
-	} else if (bc->type == BC_DEVICE_V4L2) {
-		struct v4l2_buffer vb;
-		bc_buf_return(bc);
-		reset_vbuf(&vb);
-
-		ret = ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb);
-		bc->v4l2.local_bufs++;
-		/* XXX better error handling here */
-		if (ret)
-			return EAGAIN;
-
-		/* Update and store this buffer */
-		bc->v4l2.buf_idx = vb.index;
-		bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
-
-		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc))
-				return EAGAIN;
-			bc->got_vop = 1;
-		}
-
-		ret = 0;
-	}
-
-	return ret;
-}
-#endif
-
-int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
-{
-	struct v4l2_control vc;
-	double den = bc->v4l2.vparm.parm.capture.timeperframe.denominator;
-	double num = interval;
-
-	if (bc->type != BC_DEVICE_V4L2)
-		return 0;
-
-	if (!interval)
-		return 0;
-
-	if (bc->v4l2.vparm.parm.capture.timeperframe.numerator == interval)
-		return 0;
-
-	if (bc->started) {
-		errno = EAGAIN;
-		return -1;
-	}
-
-	bc->v4l2.vparm.parm.capture.timeperframe.numerator = interval;
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_PARM, &bc->v4l2.vparm) < 0)
-		return -1;
-	ioctl(bc->v4l2.dev_fd, VIDIOC_G_PARM, &bc->v4l2.vparm);
-
-	/* Reset GOP */
-	bc->v4l2.gop = lround(den / num);
-	if (!bc->v4l2.gop)
-		bc->v4l2.gop = 1;
-	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-	vc.value = bc->v4l2.gop;
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-		return -1;
-
-	return 0;
-}
-
-static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
-{
-	const char *p = bc->device;
-	char dev_file[PATH_MAX];
-	int id = -1;
-	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
-
-	bc->v4l2.card_id = bc_db_get_val_int(dbres, "card_id");
-	if (signal_type && strcasecmp(signal_type, "PAL") == 0)
-		bc->cam_caps |= BC_CAM_CAP_V4L2_PAL;
-
-	bc->type = BC_DEVICE_V4L2;
-	bc->v4l2.codec_id = CODEC_ID_NONE;
-
-	if (!strncmp(bc->driver, "solo6", 5))
-		bc->cam_caps |= BC_CAM_CAP_V4L2_MOTION | BC_CAM_CAP_OSD | BC_CAM_CAP_SOLO;
-
-	while (p[0] != '\0' && p[0] != '|')
-		p++;
-	if (p[0] == '\0') {
-		errno = EINVAL;
-		return -1;
-	}
-	p++;
-	while (p[0] != '\0' && p[0] != '|')
-		p++;
-	if (p[0] == '\0' || p[1] == '\0') {
-		errno = EINVAL;
-		return -1;
-	}
-	id = atoi(p + 1);
-
-	bc->v4l2.dev_id = id;
-
-	sprintf(dev_file, "/dev/video%d", bc->v4l2.card_id + id + 1);
-
-	/* Open the device */
-	if ((bc->v4l2.dev_fd = open(dev_file, O_RDWR)) < 0)
-		return -1;
-
-	/* Query the capabilites and verify them */
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYCAP, &bc->v4l2.vcap) < 0)
-		return -1;
-
-	if (!(bc->v4l2.vcap.capabilities & V4L2_CAP_VIDEO_CAPTURE) ||
-	    !(bc->v4l2.vcap.capabilities & V4L2_CAP_STREAMING)) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (bc->cam_caps & BC_CAM_CAP_SOLO) {
-		if (strstr((char*)bc->v4l2.vcap.card, "6010"))
-			bc->v4l2.codec_id = CODEC_ID_MPEG4;
-		else if (strstr((char*)bc->v4l2.vcap.card, "6110"))
-			bc->v4l2.codec_id = CODEC_ID_H264;
-	}
-
-	/* Get the parameters */
-	bc->v4l2.vparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_G_PARM, &bc->v4l2.vparm) < 0)
-		return -1;
-
-	/* Get the format */
-	bc->v4l2.vfmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_G_FMT, &bc->v4l2.vfmt) < 0)
-		return -1;
-
-	return 0;
 }
 
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
@@ -449,8 +130,6 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 			             device, port, ((*path) ? path : "/"));
 		if (r >= sizeof(bc->mjpeg_url))
 			return -1;
-
-		bc->cam_caps |= BC_CAM_CAP_MJPEG_URL;
 	}
 
 	return 0;
@@ -483,16 +162,15 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	strcpy(bc->device, device);
 	strcpy(bc->driver, driver);
-	bc->v4l2.dev_fd = -1;
 
 	bc_ptz_check(bc, dbres);
 
 	if (!strncmp(driver, "RTSP-", 5))
 		ret = rtsp_handle_init(bc, dbres);
 	else {
-		bc_log("XXX: V4L2 handles disabled for now!");
-		ret = ENOSYS; //v4l2_handle_init(bc, dbres);
-		return NULL;
+		bc->type = BC_DEVICE_V4L2;
+		bc->input = new v4l2_device(dbres);
+		ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
 	}
 
 	bc_set_motion_thresh_global(bc, '3');
@@ -505,41 +183,6 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	return bc;
 }
 
-static void v4l2_handle_stop(struct bc_handle *bc)
-{
-	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
-
-	if (bc->v4l2.dev_fd < 0)
-		return;
-
-	for (i = 0; i < bc->v4l2.buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
-
-		if (!(vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)))
-			continue;
-
-		if (ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb) <0)
-			continue;
-	}
-
-	/* Stop the stream */
-	ioctl(bc->v4l2.dev_fd, VIDIOC_STREAMOFF, &type);
-
-	/* Unmap all buffers */
-	for (i = 0; i < bc->v4l2.buffers; i++)
-		munmap(bc->v4l2.p_buf[i].data, bc->v4l2.p_buf[i].size);
-
-	bc->v4l2.local_bufs = bc->v4l2.buffers;
-	bc->v4l2.buf_idx = -1;
-}
-
 void bc_handle_stop(struct bc_handle *bc)
 {
 	int save_err = errno;
@@ -550,10 +193,7 @@ void bc_handle_stop(struct bc_handle *bc)
 	/* free motion detection resources */
 	bc_set_motion(bc, 0);
 
-	if (bc->type == BC_DEVICE_V4L2)
-		v4l2_handle_stop(bc);
-	else if (bc->type == BC_DEVICE_RTP)
-		bc->input->stop();
+	bc->input->stop();
 
 	bc->started = 0;
 	errno = save_err;
@@ -564,11 +204,10 @@ void bc_handle_reset(struct bc_handle *bc)
 	if (!bc || !bc->started)
 		return;
 
-	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_handle_stop(bc);
+	bc->input->reset();
+	// XXX refactor started into input, and see if this behavior even makes sense.
+	if (bc->type == BC_DEVICE_V4L2)
 		bc->started = 0;
-	} else
-		bc->input->reset();
 }
 
 void bc_handle_free(struct bc_handle *bc)
@@ -580,9 +219,6 @@ void bc_handle_free(struct bc_handle *bc)
 		return;
 
 	bc_handle_stop(bc);
-
-	if (bc->v4l2.dev_fd >= 0)
-		close(bc->v4l2.dev_fd);
 
 	delete bc->input;
 	free(bc);

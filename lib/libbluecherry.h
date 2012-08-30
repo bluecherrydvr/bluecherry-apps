@@ -14,7 +14,7 @@
 #include <libconfig.h>
 #include <time.h>
 #include <inttypes.h>
-#include <linux/videodev2.h>
+#include <string>
 #include <vector>
 
 #ifndef PRId64
@@ -25,34 +25,10 @@
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 
-#define BC_BUFFERS		16
-#define BC_BUFFERS_JPEG		8
-
 #define BC_UID_TYPE_BC		"BCUID"
 #define BC_UID_TYPE_PCI		"BCPCI"
 
-/* Some things that are driver specific */
-#ifndef V4L2_BUF_FLAG_MOTION_ON
-#define V4L2_BUF_FLAG_MOTION_ON		0x0400
-#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
-#endif
-
-#ifndef V4L2_CID_MOTION_ENABLE
-#define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
-#define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
-#define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
-#endif
-
 typedef void * BC_DB_RES;
-
-/* Camera capability flags */
-#define BC_CAM_CAP_V4L2_MOTION 0x00000002
-#define BC_CAM_CAP_OSD         0x00000004
-#define BC_CAM_CAP_SOLO        0x00000008
-#define BC_CAM_CAP_MJPEG_URL   0x00000010
-/* Set for all BC_DEVICE_V4L2 handles operating
- * in PAL. NTSC is assumed if unset. */
-#define BC_CAM_CAP_V4L2_PAL    0x00000020
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -64,26 +40,6 @@ typedef enum {
 	BC_DEVICE_RTP
 } bc_device_type_t;
 
-struct v4l2_device {
-	int			dev_fd;
-	struct v4l2_format	vfmt;
-	struct v4l2_capability	vcap;
-	struct v4l2_streamparm	vparm;
-	enum   CodecID          codec_id;
-	/* Userspace buffer accounting */
-	struct {
-		void			*data;
-		size_t			size;
-		struct v4l2_buffer	vb;
-	}			p_buf[BC_BUFFERS];
-	int			local_bufs;
-	int			buf_idx;
-	int			gop;
-	int			buffers;
-	int			card_id;
-	int			dev_id;
-};
-
 class input_device
 {
 public:
@@ -93,6 +49,8 @@ public:
 	virtual int start() = 0;
 	virtual void stop() = 0;
 	virtual void reset() = 0;
+
+	const char *get_error_message() const { return _error_message.c_str(); }
 
 	virtual int buf_get() = 0;
 	virtual void *buf_data() = 0;
@@ -109,6 +67,9 @@ public:
 
 protected:
 	bool _audio_enabled;
+	std::string _error_message;
+
+	void set_error_message(const std::string &msg) { _error_message = msg; }
 };
 
 struct bc_motion_data {
@@ -133,10 +94,8 @@ struct bc_handle {
 	char			mjpeg_url[1024];
 
 	bc_device_type_t	type;
-	unsigned int		cam_caps;
 
 	input_device            *input;
-	struct v4l2_device	v4l2;
 
 	int			started;
 	int			got_vop;
@@ -315,12 +274,6 @@ void bc_vlog(const char *msg, va_list va);
 time_t bc_gettime_monotonic();
 int hex_encode(char *out, int out_sz, const char *in, int in_sz);
 
-/* Format and parameter settings */
-int bc_set_interval(struct bc_handle *bc, u_int8_t interval);
-int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
-		  u_int16_t height);
-int bc_set_mjpeg(struct bc_handle *bc);
-
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);
 int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size);
@@ -328,13 +281,6 @@ int bc_set_motion_thresh_global(struct bc_handle *bc, char value);
 /* Checks if the current buffer has motion on/detected */
 int bc_motion_is_on(struct bc_handle *bc);
 int bc_motion_is_detected(struct bc_handle *bc);
-
-/* Set v4l2 control */
-int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val);
-
-/* Set the text of the OSD */
-int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
-	__attribute__ ((format (printf, 2, 3)));
 
 enum bc_access_type
 {

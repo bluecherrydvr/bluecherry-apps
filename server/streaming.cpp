@@ -27,7 +27,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (!ctx->oformat)
 		goto error;
 
-	if (setup_output_context(bc_rec, ctx) < 0)
+	if (bc_rec->bc->input->setup_output(ctx) < 0)
 		goto error;
 
 	for (i = 0; i < ctx->nb_streams; ++i) {

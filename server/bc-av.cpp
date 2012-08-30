@@ -398,97 +398,6 @@ int bc_mkdir_recursive(char *path)
 	return -1;
 }
 
-static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
-{
-	AVStream *st;
-	int fden   = bc_rec->bc->v4l2.vparm.parm.capture.timeperframe.denominator;
-	int fnum   = bc_rec->bc->v4l2.vparm.parm.capture.timeperframe.numerator;
-	int width  = bc_rec->bc->v4l2.vfmt.fmt.pix.width;
-	int height = bc_rec->bc->v4l2.vfmt.fmt.pix.height;
-
-	/* Setup new video stream */
-	if ((st = avformat_new_stream(oc, NULL)) == NULL)
-		return -1;
-
-	st->time_base.den = fden;
-	st->time_base.num = fnum;
-
-	if (bc_rec->bc->v4l2.codec_id == CODEC_ID_NONE) {
-		bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
-		st->codec->codec_id = CODEC_ID_MPEG4;
-	} else
-		st->codec->codec_id = bc_rec->bc->v4l2.codec_id;
-
-	/* h264 requires us to work around libavcodec broken defaults */
-	if (st->codec->codec_id == CODEC_ID_H264) {
-		st->codec->me_range = 16;
-		st->codec->me_subpel_quality = 7;
-		st->codec->qmin = 10;
-		st->codec->qmax = 51;
-		st->codec->max_qdiff = 4;
-		st->codec->qcompress = 0.6;
-		st->codec->i_quant_factor = 0.71;
-		st->codec->b_frame_strategy = 1;
-	}
-
-	st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-	st->codec->pix_fmt = PIX_FMT_YUV420P;
-	st->codec->width = width;
-	st->codec->height = height;
-	st->codec->time_base.num = fnum;
-	st->codec->time_base.den = fden;
-
-	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-	st = NULL;
-
-	/* We don't fail when this happens. Video with no sound is
-	 * better than no video at all. */
-	if (!bc_rec->cfg.aud_disabled && bc_alsa_open(bc_rec))
-		bc_alsa_close(bc_rec);
-
-	/* Setup new audio stream */
-	if (has_audio(bc_rec)) {
-		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
-
-		/* If we can't find an encoder, just skip it */
-		if (avcodec_find_encoder(codec_id) == NULL) {
-			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
-				    "so not recording", codec_id);
-			goto no_audio;
-		}
-
-		if ((st = avformat_new_stream(oc, NULL)) == NULL)
-			goto no_audio;
-		st->codec->codec_id = codec_id;
-		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-
-		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
-		st->codec->channels = 1;
-		st->codec->time_base = (AVRational){1, 8000};
-
-		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-no_audio:
-		st = NULL;
-	}
-	
-	return 0;
-}
-
-int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	if (bc->type == BC_DEVICE_RTP)
-		return bc->input->setup_output(oc);
-	else if (bc->type == BC_DEVICE_V4L2 && (bc->cam_caps & BC_CAM_CAP_SOLO))
-		return setup_solo_output(bc_rec, oc);
-	else
-		return -1;
-}
-
 int bc_open_avcodec(struct bc_record *bc_rec)
 {
 	AVCodec *codec;
@@ -512,7 +421,7 @@ int bc_open_avcodec(struct bc_record *bc_rec)
 
 	oc->oformat = bc_rec->fmt_out;
 
-	if (setup_output_context(bc_rec, oc) < 0)
+	if (bc_rec->bc->input->setup_output(oc) < 0)
 		goto error;
 
 	bc_rec->audio_st = bc_rec->video_st = NULL;

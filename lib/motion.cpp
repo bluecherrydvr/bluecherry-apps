@@ -21,25 +21,28 @@
 
 #include "libbluecherry.h"
 #include "rtp-session.h"
+#include "v4l2device.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
 }
 
-struct v4l2_buffer *bc_buf_v4l2(struct bc_handle *bc);
-
 int bc_set_motion(struct bc_handle *bc, int on)
 {
 	int ret = 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_control vc;
-
-		vc.id = V4L2_CID_MOTION_ENABLE;
-		vc.value = on ? 1 : 0;
-
-		ret = ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_device *d = reinterpret_cast<v4l2_device*>(bc->input);
+		if (d->caps() & BC_CAM_CAP_V4L2_MOTION) {
+			struct v4l2_control vc;
+			vc.id = V4L2_CID_MOTION_ENABLE;
+			vc.value = on ? 1 : 0;
+			ret = ioctl(d->device_fd(), VIDIOC_S_CTRL, &vc);
+		} else {
+			bc_log("E: Motion detection is not implemented for non-solo V4L2 devices.");
+			ret = -ENOSYS;
+		}
 	} else if (!on) {
 		/* Free resources from generic motion detection */
 		if (bc->motion_data.convContext) {
@@ -74,7 +77,10 @@ int bc_motion_is_on(struct bc_handle *bc)
 	if (!bc->motion_data.enabled)
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+	// XXX: Disabled as this seems unnecessary.
+#if 0
+	v4l2_device *d = 0;
+	if (bc->type == BC_DEVICE_V4L2) {
 		struct v4l2_buffer *vb;
 
 		vb = bc_buf_v4l2(bc);
@@ -83,6 +89,7 @@ int bc_motion_is_on(struct bc_handle *bc)
 
 		return vb->flags & V4L2_BUF_FLAG_MOTION_ON ? 1 : 0;
 	}
+#endif
 
 	return 1;
 }
@@ -101,14 +108,15 @@ int bc_set_motion_thresh_global(struct bc_handle *bc, char value)
 	if (val < 0 || val > 5)
 		return -1;
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_control vc;
-		vc.id = V4L2_CID_MOTION_THRESHOLD;
-
-		/* Upper 16 bits are 0 for the global threshold */
-		vc.value = solo_value_map[val];
-
-		return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_device *d = reinterpret_cast<v4l2_device*>(bc->input);
+		if (d->caps() & BC_CAM_CAP_V4L2_MOTION) {
+			struct v4l2_control vc;
+			vc.id = V4L2_CID_MOTION_THRESHOLD;
+			/* Upper 16 bits are 0 for the global threshold */
+			vc.value = solo_value_map[val];
+			return ioctl(d->device_fd(), VIDIOC_S_CTRL, &vc);
+		}
 	} else {
 		memset(bc->motion_data.thresholds, generic_value_map[val],
 		       sizeof(bc->motion_data.thresholds));
@@ -119,13 +127,17 @@ int bc_set_motion_thresh_global(struct bc_handle *bc, char value)
 
 int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 {
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_device *d = reinterpret_cast<v4l2_device*>(bc->input);
+		if (!(d->caps() & BC_CAM_CAP_V4L2_MOTION))
+			return -ENOSYS;
+
 		struct v4l2_control vc;
 		int vh = 15;
 		int i;
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
 
-		if (bc->cam_caps & BC_CAM_CAP_V4L2_PAL)
+		if (d->caps() & BC_CAM_CAP_V4L2_PAL)
 			vh = 18;
 
 		if (size < 22 * vh)
@@ -145,7 +157,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 				vc.value = (unsigned)(i*64+j+1) << 16;
 				vc.value |= solo_value_map[map[pos] - '0'];
 
-				if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc))
+				if (ioctl(d->device_fd(), VIDIOC_S_CTRL, &vc))
 					return -1;
 			}
 		}
@@ -186,10 +198,10 @@ int bc_motion_is_detected(struct bc_handle *bc)
 	if (!bc_motion_is_on(bc))
 		return 0;
 
-	if (bc->cam_caps & BC_CAM_CAP_V4L2_MOTION) {
+	if (bc->type == BC_DEVICE_V4L2) {
 		struct v4l2_buffer *vb;
 
-		vb = bc_buf_v4l2(bc);
+		vb = reinterpret_cast<v4l2_device*>(bc->input)->buf_v4l2();
 		if (vb == NULL)
 			return 0;
 

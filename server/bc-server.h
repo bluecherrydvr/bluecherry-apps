@@ -173,8 +173,6 @@ int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
 
-int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc);
-
 #ifdef EBUG
 #define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)
 #else

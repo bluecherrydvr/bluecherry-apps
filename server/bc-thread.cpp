@@ -11,6 +11,7 @@
 
 #include "bc-server.h"
 #include "rtp-session.h"
+#include "v4l2device.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
@@ -146,15 +147,18 @@ static void event_trigger_notifications(struct bc_record *bc_rec)
 
 static void try_formats(struct bc_record *bc_rec)
 {
-	struct bc_handle *bc = bc_rec->bc;
+	if (bc_rec->bc->type != BC_DEVICE_V4L2)
+		return;
 
-	if (bc_set_interval(bc, bc_rec->cfg.interval)) {
+	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
+
+	if (d->set_interval(bc_rec->cfg.interval)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
 			bc_dev_warn(bc_rec, "Failed to set video interval: %m");
 	}
 
-	if (bc_set_format(bc, bc_rec->fmt, bc_rec->cfg.width, bc_rec->cfg.height)) {
+	if (d->set_format(bc_rec->fmt, bc_rec->cfg.width, bc_rec->cfg.height)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
 			bc_dev_warn(bc_rec, "Error setting format: %m");
@@ -163,12 +167,15 @@ static void try_formats(struct bc_record *bc_rec)
 
 static void update_osd(struct bc_record *bc_rec)
 {
-	struct bc_handle *bc = bc_rec->bc;
+	if (bc_rec->bc->type != BC_DEVICE_V4L2)
+		return;
+
+	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 	time_t t = time(NULL);
 	char buf[20];
 	struct tm tm;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_OSD))
+	if (!(d->caps() & BC_CAM_CAP_OSD))
 		return;
 
 	if (t == bc_rec->osd_time)
@@ -176,7 +183,7 @@ static void update_osd(struct bc_record *bc_rec)
 
 	bc_rec->osd_time = t;
 	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
-	bc_set_osd(bc, "%s %s", bc_rec->cfg.name, buf);
+	d->set_osd("%s %s", bc_rec->cfg.name, buf);
 }
 
 static void check_schedule(struct bc_record *bc_rec)
@@ -391,6 +398,8 @@ static void *bc_device_thread(void *data)
 				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
+		// XXX: Solo audio is disabled
+#if 0
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
 		    && bc_rec->oc && bc_rec->audio_st)
 		{
@@ -406,6 +415,7 @@ static void *bc_device_thread(void *data)
 					bc_output_packet_write(bc_rec, &packet);
 			}
 		}
+#endif
 
 		ret = bc->input->buf_get();
 		if (ret == EAGAIN) {
@@ -482,11 +492,14 @@ error:
 
 	stop_handle_properly(bc_rec);
 	bc_event_cam_end(&bc_rec->event);
-	bc_set_osd(bc, " ");
+
+	if (bc->type == BC_DEVICE_V4L2)
+		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
 
 	return bc_rec->thread_should_die;
 }
 
+#if 0
 static void get_aud_dev(struct bc_record *bc_rec)
 {
 	bc_rec->aud_dev[0] = '\0';
@@ -501,6 +514,7 @@ static void get_aud_dev(struct bc_record *bc_rec)
 	bc_rec->aud_channels = 1;
 	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
 }
+#endif
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
@@ -549,7 +563,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
 
-	get_aud_dev(bc_rec);
+	//get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
 	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
@@ -599,6 +613,8 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	}
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
+#warning REGRESSION: hue/sat/etc disabled, needs refactor as part of cfg
+#if 0
 	/* Update standard controls */
 	bc_set_control(bc_rec->bc, V4L2_CID_HUE,
 			bc_db_get_val_int(dbres, "hue"));
@@ -608,6 +624,7 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 			bc_db_get_val_int(dbres, "saturation"));
 	bc_set_control(bc_rec->bc, V4L2_CID_BRIGHTNESS,
 			bc_db_get_val_int(dbres, "brightness"));
+#endif
 
 	return 0;
 }
