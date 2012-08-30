@@ -19,139 +19,146 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
-void rtp_device_init(struct rtp_device *rs, const char *url)
+rtp_device::rtp_device(const char *u)
+	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
 {
-	int i;
-	memset(rs, 0, sizeof(*rs));
-	rs->video_stream_index = rs->audio_stream_index = -1;
+	strlcpy(url, u, sizeof(url));
 
-	strncpy(rs->url, url, sizeof(rs->url));
-	rs->url[sizeof(rs->url)-1] = '\0';
+	memset(error_message, 0, sizeof(error_message));
 
 	/* Currently, av_init_packet cannot be used here because it
 	 * is undefined in the php module. We don't really need it,
 	 * anyway. */
-	rs->frame.pts = AV_NOPTS_VALUE;
+	memset(&frame, 0, sizeof(frame));
+	frame.pts = AV_NOPTS_VALUE;
 
-	for (i = 0; i < RTP_NUM_STREAMS; ++i)
-		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
+	memset(&stream_data, 0, sizeof(stream_data));
+	for (int i = 0; i < RTP_NUM_STREAMS; ++i)
+		stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
-void rtp_device_stop(struct rtp_device *rs)
+rtp_device::~rtp_device()
 {
-	int i;
+	stop();
+}
 
-	if (!rs->ctx)
+void rtp_device::stop()
+{
+	if (!ctx)
 		return;
 
-	av_free_packet(&rs->frame);
-	av_init_packet(&rs->frame);
+	av_free_packet(&frame);
+	av_init_packet(&frame);
 
-	for (i = 0; i < rs->ctx->nb_streams; ++i) {
-		if (rs->ctx->streams[i]->codec->codec)
-			avcodec_close(rs->ctx->streams[i]->codec);
+	for (int i = 0; i < ctx->nb_streams; ++i) {
+		if (ctx->streams[i]->codec->codec)
+			avcodec_close(ctx->streams[i]->codec);
 	}
 
-	av_close_input_file(rs->ctx);
-	rs->ctx = 0;
-	rs->video_stream_index = rs->audio_stream_index = -1;
+	av_close_input_file(ctx);
+	ctx = 0;
+	video_stream_index = audio_stream_index = -1;
 
-	for (i = 0; i < RTP_NUM_STREAMS; ++i) {
-		rs->stream_data[i].pts_base = 0;
-		rs->stream_data[i].last_pts = AV_NOPTS_VALUE;
-		rs->stream_data[i].last_pts_diff = 0;
-		rs->stream_data[i].was_last_diff_skipped = 0;
+	for (int i = 0; i < RTP_NUM_STREAMS; ++i) {
+		stream_data[i].pts_base = 0;
+		stream_data[i].last_pts = AV_NOPTS_VALUE;
+		stream_data[i].last_pts_diff = 0;
+		stream_data[i].was_last_diff_skipped = 0;
 	}
 }
 
-int rtp_device_start(struct rtp_device *rs)
+int rtp_device::start()
 {
 	int i, re;
 	AVDictionary *avopt = NULL;
 	char tmp[24];
 
-	if (rs->ctx)
+	if (ctx)
 		return 0;
 
-	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", rs->url);
+	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", url);
 
 	snprintf(tmp, sizeof(tmp), "%lld", (long long int)(0.7*AV_TIME_BASE));
 	av_dict_set(&avopt, "max_delay", tmp, 0);
-	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
+	av_dict_set(&avopt, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	av_dict_set(&avopt, "threads", "1", 0);
 
 	AVDictionary *opt_copy = 0;
 	av_dict_copy(&opt_copy, avopt, 0);
 
-	if ((re = avformat_open_input(&rs->ctx, rs->url, NULL, &avopt)) != 0) {
-		av_strerror(re, rs->error_message, sizeof(rs->error_message));
-		rs->ctx = 0;
+	if ((re = avformat_open_input(&ctx, url, NULL, &avopt)) != 0) {
+		av_strerror(re, error_message, sizeof(error_message));
+		ctx = 0;
 		av_dict_free(&avopt);
 		av_dict_free(&opt_copy);
 		return -1;
 	}
 
 	if (av_dict_get(avopt, "", NULL, 0))
-		av_log(rs->ctx, AV_LOG_WARNING, "Unable to set format options");
+		av_log(ctx, AV_LOG_WARNING, "Unable to set format options");
 
 	av_dict_free(&avopt);
 
 	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
-	AVDictionary **opt_si = new AVDictionary*[rs->ctx->nb_streams];
-	for (i = 0; i < rs->ctx->nb_streams; ++i) {
+	AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
+	for (i = 0; i < ctx->nb_streams; ++i) {
 		opt_si[i] = 0;
 		av_dict_copy(&opt_si[i], opt_copy, 0);
 	}
 
-	re = avformat_find_stream_info(rs->ctx, opt_si);
+	re = avformat_find_stream_info(ctx, opt_si);
 
-	for (i = 0; i < rs->ctx->nb_streams; ++i)
+	for (i = 0; i < ctx->nb_streams; ++i)
 		av_dict_free(&opt_si[i]);
 	delete[] opt_si;
 	av_dict_free(&opt_copy);
 
 	if (re < 0) {
-		rtp_device_stop(rs);
-		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		stop();
+		av_strerror(re, error_message, sizeof(error_message));
 		return -1;
 	}
 
-	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
-		AVStream *stream = rs->ctx->streams[i];
+	for (i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+		AVStream *stream = ctx->streams[i];
 
 		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-			if (rs->video_stream_index >= 0) {
+			if (video_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple video streams. Only the "
-				       "first stream will be recorded.", rs->url);
+				       "first stream will be recorded.", url);
 				continue;
 			}
-			rs->video_stream_index = i;
+			video_stream_index = i;
 
 			if (stream->time_base.num != 1 || stream->time_base.den != 90000) {
-				av_log(rs->ctx, AV_LOG_WARNING, "Video stream timebase is unusual (%d/%d). "
+				av_log(ctx, AV_LOG_WARNING, "Video stream timebase is unusual (%d/%d). "
 				       "This could cause timing issues.", stream->time_base.num,
 				       stream->time_base.den);
 			}
 		} else if (stream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
-			if (rs->audio_stream_index >= 0) {
+			if (audio_stream_index >= 0) {
 				bc_log("RTSP session for %s has multiple audio streams. Only the "
-				       "first stream will be recorded.", rs->url);
+				       "first stream will be recorded.", url);
 				continue;
 			} else if (stream->codec->codec_id == CODEC_ID_NONE) {
-				av_log(rs->ctx, AV_LOG_ERROR, "No matching audio codec for stream; ignoring audio");
+				av_log(ctx, AV_LOG_ERROR, "No matching audio codec for stream; ignoring audio");
 				continue;
 			}
-			rs->audio_stream_index = i;
+			audio_stream_index = i;
 		}
 	}
 
-	if (rs->video_stream_index < 0) {
-		rtp_device_stop(rs);
-		strcpy(rs->error_message, "RTSP session contains no valid video stream");
+	if (video_stream_index < 0) {
+		stop();
+		strcpy(error_message, "RTSP session contains no valid video stream");
 		return -1;
 	}
 
 	return 0;
+}
+
+void rtp_device::reset()
+{
 }
 
 /* Workaround because we cannot take the address of this function
@@ -162,47 +169,47 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 	av_destruct_packet(pkt);
 }
 
-int rtp_device_read(struct rtp_device *rs)
+int rtp_device::buf_get()
 {
 	int re;
 	struct rtp_stream_data *streamdata = 0;
-	if (!rs->ctx) {
-		strcpy(rs->error_message, "No active RTSP session");
+	if (!ctx) {
+		strcpy(error_message, "No active RTSP session");
 		return -1;
 	}
 
-	av_free_packet(&rs->frame);
-	re = av_read_frame(rs->ctx, &rs->frame);
+	av_free_packet(&frame);
+	re = av_read_frame(ctx, &frame);
 	if (re < 0) {
-		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		av_strerror(re, error_message, sizeof(error_message));
 		return -1;
 	}
 
-	if (rs->frame.stream_index >= 0 && rs->frame.stream_index < RTP_NUM_STREAMS)
-		streamdata = &rs->stream_data[rs->frame.stream_index];
+	if (frame.stream_index >= 0 && frame.stream_index < RTP_NUM_STREAMS)
+		streamdata = &stream_data[frame.stream_index];
 
 	/* ACTi B2 frames are badly specified; they are MPEG4 user data elements which
 	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
 	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
 	 * everything. */
-	if (rs->ctx->streams[rs->frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
+	if (ctx->streams[frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
 		uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
-		if (rs->frame.size >= 47 && rs->frame.stream_index == rs->video_stream_index
-		    && memcmp(rs->frame.data, b2_header, sizeof(b2_header)) == 0
-		    && memcmp(rs->frame.data+44, b2_header, 3) == 0)
+		if (frame.size >= 47 && frame.stream_index == video_stream_index
+		    && memcmp(frame.data, b2_header, sizeof(b2_header)) == 0
+		    && memcmp(frame.data+44, b2_header, 3) == 0)
 		{
-			void *tmp = av_malloc(rs->frame.size); /* Let the extra 44 be buffer padding */
-			int size = rs->frame.size - 44;
-			memcpy(tmp, rs->frame.data+44, size);
-			av_free_packet(&rs->frame);
-			rs->frame.data = (uint8_t*)tmp;
-			rs->frame.size = size;
-			rs->frame.destruct = wrap_av_destruct_packet;
+			void *tmp = av_malloc(frame.size); /* Let the extra 44 be buffer padding */
+			int size = frame.size - 44;
+			memcpy(tmp, frame.data+44, size);
+			av_free_packet(&frame);
+			frame.data = (uint8_t*)tmp;
+			frame.size = size;
+			frame.destruct = wrap_av_destruct_packet;
 		}
 	}
 
 	/* Don't run offset logic against frames with no PTS */
-	if (!streamdata || rs->frame.pts == AV_NOPTS_VALUE)
+	if (!streamdata || frame.pts == AV_NOPTS_VALUE)
 		return 0;
 
 	/* Correct the stream's PTS to provide an even, monotonic set of frames for
@@ -241,20 +248,20 @@ int rtp_device_read(struct rtp_device *rs)
 	 *
 	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
 	 */
-	if (streamdata->last_pts != AV_NOPTS_VALUE && rs->ctx->nb_streams > 1) {
-		if (rs->frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
-		    (rs->frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
+	if (streamdata->last_pts != AV_NOPTS_VALUE && ctx->nb_streams > 1) {
+		if (frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
+		    (frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
-			av_log(rs->ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
+			av_log(ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
 			       "delta %lld. Adjusting based on last interval of %lld.",
-			       rs->frame.stream_index,
-			       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
-			       (long long int) rs->frame.pts - streamdata->last_pts,
+			       frame.stream_index,
+			       ctx->streams[frame.stream_index]->codec->codec_type,
+			       (long long int) frame.pts - streamdata->last_pts,
 			       (long long int) streamdata->last_pts_diff);
-			streamdata->pts_base -= (streamdata->last_pts - rs->frame.pts)
+			streamdata->pts_base -= (streamdata->last_pts - frame.pts)
 			                        + streamdata->last_pts_diff;
 		} else {
-			int64_t newptsdiff = rs->frame.pts - streamdata->last_pts;
+			int64_t newptsdiff = frame.pts - streamdata->last_pts;
 			/* Don't update last_pts_diff when this interval is 1/4th or less of the
 			 * last interval, corrosponding to the forward jump detection above.
 			 *
@@ -268,17 +275,17 @@ int rtp_device_read(struct rtp_device *rs)
 			    (streamdata->last_pts_diff/newptsdiff) >= 4)
 			{
 				if (!streamdata->was_last_diff_skipped) {
-					av_log(rs->ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
+					av_log(ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
 					       "to %lld (delta %lld); ignoring interval change unless repeated",
-					       rs->frame.stream_index,
-					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+					       frame.stream_index,
+					       ctx->streams[frame.stream_index]->codec->codec_type,
 					       (long long int)newptsdiff, (long long int)(newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 1;
 				} else {
-					av_log(rs->ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
+					av_log(ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
 					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
-					       "framerate or desynchronization issues.", rs->frame.stream_index,
-					       rs->ctx->streams[rs->frame.stream_index]->codec->codec_type,
+					       "framerate or desynchronization issues.", frame.stream_index,
+					       ctx->streams[frame.stream_index]->codec->codec_type,
 					       (long long int)newptsdiff,
 					       (long long int)(newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 0;
@@ -291,31 +298,50 @@ int rtp_device_read(struct rtp_device *rs)
 		}
 	}
 
-	streamdata->last_pts = rs->frame.pts;
-	rs->frame.pts -= streamdata->pts_base;
+	streamdata->last_pts = frame.pts;
+	frame.pts -= streamdata->pts_base;
 
 	return 0;
 }
 
-int rtp_device_frame_is_keyframe(struct rtp_device *rs)
+void *rtp_device::buf_data()
 {
-	return (rs->frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
+	if (frame.stream_index == video_stream_index)
+		return frame.data;
+	return NULL;
 }
 
-int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
+unsigned int rtp_device::buf_size()
 {
-	if (!rs->ctx) {
-		strcpy(rs->error_message, "No active RTSP session");
+	if (frame.stream_index == video_stream_index)
+		return frame.size;
+	return 0;
+}
+
+int rtp_device::is_key_frame()
+{
+	return (frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
+}
+
+int rtp_device::is_video_frame()
+{
+	return frame.stream_index == video_stream_index;
+}
+
+int rtp_device::setup_output(AVFormatContext *out_ctx)
+{
+	if (!ctx) {
+		strcpy(error_message, "No active RTSP session");
 		return -1;
 	}
 
 	AVStream *vst = avformat_new_stream(out_ctx, NULL);
 	if (!vst) {
-		strcpy(rs->error_message, "Cannot add new stream");
+		strcpy(error_message, "Cannot add new stream");
 		return -1;
 	}
 
-	AVCodecContext *ic = rs->ctx->streams[rs->video_stream_index]->codec;
+	AVCodecContext *ic = ctx->streams[video_stream_index]->codec;
 	vst->codec->codec_id = ic->codec_id;
 	vst->codec->codec_type = ic->codec_type;
 	vst->codec->pix_fmt = ic->pix_fmt;
@@ -332,7 +358,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-	if (rs->audio_stream_index >= 0) {
+	if (audio_stream_index >= 0) {
 		/* Audio recording errors are non-fatal; video will still be captured */
 		AVStream *ast = avformat_new_stream(out_ctx, NULL);
 		if (!ast) {
@@ -340,7 +366,7 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 			return 0;
 		}
 
-		ic = rs->ctx->streams[rs->audio_stream_index]->codec;
+		ic = ctx->streams[audio_stream_index]->codec;
 		ast->codec->codec_id = ic->codec_id;
 		ast->codec->codec_type = ic->codec_type;
 		ast->codec->bit_rate = ic->bit_rate;
@@ -362,45 +388,45 @@ int rtp_device_setup_output(struct rtp_device *rs, AVFormatContext *out_ctx)
 	return 0;
 }
 
-void rtp_device_set_current_pts(struct rtp_device *rs, int64_t pts)
+void rtp_device::set_current_pts(int64_t pts)
 {
 	int64_t offset;
 	int i;
 
 	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
 	 * all other streams are adjusted accordingly. */
-	if (rs->frame.stream_index < 0 || rs->frame.stream_index >= RTP_NUM_STREAMS)
+	if (frame.stream_index < 0 || frame.stream_index >= RTP_NUM_STREAMS)
 		return;
 
-	if (rs->frame.pts == AV_NOPTS_VALUE) {
-		av_log(rs->ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
+	if (frame.pts == AV_NOPTS_VALUE) {
+		av_log(ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
 		       (long long int)pts);
 		return;
 	}
 
-	offset = rs->frame.pts - pts;
+	offset = frame.pts - pts;
 
-	av_log(rs->ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
-	       offset, rs->frame.stream_index, pts);
+	av_log(ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
+	       offset, frame.stream_index, pts);
 
-	for (i = 0; i < rs->ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
-		rs->stream_data[i].pts_base += av_rescale_q(offset, rs->ctx->streams[rs->frame.stream_index]->time_base, rs->ctx->streams[i]->time_base);
+	for (i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+		stream_data[i].pts_base += av_rescale_q(offset, ctx->streams[frame.stream_index]->time_base, ctx->streams[i]->time_base);
 	}
 
-	rs->frame.pts = pts;
+	frame.pts = pts;
 }
 
-const char *rtp_device_stream_info(struct rtp_device *rs)
+const char *rtp_device::stream_info()
 {
-	char *buf = rs->error_message;
-	int size = sizeof(rs->error_message);
+	char *buf = error_message;
+	int size = sizeof(error_message);
 
-	if (rs->video_stream_index < 0) {
+	if (video_stream_index < 0) {
 		strlcpy(buf, "No streams", size);
 		return buf;
 	}
 
-	AVStream *stream = rs->ctx->streams[rs->video_stream_index];
+	AVStream *stream = ctx->streams[video_stream_index];
 
 	/* Borrow the error_message field */
 	avcodec_string(buf, size, stream->codec, 0);
@@ -409,8 +435,8 @@ const char *rtp_device_stream_info(struct rtp_device *rs)
 	off += snprintf(buf+off, size-off, ", %d/%d", stream->time_base.num,
                         stream->time_base.den);
 
-	if (rs->audio_stream_index >= 0 && size - off > 2) {
-		stream = rs->ctx->streams[rs->audio_stream_index];
+	if (audio_stream_index >= 0 && size - off > 2) {
+		stream = ctx->streams[audio_stream_index];
 		buf[off++] = ';';
 		buf[off++] = ' ';
 		avcodec_string(buf+off, size-off, stream->codec, 0);
@@ -420,16 +446,16 @@ const char *rtp_device_stream_info(struct rtp_device *rs)
 	return buf;
 }
 
-int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
+int rtp_device::decode_video(AVFrame *dst)
 {
 	AVStream *stream;
 	int re;
 	int have_picture = 0;
 
-	if (rs->frame.stream_index != rs->video_stream_index)
+	if (frame.stream_index != video_stream_index)
 		return -1;
 
-	stream = rs->ctx->streams[rs->frame.stream_index];
+	stream = ctx->streams[frame.stream_index];
 
 	if (!stream->codec->codec) {
 		AVCodec *codec = avcodec_find_decoder(stream->codec->codec_id);
@@ -439,14 +465,14 @@ int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
 		re = avcodec_open2(stream->codec, codec, &opt);
 		av_dict_free(&opt);
 		if (re < 0) {
-			av_strerror(re, rs->error_message, sizeof(rs->error_message));
+			av_strerror(re, error_message, sizeof(error_message));
 			return -1;
 		}
 	}
 
-	re = avcodec_decode_video2(stream->codec, frame, &have_picture, &rs->frame);
+	re = avcodec_decode_video2(stream->codec, dst, &have_picture, &frame);
 	if (re < 0) {
-		av_strerror(re, rs->error_message, sizeof(rs->error_message));
+		av_strerror(re, error_message, sizeof(error_message));
 		return -1;
 	}
 

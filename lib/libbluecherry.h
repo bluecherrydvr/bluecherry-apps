@@ -14,7 +14,7 @@
 #include <libconfig.h>
 #include <time.h>
 #include <inttypes.h>
-#include <linux/videodev2.h>
+#include <string>
 #include <vector>
 
 extern "C" {
@@ -42,58 +42,51 @@ extern "C" {
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
 
-#define BC_BUFFERS		16
-#define BC_BUFFERS_JPEG		8
-
 #define BC_UID_TYPE_BC		"BCUID"
 #define BC_UID_TYPE_PCI		"BCPCI"
 
-/* Some things that are driver specific */
-#ifndef V4L2_BUF_FLAG_MOTION_ON
-#define V4L2_BUF_FLAG_MOTION_ON		0x0400
-#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
-#endif
-
-#ifndef V4L2_CID_MOTION_ENABLE
-#define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
-#define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
-#define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
-#endif
-
 typedef void * BC_DB_RES;
 
-/* Camera capability flags */
-#define BC_CAM_CAP_V4L2_MOTION 0x00000002
-#define BC_CAM_CAP_OSD         0x00000004
-#define BC_CAM_CAP_SOLO        0x00000008
-#define BC_CAM_CAP_MJPEG_URL   0x00000010
-/* Set for all BC_DEVICE_V4L2 handles operating
- * in PAL. NTSC is assumed if unset. */
-#define BC_CAM_CAP_V4L2_PAL    0x00000020
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+}
 
 typedef enum {
 	BC_DEVICE_V4L2,
 	BC_DEVICE_RTP
 } bc_device_type_t;
 
-struct v4l2_device {
-	int			dev_fd;
-	struct v4l2_format	vfmt;
-	struct v4l2_capability	vcap;
-	struct v4l2_streamparm	vparm;
-	enum   CodecID          codec_id;
-	/* Userspace buffer accounting */
-	struct {
-		void			*data;
-		size_t			size;
-		struct v4l2_buffer	vb;
-	}			p_buf[BC_BUFFERS];
-	int			local_bufs;
-	int			buf_idx;
-	int			gop;
-	int			buffers;
-	int			card_id;
-	int			dev_id;
+class input_device
+{
+public:
+	input_device();
+	virtual ~input_device();
+
+	virtual int start() = 0;
+	virtual void stop() = 0;
+	virtual void reset() = 0;
+
+	const char *get_error_message() const { return _error_message.c_str(); }
+
+	virtual int buf_get() = 0;
+	virtual void *buf_data() = 0;
+	virtual unsigned int buf_size() = 0;
+
+	virtual int is_key_frame() = 0;
+	virtual int is_video_frame() = 0;
+
+	virtual bool has_audio() const = 0;
+	bool audio_enabled() const { return _audio_enabled; }
+	virtual void set_audio_enabled(bool enabled);
+
+	virtual int setup_output(AVFormatContext *out_ctx) = 0;
+
+protected:
+	bool _audio_enabled;
+	std::string _error_message;
+
+	void set_error_message(const std::string &msg) { _error_message = msg; }
 };
 
 struct bc_motion_data {
@@ -118,10 +111,8 @@ struct bc_handle {
 	char			mjpeg_url[1024];
 
 	bc_device_type_t	type;
-	unsigned int		cam_caps;
 
-	struct v4l2_device	v4l2;
-	struct rtp_device	rtp;
+	input_device            *input;
 
 	int			started;
 	int			got_vop;
@@ -300,42 +291,8 @@ void bc_vlog(const char *msg, va_list va);
 time_t bc_gettime_monotonic();
 int hex_encode(char *out, int out_sz, const char *in, int in_sz);
 
-/* Retrieves the next buffer from the device.
- * For RTSP devices, this buffer may not be video! */
-int bc_buf_get(struct bc_handle *bc);
-
-/* Get the data pointer for the current buffer */
-void *bc_buf_data(struct bc_handle *bc);
-
-/* Get the size in bytes used by the current buffer */
-unsigned int bc_buf_size(struct bc_handle *bc);
-
-/* Is the current buffer a key frame? */
-int bc_buf_key_frame(struct bc_handle *bc);
-
-/* Is the current buffer a video frame? */
-int bc_buf_is_video_frame(struct bc_handle *bc);
-
 /* Format and parameter settings */
-int bc_set_interval(struct bc_handle *bc, u_int8_t interval);
-int bc_set_resolution(struct bc_handle *bc, u_int16_t width, u_int16_t height);
 int bc_set_mjpeg(struct bc_handle *bc);
-uint32_t get_best_pixfmt(int fd);
-
-/* Enable or disable the motion detection */
-int bc_set_motion(struct bc_handle *bc, int on);
-int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size);
-int bc_set_motion_thresh_global(struct bc_handle *bc, char value);
-/* Checks if the current buffer has motion on/detected */
-int bc_motion_is_on(struct bc_handle *bc);
-int bc_motion_is_detected(struct bc_handle *bc);
-
-/* Set v4l2 control */
-int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val);
-
-/* Set the text of the OSD */
-int bc_set_osd(struct bc_handle *bc, char *fmt, ...)
-	__attribute__ ((format (printf, 2, 3)));
 
 enum bc_access_type
 {
@@ -403,7 +360,7 @@ int bc_event_media_length(bc_event_cam_t event);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
-int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay, 
+int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
 	       int pan_speed, int tilt_speed, int pset_id);
 
 #endif /* __LIBBLUECHERRY_H */

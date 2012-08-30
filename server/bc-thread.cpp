@@ -10,6 +10,8 @@
 #include <time.h>
 
 #include "bc-server.h"
+#include "rtp-session.h"
+#include "v4l2device.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
@@ -145,15 +147,18 @@ static void event_trigger_notifications(struct bc_record *bc_rec)
 
 static void try_formats(struct bc_record *bc_rec)
 {
-	struct bc_handle *bc = bc_rec->bc;
+	if (bc_rec->bc->type != BC_DEVICE_V4L2)
+		return;
 
-	if (bc_set_interval(bc, bc_rec->cfg.interval)) {
+	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
+
+	if (d->set_interval(bc_rec->cfg.interval)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
 			bc_dev_warn(bc_rec, "Failed to set video interval: %m");
 	}
 
-	if (bc_set_resolution(bc, bc_rec->cfg.width, bc_rec->cfg.height)) {
+	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
 			bc_dev_warn(bc_rec, "Error setting format: %m");
@@ -162,12 +167,15 @@ static void try_formats(struct bc_record *bc_rec)
 
 static void update_osd(struct bc_record *bc_rec)
 {
-	struct bc_handle *bc = bc_rec->bc;
+	if (bc_rec->bc->type != BC_DEVICE_V4L2)
+		return;
+
+	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 	time_t t = time(NULL);
 	char buf[20];
 	struct tm tm;
 
-	if (!(bc->cam_caps & BC_CAM_CAP_OSD))
+	if (!(d->caps() & BC_CAM_CAP_OSD))
 		return;
 
 	if (t == bc_rec->osd_time)
@@ -178,7 +186,7 @@ static void update_osd(struct bc_record *bc_rec)
 	tzset();
 
 	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
-	bc_set_osd(bc, "%s %s", bc_rec->cfg.name, buf);
+	d->set_osd("%s %s", bc_rec->cfg.name, buf);
 }
 
 static void check_schedule(struct bc_record *bc_rec)
@@ -303,7 +311,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	monotonic_now = bc_gettime_monotonic();
 
 	if (prerecord_append(bc_rec, spkt, monotonic_now) < 0 ||
-	    !bc_buf_is_video_frame(bc_rec->bc))
+	    !bc_rec->bc->input->is_video_frame())
 		return bc_rec->mot_last_ts > 0;
 
 	ret = bc_motion_is_detected(bc_rec->bc);
@@ -389,14 +397,16 @@ static void *bc_device_thread(void *data)
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
-				bc_dev_info(bc_rec, "RTP stream started: %s",
-				            rtp_device_stream_info(&bc->rtp));
+				const char *info = reinterpret_cast<rtp_device*>(bc->input)->stream_info();
+				bc_dev_info(bc_rec, "RTP stream started: %s", info);
 			}
 
 			if (bc_streaming_setup(bc_rec))
 				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
+		// XXX: Solo audio is disabled
+#if 0
 		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
 		    && bc_rec->oc && bc_rec->audio_st)
 		{
@@ -412,16 +422,15 @@ static void *bc_device_thread(void *data)
 					bc_output_packet_write(bc_rec, &packet);
 			}
 		}
+#endif
 
-		ret = bc_buf_get(bc);
+		ret = bc->input->buf_get();
 		if (ret == EAGAIN) {
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
-				bc_dev_err(bc_rec, "RTSP read error: %s",
-				           (*bc->rtp.error_message) ?
-				            bc->rtp.error_message :
-				            "Unknown error");
+				const char *err = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
+				bc_dev_err(bc_rec, "RTSP read error: %s", *err ? err : "Unknown error");
 			}
 
 			stop_handle_properly(bc_rec);
@@ -431,7 +440,7 @@ static void *bc_device_thread(void *data)
 		}
 
 		/* Prepare output packets; nothing is allocated. */
-		if (bc_buf_is_video_frame(bc))
+		if (bc->input->is_video_frame())
 			ret = get_output_video_packet(bc_rec, &packet);
 		else
 			ret = get_output_audio_packet(bc_rec, &packet);
@@ -461,7 +470,7 @@ static void *bc_device_thread(void *data)
 					 * which we write in the normal path below. */
 					for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
 						bc_output_packet_write(bc_rec, p);
-				} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
+				} else if (!bc->input->is_key_frame() || !bc->input->is_video_frame()) {
 					/* Always start a recording with a key video frame. This will result in
 					 * the lost of some video between recordings, up to the keyframe interval,
 					 * at least on RTP devices. XXX Ideally, we should move the recording split
@@ -474,7 +483,7 @@ static void *bc_device_thread(void *data)
 				}
 			}
 
-			if (bc_buf_is_video_frame(bc) && bc_buf_key_frame(bc) && !bc_rec->event_snapshot_done) {
+			if (bc->input->is_video_frame() && bc->input->is_key_frame() && !bc_rec->event_snapshot_done) {
 				save_event_snapshot(bc_rec, &packet);
 				bc_rec->event_snapshot_done = 1;
 				event_trigger_notifications(bc_rec);
@@ -490,11 +499,14 @@ error:
 
 	stop_handle_properly(bc_rec);
 	bc_event_cam_end(&bc_rec->event);
-	bc_set_osd(bc, " ");
+
+	if (bc->type == BC_DEVICE_V4L2)
+		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
 
 	return bc_rec->thread_should_die;
 }
 
+#if 0
 static void get_aud_dev(struct bc_record *bc_rec)
 {
 	bc_rec->aud_dev[0] = '\0';
@@ -509,6 +521,7 @@ static void get_aud_dev(struct bc_record *bc_rec)
 	bc_rec->aud_channels = 1;
 	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
 }
+#endif
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {
@@ -556,10 +569,10 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
 
-	get_aud_dev(bc_rec);
+	//get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
-	bc->rtp.want_audio = !bc_rec->cfg.aud_disabled;
+	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
 
 	/* Initialize device state */
 	try_formats(bc_rec);
@@ -606,6 +619,8 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	}
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
+#warning REGRESSION: hue/sat/etc disabled, needs refactor as part of cfg
+#if 0
 	/* Update standard controls */
 	bc_set_control(bc_rec->bc, V4L2_CID_HUE,
 			bc_db_get_val_int(dbres, "hue"));
@@ -615,6 +630,7 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 			bc_db_get_val_int(dbres, "saturation"));
 	bc_set_control(bc_rec->bc, V4L2_CID_BRIGHTNESS,
 			bc_db_get_val_int(dbres, "brightness"));
+#endif
 
 	return 0;
 }
