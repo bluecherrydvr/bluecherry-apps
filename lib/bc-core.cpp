@@ -18,6 +18,7 @@
 #include <bsd/string.h>
 
 #include <libbluecherry.h>
+#include "rtp-session.h"
 
 #define reset_vbuf(__vb) do {				\
 	memset((__vb), 0, sizeof(*(__vb)));		\
@@ -61,6 +62,7 @@ static inline void bc_v4l2_local_bufs(struct bc_handle *bc)
 	bc->v4l2.local_bufs = c;
 }
 
+#if 0
 int bc_buf_key_frame(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
@@ -89,6 +91,7 @@ int bc_buf_is_video_frame(struct bc_handle *bc)
 		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
 	return 1;
 }
+#endif
 
 static int bc_v4l2_bufs_prepare(struct bc_handle *bc, const char **err_msg)
 {
@@ -175,9 +178,9 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 		return 0;
 
 	if (bc->type == BC_DEVICE_RTP) {
-		ret = rtp_device_start(&bc->rtp);
+		ret = bc->input->start();
 		if (ret < 0)
-			*err_msg = bc->rtp.error_message;
+			*err_msg = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
 	} else if (bc->type == BC_DEVICE_V4L2)
 		ret = v4l2_handle_start(bc, err_msg);
 
@@ -217,6 +220,7 @@ static void bc_buf_return(struct bc_handle *bc)
 		bc_log("E: Unable to queue any buffers!");
 }
 
+#if 0
 int bc_buf_get(struct bc_handle *bc)
 {
 	int ret = EINVAL;
@@ -249,6 +253,7 @@ int bc_buf_get(struct bc_handle *bc)
 
 	return ret;
 }
+#endif
 
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval)
 {
@@ -403,7 +408,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	if (r >= sizeof(url))
 		return -1;
 
-	rtp_device_init(&bc->rtp, url);
+	bc->input = new rtp_device(url);
 
 	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	if (val && *val) {
@@ -484,8 +489,11 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	if (!strncmp(driver, "RTSP-", 5))
 		ret = rtsp_handle_init(bc, dbres);
-	else
-		ret = v4l2_handle_init(bc, dbres);
+	else {
+		bc_log("XXX: V4L2 handles disabled for now!");
+		ret = ENOSYS; //v4l2_handle_init(bc, dbres);
+		return NULL;
+	}
 
 	bc_set_motion_thresh_global(bc, '3');
 
@@ -545,7 +553,7 @@ void bc_handle_stop(struct bc_handle *bc)
 	if (bc->type == BC_DEVICE_V4L2)
 		v4l2_handle_stop(bc);
 	else if (bc->type == BC_DEVICE_RTP)
-		rtp_device_stop(&bc->rtp);
+		bc->input->stop();
 
 	bc->started = 0;
 	errno = save_err;
@@ -559,7 +567,8 @@ void bc_handle_reset(struct bc_handle *bc)
 	if (bc->type == BC_DEVICE_V4L2) {
 		v4l2_handle_stop(bc);
 		bc->started = 0;
-	}
+	} else
+		bc->input->reset();
 }
 
 void bc_handle_free(struct bc_handle *bc)
@@ -575,6 +584,7 @@ void bc_handle_free(struct bc_handle *bc)
 	if (bc->v4l2.dev_fd >= 0)
 		close(bc->v4l2.dev_fd);
 
+	delete bc->input;
 	free(bc);
 
 	errno = save_err;

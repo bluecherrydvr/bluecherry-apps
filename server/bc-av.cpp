@@ -15,6 +15,7 @@ extern "C" {
 }
 
 #include "bc-server.h"
+#include "rtp-session.h"
 
 int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 {
@@ -51,8 +52,8 @@ int has_audio(struct bc_record *bc_rec)
 	if (bc_rec->pcm != NULL)
 		return 1;
 
-	if ((bc->type == BC_DEVICE_RTP) && bc->rtp.audio_stream_index >= 0)
-		return 1;
+	if (bc->type == BC_DEVICE_RTP)
+		return bc->input->has_audio();
 
 	return 0;
 }
@@ -202,15 +203,15 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 		pkt->flags = AV_PKT_FLAG_KEY;
 		pkt->pts   = AV_NOPTS_VALUE;
 	} else if (bc_rec->bc->type == BC_DEVICE_RTP) {
-		struct rtp_device *rs = &bc_rec->bc->rtp;
-
-		if (rs->frame.stream_index != rs->audio_stream_index)
+		if (!bc_rec->bc->input->is_video_frame())
 			return 0;
 
-		pkt->data  = rs->frame.data;
-		pkt->size  = rs->frame.size;
-		pkt->flags = rs->frame.flags;
-		pkt->pts   = rs->frame.pts;
+		const AVPacket *frame = reinterpret_cast<rtp_device*>(bc_rec->bc->input)->current_frame();
+
+		pkt->data  = frame->data;
+		pkt->size  = frame->size;
+		pkt->flags = frame->flags;
+		pkt->pts   = frame->pts;
 	} else
 		return 0;
 
@@ -220,25 +221,25 @@ int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	if (!bc_buf_is_video_frame(bc))
+	if (!bc->input->is_video_frame())
 		return 0;
 
 	pkt->ts_clock = time(NULL);
 	pkt->type     = AVMEDIA_TYPE_VIDEO;
 	pkt->pts      = AV_NOPTS_VALUE;
-	if (bc_buf_key_frame(bc))
+	if (bc->input->is_key_frame())
 		pkt->flags = AV_PKT_FLAG_KEY;
 	else
 		pkt->flags = 0;
 
-	pkt->data = bc_buf_data(bc);
-	pkt->size = bc_buf_size(bc);
+	pkt->data = bc->input->buf_data();
+	pkt->size = bc->input->buf_size();
 
 	if (!pkt->data || !pkt->size)
 		return 0;
 
 	if (bc->type == BC_DEVICE_RTP)
-		pkt->pts = bc->rtp.frame.pts;
+		pkt->pts = reinterpret_cast<rtp_device*>(bc->input)->current_frame()->pts;
 
 	return 1;
 }
@@ -271,22 +272,22 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	}
 
 	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != AV_NOPTS_VALUE) {
-		struct rtp_device *rs = &bc_rec->bc->rtp;
+		struct rtp_device *rs = reinterpret_cast<rtp_device*>(bc_rec->bc->input);
 		/* RTP packets must be scaled to the output PTS */
 		if (pkt->type == AVMEDIA_TYPE_AUDIO) {
 			opkt.pts = av_rescale_q(opkt.pts,
-			                        rs->ctx->streams[rs->audio_stream_index]->time_base,
+			                        rs->audio_stream()->time_base,
 			                        s->time_base);
 		} else {
 			opkt.pts = av_rescale_q(opkt.pts,
-			                        rs->ctx->streams[rs->video_stream_index]->time_base,
+			                        rs->video_stream()->time_base,
 			                        s->time_base);
 		}
 
 		// XXX This probably isn't correct when audio streams are present.
 		if (bc_rec->output_pts_base) {
 			opkt.pts -= av_rescale_q(bc_rec->output_pts_base,
-			                         rs->ctx->streams[rs->video_stream_index]->time_base,
+			                         rs->video_stream()->time_base,
 			                         s->time_base);
 		}
 	}
@@ -481,7 +482,7 @@ int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	if (bc->type == BC_DEVICE_RTP)
-		return rtp_device_setup_output(&bc->rtp, oc);
+		return bc->input->setup_output(oc);
 	else if (bc->type == BC_DEVICE_V4L2 && (bc->cam_caps & BC_CAM_CAP_SOLO))
 		return setup_solo_output(bc_rec, oc);
 	else

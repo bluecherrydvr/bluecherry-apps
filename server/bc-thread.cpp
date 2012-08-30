@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "bc-server.h"
+#include "rtp-session.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
@@ -296,7 +297,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 	monotonic_now = bc_gettime_monotonic();
 
 	if (prerecord_append(bc_rec, spkt, monotonic_now) < 0 ||
-	    !bc_buf_is_video_frame(bc_rec->bc))
+	    !bc_rec->bc->input->is_video_frame())
 		return bc_rec->mot_last_ts > 0;
 
 	ret = bc_motion_is_detected(bc_rec->bc);
@@ -382,8 +383,8 @@ static void *bc_device_thread(void *data)
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
-				bc_dev_info(bc_rec, "RTP stream started: %s",
-				            rtp_device_stream_info(&bc->rtp));
+				const char *info = reinterpret_cast<rtp_device*>(bc->input)->stream_info();
+				bc_dev_info(bc_rec, "RTP stream started: %s", info);
 			}
 
 			if (bc_streaming_setup(bc_rec))
@@ -406,15 +407,13 @@ static void *bc_device_thread(void *data)
 			}
 		}
 
-		ret = bc_buf_get(bc);
+		ret = bc->input->buf_get();
 		if (ret == EAGAIN) {
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
-				bc_dev_err(bc_rec, "RTSP read error: %s",
-				           (*bc->rtp.error_message) ?
-				            bc->rtp.error_message :
-				            "Unknown error");
+				const char *err = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
+				bc_dev_err(bc_rec, "RTSP read error: %s", *err ? err : "Unknown error");
 			}
 
 			stop_handle_properly(bc_rec);
@@ -424,7 +423,7 @@ static void *bc_device_thread(void *data)
 		}
 
 		/* Prepare output packets; nothing is allocated. */
-		if (bc_buf_is_video_frame(bc))
+		if (bc->input->is_video_frame())
 			ret = get_output_video_packet(bc_rec, &packet);
 		else
 			ret = get_output_audio_packet(bc_rec, &packet);
@@ -454,7 +453,7 @@ static void *bc_device_thread(void *data)
 					 * which we write in the normal path below. */
 					for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
 						bc_output_packet_write(bc_rec, p);
-				} else if (!bc_buf_key_frame(bc) || !bc_buf_is_video_frame(bc)) {
+				} else if (!bc->input->is_key_frame() || !bc->input->is_video_frame()) {
 					/* Always start a recording with a key video frame. This will result in
 					 * the lost of some video between recordings, up to the keyframe interval,
 					 * at least on RTP devices. XXX Ideally, we should move the recording split
@@ -467,7 +466,7 @@ static void *bc_device_thread(void *data)
 				}
 			}
 
-			if (bc_buf_is_video_frame(bc) && bc_buf_key_frame(bc) && !bc_rec->event_snapshot_done) {
+			if (bc->input->is_video_frame() && bc->input->is_key_frame() && !bc_rec->event_snapshot_done) {
 				save_event_snapshot(bc_rec, &packet);
 				bc_rec->event_snapshot_done = 1;
 				event_trigger_notifications(bc_rec);
@@ -553,7 +552,7 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	get_aud_dev(bc_rec);
 	bc_rec->sched_cur = 'N';
 
-	bc->rtp.want_audio = !bc_rec->cfg.aud_disabled;
+	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
 
 	/* Initialize device state */
 	try_formats(bc_rec);

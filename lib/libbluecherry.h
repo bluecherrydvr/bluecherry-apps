@@ -21,8 +21,6 @@
 #define PRId64 "lld"
 #endif
 
-#include <rtp-session.h>
-
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
@@ -56,6 +54,11 @@ typedef void * BC_DB_RES;
  * in PAL. NTSC is assumed if unset. */
 #define BC_CAM_CAP_V4L2_PAL    0x00000020
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+}
+
 typedef enum {
 	BC_DEVICE_V4L2,
 	BC_DEVICE_RTP
@@ -79,6 +82,33 @@ struct v4l2_device {
 	int			buffers;
 	int			card_id;
 	int			dev_id;
+};
+
+class input_device
+{
+public:
+	input_device();
+	virtual ~input_device();
+
+	virtual int start() = 0;
+	virtual void stop() = 0;
+	virtual void reset() = 0;
+
+	virtual int buf_get() = 0;
+	virtual void *buf_data() = 0;
+	virtual unsigned int buf_size() = 0;
+
+	virtual int is_key_frame() = 0;
+	virtual int is_video_frame() = 0;
+
+	virtual bool has_audio() const = 0;
+	bool audio_enabled() const { return _audio_enabled; }
+	virtual void set_audio_enabled(bool enabled);
+
+	virtual int setup_output(AVFormatContext *out_ctx) = 0;
+
+protected:
+	bool _audio_enabled;
 };
 
 struct bc_motion_data {
@@ -105,8 +135,8 @@ struct bc_handle {
 	bc_device_type_t	type;
 	unsigned int		cam_caps;
 
+	input_device            *input;
 	struct v4l2_device	v4l2;
-	struct rtp_device	rtp;
 
 	int			started;
 	int			got_vop;
@@ -284,22 +314,6 @@ void bc_vlog(const char *msg, va_list va);
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();
 int hex_encode(char *out, int out_sz, const char *in, int in_sz);
-
-/* Retrieves the next buffer from the device.
- * For RTSP devices, this buffer may not be video! */
-int bc_buf_get(struct bc_handle *bc);
-
-/* Get the data pointer for the current buffer */
-void *bc_buf_data(struct bc_handle *bc);
-
-/* Get the size in bytes used by the current buffer */
-unsigned int bc_buf_size(struct bc_handle *bc);
-
-/* Is the current buffer a key frame? */
-int bc_buf_key_frame(struct bc_handle *bc);
-
-/* Is the current buffer a video frame? */
-int bc_buf_is_video_frame(struct bc_handle *bc);
 
 /* Format and parameter settings */
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval);

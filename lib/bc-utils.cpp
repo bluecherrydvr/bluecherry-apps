@@ -62,14 +62,9 @@ int bc_set_control(struct bc_handle *bc, unsigned int ctrl, int val)
 	return ioctl(bc->v4l2.dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
+#if 0
 void *bc_buf_data(struct bc_handle *bc)
 {
-	if (bc->type == BC_DEVICE_RTP) {
-		if (bc->rtp.frame.stream_index == bc->rtp.video_stream_index)
-			return bc->rtp.frame.data;
-		return NULL;
-	}
-
 	if (bc->v4l2.buf_idx < 0)
 		return NULL;
 
@@ -89,6 +84,7 @@ unsigned int bc_buf_size(struct bc_handle *bc)
 
 	return bc->v4l2.p_buf[bc->v4l2.buf_idx].vb.bytesused;
 }
+#endif
 
 int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		  u_int16_t height)

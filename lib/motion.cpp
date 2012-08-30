@@ -19,7 +19,8 @@
 #include <math.h>
 #include <time.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
+#include "rtp-session.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
@@ -201,13 +202,13 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		int bufSize;
 		int r;
 
-		if (!bc_buf_is_video_frame(bc))
+		if (!bc->input->is_video_frame())
 			return 0;
 
 		avcodec_get_frame_defaults(&rawFrame);
 		avcodec_get_frame_defaults(&frame);
 
-		r = rtp_device_decode_video(&bc->rtp, &rawFrame);
+		r = reinterpret_cast<rtp_device*>(bc->input)->decode_video(&rawFrame);
 		if (r < 0) {
 			// XXX report error
 			return 0;
@@ -216,7 +217,8 @@ int bc_motion_is_detected(struct bc_handle *bc)
 			return 0;
 		}
 
-		cctx = bc->rtp.ctx->streams[bc->rtp.video_stream_index]->codec;
+		AVStream *cstream = reinterpret_cast<rtp_device*>(bc->input)->video_stream();
+		cctx = cstream->codec;
 
 		/* For high framerates, we can achieve the same level of motion detection
 		 * with much less CPU by testing at a reduced framerate. This will only run
@@ -225,11 +227,11 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		 * happen (other than a >60fps stream). */
 		if (md->refFrame && md->last_tested_pts && md->last_tested_pts != AV_NOPTS_VALUE) {
 			int64_t diff = av_rescale_q(rawFrame.pkt_pts - md->last_tested_pts,
-			                            bc->rtp.ctx->streams[bc->rtp.video_stream_index]->time_base,
+			                            cstream->time_base,
 			                            AV_TIME_BASE_Q) / (AV_TIME_BASE / 1000);
 			if (diff > 0 && diff < 45) {
 				if (++md->skip_count > 3) {
-					av_log(bc->rtp.ctx, AV_LOG_WARNING, "Motion detection skipped too "
+					av_log(NULL, AV_LOG_WARNING, "Motion detection skipped too "
 					       "many consecutive frames (diff: %"PRId64". Buggy PTS?)",
 					       diff);
 				} else
