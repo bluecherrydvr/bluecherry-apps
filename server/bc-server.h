@@ -60,7 +60,6 @@ struct bc_record {
 
 	char			outfile[PATH_MAX];
 	pthread_t		thread;
-	struct bc_list_struct	list;
 
 	/* Audio setup */
 	snd_pcm_t		*pcm;

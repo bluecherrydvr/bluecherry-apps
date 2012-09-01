@@ -22,7 +22,7 @@ enum {
 	BC_PTZ_PROTO_PELCO = 0,
 };
 
-static void pelco_csum(char data[7])
+static void pelco_csum(uint8_t data[7])
 {
 	int i;
 
@@ -134,7 +134,7 @@ static int bc_ptz_cmd_pelco(struct bc_handle *bc, unsigned int cmd, int delay,
 			    int pan_speed, int tilt_speed, int pset_id)
 {
 	struct serial_struct serinfo;
-	char data[7] = { 0xff, 0x00, 0x00, 0x00, 0x20, 0x20, 0x00 };
+	uint8_t data[7] = { 0xff, 0x00, 0x00, 0x00, 0x20, 0x20, 0x00 };
 	int fd, real_delay = -1;
 	int ret = 0;
 
