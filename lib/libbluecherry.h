@@ -16,6 +16,8 @@
 #include <inttypes.h>
 #include <string>
 #include <vector>
+#include <deque>
+#include <cstdatomic>
 
 #ifndef PRId64
 #define PRId64 "lld"
@@ -40,6 +42,8 @@ typedef enum {
 	BC_DEVICE_RTP
 } bc_device_type_t;
 
+class stream_packet;
+
 class input_device
 {
 public:
@@ -52,12 +56,8 @@ public:
 
 	const char *get_error_message() const { return _error_message.c_str(); }
 
-	virtual int buf_get() = 0;
-	virtual void *buf_data() = 0;
-	virtual unsigned int buf_size() = 0;
-
-	virtual int is_key_frame() = 0;
-	virtual int is_video_frame() = 0;
+	virtual int read_packet() = 0;
+	virtual const stream_packet &packet() const = 0;
 
 	virtual bool has_audio() const = 0;
 	bool audio_enabled() const { return _audio_enabled; }
@@ -70,6 +70,121 @@ protected:
 	std::string _error_message;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
+};
+
+/* Reference counted container for the data in a stream_packet.
+ * Expects a pointer allocated with new[], which will be freed
+ * along with this instance when the reference count is zero. */
+class stream_packet_data
+{
+public:
+	const uint8_t *data;
+
+	stream_packet_data(const uint8_t *data);
+
+	void ref();
+	void deref();
+
+private:
+	std::atomic<int> r;
+
+	~stream_packet_data();
+};
+
+/* Represents one packet/frame of media data, in an undefined
+ * format. stream_packet is created by the input device and passed
+ * to consumers, where it can be buffered and handled. The underlying
+ * data is constant and shared to reduce copying.
+ *
+ * The contents of a stream_packet are entirely situation-dependant.
+ * It may contain encoded or decoded video or audio in any format, or
+ * any other type as needed. Refer to the source of the packet for
+ * usage.
+ *
+ * A stream_packet instance is not threadsafe, but the underlying data
+ * is. You may have stream_packet instances referring to the same data
+ * existing on separate threads. The data will be atomically deleted
+ * only when no instances refer to it.
+ */
+class stream_packet
+{
+public:
+	unsigned size;
+	unsigned flags;
+	int64_t  pts;
+	int      type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
+	time_t   ts_clock; // Used for prerecord event start time
+
+	stream_packet();
+	stream_packet(const uint8_t *data);
+	stream_packet(const stream_packet &o);
+	stream_packet &operator=(const stream_packet &o);
+	~stream_packet();
+
+	const uint8_t *data() const { return d ? d->data : 0; }
+
+	bool is_key_frame() const { return flags & AV_PKT_FLAG_KEY; }
+	bool is_video_frame() const { return type == AVMEDIA_TYPE_VIDEO; }
+
+private:
+	stream_packet_data *d;
+};
+
+/* Simple FIFO-style queue of stream_packet instances. The buffer is
+ * unbounded and should be used directly only with great care.
+ * Refer to subclasses for implementations with limits on the size of
+ * the buffer. */
+class stream_buffer
+{
+public:
+	typedef std::deque<stream_packet>::iterator iterator;
+	typedef std::deque<stream_packet>::const_iterator const_iterator;
+
+	stream_packet &first();
+	const stream_packet &first() const;
+	stream_packet &last();
+	const stream_packet &last() const;
+
+	iterator begin();
+	const_iterator begin() const;
+	iterator end();
+	const_iterator end() const;
+
+	void append(const stream_packet &packet);
+
+	/* takeFirst may not make sense with subclasses. */
+	stream_packet takeFirst();
+	void clear();
+
+protected:
+	std::deque<stream_packet> data;
+
+	virtual void apply_bound();
+};
+
+/* Implementation of stream_buffer which always begins with a video
+ * keyframe, and optionally keeps at least enough frames to cover a
+ * given duration. Frames are dropped from the beginning when the
+ * next keyframe can satisfy the duration requirement.
+ *
+ * Duration is specified in PTS time, which is dependent on the source
+ * of the packets. XXX Currently, audio packets are ignored for this
+ * purpose, which may result in a period of silence for the first video
+ * frame.
+ */
+class stream_keyframe_buffer : public stream_buffer
+{
+public:
+	stream_keyframe_buffer();
+
+	/* Minimum buffer duration in video-PTS time (see class
+	 * description). The total duration of the buffer may exceed
+	 * this value only by less than one keyframe interval. */
+	int64_t duration();
+	void setDuration(int64_t duration);
+
+protected:
+	virtual void apply_bound();
 };
 
 struct bc_motion_data {

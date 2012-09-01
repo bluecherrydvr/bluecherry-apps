@@ -31,12 +31,8 @@ public:
 	virtual void stop();
 	virtual void reset();
 
-	virtual int buf_get();
-	virtual void *buf_data();
-	virtual unsigned int buf_size();
-
-	virtual int is_key_frame();
-	virtual int is_video_frame();
+	virtual int read_packet();
+	virtual const stream_packet &packet() const { return current_packet; }
 
 	virtual bool has_audio() const { return audio_stream_index >= 0; }
 
@@ -64,9 +60,11 @@ private:
 	/* -1 for no stream */
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
+	stream_packet current_packet;
 
 	struct rtp_stream_data stream_data[RTP_NUM_STREAMS];
 
+	void create_stream_packet(AVPacket *src);
 	void set_current_pts(int64_t pts);
 };
 

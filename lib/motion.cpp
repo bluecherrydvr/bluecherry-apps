@@ -214,7 +214,7 @@ int bc_motion_is_detected(struct bc_handle *bc)
 		int bufSize;
 		int r;
 
-		if (!bc->input->is_video_frame())
+		if (!bc->input->packet().is_video_frame())
 			return 0;
 
 		avcodec_get_frame_defaults(&rawFrame);

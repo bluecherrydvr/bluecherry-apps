@@ -42,12 +42,8 @@ public:
 	virtual void stop();
 	virtual void reset();
 
-	virtual int buf_get();
-	virtual void *buf_data();
-	virtual unsigned int buf_size();
-
-	virtual int is_key_frame();
-	virtual int is_video_frame();
+	virtual int read_packet();
+	virtual const stream_packet &packet() const { return current_packet; }
 
 	virtual bool has_audio() const { return 0; }
 
@@ -84,6 +80,9 @@ private:
 	int			card_id;
 	int			dev_id;
 	int			got_vop;
+	stream_packet           current_packet;
+
+	int is_key_frame();
 
 	void v4l2_local_bufs();
 	int v4l2_bufs_prepare();
