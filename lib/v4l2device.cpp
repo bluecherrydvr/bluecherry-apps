@@ -192,11 +192,6 @@ int v4l2_device::is_key_frame()
 	return 0;
 }
 
-int v4l2_device::is_video_frame()
-{
-	return 1;
-}
-
 int v4l2_device::v4l2_bufs_prepare()
 {
 	struct v4l2_requestbuffers req;
@@ -358,7 +353,7 @@ void v4l2_device::buf_return()
 		bc_log("E: Unable to queue any buffers!");
 }
 
-int v4l2_device::buf_get()
+int v4l2_device::read_packet()
 {
 	struct v4l2_buffer vb;
 	buf_return();
@@ -373,6 +368,16 @@ int v4l2_device::buf_get()
 	/* Update and store this buffer */
 	buf_idx = vb.index;
 	p_buf[buf_idx].vb = vb;
+
+	uint8_t *dbuf = new uint8_t[p_buf[buf_idx].vb.bytesused];
+	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
+
+	current_packet = stream_packet(dbuf);
+	current_packet.size     = p_buf[buf_idx].vb.bytesused;
+	current_packet.ts_clock = time(NULL);
+	current_packet.type     = AVMEDIA_TYPE_VIDEO;
+	current_packet.pts      = AV_NOPTS_VALUE;
+	current_packet.flags    = is_key_frame() ? AV_PKT_FLAG_KEY : 0;
 
 	if (!got_vop) {
 		if (!is_key_frame())

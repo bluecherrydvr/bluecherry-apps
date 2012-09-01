@@ -47,6 +47,7 @@ void rtp_device::stop()
 	if (!ctx)
 		return;
 
+	current_packet = stream_packet();
 	av_free_packet(&frame);
 	av_init_packet(&frame);
 
@@ -169,7 +170,7 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 	av_destruct_packet(pkt);
 }
 
-int rtp_device::buf_get()
+int rtp_device::read_packet()
 {
 	int re;
 	struct rtp_stream_data *streamdata = 0;
@@ -209,8 +210,10 @@ int rtp_device::buf_get()
 	}
 
 	/* Don't run offset logic against frames with no PTS */
-	if (!streamdata || frame.pts == AV_NOPTS_VALUE)
+	if (!streamdata || frame.pts == AV_NOPTS_VALUE) {
+		create_stream_packet(&frame);
 		return 0;
+	}
 
 	/* Correct the stream's PTS to provide an even, monotonic set of frames for
 	 * recording, regardless of network factors. Notably, this often comes into
@@ -301,31 +304,28 @@ int rtp_device::buf_get()
 	streamdata->last_pts = frame.pts;
 	frame.pts -= streamdata->pts_base;
 
+	create_stream_packet(&frame);
+
 	return 0;
 }
 
-void *rtp_device::buf_data()
+void rtp_device::create_stream_packet(AVPacket *src)
 {
-	if (frame.stream_index == video_stream_index)
-		return frame.data;
-	return NULL;
-}
+	uint8_t *buf = new uint8_t[src->size];
+	memcpy(buf, src->data, src->size);
 
-unsigned int rtp_device::buf_size()
-{
-	if (frame.stream_index == video_stream_index)
-		return frame.size;
-	return 0;
-}
+	current_packet = stream_packet(buf);
+	current_packet.size     = src->size;
+	current_packet.ts_clock = time(NULL);
+	current_packet.pts      = src->pts;
+	current_packet.flags    = src->flags & AV_PKT_FLAG_KEY;
 
-int rtp_device::is_key_frame()
-{
-	return (frame.flags & AV_PKT_FLAG_KEY) == AV_PKT_FLAG_KEY;
-}
-
-int rtp_device::is_video_frame()
-{
-	return frame.stream_index == video_stream_index;
+	if (src->stream_index == video_stream_index)
+		current_packet.type = AVMEDIA_TYPE_VIDEO;
+	else if (src->stream_index == audio_stream_index)
+		current_packet.type = AVMEDIA_TYPE_AUDIO;
+	else
+		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
 }
 
 int rtp_device::setup_output(AVFormatContext *out_ctx)
