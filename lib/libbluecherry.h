@@ -228,45 +228,6 @@ typedef struct bc_media_entry * bc_media_entry_t;
 #define BC_PTZ_CMD_CLEAR	0x00004000
 #define BC_PTZ_CMDS_PSET_MASK	0x00007000
 
-
-/* Doubly linked lists */
-struct bc_list_struct {
-	struct bc_list_struct *next, *prev;
-};
-
-#define BC_DECLARE_LIST(name) \
-	struct bc_list_struct name = { &(name), &(name) }
-
-#define bc_list_add(item, head) do {		\
-	(head)->next->prev = (item);		\
-	(item)->next = (head)->next;		\
-	(item)->prev = (head);			\
-	(head)->next = (item);			\
-}while(0)
-
-#define bc_list_del(item) do {			\
-	(item)->next->prev = (item)->prev;	\
-	(item)->prev->next = (item)->next;	\
-	(item)->next = NULL;			\
-	(item)->prev = NULL;			\
-}while(0)
-
-#define bc_list_empty(head) ((head)->next == (head))
-
-#define bc_list_entry(item, type, member) ({ \
-	const typeof( ((type *)0)->member ) *__item = (item);    \
-	(type *)((char *)__item - offsetof(type,member)); })
-
-#define bc_list_for_each(item, head) \
-	for (item = (head)->next; item != (head); item = item->next)
-
-#define bc_list_for_each_entry_safe(pos, n, head, member)			\
-        for (pos = bc_list_entry((head)->next, typeof(*pos), member),		\
-                n = bc_list_entry(pos->member.next, typeof(*pos), member);	\
-             &pos->member != (head);						\
-             pos = n, n = bc_list_entry(n->member.next, typeof(*n), member))
-
-
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);

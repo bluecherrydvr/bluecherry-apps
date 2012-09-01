@@ -26,7 +26,7 @@ extern "C" {
 pthread_mutex_t mutex_global_sched;
 pthread_mutex_t mutex_streaming_setup;
 
-static BC_DECLARE_LIST(bc_rec_list);
+static std::vector<bc_record*> bc_rec_list;
 
 static int max_threads;
 static int cur_threads;
@@ -324,58 +324,47 @@ static int bc_check_globals(void)
 
 static void bc_stop_threads(void)
 {
-	struct bc_record *bc_rec, *__t;
-	char *errmsg = NULL;
+	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++)
+		(*it)->thread_should_die = "Shutting down";
 
-	if (bc_list_empty(&bc_rec_list))
-		return;
-
-	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list)
-		bc_rec->thread_should_die = "Shutting down";
-
-	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
+	char *errmsg = 0;
+	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
+		bc_record *bc_rec = *it;
 		pthread_join(bc_rec->thread, (void **)&errmsg);
 		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
-		bc_list_del(&bc_rec->list);
 		bc_handle_free(bc_rec->bc);
 		free(bc_rec);
 		cur_threads--;
 	}
+
+	bc_rec_list.clear();
 }
 
 /* Check for threads that have quit */
 static void bc_check_threads(void)
 {
-	struct bc_record *bc_rec, *__t;
-	char *errmsg = NULL;
+	char *errmsg = 0;
 
-	if (bc_list_empty(&bc_rec_list))
-		return;
-
-	bc_list_for_each_entry_safe(bc_rec, __t, &bc_rec_list, list) {
+	for (int i = 0; i < bc_rec_list.size(); i++) {
+		bc_record *bc_rec = bc_rec_list[i];
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;
 
 		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
-		bc_list_del(&bc_rec->list);
 		bc_handle_free(bc_rec->bc);
 		free(bc_rec);
 		cur_threads--;
+
+		bc_rec_list.erase(bc_rec_list.begin()+i);
+		i--;
 	}
 }
 
 static struct bc_record *bc_record_exists(const int id)
 {
-	struct bc_record *bc_rec;
-	struct bc_list_struct *lh;
-
-	if (bc_list_empty(&bc_rec_list))
-		return NULL;
-
-	bc_list_for_each(lh, &bc_rec_list) {
-		bc_rec = bc_list_entry(lh, struct bc_record, list);
-		if (bc_rec->id == id)
-			return bc_rec;
+	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
+		if ((*it)->id == id)
+			return *it;
 	}
 
 	return NULL;
@@ -610,7 +599,7 @@ static int bc_check_db(void)
 		}
 
 		cur_threads++;
-		bc_list_add(&bc_rec->list, &bc_rec_list);
+		bc_rec_list.push_back(bc_rec);
 	}
 
 	bc_db_free_table(dbres);
