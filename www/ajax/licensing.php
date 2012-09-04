@@ -11,7 +11,7 @@ $current_user->checkAccessPermissions('admin');
 
 $licenses = data::getObject('Licenses');
 
-if ($_GET['mode'] == 'add'){
+if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
 	if (!bc_license_check($_POST['licenseCode'])){
 		data::responseXml(false, L_INVALID_LICENSE);
 		exit();
@@ -46,7 +46,7 @@ if ($_GET['mode'] == 'add'){
 	}
 	exit();
 }
-if ($_GET['mode'] == 'confirm'){
+if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
 		$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
 		if (!empty($exists)){
@@ -67,7 +67,7 @@ if ($_GET['mode'] == 'confirm'){
 		exit();
 	}
 }
-if ($_GET['mode'] == 'delete'){
+if (!empty($_GET['mode']) && $_GET['mode'] == 'delete'){
 	$result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
 }
 

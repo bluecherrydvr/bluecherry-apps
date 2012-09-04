@@ -3,7 +3,7 @@
 require('../template/template.lib.php');
 
 if ($m == 'list'){
-	if (!$notifications){
+	if (empty($notifications)){
 		echo NTF_NO_RULES;
 	} else {
 		foreach($notifications as $id => $notification){

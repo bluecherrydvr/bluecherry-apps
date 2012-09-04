@@ -12,6 +12,7 @@ function updateCamList($versions){
 		if (!$file[$table]) return array(false, AIP_CAN_NOT_GET_NEW_LIST);
 		$query = "INSERT INTO $table VALUES ";
 		while ($tmp = @fgets($file[$table], 1024)) {
+			$value = "";
 			$tmp = explode('|', $tmp);
 			$query .= ' (';
 			foreach ($tmp as $key => $v){
@@ -21,11 +22,10 @@ function updateCamList($versions){
 			}
 			$value = trim($value, ' ,');
 			$query .= $value;
-			unset($value);
 			$query .= '), ';
 		}
 		$query = trim($query, ' ,');
-		$truncate = ($table == 'ipPtzCommandPresets') ? data::query('DELETE FROM ipPtzCommandPresets WHERE custom = 0') : data::query('TRUNCATE TABLE '.$table, true);
+		$truncate = ($table == 'ipPtzCommandPresets') ? data::query('DELETE FROM ipPtzCommandPresets WHERE custom = 0', true) : data::query('TRUNCATE TABLE '.$table, true);
 		if (!$truncate || !data::query($query, true)) { data::query('ROLLBACK', true); return array(false, AIP_NEW_LIST_MYSQL_E); } else { unset($query); }
 		fclose($file[$table]);
 	}

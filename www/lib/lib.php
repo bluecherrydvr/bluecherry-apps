@@ -16,6 +16,8 @@ if (empty($nload)){
 session_name(VAR_SESSION_NAME);
 session_start();
 
+ini_set('default_socket_timeout', 2);
+
 init();
 
 //debug
@@ -441,7 +443,7 @@ class ipCamera{
 		}
 		#get manufacturer and model information
 		$tmp = data::query("SELECT * FROM ipCameras WHERE model='{$this->info['model']}'");
-		$this->info['manufacturer'] = $tmp[0]['manufacturer'];
+		if (!empty($tmp)) { $this->info['manufacturer'] = $tmp[0]['manufacturer']; };
 		
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
@@ -468,25 +470,63 @@ class ipCamera{
 		if ($control) { $result = $control->auto_configure(); };
 		return $result;
 	}
-	public static function create($data){
-		if (!$data['ipAddr'])	{ return array(false, AIP_NEEDIP); };
-		if (!$data['port'])	{ return array(false, AIP_NEEDPORT);};
-		if (!$data['rtsp'])	{ return array(false, AIP_RTSPPATH); };
-		$data['rtsp'] = (substr($data['rtsp'][0], 0, 1) != '/') ? '/'.$data['rtsp'] : $data['rtsp'];
-		$data['mjpeg'] = (substr($data['mjpeg'][0], 0, 1) != '/') ? '/'.$data['mjpeg'] : $data['mjpeg'];
-		$data['device'] = "{$data['ipAddr']}|{$data['port']}|{$data['rtsp']}";
-		$model_info = data::query("SELECT driver FROM ipCameras WHERE model='{$data['models']}'");
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('".((empty($data['camName'])) ? $data['ipAddr'] : $data['camName'])."', 'IP', '{$data['device']}', '{$model_info[0]['driver']}', '{$data['user']}', '{$data['pass']}', 640, 480, '{$data['ipAddrMjpeg']}|{$data['portMjpeg']}|{$data['mjpeg']}', '{$data['models']}')", true);
-		#for acti to proper streaming method
-		$acti_config_result = false;
+	private static function prepareData($rawData){
+		#prepare device
+			if (empty($rawData['ipAddr']))	{ return array(false, AIP_NEEDIP); };
+			if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
+			if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
+				$rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
+				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
+				$duplicate_path = data::getObject('Devices', 'device', $data['device']);
+			if (!empty($duplicate_path)) 	{ return array(false, AIP_ALREADY_EXISTS); }
+		#prepare mjpeg path
+			if (empty($rawData['mjpeg']))	{ return array(false, AIP_NEEDMJPEG); }
+			if (empty($rawData['portMjpeg'])) { return array(false, AIP_NEEDMJPEGPORT); }
+				$rawData['mjpeg'] = (substr($rawData['mjpeg'][0], 0, 1) != '/') ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
+				$data['mjpeg_path'] = "{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
+		#prepare audio check box, ignored for new devices
+			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
+		#prepare debug level, ignored for new devices
+			$data['debug_level'] = (!empty($rawData['debug_level']) && $rawData['debug_level']=='on') ? 1 : 0;
+		#prepare rtsp username/password
+			$data['rtsp_username'] = empty($_POST['user']) ?  '' : $rawData['user'];
+			$data['rtsp_password'] = empty($_POST['pass']) ?  '' : $rawData['pass'];
+		#prepare model name
+			$data['model'] = (!empty($rawData['models'])) ? $rawData['models'] : false;
+		#prepare driver
+			$driver = data::query("SELECT driver FROM ipCameras WHERE model='{$rawData['models']}'");
+			$data['driver'] = $driver[0]['driver'];
+		#prepare device name
+			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
+		return array(true, $data);
+	}
+	public function edit($data){
+		$data = self::prepareData($data);
+		#if errors were detected -- return error
+		if (!$data[0]) { return $data; } else { unset($data[1]['device_name']); }
+		#if there were no errors, edit the camera
+		$query = data::formQueryFromArray('update', 'Devices', $data[1], 'id', $this->info['id']);
+		$result = data::query($query, true);
+		return array($result, false);
+	}
+	public static function create($rawData){
+		#get the data ready
+		
+		$data = self::prepareData($rawData);
+		#if errors were detected -- return error
+		if (!$data[0]) { return $data; } else { $data = $data[1]; };
+		#if there were no errors, add the camera
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('{$data['device_name']}', 'IP', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}')", true);
+		#try to automatically set the camera up
 		$message = ($result) ? AIP_CAMADDED : false;
 		if ($result)
-		$message .= '<hr />'.self::autoConfigure($model_info[0]['driver'], array(
-				'ipAddr' =>$data['ipAddr'],
-				'portMjpeg' =>$data['portMjpeg'],
-				'rtsp_username' =>$data['user'],
-				'rtsp_password' =>$data['pass']
+		$autoconfigure = self::autoConfigure($data['driver'], array(
+				'ipAddr' =>$rawData['ipAddr'],
+				'portMjpeg' =>$rawData['portMjpeg'],
+				'rtsp_username' =>$rawData['user'],
+				'rtsp_password' =>$rawData['pass']
 		)); 
+		if (!empty($autoconfigure)) { $message .= '<hr />'.$autoconfigure; };
 		return array($result, $message);
 	}
 	public static function remove($id){
@@ -570,7 +610,7 @@ class softwareVersion{
 		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
 		$tmp = data::getObject('GlobalSettings', 'parameter', 'G_LAST_CURRENT_VERSION');
 		if ($time[0]['value'] + 24*60*60 < time()) {
-			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION));
+			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION.'?uid='.bc_license_machine_id()));
 			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'", true);
 			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'", true);
 				else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')", true); //to avoid whole db update
@@ -645,11 +685,12 @@ class cameraPtz{
 		return data::getObject("ipPtzCommandPresets", "id", $id);
 	}
 	private function prepareCmd($command, $id = false){
+		$command = ($command[0]=='/') ? $command : '/'.$command;
 		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
 			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);
 			$command = "http://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
-			$tmp = fopen('/tmp/bcPtzCommands.txt', 'W+');
-			fwrite($tmp, $command);
+		} else {
+			$command = "http://{$this->camera->info['rtsp_username']}:{$this->camera->info['rtsp_password']}@".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
 		}
 		return $command;
 	}
@@ -686,8 +727,6 @@ class cameraPtz{
 				}
 			break;
 		}
-	}
-	public function preset($command, $value = ''){
 	}
 }
 #ip camera API abstraction

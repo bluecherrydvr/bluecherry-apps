@@ -8,6 +8,11 @@ include("../lib/lib.php");  #common functions
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('basic');
 
+$_GET['pan'] = (!empty($_GET['pan'])) ? $_GET['pan'] : false;
+$_GET['tilt'] = (!empty($_GET['tilt'])) ? $_GET['tilt'] : false;
+$_GET['zoom'] = (!empty($_GET['zoom'])) ? $_GET['zoom'] : false;
+$_GET['duration'] = (!empty($_GET['duration'])) ? $_GET['duration'] : false;
+
 function print_err($msg, $extra = "")
 {
 	print "<response status=\"ERROR\">\n";
@@ -168,7 +173,6 @@ if ($camera->info['protocol'] == 'IP'){
 	$command = ($_GET['command'] == 'stop') ? 
 		'stop' : array('pan' => $_GET['pan'], 'tilt' => $_GET['tilt'], 'zoom' => $_GET['zoom']);
 	$camera->ptzControl->move($command);
-	echo 'ptz_command:'.$camera->ptzControl->command;
 	if (!empty($duration) && $duration>0){
 		usleep(intval($_GET['duration'])*1000); #sleep for $duration/1000 of a second and stop
 		$camera->ptzControl->move('stop');
