@@ -93,6 +93,8 @@ $device = data::getObject('Devices', 'id', $event[0]['device_id']);
 include_once('Mail.php');
 include_once('Mail/mime.php');
 
+$image_name = data::getRandomString(8);
+
 $html = "
 <html>
 	<head>
@@ -122,7 +124,7 @@ $html = "
 		</div>
 		<div class='screenshot'>
 			Event screenshot:<br />
-			<img height='240' src='image.jpg'>
+			<img height='240' src='{$image_name}.jpg'>
 		</div>
 		</body>
 </html>"; 
@@ -130,7 +132,7 @@ $crlf = "\r\n";
 $headers = array("From"=>"donotreply@bluecherryserver", "Subject"=>"Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}");
 $mime = new Mail_mime($crlf);  
 $mime->setHTMLBody($html);  
-$mime->addHTMLImage($path_to_image, "image/jpeg", "image.jpg", true, "camimage"); 
+$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, "camimage"); 
 $headers = $mime->headers($headers);
 $body = $mime->get();
 switch($global_settings->data['G_SMTP_SERVICE']){

@@ -14,6 +14,28 @@ session_write_close();
 #/auth check
 
 
+#screenshot API
+if (!empty($_GET['mode']) && $_GET['mode']=='screenshot'){
+	
+	$device_id = (!empty($_GET['device_id'])) ? intval($_GET['device_id']) : false;
+	$event_id = (!empty($_GET['id'])) ? intval($_GET['id']) : false;
+	(!empty($device_id) || !empty($event_id)) or die('E: Event ID or camera ID is required to get a screenshot.');
+	
+	$event = (empty($event_id)) ? data::query("SELECT id, filepath FROM Media WHERE device_id='{$device_id}' AND filepath IS NOT NULL ORDER BY id DESC LIMIT 1") : data::getObject('Media', 'id', $event_id);
+	!empty($event) or die('E: Requested event does not exist');
+	
+	$event = $event[0];
+	!empty($event['filepath']) or die('E: No media is associated with this event.');
+	
+	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
+	file_exists($path_to_image) or die('E: Screenshot for this event was not found');
+	
+	header('content-type:image/jpeg');
+	readfile($path_to_image);
+	exit();
+}
+
+
 function requestError($message)
 {
 	header('HTTP/1.1 550 Media request error');
@@ -29,7 +51,7 @@ function dl_file_resumable($file)
 	$fileinfo = pathinfo($file);
 
 	$filename = $fileinfo['basename'];
-	$file_extension = strtolower($path_info['extension']);
+	#$file_extension = strtolower($path_info['extension']);
 	$ctype = 'video/mpeg';
 
 	if (isset($_SERVER['HTTP_RANGE'])) {
@@ -88,7 +110,7 @@ function dl_file_resumable($file)
 if (empty($_GET['id']))
 	requestError('No ID sent');
 
-$id = $_GET['id'];
+$id = intval($_GET['id']);
 
 mb_http_output("pass");
 

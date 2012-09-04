@@ -10,18 +10,9 @@ $current_user->checkAccessPermissions('admin');
 
 if (!empty($_POST)){
 	$id = intval($_POST['id']);
-	$_POST['rtsp'] = (substr($_POST['rtsp'], 0, 1) != '/') ? '/'.$_POST['rtsp'] : $_POST['rtsp'];
-	$_POST['mjpeg'] = (substr($_POST['mjpeg'], 0, 1) != '/') ? '/'.$_POST['mjpeg'] : $_POST['mjpeg'];
-	$data['audio_disabled'] = ($_POST['audio_enabled']=='on') ? 0 : 1;
-	$data['device'] = "{$_POST['ipAddr']}|{$_POST['port']}|{$_POST['rtsp']}";
-	$data['mjpeg_path'] = "{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";
-	$data['rtsp_username'] = empty($_POST['user']) ?  '' : $_POST['user'];
-	$data['rtsp_password'] = empty($_POST['pass']) ?  '' : $_POST['pass'];
-	$data['debug_level'] = ($_POST['debug_level']=='on') ? '1' : '0';
-	$data['model'] = $_POST['models'];
-	$query = data::formQueryFromArray('update', 'Devices', $data, 'id', $id);
-	$result = data::query($query, true);
-	data::responseXml($result);
+	$camera = new ipCamera($id);
+	$result = $camera->edit($_POST);
+	data::responseXml($result[0], $result[1]);
 	exit();
 }
 

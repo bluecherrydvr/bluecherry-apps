@@ -65,6 +65,7 @@ if (!empty($_GET) && ($m == 'delete' || $m == 'changeStatus')){
 }
 
 $tmp = data::getObject('notificationSchedules');
+if ($tmp)
 foreach($tmp as $id => $notification){
 	$notifications[$notification['id']] = $notification;
 }

@@ -15,7 +15,7 @@ define('VAR_LOG_PATH', '/var/log/bluecherry.log');
 define('VAR_WWW_LOG_PATH', '/var/lib/bluecherry/www-error.log');
 define('VAR_APACHE_LOG_PATH', '/var/log/apache2/error.log');
 
-define('VAR_NEWS_XML', 'http://www.bluecherrydvr.com/category/v2announcements/feed/');
+define('VAR_NEWS_XML', 'http://www.bluecherrydvr.com/feed/');
 
 define('VAR_SESSION_NAME', 'bluecherrydvr');
 
@@ -47,7 +47,7 @@ $GLOBALS['buffer'] = array(
 
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
 $GLOBALS['capacity'] = array(
-	'solo6010' => 200,
+	'solo6010' => 480,
 	'solo6110' => 600,
 	'solo6x10' => 480 #backward compatibility
 );

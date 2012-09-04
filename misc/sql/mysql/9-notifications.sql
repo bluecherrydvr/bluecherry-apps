@@ -7,8 +7,10 @@ CREATE TABLE IF NOT EXISTS `notificationSchedules` (
   `e_min` tinyint(4) NOT NULL,
   `cameras` varchar(255) NOT NULL,
   `users` varchar(255) NOT NULL,
+  `nlimit` mediumint(8) unsigned NOT NULL DEFAULT '0',
+  `disabled` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 ;
 
 CREATE TABLE IF NOT EXISTS `notificationsSent` (
   `rule_id` smallint(5) unsigned NOT NULL,
