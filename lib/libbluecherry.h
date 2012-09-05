@@ -140,21 +140,23 @@ public:
 	typedef std::deque<stream_packet>::iterator iterator;
 	typedef std::deque<stream_packet>::const_iterator const_iterator;
 
-	stream_packet &first();
-	const stream_packet &first() const;
-	stream_packet &last();
-	const stream_packet &last() const;
+	stream_packet &first() { return data.front(); }
+	const stream_packet &first() const { return data.front(); }
+	stream_packet &last() { return data.back(); }
+	const stream_packet &last() const { return data.back(); }
 
-	iterator begin();
-	const_iterator begin() const;
-	iterator end();
-	const_iterator end() const;
+	iterator begin() { return data.begin(); }
+	const_iterator begin() const { return data.begin(); }
+	iterator end() { return data.end(); }
+	const_iterator end() const { return data.end(); }
+
+	bool empty() const { return data.empty(); }
 
 	void append(const stream_packet &packet);
 
 	/* takeFirst may not make sense with subclasses. */
 	stream_packet takeFirst();
-	void clear();
+	void clear() { data.clear(); }
 
 protected:
 	std::deque<stream_packet> data;

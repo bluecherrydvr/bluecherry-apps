@@ -168,101 +168,27 @@ static int bc_alsa_open(struct bc_record *bc_rec)
 	return 0;
 }
 
-/* The returned packet is only valid until the next bc_buf_get or the next call
- * to this function. The data must be copied to remain valid.
- *
- * Return value is -1 for error, 0 for no packet, 1 for packet written
- */
-int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt)
-{
-	if (!has_audio(bc_rec))
-		return 0;
-
-	pkt->type     = AVMEDIA_TYPE_AUDIO;
-	pkt->ts_clock = time(NULL);
-
-	if (bc_rec->pcm) {
-		int size;
-
-		size = snd_pcm_readi(bc_rec->pcm, bc_rec->g723_data,
-				     sizeof(bc_rec->g723_data));
-
-		if (size < 0) {
-			if (size == -EAGAIN)
-				return 0;
-			bc_dev_err(bc_rec, "Error reading from sound device: %s",
-				   snd_strerror(size));
-			bc_alsa_close(bc_rec);
-			return -1;
-		}
-
-		pkt->size = g723_decode(&bc_rec->g723_state, bc_rec->g723_data,
-		                        size, bc_rec->pcm_data);
-		pkt->data = (void *)bc_rec->pcm_data;
-
-		pkt->flags = AV_PKT_FLAG_KEY;
-		pkt->pts   = AV_NOPTS_VALUE;
-	} else if (bc_rec->bc->type == BC_DEVICE_RTP) {
-		if (!bc_rec->bc->input->is_video_frame())
-			return 0;
-
-		const AVPacket *frame = reinterpret_cast<rtp_device*>(bc_rec->bc->input)->current_frame();
-
-		pkt->data  = frame->data;
-		pkt->size  = frame->size;
-		pkt->flags = frame->flags;
-		pkt->pts   = frame->pts;
-	} else
-		return 0;
-
-	return 1;
-}
-
-int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt)
-{
-	struct bc_handle *bc = bc_rec->bc;
-	if (!bc->input->is_video_frame())
-		return 0;
-
-	pkt->ts_clock = time(NULL);
-	pkt->type     = AVMEDIA_TYPE_VIDEO;
-	pkt->pts      = AV_NOPTS_VALUE;
-	if (bc->input->is_key_frame())
-		pkt->flags = AV_PKT_FLAG_KEY;
-	else
-		pkt->flags = 0;
-
-	pkt->data = bc->input->buf_data();
-	pkt->size = bc->input->buf_size();
-
-	if (!pkt->data || !pkt->size)
-		return 0;
-
-	if (bc->type == BC_DEVICE_RTP)
-		pkt->pts = reinterpret_cast<rtp_device*>(bc->input)->current_frame()->pts;
-
-	return 1;
-}
-
-int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 {
 	AVStream *s;
 	AVPacket opkt;
 	int re;
 
-	if (pkt->type == AVMEDIA_TYPE_AUDIO)
+	if (pkt.type == AVMEDIA_TYPE_AUDIO)
 		s = bc_rec->audio_st;
-	else
+	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
 		s = bc_rec->video_st;
+	else
+		return -1;
 
 	if (!s)
 		return 0;
 
 	av_init_packet(&opkt);
-	opkt.flags        = pkt->flags;
-	opkt.pts          = pkt->pts;
-	opkt.data         = (uint8_t*)pkt->data;
-	opkt.size         = pkt->size;
+	opkt.flags        = pkt.flags;
+	opkt.pts          = pkt.pts;
+	opkt.data         = const_cast<uint8_t*>(pkt.data());
+	opkt.size         = pkt.size;
 	opkt.stream_index = s->index;
 
 	if (bc_rec->bc->type == BC_DEVICE_V4L2 && opkt.pts == AV_NOPTS_VALUE) {
@@ -271,10 +197,11 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 			                        s->time_base); 
 	}
 
+	// XXX This is the wrong place for this logic.
 	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != AV_NOPTS_VALUE) {
 		struct rtp_device *rs = reinterpret_cast<rtp_device*>(bc_rec->bc->input);
 		/* RTP packets must be scaled to the output PTS */
-		if (pkt->type == AVMEDIA_TYPE_AUDIO) {
+		if (pkt.type == AVMEDIA_TYPE_AUDIO) {
 			opkt.pts = av_rescale_q(opkt.pts,
 			                        rs->audio_stream()->time_base,
 			                        s->time_base);
@@ -296,9 +223,9 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	 * the video will be cut before the audio for that time has been written.
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
-	if (pkt->pts != AV_NOPTS_VALUE && pkt->pts < 0) {
+	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
 		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
-		       "caused by recent PTS reset", (long long int)pkt->pts);
+		       "caused by recent PTS reset", (long long int)opkt.pts);
 		return 0;
 	}
 
@@ -311,21 +238,6 @@ int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pk
 	}
 
 	return 1;
-}
-
-int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src)
-{
-	if (dst != src)
-		memcpy(dst, src, sizeof(struct bc_output_packet));
-
-	if (src->size) {
-		dst->data = malloc(src->size);
-		if (!dst->data)
-			return -1;
-		memcpy(dst->data, src->data, src->size);
-	}
-
-	return 0;
 }
 
 void bc_close_avcodec(struct bc_record *bc_rec)
@@ -472,7 +384,7 @@ error:
 	return -1;
 }
 
-int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt, AVFrame *frame)
+int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &pkt, AVFrame *frame)
 {
 	AVCodecContext *ic = 0;
 	AVCodecContext *recctx = bc_rec->video_st->codec;
@@ -497,10 +409,10 @@ int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *p
 
 	AVPacket packet;
 	av_init_packet(&packet);
-	packet.flags        = pkt->flags;
-	packet.pts          = pkt->pts;
-	packet.data         = (uint8_t*)pkt->data;
-	packet.size         = pkt->size;
+	packet.flags        = pkt.flags;
+	packet.pts          = pkt.pts;
+	packet.data         = const_cast<uint8_t*>(pkt.data());
+	packet.size         = pkt.size;
 
 	if (avcodec_open2(ic, codec, NULL) < 0)
 		goto end;
@@ -531,7 +443,7 @@ end:
 	return have_picture;
 }
 
-int save_event_snapshot(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &pkt)
 {
 	std::string filename = bc_rec->event->media.filepath;
 	if (filename.empty()) {

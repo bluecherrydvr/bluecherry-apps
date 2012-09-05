@@ -83,25 +83,14 @@ struct bc_record {
 
 	/* Motion detection */
 	time_t mot_last_ts;
-	struct bc_output_packet *prerecord_head, *prerecord_tail;
+	stream_keyframe_buffer prerecord_buffer;
+	// XXX
 	/* Pointer to the first packet not written after the postrecord time in
 	 * the current motion recording. This may not be a valid pointer; the ONLY
 	 * correct usage is to check if this pointer is still in the prerecord_head
 	 * list. Be aware that if any new packet is added between a removal from the
 	 * list and a check against this pointer, a false positive is possible. That
 	 * is avoided in the current usage. */
-	void *mot_first_buffered_packet;
-};
-
-struct bc_output_packet {
-	struct bc_output_packet *next;
-	void        *data;
-	int          size;
-	unsigned int flags;
-	int64_t      pts;
-	int          type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
-	time_t       ts_monotonic; // XXX used for prerecord; refactor with PTS
-	time_t       ts_clock; // Used for prerecord event start time
 };
 
 typedef enum {
@@ -139,22 +128,19 @@ extern char global_sched[7 * 24 + 1];
 
 int bc_get_media_loc(char *dest, size_t size);
 
-int get_output_audio_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
-int get_output_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt);
-int bc_output_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
-int bc_output_packet_copy(struct bc_output_packet *dst, const struct bc_output_packet *src);
+int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
  * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */
-int decode_one_video_packet(struct bc_record *bc_rec, struct bc_output_packet *pkt, struct AVFrame *frame);
-int save_event_snapshot(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &packet, struct AVFrame *frame);
+int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Streaming */
 int bc_streaming_setup(struct bc_record *bc_rec);
 void bc_streaming_destroy(struct bc_record *bc_rec);
 int bc_streaming_is_setup(struct bc_record *bc_rec);
 int bc_streaming_is_active(struct bc_record *bc_rec);
-int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt);
+int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Relate all libav logging on this thread to a given bc_record */
 void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
