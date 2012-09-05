@@ -454,9 +454,9 @@ static void *bc_device_thread(void *data)
 			if (!bc_rec->oc) {
 				if (bc_rec->sched_cur == 'M' && !bc_rec->prerecord_buffer.empty()) {
 					/* Dump the prerecording buffer */
-					if (recording_start(bc_rec, bc_rec->prerecord_buffer.first().ts_clock))
+					if (recording_start(bc_rec, bc_rec->prerecord_buffer.front().ts_clock))
 						goto error;
-					bc_rec->output_pts_base = bc_rec->prerecord_buffer.first().pts;
+					bc_rec->output_pts_base = bc_rec->prerecord_buffer.front().pts;
 					/* Skip the last packet; it's identical to the current packet,
 					 * which we write in the normal path below. */
 					for (auto it = bc_rec->prerecord_buffer.begin();
