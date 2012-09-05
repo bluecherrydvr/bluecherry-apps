@@ -308,11 +308,12 @@ define('AIP_PASS', 'Password');
 define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_RTSP', 'Path to RTSP');
 define('AIP_ADD', 'Add camera');
-define('AIP_ALREADY_EXISTS', '<![CDATA[Camera with ip <b>%IP%</b> already exists in the list of the devices.]]>');
+define('AIP_ALREADY_EXISTS', 'Camera with these settings already exists in the list of the devices.');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
-define('AIP_NEEDPORT', 'Please enter port number');
+define('AIP_NEEDPORT', 'Please enter RTSP port number');
+define('AIP_NEEDMJPEGPORT', 'Please enter MJPEG port number');
 define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
-define('AIP_RTSPPATH', 'Please enter path to RTSP');
+define('AIP_NEEDRTSP', 'Please enter path to RTSP');
 define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 
@@ -555,6 +556,6 @@ define('U_LOADING', 'Loading...');
 define('L_ENABLE', 'enable');
 define('L_DISABLE', 'disable');
 
-define('BETA_LICENSE_WARNING', 'Pleae note that you are running a demo version of the Bluecherry software and it will be active for 30 days. Please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
+define('BETA_LICENSE_WARNING', 'Please note that you are running a demo version of the Bluecherry software and it will be active for 30 days. Please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
 
 ?>
