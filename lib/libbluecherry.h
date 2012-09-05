@@ -134,34 +134,16 @@ private:
  * unbounded and should be used directly only with great care.
  * Refer to subclasses for implementations with limits on the size of
  * the buffer. */
-class stream_buffer
+class stream_buffer : public std::deque<stream_packet>
 {
 public:
-	typedef std::deque<stream_packet>::iterator iterator;
-	typedef std::deque<stream_packet>::const_iterator const_iterator;
-
-	stream_packet &first() { return data.front(); }
-	const stream_packet &first() const { return data.front(); }
-	stream_packet &last() { return data.back(); }
-	const stream_packet &last() const { return data.back(); }
-
-	iterator begin() { return data.begin(); }
-	const_iterator begin() const { return data.begin(); }
-	iterator end() { return data.end(); }
-	const_iterator end() const { return data.end(); }
-
-	bool empty() const { return data.empty(); }
-
-	void append(const stream_packet &packet);
-
-	/* takeFirst may not make sense with subclasses. */
-	stream_packet takeFirst();
-	void clear() { data.clear(); }
 
 protected:
-	std::deque<stream_packet> data;
-
 	virtual void apply_bound();
+
+	using std::deque<stream_packet>::insert;
+	using std::deque<stream_packet>::push_back;
+	using std::deque<stream_packet>::push_front;
 };
 
 /* Implementation of stream_buffer which always begins with a video
