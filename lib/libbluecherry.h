@@ -114,6 +114,11 @@ public:
 	int64_t  pts;
 	int      type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
 	time_t   ts_clock; // Used for prerecord event start time
+	/* XXX: Monotonic clock time when this packet was captured. This
+	 * is used in place of PTS for buffer management (see
+	 * stream_keyframe_buffer), but should be deprecated once we have
+	 * reliable PTS values to use. */
+	time_t   ts_monotonic;
 
 	stream_packet();
 	stream_packet(const uint8_t *data);
@@ -137,6 +142,15 @@ private:
 class stream_buffer : public std::deque<stream_packet>
 {
 public:
+	/* Returns true if the packet was added to the buffer, or false
+	 * when accepts_packet was false. Automatically triggers
+	 * apply_bound() as well. */
+	bool add_packet(const stream_packet &packet);
+
+	/* Implemented in subclasses to decide whether a packet should
+	 * be added to the buffer when given to add_packet. Safe to call
+	 * from external code. */
+	virtual bool accepts_packet(const stream_packet &packet);
 
 protected:
 	virtual void apply_bound();
@@ -150,24 +164,29 @@ protected:
  * keyframe, and optionally keeps at least enough frames to cover a
  * given duration. Frames are dropped from the beginning when the
  * next keyframe can satisfy the duration requirement.
- *
- * Duration is specified in PTS time, which is dependent on the source
- * of the packets. XXX Currently, audio packets are ignored for this
- * purpose, which may result in a period of silence for the first video
- * frame.
  */
 class stream_keyframe_buffer : public stream_buffer
 {
 public:
 	stream_keyframe_buffer();
 
-	/* Minimum buffer duration in video-PTS time (see class
-	 * description). The total duration of the buffer may exceed
-	 * this value only by less than one keyframe interval. */
-	int64_t duration();
-	void setDuration(int64_t duration);
+	/* Minimum buffer time in seconds, as counted on a monotonic
+	 * clock (stream_packet.ts_monotonic). The buffer will be trimmed
+	 * when the duration exceeds this value, but will always start
+	 * with a keyframe from at least duration seconds ago.
+	 *
+	 * XXX This should be refactored to use PTS once we have reliable
+	 * and consistent PTS values in stream_packet. */
+	unsigned duration() { return mDuration; }
+	void setDuration(unsigned duration);
+
+	/* When the buffer is empty, drop all non-video non-keyframe packets
+	 * to ensure that the first packet is always a video keyframe. */
+	virtual bool accepts_packet(const stream_packet &packet);
 
 protected:
+	unsigned mDuration;
+
 	virtual void apply_bound();
 };
 

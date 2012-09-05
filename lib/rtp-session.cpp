@@ -319,6 +319,7 @@ void rtp_device::create_stream_packet(AVPacket *src)
 	current_packet.ts_clock = time(NULL);
 	current_packet.pts      = src->pts;
 	current_packet.flags    = src->flags & AV_PKT_FLAG_KEY;
+	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	if (src->stream_index == video_stream_index)
 		current_packet.type = AVMEDIA_TYPE_VIDEO;

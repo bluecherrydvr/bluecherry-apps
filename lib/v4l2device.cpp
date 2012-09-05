@@ -324,6 +324,7 @@ int v4l2_device::read_packet()
 	current_packet.type     = AVMEDIA_TYPE_VIDEO;
 	current_packet.pts      = AV_NOPTS_VALUE;
 	current_packet.flags    = is_key_frame() ? AV_PKT_FLAG_KEY : 0;
+	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	if (!got_vop) {
 		if (!is_key_frame())

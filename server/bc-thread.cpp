@@ -230,56 +230,6 @@ static int process_schedule(struct bc_record *bc_rec)
 	return (bc_rec->sched_cur != 'N');
 }
 
-/* Append a packet to the prerecord buffer, making a deep copy in the process.
- * The buffer will always start with a keyframe, and always be at least
- * bc_rec->cfg.prerecord seconds in duration (walltime, which might not be ideal).
- * Return negative on error, 0 if the packet was dropped, 1 otherwise.
- */
-static int prerecord_append(struct bc_record *bc_rec, const stream_packet &packet, time_t monotonic_now)
-{
-	//mpkt->ts_monotonic = monotonic_now;
-
-	if (packet.is_video_frame() && packet.is_key_frame()) {
-#warning prerecord is not implemented
-#if 0
-		struct bc_output_packet *p, *n;
-		struct bc_output_packet *keep_keyframe = 0;
-
-		if (bc_rec->cfg.prerecord > 0) {
-			keep_keyframe = bc_rec->prerecord_head;
-			for (p = bc_rec->prerecord_head; p; p = p->next) {
-				if (p->type != AVMEDIA_TYPE_VIDEO || !(p->flags & AV_PKT_FLAG_KEY))
-					continue;
-				if (monotonic_now - p->ts_monotonic >= bc_rec->cfg.prerecord)
-					keep_keyframe = p;
-			}
-		}
-
-		for (p = bc_rec->prerecord_head; p && p != keep_keyframe; p = n) {
-			n = p->next;
-			free(p->data);
-			free(p);
-		}
-
-		if (!p) {
-			bc_rec->prerecord_head = bc_rec->prerecord_tail = mpkt;
-			return 1;
-		} else
-			bc_rec->prerecord_head = p;
-#endif
-	} else if (bc_rec->prerecord_buffer.empty()) {
-		/* Drop this packet (no keyframe in the stream yet) */
-		return 0;
-	}
-
-#if 0
-	/* Append this packet */
-	bc_rec->prerecord_tail->next = mpkt;
-	bc_rec->prerecord_tail = mpkt;
-#endif
-	return 1;
-}
-
 static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
 {
 	time_t monotonic_now;
@@ -294,7 +244,7 @@ static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
 
 	monotonic_now = bc_gettime_monotonic();
 
-	if (prerecord_append(bc_rec, packet, monotonic_now) < 0 ||
+	if (!bc_rec->prerecord_buffer.add_packet(packet) ||
 	    !packet.is_video_frame())
 		return bc_rec->mot_last_ts > 0;
 
