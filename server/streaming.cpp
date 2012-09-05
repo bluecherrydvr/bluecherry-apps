@@ -112,8 +112,7 @@ int bc_streaming_is_active(struct bc_record *bc_rec)
 	return (bc_rec->rtsp_stream && bc_rec->rtsp_stream->activeSessionCount());
 }
 
-/* XXX can this be merged with bc_output_packet_write? */
-int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet *pkt)
+int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 {
 	AVPacket opkt;
 	int re;
@@ -122,10 +121,10 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet 
 		return 0;
 
 	av_init_packet(&opkt);
-	opkt.flags        = pkt->flags;
-	opkt.pts          = pkt->pts;
-	opkt.data         = (uint8_t*)pkt->data;
-	opkt.size         = pkt->size;
+	opkt.flags        = pkt.flags;
+	opkt.pts          = pkt.pts;
+	opkt.data         = const_cast<uint8_t*>(pkt.data());
+	opkt.size         = pkt.size;
 	opkt.stream_index = 0; /* XXX */
 
 	re = av_write_frame(bc_rec->stream_ctx, &opkt);

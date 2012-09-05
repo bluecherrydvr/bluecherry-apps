@@ -115,13 +115,7 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	bc_streaming_destroy(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
-	bc_rec->mot_first_buffered_packet = 0;
-	for (p = bc_rec->prerecord_head; p; p = n) {
-		n = p->next;
-		free(p->data);
-		free(p);
-	}
-	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
+	bc_rec->prerecord_buffer.clear();
 }
 
 static void event_trigger_notifications(struct bc_record *bc_rec)
@@ -248,17 +242,13 @@ static int process_schedule(struct bc_record *bc_rec)
  * bc_rec->cfg.prerecord seconds in duration (walltime, which might not be ideal).
  * Return negative on error, 0 if the packet was dropped, 1 otherwise.
  */
-static int prerecord_append(struct bc_record *bc_rec, const struct bc_output_packet *pkt, time_t monotonic_now)
+static int prerecord_append(struct bc_record *bc_rec, const stream_packet &packet, time_t monotonic_now)
 {
-	struct bc_output_packet *mpkt = (struct bc_output_packet*) malloc(sizeof(struct bc_output_packet));
-	if (bc_output_packet_copy(mpkt, pkt) < 0) {
-		free(mpkt);
-		return -1;
-	}
-	mpkt->next = 0;
-	mpkt->ts_monotonic = monotonic_now;
+	//mpkt->ts_monotonic = monotonic_now;
 
-	if (mpkt->type == AVMEDIA_TYPE_VIDEO && (mpkt->flags & AV_PKT_FLAG_KEY)) {
+	if (packet.is_video_frame() && packet.is_key_frame()) {
+#warning prerecord is not implemented
+#if 0
 		struct bc_output_packet *p, *n;
 		struct bc_output_packet *keep_keyframe = 0;
 
@@ -283,20 +273,21 @@ static int prerecord_append(struct bc_record *bc_rec, const struct bc_output_pac
 			return 1;
 		} else
 			bc_rec->prerecord_head = p;
-	} else if (!bc_rec->prerecord_head) {
+#endif
+	} else if (bc_rec->prerecord_buffer.empty()) {
 		/* Drop this packet (no keyframe in the stream yet) */
-		free(mpkt->data);
-		free(mpkt);
 		return 0;
 	}
 
+#if 0
 	/* Append this packet */
 	bc_rec->prerecord_tail->next = mpkt;
 	bc_rec->prerecord_tail = mpkt;
+#endif
 	return 1;
 }
 
-static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet *spkt)
+static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
 {
 	time_t monotonic_now;
 	int ret;
@@ -310,12 +301,14 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 
 	monotonic_now = bc_gettime_monotonic();
 
-	if (prerecord_append(bc_rec, spkt, monotonic_now) < 0 ||
-	    !bc_rec->bc->input->is_video_frame())
+	if (prerecord_append(bc_rec, packet, monotonic_now) < 0 ||
+	    !packet.is_video_frame())
 		return bc_rec->mot_last_ts > 0;
 
 	ret = bc_motion_is_detected(bc_rec->bc);
 
+#warning regression
+#if 0
 	if (bc_rec->mot_first_buffered_packet) {
 		/* Don't end the event and close the recording until we've dropped
 		 * a frame out of the prerecording buffer that was not part of
@@ -343,6 +336,7 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 			bc_rec->mot_first_buffered_packet = 0;
 		}
 	}
+#endif
 
 	if (ret) {
 		/* Motion frame; update the timestamp */
@@ -351,10 +345,16 @@ static int check_motion(struct bc_record *bc_rec, const struct bc_output_packet 
 		/* Actively recording, but this frame has no motion */
 		if (monotonic_now - bc_rec->mot_last_ts <= bc_rec->cfg.postrecord)
 			ret = 1; /* Continue recording (postrecord time) */
+#if 0
 		else if (!bc_rec->mot_first_buffered_packet) {
 			bc_rec->mot_first_buffered_packet = bc_rec->prerecord_tail;
+#endif
+		else {
 			if (bc_rec->event)
 				bc_rec->event->end_time = time(NULL);
+			// XXX remove when fixing first_buffered_packet
+			recording_end(bc_rec);
+			bc_rec->mot_last_ts = 0;
 		}
 	}
 
@@ -365,7 +365,7 @@ static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = (struct bc_record*) data;
 	struct bc_handle *bc = bc_rec->bc;
-	struct bc_output_packet packet;
+	stream_packet packet;
 	int ret;
 
 	bc_dev_info(bc_rec, "Camera configured");
@@ -424,7 +424,7 @@ static void *bc_device_thread(void *data)
 		}
 #endif
 
-		ret = bc->input->buf_get();
+		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
 			continue;
 		} else if (ret != 0) {
@@ -439,38 +439,31 @@ static void *bc_device_thread(void *data)
 			goto error;
 		}
 
-		/* Prepare output packets; nothing is allocated. */
-		if (bc->input->is_video_frame())
-			ret = get_output_video_packet(bc_rec, &packet);
-		else
-			ret = get_output_audio_packet(bc_rec, &packet);
-
-		/* Error, or no packet */
-		if (ret < 1)
-			continue;
+		packet = bc->input->packet();
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(bc_rec))
-			bc_streaming_packet_write(bc_rec, &packet);
+			bc_streaming_packet_write(bc_rec, packet);
 
 		if (schedule_recording) {
 			/* If on the motion schedule, and there is no motion, skip recording */
-			if (!check_motion(bc_rec, &packet))
+			if (!check_motion(bc_rec, packet))
 				continue;
 
 			/* Setup and write to recordings */
 			if (!bc_rec->oc) {
-				if (bc_rec->sched_cur == 'M' && bc_rec->prerecord_head) {
+				if (bc_rec->sched_cur == 'M' && !bc_rec->prerecord_buffer.empty()) {
 					/* Dump the prerecording buffer */
-					struct bc_output_packet *p;
-					if (recording_start(bc_rec, bc_rec->prerecord_head->ts_clock))
+					if (recording_start(bc_rec, bc_rec->prerecord_buffer.first().ts_clock))
 						goto error;
-					bc_rec->output_pts_base = bc_rec->prerecord_head->pts;
+					bc_rec->output_pts_base = bc_rec->prerecord_buffer.first().pts;
 					/* Skip the last packet; it's identical to the current packet,
 					 * which we write in the normal path below. */
-					for (p = bc_rec->prerecord_head; p && p->next; p = p->next)
-						bc_output_packet_write(bc_rec, p);
-				} else if (!bc->input->is_key_frame() || !bc->input->is_video_frame()) {
+					for (auto it = bc_rec->prerecord_buffer.begin();
+					     it != bc_rec->prerecord_buffer.end()-1; it++) {
+						bc_output_packet_write(bc_rec, *it);
+					}
+				} else if (!packet.is_key_frame() || !packet.is_video_frame()) {
 					/* Always start a recording with a key video frame. This will result in
 					 * the lost of some video between recordings, up to the keyframe interval,
 					 * at least on RTP devices. XXX Ideally, we should move the recording split
@@ -483,13 +476,13 @@ static void *bc_device_thread(void *data)
 				}
 			}
 
-			if (bc->input->is_video_frame() && bc->input->is_key_frame() && !bc_rec->event_snapshot_done) {
-				save_event_snapshot(bc_rec, &packet);
+			if (packet.is_video_frame() && packet.is_key_frame() && !bc_rec->event_snapshot_done) {
+				save_event_snapshot(bc_rec, packet);
 				bc_rec->event_snapshot_done = 1;
 				event_trigger_notifications(bc_rec);
 			}
 
-			bc_output_packet_write(bc_rec, &packet);
+			bc_output_packet_write(bc_rec, packet);
 		}
 
 		continue;
