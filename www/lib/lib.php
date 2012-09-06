@@ -11,6 +11,7 @@ defined('INDVR') or exit();
 if (empty($nload)){
 	include("lang.php");
 	include("var.php");
+	include("upgrade.php");
 }
 
 session_name(VAR_SESSION_NAME);
