@@ -373,6 +373,7 @@ int v4l2_device::read_packet()
 	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
 
 	current_packet = stream_packet(dbuf);
+	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = p_buf[buf_idx].vb.bytesused;
 	current_packet.ts_clock = time(NULL);
 	current_packet.type     = AVMEDIA_TYPE_VIDEO;

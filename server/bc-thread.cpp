@@ -115,6 +115,7 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	bc_streaming_destroy(bc_rec);
 	bc_handle_stop(bc_rec->bc);
 	bc_rec->mot_last_ts = 0;
+	bc_rec->mot_first_buffered_packet = -1;
 	bc_rec->prerecord_buffer.clear();
 }
 
@@ -257,36 +258,37 @@ static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
 
 	ret = bc_motion_is_detected(bc_rec->bc);
 
-#warning regression
-#if 0
-	if (bc_rec->mot_first_buffered_packet) {
+	if (bc_rec->mot_first_buffered_packet >= 0) {
 		/* Don't end the event and close the recording until we've dropped
 		 * a frame out of the prerecording buffer that was not part of
 		 * the recording; this allows us to resume the current event if more
 		 * motion occurs within [prerecord] seconds. */
-		struct bc_output_packet *p = bc_rec->prerecord_head;
-		for (; p; p = p->next) {
-			if (p == bc_rec->mot_first_buffered_packet)
-				break;
+		for (auto it = bc_rec->prerecord_buffer.begin(); it != bc_rec->prerecord_buffer.end(); it++) {
+			if (it->seq != bc_rec->mot_first_buffered_packet)
+				continue;
+
+			if (ret) {
+				/* There is new motion; we can resume this recording
+				 * using buffered packets. Dump them, excluding this packet. */
+				bc_dev_info(bc_rec, "Motion event continued");
+				for (; it != bc_rec->prerecord_buffer.end()-1; it++)
+					bc_output_packet_write(bc_rec, *it);
+				bc_rec->mot_first_buffered_packet = -1;
+			}
+
+			goto continue_motion_event;
 		}
 
-		if (!p) {
-			/* We exhausted the prerecord buffer without more motion;
-			 * end the current recording. If this frame had motion,
-			 * we'll start a new recording immediately. */
-			recording_end(bc_rec);
-			bc_rec->mot_last_ts = 0;
-			bc_rec->mot_first_buffered_packet = 0;
-		} else if (ret) {
-			/* There is new motion; we can resume this recording
-			 * using buffered packets. Dump them, excluding this packet. */
-			bc_dev_info(bc_rec, "Motion event continued");
-			for (; p && p->next; p = p->next)
-				bc_output_packet_write(bc_rec, p);
-			bc_rec->mot_first_buffered_packet = 0;
-		}
+		/* We exhausted the prerecord buffer without more motion;
+		 * end the current recording. If this frame had motion,
+		 * we'll start a new recording immediately. */
+		recording_end(bc_rec);
+		bc_rec->mot_last_ts = 0;
+		bc_rec->mot_first_buffered_packet = -1;
+
+continue_motion_event:
+		;
 	}
-#endif
 
 	if (ret) {
 		/* Motion frame; update the timestamp */
@@ -295,16 +297,10 @@ static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
 		/* Actively recording, but this frame has no motion */
 		if (monotonic_now - bc_rec->mot_last_ts <= bc_rec->cfg.postrecord)
 			ret = 1; /* Continue recording (postrecord time) */
-#if 0
-		else if (!bc_rec->mot_first_buffered_packet) {
-			bc_rec->mot_first_buffered_packet = bc_rec->prerecord_tail;
-#endif
-		else {
+		else if (bc_rec->mot_first_buffered_packet < 0) {
+			bc_rec->mot_first_buffered_packet = packet.seq;
 			if (bc_rec->event)
 				bc_rec->event->end_time = time(NULL);
-			// XXX remove when fixing first_buffered_packet
-			recording_end(bc_rec);
-			bc_rec->mot_last_ts = 0;
 		}
 	}
 
@@ -525,6 +521,11 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
 	}
 	check_schedule(bc_rec);
+	bc_rec->mot_first_buffered_packet = -1;
+
+	// XXX Refactor bc_record to handle constructors properly
+	new (&bc_rec->prerecord_buffer) stream_keyframe_buffer;
+	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
@@ -620,6 +621,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 			bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
 		}
 	}
+
+	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
 
 	check_schedule(bc_rec);
 	return 0;

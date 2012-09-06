@@ -315,6 +315,7 @@ void rtp_device::create_stream_packet(AVPacket *src)
 	memcpy(buf, src->data, src->size);
 
 	current_packet = stream_packet(buf);
+	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
 	current_packet.pts      = src->pts;
