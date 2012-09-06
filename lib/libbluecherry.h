@@ -68,6 +68,7 @@ public:
 protected:
 	bool _audio_enabled;
 	std::string _error_message;
+	unsigned next_packet_seq;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
 };
@@ -119,6 +120,10 @@ public:
 	 * stream_keyframe_buffer), but should be deprecated once we have
 	 * reliable PTS values to use. */
 	time_t   ts_monotonic;
+	/* Sequence number of this packet, unique to the input that created
+	 * it. Should not be reset unless the handle is stopped and started
+	 * again. Rollover is possible and should be handled. */
+	unsigned seq;
 
 	stream_packet();
 	stream_packet(const uint8_t *data);
@@ -178,7 +183,7 @@ public:
 	 * XXX This should be refactored to use PTS once we have reliable
 	 * and consistent PTS values in stream_packet. */
 	unsigned duration() { return mDuration; }
-	void setDuration(unsigned duration);
+	void set_duration(unsigned duration);
 
 	/* When the buffer is empty, drop all non-video non-keyframe packets
 	 * to ensure that the first packet is always a video keyframe. */

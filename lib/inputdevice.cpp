@@ -2,7 +2,7 @@
 #include <cstdatomic>
 
 input_device::input_device()
-	: _audio_enabled(false)
+	: _audio_enabled(false), next_packet_seq(0) 
 {
 }
 
@@ -17,19 +17,19 @@ void input_device::set_audio_enabled(bool v)
 
 stream_packet::stream_packet()
 	: size(0), flags(0), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
-	  d(0)
+	  seq(0), d(0)
 {
 }
 
 stream_packet::stream_packet(const uint8_t *data)
 	: size(0), flags(0), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
-	  d(new stream_packet_data(data))
+	  seq(0), d(new stream_packet_data(data))
 {
 }
 
 stream_packet::stream_packet(const stream_packet &o)
 	: size(o.size), flags(o.flags), pts(o.pts), type(o.type), ts_clock(o.ts_clock),
-	  ts_monotonic(o.ts_monotonic), d(o.d)
+	  ts_monotonic(o.ts_monotonic), seq(0), d(o.d)
 {
 	if (d)
 		d->ref();
@@ -43,6 +43,7 @@ stream_packet &stream_packet::operator=(const stream_packet &o)
 	type = o.type;
 	ts_clock = o.ts_clock;
 	ts_monotonic = o.ts_monotonic;
+	seq = o.seq;
 
 	if (d)
 		d->deref();
@@ -95,6 +96,7 @@ bool stream_buffer::add_packet(const stream_packet &packet)
 		return false;
 	push_back(packet);
 	apply_bound();
+	return true;
 }
 
 stream_keyframe_buffer::stream_keyframe_buffer()
@@ -102,7 +104,7 @@ stream_keyframe_buffer::stream_keyframe_buffer()
 {
 }
 
-void stream_keyframe_buffer::setDuration(unsigned v)
+void stream_keyframe_buffer::set_duration(unsigned v)
 {
 	mDuration = v;
 	apply_bound();
@@ -121,7 +123,7 @@ void stream_keyframe_buffer::apply_bound()
 		return;
 
 	time_t last_ts = back().ts_monotonic;
-	if (last_ts > mDuration)
+	if (last_ts < mDuration)
 		return;
 	last_ts -= mDuration;
 
