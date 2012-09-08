@@ -332,8 +332,7 @@ static void bc_stop_threads(void)
 		bc_record *bc_rec = *it;
 		pthread_join(bc_rec->thread, (void **)&errmsg);
 		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
-		bc_handle_free(bc_rec->bc);
-		free(bc_rec);
+		delete bc_rec;
 		cur_threads--;
 	}
 
@@ -351,8 +350,7 @@ static void bc_check_threads(void)
 			continue;
 
 		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
-		bc_handle_free(bc_rec->bc);
-		free(bc_rec);
+		delete bc_rec;
 		cur_threads--;
 
 		bc_rec_list.erase(bc_rec_list.begin()+i);
@@ -592,7 +590,7 @@ static int bc_check_db(void)
 			continue;
 		}
 
-		bc_rec = bc_alloc_record(id, dbres);
+		bc_rec = bc_record::create_from_db(id, dbres);
 		if (!bc_rec) {
 			re |= -1;
 			continue;

@@ -426,56 +426,84 @@ error:
 	return bc_rec->thread_should_die;
 }
 
-struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
+bc_record::bc_record(int i)
+	: id(i)
 {
+	bc = 0;
+
+	memset(&cfg, 0, sizeof(cfg));
+	memset(&cfg_update, 0, sizeof(cfg_update));
+	cfg_dirty = 0;
+	pthread_mutex_init(&cfg_mutex, NULL);
+
+	fmt_out = 0;
+	video_st = 0;
+	audio_st = 0;
+	oc = 0;
+	output_pts_base = 0;
+
+	stream_ctx = 0;
+	rtsp_stream = 0;
+
+	osd_time = 0;
+	start_failed = 0;
+
+	memset(outfile, 0, sizeof(outfile));
+
+	memset(&event, 0, sizeof(event));
+	event_snapshot_done = 0;
+
+	sched_cur = 'N';
+	sched_last = 0;
+	thread_should_die = 0;
+	file_started = 0;
+
+	reset_vid = 0;
+	fmt = 0;
+
+	mot_last_ts = 0;
+	mot_first_buffered_packet = -1;
+}
+
+bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
+{
+	bc_record *bc_rec;
 	struct bc_handle *bc = NULL;
-	struct bc_record *bc_rec;
-	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
-	const char *video_type = bc_db_get_val(dbres, "video_type", NULL);
 
 	if (bc_db_get_val_bool(dbres, "disabled"))
-		return NULL;
+		return 0;
 
+	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+	const char *video_type = bc_db_get_val(dbres, "video_type", NULL);
 	if (signal_type && video_type && strcasecmp(signal_type, video_type)) {
 		bc_status_component_error("Video type mismatch for device %d "
 			"(driver is %s, device is %s)", id, video_type, signal_type);
-		return NULL;
+		return 0;
 	}
 
-	bc_rec = (struct bc_record*) malloc(sizeof(*bc_rec));
-	if (bc_rec == NULL) {
-		bc_log("E(%d): Out of memory trying to start record", id);
-		return NULL;
-	}
-	memset(bc_rec, 0, sizeof(*bc_rec));
-
-	pthread_mutex_init(&bc_rec->cfg_mutex, NULL);
+	bc_rec = new bc_record(id);
 
 	if (bc_device_config_init(&bc_rec->cfg, dbres)) {
 		bc_status_component_error("Database error while initializing device %d", id);
-		free(bc_rec);
-		return NULL;
+		delete bc_rec;
+		return 0;
 	}
 	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
 
-	bc_rec->id = id;
-
 	bc = bc_handle_get(dbres);
-	if (bc == NULL) {
+	if (!bc) {
 		/* XXX should be an event */
 		bc_dev_err(bc_rec, "Error opening device: %m");
 		bc_status_component_error("Error opening device %d: %m", id);
-		free(bc_rec);
-		return NULL;
+		delete bc_rec;
+		return 0;
 	}
 
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;
 
-	//get_aud_dev(bc_rec);
-	bc_rec->sched_cur = 'N';
-
 	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
+	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
 
 	/* Initialize device state */
 	try_formats(bc_rec);
@@ -485,24 +513,30 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 		bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
 	}
 	check_schedule(bc_rec);
-	bc_rec->mot_first_buffered_packet = -1;
-
-	// XXX Refactor bc_record to handle constructors properly
-	new (&bc_rec->prerecord_buffer) stream_keyframe_buffer;
-	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_status_component_error("Failed to start thread: %m");
-		bc_handle_free(bc);
-		free(bc_rec);
-		bc_rec = NULL;
+		delete bc_rec;
+		return 0;
 	}
 
+	// XXX useless?
 	/* Throttle thread starting */
 	sleep(1);
 
 	return bc_rec;
+}
+
+// XXX Many other members of bc_record are ignored here.
+bc_record::~bc_record()
+{
+	if (bc) {
+		bc_handle_free(bc);
+		bc = 0;
+	}
+
+	pthread_mutex_destroy(&cfg_mutex);
 }
 
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
