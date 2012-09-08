@@ -20,7 +20,13 @@ extern "C" {
 
 // XXX Needs refactor with proper construction, due to non-POD types
 // XXX This will leak badly on destruction, due to prerecord_buffer
-struct bc_record {
+class bc_record
+{
+public:
+	static bc_record *create_from_db(int id, BC_DB_RES dbres);
+
+	~bc_record();
+
 	struct bc_handle        *bc;
 	/* bc_device_config holds configured parameters from the database.
 	 * We have two copies of this: cfg, which is almost always what you
@@ -38,7 +44,7 @@ struct bc_record {
 	char                    cfg_dirty;
 	pthread_mutex_t		    cfg_mutex;
 
-	int id;
+	const int id;
 
 	/* Recording */
 	AVOutputFormat  *fmt_out;
@@ -78,6 +84,9 @@ struct bc_record {
 	int64_t mot_first_buffered_packet;
 	stream_keyframe_buffer prerecord_buffer;
 	// XXX
+
+private:
+	bc_record(int id);
 };
 
 typedef enum {
@@ -136,7 +145,6 @@ int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
 
-struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
 
 int bc_check_avail(void);
