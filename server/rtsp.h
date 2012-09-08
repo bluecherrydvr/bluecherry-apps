@@ -11,6 +11,7 @@
 #include <map>
 #include <vector>
 #include <pthread.h>
+#include <poll.h>
 
 #define FD_MAX 256
 

@@ -2,7 +2,7 @@ topdir = ..
 include $(topdir)/mk.conf
 
 CFLAGS		+= -pthread -MMD
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lbsd -ludev \
 		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server

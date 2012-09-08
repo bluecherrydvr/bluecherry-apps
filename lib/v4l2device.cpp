@@ -502,41 +502,6 @@ int v4l2_device::setup_output(AVFormatContext *oc)
 
 	st = NULL;
 
-#if 0
-	/* We don't fail when this happens. Video with no sound is
-	 * better than no video at all. */
-	if (audio_enabled() && bc_alsa_open(bc_rec))
-		bc_alsa_close(bc_rec);
-
-	/* Setup new audio stream */
-	if (has_audio(bc_rec)) {
-		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
-
-		/* If we can't find an encoder, just skip it */
-		if (avcodec_find_encoder(codec_id) == NULL) {
-			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
-				    "so not recording", codec_id);
-			goto no_audio;
-		}
-
-		if ((st = avformat_new_stream(oc, NULL)) == NULL)
-			goto no_audio;
-		st->codec->codec_id = codec_id;
-		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-
-		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
-		st->codec->channels = 1;
-		st->codec->time_base = (AVRational){1, 8000};
-
-		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-no_audio:
-		st = NULL;
-	}
-#endif
-	
 	return 0;
 }
-
 
