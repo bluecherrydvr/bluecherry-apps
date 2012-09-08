@@ -351,25 +351,6 @@ static void *bc_device_thread(void *data)
 				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
-		// XXX: Solo audio is disabled
-#if 0
-		if ((bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO) && has_audio(bc_rec)
-		    && bc_rec->oc && bc_rec->audio_st)
-		{
-			double audio_pts = (double)bc_rec->audio_st->pts.val *
-			                   bc_rec->audio_st->time_base.num /
-			                   bc_rec->audio_st->time_base.den;
-			double video_pts = (double)bc_rec->video_st->pts.val *
-			                   bc_rec->video_st->time_base.num /
-			                   bc_rec->video_st->time_base.den;
-
-			if (audio_pts < video_pts) {
-				if (get_output_audio_packet(bc_rec, &packet) > 0)
-					bc_output_packet_write(bc_rec, &packet);
-			}
-		}
-#endif
-
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
 			continue;
@@ -444,23 +425,6 @@ error:
 
 	return bc_rec->thread_should_die;
 }
-
-#if 0
-static void get_aud_dev(struct bc_record *bc_rec)
-{
-	bc_rec->aud_dev[0] = '\0';
-
-	if (!(bc_rec->bc->cam_caps & BC_CAM_CAP_SOLO))
-		return;
-
-	sprintf(bc_rec->aud_dev, "hw:CARD=Softlogic%d,DEV=0,SUBDEV=%d",
-		bc_rec->bc->v4l2.card_id, bc_rec->bc->v4l2.dev_id);
-
-	bc_rec->aud_rate = 8000;
-	bc_rec->aud_channels = 1;
-	bc_rec->aud_format = AUD_FMT_PCM_U8 | AUD_FMT_FLAG_G723_24;
-}
-#endif
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 {

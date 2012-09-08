@@ -1,7 +1,7 @@
 include ../mk.conf
 
 CFLAGS		+= -pthread -MMD
-LDFLAGS		+= -lbluecherry -lasound -lbsd -ludev \
+LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server

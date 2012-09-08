@@ -15,8 +15,6 @@ extern "C" {
 #include "g723-dec.h"
 }
 
-#include <alsa/asoundlib.h>
-
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
@@ -60,19 +58,8 @@ struct bc_record {
 	time_t			osd_time;
 	unsigned int		start_failed;
 
-	struct g723_state	g723_state;
-	unsigned char		g723_data[48];
-	signed short		pcm_data[384];
-
 	char			outfile[PATH_MAX];
 	pthread_t		thread;
-
-	/* Audio setup */
-	snd_pcm_t		*pcm;
-	char			aud_dev[256];
-	int			aud_rate;
-	int			aud_channels;
-	unsigned int		aud_format;
 
 	/* Event/Media handling */
 	bc_event_cam_t          event;
