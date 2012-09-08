@@ -272,6 +272,7 @@ struct bc_device_config {
 	int8_t  debug_level;
 	int     aud_disabled : 1;
 	int     schedule_override_global : 1;
+	int     hue, saturation, contrast, brightness;
 };
 
 struct bc_license {

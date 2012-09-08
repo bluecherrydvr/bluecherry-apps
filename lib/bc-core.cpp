@@ -338,6 +338,10 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->debug_level = bc_db_get_val_int(dbres, "debug_level");
 	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;
 	cfg->schedule_override_global = bc_db_get_val_int(dbres, "schedule_override_global") != 0;
+	cfg->hue        = bc_db_get_val_int(dbres, "hue");
+	cfg->contrast   = bc_db_get_val_int(dbres, "contrast");
+	cfg->brightness = bc_db_get_val_int(dbres, "brightness");
+	cfg->saturation = bc_db_get_val_int(dbres, "saturation");
 
 	return 0;
 }

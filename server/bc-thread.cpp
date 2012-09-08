@@ -514,6 +514,14 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	}
 	check_schedule(bc_rec);
 
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
+		v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
+		v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
+		v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
+		v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
+	}
+
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_status_component_error("Failed to start thread: %m");
@@ -561,19 +569,6 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	}
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
-#warning REGRESSION: hue/sat/etc disabled, needs refactor as part of cfg
-#if 0
-	/* Update standard controls */
-	bc_set_control(bc_rec->bc, V4L2_CID_HUE,
-			bc_db_get_val_int(dbres, "hue"));
-	bc_set_control(bc_rec->bc, V4L2_CID_CONTRAST,
-			bc_db_get_val_int(dbres, "contrast"));
-	bc_set_control(bc_rec->bc, V4L2_CID_SATURATION,
-			bc_db_get_val_int(dbres, "saturation"));
-	bc_set_control(bc_rec->bc, V4L2_CID_BRIGHTNESS,
-			bc_db_get_val_int(dbres, "brightness"));
-#endif
-
 	return 0;
 }
 
@@ -601,6 +596,9 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	motion_map_changed = memcmp(current->motion_map, update->motion_map, sizeof(update->motion_map));
 	format_changed = (current->width != update->width || current->height != update->height ||
 	                  current->interval != update->interval);
+	bool control_changed = (current->hue != update->hue || current->contrast != update->contrast ||
+	                        current->saturation != update->saturation ||
+	                        current->brightness != update->brightness);
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
@@ -610,6 +608,14 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		stop_handle_properly(bc_rec);
 		bc_streaming_destroy(bc_rec);
 		try_formats(bc_rec);
+	}
+
+	if (control_changed) {
+		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc_rec->bc->input);
+		v4l2->set_control(V4L2_CID_HUE, current->hue);
+		v4l2->set_control(V4L2_CID_CONTRAST, current->contrast);
+		v4l2->set_control(V4L2_CID_SATURATION, current->saturation);
+		v4l2->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
 	}
 
 	if (motion_map_changed) {
