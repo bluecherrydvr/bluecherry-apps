@@ -17,6 +17,7 @@
 #include <errno.h>
 
 #include <libbluecherry.h>
+#include <v4l2device.h>
 
 static void print_error(char *msg, ...)
 {
@@ -32,19 +33,14 @@ static void print_error(char *msg, ...)
 
 static void print_image(struct bc_handle *bc)
 {
-	void *data;
-	int size;
-
-	if (bc_buf_get(bc))
+	if (bc->input->read_packet() < 0)
 		print_error("Failed to get a buffer");
 
-	data = bc_buf_data(bc);
-	size = bc_buf_size(bc);
-
-	if (data == NULL || size <= 0)
+	stream_packet packet = bc->input->packet();
+	if (!packet.data() || !packet.size)
 		print_error("Invalid data or size for buffer");
 
-	if (fwrite(bc_buf_data(bc), bc_buf_size(bc), 1, stdout) != 1)
+	if (fwrite(packet.data(), packet.size, 1, stdout) != 1)
 		print_error("Error writing jpeg: %m");
 }
 
@@ -99,8 +95,8 @@ int main(int argc, char **argv)
 	bc_db_close();
 
 	/* Setup for MJPEG, leave everything else as default */
-	bc->v4l2.vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-	if (ioctl(bc->v4l2.dev_fd, VIDIOC_S_FMT, &bc->v4l2.vfmt) < 0)
+	v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
+	if (v4l2->set_format(V4L2_PIX_FMT_MJPEG, 0, 0) < 0)
 		print_error("Error setting mjpeg: %m");
 
 	if (bc_handle_start(bc, &err_msg))

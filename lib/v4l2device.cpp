@@ -419,8 +419,10 @@ int v4l2_device::set_format(uint32_t fmt, uint16_t width, uint16_t height)
 #endif
 
 	vfmt.fmt.pix.pixelformat = fmt;
-	vfmt.fmt.pix.width = width;
-	vfmt.fmt.pix.height = height;
+	if (width)
+		vfmt.fmt.pix.width = width;
+	if (height)
+		vfmt.fmt.pix.height = height;
 
 	if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
 		return -1;
