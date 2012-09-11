@@ -481,6 +481,7 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height)
 		return -1;
 	}
 
+	/* XXX: we could cache this */
 	uint32_t fmt = get_best_pixfmt(dev_fd);
 	if (!fmt) {
 		this->set_error_message("no supported pixelformat found");
@@ -488,8 +489,10 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height)
 	}
 
 	this->vfmt.fmt.pix.pixelformat = fmt;
-	this->vfmt.fmt.pix.width = width;
-	this->vfmt.fmt.pix.height = height;
+	if (width)
+		this->vfmt.fmt.pix.width = width;
+	if (height)
+		this->vfmt.fmt.pix.height = height;
 
 	if (ioctl(this->dev_fd, VIDIOC_S_FMT, &this->vfmt) < 0)
 		return -1;
