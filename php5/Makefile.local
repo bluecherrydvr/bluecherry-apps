@@ -17,7 +17,7 @@ Makefile: configure
 	./configure --with-php-config=php-config
 
 modules/$(MODULE).so: Makefile $(LIB) FORCE
-	$(MAKE) -f Makefile "CXXFLAGS=-I$(LIBAVPATH)/include -Wno-write-strings -D__STDC_CONSTANT_MACROS"
+	$(MAKE) -f Makefile "CXXFLAGS=$(CXXFLAGS)"
 
 install: modules/$(MODULE).so $(MODULE).ini
 	$(INSTALL_DATA) -D modules/$(MODULE).so \

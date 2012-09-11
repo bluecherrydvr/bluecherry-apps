@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 
 #include "libbluecherry.h"
+#include "v4l2device.h"
 extern "C" {
 #include "php.h"
 #include "ext/standard/php_standard.h"
@@ -355,7 +356,11 @@ PHP_FUNCTION(bc_set_control)
 		RETURN_FALSE;
 	}
 
-	if (bc_set_control(bch, ctrl, val))
+	if (bch->type != BC_DEVICE_V4L2)
+		RETURN_FALSE;
+
+	v4l2_device *v4l2 = static_cast<v4l2_device*>(bch->input);
+	if (v4l2->set_control(ctrl, val))
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -390,7 +395,7 @@ PHP_FUNCTION(bc_buf_get)
 
 	BCH_GET_RES("bc_buf_get");
 
-	if (bc_buf_get(bch))
+	if (bch->input->read_packet())
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -402,7 +407,7 @@ PHP_FUNCTION(bc_buf_size)
 
 	BCH_GET_RES("bc_buf_size");
 
-	RETURN_LONG(bc_buf_size(bch));
+	RETURN_LONG(bch->input->packet().size);
 }
 
 PHP_FUNCTION(bc_buf_data)
@@ -413,12 +418,11 @@ PHP_FUNCTION(bc_buf_data)
 
 	BCH_GET_RES("bc_buf_data");
 
-	data = (unsigned char*)bc_buf_data(bch);
-	size = bc_buf_size(bch);
-	if (data == NULL || size <= 0)
+	const stream_packet &packet = bch->input->packet();
+	if (!packet.data() || packet.size <= 0)
 		RETURN_FALSE;
 
-	RETURN_STRINGL((const char*)data, size, 1);
+	RETURN_STRINGL(reinterpret_cast<const char*>(packet.data()), packet.size, 1);
 }
 
 PHP_FUNCTION(bc_set_mjpeg)
@@ -427,7 +431,11 @@ PHP_FUNCTION(bc_set_mjpeg)
 
 	BCH_GET_RES("bc_set_mjpeg");
 
-	if (bc_set_mjpeg(bch))
+	if (bch->type != BC_DEVICE_V4L2)
+		RETURN_FALSE;
+
+	v4l2_device *v4l2 = static_cast<v4l2_device*>(bch->input);
+	if (v4l2->set_mjpeg())
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -439,7 +447,7 @@ PHP_FUNCTION(bc_get_mjpeg_url)
 
 	BCH_GET_RES("bc_get_mjpeg_url");
 
-	if (!(bch->cam_caps & BC_CAM_CAP_MJPEG_URL))
+	if (!*bch->mjpeg_url)
 		RETURN_FALSE;
 
 	RETURN_STRING(bch->mjpeg_url, 1);
