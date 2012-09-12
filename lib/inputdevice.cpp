@@ -29,7 +29,7 @@ stream_packet::stream_packet(const uint8_t *data)
 
 stream_packet::stream_packet(const stream_packet &o)
 	: size(o.size), flags(o.flags), pts(o.pts), type(o.type), ts_clock(o.ts_clock),
-	  ts_monotonic(o.ts_monotonic), seq(0), d(o.d)
+	  ts_monotonic(o.ts_monotonic), seq(o.seq), d(o.d)
 {
 	if (d)
 		d->ref();
