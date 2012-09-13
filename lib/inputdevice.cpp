@@ -100,7 +100,7 @@ bool stream_buffer::add_packet(const stream_packet &packet)
 }
 
 stream_keyframe_buffer::stream_keyframe_buffer()
-	: mDuration(0)
+	: mDuration(0), mEnforced(true)
 {
 }
 
@@ -110,9 +110,14 @@ void stream_keyframe_buffer::set_duration(unsigned v)
 	apply_bound();
 }
 
+void stream_keyframe_buffer::set_enforce_keyframe(bool v)
+{
+	mEnforced = v;
+}
+
 bool stream_keyframe_buffer::accepts_packet(const stream_packet &packet)
 {
-	if (empty() && (!packet.is_video_frame() || !packet.is_key_frame()))
+	if (mEnforced && empty() && (!packet.is_video_frame() || !packet.is_key_frame()))
 		return false;
 	return true;
 }
