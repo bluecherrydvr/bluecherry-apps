@@ -8,10 +8,13 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <time.h>
+#include <thread>
 
 #include "bc-server.h"
 #include "rtp-session.h"
 #include "v4l2device.h"
+#include "stream_elements.h"
+#include "motion_processor.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
@@ -344,6 +347,17 @@ static void *bc_device_thread(void *data)
 				bc_dev_err(bc_rec, "Error setting up live stream");
 		}
 
+		if (bc_rec->sched_cur == 'M' && !bc_rec->motion) {
+			bc_rec->motion = new motion_processor(bc->input);
+			bc->source->connect(bc_rec->motion);
+			std::thread th(&motion_processor::run, bc_rec->motion);
+			th.detach();
+		} else if (bc_rec->sched_cur != 'M' && bc_rec->motion) {
+			bc->source->disconnect(bc_rec->motion);
+			bc_rec->motion->destroy();
+			bc_rec->motion = 0;
+		}
+
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
 			continue;
@@ -360,6 +374,7 @@ static void *bc_device_thread(void *data)
 		}
 
 		packet = bc->input->packet();
+		bc->source->send(packet);
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(bc_rec))
@@ -367,8 +382,8 @@ static void *bc_device_thread(void *data)
 
 		if (schedule_recording) {
 			/* If on the motion schedule, and there is no motion, skip recording */
-			if (!check_motion(bc_rec, packet))
-				continue;
+		//	if (!check_motion(bc_rec, packet))
+		//		continue;
 
 			/* Setup and write to recordings */
 			if (!bc_rec->oc) {
