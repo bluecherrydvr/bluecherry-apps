@@ -240,6 +240,7 @@ struct bc_handle {
 	bc_device_type_t	type;
 
 	input_device            *input;
+	class stream_source     *source;
 
 	int			started;
 	int			got_vop;

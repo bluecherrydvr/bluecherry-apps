@@ -20,6 +20,7 @@
 #include "libbluecherry.h"
 #include "rtp-session.h"
 #include "v4l2device.h"
+#include "stream_elements.h"
 
 #define reset_vbuf(__vb) do {				\
 	memset((__vb), 0, sizeof(*(__vb)));		\
@@ -250,6 +251,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
 	}
 
+	bc->source = new stream_source("Input Source");
+
 	bc_set_motion_thresh_global(bc, '3');
 
 	if (ret) {
@@ -298,6 +301,7 @@ void bc_handle_free(struct bc_handle *bc)
 	bc_handle_stop(bc);
 
 	delete bc->input;
+	delete bc->source;
 	free(bc);
 
 	errno = save_err;
