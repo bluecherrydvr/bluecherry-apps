@@ -199,15 +199,19 @@ public:
 	 *
 	 * XXX This should be refactored to use PTS once we have reliable
 	 * and consistent PTS values in stream_packet. */
-	unsigned duration() { return mDuration; }
+	unsigned duration() const { return mDuration; }
 	void set_duration(unsigned duration);
 
 	/* When the buffer is empty, drop all non-video non-keyframe packets
 	 * to ensure that the first packet is always a video keyframe. */
 	virtual bool accepts_packet(const stream_packet &packet);
 
+	bool enforce_keyframe() const { return mEnforced; }
+	void set_enforce_keyframe(bool enforced);
+
 protected:
 	unsigned mDuration;
+	bool mEnforced;
 
 	virtual void apply_bound();
 };
