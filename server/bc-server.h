@@ -80,6 +80,7 @@ public:
 	int         reset_vid;
 
 	/* Motion detection */
+	class motion_processor *motion;
 	time_t mot_last_ts;
 	/* Seq number of the first packet not written after the postrecord time in
 	 * the current motion recording. Used to resume motion recordings when all
