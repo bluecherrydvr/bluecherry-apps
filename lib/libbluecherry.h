@@ -64,6 +64,7 @@ public:
 	virtual void set_audio_enabled(bool enabled);
 
 	virtual int setup_output(AVFormatContext *out_ctx) = 0;
+	virtual AVCodecContext *setup_video_decode() const = 0;
 
 protected:
 	bool _audio_enabled;

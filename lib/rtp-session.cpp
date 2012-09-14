@@ -390,6 +390,34 @@ int rtp_device::setup_output(AVFormatContext *out_ctx)
 	return 0;
 }
 
+AVCodecContext *rtp_device::setup_video_decode() const
+{
+	AVCodecContext *re = 0;
+	const AVCodecContext *ic = ctx->streams[video_stream_index]->codec;
+	AVCodec *codec = avcodec_find_decoder(ic->codec_id);
+
+	if (!codec || !(re = avcodec_alloc_context3(codec)))
+		return 0;
+
+	re->width     = ic->width;
+	re->height    = ic->height;
+	re->pix_fmt   = ic->pix_fmt;
+	re->time_base = ic->time_base;
+	if (ic->extradata && ic->extradata_size) {
+		re->extradata_size = ic->extradata_size;
+		re->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(re->extradata, ic->extradata, ic->extradata_size);
+	}
+
+	if (avcodec_open2(re, codec, NULL) < 0) {
+		avcodec_close(re);
+		av_free(re);
+		return 0;
+	}
+
+	return re;
+}
+
 void rtp_device::set_current_pts(int64_t pts)
 {
 	int64_t offset;

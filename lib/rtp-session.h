@@ -51,6 +51,7 @@ public:
 	int decode_video(AVFrame *frame);
 
 	virtual int setup_output(AVFormatContext *out_ctx);
+	virtual AVCodecContext *setup_video_decode() const;
 
 private:
 	char url[1024];

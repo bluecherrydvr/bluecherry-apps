@@ -507,3 +507,9 @@ int v4l2_device::setup_output(AVFormatContext *oc)
 	return 0;
 }
 
+AVCodecContext *v4l2_device::setup_video_decode() const
+{
+	bc_log("XXX v4l2_device::setup_video_decode() not implemented");
+	return 0;
+}
+
