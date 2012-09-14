@@ -48,6 +48,7 @@ public:
 	virtual bool has_audio() const { return 0; }
 
 	virtual int setup_output(AVFormatContext *out_ctx);
+	virtual AVCodecContext *setup_video_decode() const;
 
 	int caps() const { return cam_caps; }
 	int device_fd() const { return dev_fd; }
