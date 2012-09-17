@@ -60,6 +60,7 @@ typedef enum {
 } bc_device_type_t;
 
 class stream_packet;
+class stream_properties;
 
 class input_device
 {
@@ -82,6 +83,8 @@ public:
 
 	virtual int setup_output(AVFormatContext *out_ctx) = 0;
 	virtual AVCodecContext *setup_video_decode() const = 0;
+
+	virtual stream_properties properties() const = 0;
 
 protected:
 	bool _audio_enabled;
@@ -108,6 +111,12 @@ private:
 	std::atomic<int> r;
 
 	~stream_packet_data();
+};
+
+class stream_properties
+{
+public:
+	AVRational time_base;
 };
 
 /* Represents one packet/frame of media data, in an undefined

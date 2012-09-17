@@ -476,6 +476,13 @@ const char *rtp_device::stream_info()
 	return buf;
 }
 
+stream_properties rtp_device::properties() const
+{
+	stream_properties re;
+	re.time_base = ctx->streams[video_stream_index]->time_base;
+	return re;
+}
+
 int rtp_device::decode_video(AVFrame *dst)
 {
 	AVStream *stream;

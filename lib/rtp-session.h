@@ -53,6 +53,8 @@ public:
 	virtual int setup_output(AVFormatContext *out_ctx);
 	virtual AVCodecContext *setup_video_decode() const;
 
+	virtual stream_properties properties() const;
+
 private:
 	char url[1024];
 	char error_message[512];
