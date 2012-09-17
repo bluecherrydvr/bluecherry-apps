@@ -132,7 +132,7 @@ $crlf = "\r\n";
 $headers = array("From"=>"donotreply@bluecherryserver", "Subject"=>"Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}");
 $mime = new Mail_mime($crlf);  
 $mime->setHTMLBody($html);  
-$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, "camimage"); 
+$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name); 
 $headers = $mime->headers($headers);
 $body = $mime->get();
 switch($global_settings->data['G_SMTP_SERVICE']){
