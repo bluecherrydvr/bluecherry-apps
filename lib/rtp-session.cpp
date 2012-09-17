@@ -78,11 +78,16 @@ int rtp_device_start(struct rtp_device *rs)
 	snprintf(tmp, sizeof(tmp), "%lld", (long long int)(0.7*AV_TIME_BASE));
 	av_dict_set(&avopt, "max_delay", tmp, 0);
 	av_dict_set(&avopt, "allowed_media_types", rs->want_audio ? "-data" : "-audio-data", 0);
+	av_dict_set(&avopt, "threads", "1", 0);
+
+	AVDictionary *opt_copy = 0;
+	av_dict_copy(&opt_copy, avopt, 0);
 
 	if ((re = avformat_open_input(&rs->ctx, rs->url, NULL, &avopt)) != 0) {
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		rs->ctx = 0;
 		av_dict_free(&avopt);
+		av_dict_free(&opt_copy);
 		return -1;
 	}
 
@@ -91,7 +96,21 @@ int rtp_device_start(struct rtp_device *rs)
 
 	av_dict_free(&avopt);
 
-	if ((re = avformat_find_stream_info(rs->ctx, NULL)) < 0) {
+	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
+	AVDictionary **opt_si = new AVDictionary*[rs->ctx->nb_streams];
+	for (i = 0; i < rs->ctx->nb_streams; ++i) {
+		opt_si[i] = 0;
+		av_dict_copy(&opt_si[i], opt_copy, 0);
+	}
+
+	re = avformat_find_stream_info(rs->ctx, opt_si);
+
+	for (i = 0; i < rs->ctx->nb_streams; ++i)
+		av_dict_free(&opt_si[i]);
+	delete[] opt_si;
+	av_dict_free(&opt_copy);
+
+	if (re < 0) {
 		rtp_device_stop(rs);
 		av_strerror(re, rs->error_message, sizeof(rs->error_message));
 		return -1;
@@ -414,7 +433,12 @@ int rtp_device_decode_video(struct rtp_device *rs, AVFrame *frame)
 
 	if (!stream->codec->codec) {
 		AVCodec *codec = avcodec_find_decoder(stream->codec->codec_id);
-		if ((re = avcodec_open2(stream->codec, codec, NULL)) < 0) {
+		AVDictionary *opt = 0;
+		av_dict_set(&opt, "threads", "1", 0);
+
+		re = avcodec_open2(stream->codec, codec, &opt);
+		av_dict_free(&opt);
+		if (re < 0) {
 			av_strerror(re, rs->error_message, sizeof(rs->error_message));
 			return -1;
 		}
