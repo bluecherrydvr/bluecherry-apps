@@ -513,3 +513,11 @@ AVCodecContext *v4l2_device::setup_video_decode() const
 	return 0;
 }
 
+stream_properties v4l2_device::properties() const
+{
+	stream_properties re;
+	re.time_base.den = vparm.parm.capture.timeperframe.denominator;
+	re.time_base.num = vparm.parm.capture.timeperframe.numerator;
+	return re;
+}
+

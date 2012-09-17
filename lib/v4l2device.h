@@ -49,6 +49,7 @@ public:
 
 	virtual int setup_output(AVFormatContext *out_ctx);
 	virtual AVCodecContext *setup_video_decode() const;
+	virtual stream_properties properties() const;
 
 	int caps() const { return cam_caps; }
 	int device_fd() const { return dev_fd; }
