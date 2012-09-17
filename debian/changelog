@@ -1,3 +1,23 @@
+bluecherry (1:2.0.1-1) lucid; urgency=low
+
+  * Bug #1133: Log file is sometimes empty after install
+  * Bug #1139: web: PTZ not working for IP cameras
+  * Bug #1140: Web: FPS calculated improperly for MPEG4 cards
+  * Bug #1142: Apache is not reloaded after installation in some cases
+  * Bug #1148: Spelling error on Devices -> Settings -> Video / Audio adjustments
+  * Bug #1149: No proper error when storage paths cannot be created
+  * Bug #1152: Web: explicitly check for duplicate paths when camera ip addresses is changed
+  * Bug #1154: Allow RTP devices with video streams at unusual PTS rates
+  * Bug #1155: Web: make sure that PTZ control paths have slashes added, change default PTZ port
+  * Bug #1156: Web: limit PTZ command execution time
+  * Bug #1158: Unexpected "device disabled due to licensing" on some solo installations
+  * Bug #1159: Web: randomize filename of the image sent with a notification
+  * Bug #1161: Hide more RTP messages when debugging isn't enabled
+  * Feature #679: Server: Support IP cameras that only provide MJPEG streams
+  * Feature #1128: Expand API to include fetching JPEG images from events
+
+ -- John Brooks <john.brooks@bluecherry.net>  Mon, 17 Sep 2012 11:00:00 -0600
+
 bluecherry (1:2.0.0-1) lucid; urgency=low
 
   * 2.0.0 release
