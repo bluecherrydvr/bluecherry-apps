@@ -48,6 +48,11 @@ media_writer::media_writer()
 {
 }
 
+media_writer::~media_writer()
+{
+	close();
+}
+
 bool media_writer::write_packet(const stream_packet &pkt)
 {
 	AVStream *s = 0;

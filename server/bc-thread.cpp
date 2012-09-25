@@ -15,47 +15,13 @@
 #include "v4l2device.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
+#include "recorder.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
-static int bc_start_media_entry(struct bc_record *bc_rec, time_t start_ts)
-{
-	struct tm tm;
-	char date[12], mytime[10], dir[PATH_MAX];
-	char stor[PATH_MAX];
-
-	if (bc_get_media_loc(stor, sizeof(stor)) < 0)
-		return -1;
-
-	/* XXX Need some way to reconcile time between media event and
-	 * filename. They should match. */
-	localtime_r(&start_ts, &tm);
-
-	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
-	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
-	if (snprintf(dir, sizeof(dir), "%s/%s/%06d", stor, date, bc_rec->id) >= sizeof(dir))
-		return -1;
-	if (bc_mkdir_recursive(dir) < 0) {
-		bc_log("E: Cannot create media directory %s: %m", dir);
-		return -1;
-	}
-	if (snprintf(bc_rec->outfile, sizeof(bc_rec->outfile), "%s/%s.mkv", dir, mytime)
-	    >= sizeof(bc_rec->outfile))
-		return -1;
-	return 0;
-}
-
 static void recording_end(struct bc_record *bc_rec)
 {
-	/* Close the media entry in the db */
-	if (bc_rec->event && bc_event_has_media(bc_rec->event)) {
-		bc_event_cam_end(&bc_rec->event);
-		if ((bc_rec->sched_cur == 'M' && !bc_rec->sched_last) ||
-		    bc_rec->sched_last == 'M')
-			bc_dev_info(bc_rec, "Motion event stopped");
-	}
-
-	bc_close_avcodec(bc_rec);
+	bc_log("W: recording_end is not real");
 }
 
 static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
@@ -67,47 +33,6 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 
 		bc_rec->event = bc_event_cam_start(bc_rec->id, time(NULL), level, type, NULL);
 	}
-}
-
-static int recording_start(struct bc_record *bc_rec, time_t start_ts)
-{
-	bc_event_cam_t event = NULL;
-
-	if (!start_ts)
-		start_ts = time(NULL);
-
-	recording_end(bc_rec);
-	if (bc_start_media_entry(bc_rec, start_ts) < 0) {
-		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
-		return -1;
-	}
-
-	if (bc_open_avcodec(bc_rec)) {
-		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
-		return -1;
-	}
-
-	if (bc_rec->sched_cur == 'M') {
-		bc_dev_info(bc_rec, "Motion event started");
-		event = bc_event_cam_start(bc_rec->id, start_ts, BC_EVENT_L_WARN,
-		                           BC_EVENT_CAM_T_MOTION,
-		                           bc_rec->outfile);
-	} else if (bc_rec->sched_cur == 'C') {
-		event = bc_event_cam_start(bc_rec->id, start_ts, BC_EVENT_L_INFO,
-		                           BC_EVENT_CAM_T_CONTINUOUS,
-		                           bc_rec->outfile);
-	}
-
-	if (event == NULL) {
-		do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
-		return -1;
-	}
-
-	bc_event_cam_end(&bc_rec->event);
-	bc_rec->event = event;
-	bc_rec->event_snapshot_done = 0;
-
-	return 0;
 }
 
 void stop_handle_properly(struct bc_record *bc_rec)
@@ -320,6 +245,8 @@ static void *bc_device_thread(void *data)
 	bc_dev_info(bc_rec, "Camera configured");
 	bc_av_log_set_handle_thread(bc_rec);
 
+	recorder *rec = 0;
+
 	while (!bc_rec->thread_should_die) {
 		const char *err_msg;
 
@@ -365,6 +292,17 @@ static void *bc_device_thread(void *data)
 			bc_rec->motion = 0;
 		}
 
+		if (bc_rec->sched_cur == 'C' && !rec) {
+			rec = new recorder(bc_rec);
+			bc->source->connect(rec);
+			std::thread th(&recorder::run, rec);
+			th.detach();
+		} else if (bc_rec->sched_cur != 'C' && rec) {
+			bc->source->disconnect(rec);
+			rec->destroy();
+			rec = 0;
+		}
+
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
 			continue;
@@ -386,46 +324,6 @@ static void *bc_device_thread(void *data)
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(bc_rec))
 			bc_streaming_packet_write(bc_rec, packet);
-
-		if (schedule_recording) {
-			/* If on the motion schedule, and there is no motion, skip recording */
-		//	if (!check_motion(bc_rec, packet))
-		//		continue;
-
-			/* Setup and write to recordings */
-			if (!bc_rec->oc) {
-				if (bc_rec->sched_cur == 'M' && !bc_rec->prerecord_buffer.empty()) {
-					/* Dump the prerecording buffer */
-					if (recording_start(bc_rec, bc_rec->prerecord_buffer.front().ts_clock))
-						goto error;
-					bc_rec->output_pts_base = bc_rec->prerecord_buffer.front().pts;
-					/* Skip the last packet; it's identical to the current packet,
-					 * which we write in the normal path below. */
-					for (auto it = bc_rec->prerecord_buffer.begin();
-					     it != bc_rec->prerecord_buffer.end()-1; it++) {
-						bc_output_packet_write(bc_rec, *it);
-					}
-				} else if (!packet.is_key_frame() || !packet.is_video_frame()) {
-					/* Always start a recording with a key video frame. This will result in
-					 * the lost of some video between recordings, up to the keyframe interval,
-					 * at least on RTP devices. XXX Ideally, we should move the recording split
-					 * slightly to allow a proper cut for both video and audio. */
-					continue;
-				} else {
-					if (recording_start(bc_rec, 0))
-						goto error;
-					bc_rec->output_pts_base = packet.pts;
-				}
-			}
-
-			if (packet.is_video_frame() && packet.is_key_frame() && !bc_rec->event_snapshot_done) {
-				save_event_snapshot(bc_rec, packet);
-				bc_rec->event_snapshot_done = 1;
-				event_trigger_notifications(bc_rec);
-			}
-
-			bc_output_packet_write(bc_rec, packet);
-		}
 
 		continue;
 error:

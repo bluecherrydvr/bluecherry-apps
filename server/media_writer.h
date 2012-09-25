@@ -12,6 +12,7 @@ class media_writer
 {
 public:
 	media_writer();
+	~media_writer();
 
 	int open(const std::string &file_path, const stream_properties &properties);
 	void close();
