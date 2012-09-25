@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include "media_writer.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -42,21 +43,24 @@ int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 	return 1;
 }
 
-int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
+media_writer::media_writer()
+	: oc(0), video_st(0), audio_st(0)
 {
-	AVStream *s;
+}
+
+bool media_writer::write_packet(const stream_packet &pkt)
+{
+	AVStream *s = 0;
 	AVPacket opkt;
 	int re;
 
 	if (pkt.type == AVMEDIA_TYPE_AUDIO)
-		s = bc_rec->audio_st;
+		s = audio_st;
 	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
-		s = bc_rec->video_st;
-	else
-		return -1;
+		s = video_st;
 
 	if (!s)
-		return 0;
+		return false;
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
@@ -65,14 +69,15 @@ int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 	opkt.size         = pkt.size;
 	opkt.stream_index = s->index;
 
-	if (bc_rec->bc->type == BC_DEVICE_V4L2 && opkt.pts == AV_NOPTS_VALUE) {
-		if (s->codec->coded_frame && s->codec->coded_frame->pts != AV_NOPTS_VALUE)
+	if (opkt.pts == (int64_t)AV_NOPTS_VALUE) {
+		if (s->codec->coded_frame && s->codec->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
 			opkt.pts = av_rescale_q(s->codec->coded_frame->pts, s->codec->time_base,
 			                        s->time_base);
 	}
 
+#if 0
 	// XXX This is the wrong place for this logic.
-	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != AV_NOPTS_VALUE) {
+	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != (int64_t)AV_NOPTS_VALUE) {
 		struct rtp_device *rs = reinterpret_cast<rtp_device*>(bc_rec->bc->input);
 		/* RTP packets must be scaled to the output PTS */
 		if (pkt.type == AVMEDIA_TYPE_AUDIO) {
@@ -87,57 +92,56 @@ int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 
 		// XXX This probably isn't correct when audio streams are present.
 		if (bc_rec->output_pts_base) {
-			opkt.pts -= av_rescale_q(bc_rec->output_pts_base,
+			opkt.pts -= av_rescale_q(output_pts_base,
 			                         rs->video_stream()->time_base,
 			                         s->time_base);
 		}
 	}
+#endif
 
 	/* Cutoff points can result in a few negative PTS frames, because often
 	 * the video will be cut before the audio for that time has been written.
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
-	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
-		av_log(bc_rec->oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
+	if (opkt.pts != (int64_t)AV_NOPTS_VALUE && opkt.pts < 0) {
+		av_log(oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
 		       "caused by recent PTS reset", (long long int)opkt.pts);
-		return 0;
+		return true;
 	}
 
-	re = av_write_frame(bc_rec->oc, &opkt);
+	re = av_write_frame(oc, &opkt);
 	if (re != 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
-		bc_dev_err(bc_rec, "Error when writing frame to recording: %s", err);
-		return -1;
+		bc_log("Error when writing frame to recording: %s", err);
+		return false;
 	}
 
-	return 1;
+	return true;
 }
 
-void bc_close_avcodec(struct bc_record *bc_rec)
+void media_writer::close()
 {
-	int i;
+	if (video_st)
+		avcodec_close(video_st->codec);
+	if (audio_st)
+		avcodec_close(audio_st->codec);
+	video_st = audio_st = NULL;
+	output_pts_base = 0;
 
-	if (bc_rec->video_st)
-		avcodec_close(bc_rec->video_st->codec);
-	if (bc_rec->audio_st)
-		avcodec_close(bc_rec->audio_st->codec);
-	bc_rec->video_st = bc_rec->audio_st = NULL;
-	bc_rec->output_pts_base = 0;
+	if (oc) {
+		if (oc->pb)
+			av_write_trailer(oc);
 
-	if (bc_rec->oc) {
-		if (bc_rec->oc->pb)
-			av_write_trailer(bc_rec->oc);
-
-		for (i = 0; i < bc_rec->oc->nb_streams; i++) {
-			av_freep(&bc_rec->oc->streams[i]->codec);
-			av_freep(&bc_rec->oc->streams[i]);
+		for (unsigned i = 0; i < oc->nb_streams; i++) {
+			av_freep(&oc->streams[i]->codec);
+			av_freep(&oc->streams[i]);
 		}
 
-		if (bc_rec->oc->pb)
-			avio_close(bc_rec->oc->pb);
-		av_free(bc_rec->oc);
-		bc_rec->oc = NULL;
+		if (oc->pb)
+			avio_close(oc->pb);
+		av_free(oc);
+		oc = NULL;
 	}
 }
 
@@ -182,6 +186,7 @@ int bc_mkdir_recursive(char *path)
 	return -1;
 }
 
+#if 0 /* XXX unused */
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 {
 	AVStream *st;
@@ -272,78 +277,74 @@ int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 	else
 		return -1;
 }
+#endif
 
-int bc_open_avcodec(struct bc_record *bc_rec)
+int media_writer::open(const std::string &path)
 {
 	AVCodec *codec;
-	AVStream *st;
-	AVFormatContext *oc;
-	int i;
 
-	if (bc_rec->oc != NULL)
+	if (oc)
 		return 0;
 
 	/* Get the output format */
-	bc_rec->fmt_out = av_guess_format("matroska", NULL, NULL);
-	if (!bc_rec->fmt_out) {
+	AVOutputFormat *fmt_out = av_guess_format("matroska", NULL, NULL);
+	if (!fmt_out) {
 		errno = EINVAL;
 		goto error;
 	}
 
-	if ((bc_rec->oc = avformat_alloc_context()) == NULL)
-		goto error;
-	oc = bc_rec->oc;
-
-	oc->oformat = bc_rec->fmt_out;
-
-	if (bc_rec->bc->input->setup_output(oc) < 0)
+	if ((oc = avformat_alloc_context()) == NULL)
 		goto error;
 
-	bc_rec->audio_st = bc_rec->video_st = NULL;
-	for (i = 0; i < oc->nb_streams; ++i) {
+	oc->oformat = fmt_out;
+
+	if (setup_output(oc) < 0)
+		goto error;
+
+	audio_st = video_st = NULL;
+	for (unsigned i = 0; i < oc->nb_streams; ++i) {
 		if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-			bc_rec->video_st = oc->streams[i];
+			video_st = oc->streams[i];
 		else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-			bc_rec->audio_st = oc->streams[i];
+			audio_st = oc->streams[i];
 	}
 
 	/* Open Video output */
-	st = bc_rec->video_st;
-	if (!st)
+	if (!video_st)
 		goto error;
-	codec = avcodec_find_encoder(st->codec->codec_id);
-	if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
-		bc_rec->video_st = NULL;
+	codec = avcodec_find_encoder(video_st->codec->codec_id);
+	if (codec == NULL || avcodec_open2(video_st->codec, codec, NULL) < 0) {
+		video_st = NULL;
 		/* Clear this */
-		if (bc_rec->audio_st)
-			bc_rec->audio_st = NULL;
+		if (audio_st)
+			audio_st = NULL;
 		goto error;
 	}
-	st = NULL;
 
 	/* Open Audio output */
-	if (bc_rec->audio_st) {
-		st = bc_rec->audio_st;
-		codec = avcodec_find_encoder(st->codec->codec_id);
-		if (codec == NULL || avcodec_open2(st->codec, codec, NULL) < 0) {
-			bc_rec->audio_st = NULL;
+	if (audio_st) {
+		codec = avcodec_find_encoder(audio_st->codec->codec_id);
+		if (codec == NULL || avcodec_open2(audio_st->codec, codec, NULL) < 0) {
+			audio_st = NULL;
 			goto error;
 		}
 	}
 
 	/* Open output file */
-	if (avio_open(&oc->pb, bc_rec->outfile, URL_WRONLY) < 0) {
-		bc_dev_err(bc_rec, "Failed to open outfile (perms?): %s",
-			   bc_rec->outfile);
+	if (avio_open(&oc->pb, path.c_str(), URL_WRONLY) < 0) {
+		bc_log("Failed to open outfile (perms?): %s",
+			   file_path.c_str());
 		goto error;
 	}
+
+	this->file_path = path;
 
 	avformat_write_header(oc, NULL);
 
 	return 0;
 
 error:
-	bc_close_avcodec(bc_rec);
+	close();
 	return -1;
 }
 
