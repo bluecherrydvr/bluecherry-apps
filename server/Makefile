@@ -6,7 +6,8 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lbsd -ludev \
 		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server
-SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o streaming.o rtsp.o motion_processor.o
+SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o bc-detect.o streaming.o rtsp.o motion_processor.o \
+		  recorder.o
 
 all: $(TARGETS) FORCE
 
