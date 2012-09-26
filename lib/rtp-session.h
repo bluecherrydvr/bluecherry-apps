@@ -50,10 +50,7 @@ public:
 	 * contains a valid picture. */
 	int decode_video(AVFrame *frame);
 
-	virtual int setup_output(AVFormatContext *out_ctx);
 	virtual AVCodecContext *setup_video_decode() const;
-
-	virtual stream_properties properties() const;
 
 private:
 	char url[1024];
@@ -69,6 +66,8 @@ private:
 
 	void create_stream_packet(AVPacket *src);
 	void set_current_pts(int64_t pts);
+
+	void update_properties();
 };
 
 #endif /* __RTP_DEVICE_H */

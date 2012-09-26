@@ -14,6 +14,8 @@
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx;
+	AVStream *video_st;
+	AVCodec *codec;
 	int i;
 
 	if (bc_rec->stream_ctx)
@@ -27,33 +29,17 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (!ctx->oformat)
 		goto error;
 
-	if (bc_rec->bc->input->setup_output(ctx) < 0)
+	video_st = avformat_new_stream(ctx, NULL);
+	if (!video_st)
 		goto error;
+	bc_rec->bc->input->properties()->video.apply(video_st->codec);
 
-	for (i = 0; i < ctx->nb_streams; ++i) {
-		AVStream *st = ctx->streams[i];
-		AVCodec *codec = avcodec_find_encoder(st->codec->codec_id);
-		if (!codec || codec->type != AVMEDIA_TYPE_VIDEO) {
-			/* Soft failure; remove this stream. We currently only support one video stream. */
-			av_freep(&st->codec);
-			av_freep(&st);
-
-			for (int j = i+1; j < ctx->nb_streams; ++j) {
-				ctx->streams[j]->index = j-1;
-				ctx->streams[j-1] = ctx->streams[j];
-			}
-
-			ctx->nb_streams--;
-			ctx->streams[ctx->nb_streams] = 0;
-			i--;
-		} else if (avcodec_open2(st->codec, codec, NULL) < 0)
-			goto error;
-	}
+	codec = avcodec_find_encoder(video_st->codec->codec_id);
+	if (!codec || avcodec_open2(video_st->codec, codec, NULL) < 0)
+		goto error;
 
 	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
 	 * to do that, because the rtp muxer only handles one stream. */
-	if (ctx->nb_streams < 1)
-		goto error;
 
 	url_open_dyn_packet_buf(&ctx->pb, RTP_MAX_PACKET_SIZE);
 

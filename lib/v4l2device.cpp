@@ -279,6 +279,7 @@ int v4l2_device::start()
 
 	this->started = true;
 
+	this->update_properties();
 	return 0;
 }
 
@@ -317,6 +318,7 @@ void v4l2_device::stop()
 	buf_idx = -1;
 
 	this->started = false;
+	current_properties.reset();
 }
 
 void v4l2_device::reset()
@@ -372,7 +374,7 @@ int v4l2_device::read_packet()
 	uint8_t *dbuf = new uint8_t[p_buf[buf_idx].vb.bytesused];
 	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
 
-	current_packet = stream_packet(dbuf);
+	current_packet = stream_packet(dbuf, current_properties);
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = p_buf[buf_idx].vb.bytesused;
 	current_packet.ts_clock = time(NULL);
@@ -411,6 +413,7 @@ int v4l2_device::set_interval(uint8_t interval)
 	if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
 		return -1;
 	ioctl(dev_fd, VIDIOC_G_PARM, &vparm);
+	update_properties();
 
 	/* Reset GOP */
 	gop = lround(den / num);
@@ -497,6 +500,7 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height)
 	if (ioctl(this->dev_fd, VIDIOC_S_FMT, &this->vfmt) < 0)
 		return -1;
 	ioctl(this->dev_fd, VIDIOC_G_FMT, &this->vfmt);
+	this->update_properties();
 
 	return 0;
 }
@@ -529,52 +533,28 @@ int v4l2_device::set_osd(char *fmt, ...)
 	return 0;
 }
 
-int v4l2_device::setup_output(AVFormatContext *oc)
+void v4l2_device::update_properties()
 {
-	AVStream *st;
-	int fden   = vparm.parm.capture.timeperframe.denominator;
-	int fnum   = vparm.parm.capture.timeperframe.numerator;
-	int width  = vfmt.fmt.pix.width;
-	int height = vfmt.fmt.pix.height;
+	stream_properties *p = new stream_properties;
 
-	/* Setup new video stream */
-	if ((st = avformat_new_stream(oc, NULL)) == NULL)
-		return -1;
+	p->video.codec_id = codec_id;
+	p->video.pix_fmt = PIX_FMT_YUV420P;
+	p->video.width = vfmt.fmt.pix.width;
+	p->video.height = vfmt.fmt.pix.height;
+	p->video.time_base.num = vparm.parm.capture.timeperframe.numerator;
+	p->video.time_base.den = vparm.parm.capture.timeperframe.denominator;
 
-	st->time_base.den = fden;
-	st->time_base.num = fnum;
-
-	if (codec_id == CODEC_ID_NONE) {
-		bc_log("Invalid Video Format, assuming MP4V-ES");
-		st->codec->codec_id = CODEC_ID_MPEG4;
-	} else
-		st->codec->codec_id = codec_id;
-
-	/* h264 requires us to work around libavcodec broken defaults */
-	if (st->codec->codec_id == CODEC_ID_H264) {
-		st->codec->me_range = 16;
-		st->codec->me_subpel_quality = 7;
-		st->codec->qmin = 10;
-		st->codec->qmax = 51;
-		st->codec->max_qdiff = 4;
-		st->codec->qcompress = 0.6;
-		st->codec->i_quant_factor = 0.71;
-		st->codec->b_frame_strategy = 1;
+	if (p->video.codec_id == CODEC_ID_NONE) {
+		bc_log("Invalid Video Format, assuming H.264");
+		p->video.codec_id = CODEC_ID_H264;
 	}
 
-	st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-	st->codec->pix_fmt = PIX_FMT_YUV420P;
-	st->codec->width = width;
-	st->codec->height = height;
-	st->codec->time_base.num = fnum;
-	st->codec->time_base.den = fden;
-
+#if 0
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 	st = NULL;
 
-#if 0
 	/* We don't fail when this happens. Video with no sound is
 	 * better than no video at all. */
 	if (audio_enabled() && bc_alsa_open(bc_rec))
@@ -608,20 +588,12 @@ no_audio:
 	}
 #endif
 
-	return 0;
+	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
 AVCodecContext *v4l2_device::setup_video_decode() const
 {
 	bc_log("XXX v4l2_device::setup_video_decode() not implemented");
 	return 0;
-}
-
-stream_properties v4l2_device::properties() const
-{
-	stream_properties re;
-	re.time_base.den = vparm.parm.capture.timeperframe.denominator;
-	re.time_base.num = vparm.parm.capture.timeperframe.numerator;
-	return re;
 }
 

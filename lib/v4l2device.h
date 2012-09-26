@@ -47,9 +47,7 @@ public:
 
 	virtual bool has_audio() const { return 0; }
 
-	virtual int setup_output(AVFormatContext *out_ctx);
 	virtual AVCodecContext *setup_video_decode() const;
-	virtual stream_properties properties() const;
 
 	int caps() const { return cam_caps; }
 	int device_fd() const { return dev_fd; }
@@ -90,6 +88,8 @@ private:
 	void v4l2_local_bufs();
 	int v4l2_bufs_prepare();
 	void buf_return();
+
+	void update_properties();
 };
 
 #endif
