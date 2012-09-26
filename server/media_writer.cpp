@@ -186,7 +186,7 @@ int bc_mkdir_recursive(char *path)
 	return -1;
 }
 
-int media_writer::open(const std::string &path)
+int media_writer::open(const std::string &path, const stream_properties &properties)
 {
 	AVCodec *codec;
 
@@ -205,36 +205,34 @@ int media_writer::open(const std::string &path)
 
 	oc->oformat = fmt_out;
 
-	if (setup_output(oc) < 0)
+	video_st = avformat_new_stream(oc, NULL);
+	if (!video_st)
 		goto error;
+	properties.video.apply(video_st->codec);
 
-	audio_st = video_st = NULL;
-	for (unsigned i = 0; i < oc->nb_streams; ++i) {
-		if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
-			video_st = oc->streams[i];
-		else if (oc->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO)
-			audio_st = oc->streams[i];
+	if (properties.has_audio()) {
+		audio_st = avformat_new_stream(oc, NULL);
+		if (!audio_st)
+			goto error;
+		properties.audio.apply(audio_st->codec);
+	}
+
+	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
+		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+		if (audio_st)
+			audio_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 	}
 
 	/* Open Video output */
-	if (!video_st)
-		goto error;
 	codec = avcodec_find_encoder(video_st->codec->codec_id);
-	if (codec == NULL || avcodec_open2(video_st->codec, codec, NULL) < 0) {
-		video_st = NULL;
-		/* Clear this */
-		if (audio_st)
-			audio_st = NULL;
+	if (!codec || avcodec_open2(video_st->codec, codec, NULL) < 0) 
 		goto error;
-	}
 
 	/* Open Audio output */
 	if (audio_st) {
 		codec = avcodec_find_encoder(audio_st->codec->codec_id);
-		if (codec == NULL || avcodec_open2(audio_st->codec, codec, NULL) < 0) {
-			audio_st = NULL;
+		if (!codec || avcodec_open2(audio_st->codec, codec, NULL) < 0)
 			goto error;
-		}
 	}
 
 	/* Open output file */

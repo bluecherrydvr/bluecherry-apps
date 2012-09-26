@@ -18,6 +18,7 @@
 #include <vector>
 #include <deque>
 #include <cstdatomic>
+#include <memory>
 
 #ifndef PRId64
 #define PRId64 "lld"
@@ -64,17 +65,63 @@ public:
 	bool audio_enabled() const { return _audio_enabled; }
 	virtual void set_audio_enabled(bool enabled);
 
-	virtual int setup_output(AVFormatContext *out_ctx) = 0;
 	virtual AVCodecContext *setup_video_decode() const = 0;
 
-	virtual stream_properties properties() const = 0;
+	/* Get the current stream properties; this is a temporary hack for streaming
+	 * and should not be relied on. Properties are included as a field with every
+	 * packet, and can be reliably updated that way. */
+	std::shared_ptr<const stream_properties> properties() const { return current_properties; }
 
 protected:
 	bool _audio_enabled;
 	std::string _error_message;
 	unsigned next_packet_seq;
+	std::shared_ptr<stream_properties> current_properties;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
+};
+
+/* Properties of the media held by stream_packets. This is roughly equivalent
+ * to AVCodecContext for the video and audio (if applicable) streams, and is used
+ * for recording and decoding.
+ *
+ * An instance of this class is associated with each stream_packet, which will
+ * usually be shared for all packets from the same input. The contents are immutable.
+ * If the input properties change, a new instance will be created and sent with all
+ * packets from where it began to apply.
+ */
+class stream_properties
+{
+public:
+	struct video_properties {
+		enum CodecID codec_id;
+		enum PixelFormat pix_fmt;
+		int width;
+		int height;
+		// Note that this is codec time_base, not stream time_base.
+		AVRational time_base;
+		int profile;
+		std::vector<char> extradata;
+
+		video_properties();
+		void apply(AVCodecContext *cc) const;
+	} video;
+
+	struct audio_properties {
+		enum CodecID codec_id;
+		int bit_rate;
+		int sample_rate;
+		enum AVSampleFormat sample_fmt;
+		int channels;
+		AVRational time_base;
+		int profile;
+		std::vector<char> extradata;
+
+		audio_properties();
+		void apply(AVCodecContext *cc) const;
+	} audio;
+
+	bool has_audio() const { return audio.codec_id != CODEC_ID_NONE; }
 };
 
 /* Reference counted container for the data in a stream_packet.
@@ -84,8 +131,9 @@ class stream_packet_data
 {
 public:
 	const uint8_t *data;
+	std::shared_ptr<stream_properties> properties;
 
-	stream_packet_data(const uint8_t *data);
+	stream_packet_data(const uint8_t *data, const std::shared_ptr<stream_properties> &properties);
 
 	void ref();
 	void deref();
@@ -94,12 +142,6 @@ private:
 	std::atomic<int> r;
 
 	~stream_packet_data();
-};
-
-class stream_properties
-{
-public:
-	AVRational time_base;
 };
 
 /* Represents one packet/frame of media data, in an undefined
@@ -136,12 +178,13 @@ public:
 	unsigned seq;
 
 	stream_packet();
-	stream_packet(const uint8_t *data);
+	stream_packet(const uint8_t *data, const std::shared_ptr<stream_properties> &properties);
 	stream_packet(const stream_packet &o);
 	stream_packet &operator=(const stream_packet &o);
 	~stream_packet();
 
 	const uint8_t *data() const { return d ? d->data : 0; }
+	std::shared_ptr<const stream_properties> properties() const { return d ? d->properties : std::shared_ptr<stream_properties>(); }
 
 	bool is_key_frame() const { return flags & AV_PKT_FLAG_KEY; }
 	bool is_video_frame() const { return type == AVMEDIA_TYPE_VIDEO; }

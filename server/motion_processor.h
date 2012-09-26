@@ -32,7 +32,6 @@ public:
 
 private:
 	AVCodecContext *decode_ctx;
-	stream_properties input_properties;
 	bool destroy_flag;
 
 	struct SwsContext *convContext;

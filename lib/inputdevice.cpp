@@ -21,9 +21,9 @@ stream_packet::stream_packet()
 {
 }
 
-stream_packet::stream_packet(const uint8_t *data)
+stream_packet::stream_packet(const uint8_t *data, const std::shared_ptr<stream_properties> &properties)
 	: size(0), flags(0), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
-	  seq(0), d(new stream_packet_data(data))
+	  seq(0), d(new stream_packet_data(data, properties))
 {
 }
 
@@ -60,8 +60,8 @@ stream_packet::~stream_packet()
 		d->deref();
 }
 
-stream_packet_data::stream_packet_data(const uint8_t *x)
-	: data(x), r(1)
+stream_packet_data::stream_packet_data(const uint8_t *x, const std::shared_ptr<stream_properties> &p)
+	: data(x), properties(p), r(1)
 {
 }
 
@@ -144,6 +144,57 @@ void stream_keyframe_buffer::apply_bound()
 
 		erase(begin(), it);
 		break;
+	}
+}
+
+stream_properties::video_properties::video_properties()
+	: codec_id(CODEC_ID_NONE), pix_fmt(PIX_FMT_NONE), width(0), height(0),
+	  time_base({ 1, 1 }), profile(FF_PROFILE_UNKNOWN)
+{
+}
+
+void stream_properties::video_properties::apply(AVCodecContext *cc) const
+{
+	cc->codec_id = codec_id;
+	cc->codec_type = AVMEDIA_TYPE_VIDEO;
+	cc->pix_fmt = pix_fmt;
+	cc->width = width;
+	cc->height = height;
+	cc->time_base = time_base;
+	cc->profile = profile;
+	if (!extradata.empty()) {
+		cc->extradata_size = extradata.size();
+		cc->extradata = (uint8_t*)av_malloc(extradata.size() + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(cc->extradata, &extradata.front(), extradata.size());
+	} else {
+		cc->extradata_size = 0;
+		cc->extradata = 0;
+	}
+}
+
+stream_properties::audio_properties::audio_properties()
+	: codec_id(CODEC_ID_NONE), bit_rate(0), sample_rate(0), sample_fmt(SAMPLE_FMT_NONE),
+	  channels(0), time_base({ 1, 1}), profile(FF_PROFILE_UNKNOWN)
+{
+}
+
+void stream_properties::audio_properties::apply(AVCodecContext *cc) const
+{
+	cc->codec_id = codec_id;
+	cc->codec_type = AVMEDIA_TYPE_AUDIO;
+	cc->bit_rate = bit_rate;
+	cc->sample_rate = sample_rate;
+	cc->sample_fmt = sample_fmt;
+	cc->channels = channels;
+	cc->time_base = time_base;
+	cc->profile = profile;
+	if (!extradata.empty()) {
+		cc->extradata_size = extradata.size();
+		cc->extradata = (uint8_t*)av_malloc(extradata.size() + FF_INPUT_BUFFER_PADDING_SIZE);
+		memcpy(cc->extradata, &extradata.front(), extradata.size());
+	} else {
+		cc->extradata_size = 0;
+		cc->extradata = 0;
 	}
 }
 

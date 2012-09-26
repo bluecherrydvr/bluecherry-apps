@@ -48,6 +48,7 @@ void rtp_device::stop()
 		return;
 
 	current_packet = stream_packet();
+	current_properties.reset();
 	av_free_packet(&frame);
 	av_init_packet(&frame);
 
@@ -155,6 +156,7 @@ int rtp_device::start()
 		return -1;
 	}
 
+	update_properties();
 	return 0;
 }
 
@@ -314,7 +316,7 @@ void rtp_device::create_stream_packet(AVPacket *src)
 	uint8_t *buf = new uint8_t[src->size];
 	memcpy(buf, src->data, src->size);
 
-	current_packet = stream_packet(buf);
+	current_packet = stream_packet(buf, current_properties);
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
@@ -330,64 +332,36 @@ void rtp_device::create_stream_packet(AVPacket *src)
 		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
 }
 
-int rtp_device::setup_output(AVFormatContext *out_ctx)
+void rtp_device::update_properties()
 {
-	if (!ctx) {
-		strcpy(error_message, "No active RTSP session");
-		return -1;
-	}
+	stream_properties *p = new stream_properties;
 
-	AVStream *vst = avformat_new_stream(out_ctx, NULL);
-	if (!vst) {
-		strcpy(error_message, "Cannot add new stream");
-		return -1;
+	if (video_stream_index >= 0) {
+		AVCodecContext *ic = ctx->streams[video_stream_index]->codec;
+		p->video.codec_id = ic->codec_id;
+		p->video.pix_fmt = ic->pix_fmt;
+		p->video.width = ic->width;
+		p->video.height = ic->height;
+		p->video.time_base = ic->time_base;
+		p->video.profile = ic->profile;
+		if (ic->extradata && ic->extradata_size)
+			p->video.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}
-
-	AVCodecContext *ic = ctx->streams[video_stream_index]->codec;
-	vst->codec->codec_id = ic->codec_id;
-	vst->codec->codec_type = ic->codec_type;
-	vst->codec->pix_fmt = ic->pix_fmt;
-	vst->codec->width = ic->width;
-	vst->codec->height = ic->height;
-	vst->codec->time_base = ic->time_base;
-	vst->codec->profile = ic->profile;
-	if (ic->extradata && ic->extradata_size) {
-		vst->codec->extradata_size = ic->extradata_size;
-		vst->codec->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
-		memcpy(vst->codec->extradata, ic->extradata, ic->extradata_size);
-	}
-
-	if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
-		vst->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 	if (audio_stream_index >= 0) {
-		/* Audio recording errors are non-fatal; video will still be captured */
-		AVStream *ast = avformat_new_stream(out_ctx, NULL);
-		if (!ast) {
-			av_log(out_ctx, AV_LOG_ERROR, "Cannot add audio stream to output context");
-			return 0;
-		}
-
-		ic = ctx->streams[audio_stream_index]->codec;
-		ast->codec->codec_id = ic->codec_id;
-		ast->codec->codec_type = ic->codec_type;
-		ast->codec->bit_rate = ic->bit_rate;
-		ast->codec->sample_rate = ic->sample_rate;
-		ast->codec->sample_fmt = ic->sample_fmt;
-		ast->codec->channels = ic->channels;
-		ast->codec->time_base = (AVRational){1, ic->sample_rate};
-		ast->codec->profile = ic->profile;
-		if (ic->extradata && ic->extradata_size) {
-			ast->codec->extradata_size = ic->extradata_size;
-			ast->codec->extradata = (uint8_t*)av_malloc(ic->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
-			memcpy(ast->codec->extradata, ic->extradata, ic->extradata_size);
-		}
-
-		if (out_ctx->oformat->flags & AVFMT_GLOBALHEADER)
-			ast->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+		AVCodecContext *ic = ctx->streams[audio_stream_index]->codec;
+		p->audio.codec_id = ic->codec_id;
+		p->audio.bit_rate = ic->bit_rate;
+		p->audio.sample_rate = ic->sample_rate;
+		p->audio.sample_fmt = ic->sample_fmt;
+		p->audio.channels = ic->channels;
+		p->audio.time_base = (AVRational){1, ic->sample_rate};
+		p->audio.profile = ic->profile;
+		if (ic->extradata && ic->extradata_size)
+			p->audio.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}
 
-	return 0;
+	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
 AVCodecContext *rtp_device::setup_video_decode() const
@@ -474,13 +448,6 @@ const char *rtp_device::stream_info()
 
 	buf[size-1] = 0;
 	return buf;
-}
-
-stream_properties rtp_device::properties() const
-{
-	stream_properties re;
-	re.time_base = ctx->streams[video_stream_index]->time_base;
-	return re;
 }
 
 int rtp_device::decode_video(AVFrame *dst)

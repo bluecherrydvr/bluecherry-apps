@@ -13,7 +13,7 @@ class media_writer
 public:
 	media_writer();
 
-	int open(const std::string &file_path);
+	int open(const std::string &file_path, const stream_properties &properties);
 	void close();
 
 	bool write_packet(const stream_packet &pkt);

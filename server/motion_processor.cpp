@@ -14,8 +14,6 @@ motion_processor::motion_processor(const input_device *input)
 		bc_log("motion_processor: Could not create video decode context");
 	}
 
-	input_properties = input->properties();
-
 	memset(thresholds, 12, sizeof(thresholds));
 
 	output_source = new stream_source("Motion Detection");
@@ -111,7 +109,7 @@ void motion_processor::run()
 			bool skip = false;
 			if (refFrame && last_tested_pts != (int64_t)AV_NOPTS_VALUE) {
 				int64_t diff = av_rescale_q(pkt.pts - last_tested_pts,
-							    input_properties.time_base,
+							    pkt.properties()->video.time_base,
 							    AV_TIME_BASE_Q) / (AV_TIME_BASE / 1000);
 				if (diff > 0 && diff < 45) {
 					if (++skip_count > 3) {
