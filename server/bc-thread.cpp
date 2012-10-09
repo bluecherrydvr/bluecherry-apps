@@ -374,6 +374,7 @@ bc_record::bc_record(int i)
 	reset_vid = 0;
 	fmt = 0;
 
+	motion = 0;
 	mot_last_ts = 0;
 	mot_first_buffered_packet = -1;
 }
