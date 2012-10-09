@@ -10,6 +10,7 @@ bc-reader
 bc.cgi
 *.user
 *-build-*
+.gdbinit
 
 debian/bluecherry.debhelper.log
 debian/bluecherry.postinst.debhelper
