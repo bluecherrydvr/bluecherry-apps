@@ -34,6 +34,9 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 		goto error;
 	bc_rec->bc->input->properties()->video.apply(video_st->codec);
 
+	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
+		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+
 	codec = avcodec_find_encoder(video_st->codec->codec_id);
 	if (!codec || avcodec_open2(video_st->codec, codec, NULL) < 0)
 		goto error;
