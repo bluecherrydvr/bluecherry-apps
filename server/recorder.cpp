@@ -21,6 +21,8 @@ void recorder::destroy()
 
 void recorder::run()
 {
+	std::shared_ptr<const stream_properties> saved_properties;
+
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
 	{
@@ -32,6 +34,12 @@ void recorder::run()
 		stream_packet packet = buffer.front();
 		buffer.pop_front();
 		l.unlock();
+
+		if (packet.properties() != saved_properties) {
+			bc_log("recorder: Stream properties changed");
+			saved_properties = packet.properties();
+			recording_end();
+		}
 
 		bool schedule_recording = true;
 		if (schedule_recording) {
