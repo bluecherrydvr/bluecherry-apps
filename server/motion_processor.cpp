@@ -5,15 +5,10 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
-motion_processor::motion_processor(const input_device *input)
-	: stream_consumer("Motion Detection"), destroy_flag(false), convContext(0), refFrame(0),
+motion_processor::motion_processor()
+	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
 	  refFrameHeight(0), refFrameWidth(0), last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
 {
-	decode_ctx = input->setup_video_decode();
-	if (!decode_ctx) {
-		bc_log("motion_processor: Could not create video decode context");
-	}
-
 	memset(thresholds, 12, sizeof(thresholds));
 
 	output_source = new stream_source("Motion Detection");
@@ -21,20 +16,13 @@ motion_processor::motion_processor(const input_device *input)
 
 motion_processor::~motion_processor()
 {
-	if (decode_ctx) {
-		avcodec_close(decode_ctx);
-		av_free(decode_ctx);
-	}
+	decode_destroy();
 
 	if (convContext) {
 		sws_freeContext(convContext);
 		convContext = 0;
 	}
-	if (refFrame) {
-		av_free(refFrame->data[0]);
-		av_free(refFrame);
-		refFrame = 0;
-	}
+
 #ifdef DEBUG_DUMP_MOTION_DATA
 	if (bc->motion_data.dumpfile) {
 		fclose(bc->motion_data.dumpfile);
@@ -67,8 +55,7 @@ static enum PixelFormat fix_pix_fmt(int fmt)
 
 void motion_processor::run()
 {
-	if (!decode_ctx)
-		return;
+	std::shared_ptr<const stream_properties> saved_properties;
 
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
@@ -85,6 +72,19 @@ void motion_processor::run()
 			continue;
 
 		l.unlock();
+
+		if (pkt.properties() != saved_properties) {
+			bc_log("motion_processor: Stream properties changed");
+			saved_properties = pkt.properties();
+			decode_destroy();
+		}
+
+		if (!decode_ctx && !decode_create(*saved_properties.get())) {
+			bc_log("motion_processor: Cannot create decoder! Error!");
+			sleep(10);
+			l.lock();
+			continue;
+		}
 
 		AVPacket avpkt;
 		av_init_packet(&avpkt);
@@ -136,6 +136,42 @@ void motion_processor::run()
 	bc_log("motion_processor destroying");
 	l.unlock();
 	delete this;
+}
+
+bool motion_processor::decode_create(const stream_properties &prop)
+{
+	if (decode_ctx)
+		return true;
+
+	AVCodec *codec = avcodec_find_decoder(prop.video.codec_id);
+	if (!codec || !(decode_ctx = avcodec_alloc_context3(codec)))
+		return false;
+
+	prop.video.apply(decode_ctx);
+
+	// XXX we may want to set some options here, such as disabling threaded decoding
+	if (avcodec_open2(decode_ctx, codec, NULL) < 0) {
+		avcodec_close(decode_ctx);
+		av_free(decode_ctx);
+		decode_ctx = 0;
+	}
+
+	return decode_ctx != 0;
+}
+
+void motion_processor::decode_destroy()
+{
+	if (decode_ctx) {
+		avcodec_close(decode_ctx);
+		av_free(decode_ctx);
+		decode_ctx = 0;
+	}
+
+	if (refFrame) {
+		av_free(refFrame->data[0]);
+		av_free(refFrame);
+		refFrame = 0;
+	}
 }
 
 int motion_processor::detect(AVFrame *rawFrame)

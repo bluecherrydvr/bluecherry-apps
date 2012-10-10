@@ -23,7 +23,7 @@ struct AVCodecContext;
 class motion_processor : public stream_consumer
 {
 public:
-	motion_processor(const input_device *input);
+	motion_processor();
 	virtual ~motion_processor();
 
 	void destroy();
@@ -42,6 +42,8 @@ private:
 	uint8_t            skip_count;
 	uint8_t            thresholds[768];
 
+	bool decode_create(const stream_properties &prop);
+	void decode_destroy();
 	int detect(AVFrame *frame);
 };
 
