@@ -96,7 +96,7 @@ int main(int argc, char **argv)
 
 	/* Setup for MJPEG, leave everything else as default */
 	v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
-	if (v4l2->set_format(V4L2_PIX_FMT_MJPEG, 0, 0) < 0)
+	if (v4l2->set_mjpeg() < 0)
 		print_error("Error setting mjpeg: %m");
 
 	if (bc_handle_start(bc, &err_msg))

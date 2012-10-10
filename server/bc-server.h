@@ -72,10 +72,6 @@ public:
 	char			*thread_should_die;
 	int			file_started;
 
-	/* Notify thread to restart with new format */
-	int         reset_vid;
-	int         fmt;
-
 	/* Motion detection */
 	class motion_processor *motion;
 	time_t mot_last_ts;

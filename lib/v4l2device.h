@@ -52,8 +52,7 @@ public:
 	int caps() const { return cam_caps; }
 	int device_fd() const { return dev_fd; }
 
-	int set_interval(uint8_t interval);
-	int set_format(uint32_t fmt, uint16_t width, uint16_t height);
+	int set_format(uint32_t fmt, uint16_t width, uint16_t height, uint8_t interval);
 	int set_osd(char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
 	int set_mjpeg();
 	int set_control(unsigned int ctrl, int val);
@@ -80,6 +79,7 @@ private:
 	int			card_id;
 	int			dev_id;
 	int			got_vop;
+	bool			started;
 	stream_packet           current_packet;
 
 	int is_key_frame();
