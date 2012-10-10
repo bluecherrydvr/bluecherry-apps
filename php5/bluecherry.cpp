@@ -467,30 +467,6 @@ PHP_FUNCTION(bc_log)
 	RETURN_TRUE;
 }
 
-PHP_FUNCTION(bc_motion_is_on)
-{
-	struct bc_handle *bch;
-
-	BCH_GET_RES("bc_motion_is_on");
-
-	if (bc_motion_is_on(bch))
-		RETURN_TRUE;
-
-	RETURN_FALSE;
-}
-
-PHP_FUNCTION(bc_motion_is_detected)
-{
-	struct bc_handle *bch;
-
-	BCH_GET_RES("bc_motion_is_detected");
-
-	if (bc_motion_is_detected(bch))
-		RETURN_TRUE;
-
-	RETURN_FALSE;
-}
-
 PHP_FUNCTION(bc_license_machine_id)
 {
 	char buf[64];
@@ -562,8 +538,6 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
 	PHP_FE(bc_get_mjpeg_url, NULL)
-	PHP_FE(bc_motion_is_on, NULL)
-	PHP_FE(bc_motion_is_detected, NULL)
 	PHP_FE(bc_ptz_cmd, NULL)
 	/* Miscellaneous */
 	PHP_FE(bc_log, NULL)
