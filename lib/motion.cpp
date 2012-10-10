@@ -43,41 +43,13 @@ int bc_set_motion(struct bc_handle *bc, int on)
 			bc_log("E: Motion detection is not implemented for non-solo V4L2 devices.");
 			ret = -ENOSYS;
 		}
-	} else if (!on) {
-		/* Free resources from generic motion detection */
-		if (bc->motion_data.convContext) {
-			sws_freeContext(bc->motion_data.convContext);
-			bc->motion_data.convContext = 0;
-		}
-		if (bc->motion_data.refFrame) {
-			av_free(bc->motion_data.refFrame->data[0]);
-			av_free(bc->motion_data.refFrame);
-			bc->motion_data.refFrame = 0;
-		}
-		bc->motion_data.refFrameWidth = 0;
-		bc->motion_data.refFrameHeight = 0;
-		bc->motion_data.last_tested_pts = AV_NOPTS_VALUE;
-		bc->motion_data.skip_count = 0;
-#ifdef DEBUG_DUMP_MOTION_DATA
-		if (bc->motion_data.dumpfile) {
-			fclose(bc->motion_data.dumpfile);
-			bc->motion_data.dumpfile = 0;
-		}
-#endif
 	}
-
-	if (!ret)
-		bc->motion_data.enabled = on;
 
 	return ret;
 }
 
 int bc_motion_is_on(struct bc_handle *bc)
 {
-	if (!bc->motion_data.enabled)
-		return 0;
-
-	// XXX: Disabled as this seems unnecessary.
 #if 0
 	v4l2_device *d = 0;
 	if (bc->type == BC_DEVICE_V4L2) {
@@ -117,10 +89,13 @@ int bc_set_motion_thresh_global(struct bc_handle *bc, char value)
 			vc.value = solo_value_map[val];
 			return ioctl(d->device_fd(), VIDIOC_S_CTRL, &vc);
 		}
-	} else {
+	}
+#if 0
+	else {
 		memset(bc->motion_data.thresholds, generic_value_map[val],
 		       sizeof(bc->motion_data.thresholds));
 	}
+#endif
 
 	return 0;
 }
@@ -161,7 +136,9 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 					return -1;
 			}
 		}
-	} else {
+	}
+#if 0
+	else {
 		size_t i;
 		if (size < 32*24)
 			return -1;
@@ -173,6 +150,7 @@ int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size)
 			bc->motion_data.thresholds[i] = generic_value_map[map[i] - '0'];
 		}
 	}
+#endif
 
 	return 0;
 }

@@ -269,22 +269,6 @@ protected:
 	virtual void apply_bound();
 };
 
-struct bc_motion_data {
-	int enabled;
-
-	/* State for generic motion detection */
-	struct SwsContext *convContext;
-	AVFrame           *refFrame;
-	int                refFrameHeight;
-	int                refFrameWidth;
-	int64_t            last_tested_pts;
-	uint8_t            skip_count;
-	uint8_t            thresholds[768];
-#ifdef DEBUG_DUMP_MOTION_DATA
-	FILE              *dumpfile;
-#endif
-};
-
 struct bc_handle {
 	char			device[512];
 	char			driver[512];
@@ -297,9 +281,6 @@ struct bc_handle {
 
 	int			started;
 	int			got_vop;
-
-	/* Motion detection; see bc_set_motion et al */
-	struct bc_motion_data motion_data;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */

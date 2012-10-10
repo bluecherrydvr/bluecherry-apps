@@ -44,12 +44,6 @@ public:
 	AVStream *audio_stream() const { return ctx->streams[audio_stream_index]; }
 	const char *stream_info();
 
-	/* Decode the current packet, if it is a video packet, and put the result in
-	 * frame. frame must be allocated with avcodec_alloc_frame prior to calling.
-	 * Returns -1 on error, 0 on no-picture (but no error), and 1 when frame
-	 * contains a valid picture. */
-	int decode_video(AVFrame *frame);
-
 private:
 	char url[1024];
 	char error_message[512];

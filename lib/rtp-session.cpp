@@ -423,36 +423,3 @@ const char *rtp_device::stream_info()
 	return buf;
 }
 
-int rtp_device::decode_video(AVFrame *dst)
-{
-	AVStream *stream;
-	int re;
-	int have_picture = 0;
-
-	if (frame.stream_index != video_stream_index)
-		return -1;
-
-	stream = ctx->streams[frame.stream_index];
-
-	if (!stream->codec->codec) {
-		AVCodec *codec = avcodec_find_decoder(stream->codec->codec_id);
-		AVDictionary *opt = 0;
-		av_dict_set(&opt, "threads", "1", 0);
-
-		re = avcodec_open2(stream->codec, codec, &opt);
-		av_dict_free(&opt);
-		if (re < 0) {
-			av_strerror(re, error_message, sizeof(error_message));
-			return -1;
-		}
-	}
-
-	re = avcodec_decode_video2(stream->codec, dst, &have_picture, &frame);
-	if (re < 0) {
-		av_strerror(re, error_message, sizeof(error_message));
-		return -1;
-	}
-
-	return have_picture;
-}
-
