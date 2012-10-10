@@ -209,6 +209,12 @@ void rtsp_server::acceptConnection()
 	int fd = accept(serverfd, NULL, NULL);
 	if (fd < 0) {
 		bc_log("E(RTSP): accept() failed: %s", strerror(errno));
+		switch (errno) {
+		case EMFILE:
+		case ENFILE:
+			bc_log("E(RTSP): out of fds, killing process!");
+			exit(1);
+		}
 		return;
 	}
 
