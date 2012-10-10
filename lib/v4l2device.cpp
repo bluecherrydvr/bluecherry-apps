@@ -590,9 +590,3 @@ no_audio:
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-AVCodecContext *v4l2_device::setup_video_decode() const
-{
-	bc_log("XXX v4l2_device::setup_video_decode() not implemented");
-	return 0;
-}
-

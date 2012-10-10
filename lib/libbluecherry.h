@@ -82,8 +82,6 @@ public:
 	bool audio_enabled() const { return _audio_enabled; }
 	virtual void set_audio_enabled(bool enabled);
 
-	virtual AVCodecContext *setup_video_decode() const = 0;
-
 	/* Get the current stream properties; this is a temporary hack for streaming
 	 * and should not be relied on. Properties are included as a field with every
 	 * packet, and can be reliably updated that way. */

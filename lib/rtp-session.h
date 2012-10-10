@@ -50,8 +50,6 @@ public:
 	 * contains a valid picture. */
 	int decode_video(AVFrame *frame);
 
-	virtual AVCodecContext *setup_video_decode() const;
-
 private:
 	char url[1024];
 	char error_message[512];
