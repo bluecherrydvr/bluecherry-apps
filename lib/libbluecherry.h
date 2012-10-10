@@ -98,7 +98,8 @@ public:
 		enum PixelFormat pix_fmt;
 		int width;
 		int height;
-		// Note that this is codec time_base, not stream time_base.
+		/* Note that this is codec time_base; you should NOT use it other than
+		 * setting on an AVCodecContext. See stream_packet doc. */
 		AVRational time_base;
 		int profile;
 		std::vector<char> extradata;
@@ -164,6 +165,7 @@ class stream_packet
 public:
 	unsigned size;
 	unsigned flags;
+	/* PTS is normalized to AV_TIME_BASE_Q and synchronized across media. */
 	int64_t  pts;
 	int      type; // AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO
 	time_t   ts_clock; // Used for prerecord event start time

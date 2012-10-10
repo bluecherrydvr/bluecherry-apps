@@ -23,6 +23,9 @@ protected:
 	std::string file_path;
 	AVFormatContext *oc;
 	AVStream *video_st, *audio_st;
+	/* Base PTS value for the start of the recording. This assumes that all streams
+	 * share a time_base of AV_TIME_BASE, and 0 represents the same instant across all
+	 * streams. This is set automatically by the first written packet. */
 	int64_t output_pts_base;
 };
 

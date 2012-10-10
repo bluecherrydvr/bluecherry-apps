@@ -44,7 +44,7 @@ int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 }
 
 media_writer::media_writer()
-	: oc(0), video_st(0), audio_st(0)
+	: oc(0), video_st(0), audio_st(0), output_pts_base(AV_NOPTS_VALUE)
 {
 }
 
@@ -78,31 +78,26 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		if (s->codec->coded_frame && s->codec->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
 			opkt.pts = av_rescale_q(s->codec->coded_frame->pts, s->codec->time_base,
 			                        s->time_base); 
-	}
+	} else {
+		if (output_pts_base == (int64_t)AV_NOPTS_VALUE) {
+			output_pts_base = opkt.pts;
+			bc_log("media_writer: setting pts base for stream to %"PRId64"", output_pts_base);
 
-#if 0
-	// XXX This is the wrong place for this logic.
-	if (bc_rec->bc->type == BC_DEVICE_RTP && opkt.pts != (int64_t)AV_NOPTS_VALUE) {
-		struct rtp_device *rs = reinterpret_cast<rtp_device*>(bc_rec->bc->input);
-		/* RTP packets must be scaled to the output PTS */
-		if (pkt.type == AVMEDIA_TYPE_AUDIO) {
-			opkt.pts = av_rescale_q(opkt.pts,
-			                        rs->audio_stream()->time_base,
-			                        s->time_base);
-		} else {
-			opkt.pts = av_rescale_q(opkt.pts,
-			                        rs->video_stream()->time_base,
-			                        s->time_base);
+			/* Hypothetically, if there are previous frames with no PTS, followed by frames that
+			 * do have PTS, we'll end up with strange behavior due to the pts base; the best way
+			 * to handle this would be to write pts_base to opkt.pts minus the assumed interval
+			 * from the last frame. But as I can't make this situation now, I can't try that. */
+			if (s->codec->coded_frame && s->codec->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
+				bc_log("media_writer: W: Setting PTS base with existing coded frames. Please "
+				       "report a bug if video has playback problems.");
 		}
 
-		// XXX This probably isn't correct when audio streams are present.
-		if (bc_rec->output_pts_base) {
-			opkt.pts -= av_rescale_q(output_pts_base,
-			                         rs->video_stream()->time_base,
-			                         s->time_base);
-		}
+		/* Subtract output_pts_base, both in the universal AV_TIME_BASE and synchronized across
+		 * all related streams. */
+		opkt.pts -= output_pts_base;
+		/* Convert to output time_base */
+		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q, s->time_base);
 	}
-#endif
 
 	/* Cutoff points can result in a few negative PTS frames, because often
 	 * the video will be cut before the audio for that time has been written.
@@ -132,7 +127,7 @@ void media_writer::close()
 	if (audio_st)
 		avcodec_close(audio_st->codec);
 	video_st = audio_st = NULL;
-	output_pts_base = 0;
+	output_pts_base = AV_NOPTS_VALUE;
 
 	if (oc) {
 		if (oc->pb)
