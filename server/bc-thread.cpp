@@ -270,7 +270,7 @@ static void *bc_device_thread(void *data)
 		}
 
 		if (bc_rec->sched_cur == 'M' && !bc_rec->motion) {
-			bc_rec->motion = new motion_processor(bc->input);
+			bc_rec->motion = new motion_processor();
 			bc->source->connect(bc_rec->motion);
 			std::thread th(&motion_processor::run, bc_rec->motion);
 			th.detach();
