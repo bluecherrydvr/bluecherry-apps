@@ -108,9 +108,7 @@ void motion_processor::run()
 			 * happen (other than a >60fps stream). */
 			bool skip = false;
 			if (refFrame && last_tested_pts != (int64_t)AV_NOPTS_VALUE) {
-				int64_t diff = av_rescale_q(pkt.pts - last_tested_pts,
-							    pkt.properties()->video.time_base,
-							    AV_TIME_BASE_Q) / (AV_TIME_BASE / 1000);
+				int64_t diff = (pkt.pts - last_tested_pts) / (AV_TIME_BASE / 1000);
 				if (diff > 0 && diff < 45) {
 					if (++skip_count > 3) {
 						av_log(NULL, AV_LOG_WARNING, "Motion detection skipped too "

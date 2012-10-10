@@ -9,6 +9,10 @@
 #include "bc-server.h"
 #include "rtsp.h"
 
+extern "C" {
+#include <libavutil/mathematics.h>
+}
+
 #define RTP_MAX_PACKET_SIZE 1472
 
 int bc_streaming_setup(struct bc_record *bc_rec)
@@ -112,6 +116,11 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
 	opkt.pts          = pkt.pts;
+	if (opkt.pts != AV_NOPTS_VALUE) {
+		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q,
+				bc_rec->stream_ctx->streams[0]->time_base);
+	}
+
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0; /* XXX */
