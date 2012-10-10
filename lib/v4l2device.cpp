@@ -45,7 +45,8 @@ static uint32_t get_best_pixfmt(int fd)
 
 
 v4l2_device::v4l2_device(BC_DB_RES dbres)
-	: dev_fd(-1), cam_caps(0), codec_id(CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0), buffers(0), dev_id(0), got_vop(0)
+	: dev_fd(-1), cam_caps(0), codec_id(CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
+	  buffers(0), dev_id(0), got_vop(0), started(false)
 {
 	memset(&p_buf, 0, sizeof(p_buf));
 
@@ -278,7 +279,6 @@ int v4l2_device::start()
 	buf_idx = -1;
 
 	this->started = true;
-
 	this->update_properties();
 	return 0;
 }
@@ -319,6 +319,7 @@ void v4l2_device::stop()
 
 	this->started = false;
 	current_properties.reset();
+	started = false;
 }
 
 void v4l2_device::reset()
@@ -392,39 +393,67 @@ int v4l2_device::read_packet()
 	return 0;
 }
 
-int v4l2_device::set_interval(uint8_t interval)
+int v4l2_device::set_resolution(uint16_t width, uint16_t height,
+		uint8_t interval)
 {
-	struct v4l2_control vc;
-	double den = vparm.parm.capture.timeperframe.denominator;
-	double num = interval;
+	int re = 0;
+	bool fmt_changed = (width && vfmt.fmt.pix.width != width)
+		|| (height && vfmt.fmt.pix.height != height);
+	bool int_changed = interval
+		&& vparm.parm.capture.timeperframe.numerator != interval;
 
-	if (!interval)
-		return 0;
+	if (!fmt_changed && !int_changed)
+		return re;
 
-	if (vparm.parm.capture.timeperframe.numerator == interval)
-		return 0;
-
-	if (this->started) {
-		this->set_error_message("busy");
-		return -1;
+	bool needs_restart = started;
+	if (started) {
+		// FIXME report this!
+		stop();
 	}
 
-	vparm.parm.capture.timeperframe.numerator = interval;
-	if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
-		return -1;
-	ioctl(dev_fd, VIDIOC_G_PARM, &vparm);
-	update_properties();
+	if (fmt_changed) {
+		/* XXX: we could cache this */
+		uint32_t fmt = get_best_pixfmt(dev_fd);
+		if (!fmt) {
+			this->set_error_message("no supported pixelformat found");
+			return -1;
+		}
 
-	/* Reset GOP */
-	gop = lround(den / num);
-	if (!gop)
-		gop = 1;
-	vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-	vc.value = gop;
-	if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-		return -1;
+		vfmt.fmt.pix.pixelformat = fmt;
+		if (width)
+			vfmt.fmt.pix.width = width;
+		if (height)
+			vfmt.fmt.pix.height = height;
 
-	return 0;
+		if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
+			re = -1;
+		else if (ioctl(dev_fd, VIDIOC_G_FMT, &vfmt) < 0)
+			re = -1;
+	}
+
+	if (!re && int_changed) {
+		vparm.parm.capture.timeperframe.numerator = interval;
+		if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
+			re = -1;
+		else if (ioctl(dev_fd, VIDIOC_G_PARM, &vparm) < 0)
+			re = -1;
+		else {
+			/* Reset GOP */
+			gop = lround(vparm.parm.capture.timeperframe.denominator / vparm.parm.capture.timeperframe.numerator);
+			if (!gop)
+				gop = 1;
+			struct v4l2_control vc;
+			vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
+			vc.value = gop;
+			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+				re = -1;
+		}
+	}
+
+	// start() does update_properties()
+	if (needs_restart)
+		start();
+	return re;
 }
 
 int v4l2_device::set_mjpeg()
@@ -457,6 +486,7 @@ int v4l2_device::set_control(unsigned int ctrl, int val)
 	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
+#if 0
 void *v4l2_device::buf_data()
 {
 	if (buf_idx < 0)
@@ -472,38 +502,7 @@ unsigned int v4l2_device::buf_size()
 
 	return p_buf[buf_idx].vb.bytesused;
 }
-
-int v4l2_device::set_resolution(uint16_t width, uint16_t height)
-{
-	if (this->vfmt.fmt.pix.width == width &&
-	    this->vfmt.fmt.pix.height == height)
-		return 0;
-
-	if (this->started) {
-		this->set_error_message("busy");
-		return -1;
-	}
-
-	/* XXX: we could cache this */
-	uint32_t fmt = get_best_pixfmt(dev_fd);
-	if (!fmt) {
-		this->set_error_message("no supported pixelformat found");
-		return -1;
-	}
-
-	this->vfmt.fmt.pix.pixelformat = fmt;
-	if (width)
-		this->vfmt.fmt.pix.width = width;
-	if (height)
-		this->vfmt.fmt.pix.height = height;
-
-	if (ioctl(this->dev_fd, VIDIOC_S_FMT, &this->vfmt) < 0)
-		return -1;
-	ioctl(this->dev_fd, VIDIOC_G_FMT, &this->vfmt);
-	this->update_properties();
-
-	return 0;
-}
+#endif
 
 int v4l2_device::set_osd(char *fmt, ...)
 {

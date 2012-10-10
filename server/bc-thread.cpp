@@ -75,16 +75,8 @@ static void try_formats(struct bc_record *bc_rec)
 
 	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 
-	if (d->set_interval(bc_rec->cfg.interval)) {
-		bc_rec->reset_vid = 1;
-		if (errno != EAGAIN)
-			bc_dev_warn(bc_rec, "Failed to set video interval: %m");
-	}
-
-	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height)) {
-		bc_rec->reset_vid = 1;
-		if (errno != EAGAIN)
-			bc_dev_warn(bc_rec, "Error setting format: %m");
+	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval)) {
+		bc_dev_warn(bc_rec, "Error setting format: %m");
 	}
 }
 
@@ -143,14 +135,10 @@ static int process_schedule(struct bc_record *bc_rec)
 
 	check_schedule(bc_rec);
 
-	if (bc_rec->reset_vid ||
-	    (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
-	    !bc_rec->sched_last)) {
-		if (bc_rec->reset_vid)
-			bc_rec->reset_vid = 0;
+	if (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
+	    !bc_rec->sched_last) {
 		recording_end(bc_rec);
 		bc_handle_reset(bc);
-		try_formats(bc_rec);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
 		recording_end(bc_rec);
@@ -370,9 +358,6 @@ bc_record::bc_record(int i)
 	sched_last = 0;
 	thread_should_die = 0;
 	file_started = 0;
-
-	reset_vid = 0;
-	fmt = 0;
 
 	motion = 0;
 	mot_last_ts = 0;
