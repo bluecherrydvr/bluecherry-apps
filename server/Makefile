@@ -6,7 +6,8 @@ LDFLAGS		+= -lbluecherry -lbsd -ludev \
 
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o \
-		  streaming.o rtsp.o signals.o motion_processor.o recorder.o
+		  streaming.o rtsp.o signals.o motion_processor.o recorder.o \
+		  motion_handler.o
 
 all: $(TARGETS) FORCE
 

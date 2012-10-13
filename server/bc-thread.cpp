@@ -15,6 +15,7 @@
 #include "v4l2device.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
+#include "motion_handler.h"
 #include "recorder.h"
 
 static int apply_device_cfg(struct bc_record *bc_rec);
@@ -271,9 +272,22 @@ static void *bc_device_thread(void *data)
 
 		if (bc_rec->sched_cur == 'M' && !bc_rec->motion) {
 			bc_rec->motion = new motion_processor();
-			bc->source->connect(bc_rec->motion);
+			bc->source->connect(bc_rec->motion, stream_source::StartFromLastKeyframe);
 			std::thread th(&motion_processor::run, bc_rec->motion);
 			th.detach();
+
+			// XXX memory leak! And perhaps a little crash!
+			motion_handler *h = new motion_handler;
+			h->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
+			bc->source->connect(h->input_consumer(), stream_source::StartFromLastKeyframe);
+
+			rec = new recorder(bc_rec);
+			h->connect(rec);
+
+			std::thread th2(&motion_handler::run, h);
+			th2.detach();
+			std::thread th3(&recorder::run, rec);
+			th3.detach();
 		} else if (bc_rec->sched_cur != 'M' && bc_rec->motion) {
 			bc->source->disconnect(bc_rec->motion);
 			bc_rec->motion->destroy();
@@ -282,14 +296,15 @@ static void *bc_device_thread(void *data)
 
 		if (bc_rec->sched_cur == 'C' && !rec) {
 			rec = new recorder(bc_rec);
-			bc->source->connect(rec);
+			bc->source->connect(rec, stream_source::StartFromLastKeyframe);
 			std::thread th(&recorder::run, rec);
 			th.detach();
-		} else if (bc_rec->sched_cur != 'C' && rec) {
+		}
+		/*else if (bc_rec->sched_cur != 'C' && rec) {
 			bc->source->disconnect(rec);
 			rec->destroy();
 			rec = 0;
-		}
+		}*/
 
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
