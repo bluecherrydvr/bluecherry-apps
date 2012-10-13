@@ -7,7 +7,7 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lbsd -ludev \
 
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o bc-detect.o streaming.o rtsp.o motion_processor.o \
-		  recorder.o
+		  recorder.o motion_handler.o
 
 all: $(TARGETS) FORCE
 

@@ -35,6 +35,13 @@ void recorder::run()
 		buffer.pop_front();
 		l.unlock();
 
+		if (!packet.data()) {
+			/* Null packets force recording end */
+			recording_end();
+			l.lock();
+			continue;
+		}
+
 		if (packet.properties() != saved_properties) {
 			bc_log("recorder: Stream properties changed");
 			saved_properties = packet.properties();
