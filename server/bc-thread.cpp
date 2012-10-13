@@ -20,16 +20,10 @@
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
-static void recording_end(struct bc_record *bc_rec)
-{
-	bc_log("W: recording_end is not real");
-}
-
 static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
                            bc_event_cam_type_t type)
 {
 	if (!bc_rec->event || bc_rec->event->level != level || bc_rec->event->type != type) {
-		recording_end(bc_rec);
 		bc_event_cam_end(&bc_rec->event);
 
 		bc_rec->event = bc_event_cam_start(bc_rec->id, time(NULL), level, type, NULL);
@@ -40,12 +34,8 @@ void stop_handle_properly(struct bc_record *bc_rec)
 {
 	struct bc_output_packet *p, *n;
 
-	recording_end(bc_rec);
 	bc_streaming_destroy(bc_rec);
 	bc_handle_stop(bc_rec->bc);
-	bc_rec->mot_last_ts = 0;
-	bc_rec->mot_first_buffered_packet = -1;
-	bc_rec->prerecord_buffer.clear();
 }
 
 static void event_trigger_notifications(struct bc_record *bc_rec)
@@ -138,11 +128,9 @@ static int process_schedule(struct bc_record *bc_rec)
 
 	if (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
 	    !bc_rec->sched_last) {
-		recording_end(bc_rec);
 		bc_handle_reset(bc);
 		bc_dev_info(bc_rec, "Reset media file");
 	} else if (bc_rec->sched_last) {
-		recording_end(bc_rec);
 		bc_event_cam_end(&bc_rec->event);
 		bc_handle_reset(bc);
 		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
@@ -153,75 +141,6 @@ static int process_schedule(struct bc_record *bc_rec)
 	}
 
 	return (bc_rec->sched_cur != 'N');
-}
-
-static int check_motion(struct bc_record *bc_rec, const stream_packet &packet)
-{
-	time_t monotonic_now;
-	int ret;
-
-	if (bc_rec->sched_cur != 'M')
-		return 1;
-
-	/* This may be necessary in some cases when the handle was stopped
-	 * (and thus, motion reset to off) without a schedule change. */
-	bc_set_motion(bc_rec->bc, 1);
-
-	monotonic_now = bc_gettime_monotonic();
-
-	if (!bc_rec->prerecord_buffer.add_packet(packet) ||
-	    !packet.is_video_frame())
-		return bc_rec->mot_last_ts > 0;
-
-	ret = bc_motion_is_detected(bc_rec->bc);
-
-	if (bc_rec->mot_first_buffered_packet >= 0) {
-		/* Don't end the event and close the recording until we've dropped
-		 * a frame out of the prerecording buffer that was not part of
-		 * the recording; this allows us to resume the current event if more
-		 * motion occurs within [prerecord] seconds. */
-		for (auto it = bc_rec->prerecord_buffer.begin(); it != bc_rec->prerecord_buffer.end(); it++) {
-			if (it->seq != bc_rec->mot_first_buffered_packet)
-				continue;
-
-			if (ret) {
-				/* There is new motion; we can resume this recording
-				 * using buffered packets. Dump them, excluding this packet. */
-				bc_dev_info(bc_rec, "Motion event continued");
-				for (; it != bc_rec->prerecord_buffer.end()-1; it++)
-					bc_output_packet_write(bc_rec, *it);
-				bc_rec->mot_first_buffered_packet = -1;
-			}
-
-			goto continue_motion_event;
-		}
-
-		/* We exhausted the prerecord buffer without more motion;
-		 * end the current recording. If this frame had motion,
-		 * we'll start a new recording immediately. */
-		recording_end(bc_rec);
-		bc_rec->mot_last_ts = 0;
-		bc_rec->mot_first_buffered_packet = -1;
-
-continue_motion_event:
-		;
-	}
-
-	if (ret) {
-		/* Motion frame; update the timestamp */
-		bc_rec->mot_last_ts = monotonic_now;
-	} else if (bc_rec->mot_last_ts) {
-		/* Actively recording, but this frame has no motion */
-		if (monotonic_now - bc_rec->mot_last_ts <= bc_rec->cfg.postrecord)
-			ret = 1; /* Continue recording (postrecord time) */
-		else if (bc_rec->mot_first_buffered_packet < 0) {
-			bc_rec->mot_first_buffered_packet = packet.seq;
-			if (bc_rec->event)
-				bc_rec->event->end_time = time(NULL);
-		}
-	}
-
-	return ret;
 }
 
 static void *bc_device_thread(void *data)
@@ -352,22 +271,13 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
-	fmt_out = 0;
-	video_st = 0;
-	audio_st = 0;
-	oc = 0;
-	output_pts_base = 0;
-
 	stream_ctx = 0;
 	rtsp_stream = 0;
 
 	osd_time = 0;
 	start_failed = 0;
 
-	memset(outfile, 0, sizeof(outfile));
-
 	memset(&event, 0, sizeof(event));
-	event_snapshot_done = 0;
 
 	sched_cur = 'N';
 	sched_last = 0;
@@ -375,8 +285,6 @@ bc_record::bc_record(int i)
 	file_started = 0;
 
 	motion = 0;
-	mot_last_ts = 0;
-	mot_first_buffered_packet = -1;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -417,7 +325,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc_rec->bc = bc;
 
 	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
-	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
 
 	/* Initialize device state */
 	try_formats(bc_rec);
@@ -540,9 +447,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		}
 	}
 
-	bc_rec->prerecord_buffer.set_duration(bc_rec->cfg.prerecord);
-
 	check_schedule(bc_rec);
+	// XXX prerecord and postrecord
 	return 0;
 }
 
