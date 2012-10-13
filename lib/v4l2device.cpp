@@ -475,3 +475,16 @@ void v4l2_device::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
+int v4l2_device::set_motion(bool on)
+{
+	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
+		bc_log("E: Motion detection is not implemented for non-solo V4L2 devices.");
+		return -ENOSYS;
+	}
+
+	struct v4l2_control vc;
+	vc.id = V4L2_CID_MOTION_ENABLE;
+	vc.value = on ? 1 : 0;
+	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
+}
+
