@@ -30,22 +30,10 @@ extern "C" {
 
 int bc_set_motion(struct bc_handle *bc, int on)
 {
-	int ret = 0;
-
-	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_device *d = reinterpret_cast<v4l2_device*>(bc->input);
-		if (d->caps() & BC_CAM_CAP_V4L2_MOTION) {
-			struct v4l2_control vc;
-			vc.id = V4L2_CID_MOTION_ENABLE;
-			vc.value = on ? 1 : 0;
-			ret = ioctl(d->device_fd(), VIDIOC_S_CTRL, &vc);
-		} else {
-			bc_log("E: Motion detection is not implemented for non-solo V4L2 devices.");
-			ret = -ENOSYS;
-		}
-	}
-
-	return ret;
+	if (bc->type == BC_DEVICE_V4L2)
+		return reinterpret_cast<v4l2_device*>(bc->input)->set_motion(on);
+	bc_log("XXX: bc_set_motion crippled");
+	return -ENOSYS;
 }
 
 int bc_motion_is_on(struct bc_handle *bc)

@@ -55,6 +55,8 @@ public:
 	int set_mjpeg();
 	int set_control(unsigned int ctrl, int val);
 
+	int set_motion(bool on);
+
 	v4l2_buffer *buf_v4l2();
 
 private:
