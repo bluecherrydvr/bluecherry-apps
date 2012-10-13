@@ -253,6 +253,7 @@ error:
 	return -1;
 }
 
+#if 0
 int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &pkt, AVFrame *frame)
 {
 	AVCodecContext *ic = 0;
@@ -402,4 +403,5 @@ end:
 	av_free(oc);
 	return re;
 }
+#endif
 

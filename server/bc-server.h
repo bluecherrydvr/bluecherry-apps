@@ -46,13 +46,6 @@ public:
 
 	const int id;
 
-	/* Recording */
-	AVOutputFormat  *fmt_out;
-	AVStream        *video_st;
-	AVStream        *audio_st;
-	AVFormatContext *oc;
-	int64_t         output_pts_base;
-
 	/* Streaming */
 	AVFormatContext *stream_ctx;
 	class rtsp_stream *rtsp_stream;
@@ -60,12 +53,10 @@ public:
 	time_t			osd_time;
 	unsigned int		start_failed;
 
-	char			outfile[PATH_MAX];
 	pthread_t		thread;
 
 	/* Event/Media handling */
 	bc_event_cam_t          event;
-	int                     event_snapshot_done;
 
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
@@ -74,13 +65,6 @@ public:
 
 	/* Motion detection */
 	class motion_processor *motion;
-	time_t mot_last_ts;
-	/* Seq number of the first packet not written after the postrecord time in
-	 * the current motion recording. Used to resume motion recordings when all
-	 * intervening packets are still in the prerecord_buffer */
-	int64_t mot_first_buffered_packet;
-	stream_keyframe_buffer prerecord_buffer;
-	// XXX
 
 private:
 	bc_record(int id);
@@ -120,8 +104,6 @@ int bc_status_component_end(bc_status_component component, int ok);
 extern char global_sched[7 * 24 + 1];
 
 int bc_get_media_loc(char *dest, size_t size);
-
-int bc_output_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
  * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */
