@@ -16,13 +16,13 @@ void input_device::set_audio_enabled(bool v)
 }
 
 stream_packet::stream_packet()
-	: size(0), flags(0), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
+	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
 {
 }
 
 stream_packet::stream_packet(const uint8_t *data, const std::shared_ptr<stream_properties> &properties)
-	: size(0), flags(0), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
+	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(new stream_packet_data(data, properties))
 {
 }

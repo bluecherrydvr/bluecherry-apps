@@ -320,6 +320,12 @@ int v4l2_device::read_packet()
 	buf_idx = vb.index;
 	p_buf[buf_idx].vb = vb;
 
+	if (!got_vop) {
+		if (!is_key_frame())
+			return EAGAIN;
+		got_vop = 1;
+	}
+
 	uint8_t *dbuf = new uint8_t[p_buf[buf_idx].vb.bytesused];
 	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
 
@@ -329,14 +335,12 @@ int v4l2_device::read_packet()
 	current_packet.ts_clock = time(NULL);
 	current_packet.type     = AVMEDIA_TYPE_VIDEO;
 	current_packet.pts      = AV_NOPTS_VALUE;
-	current_packet.flags    = is_key_frame() ? AV_PKT_FLAG_KEY : 0;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
 
-	if (!got_vop) {
-		if (!is_key_frame())
-			return EAGAIN;
-		got_vop = 1;
-	}
+	if (is_key_frame())
+		current_packet.flags |= stream_packet::KeyframeFlag;
+	if (vb.flags & V4L2_BUF_FLAG_MOTION_DETECTED)
+		current_packet.flags |= stream_packet::MotionFlag;
 
 	return 0;
 }
