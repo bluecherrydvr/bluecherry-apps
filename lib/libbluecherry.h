@@ -178,6 +178,12 @@ private:
 class stream_packet
 {
 public:
+	enum Flags {
+		NoFlags = 0,
+		KeyframeFlag = 0x1,
+		MotionFlag = 0x2
+	};
+
 	unsigned size;
 	unsigned flags;
 	/* PTS is normalized to AV_TIME_BASE_Q and synchronized across media. */
@@ -203,7 +209,7 @@ public:
 	const uint8_t *data() const { return d ? d->data : 0; }
 	std::shared_ptr<const stream_properties> properties() const { return d ? d->properties : std::shared_ptr<stream_properties>(); }
 
-	bool is_key_frame() const { return flags & AV_PKT_FLAG_KEY; }
+	bool is_key_frame() const { return flags & KeyframeFlag; }
 	bool is_video_frame() const { return type == AVMEDIA_TYPE_VIDEO; }
 
 private:

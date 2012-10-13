@@ -321,7 +321,8 @@ void rtp_device::create_stream_packet(AVPacket *src)
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
 	current_packet.pts      = av_rescale_q(src->pts, ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q);
-	current_packet.flags    = src->flags & AV_PKT_FLAG_KEY;
+	if (src->flags & AV_PKT_FLAG_KEY)
+		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	if (src->stream_index == video_stream_index)
