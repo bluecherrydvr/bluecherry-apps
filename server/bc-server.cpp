@@ -282,9 +282,6 @@ static int load_storage_paths(void)
 	return 0;
 }
 
-/* XXX Create a function here so that we don't have to do so many
- * SELECT's in bc_check_globals() */
-
 /* Update our global settings */
 static int bc_check_globals(void)
 {
@@ -371,66 +368,93 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-static float storage_used(const struct bc_storage *stor)
+static float path_used_percent(const char *path)
 {
 	struct statvfs st;
 
-	if (statvfs(stor->path, &st))
+	if (statvfs(path, &st))
 		return -1.00;
 
-	return 100.0 - ((float)((float)st.f_bavail / (float)st.f_blocks) * 100);
+	return 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks;
+}
+
+static uint64_t path_freespace(const char *path)
+{
+	struct statvfs st;
+
+	if (statvfs(path, &st))
+		return 0;
+
+	if (!st.f_favail) {
+		bc_log("W: No available inodes on %s", path);
+		return 0;
+	}
+
+	return (uint64_t)st.f_bavail * (uint64_t)st.f_bsize;
 }
 
 /* Returns -1 on error, 0 for non-full, 1 for full */
-static int storage_full(const struct bc_storage *stor)
+static int is_storage_full(const struct bc_storage *stor)
 {
-	float used = storage_used(stor);
+	float used = path_used_percent(stor->path);
+
 	if (used < 0)
 		return -1;
-	else
-		return (used >= stor->max_thresh);
+
+	return (used >= stor->max_thresh);
+}
+
+/**
+ * Return the best storage path. I.e. the least used, prioritizing those below
+ * their threshold.
+ */
+const char *select_best_path(void)
+{
+	struct bc_storage *ret = NULL, *overused = NULL, *p;
+
+	for (p = media_stor; p < media_stor+MAX_STOR_LOCS && p->max_thresh; p++) {
+		uint64_t cur, best = 0, best_overused = 0;
+
+		cur = path_freespace(p->path);
+		if (cur < best)
+			continue;
+
+		if (!is_storage_full(p)) {
+			best = cur;
+			ret = p;
+		} else if (cur > best_overused) {
+			best_overused = cur;
+			overused = p;
+		}
+	}
+
+	if (!ret)
+		ret = overused;
+
+	return ret ? ret->path : NULL;
 }
 
 int bc_get_media_loc(char *dest, size_t size)
 {
+	int ret = 0;
 	dest[0] = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on get_loc!");
 
-	/* Use the first storage path below its maximum threshold; combined with
-	 * cleanup deleting the oldest recordings first, this results in rotating
-	 * sequentially through the paths over time. If all are above the maximum,
-	 * choose the path with the least (by percentage, unfortunately) usage. */
-	int least = -1;
-	float least_value = 100;
+	const char *sel = select_best_path();
 
-	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		float used = storage_used(&media_stor[i]);
-		if (used >= media_stor[i].max_thresh) {
-			least = i;
-			break;
-		} else if (used >= 0 && used < least_value) {
-			least = i;
-			least_value = used;
-		}
-	}
-
-	int re = 0;
-	if (least < 0)
-		re = -1;
-	if (strlcpy(dest, media_stor[least].path, size) > size)
-		re = -1;
+	if (!sel || strlcpy(dest, sel, size) > size)
+		ret = -1;
 
 	pthread_mutex_unlock(&media_lock);
-	return re;
+	return ret;
 }
 
 static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
 	int removed = 0, error_count = 0;
-	int i;
 
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND filepath!='' ORDER BY start ASC");
 
@@ -470,8 +494,8 @@ static int bc_cleanup_media()
 		}
 
 		if (!(removed % 5)) {
-			for (i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-				float used = storage_used(&media_stor[i]);
+			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+				float used = path_used_percent(media_stor[i].path);
 				if (used >= 0 && used <= media_stor[i].min_thresh)
 					goto done;
 			}
@@ -491,22 +515,20 @@ done:
 
 static int bc_check_media(void)
 {
-	int i, free = 0;
-	int ret = 0;
-
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log("E: Deadlock detected in media_lock on check_media!");
 
-	for (i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (!storage_full(&media_stor[i])) {
-			free = 1;
-			break;
-		}
+	int ret = 0;
+
+	/* If there's some space left, skip cleanup */
+	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+		if (!is_storage_full(&media_stor[i]))
+			goto out;
 	}
 
-	if (!free)
-		ret = bc_cleanup_media();
+	ret = bc_cleanup_media();
 
+ out:
 	pthread_mutex_unlock(&media_lock);
 	return ret;
 }
@@ -753,7 +775,6 @@ static int check_trial_expired()
 int main(int argc, char **argv)
 {
 	int opt;
-	unsigned int loops;
 	int bg = 1;
 	int count;
 	const char *user = 0, *group = 0;
@@ -804,7 +825,7 @@ int main(int argc, char **argv)
 			bc_log("E: Setting user failed");
 			exit(1);
 		}
-	}	
+	}
 
 	if (av_lockmgr_register(bc_av_lockmgr)) {
 		bc_log("E: AV lock registration failed: %m");
@@ -853,7 +874,7 @@ int main(int argc, char **argv)
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
 	/* Main loop */
-	for (loops = 0 ;; loops++) {
+	for (unsigned int loops = 0 ;; loops++) {
 		/* Every 15 seconds until initialized, then every 5 minutes */
 		if ((!solo_ready && !(loops % 15)) || (solo_ready && !(loops % 300))) {
 			bc_status_component_begin(STATUS_SOLO_DETECT);
@@ -865,9 +886,10 @@ int main(int argc, char **argv)
 				error = 0;
 			} else if (error) {
 				/* If it's still not ready after 15sec, error */
-				bc_status_component_error("Solo6x10 devices are not initialized: %s",
-				                          (error == -EAGAIN) ? "Driver not ready" :
-				                                               strerror(-error));
+				bc_status_component_error(
+					"Solo6x10 devices are not initialized: %s",
+					(error == -EAGAIN) ?
+					"Driver not ready" : strerror(-error));
 			}
 			bc_status_component_end(STATUS_SOLO_DETECT, error == 0);
 		}
