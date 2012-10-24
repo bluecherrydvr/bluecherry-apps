@@ -493,6 +493,9 @@ static int bc_cleanup_media()
 			bc_status_component_error("Database error during media cleanup");
 		}
 
+		/* Every five files removed check if enough space has been
+		 * freed.
+		 */
 		if (!(removed % 5)) {
 			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
 				float used = path_used_percent(media_stor[i].path);
