@@ -221,35 +221,12 @@ static void bc_update_server_status()
 	free(full_error);
 }
 
-/* XXX Create a function here so that we don't have to do so many
- * SELECT's in bc_check_globals() */
 
-/* Update our global settings */
-static int bc_check_globals(void)
+static int load_storage_paths(void)
 {
 	BC_DB_RES dbres;
 
-	/* Get global schedule, default to continuous */
-	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
-				"parameter='G_DEV_SCED'");
-
-	if (!dbres)
-		bc_status_component_error("Database failure for global schedule");
-
-	if (dbres && !bc_db_fetch_row(dbres)) {
-		const char *sched = bc_db_get_val(dbres, "value", NULL);
-		if (sched)
-			strlcpy(global_sched, sched, sizeof(global_sched));
-	} else {
-		/* Default to continuous record */
-		memset(global_sched, 'C', sizeof(global_sched));
-		global_sched[sizeof(global_sched)-1] = 0;
-	}
-	bc_db_free_table(dbres);
-
-	/* Get path to media storage locations, or use default */
-	dbres = bc_db_get_table("SELECT * from Storage ORDER BY "
-				"priority ASC");
+	dbres = bc_db_get_table("SELECT * from Storage ORDER BY priority ASC");
 
 	if (!dbres) {
 		bc_status_component_error("Database failure for storage paths");
@@ -303,6 +280,36 @@ static int bc_check_globals(void)
 
 	bc_db_free_table(dbres);
 	return 0;
+}
+
+/* XXX Create a function here so that we don't have to do so many
+ * SELECT's in bc_check_globals() */
+
+/* Update our global settings */
+static int bc_check_globals(void)
+{
+	BC_DB_RES dbres;
+
+	/* Get global schedule, default to continuous */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_DEV_SCED'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for global schedule");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		const char *sched = bc_db_get_val(dbres, "value", NULL);
+		if (sched)
+			strlcpy(global_sched, sched, sizeof(global_sched));
+	} else {
+		/* Default to continuous record */
+		memset(global_sched, 'C', sizeof(global_sched));
+		global_sched[sizeof(global_sched)-1] = 0;
+	}
+	bc_db_free_table(dbres);
+
+	/* Get path to media storage locations, or use default */
+	return load_storage_paths();
 }
 
 static void bc_stop_threads(void)
