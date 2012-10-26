@@ -17,16 +17,14 @@ O = ../releases
 
 RELEASES :=
 
-.PHONY: all release-all
-all: release-all
+all: release-all FORCE
 
 ##
 ## GEN_REL_TARGET dist arch
 ##
 define GEN_REL_TARGET
 RELEASES += release-$1_$2
-.PHONY: release-$1_$2
-release-$1_$2:
+release-$1_$2: FORCE
 	mkdir -p $O/$1
 	schroot -c $1_$2 -u root fakeroot debian/rules clean
 	schroot -c $1_$2 -u root fakeroot debian/rules binary
@@ -37,5 +35,7 @@ endef
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
 $(call GEN_REL_TARGET,$(dist),$(arch)))))
 
-release-all: $(RELEASES)
+release-all: $(RELEASES) FORCE
 	md5sum $O/*/* >> $O/md5sum.txt
+
+FORCE:
