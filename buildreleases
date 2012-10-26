@@ -12,7 +12,6 @@ O = ../releases
 #### Magic suff from here ####
 VERSION := $(shell git describe | sed 's/^v//;s/-g[0-9a-f]*$$//')
 
-RELEASES :=
 
 all: release-all FORCE
 
@@ -20,7 +19,7 @@ all: release-all FORCE
 ## GEN_REL_TARGET dist arch
 ##
 define GEN_REL_TARGET
-RELEASES += release-$1_$2
+release-all: release-$1_$2
 release-$1_$2: FORCE
 	mkdir -p $O/$1
 	schroot -c $1_$2 -u root fakeroot debian/rules clean
@@ -32,7 +31,7 @@ endef
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
 $(call GEN_REL_TARGET,$(dist),$(arch)))))
 
-release-all: $(RELEASES) FORCE
+release-all: FORCE
 	md5sum $O/*/* >> $O/md5sum.txt
 
 FORCE:
