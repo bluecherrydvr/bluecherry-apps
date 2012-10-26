@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 PACKAGE = bluecherry
+MAINTAINER = John Brooks <john.brooks@bluecherry.net>
 
 DIST =	lucid \
 	precise \
@@ -9,12 +10,31 @@ ARCH = i386 amd64
 
 O = ../releases
 
-#### Magic suff from here ####
+#
+# Magic suff from here
+#
 VERSION := $(shell git describe | sed 's/^v//;s/-g[0-9a-f]*$$//')
 
 release: FORCE
 	md5sum $O/*/* >> $O/md5sum.txt
 
+#
+# Nightly builds
+#
+nightly: release FORCE
+
+ifeq ($(MAKECMDGOALS),nightly)
+release-deps: debian/changelog
+endif
+
+# log-paths is used to filter-out uninteresting changes
+log-paths = lib server www
+
+debian/changelog: FORCE
+	echo -e 'bluecherry 1:$(VERSION)-nightly1 $(DIST); urgency=low\n' > $@
+	git log --pretty=format:'  * %s' origin/master..HEAD -- $(log-paths) >> $@
+	echo -e '\n\n -- $(MAINTAINER)\n' >> $@
+	git show 'HEAD:$@' >> $@
 
 #
 # Generate targets for releases
