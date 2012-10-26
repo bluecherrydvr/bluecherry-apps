@@ -1,10 +1,6 @@
 #!/usr/bin/make -f
 PACKAGE = bluecherry
 
-ifndef VERSION
-$(error Please specify VERSION)
-endif
-
 DIST =	lucid \
 	precise \
 	squeeze
@@ -14,6 +10,7 @@ ARCH = i386 amd64
 O = ../releases
 
 #### Magic suff from here ####
+VERSION := $(shell git describe | sed 's/^v//;s/-g[0-9a-f]*$$//')
 
 RELEASES :=
 
