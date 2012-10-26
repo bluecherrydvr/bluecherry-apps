@@ -356,29 +356,43 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	}
 }
 
+#define MKDIR_RECURSIVE_DEPTH 10
+
+/* XXX: this function doesn't belong here */
 int bc_mkdir_recursive(char *path)
 {
-	char *t;
+	unsigned int depth = 0;
+	char *bp[MKDIR_RECURSIVE_DEPTH];
 
-	if (!mkdir(path, 0750) || errno == EEXIST)
-		return 0;
-	else if (errno != ENOENT)
-		return -1;
+	while (depth <= MKDIR_RECURSIVE_DEPTH) {
+		if (!mkdir(path, 0750) || errno == EEXIST) {
+			if (!depth)
+				return 0;
 
-	/* Try to make the parent directory */
-	t = strrchr(path, '/');
-	if (t == NULL || t == path) {
-		errno = EINVAL;
-		return -1;
+			/* Continue with next child */
+			*bp[--depth] = '/';
+			continue;
+		}
+
+		if (errno != ENOENT)
+			goto error;
+
+		/* Missing parent, try to make it */
+		bp[depth] = strrchr(path, '/');
+		if (!bp[depth] || bp[depth] == path) {
+			errno = EINVAL;
+			goto error;
+		}
+
+		*bp[depth++] = 0;
 	}
-	*t = '\0';
-	if (bc_mkdir_recursive(path)) {
-		*t = '/';
-		return -1;
-	}
-	*t = '/';
 
-	return mkdir(path, 0750);
+ error:
+	/* Revert path string to it's original state */
+	while (depth--)
+		*bp[depth] = '/';
+
+	return -1;
 }
 
 static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
