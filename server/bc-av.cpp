@@ -356,7 +356,7 @@ void bc_close_avcodec(struct bc_record *bc_rec)
 	}
 }
 
-#define MKDIR_RECURSIVE_DEPTH 10
+#define MKDIR_RECURSIVE_DEPTH 25
 
 /* XXX: this function doesn't belong here */
 int bc_mkdir_recursive(char *path)
@@ -386,6 +386,8 @@ int bc_mkdir_recursive(char *path)
 
 		*bp[depth++] = 0;
 	}
+
+	bc_log("W(mkdir): Path too deep: %s", path);
 
  error:
 	/* Revert path string to it's original state */
