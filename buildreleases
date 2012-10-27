@@ -1,9 +1,6 @@
 #!/usr/bin/make -f
 PACKAGE = bluecherry
-
-ifndef VERSION
-$(error Please specify VERSION)
-endif
+MAINTAINER = John Brooks <john.brooks@bluecherry.net>
 
 DIST =	lucid \
 	precise \
@@ -13,20 +10,40 @@ ARCH = i386 amd64
 
 O = ../releases
 
-#### Magic suff from here ####
+#
+# Magic suff from here
+#
+VERSION := $(shell git describe | sed 's/^v//;s/-g[0-9a-f]*$$//')
 
-RELEASES :=
+release: FORCE
+	md5sum $O/*/* >> $O/md5sum.txt
 
-.PHONY: all release-all
-all: release-all
+#
+# Nightly builds
+#
+nightly: release FORCE
 
-##
-## GEN_REL_TARGET dist arch
-##
-define GEN_REL_TARGET
-RELEASES += release-$1_$2
-.PHONY: release-$1_$2
-release-$1_$2:
+ifeq ($(MAKECMDGOALS),nightly)
+release-deps: debian/changelog
+version-tag := $(shell git describe | cut -d- -f1)
+endif
+
+# log-paths is used to filter-out uninteresting changes
+log-paths = lib server www misc/sql
+log-date = $(shell date -R)
+
+debian/changelog: FORCE
+	echo -e 'bluecherry 1:$(VERSION)-nightly1 $(DIST); urgency=low\n' > $@
+	git log --pretty=format:'  * %s' ^$(version-tag) HEAD -- $(log-paths) >> $@
+	echo -e '\n\n -- $(MAINTAINER)  $(log-date)\n' >> $@
+	git show 'HEAD:$@' >> $@
+
+#
+# Generate targets for releases
+#
+define GEN_REL_TARGET # dist,arch
+release: release-$1_$2
+release-$1_$2: release-deps FORCE
 	mkdir -p $O/$1
 	schroot -c $1_$2 -u root fakeroot debian/rules clean
 	schroot -c $1_$2 -u root fakeroot debian/rules binary
@@ -34,8 +51,9 @@ release-$1_$2:
 
 endef
 
+release-deps:
+
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
 $(call GEN_REL_TARGET,$(dist),$(arch)))))
 
-release-all: $(RELEASES)
-	md5sum $O/*/* >> $O/md5sum.txt
+FORCE:
