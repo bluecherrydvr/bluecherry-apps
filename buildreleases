@@ -29,7 +29,7 @@ version-tag := $(shell git describe | cut -d- -f1)
 endif
 
 # log-paths is used to filter-out uninteresting changes
-log-paths = lib server www
+log-paths = lib server www misc/sql
 
 debian/changelog: FORCE
 	echo -e 'bluecherry 1:$(VERSION)-nightly1 $(DIST); urgency=low\n' > $@
