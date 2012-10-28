@@ -1,7 +1,7 @@
 topdir = ..
 include $(topdir)/mk.conf
 
-CFLAGS		+= -pthread
+CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
 		   -L$(LIBAVPATH)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
 
@@ -20,5 +20,7 @@ install: all rsyslog.conf FORCE
 
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
+
+-include $(SERVER_OBJS:%.o=%.d)
 
 FORCE:
