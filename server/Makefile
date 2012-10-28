@@ -8,17 +8,17 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o streaming.o rtsp.o
 
-all: $(TARGETS)
+all: $(TARGETS) FORCE
 
 bc-server: $(LIB) $(SERVER_OBJS)
 	g++ $(LDFLAGS) $(SERVER_OBJS) -o $@
 
-install: all rsyslog.conf
+install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_DATA) -D rsyslog.conf \
 		$(DESTDIR)$(etc_dir)/rsyslog.d/99-bluecherry.conf
 
-clean:
+clean: FORCE
 	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
 
 FORCE:
