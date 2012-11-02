@@ -840,6 +840,9 @@ int main(int argc, char **argv)
 	/* XXX This is not suitable for much of anything, really. */
 	srand((unsigned)(getpid() * time(NULL)));
 
+	/* Avoid cluttering the logs with informative stuff */
+	av_log_set_level(AV_LOG_WARNING);
+
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();
