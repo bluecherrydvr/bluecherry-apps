@@ -124,6 +124,7 @@ void bc_record::run()
 {
 	stream_packet packet;
 	int ret;
+	unsigned iteration = 0;
 
 	bc_dev_info(this, "Camera configured");
 	bc_av_log_set_handle_thread(this);
@@ -138,6 +139,8 @@ void bc_record::run()
 		}
 
 		update_osd(this);
+		if (!(iteration++ % 50))
+			check_schedule(this);
 
 		if (!bc->input->is_started()) {
 			if (bc->input->start() < 0) {
@@ -418,6 +421,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	bool control_changed = (current->hue != update->hue || current->contrast != update->contrast ||
 	                        current->saturation != update->saturation ||
 	                        current->brightness != update->brightness);
+	bool mrecord_changed = (current->prerecord != update->prerecord || current->postrecord != update->postrecord);
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
@@ -445,8 +449,10 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		}
 	}
 
+	if (mrecord_changed)
+		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
+
 	check_schedule(bc_rec);
-	// XXX prerecord and postrecord
 	return 0;
 }
 
