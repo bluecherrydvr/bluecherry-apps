@@ -269,7 +269,6 @@ struct bc_handle {
 	class stream_source     *source;
 
 	int			started;
-	int			got_vop;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
