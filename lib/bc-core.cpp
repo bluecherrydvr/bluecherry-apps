@@ -80,7 +80,6 @@ int bc_handle_start(struct bc_handle *bc, const char **err_msg)
 
 	if (!ret) {
 		bc->started = 1;
-		bc->got_vop = 0;
 	}
 
 	return ret;
