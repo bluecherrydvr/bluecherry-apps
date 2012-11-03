@@ -46,7 +46,7 @@ static uint32_t get_best_pixfmt(int fd)
 
 v4l2_device::v4l2_device(BC_DB_RES dbres)
 	: dev_fd(-1), cam_caps(0), codec_id(CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
-	  buffers(0), dev_id(0), got_vop(0), started(false)
+	  buffers(0), dev_id(0), got_vop(0)
 {
 	memset(&p_buf, 0, sizeof(p_buf));
 
@@ -278,8 +278,8 @@ int v4l2_device::start()
 	local_bufs = 0;
 	buf_idx = -1;
 
-	this->started = true;
-	this->update_properties();
+	_started = true;
+	update_properties();
 	return 0;
 }
 
@@ -317,9 +317,8 @@ void v4l2_device::stop()
 	local_bufs = buffers;
 	buf_idx = -1;
 
-	this->started = false;
 	current_properties.reset();
-	started = false;
+	_started = false;
 }
 
 void v4l2_device::reset()
@@ -409,9 +408,8 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	if (!fmt_changed && !int_changed)
 		return re;
 
-	bool needs_restart = started;
-	if (started) {
-		// FIXME report this!
+	bool needs_restart = is_started();
+	if (needs_restart)
 		stop();
 	}
 

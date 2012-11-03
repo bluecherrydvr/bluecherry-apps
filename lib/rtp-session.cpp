@@ -44,6 +44,8 @@ rtp_device::~rtp_device()
 
 void rtp_device::stop()
 {
+	_started = false;
+
 	if (!ctx)
 		return;
 
@@ -157,6 +159,8 @@ int rtp_device::start()
 	}
 
 	update_properties();
+	_started = true;
+
 	return 0;
 }
 

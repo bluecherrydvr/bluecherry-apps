@@ -736,8 +736,8 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	if (bc_rec->cfg.debug_level < 0 && level > AV_LOG_FATAL)
 		return;
 	if (bc_rec->cfg.debug_level == 0 &&
-	    ((bc_rec->bc->started && level > AV_LOG_FATAL) ||
-	     (!bc_rec->bc->started && level > AV_LOG_ERROR)))
+	    ((bc_rec->bc->input->is_started() && level > AV_LOG_FATAL) ||
+	     (!bc_rec->bc->input->is_started() && level > AV_LOG_ERROR)))
 		return;
 	if (bc_rec->cfg.debug_level == 1 && level > AV_LOG_INFO)
 		return;
