@@ -71,7 +71,6 @@ public:
 
 	virtual int start() = 0;
 	virtual void stop() = 0;
-	virtual void reset() = 0;
 	virtual bool is_started() { return _started; }
 
 	const char *get_error_message() const { return _error_message.c_str(); }
