@@ -168,8 +168,6 @@ void bc_record::run()
 		}
 
 		if (sched_last) {
-			// XXX is this needed for error events?
-			bc_event_cam_end(&event);
 			bc_dev_info(this, "Switching to new recording schedule '%s'",
 				sched_cur == 'M' ? "motion" : (sched_cur == 'N' ? "stopped" : "continuous"));
 
@@ -221,6 +219,10 @@ void bc_record::run()
 			do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 			goto error;
 		}
+
+		/* End any active error events, because we successfully read a packet */
+		if (event)
+			bc_event_cam_end(&event);
 
 		packet = bc->input->packet();
 		bc->source->send(packet);

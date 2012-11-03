@@ -22,8 +22,6 @@ extern pthread_mutex_t mutex_streaming_setup;
 /* Maximum length of recording */
 #define BC_MAX_RECORD_TIME 900
 
-// XXX Needs refactor with proper construction, due to non-POD types
-// XXX This will leak badly on destruction, due to prerecord_buffer
 class bc_record
 {
 public:
