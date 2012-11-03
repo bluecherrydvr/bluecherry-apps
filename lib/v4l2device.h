@@ -79,7 +79,6 @@ private:
 	int			card_id;
 	int			dev_id;
 	int			got_vop;
-	bool			started;
 	stream_packet           current_packet;
 
 	int is_key_frame();

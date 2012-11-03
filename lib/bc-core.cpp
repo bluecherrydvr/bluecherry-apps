@@ -22,27 +22,6 @@
 #include "v4l2device.h"
 #include "stream_elements.h"
 
-int bc_handle_start(struct bc_handle *bc, const char **err_msg)
-{
-	int ret = -1;
-
-	if (err_msg)
-		*err_msg = "No error (or unknown error)";
-
-	if (bc->started)
-		return 0;
-
-	ret = bc->input->start();
-	if (ret < 0)
-		*err_msg = bc->input->get_error_message();
-
-	if (!ret) {
-		bc->started = 1;
-	}
-
-	return ret;
-}
-
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *username, *password, *val, *port = "554";
@@ -185,33 +164,6 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	return bc;
 }
 
-void bc_handle_stop(struct bc_handle *bc)
-{
-	int save_err = errno;
-
-	if (!bc || !bc->started)
-		return;
-
-	/* free motion detection resources */
-	bc_set_motion(bc, 0);
-
-	bc->input->stop();
-
-	bc->started = 0;
-	errno = save_err;
-}
-
-void bc_handle_reset(struct bc_handle *bc)
-{
-	if (!bc || !bc->started)
-		return;
-
-	bc->input->reset();
-	// XXX refactor started into input, and see if this behavior even makes sense.
-	if (bc->type == BC_DEVICE_V4L2)
-		bc->started = 0;
-}
-
 void bc_handle_free(struct bc_handle *bc)
 {
 	/* Don't want this call to change errno at all */
@@ -220,7 +172,8 @@ void bc_handle_free(struct bc_handle *bc)
 	if (!bc)
 		return;
 
-	bc_handle_stop(bc);
+	if (bc->input)
+		bc->input->stop();
 
 	delete bc->input;
 	delete bc->source;

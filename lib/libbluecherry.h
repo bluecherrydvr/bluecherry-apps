@@ -55,6 +55,7 @@ public:
 	virtual int start() = 0;
 	virtual void stop() = 0;
 	virtual void reset() = 0;
+	virtual bool is_started() { return _started; }
 
 	const char *get_error_message() const { return _error_message.c_str(); }
 
@@ -71,7 +72,7 @@ public:
 	std::shared_ptr<const stream_properties> properties() const { return current_properties; }
 
 protected:
-	bool _audio_enabled;
+	bool _audio_enabled, _started;
 	std::string _error_message;
 	unsigned next_packet_seq;
 	std::shared_ptr<stream_properties> current_properties;
@@ -268,8 +269,6 @@ struct bc_handle {
 	input_device            *input;
 	class stream_source     *source;
 
-	int			started;
-
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
 	char			ptz_path[1024];
@@ -382,14 +381,6 @@ typedef struct bc_media_entry * bc_media_entry_t;
 /* Called to open and close a handle for a device. */
 struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
-
-/* Called to start and stop the stream */
-int bc_handle_start(struct bc_handle *bc, const char **err_msg);
-void bc_handle_stop(struct bc_handle *bc);
-/* Reset the handle to start a new recording.
- * For solo devices, this is equivalent to stop, but
- * for RTP, it has no effect. */
-void bc_handle_reset(struct bc_handle *bc);
 
 int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres);
 

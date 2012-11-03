@@ -35,7 +35,7 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	struct bc_output_packet *p, *n;
 
 	bc_streaming_destroy(bc_rec);
-	bc_handle_stop(bc_rec->bc);
+	bc_rec->bc->input->stop();
 }
 
 static void event_trigger_notifications(struct bc_record *bc_rec)
@@ -139,10 +139,10 @@ void bc_record::run()
 
 		update_osd(this);
 
-		if (!bc->started) {
-			if (bc_handle_start(bc, &err_msg)) {
+		if (!bc->input->is_started()) {
+			if (bc->input->start() < 0) {
 				if (!start_failed)
-					bc_dev_err(this, "Error starting stream: %s", err_msg);
+					bc_dev_err(this, "Error starting stream: %s", bc->input->get_error_message());
 				start_failed++;
 				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				goto error;

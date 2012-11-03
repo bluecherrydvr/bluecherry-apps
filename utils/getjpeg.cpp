@@ -99,8 +99,8 @@ int main(int argc, char **argv)
 	if (v4l2->set_mjpeg() < 0)
 		print_error("Error setting mjpeg: %m");
 
-	if (bc_handle_start(bc, &err_msg))
-		print_error("Error starting stream: %s", err_msg);
+	if (bc->input->start() < 0)
+		print_error("Error starting stream: %s", bc->input->get_error_message());
 
 	print_image(bc);
 
