@@ -70,11 +70,18 @@ public:
 	/* Notify thread to restart with new format */
 	int         reset_vid;
 
-	/* Motion detection */
-	class motion_processor *motion;
+	/* Motion detection & recording */
+	class motion_processor *m_processor;
+	class motion_handler *m_handler;
+	class recorder *rec;
+
+	/* Internal */
+	void run();
 
 private:
 	bc_record(int id);
+
+	void destroy_elements();
 };
 
 typedef enum {

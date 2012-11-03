@@ -120,110 +120,92 @@ static void check_schedule(struct bc_record *bc_rec)
 	}
 }
 
-static int process_schedule(struct bc_record *bc_rec)
-{
-	struct bc_handle *bc = bc_rec->bc;
-
-	check_schedule(bc_rec);
-
-	if (bc_event_media_length(bc_rec->event) > BC_MAX_RECORD_TIME &&
-	    !bc_rec->sched_last) {
-		bc_handle_reset(bc);
-		bc_dev_info(bc_rec, "Reset media file");
-	} else if (bc_rec->sched_last) {
-		bc_event_cam_end(&bc_rec->event);
-		bc_handle_reset(bc);
-		bc_set_motion(bc, bc_rec->sched_cur == 'M' ? 1 : 0);
-		bc_rec->sched_last = 0;
-		bc_dev_info(bc_rec, "Switching to new recording schedule '%s'",
-		       bc_rec->sched_cur == 'M' ? "motion" : (bc_rec->sched_cur
-		       == 'N' ? "stopped" : "continuous"));
-	}
-
-	return (bc_rec->sched_cur != 'N');
-}
-
 static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = (struct bc_record*) data;
-	struct bc_handle *bc = bc_rec->bc;
+	bc_rec->run();
+	return bc_rec->thread_should_die;
+}
+
+void bc_record::run()
+{
 	stream_packet packet;
 	int ret;
 
-	bc_dev_info(bc_rec, "Camera configured");
-	bc_av_log_set_handle_thread(bc_rec);
+	bc_dev_info(this, "Camera configured");
+	bc_av_log_set_handle_thread(this);
 
-	recorder *rec = 0;
-
-	while (!bc_rec->thread_should_die) {
+	while (!thread_should_die) {
 		const char *err_msg;
 
 		/* Set by bc_record_update_cfg */
-		if (bc_rec->cfg_dirty) {
-			if (apply_device_cfg(bc_rec))
+		if (cfg_dirty) {
+			if (apply_device_cfg(this))
 				break;
 		}
 
-		update_osd(bc_rec);
-
-		int schedule_recording = process_schedule(bc_rec);
+		update_osd(this);
 
 		if (!bc->started) {
 			if (bc_handle_start(bc, &err_msg)) {
-				if (!bc_rec->start_failed)
-					bc_dev_err(bc_rec, "Error starting stream: %s", err_msg);
-				bc_rec->start_failed++;
-				do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+				if (!start_failed)
+					bc_dev_err(this, "Error starting stream: %s", err_msg);
+				start_failed++;
+				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				goto error;
-			} else if (bc_rec->start_failed) {
-				bc_rec->start_failed = 0;
-				bc_dev_info(bc_rec, "Device started after failure(s)");
+			} else if (start_failed) {
+				start_failed = 0;
+				bc_dev_info(this, "Device started after failure(s)");
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
 				const char *info = reinterpret_cast<rtp_device*>(bc->input)->stream_info();
-				bc_dev_info(bc_rec, "RTP stream started: %s", info);
+				bc_dev_info(this, "RTP stream started: %s", info);
 			}
 
-			if (bc_streaming_setup(bc_rec))
-				bc_dev_err(bc_rec, "Error setting up live stream");
+			if (bc_streaming_setup(this))
+				bc_dev_err(this, "Error setting up live stream");
 		}
 
-		if (bc_rec->sched_cur == 'M' && !bc_rec->motion) {
-			bc_rec->motion = new motion_processor();
-			bc->source->connect(bc_rec->motion, stream_source::StartFromLastKeyframe);
-			std::thread th(&motion_processor::run, bc_rec->motion);
-			th.detach();
+		if (sched_last) {
+			// XXX is this needed for error events?
+			bc_event_cam_end(&event);
+			bc_dev_info(this, "Switching to new recording schedule '%s'",
+				sched_cur == 'M' ? "motion" : (sched_cur == 'N' ? "stopped" : "continuous"));
 
-			// XXX memory leak! And perhaps a little crash!
-			motion_handler *h = new motion_handler;
-			h->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
-			bc->source->connect(h->input_consumer(), stream_source::StartFromLastKeyframe);
+			destroy_elements();
 
-			rec = new recorder(bc_rec);
-			h->connect(rec);
+			if (sched_cur == 'C') {
+				rec = new recorder(this);
+				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
+				std::thread th(&recorder::run, rec);
+				th.detach();
+			} else if (sched_cur == 'M') {
+				m_handler = new motion_handler;
+				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
+				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
-			std::thread th2(&motion_handler::run, h);
-			th2.detach();
-			std::thread th3(&recorder::run, rec);
-			th3.detach();
-		} else if (bc_rec->sched_cur != 'M' && bc_rec->motion) {
-			bc->source->disconnect(bc_rec->motion);
-			bc_rec->motion->destroy();
-			bc_rec->motion = 0;
+				rec = new recorder(this);
+				m_handler->connect(rec);
+				std::thread rec_th(&recorder::run, rec);
+				rec_th.detach();
+
+				// XXX add a real flag for this
+				if (bc->type != BC_DEVICE_V4L2) {
+					m_processor = new motion_processor;
+					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
+					m_processor->output()->connect(m_handler->create_flag_consumer());
+
+					std::thread th(&motion_processor::run, m_processor);
+					th.detach();
+				}
+
+				std::thread th(&motion_handler::run, m_handler);
+				th.detach();
+			}
+
+			sched_last = 0;
 		}
-
-		if (bc_rec->sched_cur == 'C' && !rec) {
-			rec = new recorder(bc_rec);
-			bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-			std::thread th(&recorder::run, rec);
-			th.detach();
-		}
-		/*else if (bc_rec->sched_cur != 'C' && rec) {
-			bc->source->disconnect(rec);
-			rec->destroy();
-			rec = 0;
-		}*/
 
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
@@ -231,12 +213,12 @@ static void *bc_device_thread(void *data)
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
 				const char *err = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
-				bc_dev_err(bc_rec, "RTSP read error: %s", *err ? err : "Unknown error");
+				bc_dev_err(this, "RTSP read error: %s", *err ? err : "Unknown error");
 			}
 
-			stop_handle_properly(bc_rec);
+			stop_handle_properly(this);
 			/* XXX this should be something other than NOT_FOUND */
-			do_error_event(bc_rec, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+			do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 			goto error;
 		}
 
@@ -244,21 +226,20 @@ static void *bc_device_thread(void *data)
 		bc->source->send(packet);
 
 		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(bc_rec))
-			bc_streaming_packet_write(bc_rec, packet);
+		if (bc_streaming_is_active(this))
+			bc_streaming_packet_write(this, packet);
 
 		continue;
 error:
 		sleep(10);
 	}
 
-	stop_handle_properly(bc_rec);
-	bc_event_cam_end(&bc_rec->event);
+	destroy_elements();
+	stop_handle_properly(this);
+	bc_event_cam_end(&event);
 
 	if (bc->type == BC_DEVICE_V4L2)
 		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
-
-	return bc_rec->thread_should_die;
 }
 
 bc_record::bc_record(int i)
@@ -284,7 +265,9 @@ bc_record::bc_record(int i)
 	thread_should_die = 0;
 	file_started = 0;
 
-	motion = 0;
+	m_processor = 0;
+	m_handler = 0;
+	rec = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -360,12 +343,32 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 // XXX Many other members of bc_record are ignored here.
 bc_record::~bc_record()
 {
+	destroy_elements();
+
 	if (bc) {
 		bc_handle_free(bc);
 		bc = 0;
 	}
 
 	pthread_mutex_destroy(&cfg_mutex);
+}
+
+void bc_record::destroy_elements()
+{
+	if (rec) {
+		rec->destroy();
+		rec = 0;
+	}
+
+	if (m_processor) {
+		m_processor->destroy();
+		m_processor = 0;
+	}
+
+	if (m_handler) {
+		m_handler->destroy();
+		m_handler = 0;
+	}
 }
 
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
