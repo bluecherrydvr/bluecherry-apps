@@ -40,7 +40,6 @@ public:
 
 	virtual int start();
 	virtual void stop();
-	virtual void reset();
 
 	virtual int read_packet();
 	virtual const stream_packet &packet() const { return current_packet; }

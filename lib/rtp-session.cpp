@@ -164,10 +164,6 @@ int rtp_device::start()
 	return 0;
 }
 
-void rtp_device::reset()
-{
-}
-
 /* Workaround because we cannot take the address of this function
  * without breaking the link with the PHP extension (which does
  * not know of libav). Ugly. */

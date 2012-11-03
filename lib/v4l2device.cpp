@@ -270,12 +270,6 @@ void v4l2_device::stop()
 	_started = false;
 }
 
-void v4l2_device::reset()
-{
-	// XXX
-	stop();
-}
-
 void v4l2_device::buf_return()
 {
 	int local = (buffers / 2) - 1;
