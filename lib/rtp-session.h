@@ -37,11 +37,6 @@ public:
 	virtual bool has_audio() const { return audio_stream_index >= 0; }
 
 	const char *get_error_message() const { return error_message; }
-
-	// XXX: Refactor to remove
-	const AVPacket *current_frame() const { return &frame; }
-	AVStream *video_stream() const { return ctx->streams[video_stream_index]; }
-	AVStream *audio_stream() const { return ctx->streams[audio_stream_index]; }
 	const char *stream_info();
 
 private:
