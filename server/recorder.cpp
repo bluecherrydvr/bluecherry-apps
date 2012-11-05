@@ -3,14 +3,19 @@
 #include "media_writer.h"
 
 recorder::recorder(const bc_record *bc_rec)
-	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false), writer(0),
-	  current_event(0), event_snapshot_done(false)
+	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false),
+	  recording_type(BC_EVENT_CAM_T_CONTINUOUS), writer(0), current_event(0), event_snapshot_done(false)
 {
 }
 
 recorder::~recorder()
 {
 	delete writer;
+}
+
+void recorder::set_recording_type(bc_event_cam_type_t type)
+{
+	recording_type = type;
 }
 
 void recorder::destroy()
@@ -128,19 +133,8 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		return -1;
 	}
 
-#if 0
-	if (bc_rec->sched_cur == 'M') {
-		bc_dev_info(bc_rec, "Motion event started");
-		event = bc_event_cam_start(bc_rec->id, start_ts, BC_EVENT_L_WARN,
-		                           BC_EVENT_CAM_T_MOTION,
-		                           bc_rec->outfile);
-	} else if (bc_rec->sched_cur == 'C') {
-#endif
-		nevent = bc_event_cam_start(device_id, start_ts, BC_EVENT_L_INFO,
-		                           BC_EVENT_CAM_T_CONTINUOUS, outfile.c_str());
-#if 0
-	}
-#endif
+	bc_event_level_t level = (recording_type == BC_EVENT_CAM_T_MOTION) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
+	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type, outfile.c_str());
 
 	if (!nevent) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
