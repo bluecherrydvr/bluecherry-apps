@@ -13,13 +13,15 @@ public:
 	recorder(const bc_record *input);
 	virtual ~recorder();
 
-	void destroy();
+	void set_recording_type(bc_event_cam_type_t type);
 
+	void destroy();
 	void run();
 
 private:
 	int device_id;
 	bool destroy_flag;
+	bc_event_cam_type_t recording_type;
 
 	media_writer *writer;
 	bc_event_cam_t current_event;

@@ -178,6 +178,7 @@ void bc_record::run()
 
 			if (sched_cur == 'C') {
 				rec = new recorder(this);
+				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
 				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
 				std::thread th(&recorder::run, rec);
 				th.detach();
@@ -187,6 +188,7 @@ void bc_record::run()
 				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
 				rec = new recorder(this);
+				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
 				m_handler->connect(rec);
 				std::thread rec_th(&recorder::run, rec);
 				rec_th.detach();
