@@ -5,6 +5,10 @@
 #include <fcntl.h>
 #include "v4l2device.h"
 
+extern "C" {
+#include <libavutil/mathematics.h>
+}
+
 v4l2_device::v4l2_device(BC_DB_RES dbres)
 	: dev_fd(-1), cam_caps(0), codec_id(CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
 	  buffers(0), dev_id(0), got_vop(0)
@@ -328,13 +332,17 @@ int v4l2_device::read_packet()
 	current_packet.size     = p_buf[buf_idx].vb.bytesused;
 	current_packet.ts_clock = time(NULL);
 	current_packet.type     = AVMEDIA_TYPE_VIDEO;
-	current_packet.pts      = AV_NOPTS_VALUE;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	if (is_key_frame())
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	if (vb.flags & V4L2_BUF_FLAG_MOTION_DETECTED)
 		current_packet.flags |= stream_packet::MotionFlag;
+
+	/* PTS calculated assuming that no packet is lost in driver and all frames have perfect timing.
+	 * Real timestamps from driver would be ideal. Hopefully OK during timeperframe changes. */
+	AVRational tb = { vparm.parm.capture.timeperframe.numerator, vparm.parm.capture.timeperframe.denominator };
+	current_packet.pts = av_rescale_q(current_packet.seq, tb, AV_TIME_BASE_Q);
 
 	return 0;
 }
