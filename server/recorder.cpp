@@ -85,6 +85,24 @@ end:
 	delete this;
 }
 
+static void event_trigger_notifications(bc_event_cam_t event)
+{
+	pid_t pid = fork();
+	if (pid < 0) {
+		bc_log("notification: cannot fork for event notification");
+		return;
+	}
+
+	/* Parent process */
+	if (pid)
+		return;
+
+	char id[24] = { 0 };
+	snprintf(id, sizeof(id), "%d", event->media.table_id);
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
+	exit(1);
+}
+
 int recorder::recording_start(time_t start_ts, const stream_packet &first_packet)
 {
 	bc_event_cam_t nevent = NULL;
@@ -120,6 +138,10 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	std::string snapshot = outfile;
 	snapshot.replace(snapshot.size()-3, 3, "jpg");
 	writer->snapshot(snapshot, first_packet);
+
+	/* Notification script */
+	if (recording_type == BC_EVENT_CAM_T_MOTION)
+		event_trigger_notifications(current_event);
 
 	return 0;
 }

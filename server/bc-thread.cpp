@@ -38,27 +38,6 @@ static void stop_handle_properly(struct bc_record *bc_rec)
 	bc_rec->bc->input->stop();
 }
 
-static void event_trigger_notifications(struct bc_record *bc_rec)
-{
-	if (bc_rec->sched_cur != 'M')
-		return;
-
-	pid_t pid = fork();
-	if (pid < 0) {
-		bc_dev_warn(bc_rec, "Cannot fork for event notification");
-		return;
-	}
-
-	/* Parent process */
-	if (pid)
-		return;
-
-	char id[24] = { 0 };
-	snprintf(id, sizeof(id), "%d", bc_rec->event->media.table_id);
-	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
-	exit(1);
-}
-
 static void try_formats(struct bc_record *bc_rec)
 {
 	if (bc_rec->bc->type != BC_DEVICE_V4L2)
