@@ -53,56 +53,35 @@ void recorder::run()
 			recording_end();
 		}
 
-		bool schedule_recording = true;
-		if (schedule_recording) {
-			/* If on the motion schedule, and there is no motion, skip recording */
-		//	if (!check_motion(bc_rec, packet))
-		//		continue;
+		if (current_event && packet.is_key_frame() && packet.is_video_frame() &&
+				bc_event_media_length(current_event) > BC_MAX_RECORD_TIME) {
+			recording_end();
+		}
 
-			if (current_event && packet.is_key_frame() && packet.is_video_frame() &&
-					bc_event_media_length(current_event) > BC_MAX_RECORD_TIME) {
-				recording_end();
-			}
-
-			/* Setup and write to recordings */
-			if (!writer) {
-#if 0
-				if (bc_rec->sched_cur == 'M' && !bc_rec->prerecord_buffer.empty()) {
-					/* Dump the prerecording buffer */
-					if (recording_start(bc_rec, bc_rec->prerecord_buffer.front().ts_clock))
-						goto error;
-					bc_rec->output_pts_base = bc_rec->prerecord_buffer.front().pts;
-					/* Skip the last packet; it's identical to the current packet,
-					 * which we write in the normal path below. */
-					for (auto it = bc_rec->prerecord_buffer.begin();
-					     it != bc_rec->prerecord_buffer.end()-1; it++) {
-						bc_output_packet_write(bc_rec, *it);
-					}
-				} else
-#endif
-				if (!packet.is_key_frame() || !packet.is_video_frame()) {
-					/* Recordings must always start with a video keyframe; this should
-					 * be ensured in most cases (continuous splits, initialization), but
-					 * if absolutely necessary we'll drop packets. */
+		/* Setup and write to recordings */
+		if (!writer) {
+			if (!packet.is_key_frame() || !packet.is_video_frame()) {
+				/* Recordings must always start with a video keyframe; this should
+				 * be ensured in most cases (continuous splits, initialization), but
+				 * if absolutely necessary we'll drop packets. */
+				goto end;
+			} else {
+				if (recording_start(packet.ts_clock, packet)) {
+					// XXX
+					bc_log("W: recording_start failed! Bad!");
 					goto end;
-				} else {
-					if (recording_start(0, packet)) {
-						// XXX
-						bc_log("W: recording_start failed! Bad!");
-						goto end;
-					}
 				}
 			}
-
-			if (packet.is_video_frame() && packet.is_key_frame() && !event_snapshot_done) {
-				//save_event_snapshot(bc_rec, packet);
-				bc_log("XXX: Would do event snapshot here");
-				event_snapshot_done = true;
-				//event_trigger_notifications(bc_rec);
-			}
-
-			writer->write_packet(packet);
 		}
+
+		if (packet.is_video_frame() && packet.is_key_frame() && !event_snapshot_done) {
+			//save_event_snapshot(bc_rec, packet);
+			bc_log("XXX: Would do event snapshot here");
+			event_snapshot_done = true;
+			//event_trigger_notifications(bc_rec);
+		}
+
+		writer->write_packet(packet);
 
 end:
 		l.lock();
@@ -157,8 +136,6 @@ std::string recorder::media_file_path(time_t start_ts)
 	if (bc_get_media_loc(stor, sizeof(stor)) < 0)
 		return std::string();
 
-	/* XXX Need some way to reconcile time between media event and
-	 * filename. They should match. */
 	localtime_r(&start_ts, &tm);
 
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
