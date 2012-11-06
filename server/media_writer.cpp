@@ -346,34 +346,25 @@ error:
 	return -1;
 }
 
-#if 0
-int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &pkt, AVFrame *frame)
+int media_writer::decode_one_packet(const stream_packet &pkt, AVFrame *frame)
 {
 	AVCodecContext *ic = 0;
-	AVCodecContext *recctx = bc_rec->video_st->codec;
-	AVCodec *codec = avcodec_find_decoder(recctx->codec_id);
+	std::shared_ptr<const stream_properties> properties = pkt.properties();
+	AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
 	AVFrame tmpFrame;
 	int re = -1;
 	int have_picture = 0;
 	if (!codec || !(ic = avcodec_alloc_context3(codec))) {
-		bc_dev_err(bc_rec, "Cannot allocate decoder context for video");
+		bc_log("decode_one_packet: cannot allocate decoder context for video");
 		return -1;
 	}
 
-	ic->width     = recctx->width;
-	ic->height    = recctx->height;
-	ic->pix_fmt   = recctx->pix_fmt;
-	ic->time_base = recctx->time_base;
-	if (recctx->extradata && recctx->extradata_size) {
-		ic->extradata_size = recctx->extradata_size;
-		ic->extradata = (uint8_t*)av_malloc(recctx->extradata_size + FF_INPUT_BUFFER_PADDING_SIZE);
-		memcpy(ic->extradata, recctx->extradata, recctx->extradata_size);
-	}
+	properties->video.apply(ic);
 
 	AVPacket packet;
 	av_init_packet(&packet);
-	packet.flags        = pkt.flags;
-	packet.pts          = pkt.pts;
+	packet.flags        = AV_PKT_FLAG_KEY;
+	packet.pts          = 0;
 	packet.data         = const_cast<uint8_t*>(pkt.data());
 	packet.size         = pkt.size;
 
@@ -384,7 +375,7 @@ int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &pkt, 
 	if (re < 0) {
 		char error[512];
 		av_strerror(re, error, sizeof(error));
-		bc_dev_err(bc_rec, "Cannot decode video frame: %s", error);
+		bc_log("decode_one_packet: cannot decode video frame: %s", error);
 		goto end;
 	}
 
@@ -406,18 +397,11 @@ end:
 	return have_picture;
 }
 
-int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &pkt)
+int media_writer::snapshot(const std::string &snapshot_file, const stream_packet &pkt)
 {
-	std::string filename = bc_rec->event->media.filepath;
-	if (filename.empty()) {
-		bc_dev_err(bc_rec, "No filename for snapshot");
-		return -1;
-	}
-	filename.replace(filename.size()-3, 3, "jpg");
-
 	AVFrame rawFrame, frame;
-	if (decode_one_video_packet(bc_rec, pkt, &rawFrame) < 1) {
-		bc_dev_err(bc_rec, "No video frame for snapshot");
+	if (decode_one_packet(pkt, &rawFrame) < 1) {
+		bc_log("snapshot: no video frame for snapshot");
 		return -1;
 	}
 
@@ -428,7 +412,7 @@ int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &pkt)
 	int size, re = -1;
 
 	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
-		bc_dev_err(bc_rec, "Cannot allocate encoder context for snapshot");
+		bc_log("snapshot: cannot allocate encoder context for snapshot");
 		goto end;
 	}
 
@@ -453,7 +437,7 @@ int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &pkt)
 		                           rawFrame.width, rawFrame.height, PIX_FMT_YUVJ420P,
 		                           SWS_BICUBIC, NULL, NULL, NULL);
 		if (!sws) {
-			bc_dev_err(bc_rec, "Cannot convert pixel format for JPEG snapshot (format is %d)", rawFrame.format);
+			bc_log("snapshot: cannot convert pixel format for JPEG (format is %d)", rawFrame.format);
 			goto end;
 		}
 
@@ -469,18 +453,18 @@ int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &pkt)
 	if (size < 1) {
 		char error[512];
 		av_strerror(size, error, sizeof(error));
-		bc_dev_err(bc_rec, "JPEG encoding failed: %s", error);
+		bc_log("snapshot: JPEG encoding failed: %s", error);
 		goto end;
 	}
 
-	file = fopen(filename.c_str(), "w");
+	file = fopen(snapshot_file.c_str(), "w");
 	if (!file) {
-		bc_dev_err(bc_rec, "Cannot create snapshot file: %s", strerror(errno));
+		bc_log("snapshot: cannot create file: %s", strerror(errno));
 		goto end;
 	}
 
 	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
-		bc_dev_err(bc_rec, "Cannot write snapshot file: %s", strerror(errno));
+		bc_log("snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 
@@ -496,5 +480,4 @@ end:
 	av_free(oc);
 	return re;
 }
-#endif
 

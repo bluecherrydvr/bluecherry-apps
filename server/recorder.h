@@ -25,7 +25,6 @@ private:
 
 	media_writer *writer;
 	bc_event_cam_t current_event;
-	bool event_snapshot_done;
 
 	int recording_start(time_t start, const stream_packet &first_packet);
 	/* Get the path for a media file on the current device with the given start time,
