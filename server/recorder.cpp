@@ -4,7 +4,7 @@
 
 recorder::recorder(const bc_record *bc_rec)
 	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false),
-	  recording_type(BC_EVENT_CAM_T_CONTINUOUS), writer(0), current_event(0), event_snapshot_done(false)
+	  recording_type(BC_EVENT_CAM_T_CONTINUOUS), writer(0), current_event(0)
 {
 }
 
@@ -65,20 +65,13 @@ void recorder::run()
 				 * be ensured in most cases (continuous splits, initialization), but
 				 * if absolutely necessary we'll drop packets. */
 				goto end;
-			} else {
-				if (recording_start(packet.ts_clock, packet)) {
-					// XXX
-					bc_log("W: recording_start failed! Bad!");
-					goto end;
-				}
 			}
-		}
 
-		if (packet.is_video_frame() && packet.is_key_frame() && !event_snapshot_done) {
-			//save_event_snapshot(bc_rec, packet);
-			bc_log("XXX: Would do event snapshot here");
-			event_snapshot_done = true;
-			//event_trigger_notifications(bc_rec);
+			if (recording_start(packet.ts_clock, packet)) {
+				// XXX
+				bc_log("W: recording_start failed! Bad!");
+				goto end;
+			}
 		}
 
 		writer->write_packet(packet);
@@ -122,7 +115,11 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	bc_event_cam_end(&current_event);
 	current_event = nevent;
-	event_snapshot_done = false;
+
+	/* JPEG snapshot */
+	std::string snapshot = outfile;
+	snapshot.replace(snapshot.size()-3, 3, "jpg");
+	writer->snapshot(snapshot, first_packet);
 
 	return 0;
 }

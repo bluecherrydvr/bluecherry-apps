@@ -19,6 +19,9 @@ public:
 
 	bool write_packet(const stream_packet &pkt);
 
+	/* Save a JPG snapshot of a frame at file_path. */
+	static int snapshot(const std::string &file_path, const stream_packet &pkt);
+
 protected:
 	std::string file_path;
 	AVFormatContext *oc;
@@ -27,6 +30,8 @@ protected:
 	 * share a time_base of AV_TIME_BASE, and 0 represents the same instant across all
 	 * streams. This is set automatically by the first written packet. */
 	int64_t output_pts_base;
+
+	static int decode_one_packet(const stream_packet &pkt, AVFrame *frame);
 };
 
 #endif
