@@ -82,14 +82,6 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		if (output_pts_base == (int64_t)AV_NOPTS_VALUE) {
 			output_pts_base = opkt.pts;
 			bc_log("media_writer: setting pts base for stream to %"PRId64"", output_pts_base);
-
-			/* Hypothetically, if there are previous frames with no PTS, followed by frames that
-			 * do have PTS, we'll end up with strange behavior due to the pts base; the best way
-			 * to handle this would be to write pts_base to opkt.pts minus the assumed interval
-			 * from the last frame. But as I can't make this situation now, I can't try that. */
-			if (s->codec->coded_frame && s->codec->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
-				bc_log("media_writer: W: Setting PTS base with existing coded frames. Please "
-				       "report a bug if video has playback problems.");
 		}
 
 		/* Subtract output_pts_base, both in the universal AV_TIME_BASE and synchronized across
