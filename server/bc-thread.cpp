@@ -172,9 +172,11 @@ void bc_record::run()
 				std::thread rec_th(&recorder::run, rec);
 				rec_th.detach();
 
-				// XXX add a real flag for this
-				if (bc->type != BC_DEVICE_V4L2) {
+				if (bc->type == BC_DEVICE_V4L2) {
+					static_cast<v4l2_device*>(bc->input)->set_motion(true);
+				} else {
 					m_processor = new motion_processor;
+					update_motion_thresholds();
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->create_flag_consumer());
 
@@ -297,11 +299,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 	/* Initialize device state */
 	try_formats(bc_rec);
-	if (bc_set_motion_thresh(bc, bc_rec->cfg.motion_map,
-	    sizeof(bc_rec->cfg.motion_map)))
-	{
-		bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
-	}
+	bc_rec->update_motion_thresholds();
 	check_schedule(bc_rec);
 
 	if (bc->type == BC_DEVICE_V4L2) {
@@ -355,6 +353,31 @@ void bc_record::destroy_elements()
 		m_handler->destroy();
 		m_handler = 0;
 	}
+	
+	if (bc->type == BC_DEVICE_V4L2)
+		static_cast<v4l2_device*>(bc->input)->set_motion(false);
+}
+
+bool bc_record::update_motion_thresholds()
+{
+	bool re = false;
+
+	if (m_processor) {
+		if (m_processor->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
+			bc_dev_warn(this, "Cannot set motion thresholds; corrupt configuration?");
+		else
+			re = true;
+	}
+
+	if (bc->type == BC_DEVICE_V4L2) {
+		v4l2_device *v = static_cast<v4l2_device*>(bc->input);
+		if (v->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
+			bc_dev_warn(this, "Cannot set motion thresholds; corrupt configuration?");
+		else
+			re = true;
+	}
+
+	return re;
 }
 
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
@@ -429,13 +452,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		v4l2->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
 	}
 
-	if (motion_map_changed) {
-		if (bc_set_motion_thresh(bc_rec->bc, bc_rec->cfg.motion_map,
-		    sizeof(bc_rec->cfg.motion_map)))
-		{
-			bc_dev_warn(bc_rec, "Cannot set motion thresholds; corrupt configuration?");
-		}
-	}
+	if (motion_map_changed)
+		bc_rec->update_motion_thresholds();
 
 	if (mrecord_changed)
 		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);

@@ -6,7 +6,7 @@ CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o rtp-session.o bc-ptz.o motion.o \
+		  bc-key.o bc-media.o rtp-session.o bc-ptz.o \
 		  inputdevice.o v4l2device.o stream_elements.o
 
 all: $(SOLIBVER) FORCE

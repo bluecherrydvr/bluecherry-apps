@@ -9,9 +9,8 @@ motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
 	  refFrameHeight(0), refFrameWidth(0), last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
 {
-	memset(thresholds, 12, sizeof(thresholds));
-
 	output_source = new stream_source("Motion Detection");
+	set_motion_thresh_global('3');
 }
 
 motion_processor::~motion_processor()
@@ -326,5 +325,40 @@ int motion_processor::detect(AVFrame *rawFrame)
 	}
 
 	return ret;
+}
+
+static uint8_t generic_value_map[] = {
+	255, 48, 26, 12, 7, 3
+};
+
+int motion_processor::set_motion_thresh_global(char value)
+{
+	int val = value - '0';
+	if (val < 0 || val > 5)
+		return -1;
+
+	/* Locking may not be necessary, but done out of an abundance of caution.. */
+	std::lock_guard<std::mutex> l(lock);
+
+	memset(thresholds, generic_value_map[val], sizeof(thresholds));
+
+	return 0;
+}
+
+int motion_processor::set_motion_thresh(const char *map, size_t size)
+{
+	size_t i;
+	if (size < 32*24)
+		return -1;
+	size = 32*24;
+
+	std::lock_guard<std::mutex> l(lock);
+	for (i = 0; i < size; ++i) {
+		if (map[i] < '0' || map[i] > '5')
+			return -1;
+		thresholds[i] = generic_value_map[map[i] - '0'];
+	}
+
+	return 0;
 }
 
