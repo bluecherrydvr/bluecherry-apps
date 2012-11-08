@@ -55,6 +55,8 @@ public:
 	int set_control(unsigned int ctrl, int val);
 
 	int set_motion(bool on);
+	int set_motion_thresh(const char *map, size_t size);
+	int set_motion_thresh_global(char value);
 
 	v4l2_buffer *buf_v4l2();
 

@@ -26,8 +26,10 @@ public:
 	motion_processor();
 	virtual ~motion_processor();
 
-	void destroy();
+	int set_motion_thresh(const char *map, size_t size);
+	int set_motion_thresh_global(char value);
 
+	void destroy();
 	void run();
 
 private:

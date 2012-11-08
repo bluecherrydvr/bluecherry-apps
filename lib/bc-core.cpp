@@ -154,8 +154,6 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc->source = new stream_source("Input Source");
 
-	bc_set_motion_thresh_global(bc, '3');
-
 	if (ret) {
 		bc_handle_free(bc);
 		return NULL;

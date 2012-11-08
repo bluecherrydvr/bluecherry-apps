@@ -69,6 +69,8 @@ public:
 	/* Internal */
 	void run();
 
+	bool update_motion_thresholds();
+
 private:
 	bc_record(int id);
 

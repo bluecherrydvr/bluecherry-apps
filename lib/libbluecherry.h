@@ -393,14 +393,6 @@ void bc_vlog(const char *msg, va_list va);
 time_t bc_gettime_monotonic();
 int hex_encode(char *out, int out_sz, const char *in, int in_sz);
 
-/* Enable or disable the motion detection */
-int bc_set_motion(struct bc_handle *bc, int on);
-int bc_set_motion_thresh(struct bc_handle *bc, const char *map, size_t size);
-int bc_set_motion_thresh_global(struct bc_handle *bc, char value);
-/* Checks if the current buffer has motion on/detected */
-int bc_motion_is_on(struct bc_handle *bc);
-int bc_motion_is_detected(struct bc_handle *bc);
-
 enum bc_access_type
 {
 	ACCESS_NONE,
