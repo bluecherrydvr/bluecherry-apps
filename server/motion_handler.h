@@ -56,6 +56,7 @@ public:
 	 * decisions. */
 	stream_consumer *create_flag_consumer();
 
+	void disconnect();
 	void destroy();
 	void run();
 

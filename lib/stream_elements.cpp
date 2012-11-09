@@ -7,10 +7,11 @@ stream_source::stream_source(const char *n)
 
 stream_source::~stream_source()
 {
-	// XXX almost certainly a deadlock
 	std::lock_guard<std::mutex> l(lock);
-	for (auto it = children.begin(); it != children.end(); it++)
+	for (auto it = children.begin(); it != children.end(); it++) {
+		bc_log("W: Bug: stream_source %s has clients at destruction, possibly unsafe.", name);
 		(*it)->disconnected(this);
+	}
 }
 
 void stream_source::send(const stream_packet &packet)
@@ -24,7 +25,6 @@ void stream_source::send(const stream_packet &packet)
 
 void stream_source::connect(stream_consumer *child, SetupMode mode)
 {
-	// Notify child, before locking to avoid deadlock potential
 	child->connected(this);
 
 	std::lock_guard<std::mutex> l(lock);
@@ -55,9 +55,7 @@ stream_consumer::stream_consumer(const char *n)
 
 stream_consumer::~stream_consumer()
 {
-	std::lock_guard<std::mutex> l(lock);
-	if (connected_source)
-		connected_source->disconnect(this);
+	disconnect();
 }
 
 void stream_consumer::receive(const stream_packet &packet)
@@ -69,9 +67,16 @@ void stream_consumer::receive(const stream_packet &packet)
 	buffer_wait.notify_one();
 }
 
+void stream_consumer::disconnect()
+{
+	// It's assumed that the source will not disappear during this function.
+	// That is only safe if the caller is aware and controls source.
+	if (connected_source)
+		connected_source->disconnect(this);
+}
+
 void stream_consumer::connected(stream_source *source)
 {
-	std::lock_guard<std::mutex> l(lock);
 	if (connected_source)
 		bc_log("W: stream_consumer: More than one source connected to element; this is probably a bug and may crash");
 	connected_source = source;
@@ -79,7 +84,6 @@ void stream_consumer::connected(stream_source *source)
 
 void stream_consumer::disconnected(stream_source *source)
 {
-	std::lock_guard<std::mutex> l(lock);
 	if (source != connected_source) {
 		bc_log("W: stream_consumer: Disconnected from source we weren't connected to?! This is a bug.");
 		return;

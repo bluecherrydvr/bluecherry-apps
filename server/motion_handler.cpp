@@ -34,6 +34,13 @@ void motion_handler::destroy()
 	raw_stream->buffer_wait.notify_all();
 }
 
+void motion_handler::disconnect()
+{
+	raw_stream->disconnect();
+	if (flag_stream)
+		flag_stream->disconnect();
+}
+
 stream_consumer *motion_handler::input_consumer()
 {
 	return raw_stream;
