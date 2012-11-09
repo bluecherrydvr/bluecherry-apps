@@ -340,20 +340,23 @@ bc_record::~bc_record()
 void bc_record::destroy_elements()
 {
 	if (rec) {
+		rec->disconnect();
 		rec->destroy();
 		rec = 0;
 	}
 
 	if (m_processor) {
+		m_processor->disconnect();
 		m_processor->destroy();
 		m_processor = 0;
 	}
 
 	if (m_handler) {
+		m_handler->disconnect();
 		m_handler->destroy();
 		m_handler = 0;
 	}
-	
+
 	if (bc->type == BC_DEVICE_V4L2)
 		static_cast<v4l2_device*>(bc->input)->set_motion(false);
 }

@@ -52,6 +52,8 @@ public:
 
 	stream_source *output() { return output_source; }
 
+	void disconnect();
+
 protected:
 	std::mutex lock;
 	std::condition_variable buffer_wait;
