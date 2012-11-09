@@ -82,6 +82,8 @@ end:
 
 	bc_log("recorder destroying");
 	l.unlock();
+	recording_end();
+	bc_event_cam_end(&current_event);
 	delete this;
 }
 
