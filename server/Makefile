@@ -8,6 +8,7 @@ LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lbsd -ludev \
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o bc-detect.o streaming.o rtsp.o motion_processor.o \
 		  recorder.o motion_handler.o
+DETECT_OBJS     = $(SERVER_OBJS:%.o=%.d)
 
 all: $(TARGETS) FORCE
 
@@ -22,6 +23,6 @@ install: all rsyslog.conf FORCE
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
 
--include $(SERVER_OBJS:%.o=%.d)
+-include $(DETECT_OBJS)
 
 FORCE:
