@@ -3,7 +3,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
-#include "v4l2device.h"
+#include "v4l2_device.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>

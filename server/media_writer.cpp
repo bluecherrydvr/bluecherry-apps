@@ -16,7 +16,7 @@ extern "C" {
 }
 
 #include "bc-server.h"
-#include "rtp-session.h"
+#include "rtp_device.h"
 
 int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 {

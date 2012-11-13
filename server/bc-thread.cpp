@@ -11,8 +11,8 @@
 #include <thread>
 
 #include "bc-server.h"
-#include "rtp-session.h"
-#include "v4l2device.h"
+#include "rtp_device.h"
+#include "v4l2_device.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
 #include "motion_handler.h"

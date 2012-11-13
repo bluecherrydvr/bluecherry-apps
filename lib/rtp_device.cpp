@@ -12,7 +12,7 @@
 #include <bsd/string.h>
 
 #include "libbluecherry.h"
-#include "rtp-session.h"
+#include "rtp_device.h"
 
 extern "C" {
 #include <libavutil/opt.h>

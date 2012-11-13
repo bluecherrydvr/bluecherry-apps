@@ -11,7 +11,7 @@
 #include <sys/ioctl.h>
 
 #include "libbluecherry.h"
-#include "v4l2device.h"
+#include "v4l2_device.h"
 extern "C" {
 #include "php.h"
 #include "ext/standard/php_standard.h"
