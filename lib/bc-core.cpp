@@ -18,8 +18,8 @@
 #include <bsd/string.h>
 
 #include <libbluecherry.h>
-#include "rtp-session.h"
-#include "v4l2device.h"
+#include "rtp_device.h"
+#include "v4l2_device.h"
 #include "stream_elements.h"
 
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)

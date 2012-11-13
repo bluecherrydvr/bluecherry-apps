@@ -17,7 +17,7 @@
 #include <errno.h>
 
 #include <libbluecherry.h>
-#include <v4l2device.h>
+#include <v4l2_device.h>
 
 static void print_error(char *msg, ...)
 {
