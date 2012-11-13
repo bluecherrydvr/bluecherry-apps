@@ -5,9 +5,9 @@ LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server
-SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o \
-		  streaming.o rtsp.o signals.o motion_processor.o recorder.o \
-		  motion_handler.o
+SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
+		  bc-detect.o streaming.o rtsp.o signals.o motion_processor.o \
+		  recorder.o motion_handler.o
 
 all: $(TARGETS) FORCE
 
@@ -22,6 +22,6 @@ install: all rsyslog.conf FORCE
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
 
--include $(SERVER_OBJS:%.o=%.d)
+-include $(DETECT_OBJS)
 
 FORCE:
