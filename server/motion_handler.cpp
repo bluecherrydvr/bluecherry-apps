@@ -17,9 +17,6 @@ motion_handler::motion_handler()
 	: stream_source("Motion Handling"), flag_stream(0), destroy_flag(false), prerecord_time(0), postrecord_time(0)
 {
 	raw_stream = new raw_input_consumer;
-	// Buffer is used as the prerecord buffer; we don't pop off of it like usual, so
-	// keyframes should be enforced.
-	raw_stream->buffer.set_enforce_keyframe(true);
 }
 
 motion_handler::~motion_handler()
