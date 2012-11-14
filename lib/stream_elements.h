@@ -6,11 +6,6 @@
 #include <mutex>
 #include <condition_variable>
 
-/* XXX XXX
- * Should not use stream_keyframe_buffer as is; it's very likely to drop the last packet(s)
- * right before a keyframe if there is any small amount of delay. That isn't suitable for
- * some cases, like recording. */
-
 class stream_consumer;
 
 class stream_source

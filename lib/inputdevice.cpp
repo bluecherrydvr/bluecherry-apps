@@ -142,6 +142,11 @@ void stream_keyframe_buffer::apply_bound()
 		if (it->ts_monotonic > last_ts)
 			continue;
 
+		/* When not in enforced mode, keep a frame prior to the keyframe
+		 * if present, to avoid unnecessary dropping of frames. */
+		if (!mEnforced && it == begin()+1)
+			break;
+
 		erase(begin(), it);
 		break;
 	}
