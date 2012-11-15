@@ -9,7 +9,7 @@ stream_source::~stream_source()
 {
 	std::lock_guard<std::mutex> l(lock);
 	for (auto it = children.begin(); it != children.end(); it++) {
-		bc_log("W: Bug: stream_source %s has clients at destruction, possibly unsafe.", name);
+		bc_log(Bug, "stream_source %s has clients at destruction, may cause crashes", name);
 		(*it)->disconnected(this);
 	}
 }
@@ -78,14 +78,14 @@ void stream_consumer::disconnect()
 void stream_consumer::connected(stream_source *source)
 {
 	if (connected_source)
-		bc_log("W: stream_consumer: More than one source connected to element; this is probably a bug and may crash");
+		bc_log(Bug, "More than one source connected to element; this may crash");
 	connected_source = source;
 }
 
 void stream_consumer::disconnected(stream_source *source)
 {
 	if (source != connected_source) {
-		bc_log("W: stream_consumer: Disconnected from source we weren't connected to?! This is a bug.");
+		bc_log(Bug, "Disconnected from source we weren't connected to?! This is a bug.");
 		return;
 	}
 

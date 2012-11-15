@@ -24,13 +24,13 @@ static struct bc_db_ops *db_ops = NULL;
 static void bc_db_lock(void)
 {
 	if (pthread_mutex_lock(&db_lock) == EDEADLK)
-		bc_log("E: Deadlock detected obtaining db_lock");
+		bc_log(Bug, "Deadlock detected while obtaining db_lock");
 }
 
 static void bc_db_unlock(void)
 {
 	if (pthread_mutex_unlock(&db_lock) == EPERM)
-		bc_log("E: Unlocking db_lock when not held by this thread");
+		bc_log(Bug, "Unlocking db_lock when not held");
 }
 
 int bc_db_start_trans(void)
@@ -87,13 +87,13 @@ int bc_db_open(void)
 
 	config_init(&cfg);
 	if (!config_read_file(&cfg, BC_CONFIG)) {
-		bc_log("E(%s): %s at line %d", BC_CONFIG, config_error_text(&cfg),
-		       config_error_line(&cfg));
+		bc_log(Fatal, "Configuration error: %s at line %d",
+			config_error_text(&cfg), config_error_line(&cfg));
 		goto db_error;
 	}
 
 	if (!config_lookup_int(&cfg, BC_CONFIG_DB ".type", &type)) {
-		bc_log("E(%s): Could not get db type", BC_CONFIG);
+		bc_log(Fatal, "Could not get database type from configuration");
 		goto db_error;
 	}
 
@@ -102,7 +102,7 @@ int bc_db_open(void)
 		db_ops = &bc_db_mysql;
 		break;
 	default:
-		bc_log("E(%s): DB type %ld is not supported", BC_CONFIG, type);
+		bc_log(Fatal, "Database type %ld is not supported", type);
 	}
 
 	if (db_ops)

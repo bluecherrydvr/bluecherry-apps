@@ -114,7 +114,7 @@ static int check_solo(struct udev_device *device)
 	}
 
 	if (i == MAX_CARDS) {
-		bc_log("I: Found %s[%s] id %d, %d ports", bcuid, driver,
+		bc_log(Info, "solo6x10: Found %s[%s] id %d, %d ports", bcuid, driver,
 		       id, ports);
 		for (i = 0; i < MAX_CARDS; i++) {
 			if (cards[i].valid)
@@ -258,7 +258,7 @@ int bc_check_avail(void)
 	for (i = 0; i < MAX_CARDS; i++) {
 		if (!(cards[i].valid && cards[i].dirty))
 			continue;
-		bc_log("W: Card with name %s no longer found", cards[i].name);
+		bc_log(Warning, "solo6x10: card with name %s no longer found", cards[i].name);
 		memset(&cards[i], 0, sizeof(cards[i]));
 	}
 

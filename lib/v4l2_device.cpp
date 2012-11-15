@@ -299,7 +299,7 @@ void v4l2_device::buf_return()
 	}
 
 	if (local_bufs == buffers)
-		bc_log("E: Unable to queue any buffers!");
+		bc_log(Error, "V4L2 device cannot queue any buffers");
 }
 
 int v4l2_device::read_packet()
@@ -470,7 +470,7 @@ void v4l2_device::update_properties()
 	p->video.time_base.den = vparm.parm.capture.timeperframe.denominator;
 
 	if (p->video.codec_id == CODEC_ID_NONE) {
-		bc_log("Invalid Video Format, assuming MP4V-ES");
+		bc_log(Error, "Invalid video format for V4L2 device, assuming MP4V-ES");
 		p->video.codec_id = CODEC_ID_MPEG4;
 	}
 
@@ -484,7 +484,7 @@ static uint16_t solo_value_map[] = {
 int v4l2_device::set_motion(bool on)
 {
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
-		bc_log("E: Motion detection is not implemented for non-solo V4L2 devices.");
+		bc_log(Error, "Motion detection is not implemented for non-solo V4L2 devices.");
 		return -ENOSYS;
 	}
 

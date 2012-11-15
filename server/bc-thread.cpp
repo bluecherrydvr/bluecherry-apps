@@ -45,9 +45,8 @@ static void try_formats(struct bc_record *bc_rec)
 
 	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 
-	if (d->set_format(V4L2_PIX_FMT_MPEG, bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval)) {
-		bc_dev_warn(bc_rec, "Error setting format: %m");
-	}
+	if (d->set_format(V4L2_PIX_FMT_MPEG, bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval))
+		bc_rec->log.log(Warning, "Cannot set V4L2 format: %m");
 }
 
 static void update_osd(struct bc_record *bc_rec)
@@ -105,8 +104,8 @@ void bc_record::run()
 	int ret;
 	unsigned iteration = 0;
 
-	bc_dev_info(this, "Camera configured");
-	bc_av_log_set_handle_thread(this);
+	log.log(Info, "Setting up device");
+	bc_log_context_push(log);
 
 	while (!thread_should_die) {
 		const char *err_msg;
@@ -124,26 +123,26 @@ void bc_record::run()
 		if (!bc->input->is_started()) {
 			if (bc->input->start() < 0) {
 				if (!start_failed)
-					bc_dev_err(this, "Error starting stream: %s", bc->input->get_error_message());
+					log.log(Error, "Error starting device stream: %s", bc->input->get_error_message());
 				start_failed++;
 				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				goto error;
 			} else if (start_failed) {
 				start_failed = 0;
-				bc_dev_info(this, "Device started after failure(s)");
+				log.log(Error, "Stream started after failures");
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
 				const char *info = reinterpret_cast<rtp_device*>(bc->input)->stream_info();
-				bc_dev_info(this, "RTP stream started: %s", info);
+				log.log(Info, "RTP stream started: %s", info);
 			}
 
 			if (bc_streaming_setup(this))
-				bc_dev_err(this, "Error setting up live stream");
+				log.log(Error, "Unable to setup live broadcast of device stream");
 		}
 
 		if (sched_last) {
-			bc_dev_info(this, "Switching to new recording schedule '%s'",
+			log.log(Info, "Switching to new recording schedule '%s'",
 				sched_cur == 'M' ? "motion" : (sched_cur == 'N' ? "stopped" : "continuous"));
 
 			destroy_elements();
@@ -190,7 +189,7 @@ void bc_record::run()
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
 				const char *err = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
-				bc_dev_err(this, "RTSP read error: %s", *err ? err : "Unknown error");
+				log.log(Error, "Read error from RTP stream: %s", *err ? err : "Unknown error");
 			}
 
 			stop_handle_properly(this);
@@ -224,7 +223,7 @@ error:
 }
 
 bc_record::bc_record(int i)
-	: id(i)
+	: id(i), log("%d", i)
 {
 	bc = 0;
 
@@ -276,10 +275,13 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	}
 	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
 
+	bc_rec->log = log_context("%d/%s", id, bc_rec->cfg.name);
+	bc_rec->log.set_level(bc_rec->cfg.debug_level ? Debug : (log_level)-1);
+
 	bc = bc_handle_get(dbres);
 	if (!bc) {
 		/* XXX should be an event */
-		bc_dev_err(bc_rec, "Error opening device: %m");
+		bc_rec->log.log(Error, "Error opening device: %m");
 		bc_status_component_error("Error opening device %d: %m", id);
 		delete bc_rec;
 		return 0;
@@ -360,7 +362,7 @@ bool bc_record::update_motion_thresholds()
 
 	if (m_processor) {
 		if (m_processor->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
-			bc_dev_warn(this, "Cannot set motion thresholds; corrupt configuration?");
+			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;
 	}
@@ -368,7 +370,7 @@ bool bc_record::update_motion_thresholds()
 	if (bc->type == BC_DEVICE_V4L2) {
 		v4l2_device *v = static_cast<v4l2_device*>(bc->input);
 		if (v->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
-			bc_dev_warn(this, "Cannot set motion thresholds; corrupt configuration?");
+			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;
 	}
@@ -387,7 +389,7 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	}
 
 	if (bc_device_config_init(&cfg_tmp, dbres)) {
-		bc_log("E(%d): Database error while updating device configuration", bc_rec->id);
+		bc_rec->log.log(Error, "Database error while updating device configuration");
 		return -1;
 	}
 
@@ -409,7 +411,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	pthread_mutex_lock(&bc_rec->cfg_mutex);
 
-	bc_dev_info(bc_rec, "Applying configuration changes");
+	bc_rec->log.log(Info, "Applying configuration changes");
 
 	if (strcmp(current->dev, update->dev) || strcmp(current->driver, update->driver) ||
 	    strcmp(current->signal_type, update->signal_type) ||
@@ -429,10 +431,16 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	                        current->saturation != update->saturation ||
 	                        current->brightness != update->brightness);
 	bool mrecord_changed = (current->prerecord != update->prerecord || current->postrecord != update->postrecord);
+	bool debug_changed = (current->debug_level != update->debug_level);
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
+
+	if (debug_changed) {
+		bc_rec->log.set_level(current->debug_level ? Debug : (log_level)-1);
+		bc_rec->log.log(Info, "Device debug level changed to %d", current->debug_level);
+	}
 
 	if (format_changed) {
 		stop_handle_properly(bc_rec);

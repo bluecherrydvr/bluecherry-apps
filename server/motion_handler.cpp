@@ -92,21 +92,21 @@ void motion_handler::run()
 						break;
 				}
 
-				bc_log("motion_handler %p: resume recording", this);
+				bc_log(Debug, "motion: resume recording");
 			} else {
-				bc_log("motion_handler %p: start recording with %d packets in buffer", this, buffer.size());
+				bc_log(Debug, "motion: start recording");
 				send_from = 0;
 			}
 			recording = true;
 		}
 
 		if (!triggered && recording && buffer.back().ts_monotonic - last_motion > postrecord_time) {
-			bc_log("motion_handler %p: pause recording", this);
+			bc_log(Debug, "motion: pause recording");
 			recording = false;
 		}
 
 		if (!recording && last_recorded_seq && buffer.front().seq > last_recorded_seq) {
-			bc_log("motion_handler %p: stop recording", this);
+			bc_log(Debug, "motion: stop recording");
 			last_recorded_seq = 0;
 			// Send null packet to end recording
 			send(stream_packet());
@@ -129,7 +129,7 @@ void motion_handler::run()
 			}
 
 			if (send_from < 0) {
-				bc_log("motion_handler %p: (BUG?) last_recorded_seq is not in buffer", this);
+				bc_log(Bug, "motion_handler: last_recorded_seq is not in buffer");
 				send_from = 0;
 			}
 		}
@@ -141,7 +141,7 @@ void motion_handler::run()
 		// note lock is held
 	}
 
-	bc_log("motion_handler destroying");
+	bc_log(Debug, "motion_handler destroying");
 	l.unlock();
 	delete this;
 }
@@ -162,7 +162,7 @@ public:
 	virtual void receive(const stream_packet &packet)
 	{
 		if (!target) {
-			bc_log("W: motion_flag_consumer ignoring packet due to missing target");
+			bc_log(Warning, "motion_flag_consumer ignoring packet due to missing target");
 			return;
 		}
 
@@ -175,14 +175,14 @@ public:
 			 * the raw input was able to receive the packet; that's weird. To avoid
 			 * double packets or the expense of having to check for raw stream inserts,
 			 * this condition isn't supported. */
-			bc_log("W: motion_flag_consumer has a newer packet than target buffer");
+			bc_log(Bug, "motion_flag_consumer has a newer packet than target buffer");
 			return;
 		}
 
 		if (it->seq == packet.seq) {
 			it->flags = (it->flags & ~stream_packet::MotionFlag) | packet.flags;
 		} else {
-			bc_log("motion_flag_consumer: missing packet %u in input (next is %u)", packet.seq, it->seq);
+			bc_log(Debug, "motion_flag_consumer: missing packet %u in input (next is %u)", packet.seq, it->seq);
 			// XXX trigger a recording anyway, starting as early as we can?
 		}
 

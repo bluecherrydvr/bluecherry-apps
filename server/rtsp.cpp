@@ -92,7 +92,7 @@ void rtsp_server::run()
 		if (n < 0) {
 			if (errno == EINTR)
 				continue;
-			bc_log("E(RTSP): poll() error: %s", strerror(errno));
+			bc_log(Error, "poll error: %s", strerror(errno));
 			/* This is nowhere near ideal. We should reset everything instead, but
 			 * this is at least better than silent failure, because the process will
 			 * restart. */
@@ -137,14 +137,14 @@ void rtsp_server::run()
 				int rd = read(wakeupfd[0], buf, sizeof(buf));
 				int reason = 0;
 				if (rd < 0)
-					bc_log("W(RTSP): Error on wakeup fd: %s", strerror(errno));
+					bc_log(Error, "Error on RTSP wakeup fd: %s", strerror(errno));
 				for (int k = 0; k < rd; ++k)
 					reason |= buf[k];
 
 				if (reason & WAKE_GC)
 					rtsp_stream::collectGarbage();
 			} else {
-				bc_log("W(RTSP): BUG: Unknown FD");
+				bc_log(Bug, "Unknown FD in RTSP poll");
 				fds[i].events = 0;
 			}
 		}
@@ -202,18 +202,18 @@ void rtsp_server::wake(int reason)
 {
 	char v = reason;
 	if (write(wakeupfd[1], &v, 1) < 0)
-		bc_log("W(RTSP): Error writing to wakeup fd: %s", strerror(errno));
+		bc_log(Error, "Error writing to wakeup fd: %s", strerror(errno));
 }
 
 void rtsp_server::acceptConnection()
 {
 	int fd = accept(serverfd, NULL, NULL);
 	if (fd < 0) {
-		bc_log("E(RTSP): accept() failed: %s", strerror(errno));
+		bc_log(Error, "accept() failed: %s", strerror(errno));
 		switch (errno) {
 		case EMFILE:
 		case ENFILE:
-			bc_log("E(RTSP): out of fds, killing process!");
+			bc_log(Bug, "out of fds! killing process to cause restart");
 			exit(1);
 		}
 		return;
@@ -286,7 +286,7 @@ struct rtsp_write_buffer
 			msg[i++] = c;
 		}
 		msg[i] = 0;
-		bc_log("%s", msg);
+		bc_log(Debug, "%s", msg);
 	}
 
 	static int trim(rtsp_write_buffer *&head)
@@ -364,7 +364,7 @@ void rtsp_connection::removeSession(rtsp_session *session)
 int rtsp_connection::readable()
 {
 	if (rdbuf_len+1 >= sizeof(rdbuf)) {
-		bc_log("I(RTSP): Connection read buffer exceeded; dropped connection");
+		bc_log(Debug, "Connection read buffer exceeded; dropped connection");
 		return -1;
 	}
 
@@ -513,7 +513,7 @@ int rtsp_connection::parse()
 
 	std::string t = req.header("content-length");
 	if (!t.empty() && t != "0") {
-		bc_log("W(RTSP): RTSP server does not support request bodies");
+		bc_log(Warning, "RTSP server does not support request bodies");
 		sendResponse(rtsp_message(req, 500, "Request bodies not supported"));
 		return -1;
 	}
@@ -600,7 +600,7 @@ end:
 	if (wrbuf && rtsp_write_buffer::trim(wrbuf) >= 1024*1024*2) {
 		/* If the buffer reaches 2MB and cannot be trimmed any further,
 		 * drop the connection. There is little hope in this case anyway. */
-		bc_log("I(RTSP): Buffer size exceeded on stream, dropping connection");
+		bc_log(Debug, "Buffer size exceeded on stream, dropping connection (client too slow?)");
 		shutdown(fd, SHUT_RDWR);
 		re = -1;
 	}
@@ -849,7 +849,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 	if ((re = av_sdp_create(&ctx, 1, sdp, sizeof(sdp))) < 0) {
 		char error[512];
 		av_strerror(re, error, sizeof(error));
-		bc_dev_err(bc, "Cannot create SDP: %s", error);
+		bc->log.log(Error, "Cannot create SDP for streaming: %s", error);
 	}
 	st->sdp = sdp;
 	st->nb_streams = ctx->nb_streams;
@@ -1053,7 +1053,7 @@ rtsp_session::~rtsp_session()
 {
 	connection->removeSession(this);
 	stream->removeSession(this);
-	bc_log("I(RTSP): Stream ended for device %d", stream->id);
+	bc_log(Debug, "Stream ended for device %d", stream->id);
 }
 
 int rtsp_session::generate_id()
@@ -1142,6 +1142,6 @@ void rtsp_session::setActive(bool on)
 	needKeyframe = on;
 	stream->sessionActiveChanged(this);
 
-	bc_log("I(RTSP): Stream %s for device %d", on ? "started" : "stopped", stream->id); 
+	bc_log(Debug, "Stream %s for device %d", on ? "started" : "stopped", stream->id); 
 }
 
