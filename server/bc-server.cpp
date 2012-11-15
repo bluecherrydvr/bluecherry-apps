@@ -698,22 +698,20 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	const char *levelstr;
 	struct bc_record *bc_rec = (struct bc_record*)pthread_getspecific(av_log_current_handle_key);
 
+	log_level bc_level = Info;
 	switch (level) {
-		case AV_LOG_PANIC: levelstr = "PANIC"; break;
-		case AV_LOG_FATAL: levelstr = "fatal"; break;
-		case AV_LOG_ERROR: levelstr = "error"; break;
-		case AV_LOG_WARNING: levelstr = "warning"; break;
-		case AV_LOG_INFO: levelstr = "info"; break;
-		case AV_LOG_VERBOSE: levelstr = "verbose"; break;
-		case AV_LOG_DEBUG: levelstr = "debug"; break;
-		default: levelstr = "???"; break;
+		case AV_LOG_PANIC: bc_level = Fatal; break;
+		case AV_LOG_FATAL: bc_level = Error; break;
+		case AV_LOG_ERROR: bc_level = Warning; break;
+		case AV_LOG_WARNING:
+		case AV_LOG_INFO: bc_level = Info; break;
+		case AV_LOG_VERBOSE:
+		case AV_LOG_DEBUG: bc_level = Debug; break;
 	}
 
 	if (!bc_rec) {
-		if (level <= av_log_without_handle) {
-			sprintf(msg, "[avlib %s]: %s", levelstr, fmt);
-			bc_vlog(msg, ap);
-		}
+		if (level <= av_log_without_handle)
+			server_log::write(bc_level, "avlib", fmt, ap);
 		return;
 	}
 
@@ -726,8 +724,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	if (bc_rec->cfg.debug_level == 1 && level > AV_LOG_INFO)
 		return;
 
-	sprintf(msg, "I(%d/%s): avlib %s: %s", bc_rec->id, bc_rec->cfg.name, levelstr, fmt);
-	bc_vlog(msg, ap);
+	server_log::write(bc_level, "avlib", fmt, ap);
 }
 
 /* Returns 0 if okay, otherwise -1 and outputs an error */
@@ -778,6 +775,8 @@ int main(int argc, char **argv)
 		case 'h': default: usage();
 		}
 	}
+
+	server_log::open();
 
 	if (user || group) {
 		struct passwd *u   = 0;

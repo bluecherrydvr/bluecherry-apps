@@ -38,6 +38,8 @@ extern "C" {
 #include <libavformat/avformat.h>
 }
 
+#include "logging.h"
+
 typedef enum {
 	BC_DEVICE_V4L2,
 	BC_DEVICE_RTP
@@ -382,12 +384,6 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres);
 void bc_handle_free(struct bc_handle *bc);
 
 int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres);
-
-/* Standard logging function for all BC services */
-void bc_log(const char *msg, ...)
-	__attribute__ ((format (printf, 1, 2)));
-
-void bc_vlog(const char *msg, va_list va);
 
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();

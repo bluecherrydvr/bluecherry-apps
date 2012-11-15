@@ -14,40 +14,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
-#include <syslog.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 
 #include <libbluecherry.h>
 #include <bsd/string.h>
+#include "logging.h"
 
 extern "C" {
 #include <libavutil/md5.h>
-}
-
-extern char *__progname;
-#define BC_LOG_SERVICE	LOG_DAEMON
-
-void bc_log(const char *msg, ...)
-{
-	va_list ap;
-
-	va_start(ap, msg);
-	bc_vlog(msg, ap);
-	va_end(ap);
-}
-
-void bc_vlog(const char *msg, va_list ap)
-{
-	static int log_open = 0;
-
-	if (!log_open) {
-		openlog(__progname, LOG_PID | LOG_PERROR, BC_LOG_SERVICE);
-		log_open = 1;
-	}
-
-	vsyslog(LOG_INFO | BC_LOG_SERVICE, msg, ap);
 }
 
 time_t bc_gettime_monotonic()
