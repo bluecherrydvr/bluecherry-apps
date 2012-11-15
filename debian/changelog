@@ -1,3 +1,12 @@
+bluecherry (1:2.0.2-1) lucid; urgency=low
+
+  * Bug #1160: FD leaks causing a spam of accept() failed messages
+  * Bug #1168: web: duplicate device detected when editing some camera settings
+  * Bug #1174: Storage deletion routine does not delete files on second and subsequent storage paths
+  * Fixed an installation bug on debian systems with modified USERGROUPS_ENAB
+
+ -- John Brooks <john.brooks@bluecherry.net>  Thu 15 Nov 2012 14:07:00 -0700
+
 bluecherry (1:2.0.1-1) lucid; urgency=low
 
   * Bug #1133: Log file is sometimes empty after install
