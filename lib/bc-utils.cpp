@@ -14,13 +14,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
-#include <syslog.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
 
 #include "libbluecherry.h"
 #include <bsd/string.h>
+#include "logging.h"
 
 extern "C" {
 #include <libavutil/md5.h>

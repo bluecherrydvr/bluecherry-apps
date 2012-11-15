@@ -10,6 +10,7 @@
 
 #include <sys/ioctl.h>
 
+#define LOGGING_H // XXX
 #include "libbluecherry.h"
 #include "v4l2_device.h"
 extern "C" {
