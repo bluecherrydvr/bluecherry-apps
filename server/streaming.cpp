@@ -53,7 +53,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if ((i = avformat_write_header(ctx, NULL)) < 0) {
 		char error[512];
 		av_strerror(i, error, sizeof(error));
-		bc_dev_err(bc_rec, "Failed to start live stream: %s", error);
+		bc_rec->log.log(Error, "Live streaming failed: %s", error);
 		bc_streaming_destroy(bc_rec);
 		return i;
 	}
@@ -129,7 +129,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	if (re < 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
-		bc_dev_err(bc_rec, "Error writing to live stream: %s", err);
+		bc_rec->log.log(Error, "Can't write to live stream: %s", err);
 
 		/* Cleanup */
 		stop_handle_properly(bc_rec);

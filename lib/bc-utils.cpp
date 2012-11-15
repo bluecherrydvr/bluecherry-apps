@@ -26,35 +26,11 @@ extern "C" {
 #include <libavutil/md5.h>
 }
 
-extern char *__progname;
-#define BC_LOG_SERVICE	LOG_DAEMON
-
-void bc_log(const char *msg, ...)
-{
-	va_list ap;
-
-	va_start(ap, msg);
-	bc_vlog(msg, ap);
-	va_end(ap);
-}
-
-void bc_vlog(const char *msg, va_list ap)
-{
-	static int log_open = 0;
-
-	if (!log_open) {
-		openlog(__progname, LOG_PID | LOG_PERROR, BC_LOG_SERVICE);
-		log_open = 1;
-	}
-
-	vsyslog(LOG_INFO | BC_LOG_SERVICE, msg, ap);
-}
-
 time_t bc_gettime_monotonic()
 {
 	struct timespec ts;
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
-		bc_log("E: clock_gettime failed: %d", (int)errno);
+		bc_log(Bug, "clock_gettime failed: %m");
 		return 0;
 	}
 

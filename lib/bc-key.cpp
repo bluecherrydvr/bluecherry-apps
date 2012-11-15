@@ -332,7 +332,7 @@ int bc_read_licenses(std::vector<bc_license> &licenses)
 			break;
 
 		if (newset.find(license) != newset.end()) {
-			bc_log("W(License): Ignoring duplicate license %s", license);
+			bc_log(Warning, "Ignoring duplicate license %s", license);
 			continue;
 		}
 
@@ -346,12 +346,13 @@ int bc_read_licenses(std::vector<bc_license> &licenses)
 		strlcpy(l.authorization, auth, sizeof(l.authorization));
 		l.n_devices = bc_license_check(license);
 		if (l.n_devices < 1) {
-			bc_log("W(License): Invalid license key: %s", license);
+			bc_log(Fatal, "Ignoring invalid license key %s", license);
 			continue;
 		}
 		if (bc_license_check_auth(license, auth) < 1) {
-			bc_log("W(License): Invalid license authorization for "
-			       "'%s' (machine ID changed?)", license);
+			bc_log(Fatal, "Authorization failed for license %s. The "
+				"machine ID may have changed, which requires manual reauthorization.",
+				license);
 			continue;
 		}
 

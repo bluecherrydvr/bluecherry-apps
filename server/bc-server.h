@@ -48,6 +48,8 @@ public:
 
 	const int id;
 
+	log_context log;
+
 	/* Streaming */
 	AVFormatContext *stream_ctx;
 	class rtsp_stream *rtsp_stream;
@@ -131,9 +133,6 @@ int bc_streaming_is_setup(struct bc_record *bc_rec);
 int bc_streaming_is_active(struct bc_record *bc_rec);
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
-/* Relate all libav logging on this thread to a given bc_record */
-void bc_av_log_set_handle_thread(struct bc_record *bc_rec);
-
 int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
@@ -147,18 +146,6 @@ int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
 
-#ifdef EBUG
-#define bc_debug(fmt, args...) bc_log("D: " fmt, ## args)
-#else
-#define bc_debug(fmt, args...) do{}while(0)
-#endif
-
-#define bc_dev_info(rec, fmt, args...) \
-	bc_log("I(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
-#define bc_dev_warn(rec, fmt, args...) \
-	bc_log("W(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
-#define bc_dev_err(rec, fmt, args...) \
-	bc_log("E(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
 extern "C" void signals_setup();
 
 #endif /* __BC_SERVER_H */

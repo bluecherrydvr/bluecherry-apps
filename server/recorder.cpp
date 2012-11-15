@@ -48,7 +48,7 @@ void recorder::run()
 		}
 
 		if (packet.properties() != saved_properties) {
-			bc_log("recorder: Stream properties changed");
+			bc_log(Debug, "recorder: stream properties changed");
 			saved_properties = packet.properties();
 			recording_end();
 		}
@@ -68,8 +68,9 @@ void recorder::run()
 			}
 
 			if (recording_start(packet.ts_clock, packet)) {
-				// XXX
-				bc_log("W: recording_start failed! Bad!");
+				bc_log(Error, "Cannot start recording!");
+				recording_end();
+				sleep(10);
 				goto end;
 			}
 		}
@@ -80,7 +81,7 @@ end:
 		l.lock();
 	}
 
-	bc_log("recorder destroying");
+	bc_log(Debug, "recorder destroying");
 	l.unlock();
 	recording_end();
 	bc_event_cam_end(&current_event);
@@ -91,7 +92,7 @@ static void event_trigger_notifications(bc_event_cam_t event)
 {
 	pid_t pid = fork();
 	if (pid < 0) {
-		bc_log("notification: cannot fork for event notification");
+		bc_log(Bug, "cannot fork for event notification");
 		return;
 	}
 
@@ -100,7 +101,7 @@ static void event_trigger_notifications(bc_event_cam_t event)
 		return;
 
 	char id[24] = { 0 };
-	snprintf(id, sizeof(id), "%d", event->media.table_id);
+	snprintf(id, sizeof(id), "%lu", event->media.table_id);
 	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
 	exit(1);
 }
@@ -164,7 +165,7 @@ std::string recorder::media_file_path(time_t start_ts)
 	if (snprintf(dir, sizeof(dir), "%s/%s/%06d", stor, date, device_id) >= (int)sizeof(dir))
 		return std::string();
 	if (bc_mkdir_recursive(dir) < 0) {
-		bc_log("E: Cannot create media directory %s: %m", dir);
+		bc_log(Error, "Cannot create media directory %s: %m", dir);
 		return std::string();
 	}
 

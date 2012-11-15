@@ -81,7 +81,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	} else {
 		if (output_pts_base == (int64_t)AV_NOPTS_VALUE) {
 			output_pts_base = opkt.pts;
-			bc_log("media_writer: setting pts base for stream to %"PRId64"", output_pts_base);
+			bc_log(Debug, "Setting writer pts base for stream to %"PRId64"", output_pts_base);
 		}
 
 		/* Subtract output_pts_base, both in the universal AV_TIME_BASE and synchronized across
@@ -96,8 +96,8 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	 * We can drop these; they won't be played back, other than a very trivial
 	 * amount of time at the beginning of a recording. */
 	if (opkt.pts != (int64_t)AV_NOPTS_VALUE && opkt.pts < 0) {
-		av_log(oc, AV_LOG_INFO, "Dropping frame with negative pts %lld, probably "
-		       "caused by recent PTS reset", (long long int)opkt.pts);
+		bc_log(Debug, "Dropping frame with negative pts %"PRId64", probably "
+		       "caused by recent PTS reset", opkt.pts);
 		return true;
 	}
 
@@ -105,7 +105,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	if (re != 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
-		bc_log("Error when writing frame to recording: %s", err);
+		bc_log(Error, "Error when writing frame to recording: %s", err);
 		return false;
 	}
 
@@ -168,7 +168,7 @@ int bc_mkdir_recursive(char *path)
 		*bp[depth++] = 0;
 	}
 
-	bc_log("W(mkdir): Path too deep: %s", path);
+	bc_log(Error, "mkdir_recursive: path too deep: %s", path);
 
  error:
 	/* Revert path string to it's original state */
@@ -322,7 +322,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	/* Open output file */
 	if (avio_open(&oc->pb, path.c_str(), URL_WRONLY) < 0) {
-		bc_log("Failed to open outfile (perms?): %s",
+		bc_log(Error, "Cannot open media output file %s",
 			   file_path.c_str());
 		goto error;
 	}
@@ -347,7 +347,7 @@ int media_writer::decode_one_packet(const stream_packet &pkt, AVFrame *frame)
 	int re = -1;
 	int have_picture = 0;
 	if (!codec || !(ic = avcodec_alloc_context3(codec))) {
-		bc_log("decode_one_packet: cannot allocate decoder context for video");
+		bc_log(Warning, "decode_one_packet: cannot allocate decoder context for video");
 		return -1;
 	}
 
@@ -367,7 +367,7 @@ int media_writer::decode_one_packet(const stream_packet &pkt, AVFrame *frame)
 	if (re < 0) {
 		char error[512];
 		av_strerror(re, error, sizeof(error));
-		bc_log("decode_one_packet: cannot decode video frame: %s", error);
+		bc_log(Warning, "decode_one_packet: cannot decode video frame: %s", error);
 		goto end;
 	}
 
@@ -393,7 +393,7 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 {
 	AVFrame rawFrame, frame;
 	if (decode_one_packet(pkt, &rawFrame) < 1) {
-		bc_log("snapshot: no video frame for snapshot");
+		bc_log(Info, "snapshot: no video frame for snapshot");
 		return -1;
 	}
 
@@ -404,7 +404,7 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 	int size, re = -1;
 
 	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
-		bc_log("snapshot: cannot allocate encoder context for snapshot");
+		bc_log(Bug, "snapshot: cannot allocate encoder context for snapshot");
 		goto end;
 	}
 
@@ -429,7 +429,7 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 		                           rawFrame.width, rawFrame.height, PIX_FMT_YUVJ420P,
 		                           SWS_BICUBIC, NULL, NULL, NULL);
 		if (!sws) {
-			bc_log("snapshot: cannot convert pixel format for JPEG (format is %d)", rawFrame.format);
+			bc_log(Bug, "snapshot: cannot convert pixel format for JPEG (format is %d)", rawFrame.format);
 			goto end;
 		}
 
@@ -445,18 +445,18 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 	if (size < 1) {
 		char error[512];
 		av_strerror(size, error, sizeof(error));
-		bc_log("snapshot: JPEG encoding failed: %s", error);
+		bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
 		goto end;
 	}
 
 	file = fopen(snapshot_file.c_str(), "w");
 	if (!file) {
-		bc_log("snapshot: cannot create file: %s", strerror(errno));
+		bc_log(Error, "snapshot: cannot create file: %s", strerror(errno));
 		goto end;
 	}
 
 	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
-		bc_log("snapshot: cannot write snapshot file: %s", strerror(errno));
+		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 

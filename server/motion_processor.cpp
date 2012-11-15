@@ -73,13 +73,12 @@ void motion_processor::run()
 		l.unlock();
 
 		if (pkt.properties() != saved_properties) {
-			bc_log("motion_processor: Stream properties changed");
 			saved_properties = pkt.properties();
 			decode_destroy();
 		}
 
 		if (!decode_ctx && !decode_create(*saved_properties.get())) {
-			bc_log("motion_processor: Cannot create decoder! Error!");
+			bc_log(Error, "Cannot create decoder for video stream; motion detection will not work.");
 			sleep(10);
 			l.lock();
 			continue;
@@ -98,7 +97,7 @@ void motion_processor::run()
 		int have_picture = 0;
 		int re = avcodec_decode_video2(decode_ctx, &frame, &have_picture, &avpkt);
 		if (re < 0) {
-			bc_log("motion_processor %p: decoding failed", this);
+			bc_log(Info, "Decoding failed for motion processor");
 		} else if (have_picture) {
 			/* For high framerates, we can achieve the same level of motion detection
 			 * with much less CPU by testing at a reduced framerate. This will only run
@@ -110,9 +109,8 @@ void motion_processor::run()
 				int64_t diff = (pkt.pts - last_tested_pts) / (AV_TIME_BASE / 1000);
 				if (diff > 0 && diff < 45) {
 					if (++skip_count > 3) {
-						av_log(NULL, AV_LOG_WARNING, "Motion detection skipped too "
-						       "many consecutive frames (diff: %"PRId64". Buggy PTS?)",
-						       diff);
+						bc_log(Debug, "Motion detection skipped too many consecutive frames "
+						       "(diff: %"PRId64"); Buggy PTS?", diff);
 					} else
 						skip = true;
 				}
@@ -132,7 +130,7 @@ void motion_processor::run()
 		l.lock();
 	}
 
-	bc_log("motion_processor destroying");
+	bc_log(Debug, "motion_processor destroying");
 	l.unlock();
 	delete this;
 }
@@ -200,9 +198,9 @@ int motion_processor::detect(AVFrame *rawFrame)
 		snprintf(filename, sizeof(filename), "/tmp/bc.motion.%d", (int)rand());
 		md->dumpfile = fopen(filename, "w");
 		if (md->dumpfile)
-			bc_log("Opened motion data file '%s'", filename);
+			bc_log(Warning, "Opened motion data file '%s'", filename);
 		else
-			bc_log("Failed to open motion data file '%s' (%m)", filename);
+			bc_log(Error, "Failed to open motion data file '%s' (%m)", filename);
 	}
 #endif
 

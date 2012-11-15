@@ -192,7 +192,7 @@ static void bc_update_server_status()
 			full_error_sz = strlen(full_error);
 		}
 
-		bc_log("E: [%s] %s", component_str, component_error[i]);
+		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
 	}
 
 	if (bc_db_start_trans())
@@ -225,7 +225,7 @@ static void bc_update_server_status()
 	rollback:
 		bc_db_rollback_trans();
 	error:
-		bc_log("E: Unable to update server status");
+		bc_log(Fatal, "Unable to update server status in database");
 	}
 
 	free(full_error);
@@ -244,7 +244,7 @@ static int load_storage_paths(void)
 	}
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in media_lock on db_check!");
+		bc_log(Error, "Deadlock detected in media_lock on db_check");
 
 	memset(media_stor, 0, sizeof(media_stor));
 
@@ -331,7 +331,7 @@ static void bc_stop_threads(void)
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
 		bc_record *bc_rec = *it;
 		pthread_join(bc_rec->thread, (void **)&errmsg);
-		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
+		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
 		delete bc_rec;
 		cur_threads--;
 	}
@@ -349,7 +349,7 @@ static void bc_check_threads(void)
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;
 
-		bc_dev_info(bc_rec, "Camera thread stopped: %s", errmsg);
+		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
 		delete bc_rec;
 		cur_threads--;
 
@@ -386,7 +386,7 @@ static uint64_t path_freespace(const char *path)
 		return 0;
 
 	if (!st.f_favail) {
-		bc_log("W: No available inodes on %s", path);
+		bc_log(Info, "No available inodes on %s", path);
 		return 0;
 	}
 
@@ -440,7 +440,7 @@ int bc_get_media_loc(char *dest, size_t size)
 	dest[0] = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in media_lock on get_loc!");
+		bc_log(Error, "Deadlock detected in media_lock on get_loc");
 
 	const char *sel = select_best_path();
 
@@ -474,7 +474,7 @@ static int bc_cleanup_media()
 			continue;
 
 		if (unlink(filepath) < 0 && errno != ENOENT) {
-			bc_log("W: Cannot remove file %s for cleanup: %s",
+			bc_log(Warning, "Cannot remove file %s for cleanup: %s",
 			       filepath, strerror(errno));
 			error_count++;
 			continue;
@@ -484,7 +484,7 @@ static int bc_cleanup_media()
 		if (sidecar.size() > 3)
 			sidecar.replace(sidecar.size()-3, 3, "jpg");
 		if (unlink(sidecar.c_str()) < 0 && errno != ENOENT) {
-			bc_log("W: Cannot remove sidecar file %s for cleanup: %s",
+			bc_log(Warning, "Cannot remove sidecar file %s for cleanup: %s",
 			       sidecar.c_str(), strerror(errno));
 			error_count++;
 			continue;
@@ -512,9 +512,9 @@ done:
 	bc_db_free_table(dbres);
 
 	if (error_count)
-		bc_log("W: Cleaned up %d files with %d errors", removed, error_count);
+		bc_log(Error, "Cleaned up %d files with %d errors, which may cause undeletable files", removed, error_count);
 	else
-		bc_log("I: Cleaned up %d files", removed);
+		bc_log(Info, "Cleaned up %d files", removed);
 
 	return 0;
 }
@@ -522,7 +522,7 @@ done:
 static int bc_check_media(void)
 {
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log("E: Deadlock detected in media_lock on check_media!");
+		bc_log(Error, "Deadlock detected in media_lock on check_media");
 
 	int ret = 0;
 
@@ -637,7 +637,7 @@ static void bc_check_inprogress(void)
 		int event_id = bc_db_get_val_int(dbres, "id");
 
 		if (!filepath) {
-			bc_log("Event %d left in-progress at shutdown; setting duration", event_id);
+			bc_log(Info, "Event %d left in-progress at shutdown; setting duration", event_id);
 			time_t start = bc_db_get_val_int(dbres, "time");
 			duration = int64_t(last_known_running) - int64_t(start);
 			if (duration < 0)
@@ -666,8 +666,7 @@ static void bc_check_inprogress(void)
 			e_id = bc_db_get_val_int(dbres, "id");
 			m_id = bc_db_get_val_int(dbres, "media_id");
 
-			bc_log("Media %s has zero time so deleting",
-			       filepath);
+			bc_log(Info, "Deleting empty media %s", filepath);
 
 			bc_db_query("DELETE FROM EventsCam WHERE id=%u", e_id);
 			bc_db_query("DELETE FROM Media WHERE id=%u", m_id);
@@ -676,8 +675,7 @@ static void bc_check_inprogress(void)
 		} else {
 			unsigned int id = bc_db_get_val_int(dbres, "id");
 
-			bc_log("Media %s left in-progress so updating length "
-			       "to %d", filepath, duration);
+			bc_log(Info, "Updating length of abandoned media %s to %d", filepath, duration);
 			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
 				    "id=%d", duration, id);
 		}
@@ -692,6 +690,7 @@ static void usage(const char *progname)
 {
 	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
+	fprintf(stderr, "  -l\tLogging level ([d]ebug, [i]nfo, [w]arning, [e]rror, [b]ug, [f]atal)\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
@@ -699,21 +698,9 @@ static void usage(const char *progname)
 	exit(1);
 }
 
-static pthread_key_t av_log_current_handle_key;
-static const int av_log_without_handle = AV_LOG_INFO;
-
-void bc_av_log_set_handle_thread(struct bc_record *bc_rec)
-{
-	pthread_setspecific(av_log_current_handle_key, bc_rec);
-}
-
 /* Warning: Must be reentrant; this may be called from many device threads at once */
 static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
-	char msg[strlen(fmt) + 200];
-	const char *levelstr;
-	struct bc_record *bc_rec = (struct bc_record*)pthread_getspecific(av_log_current_handle_key);
-
 	log_level bc_level = Info;
 	switch (level) {
 		case AV_LOG_PANIC: bc_level = Fatal; break;
@@ -721,26 +708,20 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		case AV_LOG_ERROR: bc_level = Warning; break;
 		case AV_LOG_WARNING:
 		case AV_LOG_INFO: bc_level = Info; break;
-		case AV_LOG_VERBOSE:
-		case AV_LOG_DEBUG: bc_level = Debug; break;
+#ifdef LIBAV_DEBUG
+		case AV_LOG_DEBUG:
+#endif
+		case AV_LOG_VERBOSE: bc_level = Debug; break;
+		default: return;
 	}
 
-	if (!bc_rec) {
-		if (level <= av_log_without_handle)
-			server_log::write(bc_level, "avlib", fmt, ap);
-		return;
-	}
-
-	if (bc_rec->cfg.debug_level < 0 && level > AV_LOG_FATAL)
-		return;
-	if (bc_rec->cfg.debug_level == 0 &&
-	    ((bc_rec->bc->input->is_started() && level > AV_LOG_FATAL) ||
-	     (!bc_rec->bc->input->is_started() && level > AV_LOG_ERROR)))
-		return;
-	if (bc_rec->cfg.debug_level == 1 && level > AV_LOG_INFO)
+	const log_context &context = bc_log_context();
+	if (!context.test_level(bc_level))
 		return;
 
-	server_log::write(bc_level, "avlib", fmt, ap);
+	char msg[1024] = "[libav] ";
+	strlcat(msg, fmt, sizeof(msg));
+	context.vlog(bc_level, msg, ap);
 }
 
 /* Returns 0 if okay, otherwise -1 and outputs an error */
@@ -783,8 +764,22 @@ static void open_db_loop(void)
 	return;
 
 db_error:
-	bc_log("E: Could not open database after 30 tries, aborting");
+	bc_log(Error, "Could not open database after 30 tries, aborting");
 	exit(1);
+}
+
+static log_level str_to_log_level(const char *str)
+{
+	switch (tolower(str[0]))
+	{
+		case 'd': return Debug;
+		case 'i': return Info;
+		case 'w': return Warning;
+		case 'e': return Error;
+		case 'b': return Bug;
+		case 'f': return Fatal;
+		default: return Info;
+	}
 }
 
 int main(int argc, char **argv)
@@ -796,12 +791,13 @@ int main(int argc, char **argv)
 
 	umask(027);
 
-	while ((opt = getopt(argc, argv, "hsm:r:u:g:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'r': record_id = atoi(optarg); break;
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
+		case 'l': bc_log_context_default().set_level(str_to_log_level(optarg)); break;
 		case 'h': default: usage(argv[0]);
 		}
 	}
@@ -815,7 +811,7 @@ int main(int argc, char **argv)
 		if (group) {
 			struct group *g = 0;
 			if (!(g = getgrnam(group))) {
-				bc_log("E: Group '%s' does not exist", group);
+				bc_log(Fatal, "Group '%s' does not exist", group);
 				exit(1);
 			}
 			gid = g->gr_gid;
@@ -823,30 +819,30 @@ int main(int argc, char **argv)
 
 		if (user) {
 			if (!(u = getpwnam(user))) {
-				bc_log("E: User '%s' does not exist", user);
+				bc_log(Fatal, "User '%s' does not exist", user);
 				exit(1);
 			}
 			if (!group)
 				gid = u->pw_gid;
 			if (initgroups(user, gid) < 0) {
-				bc_log("E: Setting supplemental groups failed");
+				bc_log(Fatal, "Setting supplemental groups failed");
 				exit(1);
 			}
 		}
 
 		if (setregid(gid, gid) < 0) {
-			bc_log("E: Setting group failed");
+			bc_log(Fatal, "Setting group failed");
 			exit(1);
 		}
 
 		if (u && setreuid(u->pw_uid, u->pw_uid) < 0) {
-			bc_log("E: Setting user failed");
+			bc_log(Fatal, "Setting user failed");
 			exit(1);
 		}
 	}
 
 	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log("E: AV lock registration failed: %m");
+		bc_log(Fatal, "libav lock registration failed: %m");
 		exit(1);
 	}
 
@@ -858,15 +854,14 @@ int main(int argc, char **argv)
 	av_register_all();
 	avformat_network_init();
 
-	pthread_key_create(&av_log_current_handle_key, NULL);
 	av_log_set_callback(av_log_cb);
 
 	if (bg && daemon(0, 0) == -1) {
-		bc_log("E: Could not fork to background: %m");
+		bc_log(Fatal, "Fork failed: %m");
 		exit(1);
 	}
 
-	bc_log("I: Started Bluecherry daemon");
+	bc_log(Info, "Started Bluecherry daemon");
 
 	/* Mutex */
 	bc_initialize_mutexes();
@@ -875,7 +870,7 @@ int main(int argc, char **argv)
 	rtsp->setup(7002);
 
 	open_db_loop();
-	bc_log("I: SQL database connection opened");
+	bc_log(Info, "SQL database connection opened");
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
 	error = bc_check_globals();
@@ -896,7 +891,7 @@ int main(int argc, char **argv)
 			solo_ready = (error == 0);
 			if (error == -EAGAIN && !loops) {
 				/* Only warn if it's not ready at startup; don't trigger an error. */
-				bc_log("W: Solo6x10 devices are not initialized yet");
+				bc_log(Warning, "Solo6x10 devices are not initialized yet");
 				error = 0;
 			} else if (error) {
 				/* If it's still not ready after 15sec, error */
@@ -925,10 +920,10 @@ int main(int argc, char **argv)
 				if (!error) {
 					max_threads = TRIAL_MAX_DEVICES;
 					if (!(loops % 1800))
-						bc_log("I: Not licensed; running in trial mode");
+						bc_log(Warning, "Not licensed; running in trial mode");
 				}
 			} else if (!error && old_n_devices != max_threads) {
-				bc_log("I: Licensed for %d devices", max_threads);
+				bc_log(Info, "Licensed for %d devices", max_threads);
 			}
 
 			bc_status_component_end(STATUS_LICENSE, error == 0);

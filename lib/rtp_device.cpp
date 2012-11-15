@@ -80,7 +80,7 @@ int rtp_device::start()
 	if (ctx)
 		return 0;
 
-	av_log(NULL, AV_LOG_INFO, "Opening RTSP session from URL: %s\n", url);
+	bc_log(Debug, "Opening RTSP session from URL: %s", url);
 
 	snprintf(tmp, sizeof(tmp), "%lld", (long long int)(0.7*AV_TIME_BASE));
 	av_dict_set(&avopt, "max_delay", tmp, 0);
@@ -99,7 +99,7 @@ int rtp_device::start()
 	}
 
 	if (av_dict_get(avopt, "", NULL, 0))
-		av_log(ctx, AV_LOG_WARNING, "Unable to set format options");
+		bc_log(Bug, "Unable to set format options for RTSP setup");
 
 	av_dict_free(&avopt);
 
@@ -128,24 +128,23 @@ int rtp_device::start()
 
 		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (video_stream_index >= 0) {
-				bc_log("RTSP session for %s has multiple video streams. Only the "
+				bc_log(Warning, "RTSP session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
 			}
 			video_stream_index = i;
 
 			if (stream->time_base.num != 1 || stream->time_base.den != 90000) {
-				av_log(ctx, AV_LOG_WARNING, "Video stream timebase is unusual (%d/%d). "
-				       "This could cause timing issues.", stream->time_base.num,
-				       stream->time_base.den);
+				bc_log(Info, "Video stream timebase is unusual (%d/%d). This could cause "
+				       "timing issues.", stream->time_base.num, stream->time_base.den);
 			}
 		} else if (stream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (audio_stream_index >= 0) {
-				bc_log("RTSP session for %s has multiple audio streams. Only the "
+				bc_log(Warning, "RTSP session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
 			} else if (stream->codec->codec_id == CODEC_ID_NONE) {
-				av_log(ctx, AV_LOG_ERROR, "No matching audio codec for stream; ignoring audio");
+				bc_log(Error, "No matching audio codec for stream; ignoring audio");
 				continue;
 			}
 			audio_stream_index = i;
@@ -257,7 +256,7 @@ int rtp_device::read_packet()
 		if (frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
 		    (frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
-			av_log(ctx, AV_LOG_INFO, "Inconsistent PTS on stream %d (type %d), "
+			bc_log(Debug, "Inconsistent PTS on stream %d (type %d), "
 			       "delta %lld. Adjusting based on last interval of %lld.",
 			       frame.stream_index,
 			       ctx->streams[frame.stream_index]->codec->codec_type,
@@ -280,14 +279,14 @@ int rtp_device::read_packet()
 			    (streamdata->last_pts_diff/newptsdiff) >= 4)
 			{
 				if (!streamdata->was_last_diff_skipped) {
-					av_log(ctx, AV_LOG_INFO, "PTS interval on stream %d (type %d) dropped "
+					bc_log(Debug, "PTS interval on stream %d (type %d) dropped "
 					       "to %lld (delta %lld); ignoring interval change unless repeated",
 					       frame.stream_index,
 					       ctx->streams[frame.stream_index]->codec->codec_type,
 					       (long long int)newptsdiff, (long long int)(newptsdiff - streamdata->last_pts_diff));
 					streamdata->was_last_diff_skipped = 1;
 				} else {
-					av_log(ctx, AV_LOG_WARNING, "PTS interval on stream %d (type %d) dropped "
+					bc_log(Debug, "PTS interval on stream %d (type %d) dropped "
 					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
 					       "framerate or desynchronization issues.", frame.stream_index,
 					       ctx->streams[frame.stream_index]->codec->codec_type,
@@ -376,14 +375,13 @@ void rtp_device::set_current_pts(int64_t pts)
 		return;
 
 	if (frame.pts == AV_NOPTS_VALUE) {
-		av_log(ctx, AV_LOG_INFO, "Current frame has no PTS, so PTS reset to %lld cannot occur\n",
-		       (long long int)pts);
+		bc_log(Debug, "Current frame has no PTS, so PTS reset to %"PRId64" cannot occur", pts);
 		return;
 	}
 
 	offset = frame.pts - pts;
 
-	av_log(ctx, AV_LOG_INFO, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64"\n",
+	bc_log(Debug, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64,
 	       offset, frame.stream_index, pts);
 
 	for (i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {

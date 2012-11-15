@@ -53,7 +53,7 @@ static MYSQL *get_handle(void)
 		return NULL;
 
 	if ((my_con_global = mysql_init(NULL)) == NULL) {
-		bc_log("(SQL ERROR): Initializing MySQL");
+		bc_log(Fatal, "MySQL initialization failed");
 		return NULL;
 	}
 
@@ -116,8 +116,8 @@ static int bc_db_mysql_query(char *query)
 	ret = mysql_query(my_con, query);
 
 	if (ret != 0)
-		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(my_con));
-		
+		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+
 	return ret;
 }
 
@@ -139,14 +139,14 @@ static BC_DB_RES bc_db_mysql_get_table(char *query)
 
 	if (ret != 0) {
 		free(dbres);
-		bc_log("(SQL ERROR): [%s] => %s", query, mysql_error(my_con));
+		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
 		return NULL;
 	}
 
 	dbres->res = mysql_store_result(my_con);
 	if (dbres->res == NULL) {
 		free(dbres);
-		bc_log("(SQL ERROR): No result: [%s]", query);
+		bc_log(Error, "Query has no result: [%s]", query);
 		return NULL;
 	}
 
