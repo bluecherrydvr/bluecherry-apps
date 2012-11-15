@@ -779,7 +779,6 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int bg = 1;
-	int count;
 	const char *user = 0, *group = 0;
 	int error;
 
@@ -857,7 +856,7 @@ int main(int argc, char **argv)
 	rtsp_server *rtsp = new rtsp_server;
 	rtsp->setup(7002);
 
-	for (count = 1; bc_db_open(); count++) {
+	for (int count = 1; bc_db_open(); count++) {
 		sleep(1);
 		if (count % 30)
 			continue;
