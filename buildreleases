@@ -26,6 +26,7 @@ nightly: release FORCE
 ifeq ($(MAKECMDGOALS),nightly)
 release-deps: debian/changelog
 version-tag := $(shell git describe | cut -d- -f1)
+VERSION := $(VERSION)-nightly1
 endif
 
 # log-paths is used to filter-out uninteresting changes
@@ -33,7 +34,7 @@ log-paths = lib server www misc/sql
 log-date = $(shell date -R)
 
 debian/changelog: FORCE
-	/bin/echo -e 'bluecherry 1:$(VERSION)-nightly1 $(DIST); urgency=low\n' > $@
+	/bin/echo -e 'bluecherry (1:$(VERSION)) $(DIST); urgency=low\n' > $@
 	git log --pretty=format:'  * %s' ^$(version-tag) HEAD -- $(log-paths) >> $@
 	/bin/echo -e '\n\n -- $(MAINTAINER)  $(log-date)\n' >> $@
 	git show 'HEAD:$@' >> $@
