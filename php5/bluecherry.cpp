@@ -454,20 +454,6 @@ PHP_FUNCTION(bc_get_mjpeg_url)
 	RETURN_STRING(bch->mjpeg_url, 1);
 }
 
-PHP_FUNCTION(bc_log)
-{
-	char *str;
-	int str_len;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
-				  &str, &str_len) == FAILURE)
-		RETURN_FALSE;
-
-	bc_log("%s", str);
-
-	RETURN_TRUE;
-}
-
 PHP_FUNCTION(bc_license_machine_id)
 {
 	char buf[64];
@@ -540,8 +526,6 @@ static function_entry bluecherry_functions[] = {
 	PHP_FE(bc_set_control, NULL)
 	PHP_FE(bc_get_mjpeg_url, NULL)
 	PHP_FE(bc_ptz_cmd, NULL)
-	/* Miscellaneous */
-	PHP_FE(bc_log, NULL)
 	/* Licensing */
 	PHP_FE(bc_license_machine_id, NULL)
 	PHP_FE(bc_license_check, NULL)
