@@ -1,5 +1,4 @@
 #include "libbluecherry.h"
-#include <cstdatomic>
 
 input_device::input_device()
 	: _audio_enabled(false), _started(false), next_packet_seq(0) 

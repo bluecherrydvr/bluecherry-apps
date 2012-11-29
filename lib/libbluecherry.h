@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 #include <deque>
-#include <cstdatomic>
 #include <memory>
 
 extern "C" {
@@ -56,6 +55,13 @@ extern "C" {
 }
 
 #include "logging.h"
+
+/* GCC starting with 4.5.x ships <atomic>, while older versions use <cstdatomic> */
+#if __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#include <cstdatomic>
+#else
+#include <atomic>
+#endif
 
 typedef enum {
 	BC_DEVICE_V4L2,
