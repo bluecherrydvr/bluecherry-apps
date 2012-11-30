@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/sh -e
 
 case "$1" in
 	upgrade)
@@ -20,7 +18,7 @@ case "$1" in
 		if which service >/dev/null 2>&1; then
 			service bluecherry stop || true
 		else
-			/etc/init.d/bluecherry stop || true
+			invoke-rc.d bluecherry stop || true
 		fi
 		;;
 esac
