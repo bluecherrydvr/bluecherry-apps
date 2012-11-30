@@ -25,7 +25,12 @@ case "$1" in
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
-		chown syslog:bluecherry /var/log/bluecherry.log
+
+		if id syslog > /dev/null 2>&1; then
+			chown syslog:bluecherry /var/log/bluecherry.log
+		else
+			chown root:bluecherry /var/log/bluecherry.log
+		fi
 		chmod 640 /var/log/bluecherry.log
 
 		# Apache modules and sites
