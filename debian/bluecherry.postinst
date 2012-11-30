@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/sh -e
 
 . /usr/share/debconf/confmodule
 . /usr/share/dbconfig-common/dpkg/postinst.mysql
@@ -42,7 +40,8 @@ case "$1" in
 			service apache2 reload
 			service rsyslog reload
 		else
-			/etc/init.d/apache2 reload
+			invoke-rc.d apache2 reload
+			invoke-rc.d rsyslog reload
 		fi
 
 		if [ ! -e /var/lib/.bcins ]; then
