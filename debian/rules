@@ -19,6 +19,12 @@ override_dh_installinit:
 	fi
 	dh_installinit
 
+override_dh_installlogrotate:
+	if ! id syslog > /dev/null 2>&1; then \
+		sed -i -e 's/640 syslog/640 root/' debian/bluecherry.logrotate; \
+	fi
+	dh_installlogrotate
+
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/bluecherry
 	cat misc/sql/mysql/*.sql > \
