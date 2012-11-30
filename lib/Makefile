@@ -8,7 +8,7 @@ SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 		  bc-key.o bc-media.o rtp_device.o bc-ptz.o \
-		  inputdevice.o v4l2_device.o stream_elements.o \
+		  input_device.o v4l2_device.o stream_elements.o \
 		  logging.o
 
 all: $(SOLIBVER)
