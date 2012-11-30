@@ -41,7 +41,7 @@ case "$1" in
 			service rsyslog reload
 		else
 			invoke-rc.d apache2 reload
-			invoke-rc.d rsyslog reload
+			invoke-rc.d rsyslog reload || true
 		fi
 
 		if [ ! -e /var/lib/.bcins ]; then
