@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/sh -e
 
 . /usr/share/debconf/confmodule
 . /usr/share/dbconfig-common/dpkg/postinst.mysql
@@ -25,7 +23,12 @@ case "$1" in
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
-		chown syslog:bluecherry /var/log/bluecherry.log
+
+		if id syslog > /dev/null 2>&1; then
+			chown syslog:bluecherry /var/log/bluecherry.log
+		else
+			chown root:bluecherry /var/log/bluecherry.log
+		fi
 		chmod 640 /var/log/bluecherry.log
 
 		# Apache modules and sites
@@ -37,7 +40,8 @@ case "$1" in
 			service apache2 reload
 			service rsyslog reload
 		else
-			/etc/init.d/apache2 reload
+			invoke-rc.d apache2 reload
+			invoke-rc.d rsyslog reload || true
 		fi
 
 		if [ ! -e /var/lib/.bcins ]; then

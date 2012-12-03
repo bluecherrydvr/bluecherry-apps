@@ -1,6 +1,4 @@
-#!/bin/sh
-
-set -e
+#!/bin/sh -e
 
 if [ -f /usr/share/debconf/confmodule ]; then
 	. /usr/share/debconf/confmodule
@@ -15,8 +13,8 @@ case "$1" in
 		a2dissite bluecherry
 
 		# Reload some things
-		invoke-rc.d apache2 restart
-		invoke-rc.d rsyslog reload
+		invoke-rc.d apache2 restart || true
+		invoke-rc.d rsyslog reload || true
 	;;
 	purge)
 		CONFIGFILE=/etc/bluecherry.conf
