@@ -767,7 +767,7 @@ int main(int argc, char **argv)
 		case 'r': record_id = atoi(optarg); break;
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
-		case 'l': bc_log_context_default().set_level(str_to_log_level(optarg)); break;
+		case 'l': log_context::default_context().set_level(str_to_log_level(optarg)); break;
 		case 'h': default: usage();
 		}
 	}

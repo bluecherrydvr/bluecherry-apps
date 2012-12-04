@@ -24,7 +24,7 @@ struct log_context::data {
 	}
 };
 
-const log_context &log_context::default_context()
+log_context &log_context::default_context()
 {
 	return bc_default_context;
 }
@@ -117,11 +117,6 @@ const log_context &bc_log_context()
 			pthread_getspecific(bc_log_thread_context));
 	if (p && !p->empty())
 		return p->back();
-	return bc_default_context;
-}
-
-log_context &bc_log_context_default()
-{
 	return bc_default_context;
 }
 
