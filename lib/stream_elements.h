@@ -57,10 +57,14 @@ public:
 	void connect(stream_consumer *child, SetupMode mode = StartFromRealtime);
 	void disconnect(stream_consumer *child);
 
+	const log_context &logging_context() { return log; }
+	void set_logging_context(const log_context &context) { log = context; }
+
 protected:
 	std::set<stream_consumer*> children;
 	std::mutex lock;
 	stream_keyframe_buffer send_buffer;
+	log_context log;
 };
 
 class stream_consumer
@@ -82,6 +86,9 @@ public:
 	 * is guaranteed to still exist. */
 	void disconnect();
 
+	const log_context &logging_context() { return log; }
+	void set_logging_context(const log_context &context) { log = context; }
+
 protected:
 	/* Lock protecting buffer and buffer_wait */
 	std::mutex lock;
@@ -93,6 +100,7 @@ protected:
 	stream_keyframe_buffer buffer;
 	stream_source *output_source;
 	stream_source *connected_source;
+	log_context log;
 
 	friend class stream_source;
 	virtual void connected(stream_source *source);

@@ -4,7 +4,7 @@
 #include <vector>
 
 extern char *__progname;
-log_context bc_default_context;
+static log_context *bc_default_context = 0;
 static pthread_key_t bc_log_thread_context;
 
 static void destroy_thread_context(void *vp)
@@ -26,10 +26,16 @@ struct log_context::data {
 
 log_context &log_context::default_context()
 {
-	return bc_default_context;
+	/* Not thread safe, but assumed to be safe at startup */
+	if (!bc_default_context) {
+		bc_default_context = new log_context("");
+		bc_default_context->set_level(Info);
+	}
+	return *bc_default_context;
 }
 
 log_context::log_context()
+	: d(default_context().d)
 {
 	d = std::shared_ptr<data>(new data(""));
 	d->level = Info;
@@ -58,7 +64,7 @@ void log_context::set_level(log_level l)
 
 bool log_context::test_level(log_level l) const
 {
-	return (d->level >= 0 && l >= d->level) || (d->level < 0 && l >= bc_default_context.level());
+	return (d->level >= 0 && l >= d->level) || (d->level < 0 && l >= default_context().level());
 }
 
 std::string log_context::name() const
@@ -82,7 +88,7 @@ void log_context::log(log_level l, const char *msg, ...) const
 
 void log_context::vlog(log_level l, const char *msg, va_list args) const
 {
-	if ((d->level >= 0 && l < d->level) || (d->level < 0 && l < bc_default_context.level()))
+	if ((d->level >= 0 && l < d->level) || (d->level < 0 && l < default_context().level()))
 		return;
 
 	char buf[1024];
@@ -117,7 +123,7 @@ const log_context &bc_log_context()
 			pthread_getspecific(bc_log_thread_context));
 	if (p && !p->empty())
 		return p->back();
-	return bc_default_context;
+	return log_context::default_context();
 }
 
 void bc_log(log_level l, const char *msg, ...)

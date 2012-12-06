@@ -150,15 +150,18 @@ void bc_record::run()
 			if (sched_cur == 'C') {
 				rec = new recorder(this);
 				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
+				rec->set_logging_context(log);
 				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
 				std::thread th(&recorder::run, rec);
 				th.detach();
 			} else if (sched_cur == 'M') {
 				m_handler = new motion_handler;
+				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
 				rec = new recorder(this);
+				rec->set_logging_context(log);
 				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
 				m_handler->connect(rec);
 				std::thread rec_th(&recorder::run, rec);
@@ -168,6 +171,7 @@ void bc_record::run()
 					static_cast<v4l2_device*>(bc->input)->set_motion(true);
 				} else {
 					m_processor = new motion_processor;
+					m_processor->set_logging_context(log);
 					update_motion_thresholds();
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->create_flag_consumer());

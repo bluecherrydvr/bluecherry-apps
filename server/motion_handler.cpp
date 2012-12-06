@@ -62,6 +62,8 @@ void motion_handler::run()
 	time_t last_motion = 0;
 	unsigned last_recorded_seq = 0;
 
+	bc_log_context_push(log);
+
 	while (!destroy_flag)
 	{
 		raw_stream->buffer_wait.wait(l);
