@@ -30,7 +30,8 @@ class log_context
 public:
 	static log_context &default_context();
 
-	/* Create a context with no name */
+	/* Create an instance of the default context, which shares its data and
+	 * level. */
 	log_context();
 	/* Create a context with the given string as name. Printf-style formatting
 	 * is applied for convenience. */

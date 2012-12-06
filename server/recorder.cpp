@@ -28,6 +28,8 @@ void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
 
+	bc_log_context_push(log);
+
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
 	{
