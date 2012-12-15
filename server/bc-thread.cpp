@@ -456,7 +456,6 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	if (format_changed) {
 		stop_handle_properly(bc_rec);
-		bc_streaming_destroy(bc_rec);
 		try_formats(bc_rec);
 	}
 

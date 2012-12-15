@@ -413,6 +413,27 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 		stop();
 	}
 
+	if (!re && int_changed) {
+		vparm.parm.capture.timeperframe.numerator = interval;
+		if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
+			re = -1;
+		else if (ioctl(dev_fd, VIDIOC_G_PARM, &vparm) < 0)
+			re = -1;
+		else {
+			/* Reset GOP */
+			gop = lround(vparm.parm.capture.timeperframe.denominator / vparm.parm.capture.timeperframe.numerator);
+			if (!gop)
+				gop = 1;
+			struct v4l2_control vc;
+			vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
+			vc.value = gop;
+			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc) < 0)
+				re = -1;
+		}
+	}
+
+	// Format must be set last, because it may implicitly turn on the encoder,
+	// which could cause other changes to fail...
 	if (fmt_changed) {
 		/* XXX: we could cache this */
 		uint32_t fmt = get_best_pixfmt(dev_fd);
@@ -431,25 +452,11 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 			re = -1;
 		else if (ioctl(dev_fd, VIDIOC_G_FMT, &vfmt) < 0)
 			re = -1;
-	}
 
-	if (!re && int_changed) {
-		vparm.parm.capture.timeperframe.numerator = interval;
-		if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
-			re = -1;
-		else if (ioctl(dev_fd, VIDIOC_G_PARM, &vparm) < 0)
-			re = -1;
-		else {
-			/* Reset GOP */
-			gop = lround(vparm.parm.capture.timeperframe.denominator / vparm.parm.capture.timeperframe.numerator);
-			if (!gop)
-				gop = 1;
-			struct v4l2_control vc;
-			vc.id = V4L2_CID_MPEG_VIDEO_GOP_SIZE;
-			vc.value = gop;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc) < 0)
-				re = -1;
-		}
+		// S_FMT may turn the stream on implicitly, so make sure it's off if we're not
+		// about to turn it on again.
+		else if (!needs_restart)
+			ioctl(dev_fd, VIDIOC_STREAMOFF, &type);
 	}
 
 	// start() does update_properties()
