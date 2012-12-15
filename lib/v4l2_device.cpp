@@ -362,19 +362,6 @@ int v4l2_device::set_format(uint32_t fmt, uint16_t width, uint16_t height, uint8
 	if (needs_restart)
 		stop();
 
-	if (fmt_changed) {
-		vfmt.fmt.pix.pixelformat = fmt;
-		if (width)
-			vfmt.fmt.pix.width = width;
-		if (height)
-			vfmt.fmt.pix.height = height;
-
-		if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
-			re = -1;
-		else if (ioctl(dev_fd, VIDIOC_G_FMT, &vfmt) < 0)
-			re = -1;
-	}
-
 	if (!re && int_changed) {
 		vparm.parm.capture.timeperframe.numerator = interval;
 		if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
@@ -392,6 +379,26 @@ int v4l2_device::set_format(uint32_t fmt, uint16_t width, uint16_t height, uint8
 			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc) < 0)
 				re = -1;
 		}
+	}
+
+	// Format must be set last, because it may implicitly turn on the encoder,
+	// which could cause other changes to fail...
+	if (fmt_changed) {
+		enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		vfmt.fmt.pix.pixelformat = fmt;
+		if (width)
+			vfmt.fmt.pix.width = width;
+		if (height)
+			vfmt.fmt.pix.height = height;
+
+		if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
+			re = -1;
+		else if (ioctl(dev_fd, VIDIOC_G_FMT, &vfmt) < 0)
+			re = -1;
+		// S_FMT may turn the stream on implicitly, so make sure it's off if we're not
+		// about to turn it on again.
+		else if (!needs_restart)
+			ioctl(dev_fd, VIDIOC_STREAMOFF, &type);
 	}
 
 	// start() does update_properties()
