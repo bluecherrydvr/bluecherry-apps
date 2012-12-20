@@ -51,41 +51,6 @@ time_t last_known_running;
 #define TRIAL_MAX_DEVICES 32
 static std::vector<bc_license> licenses;
 
-/* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
- * so a real encoder isn't neeeded, but one must be present for the process to
- * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
- */
-static int fake_h264_init(AVCodecContext *ctx)
-{
-	return 0;
-}
-
-static int fake_h264_close(AVCodecContext *ctx)
-{
-	return 0;
-}
-
-static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void *data)
-{
-	return -1;
-}
-
-AVCodec fake_h264_encoder = {
-	"fakeh264", /* name */
-	AVMEDIA_TYPE_VIDEO, /* type */
-	CODEC_ID_H264, /* id */
-	0, /* priv_data_size */ 
-	fake_h264_init, /* init */
-	fake_h264_frame, /* encode */
-	fake_h264_close, /* close */
-	0, /* decode */
-	CODEC_CAP_DELAY, /* capabilities */
-	0, /* next */
-	0, /* flush */
-	0, /* suipported_framerates */
-	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE }, /* pix_fmts */
-	"Fake H.264 Encoder for RTP Muxing", /* long_name */
-};
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -680,31 +645,6 @@ static void usage(const char *progname)
 	exit(1);
 }
 
-/* Warning: Must be reentrant; this may be called from many device threads at once */
-static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
-{
-	log_level bc_level = Info;
-	switch (level) {
-		case AV_LOG_PANIC: bc_level = Fatal; break;
-		case AV_LOG_FATAL: bc_level = Error; break;
-		case AV_LOG_ERROR: bc_level = Warning; break;
-		case AV_LOG_WARNING:
-		case AV_LOG_INFO: bc_level = Info; break;
-#ifdef LIBAV_DEBUG
-		case AV_LOG_DEBUG:
-#endif
-		case AV_LOG_VERBOSE: bc_level = Debug; break;
-		default: return;
-	}
-
-	const log_context &context = bc_log_context();
-	if (!context.test_level(bc_level))
-		return;
-
-	char msg[1024] = "[libav] ";
-	strlcat(msg, fmt, sizeof(msg));
-	context.vlog(bc_level, msg, ap);
-}
 
 /* Returns 0 if okay, otherwise -1 and outputs an error */
 static int check_trial_expired()
@@ -811,21 +751,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log(Fatal, "libav lock registration failed: %m");
-		exit(1);
-	}
-
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGCHLD, SIG_IGN);
 	/* XXX This is not suitable for much of anything, really. */
 	srand((unsigned)(getpid() * time(NULL)));
 
-	avcodec_register(&fake_h264_encoder);
-	av_register_all();
-	avformat_network_init();
-
-	av_log_set_callback(av_log_cb);
+	bc_libav_init();
 
 	if (bg && daemon(0, 0) == -1) {
 		bc_log(Fatal, "Fork failed: %m");
@@ -929,7 +860,7 @@ int main(int argc, char **argv)
 
 	bc_stop_threads();
 	bc_db_close();
-	av_lockmgr_register(NULL);
+	bc_libav_init();
 
 	exit(0);
 }
