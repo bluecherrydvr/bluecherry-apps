@@ -148,4 +148,7 @@ int has_audio(struct bc_record *bc_rec);
 
 extern "C" void signals_setup();
 
+void bc_libav_init();
+void bc_libav_term();
+
 #endif /* __BC_SERVER_H */
