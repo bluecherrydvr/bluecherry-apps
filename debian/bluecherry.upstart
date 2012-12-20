@@ -9,7 +9,6 @@ start on runlevel [23]
 stop on runlevel [016]
 
 respawn
-umask 027
 
 pre-start script
     mkdir -p /var/run/bluecherry

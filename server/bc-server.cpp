@@ -761,6 +761,8 @@ int main(int argc, char **argv)
 	const char *user = 0, *group = 0;
 	int error;
 
+	umask(027);
+
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
