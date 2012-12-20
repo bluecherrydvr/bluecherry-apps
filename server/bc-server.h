@@ -138,4 +138,7 @@ int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
 
+void bc_libav_init();
+void bc_libav_term();
+
 #endif /* __BC_SERVER_H */
