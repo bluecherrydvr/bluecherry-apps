@@ -79,7 +79,7 @@ void bc_db_close(void)
 int bc_db_open(void)
 {
 	struct config_t cfg;
-	long type;
+	int type;
 	int ret = -1;
 
 	if (db_ops != NULL)
