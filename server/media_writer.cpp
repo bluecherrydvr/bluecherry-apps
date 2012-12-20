@@ -27,13 +27,13 @@ int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 			if (!*mutex)
 				return 1;
 			return !!pthread_mutex_init(*mutex, NULL);
-		
+
 		case AV_LOCK_OBTAIN:
 			return !!pthread_mutex_lock(*mutex);
-		
+
 		case AV_LOCK_RELEASE:
 			return !!pthread_mutex_unlock(*mutex);
-			
+
 		case AV_LOCK_DESTROY:
 			pthread_mutex_destroy(*mutex);
 			free(*mutex);
@@ -84,20 +84,20 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			bc_log(Debug, "Setting writer pts base for stream to %"PRId64"", output_pts_base);
 		}
 
-		/* Subtract output_pts_base, both in the universal AV_TIME_BASE and synchronized across
-		 * all related streams. */
+		/* Subtract output_pts_base, both in the universal AV_TIME_BASE
+		 * and synchronized across all related streams. */
 		opkt.pts -= output_pts_base;
 		/* Convert to output time_base */
 		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q, s->time_base);
 	}
 
 	/* Cutoff points can result in a few negative PTS frames, because often
-	 * the video will be cut before the audio for that time has been written.
-	 * We can drop these; they won't be played back, other than a very trivial
-	 * amount of time at the beginning of a recording. */
+	 * the video will be cut before the audio for that time has been
+	 * written.  We can drop these; they won't be played back, other than a
+	 * very trivial amount of time at the beginning of a recording. */
 	if (opkt.pts != (int64_t)AV_NOPTS_VALUE && opkt.pts < 0) {
-		bc_log(Debug, "Dropping frame with negative pts %"PRId64", probably "
-		       "caused by recent PTS reset", opkt.pts);
+		bc_log(Debug, "Dropping frame with negative pts %"PRId64", "
+		       "probably caused by recent PTS reset", opkt.pts);
 		return true;
 	}
 
@@ -379,4 +379,3 @@ end:
 	av_free(oc);
 	return re;
 }
-
