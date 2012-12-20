@@ -45,8 +45,6 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
  * instance; may be zero if unknown or never */
 time_t last_known_running;
 
-extern char *__progname;
-
 /* Prerelease */
 #define DONT_ENFORCE_LICENSING 0
 #define TRIAL_DAYS 30
@@ -685,9 +683,9 @@ static void bc_check_inprogress(void)
 	bc_db_free_table(dbres);
 }
 
-static void usage(void)
+static void usage(const char *progname)
 {
-	fprintf(stderr, "Usage: %s [-s]\n", __progname);
+	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
@@ -790,7 +788,7 @@ int main(int argc, char **argv)
 		case 'r': record_id = atoi(optarg); break;
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
-		case 'h': default: usage();
+		case 'h': default: usage(argv[0]);
 		}
 	}
 
