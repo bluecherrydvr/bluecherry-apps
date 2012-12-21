@@ -471,7 +471,7 @@ class ipCamera{
 		if ($control) { $result = $control->auto_configure(); };
 		return $result;
 	}
-	private static function prepareData($rawData){
+	private static function prepareData($rawData, $self_id){
 		#prepare device
 			if (empty($rawData['ipAddr']))	{ return array(false, AIP_NEEDIP); };
 			if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
@@ -479,6 +479,7 @@ class ipCamera{
 				$rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
 				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
 				$duplicate_path = data::getObject('Devices', 'device', $data['device']);
+				$duplicate_path = ($duplicate_path[0]['id'] == $self_id) ? false : $duplicate_path; 
 			if (!empty($duplicate_path)) 	{ return array(false, AIP_ALREADY_EXISTS); }
 		#prepare mjpeg path
 			if (empty($rawData['mjpeg']))	{ return array(false, AIP_NEEDMJPEG); }
@@ -502,7 +503,7 @@ class ipCamera{
 		return array(true, $data);
 	}
 	public function edit($data){
-		$data = self::prepareData($data);
+		$data = self::prepareData($data, $this->info['id']);
 		#if errors were detected -- return error
 		if (!$data[0]) { return $data; } else { unset($data[1]['device_name']); }
 		#if there were no errors, edit the camera
