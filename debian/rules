@@ -15,7 +15,8 @@ override_dh_strip:
 override_dh_installinit:
 	if [ -x /sbin/start ]; then \
 		echo "Upstart detected"; \
-		cp debian/bluecherry.upstart.tmp debian/bluecherry.upstart; \
+	else \
+		rm debian/bluecherry.upstart; \
 	fi
 	dh_installinit
 
