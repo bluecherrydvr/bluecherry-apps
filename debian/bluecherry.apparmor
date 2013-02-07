@@ -1,0 +1,8 @@
+#include <tunables/global>
+
+/usr/sbin/bc-server {
+  #include <abstractions/nameservice>
+  #include <abstractions/audio>
+
+  /dev/video* rw,
+}

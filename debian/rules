@@ -15,7 +15,8 @@ override_dh_strip:
 override_dh_installinit:
 	if [ -x /sbin/start ]; then \
 		echo "Upstart detected"; \
-		cp debian/bluecherry.upstart.tmp debian/bluecherry.upstart; \
+	else \
+		rm debian/bluecherry.upstart; \
 	fi
 	dh_installinit
 
@@ -37,5 +38,7 @@ override_dh_auto_install:
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
 	install -m644 debian/bluecherry.monit \
 		debian/bluecherry/etc/monit/conf.d/bluecherry
+	install -m644 debian/bluecherry.apparmor \
+		debian/bluecherry/etc/apparmor.d/usr.sbin.bc-server
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www
 	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/version
