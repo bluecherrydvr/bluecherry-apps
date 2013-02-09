@@ -294,7 +294,7 @@ static void bc_check_threads(void)
 {
 	char *errmsg = 0;
 
-	for (int i = 0; i < bc_rec_list.size(); i++) {
+	for (unsigned int i = 0; i < bc_rec_list.size(); i++) {
 		bc_record *bc_rec = bc_rec_list[i];
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;

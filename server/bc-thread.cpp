@@ -93,7 +93,7 @@ static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = (struct bc_record*) data;
 	bc_rec->run();
-	return bc_rec->thread_should_die;
+	return (void*)bc_rec->thread_should_die;
 }
 
 void bc_record::run()

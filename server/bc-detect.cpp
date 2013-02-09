@@ -40,7 +40,7 @@ static int check_solo(struct udev_device *device)
 	char path[PATH_MAX];
 	char card_name[32];
 	char bcuid[37];
-	char *uid_type;
+	const char *uid_type;
 	char eeprom[128], driver[64], video_type[8];
 	int id, ports;
 	int fd;

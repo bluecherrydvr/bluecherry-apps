@@ -88,7 +88,7 @@ void motion_handler::run()
 			 * in the buffer, send all packets between that and the current packet
 			 * to resume the recording. */
 			if (last_recorded_seq && last_recorded_seq >= buffer.front().seq) {
-				int resume_pos = 0;
+				unsigned int resume_pos = 0;
 				for (; resume_pos < buffer.size(); resume_pos++) {
 					if (buffer[resume_pos].seq > last_recorded_seq)
 						break;
@@ -136,7 +136,7 @@ void motion_handler::run()
 			}
 		}
 
-		for (int i = send_from; i < buffer.size(); i++)
+		for (unsigned int i = send_from; i < buffer.size(); i++)
 			send(buffer[i]);
 		last_recorded_seq = buffer.back().seq;
 

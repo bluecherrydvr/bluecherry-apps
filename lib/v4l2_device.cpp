@@ -114,9 +114,9 @@ v4l2_buffer *v4l2_device::buf_v4l2()
 
 void v4l2_device::v4l2_local_bufs()
 {
-	int i, c;
+	unsigned int c;
 
-	for (i = c = 0; i < buffers; i++) {
+	for (unsigned int i = c = 0; i < buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -150,7 +150,6 @@ int v4l2_device::is_key_frame()
 int v4l2_device::v4l2_bufs_prepare()
 {
 	struct v4l2_requestbuffers req;
-	int i;
 
 	reset_vbuf(&req);
 	req.count = buffers;
@@ -165,7 +164,7 @@ int v4l2_device::v4l2_bufs_prepare()
 		return -1;
 	}
 
-	for (i = 0; i < buffers; i++) {
+	for (unsigned int i = 0; i < buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -192,7 +191,6 @@ int v4l2_device::v4l2_bufs_prepare()
 int v4l2_device::start()
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
 
 	/* For mpeg, we get the max, and for mjpeg the min */
 	if (vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
@@ -209,7 +207,7 @@ int v4l2_device::start()
 	}
 
 	/* Queue all buffers */
-	for (i = 0; i < buffers; i++) {
+	for (unsigned int i = 0; i < buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -240,12 +238,11 @@ int v4l2_device::start()
 void v4l2_device::stop()
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int i;
 
 	if (dev_fd < 0)
 		return;
 
-	for (i = 0; i < buffers; i++) {
+	for (unsigned int i = 0; i < buffers; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -265,7 +262,7 @@ void v4l2_device::stop()
 	ioctl(dev_fd, VIDIOC_STREAMOFF, &type);
 
 	/* Unmap all buffers */
-	for (i = 0; i < buffers; i++)
+	for (unsigned int i = 0; i < buffers; i++)
 		munmap(p_buf[i].data, p_buf[i].size);
 
 	local_bufs = buffers;
@@ -276,9 +273,8 @@ void v4l2_device::stop()
 
 void v4l2_device::buf_return()
 {
-	int local = (buffers / 2) - 1;
-	int thresh = ((buffers - local) / 2) + local;
-	int i;
+	unsigned int local = (buffers / 2) - 1;
+	unsigned int thresh = ((buffers - local) / 2) + local;
 
 	/* Maintain a balance of queued and dequeued buffers */
 	if (local_bufs < thresh)
@@ -286,7 +282,7 @@ void v4l2_device::buf_return()
 
 	v4l2_local_bufs();
 
-	for (i = 0; i < buffers && local_bufs > local; i++) {
+	for (unsigned int i = 0; i < buffers && local_bufs > local; i++) {
 		struct v4l2_buffer vb;
 
 		reset_vbuf(&vb);
@@ -437,7 +433,7 @@ int v4l2_device::set_control(unsigned int ctrl, int val)
 	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
-int v4l2_device::set_osd(char *fmt, ...)
+int v4l2_device::set_osd(const char *fmt, ...)
 {
 	char buf[256];
 	va_list ap;
@@ -524,7 +520,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -ENOSYS;
 
 	struct v4l2_control vc;
-	int vh = 15;
+	unsigned int vh = 15;
 	int i;
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 
