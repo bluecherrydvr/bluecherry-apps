@@ -32,8 +32,6 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 
 void stop_handle_properly(struct bc_record *bc_rec)
 {
-	struct bc_output_packet *p, *n;
-
 	bc_streaming_destroy(bc_rec);
 	bc_rec->bc->input->stop();
 }
@@ -116,8 +114,6 @@ void bc_record::run()
 	bc_log_context_push(log);
 
 	while (!thread_should_die) {
-		const char *err_msg;
-
 		/* Set by bc_record_update_cfg */
 		if (cfg_dirty) {
 			if (apply_device_cfg(this))
