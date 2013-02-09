@@ -54,7 +54,7 @@ void rtp_device::stop()
 	av_free_packet(&frame);
 	av_init_packet(&frame);
 
-	for (int i = 0; i < ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		if (ctx->streams[i]->codec->codec)
 			avcodec_close(ctx->streams[i]->codec);
 	}
@@ -63,7 +63,7 @@ void rtp_device::stop()
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
 
-	for (int i = 0; i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < RTP_NUM_STREAMS; ++i) {
 		stream_data[i].pts_base = 0;
 		stream_data[i].last_pts = AV_NOPTS_VALUE;
 		stream_data[i].last_pts_diff = 0;
@@ -73,7 +73,7 @@ void rtp_device::stop()
 
 int rtp_device::start()
 {
-	int i, re;
+	int re;
 	AVDictionary *avopt = NULL;
 	char tmp[24];
 
@@ -105,14 +105,14 @@ int rtp_device::start()
 
 	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
 	AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
-	for (i = 0; i < ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		opt_si[i] = 0;
 		av_dict_copy(&opt_si[i], opt_copy, 0);
 	}
 
 	re = avformat_find_stream_info(ctx, opt_si);
 
-	for (i = 0; i < ctx->nb_streams; ++i)
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
 		av_dict_free(&opt_si[i]);
 	delete[] opt_si;
 	av_dict_free(&opt_copy);
@@ -123,7 +123,7 @@ int rtp_device::start()
 		return -1;
 	}
 
-	for (i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		AVStream *stream = ctx->streams[i];
 
 		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
@@ -367,7 +367,6 @@ void rtp_device::update_properties()
 void rtp_device::set_current_pts(int64_t pts)
 {
 	int64_t offset;
-	int i;
 
 	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
 	 * all other streams are adjusted accordingly. */
@@ -384,7 +383,7 @@ void rtp_device::set_current_pts(int64_t pts)
 	bc_log(Debug, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64,
 	       offset, frame.stream_index, pts);
 
-	for (i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
 		stream_data[i].pts_base += av_rescale_q(offset, ctx->streams[frame.stream_index]->time_base, ctx->streams[i]->time_base);
 	}
 

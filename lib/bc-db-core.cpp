@@ -102,7 +102,7 @@ int bc_db_open(void)
 		db_ops = &bc_db_mysql;
 		break;
 	default:
-		bc_log(Fatal, "Database type %ld is not supported", type);
+		bc_log(Fatal, "Database type %d is not supported", type);
 	}
 
 	if (db_ops)

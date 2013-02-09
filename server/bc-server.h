@@ -64,7 +64,7 @@ public:
 
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
-	char			*thread_should_die;
+	const char		*thread_should_die;
 	int			file_started;
 
 	/* Notify thread to restart with new format */
