@@ -45,49 +45,12 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
  * instance; may be zero if unknown or never */
 time_t last_known_running;
 
-extern char *__progname;
-
 /* Prerelease */
 #define DONT_ENFORCE_LICENSING 0
 #define TRIAL_DAYS 30
 #define TRIAL_MAX_DEVICES 32
 static std::vector<bc_license> licenses;
 
-/* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
- * so a real encoder isn't neeeded, but one must be present for the process to
- * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
- */
-static int fake_h264_init(AVCodecContext *ctx)
-{
-	return 0;
-}
-
-static int fake_h264_close(AVCodecContext *ctx)
-{
-	return 0;
-}
-
-static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void *data)
-{
-	return -1;
-}
-
-AVCodec fake_h264_encoder = {
-	"fakeh264", /* name */
-	AVMEDIA_TYPE_VIDEO, /* type */
-	CODEC_ID_H264, /* id */
-	0, /* priv_data_size */ 
-	fake_h264_init, /* init */
-	fake_h264_frame, /* encode */
-	fake_h264_close, /* close */
-	0, /* decode */
-	CODEC_CAP_DELAY, /* capabilities */
-	0, /* next */
-	0, /* flush */
-	0, /* suipported_framerates */
-	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE }, /* pix_fmts */
-	"Fake H.264 Encoder for RTP Muxing", /* long_name */
-};
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -670,9 +633,9 @@ static void bc_check_inprogress(void)
 	bc_db_free_table(dbres);
 }
 
-static void usage(void)
+static void usage(const char *progname)
 {
-	fprintf(stderr, "Usage: %s [-s]\n", __progname);
+	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -l\tLogging level ([d]ebug, [i]nfo, [w]arning, [e]rror, [b]ug, [f]atal)\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
@@ -682,31 +645,6 @@ static void usage(void)
 	exit(1);
 }
 
-/* Warning: Must be reentrant; this may be called from many device threads at once */
-static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
-{
-	log_level bc_level = Info;
-	switch (level) {
-		case AV_LOG_PANIC: bc_level = Fatal; break;
-		case AV_LOG_FATAL: bc_level = Error; break;
-		case AV_LOG_ERROR: bc_level = Warning; break;
-		case AV_LOG_WARNING:
-		case AV_LOG_INFO: bc_level = Info; break;
-#ifdef LIBAV_DEBUG
-		case AV_LOG_DEBUG:
-#endif
-		case AV_LOG_VERBOSE: bc_level = Debug; break;
-		default: return;
-	}
-
-	const log_context &context = bc_log_context();
-	if (!context.test_level(bc_level))
-		return;
-
-	char msg[1024] = "[libav] ";
-	strlcat(msg, fmt, sizeof(msg));
-	context.vlog(bc_level, msg, ap);
-}
 
 /* Returns 0 if okay, otherwise -1 and outputs an error */
 static int check_trial_expired()
@@ -770,7 +708,7 @@ int main(int argc, char **argv)
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
 		case 'l': log_context::default_context().set_level(str_to_log_level(optarg)); break;
-		case 'h': default: usage();
+		case 'h': default: usage(argv[0]);
 		}
 	}
 
@@ -813,21 +751,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log(Fatal, "libav lock registration failed: %m");
-		exit(1);
-	}
-
 	signal(SIGPIPE, SIG_IGN);
 	signal(SIGCHLD, SIG_IGN);
 	/* XXX This is not suitable for much of anything, really. */
 	srand((unsigned)(getpid() * time(NULL)));
 
-	avcodec_register(&fake_h264_encoder);
-	av_register_all();
-	avformat_network_init();
-
-	av_log_set_callback(av_log_cb);
+	bc_libav_init();
 
 	if (bg && daemon(0, 0) == -1) {
 		bc_log(Fatal, "Fork failed: %m");
@@ -931,7 +860,7 @@ int main(int argc, char **argv)
 
 	bc_stop_threads();
 	bc_db_close();
-	av_lockmgr_register(NULL);
+	bc_libav_init();
 
 	exit(0);
 }

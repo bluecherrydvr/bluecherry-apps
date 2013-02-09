@@ -70,7 +70,6 @@ error:
 void bc_streaming_destroy(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx = bc_rec->stream_ctx;
-	int i;
 
 	if (!ctx)
 		return;
@@ -82,7 +81,7 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 		av_free(buf);
 	}
 
-	for (i = 0; i < ctx->nb_streams; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		avcodec_close(ctx->streams[i]->codec);
 		av_freep(&ctx->streams[i]->codec);
 		av_freep(&ctx->streams[i]);

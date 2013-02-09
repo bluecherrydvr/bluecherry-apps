@@ -216,10 +216,9 @@ static int __bc_check_avail(void)
 
 int bc_check_avail(void)
 {
-	int i, j;
 	int ret = 0;
 
-	for (i = 0; i < MAX_CARDS; i++)
+	for (int i = 0; i < MAX_CARDS; i++)
 		cards[i].dirty = cards[i].valid;
 
 	ret = __bc_check_avail();
@@ -232,12 +231,12 @@ int bc_check_avail(void)
 	if (__bc_db_query("DELETE FROM AvailableSources"))
 		goto rollback;
 
-	for (i = 0; i < MAX_CARDS; i++) {
+	for (int i = 0; i < MAX_CARDS; i++) {
 		struct card_list *card = &cards[i];
 		if (!card->valid)
 			break;
 
-		for (j = 0; j < card->n_ports; j++) {
+		for (int j = 0; j < card->n_ports; j++) {
 			ret |= __bc_db_query("INSERT INTO AvailableSources "
 			                     "(device, driver, card_id, video_type) "
 			                     "VALUES('%s|%s|%d', '%s', '%d', '%s')",
@@ -255,7 +254,7 @@ int bc_check_avail(void)
 	}
 
 	/* Check for cards gone missing */
-	for (i = 0; i < MAX_CARDS; i++) {
+	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!(cards[i].valid && cards[i].dirty))
 			continue;
 		bc_log(Warning, "solo6x10: card with name %s no longer found", cards[i].name);
