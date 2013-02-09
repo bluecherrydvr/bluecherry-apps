@@ -109,7 +109,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	AVPacket opkt;
 	int re;
 
-	if (!bc_streaming_is_active(bc_rec))
+	if (!bc_streaming_is_active(bc_rec) || pkt.type != AVMEDIA_TYPE_VIDEO)
 		return 0;
 
 	av_init_packet(&opkt);
