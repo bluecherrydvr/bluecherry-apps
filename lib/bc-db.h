@@ -19,7 +19,7 @@ struct bc_db_ops {
 			       int *length);
 	const char *(*get_field)(BC_DB_RES dbres, int nfield);
 	int (*num_fields)(BC_DB_RES dbres);
-	int (*query)(char *query);
+	int (*query)(const char *query);
 	unsigned long (*last_insert_rowid)(void);
 	void (*escape_string)(char *to, const char *from, int len);
 	int (*start_trans)(void);
