@@ -9,7 +9,7 @@
 #include <string.h>
 #include <pthread.h>
 
-#include <bc-db.h>
+#include "bc-db.h"
 
 enum bc_db_type {
 	BC_DB_SQLITE = 0,

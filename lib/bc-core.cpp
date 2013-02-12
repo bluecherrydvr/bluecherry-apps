@@ -17,7 +17,7 @@
 #include <limits.h>
 #include <bsd/string.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 #define reset_vbuf(__vb) do {				\
 	memset((__vb), 0, sizeof(*(__vb)));		\
