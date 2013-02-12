@@ -15,7 +15,7 @@
 
 #include <linux/serial.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 /* PTZ Control protocols */
 enum {

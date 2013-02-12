@@ -11,8 +11,8 @@
 #include <string>
 
 extern "C" {
-#include "libavutil/mathematics.h"
-#include "libswscale/swscale.h"
+#include <libavutil/mathematics.h>
+#include <libswscale/swscale.h>
 }
 
 #include "bc-server.h"

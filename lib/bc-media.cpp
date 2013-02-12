@@ -14,7 +14,7 @@
 #include <fcntl.h>
 #include <bsd/string.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 /* These must match the defs in the SQL db */
 static const char *level_to_str[] = {

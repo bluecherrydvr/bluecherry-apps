@@ -18,7 +18,7 @@
 #include <math.h>
 #include <time.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 #include <bsd/string.h>
 #include "logging.h"
 

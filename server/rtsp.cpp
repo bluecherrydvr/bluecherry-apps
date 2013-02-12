@@ -17,9 +17,9 @@
 #include "libbluecherry.h"
 
 extern "C" {
-#include "libavutil/avstring.h"
-#include "libavutil/intreadwrite.h"
-#include "libavutil/base64.h"
+#include <libavutil/avstring.h>
+#include <libavutil/intreadwrite.h>
+#include <libavutil/base64.h>
 }
 
 rtsp_server *rtsp_server::instance = 0;

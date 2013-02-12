@@ -17,7 +17,7 @@
 #include <limits.h>
 #include <bsd/string.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 #include "rtp_device.h"
 #include "v4l2_device.h"
 #include "stream_elements.h"

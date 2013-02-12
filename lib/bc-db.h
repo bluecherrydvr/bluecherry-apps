@@ -7,7 +7,7 @@
 #ifndef __BC_DB_H
 #define __BC_DB_H
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 struct bc_db_ops {
 	int (*open)(struct config_t *cfg);

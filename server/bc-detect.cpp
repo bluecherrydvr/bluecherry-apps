@@ -14,7 +14,7 @@
 #include <libudev.h>
 #include <bsd/string.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 #include "bc-server.h"
 

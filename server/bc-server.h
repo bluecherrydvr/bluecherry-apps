@@ -7,7 +7,7 @@
 #ifndef __BC_SERVER_H
 #define __BC_SERVER_H
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 #include <pthread.h>
 
 extern "C" {

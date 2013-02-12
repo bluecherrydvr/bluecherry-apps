@@ -18,7 +18,7 @@
 #include <bsd/string.h>
 
 #ifndef BC_KEY_STANDALONE
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 #endif
 
 int bc_license_machine_id(char *out, int out_sz);

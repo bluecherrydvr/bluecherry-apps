@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <bc-db.h>
+#include "bc-db.h"
 
 #include <mysql/mysql.h>
 
