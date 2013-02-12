@@ -105,7 +105,7 @@ static int bc_db_mysql_open(struct config_t *cfg)
 	return 0;
 }
 
-static int bc_db_mysql_query(char *query)
+static int bc_db_mysql_query(const char *query)
 {
 	MYSQL *my_con = get_handle();
 	int ret;
