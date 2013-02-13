@@ -1,8 +1,11 @@
 topdir = .
 include $(topdir)/mk.conf
 
-SUBDIRS		= misc lib server utils
+all clean install: FORCE
+	$(SUBDIR) misc
+	$(SUBDIR) lib
+	$(SUBDIR) server
+	$(SUBDIR) utils
+	$(SUBDIR) php5 -f Makefile.local
 
-all clean install:
-	set -e; for dir in $(SUBDIRS); do $(MAKE) -C $$dir $@; done
-	$(MAKE) -C php5 -f Makefile.local $@
+FORCE:
