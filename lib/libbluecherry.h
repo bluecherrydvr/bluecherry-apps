@@ -18,7 +18,11 @@
 #include <vector>
 
 #ifndef PRId64
+#ifdef __x86_64__
+#define PRId64 "ld"
+#else
 #define PRId64 "lld"
+#endif
 #endif
 
 #include <rtp-session.h>
