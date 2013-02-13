@@ -16,7 +16,11 @@
 #include <inttypes.h>
 
 #ifndef PRId64
+#ifdef __x86_64__
+#define PRId64 "ld"
+#else
 #define PRId64 "lld"
+#endif
 #endif
 
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
