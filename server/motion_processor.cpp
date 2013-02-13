@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "motion_processor.h"
 
 extern "C" {

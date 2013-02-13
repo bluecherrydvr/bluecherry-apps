@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <dirent.h>
 #include <sys/types.h>

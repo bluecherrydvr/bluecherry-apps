@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <unistd.h>
 #include "bc-server.h"
 #include "rtsp.h"
 #include <sys/types.h>
