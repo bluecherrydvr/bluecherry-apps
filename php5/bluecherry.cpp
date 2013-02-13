@@ -501,7 +501,7 @@ PHP_FUNCTION(bc_license_devices_allowed)
 	RETURN_LONG(num);
 }
 
-static function_entry bluecherry_functions[] = {
+static zend_function_entry bluecherry_functions[] = {
 	/* Bluecherry DB Handlers */
 	PHP_FE(bc_db_open, NULL)
 	PHP_FE(bc_db_close, NULL)
