@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "recorder.h"
 #include "bc-server.h"
 #include "media_writer.h"
