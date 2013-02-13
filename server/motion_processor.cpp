@@ -112,7 +112,7 @@ void motion_processor::run()
 				if (diff > 0 && diff < 45) {
 					if (++skip_count > 3) {
 						bc_log(Debug, "Motion detection skipped too many consecutive frames "
-						       "(diff: %"PRId64"); Buggy PTS?", diff);
+						       "(diff: %" PRId64 "); Buggy PTS?", diff);
 					} else
 						skip = true;
 				}

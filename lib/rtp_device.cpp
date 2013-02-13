@@ -374,13 +374,13 @@ void rtp_device::set_current_pts(int64_t pts)
 		return;
 
 	if (frame.pts == AV_NOPTS_VALUE) {
-		bc_log(Debug, "Current frame has no PTS, so PTS reset to %"PRId64" cannot occur", pts);
+		bc_log(Debug, "Current frame has no PTS, so PTS reset to %" PRId64 " cannot occur", pts);
 		return;
 	}
 
 	offset = frame.pts - pts;
 
-	bc_log(Debug, "Adjusted pts_base by %"PRId64" to reset PTS on stream %d to %"PRId64,
+	bc_log(Debug, "Adjusted pts_base by %" PRId64 " to reset PTS on stream %d to %" PRId64,
 	       offset, frame.stream_index, pts);
 
 	for (unsigned int i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {

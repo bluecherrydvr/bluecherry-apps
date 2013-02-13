@@ -81,7 +81,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	} else {
 		if (output_pts_base == (int64_t)AV_NOPTS_VALUE) {
 			output_pts_base = opkt.pts;
-			bc_log(Debug, "Setting writer pts base for stream to %"PRId64"", output_pts_base);
+			bc_log(Debug, "Setting writer pts base for stream to %" PRId64, output_pts_base);
 		}
 
 		/* Subtract output_pts_base, both in the universal AV_TIME_BASE
@@ -96,7 +96,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	 * written.  We can drop these; they won't be played back, other than a
 	 * very trivial amount of time at the beginning of a recording. */
 	if (opkt.pts != (int64_t)AV_NOPTS_VALUE && opkt.pts < 0) {
-		bc_log(Debug, "Dropping frame with negative pts %"PRId64", "
+		bc_log(Debug, "Dropping frame with negative pts %" PRId64 ", "
 		       "probably caused by recent PTS reset", opkt.pts);
 		return true;
 	}
