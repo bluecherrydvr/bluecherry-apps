@@ -773,6 +773,18 @@ static int check_trial_expired()
 	return -1;
 }
 
+static void open_db_loop(void)
+{
+	for (int count = 1; bc_db_open(); sleep(1), count++)
+		if (count >= 30)
+			goto db_error;
+	return;
+
+db_error:
+	bc_log("E: Could not open database after 30 tries, aborting");
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -855,13 +867,7 @@ int main(int argc, char **argv)
 	rtsp_server *rtsp = new rtsp_server;
 	rtsp->setup(7002);
 
-	for (int count = 1; bc_db_open(); count++) {
-		sleep(1);
-		if (count % 30)
-			continue;
-		bc_log("E: Could not open SQL database after 30 seconds...");
-	}
-
+	open_db_loop();
 	bc_log("I: SQL database connection opened");
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
