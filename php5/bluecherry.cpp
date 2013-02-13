@@ -89,7 +89,6 @@ PHP_FUNCTION(bc_db_close)
 
 PHP_FUNCTION(bc_db_escape_string)
 {
-	zval *z_ctx;
 	char *str;
 	int str_len;
 	char *tmp_str, *tmp_str_cpy;
@@ -115,7 +114,6 @@ PHP_FUNCTION(bc_db_escape_string)
 
 PHP_FUNCTION(bc_db_query)
 {
-	zval *z_ctx;
 	char *sql;
 	int sql_len;
 
@@ -137,7 +135,6 @@ PHP_FUNCTION(bc_db_last_insert_rowid)
 
 PHP_FUNCTION(bc_db_get_table)
 {
-	zval *z_ctx;
 	BC_DB_RES dbres;
 	char *sql;
 	int sql_len;
@@ -408,8 +405,6 @@ PHP_FUNCTION(bc_buf_size)
 PHP_FUNCTION(bc_buf_data)
 {
 	struct bc_handle *bch;
-        unsigned char *data;
-	int size;
 
 	BCH_GET_RES("bc_buf_data");
 
