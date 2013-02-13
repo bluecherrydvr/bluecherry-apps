@@ -34,8 +34,6 @@ extern "C" {
 #define V4L2_PIX_FMT_MPEG4    v4l2_fourcc('M', 'P', 'G', '4')
 #endif
 
-#include "rtp-session.h"
-
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
 #define BC_CONFIG_BASE		"bluecherry"
 #define BC_CONFIG_DB		BC_CONFIG_BASE ".db"
