@@ -12,15 +12,11 @@ bc.cgi
 *-build-*
 .gdbinit
 
-debian/bluecherry.debhelper.log
-debian/bluecherry.postinst.debhelper
-debian/bluecherry.postrm.debhelper
-debian/bluecherry.preinst.debhelper
-debian/bluecherry.prerm.debhelper
-debian/bluecherry.substvars
-debian/bluecherry.upstart
-debian/bluecherry/
-debian/bluecherry-dbg*
-debian/files
+/debian/*.log
+/debian/*.debhelper
+/debian/*.substvars
+/debian/bluecherry/
+/debian/bluecherry-dbg*
+/debian/files
 
 /stage/
