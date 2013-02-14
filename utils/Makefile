@@ -1,7 +1,7 @@
 include $(topdir)/mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry -L$(LIBAVPATH)/lib -Wl,-rpath=$(LIBAVPATH)/lib -lavcodec -lavformat -lavutil -lswscale
+LDFLAGS		+= -L$(topdir)/lib -lbluecherry -L$(STAGE)/lib -Wl,-rpath=$(STAGE)/lib -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
 		  rtsp-record bc-license
