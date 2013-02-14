@@ -1,4 +1,3 @@
-topdir = ..
 include $(topdir)/mk.conf
 
 EXTDIR		= $(shell php-config --extension-dir)

@@ -1,4 +1,3 @@
-topdir = ..
 include $(topdir)/mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server

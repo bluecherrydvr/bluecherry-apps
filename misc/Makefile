@@ -1,4 +1,3 @@
-topdir = ..
 include $(topdir)/mk.conf
 
 LIBAV_INSTALL = libav/lib/libavcodec.so.53 \

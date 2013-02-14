@@ -1,4 +1,3 @@
-topdir = ..
 include $(topdir)/mk.conf
 
 LDFLAGS		+= -lmysqlclient -lconfig -lm -lidn -lssl -lcrypto -lrt -lz -lbsd
