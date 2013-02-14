@@ -1,0 +1,10 @@
+Makefile
+/config.status
+/config.log
+/ac_config.h
+/lib/*.pc
+/libtool
+/libconfig.spec
+/stamp-h1
+/tests/libconfig_tests
+/examples/*/example[1-4]
