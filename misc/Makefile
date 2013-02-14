@@ -1,25 +1,40 @@
 include $(topdir)/mk.conf
 
-LIBAV_INSTALL = libav/lib/libavcodec.so.53 \
-		libav/lib/libavformat.so.53 \
-		libav/lib/libavutil.so.51 \
-		libav/lib/libswscale.so.2
+all: build FORCE
 
-all: libav-build FORCE
 
-clean: FORCE
-	-$(MAKE) -C libav distclean
+ ###############
+###   libav   ###
+ ###############
+pkgs += libav
+LIBAV_INSTALL = $(call lpath, \
+		avcodec.so.53 \
+		avformat.so.53 \
+		avutil.so.51 \
+		swscale.so.2)
 
-install: FORCE
-	install -d $(DESTDIR)$(libexec_dir)
-	$(INSTALL_PROG) $(LIBAV_INSTALL) -t $(DESTDIR)$(libexec_dir)
+install-libs += $(LIBAV_INSTALL)
 
 libav/config.mak:
-	cd libav && ./configure --prefix=`pwd` --disable-static --enable-shared --enable-pic
+	cd libav && ./configure --prefix=$(STAGE) --disable-static --enable-shared --enable-pic
 
-libav-build: $(LIBAV_INSTALL) FORCE
+libav-clean: FORCE
+	-$(MAKE) -C libav distclean
 
 $(LIBAV_INSTALL): libav/config.mak
 	$(MAKE) $(MAKEARGS) -C libav install
+
+ ####################
+### Common targets ###
+ ####################
+
+build: $(install-libs) FORCE
+
+install: build FORCE
+	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
+	$(INSTALL_PROG) $(install-libs) -t $(DESTDIR)$(libexec_dir)
+
+clean: $(foreach d,$(pkgs), $d-clean) FORCE
+
 
 FORCE:
