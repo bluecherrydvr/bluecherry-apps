@@ -1,4 +1,4 @@
-topdir = .
+export topdir = $(CURDIR)
 include $(topdir)/mk.conf
 
 all clean install: FORCE

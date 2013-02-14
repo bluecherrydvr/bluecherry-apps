@@ -1,4 +1,3 @@
-topdir = ..
 include $(topdir)/mk.conf
 
 CFLAGS		+= -pthread -MMD
