@@ -23,6 +23,4 @@ debian/bluecherry/
 debian/bluecherry-dbg*
 debian/files
 
-misc/libav/lib
-misc/libav/bin
-misc/libav/include
+/stage/
