@@ -2,10 +2,13 @@
 *.a
 *.so
 *.so.?
-.*
 *.lo
 *.la
 *.mkv
+
+.deps
+.libs/
+
 bc-reader
 bc.cgi
 *.user
