@@ -2,6 +2,21 @@ include $(topdir)/mk.conf
 
 all: build FORCE
 
+ ###############
+### libconfig ###
+ ###############
+pkgs += libconfig
+libconfig-libs = $(call lpath, config.so.9)
+install-libs += $(libconfig-libs)
+
+libconfig-clean: FORCE
+	-$(MAKE) -C libconfig clean
+
+libconfig/Makefile:
+	cd libconfig && ./configure --prefix=$(STAGE) --disable-static --disable-examples
+
+$(libconfig-libs): libconfig/Makefile
+	$(MAKE) $(MAKEARGS) -C libconfig install
 
  ###############
 ###   libav   ###
