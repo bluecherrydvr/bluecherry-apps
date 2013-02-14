@@ -58,7 +58,7 @@ static MYSQL *get_handle(void)
 	}
 
 	if (mysql_real_connect(my_con_global, dbhost, dbuser, dbpass, dbname,
-			       (int)dbport, dbsock, 0) == NULL) {
+			       dbport, dbsock, 0) == NULL) {
 		mysql_close(my_con_global);
 		my_con_global = NULL;
                 return NULL;
