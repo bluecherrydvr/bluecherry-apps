@@ -47,7 +47,7 @@ build: $(install-libs) FORCE
 
 install: build FORCE
 	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
-	$(INSTALL_PROG) $(install-libs) -t $(DESTDIR)$(libexec_dir)
+	$(INSTALL_PROG) $(filter-out %.a,$(install-libs)) -t $(DESTDIR)$(libexec_dir)
 
 clean: $(foreach d,$(pkgs), $d-clean) FORCE
 
