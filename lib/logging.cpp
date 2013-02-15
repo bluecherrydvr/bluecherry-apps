@@ -7,6 +7,8 @@ extern char *__progname;
 static log_context *bc_default_context = 0;
 static pthread_key_t bc_log_thread_context;
 
+#define DEFAULT_LOG_LEVEL Info
+
 static void destroy_thread_context(void *vp)
 {
 	std::vector<log_context> *p = reinterpret_cast<std::vector<log_context>*>(vp);
@@ -29,7 +31,7 @@ log_context &log_context::default_context()
 	/* Not thread safe, but assumed to be safe at startup */
 	if (!bc_default_context) {
 		bc_default_context = new log_context("");
-		bc_default_context->set_level(Info);
+		bc_default_context->set_level(DEFAULT_LOG_LEVEL);
 	}
 	return *bc_default_context;
 }
@@ -38,7 +40,7 @@ log_context::log_context()
 	: d(default_context().d)
 {
 	d = std::shared_ptr<data>(new data(""));
-	d->level = Info;
+	d->level = DEFAULT_LOG_LEVEL;
 }
 
 log_context::log_context(const char *name, ...)
