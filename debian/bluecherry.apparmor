@@ -1,8 +1,21 @@
 #include <tunables/global>
 
-/usr/sbin/bc-server {
+/usr/sbin/bc-server flags=(complain) {
+  #include <abstractions/base>
   #include <abstractions/nameservice>
   #include <abstractions/audio>
+  #include <abstractions/video>
+
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network inet6 dgram,
+
+  /var/log/bluecherry.log rw,
 
   /dev/video* rw,
+
+  /usr/lib/libbluecherry.so.0 mr,
+  /usr/lib/bluecherry/ r,
+  /usr/lib/bluecherry/* mr,
 }
