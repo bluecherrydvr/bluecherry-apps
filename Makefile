@@ -1,6 +1,8 @@
 export topdir = $(CURDIR)
 include mk.conf
 
+SUBDIR = $(MAKE) $@ -C
+
 all clean install: FORCE
 	$(SUBDIR) misc
 	$(SUBDIR) lib
