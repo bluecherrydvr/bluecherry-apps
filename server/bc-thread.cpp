@@ -18,6 +18,8 @@
 #include "motion_handler.h"
 #include "recorder.h"
 
+#define DEF_TH_LOG_LEVEL Info
+
 static int apply_device_cfg(struct bc_record *bc_rec);
 
 static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
@@ -89,7 +91,7 @@ static void check_schedule(struct bc_record *bc_rec)
 	}
 }
 
-static void *bc_device_thread(void *data)
+static const void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = (struct bc_record*) data;
 	bc_rec->run();
@@ -276,7 +278,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
 
 	bc_rec->log = log_context("%d/%s", id, bc_rec->cfg.name);
-	bc_rec->log.set_level(bc_rec->cfg.debug_level ? Debug : (log_level)-1);
+	bc_rec->log.set_level(bc_rec->cfg.debug_level ? DEF_TH_LOG_LEVEL : (log_level)-1);
 
 	bc = bc_handle_get(dbres);
 	if (!bc) {
@@ -438,7 +440,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
 
 	if (debug_changed) {
-		bc_rec->log.set_level(current->debug_level ? Debug : (log_level)-1);
+		bc_rec->log.set_level(current->debug_level ? DEF_TH_LOG_LEVEL : (log_level)-1);
 		bc_rec->log.log(Info, "Device debug level changed to %d", current->debug_level);
 	}
 
