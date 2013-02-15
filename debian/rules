@@ -2,7 +2,7 @@
 
 VERSION := $(shell dpkg-parsechangelog | sed '/^Version:/!d;s/^[^ ]* //')
 
-LD_LIBRARY_PATH+=:misc/libav/lib
+LD_LIBRARY_PATH+=:stage/lib
 
 %:
 	dh --parallel $@
