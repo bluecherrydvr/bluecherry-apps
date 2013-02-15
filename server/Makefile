@@ -1,8 +1,8 @@
 include $(topdir)/mk.conf
 
 CFLAGS		+= -pthread -MMD
-LDFLAGS		+= -L$(topdir)/lib -lbluecherry -lasound -lbsd -ludev \
-		   -L$(STAGE)/lib -Wl,-rpath=$(libexec_dir) -lavformat -lavcodec -lavutil -lswscale
+LDFLAGS		+= -lbluecherry -lasound -lbsd -ludev \
+		   -lavformat -lavcodec -lavutil -lswscale
 
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o bc-av.o g723-dec.o bc-detect.o streaming.o rtsp.o signals.o
