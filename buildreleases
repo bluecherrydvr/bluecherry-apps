@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-PACKAGE = bluecherry
+PACKAGES = bluecherry bluecherry-dbg
 MAINTAINER = John Brooks <john.brooks@bluecherry.net>
 
 DIST =	lucid \
@@ -55,7 +55,7 @@ release: release-$1_$2
 release-$1_$2: release-deps FORCE
 	mkdir -p $O/$1
 	schroot -c $1_$2 fakeroot debian/rules clean binary
-	mv ../$(PACKAGE)_$(VERSION)_$2.deb $O/$1
+	mv $(foreach pkg,$(PACKAGES), ../$(pkg)_$(VERSION)_$2.deb) $O/$1
 
 endef
 
