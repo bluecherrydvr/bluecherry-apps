@@ -19,7 +19,7 @@
 #include "libbluecherry.h"
 #include "v4l2_device.h"
 
-static void print_error(char *msg, ...)
+static void print_error(const char *msg, ...)
 {
 	va_list ap;
 
@@ -55,7 +55,6 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-	const char *err_msg;
 	BC_DB_RES dbres;
 	struct bc_handle *bc;
 	long devid = 1;
