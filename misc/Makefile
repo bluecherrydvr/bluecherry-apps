@@ -11,6 +11,7 @@ install-libs += $(libconfig-libs)
 
 libconfig-clean: FORCE
 	-$(MAKE) -C libconfig clean
+	-rm libconfig/Makefile
 
 libconfig/Makefile:
 	cd libconfig && ./configure --prefix=$(STAGE) --disable-static --disable-examples
