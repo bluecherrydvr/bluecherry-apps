@@ -12,13 +12,9 @@ LD_LIBRARY_PATH+=:stage/lib
 override_dh_strip:
 	dh_strip --dbg-package=bluecherry-dbg
 
+override_dh_installinit: sbin-start=$(wildcard /sbin/start)
 override_dh_installinit:
-	if [ -x /sbin/start ]; then \
-		echo "Upstart detected"; \
-	else \
-		rm debian/bluecherry.upstart; \
-	fi
-	dh_installinit
+	dh_installinit $(if $(sbin-start),--name=bluecherry)
 
 override_dh_installlogrotate:
 	if ! id syslog > /dev/null 2>&1; then \
