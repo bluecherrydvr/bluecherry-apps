@@ -50,6 +50,7 @@ install: build FORCE
 	$(INSTALL_PROG) $(install-libs) -t $(DESTDIR)$(libexec_dir)
 
 clean: $(foreach d,$(pkgs), $d-clean) FORCE
+	rm -rf $(STAGE)
 
 
 FORCE:
