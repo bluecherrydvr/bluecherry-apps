@@ -659,8 +659,6 @@ static void usage(const char *progname)
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
-
-	exit(1);
 }
 
 
@@ -696,16 +694,16 @@ static int check_trial_expired()
 	return -1;
 }
 
-static void open_db_loop(void)
+static int open_db_loop(void)
 {
 	for (int count = 1; bc_db_open(); sleep(1), count++)
 		if (count >= 30)
 			goto db_error;
-	return;
+	return 0;
 
 db_error:
 	bc_log(Error, "Could not open database after 30 tries, aborting");
-	exit(1);
+	return -1;
 }
 
 static log_level str_to_log_level(const char *str)
@@ -738,7 +736,10 @@ int main(int argc, char **argv)
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
 		case 'l': log_context::default_context().set_level(str_to_log_level(optarg)); break;
-		case 'h': default: usage(argv[0]);
+		case 'h':
+		default:
+			usage(argv[0]);
+			return 1;
 		}
 	}
 
@@ -752,7 +753,7 @@ int main(int argc, char **argv)
 			struct group *g = 0;
 			if (!(g = getgrnam(group))) {
 				bc_log(Fatal, "Group '%s' does not exist", group);
-				exit(1);
+				return 1;
 			}
 			gid = g->gr_gid;
 		}
@@ -760,24 +761,24 @@ int main(int argc, char **argv)
 		if (user) {
 			if (!(u = getpwnam(user))) {
 				bc_log(Fatal, "User '%s' does not exist", user);
-				exit(1);
+				return 1;
 			}
 			if (!group)
 				gid = u->pw_gid;
 			if (initgroups(user, gid) < 0) {
 				bc_log(Fatal, "Setting supplemental groups failed");
-				exit(1);
+				return 1;
 			}
 		}
 
 		if (setregid(gid, gid) < 0) {
 			bc_log(Fatal, "Setting group failed");
-			exit(1);
+			return 1;
 		}
 
 		if (u && setreuid(u->pw_uid, u->pw_uid) < 0) {
 			bc_log(Fatal, "Setting user failed");
-			exit(1);
+			return 1;
 		}
 	}
 
@@ -795,7 +796,7 @@ int main(int argc, char **argv)
 
 	if (bg && daemon(0, 0) == -1) {
 		bc_log(Fatal, "Fork failed: %m");
-		exit(1);
+		return 1;
 	}
 
 	bc_log(Info, "Started Bluecherry daemon");
@@ -806,7 +807,9 @@ int main(int argc, char **argv)
 	rtsp_server *rtsp = new rtsp_server;
 	rtsp->setup(7002);
 
-	open_db_loop();
+	if (open_db_loop())
+		return 1;
+
 	bc_log(Info, "SQL database connection opened");
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
@@ -892,5 +895,5 @@ int main(int argc, char **argv)
 	bc_db_close();
 	bc_libav_init();
 
-	exit(0);
+	return 0;
 }
