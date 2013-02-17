@@ -1,6 +1,8 @@
 export topdir = $(CURDIR)
 include mk.conf
 
+MAKEFLAGS += --warn-undefined-variables
+
 SUBDIR = $(MAKE) $@ -C
 
 all clean install: FORCE
