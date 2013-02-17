@@ -1,6 +1,6 @@
 include ../mk.conf
 
-CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
+CPPFLAGS	+= -iquote $(topdir)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
