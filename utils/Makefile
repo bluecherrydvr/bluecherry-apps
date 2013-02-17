@@ -1,4 +1,4 @@
-include $(topdir)/mk.conf
+include ../mk.conf
 
 CPPFLAGS	+= -I$(topdir)/lib -I$(topdir)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale

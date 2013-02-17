@@ -1,4 +1,4 @@
-include $(topdir)/mk.conf
+include ../mk.conf
 
 CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
