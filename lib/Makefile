@@ -1,4 +1,4 @@
-include $(topdir)/mk.conf
+include ../mk.conf
 
 LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""

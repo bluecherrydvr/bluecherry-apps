@@ -1,5 +1,5 @@
 export topdir = $(CURDIR)
-include $(topdir)/mk.conf
+include mk.conf
 
 all clean install: FORCE
 	$(SUBDIR) misc
