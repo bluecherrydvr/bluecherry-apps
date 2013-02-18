@@ -99,7 +99,7 @@ static void check_schedule(struct bc_record *bc_rec)
 	}
 }
 
-static const void *bc_device_thread(void *data)
+static void *bc_device_thread(void *data)
 {
 	struct bc_record *bc_rec = (struct bc_record*) data;
 	bc_rec->run();
