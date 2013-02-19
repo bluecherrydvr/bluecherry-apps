@@ -49,7 +49,7 @@ case "$1" in
 		fi
 
 		if [ -x /sbin/apparmor_parser ]; then
-			#apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
+			: #apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
 		fi
 		;;
 esac
