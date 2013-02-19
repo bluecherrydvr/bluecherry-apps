@@ -931,7 +931,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 	/* for /live/ URLs, we ignore everything after the first two segments
 	 * to allow streamid and other parameters */
 	if (uri.size() > 6 && uri.compare(0, 6, "/live/") == 0) {
-		unsigned int p = uri.find('/', 6);
+		size_t p = uri.find('/', 6);
 		if (p != std::string::npos)
 			uri.erase(p);
 	}
