@@ -187,5 +187,6 @@ int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc);
 	bc_log("W(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
 #define bc_dev_err(rec, fmt, args...) \
 	bc_log("E(%d/%s): " fmt, rec->id, rec->cfg.name, ## args)
+extern "C" void signals_setup();
 
 #endif /* __BC_SERVER_H */
