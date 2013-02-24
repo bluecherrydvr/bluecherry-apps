@@ -1,0 +1,11 @@
+
+Dependencies:
+
+ * mysql
+ * libbsd
+ * php
+
+Bundled libraries:
+
+ * libconfig
+ * libav
