@@ -22,6 +22,7 @@ install: all rsyslog.conf FORCE
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
 
--include $(DETECT_OBJS)
-
 FORCE:
+
+
+-include $(SERVER_OBJS:%.o=%.d)
