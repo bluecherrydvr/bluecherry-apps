@@ -292,7 +292,7 @@ static void bc_stop_threads(void)
 /* Check for threads that have quit */
 static void bc_check_threads(void)
 {
-	char *errmsg = 0;
+        char *errmsg = 0;
 
 	for (unsigned int i = 0; i < bc_rec_list.size(); i++) {
 		bc_record *bc_rec = bc_rec_list[i];
@@ -638,6 +638,7 @@ static void usage(const char *progname)
 	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -l\tLogging level ([d]ebug, [i]nfo, [w]arning, [e]rror, [b]ug, [f]atal)\n");
+        fprintf(stderr, "  -f\tSet a new configuration file (default: /etc/bluecherry.conf)\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
@@ -690,9 +691,9 @@ static log_level str_to_log_level(const char *str)
 	}
 }
 
-static int open_db_loop(void)
+static int open_db_loop(const char *conf)
 {
-	for (int count = 1; bc_db_open(); count++) {
+	for (int count = 1; bc_db_open(conf); count++) {
 		if (count >= 30)
 			goto db_error;
 
@@ -711,16 +712,17 @@ int main(int argc, char **argv)
 	int bg = 1;
 	const char *user = 0, *group = 0;
 	int error;
-
+        char *config_file = NULL;
 	umask(027);
 
-	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:f:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'r': record_id = atoi(optarg); break;
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
 		case 'l': log_context::default_context().set_level(str_to_log_level(optarg)); break;
+                case 'f': config_file = strdup(optarg); break;
 		case 'h':
 		default:
 			usage(argv[0]);
@@ -785,7 +787,7 @@ int main(int argc, char **argv)
 	rtsp->setup(7002);
 
 
-	if (open_db_loop())
+	if (open_db_loop(config_file))
 		return 1;
 
 	bc_log(Info, "SQL database connection opened");
