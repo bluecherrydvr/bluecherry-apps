@@ -8,7 +8,6 @@ TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  bc-detect.o streaming.o rtsp.o motion_processor.o \
 		  recorder.o motion_handler.o bc-libav-init.o
-DETECT_OBJS     = $(SERVER_OBJS:%.o=%.d)
 
 all: $(TARGETS) FORCE
 
@@ -21,8 +20,9 @@ install: all rsyslog.conf FORCE
 		$(DESTDIR)$(etc_dir)/rsyslog.d/99-bluecherry.conf
 
 clean: FORCE
-	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
-
--include $(DETECT_OBJS)
+	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
 
 FORCE:
+
+
+-include $(SERVER_OBJS:%.o=%.d)
