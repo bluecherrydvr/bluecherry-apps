@@ -28,7 +28,7 @@ override_dh_auto_install:
 	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/install/mysql
 	cp misc/sql/mysql-upgrade/* \
 	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/upgrade/mysql/
-	install -m640 -D debian/bluecherry.conf.in \
+	install -m640 -g www-data -D debian/bluecherry.conf.in \
 		debian/bluecherry/usr/share/bluecherry/bluecherry.conf.in
 	install -m644 -D debian/apache.conf \
 		debian/bluecherry/etc/apache2/sites-available/bluecherry
