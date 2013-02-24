@@ -50,6 +50,7 @@ static void usage(void)
 {
 	fprintf(stderr, "Usage: %s <args> > outfile\n", __progname);
 	fprintf(stderr, "  -d\tDevice id (default 1)\n");
+        fprintf(stderr, "  -f\tSet a new configuration file (default: /etc/bluecherry.conf)\n");
 	exit(1);
 }
 
@@ -59,10 +60,12 @@ int main(int argc, char **argv)
 	struct bc_handle *bc;
 	long devid = 1;
 	int opt;
+        char *config_file = NULL;
 
 	while ((opt = getopt(argc, argv, "d:h")) != -1) {
 		switch (opt) {
 		case 'd': devid = atol(optarg); break;
+                case 'f': config_file = strdup(optarg); break;
 		case 'h': default: usage();
 		}
 	}
@@ -70,7 +73,7 @@ int main(int argc, char **argv)
 	if (devid < 0)
 		usage();
 
-	if (bc_db_open())
+	if (bc_db_open(config_file))
 		print_error("Failed to open database");
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "

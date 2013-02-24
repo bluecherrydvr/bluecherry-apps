@@ -10,4 +10,6 @@ all clean install: FORCE
 	$(SUBDIR) utils
 	$(SUBDIR) php5 -f Makefile.local
 
+server:
+	$(SUBDIR) server
 FORCE:
