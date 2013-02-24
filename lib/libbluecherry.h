@@ -187,7 +187,7 @@ enum bc_access_type
 int bc_user_auth(const char *username, const char *password, int access_type = 0, int device_id = -1);
 
 /* Database functions */
-int bc_db_open(void);
+int bc_db_open(const char *bc_config);
 void bc_db_close(void);
 BC_DB_RES bc_db_get_table(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));
@@ -240,7 +240,7 @@ int bc_event_media_length(bc_event_cam_t event);
 
 /* PTZ commands */
 void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
-int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay, 
+int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
 	       int pan_speed, int tilt_speed, int pset_id);
 
 #endif /* __LIBBLUECHERRY_H */

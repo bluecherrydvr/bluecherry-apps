@@ -638,6 +638,7 @@ static void usage(const char *progname)
 	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -l\tLogging level ([d]ebug, [i]nfo, [w]arning, [e]rror, [b]ug, [f]atal)\n");
+	fprintf(stderr, "  -f\tSpecify configuration file (default: /etc/bluecherry.conf)\n");
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
@@ -690,9 +691,9 @@ static log_level str_to_log_level(const char *str)
 	}
 }
 
-static int open_db_loop(void)
+static int open_db_loop(const char *config_file)
 {
-	for (int count = 1; bc_db_open(); count++) {
+	for (int count = 1; bc_db_open(config_file); count++) {
 		if (count >= 30)
 			goto db_error;
 
@@ -709,6 +710,7 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int bg = 1;
+	char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
 	int error;
 
@@ -721,6 +723,7 @@ int main(int argc, char **argv)
 		case 'u': user = optarg; break;
 		case 'g': group = optarg; break;
 		case 'l': log_context::default_context().set_level(str_to_log_level(optarg)); break;
+		case 'f': config_file = optarg; break;
 		case 'h':
 		default:
 			usage(argv[0]);
@@ -784,7 +787,7 @@ int main(int argc, char **argv)
 	rtsp->setup(7002);
 
 
-	if (open_db_loop())
+	if (open_db_loop(config_file))
 		return 1;
 
 	bc_log(Info, "SQL database connection opened");

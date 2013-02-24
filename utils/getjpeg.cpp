@@ -18,6 +18,7 @@
 
 #include "libbluecherry.h"
 #include "v4l2_device.h"
+#include "utils.h"
 
 static void print_error(const char *msg, ...)
 {
@@ -70,7 +71,7 @@ int main(int argc, char **argv)
 	if (devid < 0)
 		usage();
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		print_error("Failed to open database");
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
