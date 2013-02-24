@@ -14,6 +14,7 @@
 #include <linux/serial.h>
 
 #include "libbluecherry.h"
+#include "utils.h"
 
 extern char *__progname;
 
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
         if (id < 0)
 		err("Invalid ID");
 
-        if (bc_db_open())
+        if (bc_db_open(BC_CONFIG_DEFAULT))
 		err("Could not open database");
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "

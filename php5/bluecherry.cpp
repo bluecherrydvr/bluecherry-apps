@@ -20,7 +20,8 @@ extern "C" {
 
 static char bch_name[] = "BC Handle";
 
-#define BCDB_NAME	"BC-DB Handle"
+#define BCDB_NAME		"BC-DB Handle"
+#define BC_CONFIG_DEFAULT	"/etc/bluecherry.conf"
 
 static int bch_id;
 
@@ -77,7 +78,7 @@ PHP_MINFO_FUNCTION(bluecherry)
 
 PHP_FUNCTION(bc_db_open)
 {
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -99,7 +100,7 @@ PHP_FUNCTION(bc_db_escape_string)
 				  &str, &str_len) == FAILURE)
 		RETURN_FALSE;
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	str[str_len] = '\0';
@@ -146,7 +147,7 @@ PHP_FUNCTION(bc_db_get_table)
 				  &sql, &sql_len) == FAILURE)
 		RETURN_FALSE;
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	dbres = bc_db_get_table("%s", sql);
@@ -218,7 +219,7 @@ PHP_FUNCTION(bc_ptz_cmd)
 	if (id < 0)
 		RETURN_FALSE;
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
@@ -275,7 +276,7 @@ PHP_FUNCTION(bc_handle_get_byid)
 	if (id < 0)
 		RETURN_FALSE;
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
@@ -311,7 +312,7 @@ PHP_FUNCTION(bc_handle_get)
 				  &devname_len, &driver, &driver_len) == FAILURE)
 		RETURN_FALSE;
 
-	if (bc_db_open())
+	if (bc_db_open(BC_CONFIG_DEFAULT))
 		RETURN_FALSE;
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
