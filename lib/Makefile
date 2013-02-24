@@ -20,5 +20,8 @@ install: all FORCE
 	$(INSTALL_DATA) -D $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIBVER)
 
 clean: FORCE
-	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
+	rm -f $(OBJS) $(OBJS:.o=.d) $(SOLIBVER) $(SOLIB)
+
 FORCE:
+
+-include $(OBJS:.o=.d)
