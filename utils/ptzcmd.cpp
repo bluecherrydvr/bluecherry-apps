@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
         if (id < 0)
 		err("Invalid ID");
 
-        if (bc_db_open())
+        if (bc_db_open(NULL))
 		err("Could not open database");
 
 	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "

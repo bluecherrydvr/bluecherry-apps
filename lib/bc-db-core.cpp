@@ -76,7 +76,7 @@ void bc_db_close(void)
 	db_ops = NULL;
 }
 
-int bc_db_open(void)
+int bc_db_open(const char *bc_config)
 {
 	struct config_t cfg;
 	int type;
@@ -85,8 +85,12 @@ int bc_db_open(void)
 	if (db_ops != NULL)
 		return 0;
 
+        if (!bc_config) {
+                bc_config = BC_CONFIG;
+        }
+
 	config_init(&cfg);
-	if (!config_read_file(&cfg, BC_CONFIG)) {
+	if (!config_read_file(&cfg, bc_config)) {
 		bc_log(Fatal, "Configuration error: %s at line %d",
 			config_error_text(&cfg), config_error_line(&cfg));
 		goto db_error;
