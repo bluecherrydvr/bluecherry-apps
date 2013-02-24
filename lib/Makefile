@@ -10,14 +10,15 @@ OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 		  input_device.o v4l2_device.o stream_elements.o \
 		  logging.o
 
-all: $(SOLIBVER)
+all: $(SOLIBVER) FORCE
 
 $(SOLIBVER): $(OBJS)
 	g++ $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
 	ln -sf $@ $(SOLIB)
 
-install: all
+install: all FORCE
 	$(INSTALL_DATA) -D $(SOLIBVER) $(DESTDIR)$(lib_dir)/$(SOLIBVER)
 
-clean:
+clean: FORCE
 	rm -f $(OBJS) $(SOLIBVER) $(SOLIB)
+FORCE:
