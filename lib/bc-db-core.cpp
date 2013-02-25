@@ -212,7 +212,7 @@ void bc_db_free_table(BC_DB_RES dbres)
 		db_ops->free_table(dbres);
 }
 
-const char *bc_db_get_val(BC_DB_RES dbres, const char *colname, int *length)
+const char *bc_db_get_val(BC_DB_RES dbres, const char *colname, size_t *length)
 {
 	return db_ops->get_val(dbres, colname, length);
 }
