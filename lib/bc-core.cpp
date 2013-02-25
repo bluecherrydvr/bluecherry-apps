@@ -22,10 +22,24 @@
 #include "v4l2_device.h"
 #include "stream_elements.h"
 
+static inline char *split(char *s)
+{
+	for (;*s && *s != '|'; s++);
+	if (*s == '|')
+		*s++ = '\0';
+	return *s ? s : NULL;
+}
+
+static inline void split_pp(char *s, const char **p1, const char **p2)
+{
+	char *tmp = split(s);
+	*p1 = tmp;
+	*p2 = split(tmp);
+}
+
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	const char *username, *password, *val, *port = "554";
-	char *device, *path, *t;
+	const char *username, *password, *val;
 	char url[1024];
 	unsigned int r;
 
@@ -38,25 +52,16 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 
 	/* Device is in the questionable format of 'hostname|port|path' */
-	device = strdupa(val);
+	char *device = strdupa(val);
+	const char *port, *path;
 
-	path = 0;
-	int n = 0;
-	for (t = device; *t; t++) {
-		if (*t == '|') {
-			*t = '\0';
-			if (n == 0) {
-				port = t+1;
-			} else if (n == 1) {
-				path = ++t;
-				break;
-			}
-			n++;
-		}
-	}
+	split_pp(device, &port, &path);
 
-	if (*t == '\0' || !path)
+	if (!path)
 		return -1;
+
+	if (!port)
+		port = "554";
 
 	/* Create a URL */
 	if (*username || *password)
@@ -72,34 +77,22 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	if (val && *val) {
-		char *mjpeg_val = strdupa(val), *v;
 		bc->mjpeg_url[0] = '\0';
 
-		port = "80";
-		path = 0;
-		int n = 0;
-		for (t = v = mjpeg_val; *t; t++) {
-			if (*t == '|') {
-				*t = '\0';
-				if (v != t && n == 0)
-					device = v;
-				else if (v != t && n == 1)
-					port = v;
-				v = t+1;
-				if (++n == 2) {
-					path = v;
-					break;
-				}
-			}
+		char *device = strdupa(val);
+		const char *port, *path;
+
+		split_pp(device, &port, &path);
+
+		if (!path) {
+			if (!port)
+				path = device;
+			else
+				return -1;
 		}
 
-		if (v == mjpeg_val) {
-			/* No pipes means only the path */
-			path = mjpeg_val;
-		}
-
-		if (!path)
-			return -1;
+		if (!port)
+			port = "80";
 
 		if (*username || *password)
 			r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url), "http://%s:%s@%s:%s%s",
