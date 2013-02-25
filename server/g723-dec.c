@@ -152,7 +152,7 @@ static void update(int y, int wi, int fi, int dq, int sr, int dqsez,
 {
 	int cnt;
 	short mag, exp;
-	short a2p;
+	short a2p = 0; /* FIXME: initialized to avoid warning */
 	short a1ul;
 	short pks1;
 	short fa1;
