@@ -31,6 +31,8 @@ static void bt(int signum, void *p)
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
+	(void)ctx;
+
 	switch (signum) {
 	case SIGABRT:
 		bt(signum, RET_ADDR);

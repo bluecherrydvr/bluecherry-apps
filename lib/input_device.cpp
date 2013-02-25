@@ -86,6 +86,7 @@ void stream_buffer::apply_bound()
 
 bool stream_buffer::accepts_packet(const stream_packet &packet)
 {
+	(void)packet;
 	return true;
 }
 

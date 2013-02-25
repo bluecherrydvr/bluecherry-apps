@@ -90,7 +90,7 @@ static void base32_encode(char *dest, unsigned destlen, const char *src, unsigne
 	unsigned i, bit, v, u;
 	unsigned nbits = srclen * 8;
 
-	for (i = 0, bit = 0; bit < nbits; ++i, bit += 5) {
+	for (i = 0, bit = 0; bit < nbits && i < destlen; ++i, bit += 5) {
 		if (bit && !(bit % 20))
 			dest[i++] = '-';
 
