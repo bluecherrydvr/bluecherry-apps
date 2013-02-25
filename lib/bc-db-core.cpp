@@ -228,7 +228,7 @@ float bc_db_get_val_float(BC_DB_RES dbres, const char *colname)
 {
 	const char *val = bc_db_get_val(dbres, colname, NULL);
 
-	return (val && strlen(val)) ? (float)atof(val) : -1.00;
+	return (val && strlen(val)) ? strtof(val, NULL) : -1.00f;
 }
 
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname)
@@ -244,7 +244,7 @@ long unsigned bc_db_last_insert_rowid(void)
 	return db_ops->last_insert_rowid();
 }
 
-char *bc_db_escape_string(const char *from, int len)
+char *bc_db_escape_string(const char *from, size_t len)
 {
 	char *to;
 
@@ -254,7 +254,7 @@ char *bc_db_escape_string(const char *from, int len)
 	if (from == NULL)
 		return NULL;
 
-	to = (char*) malloc((len * 2) + 1);
+	to = (char*) malloc((len << 1) + 1);
 
 	if (to == NULL)
 		return NULL;
