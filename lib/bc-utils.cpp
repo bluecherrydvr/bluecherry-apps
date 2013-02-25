@@ -53,7 +53,7 @@ int bc_user_auth(const char *username, const char *password, int access_type, in
 
 	strlcpy(s_password, password, sizeof(s_password));
 	strlcat(s_password, bc_db_get_val(dbres, "salt", NULL), sizeof(s_password));
-	av_md5_sum((uint8_t*)md5_pwd, (const uint8_t*)s_password, strlen(s_password));
+	av_md5_sum((uint8_t*)md5_pwd, (const uint8_t*)s_password, (int)strlen(s_password));
 	hex_encode(s_password, sizeof(s_password), md5_pwd, sizeof(md5_pwd));
 
 	tmp = bc_db_get_val(dbres, "password", NULL);
