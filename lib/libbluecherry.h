@@ -249,7 +249,7 @@ void bc_event_cam_end(bc_event_cam_t *bce);
 int bc_event_sys(bc_event_level_t level,
 		 bc_event_sys_type_t type);
 
-int bc_event_has_media(bc_event_cam_t event);
+int bc_event_has_media(bc_event_cam_t event) __attribute__((pure));
 int bc_event_media_length(bc_event_cam_t event);
 
 /* PTZ commands */

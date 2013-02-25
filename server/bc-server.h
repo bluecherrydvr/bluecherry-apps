@@ -129,8 +129,8 @@ int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &packet);
 /* Streaming */
 int bc_streaming_setup(struct bc_record *bc_rec);
 void bc_streaming_destroy(struct bc_record *bc_rec);
-int bc_streaming_is_setup(struct bc_record *bc_rec);
-int bc_streaming_is_active(struct bc_record *bc_rec);
+int bc_streaming_is_setup(struct bc_record *bc_rec) __attribute__((pure));
+int bc_streaming_is_active(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 int bc_av_lockmgr(void **mutex, enum AVLockOp op);

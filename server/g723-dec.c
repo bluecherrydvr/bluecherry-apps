@@ -21,6 +21,8 @@ static const short _fitab[8] = {
 	0, 0x200, 0x400, 0xE00, 0xE00, 0x400, 0x200, 0
 };
 
+static inline int ilog2(int val) __attribute__((const));
+
 #if defined(__i386__) || defined(i386)
 static inline int ilog2(int val)
 {
@@ -47,6 +49,8 @@ static inline int ilog2(int val)
 	return i;
 }
 #endif
+
+static int fmult(int an, int srn) __attribute__((const));
 
 static int fmult(int an, int srn)
 {

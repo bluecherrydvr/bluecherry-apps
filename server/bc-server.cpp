@@ -323,6 +323,8 @@ static void bc_check_threads(void)
 	}
 }
 
+static struct bc_record *bc_record_exists(const int id) __attribute__((pure));
+
 static struct bc_record *bc_record_exists(const int id)
 {
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
