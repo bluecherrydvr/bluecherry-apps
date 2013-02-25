@@ -11,7 +11,7 @@ OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 all: $(SOLIBVER) FORCE
 
 $(SOLIBVER): $(OBJS)
-	g++ $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
+	$(CXX) $(LDFLAGS) -pthread -shared -Wl,-soname=$@ -o $@ $(OBJS)
 	ln -sf $@ $(SOLIB)
 
 install: all FORCE
