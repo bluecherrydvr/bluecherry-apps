@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -114,18 +115,41 @@ static inline void split_pp(char *s, const char **p1, const char **p2)
 	*p2 = split(tmp);
 }
 
+static int get_creds(BC_DB_RES dbres, char *creds, size_t size)
+{
+	const char *user, *pass;
+
+	user = bc_db_get_val(dbres, "rtsp_username", NULL);
+	pass = bc_db_get_val(dbres, "rtsp_password", NULL);
+
+	if (!user || !pass)
+		return -1;
+
+	if (*user || *pass) {
+		size_t s = snprintf(creds, size, "%s:%s@", user, pass);
+		if (s >= size)
+			return -1;
+	} else {
+		*creds = '\0';
+	}
+
+	return 0;
+}
+
 static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
-	const char *username, *password, *val;
+	const char *val;
 	char url[1024];
 	unsigned int r;
 
 	bc->type = BC_DEVICE_RTP;
 
-	username = bc_db_get_val(dbres, "rtsp_username", NULL);
-	password = bc_db_get_val(dbres, "rtsp_password", NULL);
+	char creds[64];
+	if (get_creds(dbres, creds, sizeof(creds)) < 0)
+		return -1;
+
 	val = bc_db_get_val(dbres, "device", NULL);
-	if (!username || !password || !val)
+	if (!val)
 		return -1;
 
 	/* Device is in the questionable format of 'hostname|port|path' */
@@ -141,11 +165,8 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		port = "554";
 
 	/* Create a URL */
-	if (*username || *password)
-		r = snprintf(url, sizeof(url), "rtsp://%s:%s@%s:%s%s", username,
-		             password, device, port, path);
-	else
-		r = snprintf(url, sizeof(url), "rtsp://%s:%s%s", device, port, path);
+	r = snprintf(url, sizeof(url), "rtsp://%s%s:%s%s", creds, device,
+		     port, path);
 
 	if (r >= sizeof(url))
 		return -1;
@@ -171,12 +192,9 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (!port)
 			port = "80";
 
-		if (*username || *password)
-			r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url), "http://%s:%s@%s:%s%s",
-			             username, password, device, port, ((*path) ? path : "/"));
-		else
-			r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url), "http://%s:%s%s",
-			             device, port, ((*path) ? path : "/"));
+		r = snprintf(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+			     "http://%s%s:%s%s", creds, device, port,
+			     ((*path) ? path : "/"));
 		if (r >= sizeof(bc->mjpeg_url))
 			return -1;
 	}
