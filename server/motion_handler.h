@@ -47,7 +47,7 @@ public:
 	/* This stream should be connected to the raw input stream, and is used to buffer
 	 * data for recording. If no flag_consumer is used, it will also be expected for
 	 * packets to be flagged with motion. */
-	stream_consumer *input_consumer();
+	stream_consumer *input_consumer() __attribute__((pure));
 
 	/* Optionally, this stream can be connected to another element which provides a
 	 * subset of the input stream with motion flags added. This allows asynchronous

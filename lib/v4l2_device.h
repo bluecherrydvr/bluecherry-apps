@@ -58,7 +58,7 @@ public:
 	int set_motion_thresh(const char *map, size_t size);
 	int set_motion_thresh_global(char value);
 
-	v4l2_buffer *buf_v4l2();
+	v4l2_buffer *buf_v4l2() __attribute__((pure));
 
 private:
 	int			dev_fd;
@@ -82,7 +82,7 @@ private:
 	int			got_vop;
 	stream_packet           current_packet;
 
-	int is_key_frame();
+	int is_key_frame() __attribute__((pure));
 
 	void v4l2_local_bufs();
 	int v4l2_bufs_prepare();

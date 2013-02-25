@@ -229,10 +229,10 @@ public:
 	/* Implemented in subclasses to decide whether a packet should
 	 * be added to the buffer when given to add_packet. Safe to call
 	 * from external code. */
-	virtual bool accepts_packet(const stream_packet &packet);
+	virtual bool accepts_packet(const stream_packet &packet)  __attribute__((const));
 
 protected:
-	virtual void apply_bound();
+	virtual void apply_bound() __attribute__((const));
 
 	/* Prevent use of direct modification functions */
 	using std::deque<stream_packet>::insert;
@@ -268,7 +268,7 @@ public:
 
 	/* When the buffer is empty, drop all non-video non-keyframe packets
 	 * to ensure that the first packet is always a video keyframe. */
-	virtual bool accepts_packet(const stream_packet &packet);
+	virtual bool accepts_packet(const stream_packet &packet) __attribute__((pure));
 
 	bool enforce_keyframe() const { return mEnforced; }
 	void set_enforce_keyframe(bool enforced);

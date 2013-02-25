@@ -39,7 +39,7 @@ public:
 
 	/* Minimum log level to be emitted for this context; may be changed and 
 	 * tested thread-safely. Overrides the default log level. */
-	log_level level() const;
+	log_level level() const __attribute__((pure));
 	void set_level(log_level level);
 	bool test_level(log_level level) const;
 
