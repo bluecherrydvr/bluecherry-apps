@@ -93,8 +93,8 @@ struct bc_device_config {
 	int     interval;
 	int16_t prerecord, postrecord;
 	int8_t  debug_level;
-	int     aud_disabled : 1;
-	int     schedule_override_global : 1;
+	_Bool   aud_disabled;
+	_Bool   schedule_override_global;
 	int     hue, saturation, contrast, brightness;
 };
 
