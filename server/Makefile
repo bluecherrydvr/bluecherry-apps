@@ -12,7 +12,7 @@ SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 all: $(TARGETS) FORCE
 
 bc-server: $(LIB) $(SERVER_OBJS)
-	g++ $(LDFLAGS) $(SERVER_OBJS) -o $@
+	$(CXX) $(LDFLAGS) $(SERVER_OBJS) -o $@
 
 install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server

@@ -13,7 +13,7 @@ configure: config.m4
 	phpize
 
 Makefile: configure
-	./configure --with-php-config=php-config
+	./configure --with-php-config=php-config CXX="$(CXX)"
 
 modules/$(MODULE).so: Makefile $(LIB) FORCE
 	$(MAKE) -f Makefile "CXXFLAGS=$(CXXFLAGS)"
