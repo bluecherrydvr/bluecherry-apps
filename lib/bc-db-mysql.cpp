@@ -22,11 +22,16 @@ static char *dbname, *dbuser, *dbpass, *dbhost, *dbsock;
 static int dbport = 0;
 static MYSQL *my_con_global;
 
-#define FREE_NULL(__x)		({ if (__x) { free(__x); __x = NULL; } })
+static inline void free_null(char **p)
+{
+	free(*p);
+	*p = NULL;
+}
+
 
 #define GET_VAL(__res, __var, __ret) do {				\
 	const char *val;						\
-	FREE_NULL(__res);						\
+	free_null(&__res);						\
 	if (!config_lookup_string(cfg, BC_CONFIG_DB "." __var, &val)) {	\
 		__res = NULL;						\
 		if (__ret) {						\
@@ -69,11 +74,11 @@ static MYSQL *get_handle(void)
 
 static void bc_db_mysql_close(void)
 {
-	FREE_NULL(dbname);
-	FREE_NULL(dbuser);
-	FREE_NULL(dbpass);
-	FREE_NULL(dbhost);
-	FREE_NULL(dbsock);
+	free_null(&dbname);
+	free_null(&dbuser);
+	free_null(&dbpass);
+	free_null(&dbhost);
+	free_null(&dbsock);
 	dbport = 0;
 
 	if (my_con_global) {
