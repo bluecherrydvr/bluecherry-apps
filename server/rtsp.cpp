@@ -379,16 +379,16 @@ int rtsp_connection::readable()
 
 	rdbuf_len += rd;
 
-	rd = parse();
-	if (rd < 0)
+	int parsed = parse();
+	if (parsed < 0)
 		return -1;
 
-	if (rd) {
-		if (rd < rdbuf_len)
-			memmove(rdbuf, rdbuf + rd, rdbuf_len - rd);
-		if (rd > rdbuf_len)
-			rd = rdbuf_len;
-		rdbuf_len -= rd;
+	if (parsed) {
+		if (parsed < rdbuf_len)
+			memmove(rdbuf, rdbuf + parsed, rdbuf_len - parsed);
+		if (parsed > rdbuf_len)
+			parsed = rdbuf_len;
+		rdbuf_len -= parsed;
 	}
 
 	return 0;
