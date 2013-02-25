@@ -15,17 +15,23 @@
  */
 static int fake_h264_init(AVCodecContext *ctx)
 {
+	(void)ctx;
 	return 0;
 }
 
 static int fake_h264_close(AVCodecContext *ctx)
 {
+	(void)ctx;
 	return 0;
 }
 
 static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize,
 			   void *data)
 {
+	(void)ctx;
+	(void)buf;
+	(void)bufsize;
+	(void)data;
 	return -1;
 }
 
@@ -52,6 +58,8 @@ static AVCodec fake_h264_encoder = {
  * once */
 static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
+	(void)avcl;
+
 	log_level bc_level = Info;
 	switch (level) {
 		case AV_LOG_PANIC: bc_level = Fatal; break;
