@@ -223,11 +223,11 @@ const char *bc_db_get_field(BC_DB_RES dbres, int nfield);
 int bc_db_num_fields(BC_DB_RES dbres);
 
 /* Used to get specific values from a table result */
-const char *bc_db_get_val(BC_DB_RES dbres, const char *colname, int *length);
+const char *bc_db_get_val(BC_DB_RES dbres, const char *colname, size_t *length);
 int bc_db_get_val_int(BC_DB_RES dbres, const char *colname);
 float bc_db_get_val_float(BC_DB_RES dbres, const char *colname);
 int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
-char *bc_db_escape_string(const char *from, int len);
+char *bc_db_escape_string(const char *from, size_t len);
 
 /* Validate and process a license key to get values from it */
 int bc_license_machine_id(char *out, int out_sz);

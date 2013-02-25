@@ -178,10 +178,10 @@ static int bc_db_mysql_fetch_row(BC_DB_RES __dbres)
 
 static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 				       const char *colname,
-				       int *length)
+				       size_t *length)
 {
 	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
-	unsigned long *lengths;
+	size_t *lengths;
 	int i;
 
 	if (dbres->row == NULL)
@@ -232,7 +232,7 @@ static unsigned long bc_db_mysql_last_insert_rowid(void)
 	return mysql_insert_id(my_con);
 }
 
-static void bc_db_mysql_escape_string(char *to, const char *from, int len)
+static void bc_db_mysql_escape_string(char *to, const char *from, size_t len)
 {
 	MYSQL *my_con = get_handle();
 
