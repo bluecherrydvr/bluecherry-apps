@@ -88,8 +88,6 @@ int bc_db_open(const char *bc_config)
 	config_init(&cfg);
 
 	if (!bc_config) {
-		bc_log(Bug, "%s:%i %s(): Configuration path is NULL",
-		       __FILE__, __LINE__, __FUNCTION__);
 		goto db_error;
 	}
 

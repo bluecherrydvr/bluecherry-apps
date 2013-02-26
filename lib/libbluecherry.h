@@ -187,7 +187,8 @@ enum bc_access_type
 int bc_user_auth(const char *username, const char *password, int access_type = 0, int device_id = -1);
 
 /* Database functions */
-int bc_db_open(const char *bc_config);
+int bc_db_open(const char *bc_config)
+	__attribute__((nonnull (1)));
 void bc_db_close(void);
 BC_DB_RES bc_db_get_table(const char *sql, ...)
 	__attribute__ ((format (printf, 1, 2)));

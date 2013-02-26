@@ -638,7 +638,7 @@ static void usage(const char *progname)
 	fprintf(stderr, "Usage: %s [-s]\n", progname);
 	fprintf(stderr, "  -s\tDo not background\n");
 	fprintf(stderr, "  -l\tLogging level ([d]ebug, [i]nfo, [w]arning, [e]rror, [b]ug, [f]atal)\n");
-	fprintf(stderr, "  -f\tSpecify configuration file (default: /etc/bluecherry.conf)\n");
+	fprintf(stderr, "  -f\tSpecify configuration file (default: %s)\n", BC_CONFIG_DEFAULT);
 	fprintf(stderr, "  -u\tDrop privileges to user\n");
 	fprintf(stderr, "  -g\tDrop privileges to group\n");
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
