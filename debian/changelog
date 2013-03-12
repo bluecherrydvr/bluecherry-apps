@@ -1,3 +1,9 @@
+bluecherry (1:2.0.2-2) lucid; urgency=low
+
+  * Bug #1202: OSD time not being adjusted to daylight saving
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Tue 12 Mar 2013 15:23:01 -0300
+
 bluecherry (1:2.0.2-1) lucid; urgency=low
 
   * Bug #1160: FD leaks causing a spam of accept() failed messages
