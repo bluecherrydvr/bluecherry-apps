@@ -174,6 +174,9 @@ static void update_osd(struct bc_record *bc_rec)
 		return;
 
 	bc_rec->osd_time = t;
+
+	tzset();
+
 	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
 	bc_set_osd(bc, "%s %s", bc_rec->cfg.name, buf);
 }
