@@ -75,7 +75,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	}
 
 	const log_context &context = bc_log_context();
-	if (!context.test_level(bc_level))
+	if (!context.level_check(bc_level))
 		return;
 
 	char msg[1024] = "[libav] ";

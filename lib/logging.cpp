@@ -64,9 +64,10 @@ void log_context::set_level(log_level l)
 	d->level = l;
 }
 
-bool log_context::test_level(log_level l) const
+bool log_context::level_check(log_level l) const
 {
-	return (d->level >= 0 && l >= d->level) || (d->level < 0 && l >= default_context().level());
+	log_level clvl = d->level < 0 ? default_context().level() : d->level;
+	return (l >= clvl);
 }
 
 std::string log_context::name() const
@@ -76,21 +77,15 @@ std::string log_context::name() const
 
 void log_context::log(log_level l, const char *msg, ...) const
 {
-	if (!test_level(l))
-		return;
-
-	char buf[1024];
 	va_list args;
 	va_start(args, msg);
-	vsnprintf(buf, sizeof(buf), msg, args);
+	vlog(l, msg, args);
 	va_end(args);
-
-	server_log::write(l, d->name.c_str(), buf);
 }
 
 void log_context::vlog(log_level l, const char *msg, va_list args) const
 {
-	if ((d->level >= 0 && l < d->level) || (d->level < 0 && l < default_context().level()))
+	if (!level_check(l))
 		return;
 
 	char buf[1024];
