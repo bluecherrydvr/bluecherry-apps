@@ -172,7 +172,7 @@ PHP_FUNCTION(bc_db_get_table)
 		for (i = 0; i < ncols; i++) {
 			const char *field = bc_db_get_field(dbres, i);
 			const char *str;
-			int len;
+			size_t len;
 
 			/* This would be an error actually */
 			if (field == NULL)
