@@ -571,12 +571,45 @@ void rtsp_connection::sendResponse(const rtsp_message &response)
 	send(buf, strlen(buf));
 }
 
+/** Lock with implicit timeout & checks */
+static
+int tlock(pthread_mutex_t *mutex)
+{
+	struct timespec timeout;
+
+	int re = clock_gettime(CLOCK_REALTIME, &timeout);
+	if (re) {
+		bc_log(Error, "Clock error: %s", strerror(errno));
+		return re;
+	}
+
+	/* XXX: we might need a smaller timeout */
+	timeout.tv_sec += 30;
+
+	re = pthread_mutex_timedlock(mutex, &timeout);
+	switch (re) {
+	case EDEADLK:
+		bc_log(Error, "Deadlock detected");
+		/* TODO: print backtrace */
+		pthread_exit(NULL);
+	case EOWNERDEAD:
+		/* This wakes up all the threads, but with an unusable mutex */
+		pthread_mutex_unlock(mutex);
+	default:
+		bc_log(Debug, "Mutex error: %s", strerror(errno));
+		pthread_exit(NULL);
+	case 0: /* success */
+		break;
+	}
+	return 0;
+}
+
 int rtsp_connection::send(const char *buf, int size, int type, int flag)
 {
 	int re = 0;
 	int wr;
-	pthread_mutex_lock(&write_lock);
 
+	tlock(&write_lock);
 	if (wrbuf) {
 		/* rtsp_write_buffer makes a copy of the data */
 		rtsp_write_buffer *wbuf = new rtsp_write_buffer(buf, size, type, flag);
@@ -617,10 +650,11 @@ end:
 int rtsp_connection::writable()
 {
 	int re = 0;
-	pthread_mutex_lock(&write_lock);
+	tlock(&write_lock);
 
 	while (wrbuf) {
-		int wr = write(fd, wrbuf->data + wrbuf->pos, wrbuf->size - wrbuf->pos);
+		int wr = write(fd, wrbuf->data + wrbuf->pos,
+			       wrbuf->size - wrbuf->pos);
 		if (wr < 0) {
 			re = -1;
 			break;
@@ -859,7 +893,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 	st->sdp = sdp;
 	st->nb_streams = ctx->nb_streams;
 
-	pthread_mutex_lock(&streams_lock);
+	tlock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(st->uri);
 	if (it != streams.end()) {
 		/* XXX XXX XXX safe? */
@@ -899,7 +933,7 @@ rtsp_stream::~rtsp_stream()
  * arbitrary (recording) thread and the RTSP thread. */
 void rtsp_stream::remove(struct bc_record *bc)
 {
-	pthread_mutex_lock(&streams_lock);
+	tlock(&streams_lock);
 	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ++it) {
 		if (it->second->bc_rec == bc) {
 			/* Flag for garbage collection */
@@ -914,7 +948,7 @@ void rtsp_stream::remove(struct bc_record *bc)
 
 void rtsp_stream::collectGarbage()
 {
-	pthread_mutex_lock(&streams_lock);
+	tlock(&streams_lock);
 	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ) {
 		if (it->second->bc_rec) {
 			it++;
@@ -940,7 +974,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 			uri.erase(p);
 	}
 
-	pthread_mutex_lock(&streams_lock);
+	tlock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(uri);
 	if (it != streams.end())
 		st = it->second;
@@ -951,7 +985,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 
 void rtsp_stream::addSession(rtsp_session *session)
 {
-	pthread_mutex_lock(&sessions_lock);
+	tlock(&sessions_lock);
 	sessions.push_back(session);
 	if (session->isActive())
 		_activeSessionCount++;
@@ -960,7 +994,7 @@ void rtsp_stream::addSession(rtsp_session *session)
 
 void rtsp_stream::removeSession(rtsp_session *session)
 {
-	pthread_mutex_lock(&sessions_lock);
+	tlock(&sessions_lock);
 
 	int active = 0;
 	std::vector<rtsp_session*>::iterator erase = sessions.end();
@@ -988,7 +1022,7 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 
 void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
 {
-	pthread_mutex_lock(&sessions_lock);
+	tlock(&sessions_lock);
 	bool first = true;
 	for (unsigned int p = 0; p+4 <= size; ) {
 		uint8_t *pkt    = buf + p;
