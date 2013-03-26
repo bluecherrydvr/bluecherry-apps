@@ -379,7 +379,7 @@ int rtsp_connection::readable()
 
 	rdbuf_len += rd;
 
-	int parsed = parse();
+	unsigned int parsed = parse();
 	if (parsed < 0)
 		return -1;
 
