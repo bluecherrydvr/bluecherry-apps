@@ -335,6 +335,7 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
+/* TODO: use fixed point insead of float */
 static float path_used_percent(const char *path)
 {
 	struct statvfs st;
