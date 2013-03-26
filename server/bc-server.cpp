@@ -881,7 +881,7 @@ int main(int argc, char **argv)
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
 	/* Main loop */
-	for (unsigned int loops = 0 ;; loops++) {
+	for (unsigned int loops = 0 ;; sleep(1), loops++) {
 		/* Every 15 seconds until initialized, then every 5 minutes */
 		if ((!solo_ready && !(loops % 15)) || (solo_ready && !(loops % 300))) {
 			bc_status_component_begin(STATUS_SOLO_DETECT);
@@ -947,8 +947,6 @@ int main(int argc, char **argv)
 
 		if (!(loops % 60))
 			bc_update_server_status();
-
-		sleep(1);
 	}
 
 	bc_stop_threads();
