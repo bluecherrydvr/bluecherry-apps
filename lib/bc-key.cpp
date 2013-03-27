@@ -21,7 +21,7 @@
 #include "libbluecherry.h"
 #endif
 
-int bc_license_machine_id(char *out, int out_sz);
+int bc_license_machine_id(char *out, size_t out_sz);
 
 static const uint16_t crc16_table[256] = {
 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
@@ -58,15 +58,15 @@ static const uint16_t crc16_table[256] = {
 	0x8201, 0x42C0, 0x4380, 0x8341, 0x4100, 0x81C1, 0x8081, 0x4040
 };
 
-static unsigned short crc16_byte(unsigned short crc, const unsigned char data)
+static uint16_t crc16_byte(uint16_t crc, const uint8_t data)
 {
 	return (crc >> 8) ^ crc16_table[(crc ^ data) & 0xff];
 }
 
 
-static unsigned short crc16(unsigned char const *buf, size_t len)
+static uint16_t crc16(uint8_t const *buf, size_t len)
 {
-	unsigned short crc = 0;
+	uint16_t crc = 0;
 
 	while (len--)
 		crc = crc16_byte(crc, *buf++);
@@ -85,7 +85,7 @@ static const char base32_charset_reverse[] = {
 };
 
 /* Implements base32 encoding as in rfc3548. Requires that srclen*8 is a multiple of 5. */
-static void base32_encode(char *dest, unsigned destlen, const char *src, unsigned srclen)
+static void base32_encode(char *dest, size_t destlen, const char *src, size_t srclen)
 {
 	unsigned i, bit, v, u;
 	unsigned nbits = srclen * 8;
@@ -109,7 +109,7 @@ static void base32_encode(char *dest, unsigned destlen, const char *src, unsigne
 }
 
 /* Implements base32 decoding as in rfc3548. Requires that srclen*5 is a multiple of 8. */
-static bool base32_decode(char *dest, unsigned destlen, const char *src, unsigned srclen)
+static bool base32_decode(char *dest, size_t destlen, const char *src, size_t srclen)
 {
 	unsigned int i, j, bit;
 	unsigned nbits = 0;
@@ -194,8 +194,8 @@ int bc_license_check(const char *key)
 	if (!base32_decode((char*)data, sizeof(data), key, strlen(key)))
 		return 0;
 
-	unsigned short crc = crc16(data+2, sizeof(data)-2);
-	unsigned short vcrc = data[0] ^ data[5];
+	uint16_t crc = crc16(data+2, sizeof(data)-2);
+	uint16_t vcrc = data[0] ^ data[5];
 	vcrc = (vcrc << 8) | (data[1] ^ data[6]);
 
 	if (crc != vcrc)
@@ -260,7 +260,7 @@ int bc_license_check_auth(const char *key, const char *auth)
 	return 1;
 }
 
-int bc_license_machine_id(char *out, int out_sz)
+int bc_license_machine_id(char *out, size_t out_sz)
 {
 	char buf[1024];
 	char id_buf[6];
