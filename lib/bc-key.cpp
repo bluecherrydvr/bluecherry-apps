@@ -132,7 +132,7 @@ static bool base32_decode(char *dest, size_t destlen, const char *src, size_t sr
 		nbits = i * 5;
 	}
 
-	if ((nbits % 8) || (nbits/8) > destlen) {
+	if ((nbits & 7) || (nbits >> 3) > destlen) {
 		delete[] tmp;
 		return false;
 	}
