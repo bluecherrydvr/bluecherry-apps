@@ -72,29 +72,28 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 
 	val = bc_db_get_val(dbres, "device", NULL);
-	if (!val)
-		return -1;
+	if (val && *val) {
+		/* Device is in the questionable format of 'hostname|port|path' */
+		char *device = strdupa(val);
+		const char *port, *path;
 
-	/* Device is in the questionable format of 'hostname|port|path' */
-	char *device = strdupa(val);
-	const char *port, *path;
+		split_pp(device, &port, &path);
 
-	split_pp(device, &port, &path);
+		if (!path)
+			return -1;
 
-	if (!path)
-		return -1;
+		if (!port)
+			port = "554";
 
-	if (!port)
-		port = "554";
+		/* Create a URL */
+		r = snprintf(url, sizeof(url), "rtsp://%s%s:%s%s", creds,
+			     device, port, path);
 
-	/* Create a URL */
-	r = snprintf(url, sizeof(url), "rtsp://%s%s:%s%s", creds, device,
-		     port, path);
+		if (r >= sizeof(url))
+			return -1;
 
-	if (r >= sizeof(url))
-		return -1;
-
-	bc->input = new rtp_device(url);
+		bc->input = new rtp_device(url);
+	}
 
 	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	if (val && *val) {
