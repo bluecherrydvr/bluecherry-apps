@@ -454,7 +454,10 @@ static int bc_cleanup_media()
 	BC_DB_RES dbres;
 	int removed = 0, error_count = 0;
 
-	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND filepath!='' ORDER BY start ASC");
+	/* XXX: We limit the files to 100 because otherwise updating the db
+	 * would take too long */
+	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
+				"filepath!='' ORDER BY start ASC LIMIT 100");
 
 	if (!dbres) {
 		bc_status_component_error("Database error during media cleanup");
