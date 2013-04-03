@@ -186,26 +186,23 @@ static const char *bc_db_mysql_get_val(BC_DB_RES __dbres,
 				       size_t *length)
 {
 	struct bc_db_mysql_res *dbres = (struct bc_db_mysql_res*) __dbres;
-	size_t *lengths;
-	int i;
-
 	if (dbres->row == NULL)
 		return NULL;
 
-	lengths = mysql_fetch_lengths(dbres->res);
+	unsigned long *lengths;
+	if (length)
+		lengths = mysql_fetch_lengths(dbres->res);
 
-	for (i = 0; i < dbres->ncols; i++) {
+	for (int i = 0; i < dbres->ncols; i++) {
 		MYSQL_FIELD *mf = mysql_fetch_field_direct(dbres->res, i);
-		if (mf == NULL)
-			continue;
-		if (strcmp(colname, mf->name) == 0)
-			break;
+		if (mf != NULL && strcmp(colname, mf->name) == 0) {
+			if (length)
+				*length = lengths[i];
+			return dbres->row[i];
+		}
 	}
 
-	if (i != dbres->ncols && length != NULL)
-		*length = lengths[i];
-
-	return (i == dbres->ncols) ? NULL : dbres->row[i];
+	return NULL;
 }
 
 static int bc_db_mysql_num_fields(BC_DB_RES __dbres)
