@@ -11,7 +11,7 @@ bluecherry (1:2.0.2-1) lucid; urgency=low
   * Bug #1174: Storage deletion routine does not delete files on second and subsequent storage paths
   * Fixed an installation bug on debian systems with modified USERGROUPS_ENAB
 
- -- John Brooks <john.brooks@bluecherry.net>  Thu 15 Nov 2012 14:07:00 -0700
+ -- John Brooks <john.brooks@bluecherry.net>  Thu, 15 Nov 2012 14:07:00 -0700
 
 bluecherry (1:2.0.1-1) lucid; urgency=low
 
