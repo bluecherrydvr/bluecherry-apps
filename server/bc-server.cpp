@@ -464,10 +464,10 @@ static int bc_cleanup_media()
 			bc_status_component_error("Database error during media cleanup");
 		}
 
-		/* Every five files removed check if enough space has been
+		/* Every four files removed check if enough space has been
 		 * freed.
 		 */
-		if (!(removed % 5)) {
+		if (removed & 3 == 0) {
 			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
 				float used = path_used_percent(media_stor[i].path);
 				if (used >= 0 && used <= media_stor[i].min_thresh)
@@ -830,8 +830,8 @@ int main(int argc, char **argv)
 
 	/* Main loop */
 	for (unsigned int loops = 0 ;; sleep(1), loops++) {
-		/* Every 15 seconds until initialized, then every 5 minutes */
-		if ((!solo_ready && !(loops % 15)) || (solo_ready && !(loops % 300))) {
+		/* Every 16 seconds until initialized, then every 4:16 minutes */
+		if ((!solo_ready && !(loops & 15)) || (solo_ready && !(loops & 255))) {
 			bc_status_component_begin(STATUS_SOLO_DETECT);
 			error = bc_check_avail();
 			solo_ready = (error == 0);
@@ -849,8 +849,8 @@ int main(int argc, char **argv)
 			bc_status_component_end(STATUS_SOLO_DETECT, error == 0);
 		}
 
-		/* Every 2 minutes */
-		if (!(loops % 120)) {
+		/* Every about 2 minutes */
+		if (loops & 127 == 0) {
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;
@@ -862,10 +862,10 @@ int main(int argc, char **argv)
 			}
 
 			if (!error && max_threads == 0) {
-				error |= check_trial_expired();
-				if (!error) {
+				int expired = check_trial_expired();
+				if (!expired) {
 					max_threads = TRIAL_MAX_DEVICES;
-					if (!(loops % 1800))
+					if (loops & 2047 == 0)
 						bc_log(Warning, "Not licensed; running in trial mode");
 				}
 			} else if (!error && old_n_devices != max_threads) {
@@ -880,8 +880,8 @@ int main(int argc, char **argv)
 			bc_status_component_end(STATUS_MEDIA_CHECK, error == 0);
 	 	}
 
-		/* Every 10 seconds */
-		if (!(loops % 10)) {
+		/* Every 8 seconds */
+		if (loops & 7 == 0) {
 			bc_status_component_begin(STATUS_DB_POLLING1);
 			/* Check global vars */
 			error = bc_check_globals();
@@ -893,7 +893,7 @@ int main(int argc, char **argv)
 		/* Every second, check for dead threads */
 		bc_check_threads();
 
-		if (!(loops % 60))
+		if (!(loops & 63))
 			bc_update_server_status();
 	}
 
