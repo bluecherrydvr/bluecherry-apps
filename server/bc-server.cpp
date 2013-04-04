@@ -22,6 +22,10 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 
+/* Global Mutexes */
+pthread_mutex_t mutex_global_sched;
+pthread_mutex_t mutex_streaming_setup;
+
 static std::vector<bc_record*> bc_rec_list;
 
 static int max_threads;
@@ -105,6 +109,14 @@ void bc_status_component_error(const char *error, ...)
 	}
 
 	va_end(args);
+}
+
+static void bc_initialize_mutexes()
+{
+	pthread_mutex_init(&mutex_global_sched,
+			   (pthread_mutexattr_t *) NULL);
+	pthread_mutex_init(&mutex_streaming_setup,
+			   (pthread_mutexattr_t *) NULL);
 }
 
 static const char *component_string(bc_status_component c)
@@ -259,8 +271,11 @@ static int bc_check_globals(void)
 
 	if (dbres && !bc_db_fetch_row(dbres)) {
 		const char *sched = bc_db_get_val(dbres, "value", NULL);
-		if (sched)
+		if (sched) {
+			pthread_mutex_lock(&mutex_global_sched);
 			strlcpy(global_sched, sched, sizeof(global_sched));
+			pthread_mutex_unlock(&mutex_global_sched);
+		}
 	} else {
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
@@ -782,6 +797,9 @@ int main(int argc, char **argv)
 	}
 
 	bc_log(Info, "Started Bluecherry daemon");
+
+        /* Mutex */
+        bc_initialize_mutexes();
 
 	rtsp_server *rtsp = new rtsp_server;
 	rtsp->setup(7002);
