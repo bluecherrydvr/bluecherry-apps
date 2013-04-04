@@ -1181,6 +1181,6 @@ void rtsp_session::setActive(bool on)
 	needKeyframe = on;
 	stream->sessionActiveChanged(this);
 
-	bc_log(Debug, "Stream %s for device %d", on ? "started" : "stopped", stream->id); 
+	bc_log(Debug, "Stream %s for device %d", on ? "started" : "stopped", stream->id);
 }
 

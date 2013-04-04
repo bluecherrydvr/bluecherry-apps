@@ -217,8 +217,9 @@ void bc_record::run()
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this))
-			bc_streaming_packet_write(this, packet);
-
+			if (bc_streaming_packet_write(this, packet) == -1) {
+				goto error;
+			}
 		continue;
 error:
 		sleep(10);
