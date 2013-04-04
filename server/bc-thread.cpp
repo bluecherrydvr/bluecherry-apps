@@ -86,7 +86,11 @@ static void check_schedule(struct bc_record *bc_rec)
 	time(&t);
 	localtime_r(&t, &tm);
 
+        /* Update global sched */
+        pthread_mutex_lock(&mutex_global_sched);
 	sched_new = schedule[tm.tm_hour + (tm.tm_wday * 24)];
+        pthread_mutex_unlock(&mutex_global_sched);
+
 	if (bc_rec->sched_cur != sched_new) {
 		if (!bc_rec->sched_last)
 			bc_rec->sched_last = bc_rec->sched_cur;
@@ -212,8 +216,9 @@ void bc_record::run()
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this))
-			bc_streaming_packet_write(this, packet);
-
+			if (bc_streaming_packet_write(this, packet) == -1) {
+				goto error;
+			}
 		continue;
 error:
 		sleep(10);
