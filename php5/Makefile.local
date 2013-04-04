@@ -5,6 +5,7 @@ MODULE		= bluecherry
 PHP_RPATH	= no
 export PHP_RPATH
 
+LDFLAGS  += -lavutil
 CXXFLAGS += -Wno-write-strings
 
 all: modules/$(MODULE).so
