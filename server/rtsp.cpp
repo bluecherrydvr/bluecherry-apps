@@ -87,7 +87,10 @@ void rtsp_server::run()
 
 	int errors = 0;
 	for (;;) {
+		pthread_mutex_lock(&poll_mutex);
 		int n = poll(fds, n_fds, -1);
+                pthread_mutex_unlock(&poll_mutex);
+
 		if (n < 0) {
 			if (errno == EINTR)
 				continue;
@@ -173,16 +176,17 @@ int rtsp_server::addFd(rtsp_connection *instance, int fd, int events)
 
 void rtsp_server::removeFd(int fd)
 {
+	pthread_mutex_lock(&poll_mutex);
 	for (int i = 0; i < n_fds; ++i) {
 		if (fds[i].fd != fd)
 			continue;
-		pthread_mutex_lock(&poll_mutex);
+
 		memmove(&fds[i], &fds[i+1], sizeof(fds) - (sizeof(pollfd) * (i+1)));
 		memmove(&connections[i], &connections[i+1], sizeof(connections) - (sizeof(*connections) * (i+1)));
 		n_fds--;
-		pthread_mutex_unlock(&poll_mutex);
 		break;
 	}
+	pthread_mutex_unlock(&poll_mutex);
 }
 
 void rtsp_server::setFdEvents(int fd, int events)
@@ -229,7 +233,7 @@ void rtsp_server::acceptConnection()
  *
  * Each rtsp_write_buffer is one unit to send on an rtsp_connection,
  * which will be sent in whole or (if applicable) dropped entirely.
- * 
+ *
  */
 struct rtsp_write_buffer
 {
@@ -259,7 +263,7 @@ struct rtsp_write_buffer
 		data = new char[size];
 		memcpy(data, d, size);
 	}
-	
+
 	~rtsp_write_buffer()
 	{
 		delete[] data;
