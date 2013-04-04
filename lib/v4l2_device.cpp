@@ -5,6 +5,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include "v4l2_device.h"
+#include "fix16.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
@@ -493,18 +494,15 @@ int v4l2_device::set_control(unsigned int ctrl, int val)
 {
 	struct v4l2_queryctrl qctrl;
 	struct v4l2_control vc;
-	float step;
 
 	memset(&qctrl, 0, sizeof(qctrl));
 	qctrl.id = ctrl;
 	if (ioctl(dev_fd, VIDIOC_QUERYCTRL, &qctrl) < 0)
 		return -1;
 
-	step = (float)(qctrl.maximum - qctrl.minimum) / (float)101;
-	val = roundf(((float)val * step) + qctrl.minimum);
-
+	fix16_t step = ((qctrl.maximum - qctrl.minimum) << 16) / 101;
+	vc.value = qctrl.minimum + fix16_to_int(val * step);
 	vc.id = ctrl;
-	vc.value = val;
 
 	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 }

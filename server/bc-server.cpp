@@ -22,6 +22,8 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 
+#include "fix16.h"
+
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
 pthread_mutex_t mutex_streaming_setup;
@@ -39,7 +41,7 @@ static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
 struct bc_storage {
 	char path[PATH_MAX];
-	float min_thresh, max_thresh;
+	fix16_t min_thresh, max_thresh;
 };
 
 #define MAX_STOR_LOCS	10
@@ -228,8 +230,8 @@ static int load_storage_paths(void)
 		    sizeof(media_stor[i].path))
 			continue;
 
-		media_stor[i].max_thresh = max_thresh;
-		media_stor[i].min_thresh = min_thresh;
+		media_stor[i].max_thresh = fix16_from_float(max_thresh);
+		media_stor[i].min_thresh = fix16_from_float(min_thresh);
 
 		if (bc_mkdir_recursive(media_stor[i].path)) {
 			bc_status_component_error("Cannot create storage path %s: %m",
@@ -249,8 +251,8 @@ static int load_storage_paths(void)
 			bc_status_component_error("Cannot create storage path %s: %m",
 			                          media_stor[i].path);
 		}
-		media_stor[0].max_thresh = 95.00;
-		media_stor[0].min_thresh = 90.00;
+		media_stor[0].max_thresh = 95 << 16;
+		media_stor[0].min_thresh = 90 << 16;
 	}
 
 	pthread_mutex_unlock(&media_lock);
@@ -337,15 +339,19 @@ static struct bc_record *bc_record_exists(const int id)
 	return NULL;
 }
 
-/* TODO: use fixed point insead of float */
-static float path_used_percent(const char *path)
+/**
+ * Retrieve filesystem usage of the specified path.
+ *
+ * @returns percentage, or -1 on error.
+ */
+static fix16_t path_used_percent(const char *path)
 {
 	struct statvfs st;
 
 	if (statvfs(path, &st))
-		return -1.00;
+		return -1;
 
-	return 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks;
+	return (100 << 16) - fix16_from_frac(100 * st.f_bavail, st.f_blocks);
 }
 
 static uint64_t path_freespace(const char *path)
@@ -366,7 +372,7 @@ static uint64_t path_freespace(const char *path)
 /* Returns -1 on error, 0 for non-full, 1 for full */
 static int is_storage_full(const struct bc_storage *stor)
 {
-	float used = path_used_percent(stor->path);
+	fix16_t used = path_used_percent(stor->path);
 
 	if (used < 0)
 		return -1;
@@ -471,7 +477,7 @@ static int bc_cleanup_media()
 		 */
 		if ((removed & 3) == 0) {
 			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-				float used = path_used_percent(media_stor[i].path);
+				fix16_t used = path_used_percent(media_stor[i].path);
 				if (used >= 0 && used <= media_stor[i].min_thresh)
 					goto done;
 			}
