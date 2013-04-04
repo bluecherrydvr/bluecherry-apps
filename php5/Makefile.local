@@ -8,6 +8,8 @@ export PHP_RPATH
 LDFLAGS  += -lavutil
 CXXFLAGS += -Wno-write-strings
 
+export LD_LIBRARY_PATH=$(STAGE)/lib
+
 all: modules/$(MODULE).so
 
 configure: config.m4
