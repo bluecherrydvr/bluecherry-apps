@@ -23,19 +23,19 @@
 #include "v4l2_device.h"
 #include "stream_elements.h"
 
-static inline char *split(char *s)
+static inline char *split(char *s, char delim)
 {
-	for (;*s && *s != '|'; s++);
-	if (*s == '|')
+	for (;*s && *s != delim; s++);
+	if (*s == delim)
 		*s++ = '\0';
 	return *s ? s : NULL;
 }
 
 static inline void split_pp(char *s, const char **p1, const char **p2)
 {
-	char *tmp = split(s);
+	char *tmp = split(s, '|');
 	*p1 = tmp;
-	*p2 = split(tmp);
+	*p2 = split(tmp, '|');
 }
 
 static int get_creds(BC_DB_RES dbres, char *creds, size_t size)
