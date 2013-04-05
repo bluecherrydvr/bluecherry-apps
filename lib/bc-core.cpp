@@ -25,10 +25,10 @@
 
 static inline char *split(char *s, char delim)
 {
-	for (;*s && *s != delim; s++);
-	if (*s == delim)
-		*s++ = '\0';
-	return *s ? s : NULL;
+	s = strchr(s, delim);
+	if (s && (*s = 0, !*++s))
+		s = NULL;
+	return s;
 }
 
 static inline void split_pp(char *s, const char **p1, const char **p2)
