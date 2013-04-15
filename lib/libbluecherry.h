@@ -231,7 +231,7 @@ int bc_db_get_val_bool(BC_DB_RES dbres, const char *colname);
 char *bc_db_escape_string(const char *from, size_t len);
 
 /* Validate and process a license key to get values from it */
-int bc_license_machine_id(char *out, int out_sz);
+int bc_license_machine_id(char *out, size_t out_sz);
 int bc_read_licenses(std::vector<bc_license> &licenses);
 int bc_license_check(const char *license);
 int bc_license_check_auth(const char *license, const char *auth);
