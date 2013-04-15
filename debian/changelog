@@ -1,3 +1,19 @@
+bluecherry (1:2.0.3-1) unstable; urgency=low
+
+  * Bug #1168: Duplicate device detected when editing some camera settings
+  * Moved pidfile to /var/run/bluecherry/
+  * Fixed SysVinit script
+  * Fixed issue with missing syslog user on Debian
+  * Fixed linking issues
+  * Fixed debian init script installation
+  * Fixed permission issues with bluecherry.conf
+  * Added backtracing support
+  * Added internal libconfig to avoid problems with system-provided versions
+  * Limit media cleanup queries to 100 results, to avoid killing mysql connection
+  * Threading fixes
+
+ -- Ismael Luceno <ismael.luceno@gmail.com>  Mon, 15 Apr 2013 20:11:25 -0300
+
 bluecherry (1:2.0.2-2) lucid; urgency=low
 
   * Bug #1202: OSD time not being adjusted to daylight saving
