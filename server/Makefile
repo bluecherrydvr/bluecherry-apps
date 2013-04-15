@@ -18,7 +18,7 @@ install: all rsyslog.conf FORCE
 		$(DESTDIR)$(etc_dir)/rsyslog.d/99-bluecherry.conf
 
 clean: FORCE
-	rm -f $(SERVER_OBJS) $(DETECT_OBJS) $(TARGETS)
+	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
 
 -include $(SERVER_OBJS:%.o=%.d)
 
