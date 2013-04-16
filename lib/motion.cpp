@@ -19,7 +19,7 @@
 #include <math.h>
 #include <time.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 extern "C" {
 #include <libswscale/swscale.h>

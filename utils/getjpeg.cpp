@@ -16,7 +16,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include <libbluecherry.h>
+#include "libbluecherry.h"
 
 static void print_error(char *msg, ...)
 {
