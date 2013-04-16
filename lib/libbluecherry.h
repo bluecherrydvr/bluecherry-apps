@@ -17,6 +17,10 @@
 #include <linux/videodev2.h>
 #include <vector>
 
+extern "C" {
+#include <libavcodec/avcodec.h> /* for CodecID */
+}
+
 #ifndef PRId64
 #ifdef __x86_64__
 #define PRId64 "ld"
