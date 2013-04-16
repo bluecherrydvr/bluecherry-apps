@@ -25,7 +25,7 @@
 #endif
 #endif
 
-#include <rtp-session.h>
+#include "rtp-session.h"
 
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
 #define BC_CONFIG_BASE		"bluecherry"
