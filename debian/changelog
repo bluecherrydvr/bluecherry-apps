@@ -12,7 +12,7 @@ bluecherry (1:2.0.3-1) unstable; urgency=low
   * Limit media cleanup queries to 100 results, to avoid killing mysql connection
   * Threading fixes
 
- -- Ismael Luceno <ismael.luceno@gmail.com>  Mon, 15 Apr 2013 20:11:25 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 15 Apr 2013 20:11:25 -0300
 
 bluecherry (1:2.0.2-2) lucid; urgency=low
 
