@@ -153,7 +153,7 @@ static void try_formats(struct bc_record *bc_rec)
 			bc_dev_warn(bc_rec, "Failed to set video interval: %m");
 	}
 
-	if (bc_set_format(bc, bc_rec->fmt, bc_rec->cfg.width, bc_rec->cfg.height)) {
+	if (bc_set_resolution(bc, bc_rec->cfg.width, bc_rec->cfg.height)) {
 		bc_rec->reset_vid = 1;
 		if (errno != EAGAIN)
 			bc_dev_warn(bc_rec, "Error setting format: %m");
@@ -543,7 +543,6 @@ struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres)
 	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
 
 	bc_rec->id = id;
-	bc_rec->fmt = V4L2_PIX_FMT_MPEG;
 
 	bc = bc_handle_get(dbres);
 	if (bc == NULL) {

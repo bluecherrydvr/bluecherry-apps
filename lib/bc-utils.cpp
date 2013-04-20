@@ -90,14 +90,28 @@ unsigned int bc_buf_size(struct bc_handle *bc)
 	return bc->v4l2.p_buf[bc->v4l2.buf_idx].vb.bytesused;
 }
 
-int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
-		  u_int16_t height)
+/**
+ * Get the best of the supported pixel formats the card provides.
+ *
+ * XXX: We take the first one because it happens to be MPEG4 or H264 on our
+ * driver.
+ */
+int get_best_pixfmt(int fd)
+{
+	struct v4l2_fmtdesc fmt = {
+		.index = 0,
+		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
+	};
+	int ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmt);
+	return ret < 0 ? -1 : fmt.pixelformat;
+}
+
+int bc_set_resolution(struct bc_handle *bc, u_int16_t width, u_int16_t height)
 {
 	if (bc->type != BC_DEVICE_V4L2)
 		return 0;
 
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == fmt &&
-	    bc->v4l2.vfmt.fmt.pix.width == width &&
+	if (bc->v4l2.vfmt.fmt.pix.width == width &&
 	    bc->v4l2.vfmt.fmt.pix.height == height)
 		return 0;
 
@@ -105,6 +119,10 @@ int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
 		errno = EAGAIN;
 		return -1;
 	}
+
+	int fmt = get_best_pixfmt(bc->v4l2.dev_fd);
+	if (fmt < 0)
+		return -1;
 
 	bc->v4l2.vfmt.fmt.pix.pixelformat = fmt;
 	bc->v4l2.vfmt.fmt.pix.width = width;

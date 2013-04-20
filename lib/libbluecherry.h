@@ -311,9 +311,9 @@ int bc_buf_is_video_frame(struct bc_handle *bc);
 
 /* Format and parameter settings */
 int bc_set_interval(struct bc_handle *bc, u_int8_t interval);
-int bc_set_format(struct bc_handle *bc, u_int32_t fmt, u_int16_t width,
-		  u_int16_t height);
+int bc_set_resolution(struct bc_handle *bc, u_int16_t width, u_int16_t height);
 int bc_set_mjpeg(struct bc_handle *bc);
+int get_best_pixfmt(int fd);
 
 /* Enable or disable the motion detection */
 int bc_set_motion(struct bc_handle *bc, int on);

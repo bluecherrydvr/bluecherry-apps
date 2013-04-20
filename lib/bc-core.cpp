@@ -73,8 +73,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 
 	vb = bc_buf_v4l2(bc);
 
-	/* For everything other than mpeg, every frame is a keyframe */
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
+	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG)
 		return 1;
 
 	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
@@ -130,7 +129,7 @@ static int v4l2_handle_start(struct bc_handle *bc, const char **err_msg)
 	int i;
 
 	/* For mpeg, we get the max, and for mjpeg the min */
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
+	if (bc->v4l2.vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MJPEG)
 		bc->v4l2.buffers = BC_BUFFERS;
 	else
 		bc->v4l2.buffers = BC_BUFFERS_JPEG;
@@ -337,11 +336,13 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 	}
 
-	if (bc->cam_caps & BC_CAM_CAP_SOLO) {
-		if (strstr((char*)bc->v4l2.vcap.card, "6010"))
-			bc->v4l2.codec_id = CODEC_ID_MPEG4;
-		else if (strstr((char*)bc->v4l2.vcap.card, "6110"))
-			bc->v4l2.codec_id = CODEC_ID_H264;
+	switch (get_best_pixfmt(bc->v4l2.dev_fd)) {
+	case V4L2_PIX_FMT_MPEG4:
+		bc->v4l2.codec_id = CODEC_ID_MPEG4;
+		break;
+	case V4L2_PIX_FMT_H264:
+		bc->v4l2.codec_id = CODEC_ID_H264;
+		break;
 	}
 
 	/* Get the parameters */
