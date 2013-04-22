@@ -29,6 +29,13 @@ extern "C" {
 #endif
 #endif
 
+#ifndef V4L2_PIX_FMT_H264
+#define V4L2_PIX_FMT_H264     v4l2_fourcc('H', '2', '6', '4')
+#endif
+#ifndef V4L2_PIX_FMT_MPEG4
+#define V4L2_PIX_FMT_MPEG4    v4l2_fourcc('M', 'P', 'G', '4')
+#endif
+
 #include "rtp-session.h"
 
 #define BC_CONFIG		ETCDIR"/bluecherry.conf"
