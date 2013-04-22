@@ -1,3 +1,9 @@
+bluecherry (1:2.0.4-1) unstable; urgency=low
+
+  * Fixed card detection and pixel format handling
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 22 Apr 2013 09:53:12 -0300
+
 bluecherry (1:2.0.3-1) unstable; urgency=low
 
   * Bug #1168: Duplicate device detected when editing some camera settings
