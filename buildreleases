@@ -1,5 +1,5 @@
 #!/usr/bin/make -f
-PACKAGES = bluecherry bluecherry-dbg
+PACKAGE = bluecherry
 MAINTAINER = John Brooks <john.brooks@bluecherry.net>
 
 DIST =	lucid \
@@ -53,9 +53,10 @@ debian/changelog: FORCE
 define GEN_REL_TARGET # dist,arch
 release: release-$1_$2
 release-$1_$2: release-deps FORCE
-	mkdir -p $O/$1
+	mkdir -p $O/$1 $O/debug/$1
 	schroot -c $1_$2 fakeroot debian/rules clean binary
-	mv $(foreach pkg,$(PACKAGES), ../$(pkg)_$(VERSION)_$2.deb) $O/$1
+	mv ../$(PACKAGE)_$(VERSION)_$2.deb $O/$1
+	mv ../$(PACKAGE)-dbg_$(VERSION)_$2.deb $O/debug/$1
 
 endef
 
