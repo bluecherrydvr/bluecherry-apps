@@ -98,10 +98,9 @@ unsigned int bc_buf_size(struct bc_handle *bc)
  */
 int get_best_pixfmt(int fd)
 {
-	struct v4l2_fmtdesc fmt = {
-		.index = 0,
-		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
-	};
+	struct v4l2_fmtdesc fmt;
+	fmt.index = 0;
+	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	int ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmt);
 	return ret < 0 ? -1 : fmt.pixelformat;
 }
