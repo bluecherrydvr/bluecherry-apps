@@ -28,6 +28,8 @@ endif
 release: FORCE
 	md5sum $(foreach d,$(DIST), $O/$d/* $O/debug/$d/*) >> $O/md5sum.txt
 
+upgrade:
+
 #
 # Nightly builds
 #
@@ -57,6 +59,11 @@ release-$1_$2: release-deps FORCE
 	schroot -c $1_$2 fakeroot debian/rules clean binary
 	mv ../$(PACKAGE)_$(VERSION)_$2.deb $O/$1
 	mv ../$(PACKAGE)-dbg_$(VERSION)_$2.deb $O/debug/$1
+
+upgrade: upgrade-$1_$2
+upgrade-$1_$2: FORCE
+	schroot -c $1_$2 -u root -- apt-get update
+	schroot -c $1_$2 -u root -- apt-get -y dist-upgrade
 
 endef
 
