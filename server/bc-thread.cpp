@@ -105,23 +105,6 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 	return 0;
 }
 
-static void stop_handle_properly(struct bc_record *bc_rec)
-{
-	struct bc_output_packet *p, *n;
-
-	recording_end(bc_rec);
-	bc_streaming_destroy(bc_rec);
-	bc_handle_stop(bc_rec->bc);
-	bc_rec->mot_last_ts = 0;
-	bc_rec->mot_first_buffered_packet = 0;
-	for (p = bc_rec->prerecord_head; p; p = n) {
-		n = p->next;
-		free(p->data);
-		free(p);
-	}
-	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
-}
-
 static void event_trigger_notifications(struct bc_record *bc_rec)
 {
 	if (bc_rec->sched_cur != 'M')
@@ -617,6 +600,23 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 			bc_db_get_val_int(dbres, "brightness"));
 
 	return 0;
+}
+
+void stop_handle_properly(struct bc_record *bc_rec)
+{
+	struct bc_output_packet *p, *n;
+
+	recording_end(bc_rec);
+	bc_streaming_destroy(bc_rec);
+	bc_handle_stop(bc_rec->bc);
+	bc_rec->mot_last_ts = 0;
+	bc_rec->mot_first_buffered_packet = 0;
+	for (p = bc_rec->prerecord_head; p; p = n) {
+		n = p->next;
+		free(p->data);
+		free(p);
+	}
+	bc_rec->prerecord_head = bc_rec->prerecord_tail = 0;
 }
 
 static int apply_device_cfg(struct bc_record *bc_rec)

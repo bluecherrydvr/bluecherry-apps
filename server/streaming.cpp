@@ -129,10 +129,16 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, struct bc_output_packet 
 	opkt.stream_index = 0; /* XXX */
 
 	re = av_write_frame(bc_rec->stream_ctx, &opkt);
-	if (re != 0) {
+	if (re < 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
 		bc_dev_err(bc_rec, "Error writing to live stream: %s", err);
+
+		/*
+		 * as we cannot deal with the live stream, we must destroy
+		 * the connection for a proper cleanup
+		 */
+		stop_handle_properly(bc_rec);
 		return -1;
 	}
 
