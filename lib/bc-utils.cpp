@@ -96,7 +96,7 @@ unsigned int bc_buf_size(struct bc_handle *bc)
  * XXX: We take the first one because it happens to be MPEG4 or H264 on our
  * driver.
  */
-int get_best_pixfmt(int fd)
+uint32_t get_best_pixfmt(int fd)
 {
 	struct v4l2_fmtdesc fmt;
 	fmt.index = 0;
@@ -119,8 +119,8 @@ int bc_set_resolution(struct bc_handle *bc, u_int16_t width, u_int16_t height)
 		return -1;
 	}
 
-	int fmt = get_best_pixfmt(bc->v4l2.dev_fd);
-	if (fmt < 0)
+	uint32_t fmt = get_best_pixfmt(bc->v4l2.dev_fd);
+	if (!fmt)
 		return -1;
 
 	bc->v4l2.vfmt.fmt.pix.pixelformat = fmt;

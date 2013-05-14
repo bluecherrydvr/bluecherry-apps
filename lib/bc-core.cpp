@@ -336,7 +336,8 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		return -1;
 	}
 
-	switch (get_best_pixfmt(bc->v4l2.dev_fd)) {
+	uint32_t fmt = get_best_pixfmt(bc->v4l2.dev_fd);
+	switch (fmt) {
 	case V4L2_PIX_FMT_MPEG4:
 		bc->v4l2.codec_id = CODEC_ID_MPEG4;
 		break;
