@@ -169,6 +169,7 @@ int bc_open_avcodec(struct bc_record *bc_rec);
 
 struct bc_record *bc_alloc_record(int id, BC_DB_RES dbres);
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres);
+void stop_handle_properly(struct bc_record *bc_rec);
 
 int bc_check_avail(void);
 

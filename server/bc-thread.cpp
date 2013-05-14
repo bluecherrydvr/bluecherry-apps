@@ -105,7 +105,7 @@ static int recording_start(struct bc_record *bc_rec, time_t start_ts)
 	return 0;
 }
 
-static void stop_handle_properly(struct bc_record *bc_rec)
+void stop_handle_properly(struct bc_record *bc_rec)
 {
 	struct bc_output_packet *p, *n;
 
