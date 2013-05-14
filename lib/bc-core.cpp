@@ -344,6 +344,11 @@ static int v4l2_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	case V4L2_PIX_FMT_H264:
 		bc->v4l2.codec_id = CODEC_ID_H264;
 		break;
+	default:
+		bc_log("E: Unknown '%c%c%c%c' pixel format", fmt & 127,
+			fmt >> 8, fmt >> 16, fmt >> 24);
+	case 0:
+		return -1;
 	}
 
 	/* Get the parameters */
