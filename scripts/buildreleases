@@ -14,13 +14,13 @@ O = ../releases
 # Magic suff from here
 #
 ifeq ($(MAKECMDGOALS),nightly)
-ver-tmp := $(shell git describe | sed 's/^v//;s/-g[0-9a-f]*$$//;s/-/ /')
+ver-tmp := $(shell git describe | sed 's/-g[0-9a-f]*$$//;s/-/ /')
 ver-tag := $(word 1,$(ver-tmp))
 ver-chg := $(word 2,$(ver-tmp))
 ifeq ($(strip $(ver-chg)),)
 $(error No changes since $(ver-tag))
 endif
-VERSION := $(ver-tag)-$(ver-chg)-nightly1
+VERSION := $(ver-tag:v%=%)-$(ver-chg)-nightly1
 else
 VERSION := $(shell sed 's/.*(1://;s/).*//;1q' debian/changelog)
 endif
