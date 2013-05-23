@@ -91,18 +91,40 @@ unsigned int bc_buf_size(struct bc_handle *bc)
 }
 
 /**
+ * Select the best between two formats.
+ */
+static uint32_t best_pixfmt(uint32_t old, uint32_t cur)
+{
+	const uint32_t pref[] = {
+		V4L2_PIX_FMT_H264,
+		V4L2_PIX_FMT_MPEG4,
+		0
+	};
+
+	for (int i = 0; pref[i]; i++) {
+		if (pref[i] == old)
+			return old;
+		if (pref[i] == cur)
+			return cur;
+	}
+	return 0;
+}
+
+/**
  * Get the best of the supported pixel formats the card provides.
- *
- * XXX: We take the first one because it happens to be MPEG4 or H264 on our
- * driver.
  */
 uint32_t get_best_pixfmt(int fd)
 {
 	struct v4l2_fmtdesc fmt;
-	fmt.index = 0;
+	uint32_t sel = 0;
+
+	memset(&fmt, 0, sizeof(fmt));
 	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	int ret = ioctl(fd, VIDIOC_ENUM_FMT, &fmt);
-	return ret < 0 ? -1 : fmt.pixelformat;
+
+	while (ioctl(fd, VIDIOC_ENUM_FMT, &fmt) >= 0)
+		sel = best_pixfmt(sel, fmt.pixelformat);
+
+	return sel;
 }
 
 int bc_set_resolution(struct bc_handle *bc, u_int16_t width, u_int16_t height)
