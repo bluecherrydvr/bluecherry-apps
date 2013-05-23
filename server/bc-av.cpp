@@ -413,8 +413,8 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	st->time_base.num = fnum;
 
 	if (bc_rec->bc->v4l2.codec_id == CODEC_ID_NONE) {
-		bc_dev_warn(bc_rec, "Invalid Video Format, assuming MP4V-ES");
-		st->codec->codec_id = CODEC_ID_MPEG4;
+		bc_dev_warn(bc_rec, "Invalid CODEC, assuming H264");
+		st->codec->codec_id = CODEC_ID_H264;
 	} else
 		st->codec->codec_id = bc_rec->bc->v4l2.codec_id;
 
