@@ -1,3 +1,11 @@
+bluecherry (1:2.0.5-1) unstable; urgency=low
+
+  * Bug #1207: RTSP streaming stops working after several hours
+  * Now assumes H264 by default
+  * Improved pixel format selection
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Tue, 05 Jun 2013 01:38:53 -0300
+
 bluecherry (1:2.0.4-1) unstable; urgency=low
 
   * Fixed card detection and pixel format handling
