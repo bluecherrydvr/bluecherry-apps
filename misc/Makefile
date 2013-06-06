@@ -2,6 +2,8 @@ include ../mk.conf
 
 all: build FORCE
 
+conf-common = --prefix=$(STAGE) --disable-static --enable-shared
+
  ###############
 ### libconfig ###
  ###############
@@ -14,7 +16,7 @@ libconfig-clean: FORCE
 	-rm libconfig/Makefile
 
 libconfig/Makefile:
-	cd libconfig && ./configure --prefix=$(STAGE) --disable-static --disable-examples
+	cd libconfig && ./configure $(conf-common) --disable-examples
 
 $(libconfig-libs): libconfig/Makefile
 	$(MAKE) $(MAKEARGS) -C libconfig install
@@ -31,8 +33,11 @@ LIBAV_INSTALL = $(call lpath, \
 
 install-libs += $(LIBAV_INSTALL)
 
+conf-libav-disable = debug doc \
+	ffmpeg avconv avplay avprobe avserver avdevice avfilter
+conf-libav = $(foreach q,$(conf-libav-disable), --disable-$q)
 libav/config.mak:
-	cd libav && ./configure --prefix=$(STAGE) --disable-static --enable-shared --enable-pic
+	cd libav && ./configure $(conf-common) $(conf-libav) --enable-pic
 
 libav-clean: FORCE
 	-$(MAKE) -C libav distclean
