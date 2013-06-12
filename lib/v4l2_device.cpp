@@ -408,7 +408,6 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	bool needs_restart = is_started();
 	if (needs_restart)
 		stop();
-	}
 
 	if (!re && int_changed) {
 		vparm.parm.capture.timeperframe.numerator = interval;
