@@ -431,6 +431,8 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	// Format must be set last, because it may implicitly turn on the encoder,
 	// which could cause other changes to fail...
 	if (fmt_changed) {
+		enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+
 		/* XXX: we could cache this */
 		uint32_t fmt = get_best_pixfmt(dev_fd);
 		if (!fmt) {
