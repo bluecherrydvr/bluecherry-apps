@@ -129,45 +129,18 @@ static const char *component_string(bc_status_component c)
 		default: return "";
 	}
 }
-
-static void bc_update_server_status()
+static void bc_update_server_status_one(BC_DB_RES dbres, char* full_error, time_t ts, int ok)
 {
-	int i;
-	int ok = 1;
-	char *full_error = NULL;
-	int full_error_sz = 0;
-	time_t ts;
-	BC_DB_RES dbres;
-
-	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
-		const char *component_str = component_string((bc_status_component)i);
-		if (!component_error[i])
-			continue;
-
-		ok = 0;
-
-		if (full_error) {
-			int nl = strlen(component_error[i]);
-			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
-			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_str, component_error[i]);
-			full_error_sz += nl + 128;
-		} else {
-			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			full_error_sz = strlen(full_error);
-		}
-
-		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
-	}
-
-	if (bc_db_start_trans())
+    //int ok = 1;
+    int i;
+    
+    if (bc_db_start_trans())
 		goto error;
 
 	dbres = __bc_db_get_table("SELECT * FROM ServerStatus");
 	if (!dbres)
 		goto rollback;
 
-	ts = time(NULL);
 
 	if (!bc_db_fetch_row(dbres)) {
 		if (!ok)
@@ -192,8 +165,43 @@ static void bc_update_server_status()
 	error:
 		bc_log(Fatal, "Unable to update server status in database");
 	}
+}
+static void bc_update_server_status()
+{
+	int i;
+	int ok = 1;
+	char *full_error = NULL;
+	int full_error_sz = 0;
+	time_t ts;
+	BC_DB_RES dbres;
+    
+    ts = time(NULL);
+	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		const char *component_str = component_string((bc_status_component)i);
+		if (!component_error[i])
+			continue;
 
-	free(full_error);
+		ok = 0;
+
+		/*if (full_error) {
+			int nl = strlen(component_error[i]);
+			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
+			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
+			         component_str, component_error[i]);
+			full_error_sz += nl + 128;
+		} else */{
+			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
+			full_error_sz = strlen(full_error);
+		}
+        
+        if (full_error) {
+            bc_update_server_status_one(dbres, full_error, ts, ok);
+            free(full_error);
+        }
+		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
+	}
+    
+	//free(full_error);
 }
 
 
