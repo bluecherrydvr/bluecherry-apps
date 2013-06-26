@@ -11,7 +11,6 @@ defined('INDVR') or exit();
 if (empty($nload)){
 	include("lang.php");
 	include("var.php");
-	include("upgrade.php");
 }
 
 session_name(VAR_SESSION_NAME);
@@ -57,6 +56,7 @@ function getOs(){
 #singleton database class, uses php5-bluecherry functions
 class database{
 	public static $instance;
+	private $dbh;
 	private function __construct(){
 		$this->connect();
 	}
@@ -64,21 +64,46 @@ class database{
 		self::$instance or self::$instance = new database();
 		return self::$instance;
 	}
-	private function connect() {
-		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
+	private function connect(){
+		$config = $this->getConf();
+		try{
+			$this->dbh = new PDO("mysql:
+											".(!empty($config['port']) ? "port={$config['port']};" : "")."
+											".(!empty($config['port']) ? "host={$config['host']};" : "host=localhost").";
+											dbname={$config['dbname']};", 
+											$config['user'], 
+											$config['password'],
+											array(PDO::ATTR_ERRMODE => PDO::ERRMODE_WARNING)
+			);
+		} catch (PDOException $e) {
+			fatal_error('COULDNT_CONNECT_TO_DB', $e->getMessage());
+		}
 	}
-	public static function escapeString(&$string) {
-		self::$instance or self::$instance = new database();
-		$string = bc_db_escape_string($string);
+	private function getConf(){
+		$config_file = @fopen("/etc/bluecherry.conf", 'r') or die("Could not open configuration file, please check permissions on /etc/bluecherry.conf.");
+		$parameters = array();
+		while (($line = fgets($config_file, 4096)) !== false) {
+			preg_match('/^\s*(.*?)\s*=\s*\"*(.*?)\"*\;\s*$/', $line, $e); #match parameter = value with or without quotes and ;
+			if (!empty($e)){
+				$parameters[$e[1]] = $e[2];
+			};
+		}
+		return $parameters;
+	}
+	public function fetchAll($query){
+		try{
+			return @$this->query($query)->fetchAll(PDO::FETCH_ASSOC);
+		} catch (PDOException $e){
+		}
+	}
+	public function query($query){
+		$query = $this->dbh->prepare($query);
+		
+		$query->execute();
+		return $query;
+	}
+	public static function escapeString(&$string){
 		return $string;
-	}
-	/* Execute a result-less query */
-	public function query($query) {
-		return bc_db_query($query);
-	}
-	/* Execute a query that will return results */
-	public function fetchAll($query) {
-		return bc_db_get_table($query);
 	}
 }
 
@@ -92,6 +117,7 @@ class data{
 		return ($data) ? $data : false;
 	}
 	public static function getRandomString($length = 4) {
+		$string = '';
 		$s = '0123456789abcdefghijklmnopqrstuvwxyz';
 		for ($p = 0; $p < $length; $p++)
 			$string .= $s[mt_rand(0, strlen($s))];
@@ -178,9 +204,12 @@ class user{
 				return false;
 			}
 		}
+		
 		if ($this->updateActiveUsers()) { $_SESSION['message'] = USER_KICKED; session_destroy(); return false; } #update records, check if user was kicked
 		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual']) return false; #require login when opening admin pages from client
+		
 		if ($type == 'devices' && !$this->info['access_setup'] && $_GET['XML']) { return true; }
+		if ($type == 'backup' && !$this->info['access_backup'] && !$this->info['access_setup']) { return false;}
 		if ($this->info['access_setup']) { return true; } #admin user all priveleges granted
 			else {
 				return ($type != 'admin' || ($type == 'backup' && $this->info['access_backup'] )) ? true : false; #page does not require admin priv and if its backup user must have permissions
@@ -230,10 +259,10 @@ class user{
 	public static function update($data, $new = false){
 		$check = false;
 		$tmp = -1;
-		$data['access_web'] = ($_POST['access_web'] == 'on') ? 1 : 0;
-		$data['access_remote'] = ($_POST['access_remote'] == 'on') ? 1 : 0;
-		$data['access_backup'] = ($_POST['access_backup'] == 'on') ? 1 : 0;
-		$data['access_setup'] = ($_POST['access_setup'] == 'on') ? 1 : 0;
+		$data['access_web'] = (!empty($_POST['access_web'])) ? 1 : 0;
+		$data['access_remote'] = (!empty($_POST['access_remote'])) ? 1 : 0;
+		$data['access_backup'] = (!empty($_POST['access_backup'])) ? 1 : 0;
+		$data['access_setup'] = (!empty($_POST['access_setup'])) ? 1 : 0;
 		$response = self::checkUserData($data, $new);
 		if ($response === true){
 			$tmp = '';
