@@ -131,7 +131,6 @@ static const char *component_string(bc_status_component c)
 }
 static void bc_update_server_status_one(BC_DB_RES dbres, char* full_error, time_t ts, int ok)
 {
-    //int ok = 1;
     int i;
     
     if (bc_db_start_trans())
@@ -183,16 +182,8 @@ static void bc_update_server_status()
 
 		ok = 0;
 
-		/*if (full_error) {
-			int nl = strlen(component_error[i]);
-			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
-			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_str, component_error[i]);
-			full_error_sz += nl + 128;
-		} else */{
-			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			full_error_sz = strlen(full_error);
-		}
+		asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
+		full_error_sz = strlen(full_error);
         
         if (full_error) {
             bc_update_server_status_one(dbres, full_error, ts, ok);
@@ -200,8 +191,6 @@ static void bc_update_server_status()
         }
 		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
 	}
-    
-	//free(full_error);
 }
 
 
