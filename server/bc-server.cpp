@@ -129,37 +129,11 @@ static const char *component_string(bc_status_component c)
 		default: return "";
 	}
 }
-
-static void bc_update_server_status()
+static void bc_update_server_status_one(char* full_error)
 {
-	int i;
-	int ok = 1;
-	char *full_error = NULL;
-	int full_error_sz = 0;
-	time_t ts;
 	BC_DB_RES dbres;
-
-	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
-		const char *component_str = component_string((bc_status_component)i);
-		if (!component_error[i])
-			continue;
-
-		ok = 0;
-
-		if (full_error) {
-			int nl = strlen(component_error[i]);
-			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
-			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_str, component_error[i]);
-			full_error_sz += nl + 128;
-		} else {
-			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			full_error_sz = strlen(full_error);
-		}
-
-		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
-	}
-
+	int i;
+	time_t ts;
 	if (bc_db_start_trans())
 		goto error;
 
@@ -168,17 +142,13 @@ static void bc_update_server_status()
 		goto rollback;
 
 	ts = time(NULL);
-
 	if (!bc_db_fetch_row(dbres)) {
-		if (!ok)
-			ts = bc_db_get_val_int(dbres, "timestamp");
+		ts = bc_db_get_val_int(dbres, "timestamp");
 		i = __bc_db_query("UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
-		                  "message=%s%s%s", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+		                  "message='%s'", (int)getpid(), ts, full_error);
 	} else {
 		i = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
-		                  "VALUES (%d,%lu,%s%s%s)", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+		                  "VALUES (%d,%lu,'%s')", (int)getpid(), ts, full_error);
 	}
 
 	bc_db_free_table(dbres);
@@ -192,8 +162,25 @@ static void bc_update_server_status()
 	error:
 		bc_log(Fatal, "Unable to update server status in database");
 	}
+}
+static void bc_update_server_status()
+{
+	int i;
+	int i_ret = -1;
+	char *full_error = NULL;
 
-	free(full_error);
+	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+	    const char *component_str = component_string((bc_status_component)i);
+	    if (!component_error[i])
+		continue;
+
+	    i_ret = asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
+	    if (i_ret != -1) {
+			bc_update_server_status_one(full_error);
+			free(full_error);
+	    }
+	    bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
+	}
 }
 
 
