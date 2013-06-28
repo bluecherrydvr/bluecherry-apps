@@ -44,7 +44,6 @@ static int check_solo(struct udev_device *device)
 	const char *uid_type;
 	char eeprom[128], driver[64], video_type[8];
 	int id, ports;
-	int fd;
 	int i;
 	const char *syspath;
 	DIR *dir;
@@ -67,44 +66,45 @@ static int check_solo(struct udev_device *device)
 		return -EAGAIN;
 
 	sprintf(path, "%s/%s/eeprom", syspath, card_name);
-	fd = open(path, 0, O_RDONLY);
-	if (fd >= 0) {
-		int ret = read(fd, eeprom, sizeof(eeprom));
-		close(fd);
+	{
+		int ret = 0;
 
-		if (ret != sizeof(eeprom) ||
-		    strncmp(eeprom + BCUID_EEPROM_OFF, BCUID_EEPROM_PRE,
-			    strlen(BCUID_EEPROM_PRE))) {
-			strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
-			uid_type = BC_UID_TYPE_PCI;
-		} else {
+		int fd = open(path, 0, O_RDONLY);
+		if (fd >= 0) {
+			ret = read(fd, eeprom, sizeof(eeprom));
+			close(fd);
+		}
+
+		if (ret == sizeof(eeprom)
+		    && strncmp(eeprom + BCUID_EEPROM_OFF, BCUID_EEPROM_PRE,
+			       strlen(BCUID_EEPROM_PRE))) {
 			memcpy(bcuid, eeprom + BCUID_EEPROM_OFF +
 			       strlen(BCUID_EEPROM_PRE), 36);
 			bcuid[36] = '\0';
 			uid_type = BC_UID_TYPE_BC;
+		} else {
+			strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
+			uid_type = BC_UID_TYPE_PCI;
 		}
-	} else {
-		strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
-		uid_type = BC_UID_TYPE_PCI;
 	}
 
 	if (sscanf(card_name, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
 		return -EINVAL;
 
 	sprintf(path, "%s/%s/video_type", syspath, card_name);
-	fd = open(path, 0, O_RDONLY);
-	if (fd >= 0) {
-		int ret = read(fd, video_type, sizeof(video_type));
-		close(fd);
+	{
+		int ret = 0;
 
-		if (ret >= 3 && strncmp(video_type, "PAL", 3) == 0)
-			video_type[3] = '\0';
-		else if (ret >= 4 && strncmp(video_type, "NTSC", 4) == 0)
-			video_type[4] = '\0';
-		else
+		int fd = open(path, 0, O_RDONLY);
+		if (fd >= 0) {
+			memset(video_type, 0, sizeof(video_type));
+			ret = read(fd, video_type, sizeof(video_type));
+			close(fd);
+		}
+
+		if (ret < 3)
 			strcpy(video_type, "NTSC");
-	} else
-		strcpy(video_type, "NTSC");
+	}
 
 	/* Check to see if we've scanned this one before */
 	for (i = 0; i < MAX_CARDS; i++) {
