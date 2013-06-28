@@ -187,8 +187,13 @@ int v4l2_device::is_key_frame()
 	struct v4l2_buffer *vb = buf_v4l2();
 
 	/* For everything other than mpeg, every frame is a keyframe */
-	if (vfmt.fmt.pix.pixelformat != V4L2_PIX_FMT_MPEG)
+	switch (vfmt.fmt.pix.pixelformat) {
+	case V4L2_PIX_FMT_H264:
+	case V4L2_PIX_FMT_MPEG4:
+		break;
+	default:
 		return 1;
+	}
 
 	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
 		return 1;
@@ -242,10 +247,15 @@ int v4l2_device::start()
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
 	/* For mpeg, we get the max, and for mjpeg the min */
-	if (vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MPEG)
+	switch (vfmt.fmt.pix.pixelformat) {
+	case V4L2_PIX_FMT_H264:
+	case V4L2_PIX_FMT_MPEG4:
 		buffers = BC_BUFFERS;
-	else
+		break;
+	default:
 		buffers = BC_BUFFERS_JPEG;
+		break;
+	}
 
 	if (v4l2_bufs_prepare())
 		return -1;
