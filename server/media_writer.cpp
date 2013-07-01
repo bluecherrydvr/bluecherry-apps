@@ -102,10 +102,10 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	}
 
 	re = av_write_frame(oc, &opkt);
-	if (re != 0) {
+	if (re < 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
-		bc_log(Error, "Error when writing frame to recording: %s", err);
+		bc_log(Error, "Error writing frame to recording: %s", err);
 		return false;
 	}
 
