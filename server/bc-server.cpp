@@ -153,7 +153,6 @@ static void bc_update_server_status_one(char* full_error)
 
 static void bc_update_server_status()
 {
-	BC_DB_RES dbres;
 	int i;
 	int ret = -1;
 	char *full_error = NULL;
