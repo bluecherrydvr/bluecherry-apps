@@ -130,60 +130,17 @@ static const char *component_string(bc_status_component c)
 	}
 }
 
-static void bc_update_server_status()
+static void bc_update_server_status_one(char* full_error)
 {
-	int i;
-	int ok = 1;
-	char *full_error = NULL;
-	int full_error_sz = 0;
+	int ret;
 	time_t ts;
-	BC_DB_RES dbres;
-
-	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
-		const char *component_str = component_string((bc_status_component)i);
-		if (!component_error[i])
-			continue;
-
-		ok = 0;
-
-		if (full_error) {
-			int nl = strlen(component_error[i]);
-			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
-			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_str, component_error[i]);
-			full_error_sz += nl + 128;
-		} else {
-			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			full_error_sz = strlen(full_error);
-		}
-
-		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
-	}
-
 	if (bc_db_start_trans())
 		goto error;
 
-	dbres = __bc_db_get_table("SELECT * FROM ServerStatus");
-	if (!dbres)
-		goto rollback;
-
 	ts = time(NULL);
-
-	if (!bc_db_fetch_row(dbres)) {
-		if (!ok)
-			ts = bc_db_get_val_int(dbres, "timestamp");
-		i = __bc_db_query("UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
-		                  "message=%s%s%s", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
-	} else {
-		i = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
-		                  "VALUES (%d,%lu,%s%s%s)", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
-	}
-
-	bc_db_free_table(dbres);
-
-	if (i)
+	ret = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
+		                  "VALUES (%d,%lu,'%s')", (int)getpid(), ts, full_error);
+	if (ret)
 		goto rollback;
 
 	if (bc_db_commit_trans()) {
@@ -192,10 +149,27 @@ static void bc_update_server_status()
 	error:
 		bc_log(Fatal, "Unable to update server status in database");
 	}
-
-	free(full_error);
 }
 
+static void bc_update_server_status()
+{
+	int i;
+	int ret = -1;
+	char *full_error = NULL;
+		
+	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+		const char *component_str = component_string((bc_status_component)i);
+		if (!component_error[i])
+			continue;
+
+		ret = asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
+		if (ret != -1) {
+			bc_update_server_status_one(full_error);
+			bc_log(Fatal, "%s", full_error);
+			free(full_error);
+		}
+	}	
+}
 
 static int load_storage_paths(void)
 {
@@ -256,7 +230,7 @@ static int load_storage_paths(void)
 	bc_db_free_table(dbres);
 	return 0;
 }
-
+SOAP_FMAC5 int SOAP_FMAC6 soap_send___wsdd_Hello(struct soap *soap,const char *soap_endpoint, const char *soap_action,struct wsdd_Hello
 /* Update our global settings */
 static int bc_check_globals(void)
 {
