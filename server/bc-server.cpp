@@ -164,7 +164,7 @@ static void bc_update_server_status()
 			continue;
 
 		ret = asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-		if (i_ret != -1) {
+		if (ret != -1) {
 			bc_update_server_status_one(full_error);
 			bc_log(Fatal, "%s", full_error);
 			free(full_error);
