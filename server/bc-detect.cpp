@@ -24,7 +24,7 @@
 
 #define MAX_CARDS		32
 
-static struct card_list {
+struct card_list {
 	int valid:1, dirty:1;
 
 	int card_id;
@@ -33,11 +33,11 @@ static struct card_list {
 	char name[37];
 	char driver[64];
 	char video_type[8];
-} cards[MAX_CARDS];
+};
 
 static struct udev *udev_instance;
 
-static int check_solo(struct udev_device *device)
+static int check_solo(struct udev_device *device, struct card_list *cards)
 {
 	char path[PATH_MAX];
 	char card_name[32];
@@ -164,7 +164,7 @@ const struct solo_vendor vendors[] = {
 
 /* Enumerate matching PCI devices and, if they've been initialied
  * by the driver, process them to update the database. */
-static int __bc_check_avail(void)
+static int __bc_check_avail(struct card_list *cards)
 {
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
@@ -196,7 +196,7 @@ static int __bc_check_avail(void)
 					if (!strcmp(device_id, *x)) {
 						/* If there is no driver, this device isn't initialized yet */
 						ret = udev_device_get_driver(dev)
-							? check_solo(dev) : -EAGAIN;
+							? check_solo(dev, cards) : -EAGAIN;
 						break;
 					}
 				}
@@ -216,12 +216,12 @@ static int __bc_check_avail(void)
 
 int bc_check_avail(void)
 {
-	int ret = 0;
+	static struct card_list cards[MAX_CARDS];
 
 	for (int i = 0; i < MAX_CARDS; i++)
 		cards[i].dirty = cards[i].valid;
 
-	ret = __bc_check_avail();
+	int ret = __bc_check_avail(cards);
 	if (ret < 0)
 		return ret;
 
