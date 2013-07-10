@@ -467,7 +467,7 @@ static int bc_cleanup_media()
 		/* Every four files removed check if enough space has been
 		 * freed.
 		 */
-		if (removed & 3 == 0) {
+		if ((removed & 3) == 0) {
 			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
 				float used = path_used_percent(media_stor[i].path);
 				if (used >= 0 && used <= media_stor[i].min_thresh)
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int bg = 1;
-	char *config_file = BC_CONFIG_DEFAULT;
+	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
 	int error;
 
@@ -850,7 +850,7 @@ int main(int argc, char **argv)
 		}
 
 		/* Every about 2 minutes */
-		if (loops & 127 == 0) {
+		if ((loops & 127) == 0) {
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;
@@ -865,7 +865,7 @@ int main(int argc, char **argv)
 				int expired = check_trial_expired();
 				if (!expired) {
 					max_threads = TRIAL_MAX_DEVICES;
-					if (loops & 2047 == 0)
+					if ((loops & 2047) == 0)
 						bc_log(Warning, "Not licensed; running in trial mode");
 				}
 			} else if (!error && old_n_devices != max_threads) {
@@ -881,7 +881,7 @@ int main(int argc, char **argv)
 	 	}
 
 		/* Every 8 seconds */
-		if (loops & 7 == 0) {
+		if ((loops & 7) == 0) {
 			bc_status_component_begin(STATUS_DB_POLLING1);
 			/* Check global vars */
 			error = bc_check_globals();
