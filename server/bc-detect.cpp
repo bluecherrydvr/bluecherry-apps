@@ -23,9 +23,10 @@
 #define BCUID_EEPROM_PRE	BC_UID_TYPE_BC ":"
 
 #define MAX_CARDS		32
+
 static struct card_list {
-	int valid;
-	int dirty;
+	int valid:1, dirty:1;
+
 	int card_id;
 	int n_ports;
 	const char *uid_type;
@@ -44,7 +45,6 @@ static int check_solo(struct udev_device *device)
 	const char *uid_type;
 	char eeprom[128], driver[64], video_type[8];
 	int id, ports;
-	int i;
 	const char *syspath;
 	DIR *dir;
 	struct dirent *de;
@@ -107,27 +107,28 @@ static int check_solo(struct udev_device *device)
 	}
 
 	/* Check to see if we've scanned this one before */
-	for (i = 0; i < MAX_CARDS; i++) {
+	for (int i = 0; i < MAX_CARDS; i++) {
+		/* Already scanned? */
 		if (cards[i].valid && !strcasecmp(cards[i].name, bcuid)) {
 			cards[i].dirty = 0;
-			break;
+			return 0;
 		}
 	}
 
-	if (i == MAX_CARDS) {
-		bc_log(Info, "solo6x10: Found %s[%s] id %d, %d ports", bcuid, driver,
-		       id, ports);
-		for (i = 0; i < MAX_CARDS; i++) {
-			if (cards[i].valid)
-				continue;
-			cards[i].valid    = 1;
-			cards[i].dirty    = 0;
+	bc_log(Info, "solo6x10: Found %s[%s] id %d, %d ports", bcuid, driver,
+		id, ports);
+
+	for (int i = 0; i < MAX_CARDS; i++) {
+		if (!cards[i].valid) {
 			cards[i].card_id  = id;
 			cards[i].n_ports  = ports;
 			cards[i].uid_type = uid_type;
 			strcpy(cards[i].driver, driver);
 			strcpy(cards[i].name, bcuid);
 			strcpy(cards[i].video_type, video_type);
+
+			cards[i].valid = 1;
+			cards[i].dirty = 0;
 			break;
 		}
 	}
@@ -167,7 +168,7 @@ static int __bc_check_avail(void)
 {
 	struct udev_enumerate *enumerate;
 	struct udev_list_entry *devices, *dev_list_entry;
-	int i, ret = 0;
+	int ret = 0;
 
 	if (!udev_instance) {
 		udev_instance = udev_new();
@@ -177,7 +178,7 @@ static int __bc_check_avail(void)
 		}
 	}
 
-	for (i = 0; vendors[i].vendor; i++) {
+	for (int i = 0; vendors[i].vendor; i++) {
 		enumerate = udev_enumerate_new(udev_instance);
 		udev_enumerate_add_match_sysattr(enumerate, "vendor", vendors[i].vendor);
 		udev_enumerate_scan_devices(enumerate);
@@ -185,23 +186,21 @@ static int __bc_check_avail(void)
 		udev_list_entry_foreach(dev_list_entry, devices) {
 			struct udev_device *dev;
 			const char *path, *device_id;
-			const char **x;
 
 			path = udev_list_entry_get_name(dev_list_entry);
 			dev = udev_device_new_from_syspath(udev_instance, path);
 
 			device_id = udev_device_get_sysattr_value(dev, "device");
-			for (x = vendors[i].devices; device_id && *x; ++x) {
-				if (!strcmp(device_id, *x)) {
-					/* If there is no driver, this device isn't initialized yet */
-					if (!udev_device_get_driver(dev))
-						ret = -EAGAIN;
-					else
-						ret = check_solo(dev);
-					break;
+			if (device_id) {
+				for (const char **x = vendors[i].devices; *x; ++x) {
+					if (!strcmp(device_id, *x)) {
+						/* If there is no driver, this device isn't initialized yet */
+						ret = udev_device_get_driver(dev)
+							? check_solo(dev) : -EAGAIN;
+						break;
+					}
 				}
 			}
-
 			udev_device_unref(dev);
 			if (ret)
 				break;
