@@ -132,19 +132,16 @@ static const char *component_string(bc_status_component c)
 
 static void bc_update_server_status()
 {
-	int i;
-	int ok = 1;
+	int ret;
 	char *full_error = NULL;
 	int full_error_sz = 0;
 	time_t ts;
 	BC_DB_RES dbres;
 
-	for (i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
+	for (int i = 0; i < NUM_STATUS_COMPONENTS; ++i) {
 		const char *component_str = component_string((bc_status_component)i);
 		if (!component_error[i])
 			continue;
-
-		ok = 0;
 
 		if (full_error) {
 			int nl = strlen(component_error[i]);
@@ -169,30 +166,35 @@ static void bc_update_server_status()
 
 	ts = time(NULL);
 
+	const char *query;
 	if (!bc_db_fetch_row(dbres)) {
-		if (!ok)
+		if (full_error)
 			ts = bc_db_get_val_int(dbres, "timestamp");
-		i = __bc_db_query("UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
-		                  "message=%s%s%s", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+		query = "UPDATE ServerStatus SET pid=%d, timestamp=%lu, "
+			"message=%s%s%s";
 	} else {
-		i = __bc_db_query("INSERT INTO ServerStatus (pid, timestamp, message) "
-		                  "VALUES (%d,%lu,%s%s%s)", (int)getpid(), ts,
-		                  ok ? "" : "'", ok ? "NULL" : full_error, ok ? "" : "'");
+		query = "INSERT INTO ServerStatus (pid, timestamp, message) "
+			"VALUES (%d,%lu,%s%s%s)";
+	}
+
+	{
+		const char *delim = full_error ? "'" : "";
+
+		ret = __bc_db_query(query, (int)getpid(), ts, delim,
+				full_error ? full_error : "NULL", delim);
 	}
 
 	bc_db_free_table(dbres);
 
-	if (i)
-		goto rollback;
+	if (!ret)
+		ret = bc_db_commit_trans();
 
-	if (bc_db_commit_trans()) {
-	rollback:
+	if (ret) {
+rollback:
 		bc_db_rollback_trans();
-	error:
+error:
 		bc_log(Fatal, "Unable to update server status in database");
 	}
-
 	free(full_error);
 }
 
@@ -467,7 +469,7 @@ static int bc_cleanup_media()
 		/* Every four files removed check if enough space has been
 		 * freed.
 		 */
-		if (removed & 3 == 0) {
+		if ((removed & 3) == 0) {
 			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
 				float used = path_used_percent(media_stor[i].path);
 				if (used >= 0 && used <= media_stor[i].min_thresh)
@@ -728,7 +730,7 @@ int main(int argc, char **argv)
 {
 	int opt;
 	int bg = 1;
-	char *config_file = BC_CONFIG_DEFAULT;
+	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
 	int error;
 
@@ -850,7 +852,7 @@ int main(int argc, char **argv)
 		}
 
 		/* Every about 2 minutes */
-		if (loops & 127 == 0) {
+		if ((loops & 127) == 0) {
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;
@@ -865,7 +867,7 @@ int main(int argc, char **argv)
 				int expired = check_trial_expired();
 				if (!expired) {
 					max_threads = TRIAL_MAX_DEVICES;
-					if (loops & 2047 == 0)
+					if ((loops & 2047) == 0)
 						bc_log(Warning, "Not licensed; running in trial mode");
 				}
 			} else if (!error && old_n_devices != max_threads) {
@@ -881,7 +883,7 @@ int main(int argc, char **argv)
 	 	}
 
 		/* Every 8 seconds */
-		if (loops & 7 == 0) {
+		if ((loops & 7) == 0) {
 			bc_status_component_begin(STATUS_DB_POLLING1);
 			/* Check global vars */
 			error = bc_check_globals();
