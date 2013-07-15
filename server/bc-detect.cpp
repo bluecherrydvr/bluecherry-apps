@@ -52,8 +52,12 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	*card_name = 0;
 	syspath = udev_device_get_syspath(device);
 	dir = opendir(syspath);
+
+	bc_log(Debug, "Checking driver on %s", syspath);
+
 	if (!dir)
 		return -errno;
+
 	while ((de = readdir(dir))) {
 		if (!strncmp(de->d_name, "solo6", 5)) {
 			strlcpy(card_name, de->d_name, sizeof(card_name));
@@ -194,9 +198,12 @@ static int __bc_check_avail(struct card_list *cards)
 			dev = udev_device_new_from_syspath(udev_instance, path);
 
 			device_id = udev_device_get_sysattr_value(dev, "device");
+
 			if (device_id) {
+				bc_log(Debug, "Scanning device %s (%s)", device_id, path);
 				for (const char **x = vendors[i].devices; *x; ++x) {
 					if (!strcmp(device_id, *x)) {
+						bc_log(Debug, "Found card from vendor %s, checking driver...", vendors[i]);
 						/* If there is no driver, this device isn't initialized yet */
 						ret = udev_device_get_driver(dev)
 							? check_solo(dev, cards) : -EAGAIN;
@@ -253,6 +260,7 @@ int bc_check_avail(void)
 	if (bc_db_commit_trans()) {
 	rollback:
 		bc_db_rollback_trans();
+		bc_log(Error, "Database error!");
 		return -EIO;
 	}
 
@@ -260,7 +268,7 @@ int bc_check_avail(void)
 	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!(cards[i].valid && cards[i].dirty))
 			continue;
-		bc_log(Warning, "solo6x10: card with name %s no longer found", cards[i].name);
+		bc_log(Warning, "Card with name %s no longer found", cards[i].name);
 		memset(&cards[i], 0, sizeof(cards[i]));
 	}
 
