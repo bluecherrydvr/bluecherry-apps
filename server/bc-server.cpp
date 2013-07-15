@@ -732,7 +732,6 @@ int main(int argc, char **argv)
 	int bg = 1;
 	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
-	int error;
 
 	umask(027);
 
@@ -821,11 +820,13 @@ int main(int argc, char **argv)
 	bc_log(Info, "SQL database connection opened");
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
-	error = bc_check_globals();
-	/* Do some cleanup */
-	get_last_run_date();
-	bc_check_inprogress();
-	bc_status_component_end(STATUS_DB_POLLING1, error == 0);
+	{
+		int ret = bc_check_globals();
+		/* Do some cleanup */
+		get_last_run_date();
+		bc_check_inprogress();
+		bc_status_component_end(STATUS_DB_POLLING1, ret == 0);
+	}
 
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
@@ -835,20 +836,19 @@ int main(int argc, char **argv)
 		/* Every 16 seconds until initialized, then every 4:16 minutes */
 		if ((!solo_ready && !(loops & 15)) || (solo_ready && !(loops & 255))) {
 			bc_status_component_begin(STATUS_SOLO_DETECT);
-			error = bc_check_avail();
-			solo_ready = (error == 0);
-			if (error == -EAGAIN && !loops) {
+			int ret = bc_check_avail();
+			solo_ready = (ret == 0);
+			if (ret == -EAGAIN && !loops) {
 				/* Only warn if it's not ready at startup; don't trigger an error. */
 				bc_log(Warning, "Solo6x10 devices are not initialized yet");
-				error = 0;
-			} else if (error) {
+			} else if (ret) {
 				/* If it's still not ready after 15sec, error */
 				bc_status_component_error(
 					"Solo6x10 devices are not initialized: %s",
-					(error == -EAGAIN) ?
-					"Driver not ready" : strerror(-error));
+					(ret == -EAGAIN) ?
+					"Driver not ready" : strerror(-ret));
 			}
-			bc_status_component_end(STATUS_SOLO_DETECT, error == 0);
+			bc_status_component_end(STATUS_SOLO_DETECT, ret == 0);
 		}
 
 		/* Every about 2 minutes */
@@ -856,37 +856,37 @@ int main(int argc, char **argv)
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;
-			error = (bc_read_licenses(licenses) < 0);
+			int ret = (bc_read_licenses(licenses) < 0);
 
-			if (!error) {
+			if (ret == 0) {
 				for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
 					max_threads += it->n_devices;
-			}
 
-			if (!error && max_threads == 0) {
-				int expired = check_trial_expired();
-				if (!expired) {
-					max_threads = TRIAL_MAX_DEVICES;
-					if ((loops & 2047) == 0)
-						bc_log(Warning, "Not licensed; running in trial mode");
+				if (max_threads == 0) {
+					int expired = check_trial_expired();
+					if (!expired) {
+						max_threads = TRIAL_MAX_DEVICES;
+						if ((loops & 2047) == 0)
+							bc_log(Warning, "Not licensed; running in trial mode");
+					}
+				} else if (old_n_devices != max_threads) {
+					bc_log(Info, "Licensed for %d devices", max_threads);
 				}
-			} else if (!error && old_n_devices != max_threads) {
-				bc_log(Info, "Licensed for %d devices", max_threads);
 			}
 
-			bc_status_component_end(STATUS_LICENSE, error == 0);
+			bc_status_component_end(STATUS_LICENSE, ret == 0);
 
 			bc_status_component_begin(STATUS_MEDIA_CHECK);
 			/* Check media locations for full */
-			error = bc_check_media();
-			bc_status_component_end(STATUS_MEDIA_CHECK, error == 0);
+			int mc_ret = bc_check_media();
+			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
 	 	}
 
 		/* Every 8 seconds */
 		if ((loops & 7) == 0) {
 			bc_status_component_begin(STATUS_DB_POLLING1);
 			/* Check global vars */
-			error = bc_check_globals();
+			int error = bc_check_globals();
 			/* Check for changes in cameras */
 			error |= bc_check_db();
 			bc_status_component_end(STATUS_DB_POLLING1, error == 0);
