@@ -62,8 +62,11 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	}
 	closedir(dir);
 
-	if (!*card_name)
+	if (!*card_name) {
+		bc_log(Debug, "%s: Not ready or incompatible driver loaded",
+			syspath)
 		return -EAGAIN;
+	}
 
 	sprintf(path, "%s/%s/eeprom", syspath, card_name);
 	{
