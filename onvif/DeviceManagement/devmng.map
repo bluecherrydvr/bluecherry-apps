@@ -1,4 +1,4 @@
 {
-global: getDeviceInfo;setNetworkInterface;getInputOutputPorts;setOutputPortStatus;getMediaUrl;getEventUrl;getImageUrl;getPtzUrl;
+global: getMediaUrl;
 local: *;
 };

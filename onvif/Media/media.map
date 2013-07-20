@@ -1,4 +1,4 @@
 {
-global: getMediaInfo;getConfiguration;setConfiguration;getVideoSourceToken;getPTZProfileToken;getStreamInfo;
+global: getStreamInfo;
 local: *;
 };

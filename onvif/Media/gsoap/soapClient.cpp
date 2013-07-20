@@ -216,6 +216,55 @@ SOAP_FMAC5 int SOAP_FMAC6 soap_call___ns1__SetVideoEncoderConfiguration(struct s
 	return soap_closesock(soap);
 }
 
+SOAP_FMAC5 int SOAP_FMAC6 soap_call___ns1__GetSnapshotUri(struct soap *soap, const char *soap_endpoint, const char *soap_action, struct _ns1__GetSnapshotUri *ns1__GetSnapshotUri, struct _ns1__GetSnapshotUriResponse *ns1__GetSnapshotUriResponse)
+{	struct __ns1__GetSnapshotUri soap_tmp___ns1__GetSnapshotUri;
+	if (!soap_action)
+		soap_action = "http://www.onvif.org/ver10/media/wsdl/GetSnapshotUri";
+	soap->encodingStyle = NULL;
+	soap_tmp___ns1__GetSnapshotUri.ns1__GetSnapshotUri = ns1__GetSnapshotUri;
+	soap_begin(soap);
+	soap_serializeheader(soap);
+	soap_serialize___ns1__GetSnapshotUri(soap, &soap_tmp___ns1__GetSnapshotUri);
+	if (soap_begin_count(soap))
+		return soap->error;
+	if (soap->mode & SOAP_IO_LENGTH)
+	{	if (soap_envelope_begin_out(soap)
+		 || soap_putheader(soap)
+		 || soap_body_begin_out(soap)
+		 || soap_put___ns1__GetSnapshotUri(soap, &soap_tmp___ns1__GetSnapshotUri, "-ns1:GetSnapshotUri", NULL)
+		 || soap_body_end_out(soap)
+		 || soap_envelope_end_out(soap))
+			 return soap->error;
+	}
+	if (soap_end_count(soap))
+		return soap->error;
+	if (soap_connect(soap, soap_endpoint, soap_action)
+	 || soap_envelope_begin_out(soap)
+	 || soap_putheader(soap)
+	 || soap_body_begin_out(soap)
+	 || soap_put___ns1__GetSnapshotUri(soap, &soap_tmp___ns1__GetSnapshotUri, "-ns1:GetSnapshotUri", NULL)
+	 || soap_body_end_out(soap)
+	 || soap_envelope_end_out(soap)
+	 || soap_end_send(soap))
+		return soap_closesock(soap);
+	if (!ns1__GetSnapshotUriResponse)
+		return soap_closesock(soap);
+	soap_default__ns1__GetSnapshotUriResponse(soap, ns1__GetSnapshotUriResponse);
+	if (soap_begin_recv(soap)
+	 || soap_envelope_begin_in(soap)
+	 || soap_recv_header(soap)
+	 || soap_body_begin_in(soap))
+		return soap_closesock(soap);
+	soap_get__ns1__GetSnapshotUriResponse(soap, ns1__GetSnapshotUriResponse, "ns1:GetSnapshotUriResponse", "");
+	if (soap->error)
+		return soap_recv_fault(soap, 0);
+	if (soap_body_end_in(soap)
+	 || soap_envelope_end_in(soap)
+	 || soap_end_recv(soap))
+		return soap_closesock(soap);
+	return soap_closesock(soap);
+}
+
 #ifdef __cplusplus
 }
 #endif

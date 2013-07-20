@@ -4,12 +4,7 @@ struct CAMERAINFO {
 	char xAddress[256];
 };
 
-class COnvifMgm
-{
-public:
-	COnvifMgm();
-	~COnvifMgm();
-
+extern "C" {
 	void discovery();
-	void check_authority();
+	void check_authority(char* xAddress, char* userName, char* password);
 }

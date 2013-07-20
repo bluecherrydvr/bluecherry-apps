@@ -1,21 +1,16 @@
 #include "OnvifMgm.h"
-#include "WsDiscoveryDll.h"
-#include "DeviceMgmDll.h"
-
-COnvifMgm::COnvifMgm()
-{
-}
-
-COnvifMgm::~COnvifMgm()
-{
-}
+#include "Discovery/discovery.h"
+#include "DeviceManagement/devmng.h"
+#include "Media/media.h"
+#include <memory.h>
+#include <stdio.h>
 
 /************************************************************************************/
 /*  Function Name	:	discovery													*/
 /*  Function Desc	:	scan the onvif cameras using ws-discovery service			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-COnvifMgm::discovery()
+void discovery()
 {
 	int cameraSize;
 
@@ -33,10 +28,14 @@ COnvifMgm::discovery()
 		memset(xAddress[i], 0, 256);
 	}
 
+	printf("step 1\n");
+
 	discoveryOnvifCamera(cameraSize, macAddress, xAddress);
 
 	for (int i=0; i<cameraSize; i++)
 	{
+		printf("step 2\n");
+
 		char chrXAddress[256];
 		sprintf(chrXAddress, "%s", xAddress[i]);
 
@@ -69,8 +68,6 @@ COnvifMgm::discovery()
 				}
 			}
 
-			pStatus->xAddress = chrXAddress;
-			
 		}
 
 		char* startStr = strstr(chrXAddress, "://");
@@ -99,10 +96,13 @@ COnvifMgm::discovery()
 		}
 
 		strncpy(ipAddress[i], startStr, length);
+
+		printf(chrXAddress);
+		printf(ipAddress[i]);
 	}
 
 	// set the camera list
-
+	
 	for (int i=0; i<100; i++)
 	{
 		delete[] ipAddress[i];
@@ -117,12 +117,22 @@ COnvifMgm::discovery()
 /*						2.get the streaming uri&port and snapshot uri&port.			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-COnvifMgm::check_authority()
+void check_authority(char* xAddress, char* userName, char* password)
 {
 	bool bRet = false;
 	char mediaUrl[256];
+	char streamUri[256];
+	char snapshotUri[256];
+
+	memset(mediaUrl, 0, 256);
+	memset(streamUri, 0, 256);
+	memset(snapshotUri, 0, 256);
+
 	getMediaUrl(xAddress, userName, password, mediaUrl);
 	bRet = getStreamInfo(mediaUrl, userName, password, streamUri, snapshotUri);
+
+	// get the ports
+	
 	if (bRet && strlen(streamUri) > 0)
 		bRet = true;
 }

@@ -803,6 +803,10 @@ SOAP_FMAC3 void * SOAP_FMAC4 soap_getelement(struct soap *soap, int *type)
 		return soap_in_ds__SignedInfoType(soap, NULL, NULL, "ds:SignedInfoType");
 	case SOAP_TYPE_ds__SignatureType:
 		return soap_in_ds__SignatureType(soap, NULL, NULL, "ds:SignatureType");
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUriResponse:
+		return soap_in_PointerTo_ns1__GetSnapshotUriResponse(soap, NULL, NULL, "ns1:GetSnapshotUriResponse");
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUri:
+		return soap_in_PointerTo_ns1__GetSnapshotUri(soap, NULL, NULL, "ns1:GetSnapshotUri");
 	case SOAP_TYPE_PointerTo_ns1__SetVideoEncoderConfigurationResponse:
 		return soap_in_PointerTo_ns1__SetVideoEncoderConfigurationResponse(soap, NULL, NULL, "ns1:SetVideoEncoderConfigurationResponse");
 	case SOAP_TYPE_PointerTo_ns1__SetVideoEncoderConfiguration:
@@ -2847,6 +2851,14 @@ SOAP_FMAC3 void * SOAP_FMAC4 soap_getelement(struct soap *soap, int *type)
 		{	*type = SOAP_TYPE__ns2__EventSubscription_SubscriptionPolicy;
 			return soap_in__ns2__EventSubscription_SubscriptionPolicy(soap, NULL, NULL, NULL);
 		}
+		if (!soap_match_tag(soap, t, "ns1:GetSnapshotUriResponse"))
+		{	*type = SOAP_TYPE__ns1__GetSnapshotUriResponse;
+			return soap_in__ns1__GetSnapshotUriResponse(soap, NULL, NULL, NULL);
+		}
+		if (!soap_match_tag(soap, t, "ns1:GetSnapshotUri"))
+		{	*type = SOAP_TYPE__ns1__GetSnapshotUri;
+			return soap_in__ns1__GetSnapshotUri(soap, NULL, NULL, NULL);
+		}
 		if (!soap_match_tag(soap, t, "ns1:SetVideoEncoderConfigurationResponse"))
 		{	*type = SOAP_TYPE__ns1__SetVideoEncoderConfigurationResponse;
 			return soap_in__ns1__SetVideoEncoderConfigurationResponse(soap, NULL, NULL, NULL);
@@ -3592,6 +3604,10 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap *soap, const void *ptr, co
 		return soap_out_ns2__UserExtension(soap, tag, id, (const struct ns2__UserExtension *)ptr, "ns2:UserExtension");
 	case SOAP_TYPE_ns2__User:
 		return soap_out_ns2__User(soap, tag, id, (const struct ns2__User *)ptr, "ns2:User");
+	case SOAP_TYPE__ns1__GetSnapshotUriResponse:
+		return soap_out__ns1__GetSnapshotUriResponse(soap, "ns1:GetSnapshotUriResponse", id, (const struct _ns1__GetSnapshotUriResponse *)ptr, NULL);
+	case SOAP_TYPE__ns1__GetSnapshotUri:
+		return soap_out__ns1__GetSnapshotUri(soap, "ns1:GetSnapshotUri", id, (const struct _ns1__GetSnapshotUri *)ptr, NULL);
 	case SOAP_TYPE__ns1__SetVideoEncoderConfigurationResponse:
 		return soap_out__ns1__SetVideoEncoderConfigurationResponse(soap, "ns1:SetVideoEncoderConfigurationResponse", id, (const struct _ns1__SetVideoEncoderConfigurationResponse *)ptr, NULL);
 	case SOAP_TYPE_ns2__VideoEncoderConfiguration:
@@ -3702,6 +3718,10 @@ SOAP_FMAC3 int SOAP_FMAC4 soap_putelement(struct soap *soap, const void *ptr, co
 		return soap_out__wsse__UsernameToken(soap, "wsse:UsernameToken", id, (const struct _wsse__UsernameToken *)ptr, NULL);
 	case SOAP_TYPE__wsu__Timestamp:
 		return soap_out__wsu__Timestamp(soap, "wsu:Timestamp", id, (const struct _wsu__Timestamp *)ptr, NULL);
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUriResponse:
+		return soap_out_PointerTo_ns1__GetSnapshotUriResponse(soap, tag, id, (struct _ns1__GetSnapshotUriResponse *const*)ptr, "ns1:GetSnapshotUriResponse");
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUri:
+		return soap_out_PointerTo_ns1__GetSnapshotUri(soap, tag, id, (struct _ns1__GetSnapshotUri *const*)ptr, "ns1:GetSnapshotUri");
 	case SOAP_TYPE_PointerTo_ns1__SetVideoEncoderConfigurationResponse:
 		return soap_out_PointerTo_ns1__SetVideoEncoderConfigurationResponse(soap, tag, id, (struct _ns1__SetVideoEncoderConfigurationResponse *const*)ptr, "ns1:SetVideoEncoderConfigurationResponse");
 	case SOAP_TYPE_PointerTo_ns1__SetVideoEncoderConfiguration:
@@ -4297,6 +4317,9 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_markelement(struct soap *soap, const void *ptr, 
 	(void)soap; (void)ptr; (void)type; /* appease -Wall -Werror */
 	switch (type)
 	{
+	case SOAP_TYPE___ns1__GetSnapshotUri:
+		soap_serialize___ns1__GetSnapshotUri(soap, (const struct __ns1__GetSnapshotUri *)ptr);
+		break;
 	case SOAP_TYPE___ns1__SetVideoEncoderConfiguration:
 		soap_serialize___ns1__SetVideoEncoderConfiguration(soap, (const struct __ns1__SetVideoEncoderConfiguration *)ptr);
 		break;
@@ -5077,6 +5100,12 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_markelement(struct soap *soap, const void *ptr, 
 	case SOAP_TYPE_ns2__User:
 		soap_serialize_ns2__User(soap, (const struct ns2__User *)ptr);
 		break;
+	case SOAP_TYPE__ns1__GetSnapshotUriResponse:
+		soap_serialize__ns1__GetSnapshotUriResponse(soap, (const struct _ns1__GetSnapshotUriResponse *)ptr);
+		break;
+	case SOAP_TYPE__ns1__GetSnapshotUri:
+		soap_serialize__ns1__GetSnapshotUri(soap, (const struct _ns1__GetSnapshotUri *)ptr);
+		break;
 	case SOAP_TYPE__ns1__SetVideoEncoderConfigurationResponse:
 		soap_serialize__ns1__SetVideoEncoderConfigurationResponse(soap, (const struct _ns1__SetVideoEncoderConfigurationResponse *)ptr);
 		break;
@@ -5244,6 +5273,12 @@ SOAP_FMAC3 void SOAP_FMAC4 soap_markelement(struct soap *soap, const void *ptr, 
 		break;
 	case SOAP_TYPE__wsu__Timestamp:
 		soap_serialize__wsu__Timestamp(soap, (const struct _wsu__Timestamp *)ptr);
+		break;
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUriResponse:
+		soap_serialize_PointerTo_ns1__GetSnapshotUriResponse(soap, (struct _ns1__GetSnapshotUriResponse *const*)ptr);
+		break;
+	case SOAP_TYPE_PointerTo_ns1__GetSnapshotUri:
+		soap_serialize_PointerTo_ns1__GetSnapshotUri(soap, (struct _ns1__GetSnapshotUri *const*)ptr);
 		break;
 	case SOAP_TYPE_PointerTo_ns1__SetVideoEncoderConfigurationResponse:
 		soap_serialize_PointerTo_ns1__SetVideoEncoderConfigurationResponse(soap, (struct _ns1__SetVideoEncoderConfigurationResponse *const*)ptr);
@@ -9940,6 +9975,69 @@ SOAP_FMAC3 struct SOAP_ENV__Code * SOAP_FMAC4 soap_get_SOAP_ENV__Code(struct soa
 }
 
 #endif
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_default___ns1__GetSnapshotUri(struct soap *soap, struct __ns1__GetSnapshotUri *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	a->ns1__GetSnapshotUri = NULL;
+}
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_serialize___ns1__GetSnapshotUri(struct soap *soap, const struct __ns1__GetSnapshotUri *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	soap_serialize_PointerTo_ns1__GetSnapshotUri(soap, &a->ns1__GetSnapshotUri);
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_out___ns1__GetSnapshotUri(struct soap *soap, const char *tag, int id, const struct __ns1__GetSnapshotUri *a, const char *type)
+{	(void)soap; (void)tag; (void)id; (void)type;
+	if (soap_out_PointerTo_ns1__GetSnapshotUri(soap, "ns1:GetSnapshotUri", -1, &a->ns1__GetSnapshotUri, ""))
+		return soap->error;
+	return SOAP_OK;
+}
+
+SOAP_FMAC3 struct __ns1__GetSnapshotUri * SOAP_FMAC4 soap_in___ns1__GetSnapshotUri(struct soap *soap, const char *tag, struct __ns1__GetSnapshotUri *a, const char *type)
+{
+	size_t soap_flag_ns1__GetSnapshotUri = 1;
+	short soap_flag;
+	a = (struct __ns1__GetSnapshotUri *)soap_id_enter(soap, "", a, SOAP_TYPE___ns1__GetSnapshotUri, sizeof(struct __ns1__GetSnapshotUri), 0, NULL, NULL, NULL);
+	if (!a)
+		return NULL;
+	soap_default___ns1__GetSnapshotUri(soap, a);
+		for (soap_flag = 0;; soap_flag = 1)
+		{	soap->error = SOAP_TAG_MISMATCH;
+			if (soap_flag_ns1__GetSnapshotUri && soap->error == SOAP_TAG_MISMATCH)
+				if (soap_in_PointerTo_ns1__GetSnapshotUri(soap, "ns1:GetSnapshotUri", &a->ns1__GetSnapshotUri, ""))
+				{	soap_flag_ns1__GetSnapshotUri--;
+					continue;
+				}
+			if (soap->error == SOAP_TAG_MISMATCH)
+				if (soap_flag)
+				{	soap->error = SOAP_OK;
+					break;
+				}
+			if (soap_flag && soap->error == SOAP_NO_TAG)
+				break;
+			if (soap->error)
+				return NULL;
+		}
+	return a;
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_put___ns1__GetSnapshotUri(struct soap *soap, const struct __ns1__GetSnapshotUri *a, const char *tag, const char *type)
+{
+	register int id = 0;
+	if (soap_out___ns1__GetSnapshotUri(soap, tag?tag:"-ns1:GetSnapshotUri", id, a, type))
+		return soap->error;
+	return SOAP_OK;
+}
+
+SOAP_FMAC3 struct __ns1__GetSnapshotUri * SOAP_FMAC4 soap_get___ns1__GetSnapshotUri(struct soap *soap, struct __ns1__GetSnapshotUri *p, const char *tag, const char *type)
+{
+	if ((p = soap_in___ns1__GetSnapshotUri(soap, tag, p, type)))
+		if (soap_getindependent(soap))
+			return NULL;
+	return p;
+}
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_default___ns1__SetVideoEncoderConfiguration(struct soap *soap, struct __ns1__SetVideoEncoderConfiguration *a)
 {
@@ -39413,6 +39511,171 @@ SOAP_FMAC3 struct ns2__User * SOAP_FMAC4 soap_get_ns2__User(struct soap *soap, s
 	return p;
 }
 
+SOAP_FMAC3 void SOAP_FMAC4 soap_default__ns1__GetSnapshotUriResponse(struct soap *soap, struct _ns1__GetSnapshotUriResponse *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	a->MediaUri = NULL;
+}
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_serialize__ns1__GetSnapshotUriResponse(struct soap *soap, const struct _ns1__GetSnapshotUriResponse *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	soap_serialize_PointerTons2__MediaUri(soap, &a->MediaUri);
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_out__ns1__GetSnapshotUriResponse(struct soap *soap, const char *tag, int id, const struct _ns1__GetSnapshotUriResponse *a, const char *type)
+{	(void)soap; (void)tag; (void)id; (void)type;
+	if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE__ns1__GetSnapshotUriResponse), type))
+		return soap->error;
+	if (a->MediaUri)
+		soap_element_result(soap, "ns1:MediaUri");
+	if (a->MediaUri)
+	{	if (soap_out_PointerTons2__MediaUri(soap, "ns1:MediaUri", -1, &a->MediaUri, ""))
+			return soap->error;
+	}
+	else if (soap_element_nil(soap, "ns1:MediaUri"))
+		return soap->error;
+	return soap_element_end_out(soap, tag);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUriResponse * SOAP_FMAC4 soap_in__ns1__GetSnapshotUriResponse(struct soap *soap, const char *tag, struct _ns1__GetSnapshotUriResponse *a, const char *type)
+{
+	size_t soap_flag_MediaUri = 1;
+	if (soap_element_begin_in(soap, tag, 0, type))
+		return NULL;
+	a = (struct _ns1__GetSnapshotUriResponse *)soap_id_enter(soap, soap->id, a, SOAP_TYPE__ns1__GetSnapshotUriResponse, sizeof(struct _ns1__GetSnapshotUriResponse), 0, NULL, NULL, NULL);
+	if (!a)
+		return NULL;
+	soap_default__ns1__GetSnapshotUriResponse(soap, a);
+	if (soap->body && !*soap->href)
+	{
+		for (;;)
+		{	soap->error = SOAP_TAG_MISMATCH;
+			if (soap_flag_MediaUri && soap->error == SOAP_TAG_MISMATCH)
+				if (soap_in_PointerTons2__MediaUri(soap, "ns1:MediaUri", &a->MediaUri, "ns2:MediaUri"))
+				{	soap_flag_MediaUri--;
+					continue;
+				}
+			soap_check_result(soap, "ns1:MediaUri");
+			if (soap->error == SOAP_TAG_MISMATCH)
+				soap->error = soap_ignore_element(soap);
+			if (soap->error == SOAP_NO_TAG)
+				break;
+			if (soap->error)
+				return NULL;
+		}
+		if (soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	else
+	{	a = (struct _ns1__GetSnapshotUriResponse *)soap_id_forward(soap, soap->href, (void*)a, 0, SOAP_TYPE__ns1__GetSnapshotUriResponse, 0, sizeof(struct _ns1__GetSnapshotUriResponse), 0, NULL);
+		if (soap->body && soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	if ((soap->mode & SOAP_XML_STRICT) && (soap_flag_MediaUri > 0))
+	{	soap->error = SOAP_OCCURS;
+		return NULL;
+	}
+	return a;
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_put__ns1__GetSnapshotUriResponse(struct soap *soap, const struct _ns1__GetSnapshotUriResponse *a, const char *tag, const char *type)
+{
+	register int id = soap_embed(soap, (void*)a, NULL, 0, tag, SOAP_TYPE__ns1__GetSnapshotUriResponse);
+	if (soap_out__ns1__GetSnapshotUriResponse(soap, tag?tag:"ns1:GetSnapshotUriResponse", id, a, type))
+		return soap->error;
+	return soap_putindependent(soap);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUriResponse * SOAP_FMAC4 soap_get__ns1__GetSnapshotUriResponse(struct soap *soap, struct _ns1__GetSnapshotUriResponse *p, const char *tag, const char *type)
+{
+	if ((p = soap_in__ns1__GetSnapshotUriResponse(soap, tag, p, type)))
+		if (soap_getindependent(soap))
+			return NULL;
+	return p;
+}
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_default__ns1__GetSnapshotUri(struct soap *soap, struct _ns1__GetSnapshotUri *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	soap_default_ns2__ReferenceToken(soap, &a->ProfileToken);
+}
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_serialize__ns1__GetSnapshotUri(struct soap *soap, const struct _ns1__GetSnapshotUri *a)
+{
+	(void)soap; (void)a; /* appease -Wall -Werror */
+	soap_serialize_ns2__ReferenceToken(soap, &a->ProfileToken);
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_out__ns1__GetSnapshotUri(struct soap *soap, const char *tag, int id, const struct _ns1__GetSnapshotUri *a, const char *type)
+{	(void)soap; (void)tag; (void)id; (void)type;
+	if (soap_element_begin_out(soap, tag, soap_embedded_id(soap, id, a, SOAP_TYPE__ns1__GetSnapshotUri), type))
+		return soap->error;
+	if (a->ProfileToken)
+	{	if (soap_out_ns2__ReferenceToken(soap, "ns1:ProfileToken", -1, &a->ProfileToken, ""))
+			return soap->error;
+	}
+	else if (soap_element_nil(soap, "ns1:ProfileToken"))
+		return soap->error;
+	return soap_element_end_out(soap, tag);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUri * SOAP_FMAC4 soap_in__ns1__GetSnapshotUri(struct soap *soap, const char *tag, struct _ns1__GetSnapshotUri *a, const char *type)
+{
+	size_t soap_flag_ProfileToken = 1;
+	if (soap_element_begin_in(soap, tag, 0, type))
+		return NULL;
+	a = (struct _ns1__GetSnapshotUri *)soap_id_enter(soap, soap->id, a, SOAP_TYPE__ns1__GetSnapshotUri, sizeof(struct _ns1__GetSnapshotUri), 0, NULL, NULL, NULL);
+	if (!a)
+		return NULL;
+	soap_default__ns1__GetSnapshotUri(soap, a);
+	if (soap->body && !*soap->href)
+	{
+		for (;;)
+		{	soap->error = SOAP_TAG_MISMATCH;
+			if (soap_flag_ProfileToken && (soap->error == SOAP_TAG_MISMATCH || soap->error == SOAP_NO_TAG))
+				if (soap_in_ns2__ReferenceToken(soap, "ns1:ProfileToken", &a->ProfileToken, "ns2:ReferenceToken"))
+				{	soap_flag_ProfileToken--;
+					continue;
+				}
+			if (soap->error == SOAP_TAG_MISMATCH)
+				soap->error = soap_ignore_element(soap);
+			if (soap->error == SOAP_NO_TAG)
+				break;
+			if (soap->error)
+				return NULL;
+		}
+		if (soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	else
+	{	a = (struct _ns1__GetSnapshotUri *)soap_id_forward(soap, soap->href, (void*)a, 0, SOAP_TYPE__ns1__GetSnapshotUri, 0, sizeof(struct _ns1__GetSnapshotUri), 0, NULL);
+		if (soap->body && soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	if ((soap->mode & SOAP_XML_STRICT) && (soap_flag_ProfileToken > 0))
+	{	soap->error = SOAP_OCCURS;
+		return NULL;
+	}
+	return a;
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_put__ns1__GetSnapshotUri(struct soap *soap, const struct _ns1__GetSnapshotUri *a, const char *tag, const char *type)
+{
+	register int id = soap_embed(soap, (void*)a, NULL, 0, tag, SOAP_TYPE__ns1__GetSnapshotUri);
+	if (soap_out__ns1__GetSnapshotUri(soap, tag?tag:"ns1:GetSnapshotUri", id, a, type))
+		return soap->error;
+	return soap_putindependent(soap);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUri * SOAP_FMAC4 soap_get__ns1__GetSnapshotUri(struct soap *soap, struct _ns1__GetSnapshotUri *p, const char *tag, const char *type)
+{
+	if ((p = soap_in__ns1__GetSnapshotUri(soap, tag, p, type)))
+		if (soap_getindependent(soap))
+			return NULL;
+	return p;
+}
+
 SOAP_FMAC3 void SOAP_FMAC4 soap_default__ns1__SetVideoEncoderConfigurationResponse(struct soap *soap, struct _ns1__SetVideoEncoderConfigurationResponse *a)
 {
 	(void)soap; (void)a; /* appease -Wall -Werror */
@@ -45189,6 +45452,108 @@ SOAP_FMAC3 struct SOAP_ENV__Code ** SOAP_FMAC4 soap_get_PointerToSOAP_ENV__Code(
 }
 
 #endif
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerTo_ns1__GetSnapshotUriResponse(struct soap *soap, struct _ns1__GetSnapshotUriResponse *const*a)
+{
+	if (!soap_reference(soap, *a, SOAP_TYPE__ns1__GetSnapshotUriResponse))
+		soap_serialize__ns1__GetSnapshotUriResponse(soap, *a);
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerTo_ns1__GetSnapshotUriResponse(struct soap *soap, const char *tag, int id, struct _ns1__GetSnapshotUriResponse *const*a, const char *type)
+{
+	id = soap_element_id(soap, tag, id, *a, NULL, 0, type, SOAP_TYPE__ns1__GetSnapshotUriResponse);
+	if (id < 0)
+		return soap->error;
+	return soap_out__ns1__GetSnapshotUriResponse(soap, tag, id, *a, type);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUriResponse ** SOAP_FMAC4 soap_in_PointerTo_ns1__GetSnapshotUriResponse(struct soap *soap, const char *tag, struct _ns1__GetSnapshotUriResponse **a, const char *type)
+{
+	if (soap_element_begin_in(soap, tag, 1, NULL))
+		return NULL;
+	if (!a)
+		if (!(a = (struct _ns1__GetSnapshotUriResponse **)soap_malloc(soap, sizeof(struct _ns1__GetSnapshotUriResponse *))))
+			return NULL;
+	*a = NULL;
+	if (!soap->null && *soap->href != '#')
+	{	soap_revert(soap);
+		if (!(*a = soap_in__ns1__GetSnapshotUriResponse(soap, tag, *a, type)))
+			return NULL;
+	}
+	else
+	{	a = (struct _ns1__GetSnapshotUriResponse **)soap_id_lookup(soap, soap->href, (void**)a, SOAP_TYPE__ns1__GetSnapshotUriResponse, sizeof(struct _ns1__GetSnapshotUriResponse), 0);
+		if (soap->body && soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	return a;
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_put_PointerTo_ns1__GetSnapshotUriResponse(struct soap *soap, struct _ns1__GetSnapshotUriResponse *const*a, const char *tag, const char *type)
+{
+	register int id = soap_embed(soap, (void*)a, NULL, 0, tag, SOAP_TYPE_PointerTo_ns1__GetSnapshotUriResponse);
+	if (soap_out_PointerTo_ns1__GetSnapshotUriResponse(soap, tag?tag:"ns1:GetSnapshotUriResponse", id, a, type))
+		return soap->error;
+	return soap_putindependent(soap);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUriResponse ** SOAP_FMAC4 soap_get_PointerTo_ns1__GetSnapshotUriResponse(struct soap *soap, struct _ns1__GetSnapshotUriResponse **p, const char *tag, const char *type)
+{
+	if ((p = soap_in_PointerTo_ns1__GetSnapshotUriResponse(soap, tag, p, type)))
+		if (soap_getindependent(soap))
+			return NULL;
+	return p;
+}
+
+SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerTo_ns1__GetSnapshotUri(struct soap *soap, struct _ns1__GetSnapshotUri *const*a)
+{
+	if (!soap_reference(soap, *a, SOAP_TYPE__ns1__GetSnapshotUri))
+		soap_serialize__ns1__GetSnapshotUri(soap, *a);
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_out_PointerTo_ns1__GetSnapshotUri(struct soap *soap, const char *tag, int id, struct _ns1__GetSnapshotUri *const*a, const char *type)
+{
+	id = soap_element_id(soap, tag, id, *a, NULL, 0, type, SOAP_TYPE__ns1__GetSnapshotUri);
+	if (id < 0)
+		return soap->error;
+	return soap_out__ns1__GetSnapshotUri(soap, tag, id, *a, type);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUri ** SOAP_FMAC4 soap_in_PointerTo_ns1__GetSnapshotUri(struct soap *soap, const char *tag, struct _ns1__GetSnapshotUri **a, const char *type)
+{
+	if (soap_element_begin_in(soap, tag, 1, NULL))
+		return NULL;
+	if (!a)
+		if (!(a = (struct _ns1__GetSnapshotUri **)soap_malloc(soap, sizeof(struct _ns1__GetSnapshotUri *))))
+			return NULL;
+	*a = NULL;
+	if (!soap->null && *soap->href != '#')
+	{	soap_revert(soap);
+		if (!(*a = soap_in__ns1__GetSnapshotUri(soap, tag, *a, type)))
+			return NULL;
+	}
+	else
+	{	a = (struct _ns1__GetSnapshotUri **)soap_id_lookup(soap, soap->href, (void**)a, SOAP_TYPE__ns1__GetSnapshotUri, sizeof(struct _ns1__GetSnapshotUri), 0);
+		if (soap->body && soap_element_end_in(soap, tag))
+			return NULL;
+	}
+	return a;
+}
+
+SOAP_FMAC3 int SOAP_FMAC4 soap_put_PointerTo_ns1__GetSnapshotUri(struct soap *soap, struct _ns1__GetSnapshotUri *const*a, const char *tag, const char *type)
+{
+	register int id = soap_embed(soap, (void*)a, NULL, 0, tag, SOAP_TYPE_PointerTo_ns1__GetSnapshotUri);
+	if (soap_out_PointerTo_ns1__GetSnapshotUri(soap, tag?tag:"ns1:GetSnapshotUri", id, a, type))
+		return soap->error;
+	return soap_putindependent(soap);
+}
+
+SOAP_FMAC3 struct _ns1__GetSnapshotUri ** SOAP_FMAC4 soap_get_PointerTo_ns1__GetSnapshotUri(struct soap *soap, struct _ns1__GetSnapshotUri **p, const char *tag, const char *type)
+{
+	if ((p = soap_in_PointerTo_ns1__GetSnapshotUri(soap, tag, p, type)))
+		if (soap_getindependent(soap))
+			return NULL;
+	return p;
+}
 
 SOAP_FMAC3 void SOAP_FMAC4 soap_serialize_PointerTo_ns1__SetVideoEncoderConfigurationResponse(struct soap *soap, struct _ns1__SetVideoEncoderConfigurationResponse *const*a)
 {

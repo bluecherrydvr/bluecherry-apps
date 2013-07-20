@@ -1,4 +1,4 @@
 {
-global: discoveryOnvifCamera;getOnvifCameraList;getOnvifCameraSize;
+global: discoveryOnvifCamera;
 local: *;
 };
