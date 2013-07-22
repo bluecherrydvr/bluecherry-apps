@@ -1,10 +1,10 @@
 
 struct CAMERAINFO {
-	char ipAddress[32];
+	char ipAddress[256];
 	char xAddress[256];
 };
 
 extern "C" {
 	void discovery();
-	void check_authority(char* xAddress, char* userName, char* password);
+	bool check_authority(char* xAddress, char* userName, char* password);
 }

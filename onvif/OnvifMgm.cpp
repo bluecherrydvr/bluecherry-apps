@@ -20,22 +20,18 @@ void discovery()
 
 	for (int i=0; i<100; i++)
 	{
-		ipAddress[i] = new char[32];
-		memset(ipAddress[i], 0, 32);
-		macAddress[i] = new char[32];
-		memset(macAddress[i], 0, 32);
+		ipAddress[i] = new char[256];
+		memset(ipAddress[i], 0, 256);
+		macAddress[i] = new char[256];
+		memset(macAddress[i], 0, 256);
 		xAddress[i] = new char[256];
 		memset(xAddress[i], 0, 256);
 	}
-
-	printf("step 1\n");
 
 	discoveryOnvifCamera(cameraSize, macAddress, xAddress);
 
 	for (int i=0; i<cameraSize; i++)
 	{
-		printf("step 2\n");
-
 		char chrXAddress[256];
 		sprintf(chrXAddress, "%s", xAddress[i]);
 
@@ -98,16 +94,19 @@ void discovery()
 		strncpy(ipAddress[i], startStr, length);
 
 		printf(chrXAddress);
+		printf("\n");
 		printf(ipAddress[i]);
+		printf("\n");
+
+		// to-do area
 	}
 
-	// set the camera list
-	
+	// free 
 	for (int i=0; i<100; i++)
 	{
-		delete[] ipAddress[i];
-		delete[] macAddress[i];
-		delete[] xAddress[i];
+		delete ipAddress[i];
+		delete macAddress[i];
+		delete xAddress[i];
 	}
 }
 
@@ -117,7 +116,7 @@ void discovery()
 /*						2.get the streaming uri&port and snapshot uri&port.			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-void check_authority(char* xAddress, char* userName, char* password)
+bool check_authority(char* xAddress, char* userName, char* password)
 {
 	bool bRet = false;
 	char mediaUrl[256];
@@ -132,9 +131,15 @@ void check_authority(char* xAddress, char* userName, char* password)
 	bRet = getStreamInfo(mediaUrl, userName, password, streamUri, snapshotUri);
 
 	// get the ports
-	
-	if (bRet && strlen(streamUri) > 0)
-		bRet = true;
+	if (bRet == false || strlen(streamUri) == 0)
+	{
+		return false;
+	}
+
+	printf("streamUri=%s\n", streamUri);
+	printf("snapshotUri=%s\n", snapshotUri);
+
+	return true;
 }
 
 
