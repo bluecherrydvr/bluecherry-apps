@@ -64,7 +64,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 
 	if (!*card_name) {
 		bc_log(Debug, "%s: Not ready or incompatible driver loaded",
-			syspath)
+			syspath);
 		return -EAGAIN;
 	}
 
