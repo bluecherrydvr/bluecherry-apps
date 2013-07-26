@@ -41,7 +41,7 @@ static uint32_t get_best_pixfmt(int fd)
 	memset(&fmt, 0, sizeof(fmt));
 	fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-	for (;ioctl(fd, VIDIOC_ENUM_FMT, &fmt) == 0; vfmt.index++)
+	for (;ioctl(fd, VIDIOC_ENUM_FMT, &fmt) == 0; fmt.index++)
 		sel = best_pixfmt(sel, fmt.pixelformat);
 
 	return sel;
