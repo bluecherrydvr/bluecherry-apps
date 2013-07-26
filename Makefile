@@ -1,7 +1,7 @@
 export topdir = $(CURDIR)
 include mk.conf
 
-MAKEFLAGS += --warn-undefined-variables
+#MAKEFLAGS += --warn-undefined-variables
 
 SUBDIR = $(MAKE) $@ -C
 
