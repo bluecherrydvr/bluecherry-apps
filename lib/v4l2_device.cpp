@@ -443,10 +443,16 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	if (fmt_changed) {
 		enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-		/* XXX: we could cache this */
-		uint32_t fmt = get_best_pixfmt(dev_fd);
-		if (!fmt) {
-			this->set_error_message("no supported pixelformat found");
+		uint32_t fmt;
+		switch (codec_id) {
+		case CODEC_ID_MPEG4:
+			fmt = V4L2_PIX_FMT_MPEG4;
+			break;
+		case CODEC_ID_H264:
+			fmt = V4L2_PIX_FMT_H264;
+			break;
+		default:
+			this->set_error_message("unsupported codec_id");
 			return -1;
 		}
 
