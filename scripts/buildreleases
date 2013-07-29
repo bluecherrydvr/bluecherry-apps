@@ -26,7 +26,7 @@ VERSION := $(shell sed 's/.*(1://;s/).*//;1q' debian/changelog)
 endif
 
 release: FORCE
-	md5sum $(foreach d,$(DIST), $O/$d/* $O/debug/$d/*) >> $O/md5sum.txt
+	cd $O; md5sum $(foreach d,$(DIST), $d/* debug/$d/*) >> $O/md5sum.txt
 
 upgrade:
 
