@@ -7,7 +7,7 @@ extern char *__progname;
 static log_context *bc_default_context = 0;
 static pthread_key_t bc_log_thread_context;
 
-#define DEFAULT_LOG_LEVEL Info
+#define DEFAULT_LOG_LEVEL Warning
 
 static void destroy_thread_context(void *vp)
 {

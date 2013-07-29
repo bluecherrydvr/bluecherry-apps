@@ -18,7 +18,7 @@
 #include "motion_handler.h"
 #include "recorder.h"
 
-#define DEF_TH_LOG_LEVEL Info
+#define DEF_TH_LOG_LEVEL Warning
 
 static int apply_device_cfg(struct bc_record *bc_rec);
 
