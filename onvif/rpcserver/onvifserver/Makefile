@@ -9,7 +9,7 @@ ifeq ($(SRCDIR),)
 SRCDIR = $(CURDIR)/..
 BLDDIR = $(SRCDIR)
 endif
-SUBDIR = examples
+SUBDIR = onvifserver
 
 include $(BLDDIR)/config.mk
 
@@ -41,9 +41,12 @@ LIBS_SERVER_ABYSS = \
   $(shell $(XMLRPC_C_CONFIG) abyss-server --libs)
 
 all: $(PROGS)
+	cp -f libxmlrpc_onvif_server.so /work/bluecherry/bluecherry-apps/onvif/lib
+	cp -f libxmlrpc_onvif_server.so /usr/lib
+	echo Successfully Finished!!!
 
 $(SERVERPROGS_ABYSS):%:%.o
-	$(CCLD) -o $@ $^ $(LIBS_SERVER_ABYSS) $(LDFLAGS)
+	$(CCLD) -fPIC -shared -o lib$@.so $^ $(LIBS_SERVER_ABYSS) $(LDFLAGS)
 
 OBJECTS = $(patsubst %,%.o,$(patsubst %.cgi,%_cgi,$(PROGS)))
 
@@ -63,38 +66,5 @@ config.h:
 xmlrpc_amconfig.h:
 	$(LN_S) $(BLDDIR)/$@ .
 
-.PHONY: clean
 clean:
-	rm -f $(PROGS) *.o config.h xmlrpc_amconfig.h
-	$(MAKE) -C cpp clean
-
-.PHONY: distclean
-distclean: clean
-
-BINDIR=$(DESTDIR)$(bindir)
-
-FILENAME_GENERATOR = "echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'"
-
-INSTCMD =  "$(LIBTOOL) --mode=install $(INSTALL_PROGRAM) $$p \
-  $(BINDIR)/`$(FILENAME_GENERATOR)`"
-
-.PHONY: install
-install: $(PROGS)
-	@$(NORMAL_INSTALL)
-	$(MKINSTALLDIRS) $(BINDIR)
-	@list='$(bin_PROGRAMS)'; for p in $$list; do \
-	  if test -f $$p; then \
-	    echo "$(INSTCMD)"; $(INSTCMD); \
-	  else :; \
-          fi; \
-	done
-
-.PHONY: check
-check:
-
-.PHONY: dep depend
-dep depend:
-# We don't do dependencies in this directory, because it's supposed to be
-# an example of what a program outside this package would do, so we can't
-# go weaving it into the rest of the package.  Ergo, a developer must
-# carefully clean and remake examples as he updates other parts of the tree.
+	rm -rf *.o *.a *.so

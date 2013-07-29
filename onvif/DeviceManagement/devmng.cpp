@@ -75,4 +75,60 @@ bool getMediaUrl(char* xAddress, char* userId, char* password, char* mediaUrl)
 	return true;
 }
 
+bool getDeviceInfo(char* xAddress, char* userId, char* password, char* make, char* model, char* firmware)
+{
+	int authFlag = 1;	// 1 : UsernameTokenDigest, 0: UsernameTokenText
+
+	sprintf(make, "%s", "");
+	sprintf(model, "%s", "");
+	sprintf(firmware, "%s", "");
+
+	struct soap* soap = new struct soap;
+
+	char serverUri[100];
+
+	sprintf(serverUri, "%s", xAddress);
+
+	soap_init2(soap, SOAP_IO_KEEPALIVE, SOAP_IO_KEEPALIVE); 
+
+	soap_wsse_add_UsernameTokenDigest(soap, NULL, userId, password);
+	soap->connect_timeout = 7;
+	soap->recv_timeout = 7;
+
+	struct _ns1__GetDeviceInformation request;
+	struct _ns1__GetDeviceInformationResponse result;
+
+	soap_call___ns1__GetDeviceInformation(soap, serverUri, "", &request, &result);
+
+	if (soap->error)
+	{ 
+		soap_wsse_add_UsernameTokenText(soap, NULL, userId, password);
+		soap_call___ns1__GetDeviceInformation(soap, serverUri, "", &request, &result);
+		if (soap->error)
+		{
+			soap_destroy(soap);
+			soap_end(soap);
+			soap_done(soap);
+			delete soap;
+			return false;
+		}
+
+		authFlag = 0;
+	}
+
+	if (result.Manufacturer != NULL)
+		sprintf(make, "%s", result.Manufacturer);
+	if (result.Model != NULL)
+		sprintf(model, "%s", result.Model);
+	if (result.FirmwareVersion != NULL)
+		sprintf(firmware, "%s", result.FirmwareVersion);
+
+	soap_destroy(soap);
+	soap_end(soap);
+	soap_done(soap);
+	delete soap;
+
+	return true;
+}
+
 #endif

@@ -1,18 +1,21 @@
+
+#include <memory.h>
+#include <stdio.h>
+
 #include "OnvifMgm.h"
 #include "Discovery/discovery.h"
 #include "DeviceManagement/devmng.h"
 #include "Media/media.h"
-#include <memory.h>
-#include <stdio.h>
+#include "rpcserver/onvifserver/xmlrpc_onvif_server.h"
 
 /************************************************************************************/
-/*  Function Name	:	discovery													*/
+/*  Function Name	:	GetCamerasCallBack											*/
 /*  Function Desc	:	scan the onvif cameras using ws-discovery service			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-void discovery()
+int GetCamerasCallBack(int* count, char** cameras)
 {
-	int cameraSize;
+	int cameraCount;
 
 	char* ipAddress[100];
 	char* macAddress[100];
@@ -28,9 +31,11 @@ void discovery()
 		memset(xAddress[i], 0, 256);
 	}
 
-	discoveryOnvifCamera(cameraSize, macAddress, xAddress);
+	*count = 0;
 
-	for (int i=0; i<cameraSize; i++)
+	discoveryOnvifCamera(cameraCount, macAddress, xAddress);
+
+	for (int i=0; i<cameraCount; i++)
 	{
 		char chrXAddress[256];
 		sprintf(chrXAddress, "%s", xAddress[i]);
@@ -93,12 +98,15 @@ void discovery()
 
 		strncpy(ipAddress[i], startStr, length);
 
-		printf(chrXAddress);
-		printf("\n");
-		printf(ipAddress[i]);
-		printf("\n");
+		// set the camera's information
+		sprintf(cameras[*count], "%s,%s", ipAddress[i], chrXAddress);
 
-		// to-do area
+		printf("count = %d\n", *count);
+		printf("xAddress = %s\n", cameras[*count]);
+
+		*count = (*count) + 1;
+
+		printf("count = %d\n", *count);
 	}
 
 	// free 
@@ -111,35 +119,58 @@ void discovery()
 }
 
 /************************************************************************************/
-/*  Function Name	:	check_authority												*/
+/*  Function Name	:	GetCamerainfoCallBack										*/
 /*  Function Desc	:	1.check the authority. 										*/ 
 /*						2.get the streaming uri&port and snapshot uri&port.			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-bool check_authority(char* xAddress, char* userName, char* password)
+int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* make, char* model, char* firmware, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort)
 {
 	bool bRet = false;
 	char mediaUrl[256];
-	char streamUri[256];
-	char snapshotUri[256];
+	char streamUri[512];
+	char snapUri[512];
 
 	memset(mediaUrl, 0, 256);
-	memset(streamUri, 0, 256);
-	memset(snapshotUri, 0, 256);
+	memset(streamUri, 0, 512);
+	memset(snapUri, 0, 512);
 
-	getMediaUrl(xAddress, userName, password, mediaUrl);
-	bRet = getStreamInfo(mediaUrl, userName, password, streamUri, snapshotUri);
+	getMediaUrl(xAddress, username, password, mediaUrl);
+	
+	bRet = getDeviceInfo(xAddress, username, password, make, model, firmware);
 
-	// get the ports
-	if (bRet == false || strlen(streamUri) == 0)
+	if (bRet == false || strlen(model) == 0)
 	{
-		return false;
+		return -1;
 	}
 
-	printf("streamUri=%s\n", streamUri);
-	printf("snapshotUri=%s\n", snapshotUri);
+	bRet = getStreamInfo(mediaUrl, username, password, streamUri, snapUri);
 
-	return true;
+	if (bRet == false || strlen(streamUri) == 0)
+	{
+		return -1;
+	}
+
+	printf("make=%s\n", make);
+	printf("model=%s\n", model);
+	printf("firmware=%s\n", firmware);
+	printf("streamUri=%s\n", streamUri);
+	printf("snapshotUri=%s\n", snapUri);
+
+	return 0;
 }
 
+/************************************************************************************/
+/*  Function Name	:	rpcserver_start												*/
+/*  Function Desc	:	start the xml-rpc server on the selected Port				*/
+/*  Author			:	ruminsam													*/
+/************************************************************************************/
+bool start_onvifserver(int port)
+{
+	set_GetCameras_callback(GetCamerasCallBack);
+	set_GetCamerainfo_callback(GetCamerainfoCallBack);
+
+	start_rpcserver(port);
+	return true;
+}
 

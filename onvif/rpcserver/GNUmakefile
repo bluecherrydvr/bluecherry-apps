@@ -8,7 +8,7 @@ export BLDDIR
 
 include $(BLDDIR)/config.mk
 
-SUBDIRS = include lib src tools examples
+SUBDIRS = include lib src tools onvifserver
 
 # The reason we don't build tools and examples by default is that they
 # contain executables, which require significantly more from the
@@ -57,7 +57,7 @@ all: xmlrpc-c-config xmlrpc-c-config.test $(SUBDIRS:%=%/all)
 # in order to get the examples rebuilt after you modify the Xmlrpc-c
 # libraries.
 
-examples/all: xmlrpc-c-config.test lib/all src/all include/all
+onvifserver/all: xmlrpc-c-config.test lib/all src/all include/all
 
 # Parallel make (make --jobs) is not smart enough to coordinate builds
 # between submakes, so a naive parallel make would cause certain

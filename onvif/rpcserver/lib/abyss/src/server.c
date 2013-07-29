@@ -705,7 +705,8 @@ serverFunc(void * const userHandle) {
                  &timedOut, &eof, &readError);
 
         if (readError) {
-            TraceMsg("Failed to read from Abyss connection.  %s", readError);
+			//Commented by novaemp
+            //TraceMsg("Failed to read from Abyss connection.  %s", readError);
             xmlrpc_strfree(readError);
             connectionDone = TRUE;
         } else if (timedOut) {
