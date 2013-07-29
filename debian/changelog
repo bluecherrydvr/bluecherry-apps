@@ -1,3 +1,9 @@
+bluecherry (1:2.1.0-2) unstable; urgency=low
+
+  * Fixed default log level (changed from Info to Warning).
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 29 Jul 2013 19:07:20 -0300
+
 bluecherry (1:2.1.0-1) unstable; urgency=low
 
   * Bug #1181: Setting solo format on startup may cause excessive CPU usage
