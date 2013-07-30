@@ -272,7 +272,7 @@ $(LIBXMLRPC_SERVER_CGI_MODS:%=%.osh): \
 
 
 check:
-	$(MAKE) -C test runtests
+#	$(MAKE) -C test runtests
 	$(MAKE) -C cpp  check
 
 .PHONY: install
@@ -280,8 +280,8 @@ install: install-common $(SUBDIRS:%=%/install)
 
 .PHONY: clean clean-local distclean
 clean: clean-common clean-local $(SUBDIRS:%=%/clean)
-clean-local:
-	$(MAKE) -C test clean
+#clean-local:
+#	$(MAKE) -C test clean
 
 distclean: clean-common clean-local distclean-common $(SUBDIRS:%=%/distclean)
 

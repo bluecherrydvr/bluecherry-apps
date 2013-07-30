@@ -1,6 +1,7 @@
 
 #include <memory.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "OnvifMgm.h"
 #include "Discovery/discovery.h"
@@ -13,7 +14,7 @@
 /*  Function Desc	:	scan the onvif cameras using ws-discovery service			*/
 /*  Author			:	ruminsam													*/
 /************************************************************************************/
-int GetCamerasCallBack(int* count, char** cameras)
+int GetCamerasCallBack(int* count, char** ipAddr, char** xAddr)
 {
 	int cameraCount;
 
@@ -97,16 +98,25 @@ int GetCamerasCallBack(int* count, char** cameras)
 		}
 
 		strncpy(ipAddress[i], startStr, length);
-
+		
 		// set the camera's information
-		sprintf(cameras[*count], "%s,%s", ipAddress[i], chrXAddress);
+		sprintf(ipAddr[*count], "%s", ipAddress[i]);
+		sprintf(xAddr[*count], "%s", chrXAddress);
 
 		printf("count = %d\n", *count);
-		printf("xAddress = %s\n", cameras[*count]);
+		printf("ipAddr = %s\n", ipAddr[*count]);
+		printf("xAddr = %s\n", xAddr[*count]);
 
 		*count = (*count) + 1;
 
+		sprintf(ipAddr[*count], "%s", ipAddress[i]);
+		sprintf(xAddr[*count], "%s", chrXAddress);
+
 		printf("count = %d\n", *count);
+		printf("ipAddr = %s\n", ipAddr[*count]);
+		printf("xAddr = %s\n", xAddr[*count]);
+
+		*count = (*count) + 1;
 	}
 
 	// free 
@@ -154,8 +164,87 @@ int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* 
 	printf("make=%s\n", make);
 	printf("model=%s\n", model);
 	printf("firmware=%s\n", firmware);
-	printf("streamUri=%s\n", streamUri);
-	printf("snapshotUri=%s\n", snapUri);
+	printf("fullStreamUri=%s\n", streamUri);
+	printf("fullSnapshotUri=%s\n", snapUri);
+
+	char* startStr = strstr(streamUri, "://");
+	if (startStr == NULL)
+	{
+		sprintf(rtspUri, "%s", streamUri);
+		*rtspPort = 554;
+	}
+	else
+	{
+		startStr += 3;	
+
+		char* endStr = strstr(startStr, ":");
+
+		if (endStr == NULL)
+		{
+			*rtspPort = 554;
+		}
+		else
+		{
+			char* temp = strstr(startStr, "/");
+			int length = temp - endStr;
+			char strRtspPort[6];
+			memset(strRtspPort, 0, 6);
+			strncpy(strRtspPort, endStr+1, length);
+			*rtspPort = atoi(strRtspPort);
+		}
+
+		endStr = strstr(startStr, "/");
+		if (endStr == NULL)
+		{
+			sprintf(rtspUri, "%s", endStr);
+		}
+		else
+		{
+			sprintf(rtspUri, "%s", endStr);
+		}
+	}
+	
+	startStr = strstr(snapUri, "://");
+	if (startStr == NULL)
+	{
+		sprintf(snapshotUri, "%s", snapUri);
+		*rtspPort = 80;
+	}
+	else
+	{
+		startStr += 3;	
+
+		char* endStr = strstr(startStr, ":");
+
+		if (endStr == NULL)
+		{
+			*snapshotPort = 80;
+		}
+		else
+		{
+			char* temp = strstr(startStr, "/");
+			int length = temp - endStr;
+			char strSnapshotPort[6];
+			memset(strSnapshotPort, 0, 6);
+			strncpy(strSnapshotPort, endStr+1, length);
+			*snapshotPort = atoi(strSnapshotPort);
+		}
+
+		endStr = strstr(startStr, "/");
+		if (endStr == NULL)
+		{
+			sprintf(snapshotUri, "%s", endStr);
+		}
+		else
+		{
+			sprintf(snapshotUri, "%s", endStr);
+		}
+	}
+
+	printf("rtspUri=%s\n", rtspUri);
+	printf("rtspPort=%d\n", *rtspPort);
+	printf("snapshotUri=%s\n", snapshotUri);
+	printf("snapshotPort=%d\n", *snapshotPort);
 
 	return 0;
 }

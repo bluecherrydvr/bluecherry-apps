@@ -8,7 +8,7 @@ export BLDDIR
 
 include $(BLDDIR)/config.mk
 
-SUBDIRS = include lib src tools onvifserver
+SUBDIRS = include lib src onvifserver
 
 # The reason we don't build tools and examples by default is that they
 # contain executables, which require significantly more from the
@@ -22,10 +22,6 @@ SUBDIRS = include lib src tools onvifserver
 # subdirectory and make there.
 
 DEFAULT_SUBDIRS = include lib src
-
-ifeq ($(BUILD_TOOLS),yes)
-  DEFAULT_SUBDIRS += tools
-endif
 
 PROGRAMS_TO_INSTALL = xmlrpc-c-config
 
@@ -68,7 +64,6 @@ onvifserver/all: xmlrpc-c-config.test lib/all src/all include/all
 # make works for 'make all' in the top directory, but it may still fail
 # for the aforementioned reason for other invocations.
 
-tools/all: include/all lib/all src/all
 src/all lib/all: include/all
 src/all: lib/all
 
