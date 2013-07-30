@@ -2,9 +2,13 @@
 PACKAGE = bluecherry
 MAINTAINER = John Brooks <john.brooks@bluecherry.net>
 
+# Ubuntu
 DIST =	lucid \
-	precise \
-	squeeze
+	precise
+
+# Debian
+DIST +=	squeeze \
+	wheezy
 
 ARCH = i386 amd64
 
