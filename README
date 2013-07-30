@@ -1,11 +1,13 @@
-
-Dependencies:
-
+Dependencies (server):
  * mysql
  * libbsd
  * php
+ * udev
+
+Dependencies (libav):
+ * yasm
+ * alsa-lib
 
 Bundled libraries:
-
  * libconfig
  * libav
