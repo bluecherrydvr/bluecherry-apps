@@ -1,6 +1,6 @@
 include ../mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd -lavutil
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so
