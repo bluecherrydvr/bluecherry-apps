@@ -5,17 +5,16 @@ LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
 		  rtsp-record bc-license
-GET_AUDIO_OBJS	= getaudio.o $(topdir)/server/g723-dec.o
 
 all: $(TARGETS)
 
-getaudio: $(GET_AUDIO_OBJS)
-	$(LD) -o $@ $(GET_AUDIO_OBJS) $(LDFLAGS) -lasound
+getaudio: %:%.o $(topdir)/server/g723-dec.o
+	$(LD) -o $@ $^ $(LDFLAGS) -lasound
 
-bc-license: bc-license.o
-	$(CXX) -o $@ bc-license.o
+bc-license: %:%.o
+	$(CXX) -o $@ $^
 
-$(topdir)/server/g723-dec.o: $(topdir)/server/g723-dec.c $(topdir)/server/g723-dec.h
+$(topdir)/server/g723-dec.o: %.o:%.c %.o:%.h
 	$(MAKE) -C $(topdir)/server g723-dec.o
 
 clean:
