@@ -53,7 +53,8 @@ extern "C" {
 
 typedef enum {
 	BC_DEVICE_V4L2,
-	BC_DEVICE_RTP
+	BC_DEVICE_RTP,
+	BC_DEVICE_HTTP	//added by ruminsam (for http mjpeg device)
 } bc_device_type_t;
 
 struct bc_handle {
