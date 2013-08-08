@@ -21,6 +21,7 @@
 #include "libbluecherry.h"
 #include "rtp_device.h"
 #include "v4l2_device.h"
+#include "http_device.h"
 #include "stream_elements.h"
 
 #define reset_vbuf(__vb) do {				\
@@ -213,6 +214,39 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	return 0;
 }
 
+static int http_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
+{
+	const char *val;
+	bc->type = BC_DEVICE_HTTP;
+
+	char creds[64];
+	if (get_creds(dbres, creds, sizeof(creds)) < 0)
+		return -1;
+
+	val = bc_db_get_val(dbres, "device", NULL);
+	if (val && *val) {
+		char url[1024];
+
+		int r = parse_dev_path(url, sizeof(url), val, creds, "80",
+				       "http");
+		if (r)
+			return -1;
+
+		bc->input = new http_device(url);
+	}
+
+	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
+	if (val && *val) {
+		int r = parse_dev_path(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+				       val, creds, "80", "http");
+
+		if (r)
+			return -1;
+	}
+
+	return 0;
+}
+
 struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 {
 	const char *device, *driver;
@@ -245,6 +279,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	if (!strncmp(driver, "RTSP-", 5))
 		ret = rtsp_handle_init(bc, dbres);
+	else if (!strncmp(driver, "HTTP", 4))
+		ret = http_handle_init(bc, dbres);
 	else {
 		bc->type = BC_DEVICE_V4L2;
 		bc->input = new v4l2_device(dbres);
