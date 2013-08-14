@@ -719,7 +719,7 @@ int rtsp_connection::handleDescribe(rtsp_message &req)
 
 	std::string path = pathbuf;
 	if (path.empty()) {
-		sendResponse(rtsp_message(req, 404, "Not found"));
+		sendResponse(rtsp_message(req, 400, "Bad request"));
 		return 0;
 	}
 
