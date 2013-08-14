@@ -721,15 +721,19 @@ int rtsp_connection::handleDescribe(rtsp_message &req)
 	char pathbuf[128];
 	av_url_split(0, 0, 0, 0, 0, 0, 0, pathbuf, sizeof(pathbuf), req.uri.c_str());
 
-	std::string path = pathbuf;
-	if (path.empty()) {
+	if (!pathbuf[0]) {
 		sendResponse(rtsp_message(req, 400, "Bad request"));
 		return 0;
 	}
 
-	if (path[path.size()-1] == '/')
-		path.erase(path.size()-1);
+	{
+		/* Remove trailing slash */
+		char *sep = strrchr(pathbuf, '/');
+		if (sep && !sep[1])
+			*sep = '\0';
+	}
 
+	std::string path = pathbuf;
 	rtsp_stream *stream = rtsp_stream::findUri(path);
 	if (!authenticate(req, stream ? stream->id : -1))
 		return 0;
