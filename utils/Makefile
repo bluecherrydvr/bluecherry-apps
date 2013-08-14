@@ -14,8 +14,8 @@ getaudio: %:%.o $(topdir)/server/g723-dec.o
 bc-license: %:%.o
 	$(CXX) -o $@ $^
 
-$(topdir)/server/g723-dec.o: %.o:%.c %.o:%.h
-	$(MAKE) -C $(topdir)/server g723-dec.o
+$(topdir)/server/g723-dec.o: %.o:%.c %.h
+	$(MAKE) -C $(@D) $(@F)
 
 clean:
 	rm -f $(TARGETS) *.o
