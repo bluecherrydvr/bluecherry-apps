@@ -42,8 +42,8 @@
 
 #define PARAMS(count) sleep(seconds);
 
-typedef int (*get_cameras_callback)(int* count, char** ipAddr, char** xAddr);
-typedef int (*get_camerainfo_callback)(char* xAddress, char* username, char* password, char* make, char* model, char* firmware, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort);
+typedef int (*get_cameras_callback)(int* count, char** ipAddr, char** xAddr, char** make, char** model, char** firmware);
+typedef int (*get_camerainfo_callback)(char* xAddress, char* username, char* password, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort);
 
 get_cameras_callback g_getCamerasCallback;
 get_camerainfo_callback g_getCamerainfoCallback;
@@ -57,31 +57,28 @@ camera_discovery(xmlrpc_env *   const envP,
 	int count = 0;
 	char* ipAddr[32];
 	char* xAddr[32];
-	//char resultString[2048];
-	//memset(resultString, 0, 2048);
+	char* make[32];
+ 	char* model[32];
+	char* firmware[32];
 
 	int idx = 0;
-		
+	
+	// initialization
 	for (idx=0; idx<32; idx++)
 	{
 		ipAddr[idx] = (char*)malloc(512);
 		memset(ipAddr[idx], 0, 512);
 		xAddr[idx] = (char*)malloc(512);
 		memset(xAddr[idx], 0, 512);
+		make[idx] = (char*)malloc(256);
+		memset(make[idx], 0, 256);
+		model[idx] = (char*)malloc(256);
+		memset(model[idx], 0, 256);
+		firmware[idx] = (char*)malloc(256);
+		memset(firmware[idx], 0, 256);
 	}
-	
-	int result = g_getCamerasCallback(&count, ipAddr, xAddr);
-	/*
-	for (idx=0; idx<count; idx++)
-	{
-		printf("count = %d\n", count);
-		printf("ipAddr = %s\n", ipAddr[idx]);
-		printf("xAddr = %s\n", xAddr[idx]);
 
-	}
-	*/
-    /* Return our result. */
-    //xmlrpc_value* rpcValue = xmlrpc_build_value(envP, "({s:s,s:s}{s:s,s:s})", "ipAddr", ipAddr[0], "xAddr", xAddr[0], "ipAddr", ipAddr[1], "xAddr", xAddr[1]);
+	int result = g_getCamerasCallback(&count, ipAddr, xAddr, make, model, firmware);
 	
 	xmlrpc_value* myArrayP;
 	xmlrpc_value* myStructP;
@@ -101,6 +98,18 @@ camera_discovery(xmlrpc_env *   const envP,
 		xmlrpc_struct_set_value(envP, myStructP, "xAddr", memberValueP);
 		xmlrpc_DECREF(memberValueP);
 
+		memberValueP = xmlrpc_string_new(envP, make[idx]);
+		xmlrpc_struct_set_value(envP, myStructP, "make", memberValueP);
+		xmlrpc_DECREF(memberValueP);
+
+		memberValueP = xmlrpc_string_new(envP, model[idx]);
+		xmlrpc_struct_set_value(envP, myStructP, "model", memberValueP);
+		xmlrpc_DECREF(memberValueP);
+
+		memberValueP = xmlrpc_string_new(envP, firmware[idx]);
+		xmlrpc_struct_set_value(envP, myStructP, "firmware", memberValueP);
+		xmlrpc_DECREF(memberValueP);
+
 		xmlrpc_array_append_item(envP, myArrayP, myStructP);
 		xmlrpc_DECREF(myStructP);
 	}
@@ -111,6 +120,9 @@ camera_discovery(xmlrpc_env *   const envP,
 	{
 		free(ipAddr[idx]);
 		free(xAddr[idx]);
+		free(make[idx]);
+		free(model[idx]);
+		free(firmware[idx]);
 	}
 
 	return rpcValue;
@@ -125,9 +137,6 @@ camera_info(xmlrpc_env *   const envP,
 	char* cameraToken;
 	char* username;
 	char* password;
-	char make[256];
- 	char model[256];
-	char firmware[256];
 	char rtspUri[512];
 	int rtspPort;
 	char snapshotUri[512];
@@ -138,10 +147,10 @@ camera_info(xmlrpc_env *   const envP,
     if (envP->fault_occurred)
 	    return NULL;
 		
-	int result = g_getCamerainfoCallback(cameraToken, username, password, make, model, firmware, rtspUri, &rtspPort, snapshotUri, &snapshotPort);
+	int result = g_getCamerainfoCallback(cameraToken, username, password, rtspUri, &rtspPort, snapshotUri, &snapshotPort);
 	
     /* Return our result. */
-    xmlrpc_value* rpcValue = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s,s:i,s:s,s:i}", "make", make, "model", model, "firmware", firmware, "rtspUri", rtspUri, "rtspPort", rtspPort, "snapshotUri", snapshotUri, "snapshotPort", snapshotPort);
+    xmlrpc_value* rpcValue = xmlrpc_build_value(envP, "{s:s,s:i,s:s,s:i}", "rtspUri", rtspUri, "rtspPort", rtspPort, "snapshotUri", snapshotUri, "snapshotPort", snapshotPort);
 	
 	return rpcValue;
 }

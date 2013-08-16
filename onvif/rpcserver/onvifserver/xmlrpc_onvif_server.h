@@ -1,6 +1,6 @@
 
-typedef int (*get_cameras_callback)(int* count, char** ipAddr, char** xAddr);
-typedef int (*get_camerainfo_callback)(char* xAddress, char* username, char* password, char* make, char* model, char* firmware, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort);
+typedef int (*get_cameras_callback)(int* count, char** ipAddr, char** xAddr, char** make, char** model, char** firmware);
+typedef int (*get_camerainfo_callback)(char* xAddress, char* username, char* password, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort);
 
 extern "C" {
 	void start_rpcserver(int port);

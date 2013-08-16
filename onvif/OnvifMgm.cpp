@@ -10,11 +10,11 @@
 #include "rpcserver/onvifserver/xmlrpc_onvif_server.h"
 
 /************************************************************************************/
-/*  Function Name	:	GetCamerasCallBack											*/
-/*  Function Desc	:	scan the onvif cameras using ws-discovery service			*/
-/*  Author			:	ruminsam													*/
+/*  Function Name    :    GetCamerasCallBack                                        */
+/*  Function Desc    :    scan the onvif cameras using ws-discovery service         */
+/*  Author           :    ruminsam                                                  */
 /************************************************************************************/
-int GetCamerasCallBack(int* count, char** ipAddr, char** xAddr)
+int GetCamerasCallBack(int* count, char** ipAddr, char** xAddr, char** make, char** model, char** firmware)
 {
 	int cameraCount;
 
@@ -98,23 +98,33 @@ int GetCamerasCallBack(int* count, char** ipAddr, char** xAddr)
 		}
 
 		strncpy(ipAddress[i], startStr, length);
-		
+
+		bool isDuplicated = false;		
+		for (int j=0; j<*count; j++)
+		{
+			if (strcmp(ipAddress[i], ipAddress[j]) == 0)
+			{
+				isDuplicated = true;
+				break;
+			}
+				
+		}
+		if (isDuplicated)
+			continue;
+
 		// set the camera's information
 		sprintf(ipAddr[*count], "%s", ipAddress[i]);
 		sprintf(xAddr[*count], "%s", chrXAddress);
+		
+		// get the make, model, firmware
+		getDeviceInfo(chrXAddress, "", "", make[*count], model[*count], firmware[*count]);
 
 		printf("count = %d\n", *count);
 		printf("ipAddr = %s\n", ipAddr[*count]);
 		printf("xAddr = %s\n", xAddr[*count]);
-
-		*count = (*count) + 1;
-
-		sprintf(ipAddr[*count], "%s", ipAddress[i]);
-		sprintf(xAddr[*count], "%s", chrXAddress);
-
-		printf("count = %d\n", *count);
-		printf("ipAddr = %s\n", ipAddr[*count]);
-		printf("xAddr = %s\n", xAddr[*count]);
+		printf("make = %s\n", make[*count]);
+		printf("model = %s\n", model[*count]);
+		printf("firmware = %s\n", firmware[*count]);
 
 		*count = (*count) + 1;
 	}
@@ -129,12 +139,12 @@ int GetCamerasCallBack(int* count, char** ipAddr, char** xAddr)
 }
 
 /************************************************************************************/
-/*  Function Name	:	GetCamerainfoCallBack										*/
-/*  Function Desc	:	1.check the authority. 										*/ 
-/*						2.get the streaming uri&port and snapshot uri&port.			*/
-/*  Author			:	ruminsam													*/
+/*  Function Name    :    GetCamerainfoCallBack                                     */
+/*  Function Desc    :    1.check the authority.                                    */ 
+/*                        2.get the streaming uri&port and snapshot uri&port.       */
+/*  Author           :    ruminsam                                                  */
 /************************************************************************************/
-int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* make, char* model, char* firmware, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort)
+int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* rtspUri, int* rtspPort, char* snapshotUri, int* snapshotPort)
 {
 	bool bRet = false;
 	char mediaUrl[256];
@@ -147,13 +157,6 @@ int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* 
 
 	getMediaUrl(xAddress, username, password, mediaUrl);
 	
-	bRet = getDeviceInfo(xAddress, username, password, make, model, firmware);
-
-	if (bRet == false || strlen(model) == 0)
-	{
-		return -1;
-	}
-
 	bRet = getStreamInfo(mediaUrl, username, password, streamUri, snapUri);
 
 	if (bRet == false || strlen(streamUri) == 0)
@@ -161,9 +164,6 @@ int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* 
 		return -1;
 	}
 
-	printf("make=%s\n", make);
-	printf("model=%s\n", model);
-	printf("firmware=%s\n", firmware);
 	printf("fullStreamUri=%s\n", streamUri);
 	printf("fullSnapshotUri=%s\n", snapUri);
 
@@ -250,9 +250,9 @@ int GetCamerainfoCallBack(char* xAddress, char* username, char* password, char* 
 }
 
 /************************************************************************************/
-/*  Function Name	:	rpcserver_start												*/
-/*  Function Desc	:	start the xml-rpc server on the selected Port				*/
-/*  Author			:	ruminsam													*/
+/*  Function Name    :    rpcserver_start                                           */
+/*  Function Desc    :    start the xml-rpc server on the selected Port             */
+/*  Author           :    ruminsam                                                  */
 /************************************************************************************/
 bool start_onvifserver(int port)
 {
