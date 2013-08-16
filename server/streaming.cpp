@@ -115,7 +115,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
 	opkt.pts          = pkt.pts;
-	if (opkt.pts != AV_NOPTS_VALUE) {
+	if (opkt.pts != (int64_t)AV_NOPTS_VALUE) {
 		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q,
 				bc_rec->stream_ctx->streams[0]->time_base);
 	}

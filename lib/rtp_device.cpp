@@ -211,7 +211,7 @@ int rtp_device::read_packet()
 	}
 
 	/* Don't run offset logic against frames with no PTS */
-	if (!streamdata || frame.pts == AV_NOPTS_VALUE) {
+	if (!streamdata || frame.pts == (int64_t)AV_NOPTS_VALUE) {
 		create_stream_packet(&frame);
 		return 0;
 	}
@@ -252,7 +252,7 @@ int rtp_device::read_packet()
 	 *
 	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
 	 */
-	if (streamdata->last_pts != AV_NOPTS_VALUE && ctx->nb_streams > 1) {
+	if (streamdata->last_pts != (int64_t)AV_NOPTS_VALUE && ctx->nb_streams > 1) {
 		if (frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
 		    (frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
 		{
@@ -373,7 +373,7 @@ void rtp_device::set_current_pts(int64_t pts)
 	if (frame.stream_index < 0 || frame.stream_index >= RTP_NUM_STREAMS)
 		return;
 
-	if (frame.pts == AV_NOPTS_VALUE) {
+	if (frame.pts == (int64_t)AV_NOPTS_VALUE) {
 		bc_log(Debug, "Current frame has no PTS, so PTS reset to %" PRId64 " cannot occur", pts);
 		return;
 	}
