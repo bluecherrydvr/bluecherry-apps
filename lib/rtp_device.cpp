@@ -195,7 +195,7 @@ int rtp_device::read_packet()
 	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
 	 * everything. */
 	if (ctx->streams[frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
-		uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
+		const uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
 		if (frame.size >= 47 && frame.stream_index == video_stream_index
 		    && memcmp(frame.data, b2_header, sizeof(b2_header)) == 0
 		    && memcmp(frame.data+44, b2_header, 3) == 0)
