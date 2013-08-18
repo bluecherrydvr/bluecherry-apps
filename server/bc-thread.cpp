@@ -169,6 +169,12 @@ void bc_record::run()
 				rec = new recorder(this);
 				rec->set_logging_context(log);
 				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
+
+				// added by ruminsam 
+				// old : pre-recording time doesn't working. 
+				// new : set the pre-recording buffer for pre-recording.
+				rec->set_buffer_time(cfg.prerecord);
+
 				m_handler->connect(rec);
 				std::thread rec_th(&recorder::run, rec);
 				rec_th.detach();

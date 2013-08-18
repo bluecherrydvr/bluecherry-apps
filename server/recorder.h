@@ -18,6 +18,10 @@ public:
 	void destroy();
 	void run();
 
+	/* added by ruminsam
+	 * set the pre recording time. */
+	void set_buffer_time(int prerecord);
+
 private:
 	int device_id;
 	bool destroy_flag;

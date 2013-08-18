@@ -102,7 +102,12 @@ void motion_handler::run()
 			recording = true;
 		}
 
-		if (!triggered && recording && buffer.back().ts_monotonic - last_motion > postrecord_time) {
+		// changed by ruminsam 
+		// old: real post-recording time is postrecord_time + prerecord_time.
+		// new: set the time period as postrecord_time - prerecord_time. if postrecord_time is small than prerecord_time, then real post-recording time will be prerecord_time value.
+		
+		// old : if (!triggered && recording && buffer.back().ts_monotonic - last_motion > postrecord_time) {
+		if (!triggered && recording && buffer.back().ts_monotonic - last_motion > postrecord_time - prerecord_time) {
 			bc_log(Debug, "motion: pause recording");
 			recording = false;
 		}
