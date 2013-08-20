@@ -37,11 +37,11 @@ case "$1" in
 		a2ensite bluecherry
 
 		if [ ! -z `which service` ]; then
-			service apache2 reload
-			service rsyslog reload
+			service apache2 reload || true
+			service rsyslog restart || true
 		else
-			invoke-rc.d apache2 reload
-			invoke-rc.d rsyslog reload || true
+			invoke-rc.d apache2 reload || true
+			invoke-rc.d rsyslog restart || true
 		fi
 
 		if [ ! -e /var/lib/.bcins ]; then

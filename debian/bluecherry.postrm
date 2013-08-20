@@ -14,7 +14,7 @@ case "$1" in
 
 		# Reload some things
 		invoke-rc.d apache2 restart || true
-		invoke-rc.d rsyslog reload || true
+		invoke-rc.d rsyslog restart || true
 	;;
 	purge)
 		CONFIGFILE=/etc/bluecherry.conf
