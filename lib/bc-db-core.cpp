@@ -85,11 +85,12 @@ int bc_db_open(const char *bc_config)
 	if (db_ops != NULL)
 		return 0;
 
-	config_init(&cfg);
-
 	if (!bc_config) {
-		goto db_error;
+		bc_log(Fatal, "No configuration file specfied");
+		return -1;
 	}
+
+	config_init(&cfg);
 
 	if (!config_read_file(&cfg, bc_config)) {
 		bc_log(Fatal, "Configuration Error: %s at line %d",
