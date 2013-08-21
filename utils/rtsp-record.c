@@ -15,6 +15,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/mathematics.h>
 
 static void usage(void)
 {
@@ -86,17 +87,17 @@ int main(int argc, char* argv[])
 	av_register_all();
 	av_log_set_level(AV_LOG_DEBUG);
 
-	if (av_open_input_file(&in_ctx, url, NULL, 0, NULL) != 0) {
+	if (avformat_open_input(&in_ctx, url, NULL, NULL) != 0) {
 		fprintf(stderr, "Could not open URI\n");
 		exit(1);
 	}
 
-	if (av_find_stream_info(in_ctx) < 0) {
+	if (avformat_find_stream_info(in_ctx, NULL) < 0) {
 		fprintf(stderr, "Could not find stream info\n");
 		exit(1);
 	}
 
-	dump_format(in_ctx, 0, url, 0);
+	av_dump_format(in_ctx, 0, url, 0);
 
 	setup_output(argv[optind]);
 
@@ -145,7 +146,7 @@ void setup_output(const char *file)
 	out_ctx->oformat = fmt_out;
 	snprintf(out_ctx->filename, sizeof(out_ctx->filename), "%s", file);
 
-	vst = av_new_stream(out_ctx, 0);
+	vst = avformat_new_stream(out_ctx, 0);
 	if (!vst) {
 		fprintf(stderr, "Could not add video stream\n");
 		exit(1);
@@ -176,7 +177,7 @@ void setup_output(const char *file)
 
 #if 0
 	if (rs->tid_a >= 0 || rs->aud_port >= 0) {
-		ast = av_new_stream(out_ctx, 1);
+		ast = avformat_new_stream(out_ctx, 1);
 		if (!ast) {
 			fprintf(stderr, "Could not add audio stream\n");
 			exit(1);
@@ -204,7 +205,7 @@ void setup_output(const char *file)
 		exit(1);
 	}
 
-	if (url_fopen(&out_ctx->pb, file, URL_WRONLY) < 0) {
+	if (avio_open(&out_ctx->pb, file, AVIO_FLAG_WRITE) < 0) {
 		fprintf(stderr, "Could not open outfile\n");
 		exit(1);
 	}

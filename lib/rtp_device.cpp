@@ -59,7 +59,7 @@ void rtp_device::stop()
 			avcodec_close(ctx->streams[i]->codec);
 	}
 
-	av_close_input_file(ctx);
+	avformat_close_input(&ctx);
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
 

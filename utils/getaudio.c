@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 	oc->oformat = fmt_out;
 	snprintf(oc->filename, sizeof(oc->filename), "%s", outfile);
 
-	st = av_new_stream(oc, 0);
+	st = avformat_new_stream(oc, 0);
 	if (st == NULL)
 		err("opening new stream");
 
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 	if (avcodec_open(st->codec, codec) < 0)
 		err("opening encoder");
 
-	if (url_fopen(&oc->pb, outfile, URL_WRONLY) < 0)
+	if (avio_open(&oc->pb, outfile, AVIO_FLAG_WRITE) < 0)
 		err("opening out file");
 
 	av_write_header(oc);
