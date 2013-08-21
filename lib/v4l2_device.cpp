@@ -654,7 +654,6 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 
 	struct v4l2_control vc;
 	unsigned int vh = 15;
-	int i;
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 
 	if (caps() & BC_CAM_CAP_V4L2_PAL)
@@ -663,18 +662,17 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 	if (size < 22 * vh)
 		return -1;
 
-	/* Our input map is 22xvh, but the device is actually twice that.
+	/* Our input map is 22*vh, but the device is actually twice that.
 	 * Fields are doubled accordingly. */
-	for (i = 0; i < (vh*2); i++) {
-		int j;
-		for (j = 0; j < 44; j++) {
-			int pos = ((i/2)*22)+(j/2);
+	for (unsigned int i = 0; i < (vh*2); i++) {
+		for (unsigned int j = 0; j < 44; j++) {
+			unsigned int pos = ((i / 2) * 22) + (j / 2);
 			if (map[pos] < '0' || map[pos] > '5')
 				return -1;
 
 			/* One more than the actual block number, because the driver
 			 * expects this. 0 sets the global threshold. */
-			vc.value = (unsigned)(i*64+j+1) << 16;
+			vc.value = (unsigned)(i * 64 + j + 1) << 16;
 			vc.value |= solo_value_map[map[pos] - '0'];
 
 			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
