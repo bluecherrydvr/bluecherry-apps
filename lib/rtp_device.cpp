@@ -87,6 +87,10 @@ int rtp_device::start()
 	av_dict_set(&avopt, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	av_dict_set(&avopt, "threads", "1", 0);
 
+	//added by Sokka to solve the smearing problem.
+	//get the stream based on TCP
+	av_dict_set(&avopt, "rtsp_transport", "tcp", 0);
+
 	AVDictionary *opt_copy = 0;
 	av_dict_copy(&opt_copy, avopt, 0);
 
