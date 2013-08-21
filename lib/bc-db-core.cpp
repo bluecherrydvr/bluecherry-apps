@@ -92,7 +92,7 @@ int bc_db_open(const char *bc_config)
 
 	config_init(&cfg);
 
-	if (!config_read_file(&cfg, bc_config)) {
+	if (config_read_file(&cfg, bc_config) == CONFIG_FALSE) {
 		bc_log(Fatal, "Configuration Error: %s at line %d",
 		       config_error_text(&cfg), config_error_line(&cfg));
 		goto db_error;
