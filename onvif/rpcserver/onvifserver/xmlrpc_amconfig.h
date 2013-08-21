@@ -1,0 +1,1 @@
+/work/git/bluecherry-apps/onvif/rpcserver/onvifserver/../xmlrpc_amconfig.h

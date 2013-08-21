@@ -1,0 +1,29 @@
+#
+#######################################################
+# From 'shell_config'
+#######################################################
+ENABLE_ABYSS_THREADS="yes"
+ENABLE_LIBXML2_BACKEND="no"
+MUST_BUILD_WININET_CLIENT="no"
+MUST_BUILD_CURL_CLIENT="no"
+MUST_BUILD_LIBWWW_CLIENT="no"
+NEED_RPATH="no"
+NEED_WL_RPATH="no"
+LIBXMLRPCPP_NAME="xmlrpc++"
+LSOCKET=""
+WININET_LDADD=""
+WININET_LIBDIR=""
+CURL_LDADD=""
+CURL_LIBDIR=""
+LIBWWW_LDADD=""
+LIBWWW_LIBDIR=""
+XMLRPC_MAJOR_RELEASE="1"
+XMLRPC_MINOR_RELEASE="25"
+XMLRPC_POINT_RELEASE="24"
+FEATURE_LIST="c++ abyss-server "
+PREFIX="/usr/local"
+HEADERINST_DIR="/usr/local/include"
+LIBINST_DIR="/usr/local/lib"
+BLDDIR="/work/git/bluecherry-apps/onvif/rpcserver"
+ABS_SRCDIR="/work/git/bluecherry-apps/onvif/rpcserver"
+#######################################################
