@@ -1,3 +1,12 @@
+bluecherry (1:2.1.1-1) unstable; urgency=low
+
+  * Fixed server response on invalid URI
+  * Fixed restarting of rsyslog on Debian
+  * Fixed smearing problems on lossy networks
+  * Miscellaneous fixes
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 22 Aug 2013 14:07:35 -0300
+
 bluecherry (1:2.1.0-3) unstable; urgency=low
 
   * Fixed linking issues
