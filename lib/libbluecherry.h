@@ -17,6 +17,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h> /* for CodecID */
+#include <libavformat/avformat.h>
 }
 
 #ifndef PRId64
@@ -42,11 +43,6 @@ extern "C" {
 #define BC_UID_TYPE_PCI		"BCPCI"
 
 typedef void * BC_DB_RES;
-
-extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-}
 
 #include "logging.h"
 #include "input_device.h"
