@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Bluecherry <maintainers@bluecherry.net>
 Build-Depends: debhelper (>= 7), libmysqlclient-dev, php5-dev,
- libidn11-dev, libbsd-dev, yasm, libudev-dev
+ libidn11-dev, libbsd-dev, yasm, libudev-dev, libxmlrpc-c3-dev
 Standards-Version: 3.8.4
 
 Package: bluecherry
@@ -11,7 +11,7 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
  libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix, php-mail, php-mail-mime,
- php-net-smtp
+ php-net-smtp, libxmlrpc-c3-dev
 Suggests: solo6010-dkms, monit
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
