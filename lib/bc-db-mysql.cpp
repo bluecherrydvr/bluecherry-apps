@@ -10,6 +10,7 @@
 #include "bc-db.h"
 
 #include <mysql/mysql.h>
+#include <mysql/errmsg.h>
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
@@ -42,34 +43,39 @@ static inline void free_null(char **p)
 		__res = strdup(val);					\
 } while(0)
 
-static MYSQL *get_handle(void)
+static MYSQL *reset_con(void)
 {
-	if (my_con_global != NULL) {
-		/* On successful ping, just re-use connection */
-		if (!mysql_ping(my_con_global))
-			return my_con_global;
-
-		/* Failure, so setup to retry */
+	if (my_con_global)
 		mysql_close(my_con_global);
-		my_con_global = NULL;
-	}
 
 	if (!dbname || !dbuser || !dbpass)
 		return NULL;
 
-	if ((my_con_global = mysql_init(NULL)) == NULL) {
+	my_con_global = mysql_init(NULL);
+	if (!my_con_global) {
 		bc_log(Fatal, "MySQL initialization failed");
 		return NULL;
 	}
 
-	if (mysql_real_connect(my_con_global, dbhost, dbuser, dbpass, dbname,
-			       dbport, dbsock, 0) == NULL) {
+	MYSQL *ret = mysql_real_connect(my_con_global, dbhost, dbuser, dbpass,
+					dbname, dbport, dbsock, 0);
+	if (!ret) {
+		bc_log(Fatal, "Can't connect to MySQL");
 		mysql_close(my_con_global);
 		my_con_global = NULL;
-                return NULL;
-        }
+		return NULL;
+	}
 
 	return my_con_global;
+}
+
+static MYSQL *get_handle(void)
+{
+	/* On successful ping, just reuse connection */
+	if (my_con_global && !mysql_ping(my_con_global))
+		return my_con_global;
+
+	return reset_con();
 }
 
 static void bc_db_mysql_close(void)
@@ -110,6 +116,19 @@ static int bc_db_mysql_open(struct config_t *cfg)
 	return 0;
 }
 
+static _Bool is_con_lost(MYSQL *con)
+{
+	int err = mysql_errno(con);
+	switch (err) {
+	case CR_CONN_HOST_ERROR:
+	case CR_SERVER_GONE_ERROR:
+	case CR_SERVER_LOST:
+		return 1;
+	default:
+		return 0;
+	}
+}
+
 static int bc_db_mysql_query(const char *query)
 {
 	MYSQL *my_con = get_handle();
@@ -118,46 +137,47 @@ static int bc_db_mysql_query(const char *query)
 	if (my_con == NULL)
 		return -1;
 
-	ret = mysql_query(my_con, query);
+	unsigned int retries = 3;
+	for (; (ret = mysql_query(my_con, query)) && retries; retries--) {
+		if (!is_con_lost(my_con))
+			break;
 
-	if (ret != 0)
-		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+		/* reconnect to DBMS */
+		my_con = reset_con();
+		if (!my_con)
+			break;
+	}
+
+	if (ret)
+		bc_log(Error, "Query error: [%s] => %s", query,
+		       mysql_error(my_con));
 
 	return ret;
 }
 
 static BC_DB_RES bc_db_mysql_get_table(char *query)
 {
-	MYSQL *my_con = get_handle();
 	struct bc_db_mysql_res *dbres;
-	int ret;
 
-	if (my_con == NULL)
-		return NULL;
+	dbres = (struct bc_db_mysql_res *)malloc(sizeof(*dbres));
+	if (!dbres)
+		goto error;
 
-	dbres = (struct bc_db_mysql_res*) malloc(sizeof(*dbres));
+	if (bc_db_mysql_query(query))
+		goto error;
 
-	if (dbres == NULL)
-		return NULL;
-
-	ret = mysql_query(my_con, query);
-
-	if (ret != 0) {
-		free(dbres);
-		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
-		return NULL;
-	}
-
-	dbres->res = mysql_store_result(my_con);
-	if (dbres->res == NULL) {
-		free(dbres);
+	dbres->res = mysql_store_result(get_handle());
+	if (!dbres->res) {
 		bc_log(Error, "Query has no result: [%s]", query);
-		return NULL;
+		goto error;
 	}
 
 	dbres->ncols = mysql_num_fields(dbres->res);
-
 	return dbres;
+
+error:
+	free(dbres);
+	return NULL;
 }
 
 static void bc_db_mysql_free_table(BC_DB_RES __dbres)
