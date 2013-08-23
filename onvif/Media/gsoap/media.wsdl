@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="http://www.onvif.org/onvif/ver20/util/onvif-wsdl-viewer.xsl"?>
+<wsdl:definitions 
+	xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" 
+	xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap12/" 
+	xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+	xmlns:tds="http://www.onvif.org/ver10/media/wsdl"
+	targetNamespace="http://www.onvif.org/ver10/media/wsdl">
+	<wsdl:types>
+		<xs:schema 
+		targetNamespace="http://www.onvif.org/ver10/media/wsdl" 
+		xmlns:tt="http://www.onvif.org/ver10/schema" 
+		xmlns:tds="http://www.onvif.org/ver10/media/wsdl"
+		elementFormDefault="qualified">
+		<xs:import namespace="http://www.onvif.org/ver10/schema" schemaLocation="onvif.xsd"/>
+			<xs:element name="GetProfiles">
+				<xs:complexType>
+					<xs:sequence />
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetProfilesResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element minOccurs="0" maxOccurs="unbounded" name="Profiles" type="tt:Profile" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetStreamUri">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StreamSetup" type="tt:StreamSetup" />
+						<xs:element name="ProfileToken" type="tt:ReferenceToken" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetStreamUriResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MediaUri" type="tt:MediaUri" />
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetVideoEncoderConfigurationOptions">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="ConfigurationToken" type="tt:ReferenceToken" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Optional video encoder configuration token that specifies an existing configuration that the options are intended for.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="ProfileToken" type="tt:ReferenceToken" minOccurs="0">
+							<xs:annotation>
+								<xs:documentation>Optional ProfileToken that specifies an existing media profile that the options shall be compatible with.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetVideoEncoderConfigurationOptionsResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Options" type="tt:VideoEncoderConfigurationOptions"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetVideoEncoderConfiguration">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Configuration" type="tt:VideoEncoderConfiguration">
+							<xs:annotation>
+								<xs:documentation>Contains the modified video encoder configuration. The configuration shall exist in the NVT.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="ForcePersistence" type="xs:boolean">
+							<xs:annotation>
+								<xs:documentation>Determines if the configuration changes shall be stored and remain after reboot. If true, changes shall be persistent. If false, changes MAY revert to previous values after reboot.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="SetVideoEncoderConfigurationResponse">
+				<xs:complexType>
+					<xs:sequence>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetSnapshotUri">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="ProfileToken" type="tt:ReferenceToken">
+							<xs:annotation>
+								<xs:documentation>The ProfileToken element indicates the media profile to use and will define the source and dimensions of the snapshot.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="GetSnapshotUriResponse">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="MediaUri" type="tt:MediaUri">
+							<xs:annotation>
+								<xs:documentation/>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:schema>
+	</wsdl:types>
+	<wsdl:message name="GetProfilesRequest">
+		<wsdl:part name="parameters" element="tds:GetProfiles" />
+	</wsdl:message>
+	<wsdl:message name="GetProfilesResponse">
+		<wsdl:part name="parameters" element="tds:GetProfilesResponse" />
+	</wsdl:message>
+	<wsdl:message name="GetStreamUriRequest">
+		<wsdl:part name="parameters" element="tds:GetStreamUri" />
+	</wsdl:message>
+	<wsdl:message name="GetStreamUriResponse">
+		<wsdl:part name="parameters" element="tds:GetStreamUriResponse" />
+	</wsdl:message>
+	<wsdl:message name="GetVideoEncoderConfigurationOptionsRequest">
+		<wsdl:part name="parameters" element="tds:GetVideoEncoderConfigurationOptions"/>
+	</wsdl:message>
+	<wsdl:message name="GetVideoEncoderConfigurationOptionsResponse">
+		<wsdl:part name="parameters" element="tds:GetVideoEncoderConfigurationOptionsResponse"/>
+	</wsdl:message>
+	<wsdl:message name="SetVideoEncoderConfigurationRequest">
+		<wsdl:part name="parameters" element="tds:SetVideoEncoderConfiguration"/>
+	</wsdl:message>
+	<wsdl:message name="SetVideoEncoderConfigurationResponse">
+		<wsdl:part name="parameters" element="tds:SetVideoEncoderConfigurationResponse"/>
+	</wsdl:message>
+	<wsdl:message name="GetSnapshotUriRequest">
+		<wsdl:part name="parameters" element="trt:GetSnapshotUri"/>
+	</wsdl:message>
+	<wsdl:message name="GetSnapshotUriResponse">
+		<wsdl:part name="parameters" element="trt:GetSnapshotUriResponse"/>
+	</wsdl:message>
+
+	<wsdl:portType name="media">
+		<wsdl:operation name="GetProfiles">
+		  <wsdl:input message="tds:GetProfilesRequest" />
+		  <wsdl:output message="tds:GetProfilesResponse" />
+		</wsdl:operation>
+		<wsdl:operation name="GetStreamUri">
+		  <wsdl:input message="tds:GetStreamUriRequest" />
+		  <wsdl:output message="tds:GetStreamUriResponse" />
+		</wsdl:operation>
+		<wsdl:operation name="GetVideoEncoderConfigurationOptions">
+			<wsdl:documentation>This operation returns the available options (supported values and ranges for video encoder 
+				configuration parameters) when the video encoder parameters are reconfigured. Devices prior to ONVIF 2.0 will
+				only return the base encoder settings while devices from 2.0 onwards will respond with both base and extension settings.<br/>
+				This response contains the available video encoder configuration options. If a video encoder configuration is specified, 
+				the options shall concern that particular configuration. If a media profile is specified, the options shall be 
+				compatible with that media profile. If no tokens are specified, the options shall be considered generic for the device.
+			</wsdl:documentation>
+			<wsdl:input message="tds:GetVideoEncoderConfigurationOptionsRequest"/>
+			<wsdl:output message="tds:GetVideoEncoderConfigurationOptionsResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="SetVideoEncoderConfiguration">
+			<wsdl:documentation>This operation modifies a video encoder configuration. The ForcePersistence flag indicates if the changes shall remain after reboot of the NVT. Changes in the Multicast settings shall always be persistent. Running streams using this configuration may be immediately updated according to the new settings. The changes are not guaranteed to take effect unless the client requests a new stream URI and restarts any affected stream. NVC methods for changing a running stream are out of scope for this specification.</wsdl:documentation>
+			<wsdl:input message="tds:SetVideoEncoderConfigurationRequest"/>
+			<wsdl:output message="tds:SetVideoEncoderConfigurationResponse"/>
+		</wsdl:operation>
+		<wsdl:operation name="GetSnapshotUri">
+			<wsdl:documentation>A client uses the GetSnapshotUri command to obtain a JPEG snapshot from the
+device. The returned URI shall remain valid indefinitely even if the profile is changed. The
+ValidUntilConnect, ValidUntilReboot and Timeout Parameter shall be set accordingly
+(ValidUntilConnect=false, ValidUntilReboot=false, timeout=PT0S). The URI can be used for
+acquiring a JPEG image through a HTTP GET operation. The image encoding will always be
+JPEG regardless of the encoding setting in the media profile. The Jpeg settings
+(like resolution or quality) may be taken from the profile if suitable. The provided
+image will be updated automatically and independent from calls to GetSnapshotUri.</wsdl:documentation>
+			<wsdl:input message="trt:GetSnapshotUriRequest"/>
+			<wsdl:output message="trt:GetSnapshotUriResponse"/>
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="DeviceBinding" type="tds:media">
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<wsdl:operation name="GetProfiles">
+		  <soap:operation soapAction="http://www.onvif.org/ver10/media/wsdl/GetProfiles" />
+		  <wsdl:input>
+			<soap:body use="literal" parts="parameters" />
+		  </wsdl:input>
+		  <wsdl:output>
+			<soap:body use="literal" parts="parameters" />
+		  </wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetStreamUri">
+		  <soap:operation soapAction="http://www.onvif.org/ver10/media/wsdl/GetStreamUri" />
+		  <wsdl:input>
+			<soap:body use="literal" parts="parameters" />
+		  </wsdl:input>
+		  <wsdl:output>
+			<soap:body use="literal" parts="parameters" />
+		  </wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="GetVideoEncoderConfigurationOptions">
+			<soap:operation soapAction="http://www.onvif.org/ver10/media/wsdl/GetVideoEncoderConfigurationOptions"/>
+			<wsdl:input>
+				<soap:body parts="parameters" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body parts="parameters" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+		<wsdl:operation name="SetVideoEncoderConfiguration">
+			<soap:operation soapAction="http://www.onvif.org/ver10/media/wsdl/SetVideoEncoderConfiguration"/>
+			<wsdl:input>
+				<soap:body parts="parameters" use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body parts="parameters" use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+<wsdl:operation name="GetSnapshotUri">
+			<soap:operation soapAction="http://www.onvif.org/ver10/media/wsdl/GetSnapshotUri"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+</wsdl:definitions>

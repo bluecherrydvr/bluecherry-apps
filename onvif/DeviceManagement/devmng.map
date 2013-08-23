@@ -1,0 +1,4 @@
+{
+global: getMediaUrl;getDeviceInfo;
+local: *;
+};
