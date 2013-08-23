@@ -57,6 +57,11 @@ static MYSQL *reset_con(void)
 		return NULL;
 	}
 
+	/* NOTE: Retries multiply the specified timeouts */
+	mysql_options(my_con_global, MYSQL_OPT_READ_TIMEOUT, (const int[]){5});
+	mysql_options(my_con_global, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){5});
+	mysql_options(my_con_global, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){5});
+
 	MYSQL *ret = mysql_real_connect(my_con_global, dbhost, dbuser, dbpass,
 					dbname, dbport, dbsock, 0);
 	if (!ret) {
