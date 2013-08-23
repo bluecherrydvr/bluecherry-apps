@@ -10,6 +10,7 @@
 #include "bc-db.h"
 
 #include <mysql/mysql.h>
+#include <mysql/errmsg.h>
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
@@ -66,8 +67,8 @@ static MYSQL *get_handle(void)
 			       dbport, dbsock, 0) == NULL) {
 		mysql_close(my_con_global);
 		my_con_global = NULL;
-                return NULL;
-        }
+        	return NULL;
+    	}
 
 	return my_con_global;
 }
@@ -110,6 +111,31 @@ static int bc_db_mysql_open(struct config_t *cfg)
 	return 0;
 }
 
+static MYSQL *reset_con(void)
+{
+	// close the con by force and re-connect to DBMS  
+	if (my_con_global != NULL) {
+		mysql_close(my_con_global);
+	}
+
+	if (!dbname || !dbuser || !dbpass)
+		return NULL;
+
+	if ((my_con_global = mysql_init(NULL)) == NULL) {
+		bc_log(Fatal, "MySQL initialization failed");
+		return NULL;
+	}
+
+	if (mysql_real_connect(my_con_global, dbhost, dbuser, dbpass, dbname,
+			       dbport, dbsock, 0) == NULL) {
+		mysql_close(my_con_global);
+		my_con_global = NULL;
+        	return NULL;
+    	}
+
+	return my_con_global;
+}
+
 static int bc_db_mysql_query(const char *query)
 {
 	MYSQL *my_con = get_handle();
@@ -121,7 +147,32 @@ static int bc_db_mysql_query(const char *query)
 	ret = mysql_query(my_con, query);
 
 	if (ret != 0)
-		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+	{
+		/* if error_no is in CR_CONN_HOST_ERROR, CR_SERVER_GONE_ERROR and CR_SERVER_LOST, 
+		   then reconnect to DBMS */ 
+		int errNo = mysql_errno(my_con);
+		if (errNo == CR_CONN_HOST_ERROR || errNo == CR_SERVER_GONE_ERROR || errNo == CR_SERVER_LOST)
+		{
+			/* reconnect to DBMS */
+			my_con = reset_con();
+			if (my_con == NULL)
+			{
+				bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+				return -1;
+			}
+
+			/* excute query again */
+			ret = mysql_query(my_con, query);
+			if (ret != 0)
+			{
+				bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+			}
+		}
+		else
+		{
+			bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+		}		
+	}
 
 	return ret;
 }
@@ -143,9 +194,36 @@ static BC_DB_RES bc_db_mysql_get_table(char *query)
 	ret = mysql_query(my_con, query);
 
 	if (ret != 0) {
-		free(dbres);
-		bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
-		return NULL;
+
+		/* if error_no is in the CR_CONN_HOST_ERROR, CR_SERVER_GONE_ERROR and CR_SERVER_LOST, 
+		   then reconnect to DBMS */ 
+		int errNo = mysql_errno(my_con);
+		if (errNo == CR_CONN_HOST_ERROR || errNo == CR_SERVER_GONE_ERROR || errNo == CR_SERVER_LOST)
+		{
+			/* reconnect to DBMS */
+			my_con = reset_con();
+			if (my_con == NULL)
+			{
+				free(dbres);
+				bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+				return NULL;
+			}
+			
+			/* excute query again */
+			ret = mysql_query(my_con, query);
+			if (ret != 0)
+			{
+				free(dbres);
+				bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+				return NULL;
+			}
+		}
+		else
+		{
+			free(dbres);
+			bc_log(Error, "Query error: [%s] => %s", query, mysql_error(my_con));
+			return NULL;
+		}	
 	}
 
 	dbres->res = mysql_store_result(my_con);
