@@ -77,11 +77,7 @@ static MYSQL *reset_con(void)
 
 static MYSQL *get_handle(void)
 {
-	/* On successful ping, just reuse connection */
-	if (my_con_global && !mysql_ping(my_con_global))
-		return my_con_global;
-
-	return reset_con();
+	return my_con_global ? my_con_global : reset_con();
 }
 
 static void bc_db_mysql_close(void)
