@@ -163,16 +163,32 @@ static int bc_db_mysql_query(const char *query)
 
 static BC_DB_RES bc_db_mysql_get_table(char *query)
 {
+	MYSQL *my_con = get_handle();
 	struct bc_db_mysql_res *dbres;
+	int ret;
+	unsigned int retries = 3;
 
 	dbres = (struct bc_db_mysql_res *)malloc(sizeof(*dbres));
 	if (!dbres)
 		goto error;
 
-	if (bc_db_mysql_query(query))
+	if (my_con == NULL)
 		goto error;
+	
+	for (; (ret = mysql_query(my_con, query)) && retries; retries--) {
+		if (!is_con_lost(my_con))
+			break;
 
-	dbres->res = mysql_store_result(get_handle());
+		/* reconnect to DBMS */
+		my_con = reset_con();
+		if (!my_con)
+			break;
+	}
+
+	if (ret)
+		goto error;
+	
+	dbres->res = mysql_store_result(my_con);
 	if (!dbres->res) {
 		bc_log(Error, "Query has no result: [%s]", query);
 		goto error;
