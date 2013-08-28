@@ -1,6 +1,6 @@
 include ../mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lbsd
 LDFLAGS		+= -lavutil -lavformat -lavcodec
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
