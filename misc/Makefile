@@ -2,7 +2,7 @@ include ../mk.conf
 
 all: build FORCE
 
-configure = cd $(dir $@) && CC="$(CC)" CXX="$(CXX)" \
+configure = cd $(dir $@) && CC="ccache gcc" CXX="ccache g++" \
 	    ./configure --prefix=$(STAGE) --disable-static --enable-shared
 
  ###############
