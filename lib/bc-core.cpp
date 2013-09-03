@@ -207,6 +207,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	const char *device, *driver;
 	struct bc_handle *bc;
 	int ret;
+	int device_id;
 
 	if (dbres == NULL) {
 		errno = ENOMEM;
@@ -241,6 +242,10 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	}
 
 	bc->source = new stream_source("Input Source");
+
+	// set device id
+	device_id = bc_db_get_val_int(dbres, "id");
+	bc->input->set_device_id (device_id);
 
 	if (ret) {
 		bc_handle_free(bc);
