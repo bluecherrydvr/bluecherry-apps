@@ -20,3 +20,6 @@ ALTER TABLE EventTags ADD CONSTRAINT fk_event_id
       FOREIGN KEY (event_id) REFERENCES EventsCam(id)
       ON DELETE CASCADE;
 COMMIT;
+
+-- Add record_time
+ALTER TABLE Storage ADD record_time integer;
