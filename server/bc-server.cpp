@@ -489,6 +489,41 @@ done:
 	return 0;
 }
 
+static int bc_estimate_recording_time(void)
+{
+	struct statvfs st;
+	uint64_t free_space;
+	BC_DB_RES dbres;
+	uint64_t record_period;
+	uint64_t record_size;
+	uint64_t estimated_period;
+	
+	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+
+		free_space = path_freespace(media_stor[i].path) / (1024 * 1024);
+
+		if (free_space == 0)
+			continue;
+
+		dbres = bc_db_get_table("SELECT SUM(case when end - start < 0 then 0 else end - start end) record_period, "
+					"       SUM(size) DIV (1024 * 1024) record_size"
+					"  FROM Media"
+			 		" WHERE filepath like '%s%%'",
+					media_stor[i].path);
+
+		if (dbres && !bc_db_fetch_row(dbres)) {
+			record_period = atol(bc_db_get_val(dbres, "record_period", NULL));
+			record_size = atol(bc_db_get_val(dbres, "record_size", NULL));
+			if (record_size == 0)
+				continue;
+			
+			estimated_period = (uint64_t)(record_period * (free_space + record_size) / record_size);
+		}
+
+		bc_db_free_table(dbres);
+	}
+}
+
 static int bc_check_media(void)
 {
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
@@ -506,6 +541,10 @@ static int bc_check_media(void)
 
  out:
 	pthread_mutex_unlock(&media_lock);
+	
+	/* estimate the recording time for an available storage devices */
+	bc_estimate_recording_time();
+
 	return ret;
 }
 

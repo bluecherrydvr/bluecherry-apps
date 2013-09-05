@@ -27,10 +27,11 @@ CREATE TABLE Storage (
 	path varchar(512) NOT NULL,
 	max_thresh decimal(5,2) NOT NULL,
 	min_thresh decimal(5,2) NOT NULL,
+	record_time integer,
 	UNIQUE (path)
 );
 
-INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00);
+INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00, NULL);
 
 
 CREATE TABLE ServerStatus (
