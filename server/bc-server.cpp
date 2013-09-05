@@ -515,12 +515,18 @@ static int bc_estimate_recording_time(void)
 			record_period = atol(bc_db_get_val(dbres, "record_period", NULL));
 			record_size = atol(bc_db_get_val(dbres, "record_size", NULL));
 			if (record_size == 0)
+			{
+				bc_db_free_table(dbres);
 				continue;
+			}
 			
 			estimated_period = (uint64_t)(record_period * (free_space + record_size) / record_size);
 		}
 
 		bc_db_free_table(dbres);
+
+		bc_db_query("UPDATE Storage SET record_time = %llu WHERE path = '%s'",
+		        		estimated_period, media_stor[i].path);
 	}
 }
 
