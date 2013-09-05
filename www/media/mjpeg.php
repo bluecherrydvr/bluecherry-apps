@@ -3,6 +3,39 @@
 #lib
 include("../lib/lib.php");  #common functions
 
+function mkreq($url)
+{
+	$purl = parse_url($url);
+	if (!$purl)
+		return null;
+
+	$port = empty($purl['port']) ? 80 : $purl['port'];
+
+	$path = $purl['path'];
+	if (!empty($purl['query']))
+		$path .= "?" . $purl['query'];
+
+	$auth = (empty($purl['user']) or empty($purl['pass'])) ? "" :
+		"Authorization: Basic " .
+		base64_encode($purl['user'] . ":" . $purl['pass']) .
+		"\r\n";
+
+	$req = "GET " . $path . " HTTP/1.0\r\n"
+		. "Host: " . $purl['host'] . "\r\n"
+		. $auth . "\r\n";
+
+	$fh = fsockopen($purl['host'], $port);
+	if (!$fh)
+		return null;
+
+	fwrite($fh, $req);
+
+	// FIXME: check response
+	fgets($fh);
+
+	return $fh;
+}
+
 function image_err($msg)
 {
 	$width = 352;
@@ -44,137 +77,93 @@ if ($this_camera[0]['disabled'] == true){
 	image_err(str_replace('%ID%', $_GET['id'], MJPEG_DEVICE_NOT_FOUND));
 }
 
-function get_boundary($url_full)
+function hdr_parse($fh)
+{
+	$hdr = array();
+
+	while (($tmp = fgets($fh)) !== FALSE) {
+		if ($tmp[0] == '\r' or $tmp[0] == '\n')
+			break;
+
+		if ($tmp[0] != ' ') {
+			$h = explode(':', $tmp);
+			$k = strtolower($h[0]);
+			$hdr[$k] = ltrim($h[1]);
+		} else {
+			$hdr[$k] .= ltrim($tmp);
+		}
+	}
+
+	return $hdr;
+}
+
+function get_boundary($url)
 {
 	global $boundary, $single_url;
 
-	$url = parse_url($url_full);
-	if (!$url)
-		return;
-
-	if (empty($url['port']))
-		$url['port'] = 80;
-
-	if (!empty($url['user']) and !empty($url['pass']))
-		$auth = base64_encode($url['user'] . ":" . $url['pass']);
-	else
-		$auth = false;
-
-	$fh = fsockopen($url['host'], $url['port']);
+	$fh = mkreq($url);
 	if (!$fh)
 		return;
 
-	if (empty($url['query']))
-		$path = $url['path'];
-	else
-		$path = $url['path'] . "?" . $url['query'];
+	$hdr = hdr_parse($fh);
 
+	$matches = array();
+	$single_url = !preg_match('/^multipart\/.*;\s*boundary=(\S+)/i',
+				 $hdr['content-type'], $matches);
+	if (!$single_url)
+		$boundary = $matches[1];
 
-	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
-	fwrite($fh, "Host: ". $url['host'] ."\r\n");
-	if ($auth)
-		fwrite($fh, "Authorization: Basic $auth\r\n");
-	fwrite($fh, "\r\n");
-
-	$myb = "";
-	// Read the header to get the Content-Type
-	while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n" || $msg == "\n")
-			break;
-		$matches = array();
-		if (preg_match('/^Content-Type:\s*multipart\/x-mixed-replace\s*;.*boundary=(\S+)/i', $msg, $matches)) {
-			$boundary = $matches[1];
-			fclose($fh);
-			return;
-		} else if (stristr($msg, 'Content-Type:'))
-			break;
-	}
 	fclose($fh);
-
-	if ($msg == FALSE)
-		return;
-
-	/* The URL only supplies us one JPEG per request, so we make it a feed */
-	if (stristr($msg, "Content-Type: image/jpeg"))
-		$single_url = TRUE;
 }
 
-function get_one_jpeg($url_full)
+function get_one_jpeg($url)
 {
 	global $single_url, $boundary;
 
-	$url = parse_url($url_full);
-	if (!$url)
-		return;
-
-	if (empty($url['port']))
-		$url['port'] = 80;
-
-	if (!empty($url['user']) and !empty($url['pass']))
-		$auth = base64_encode($url['user'] . ":" . $url['pass']);
-	else
-		$auth = false;
-
-	$fh = fsockopen($url['host'], $url['port']);
+	$fh = mkreq($url);
 	if (!$fh)
 		return;
 
-	if (empty($url['query']))
-		$path = $url['path'];
-	else
-		$path = $url['path'] . "?" . $url['query'];
-
-	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
-	fwrite($fh, "Host: ". $url['host'] ."\r\n");
-	if ($auth)
-		fwrite($fh, "Authorization: Basic $auth\r\n");
-	fwrite($fh, "\r\n");
-
-        $myl = 0;
-	$myj = FALSE;
-
 	// For multipart/mixed, skip the initial header
-	if ($single_url == FALSE) {
-		while (($msg = fgets($fh)) != FALSE) {
-			if ($msg == "\r\n" || $msg == "\n")
-				break;
-		}
+	if (!$single_url) {
+		hdr_parse($fh);
+
 		// Skip boundary
 		fgets($fh);
 	}
 
-        // Read the header to get the Content-Length
-        while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n" || $msg == "\n")
-			break;
-		sscanf($msg, "Content-Length: %d", $myl);
-        }
+	// Read the part header to get the Content-Length
+	$hdr = hdr_parse($fh);
+	$len = 0;
+	if (!empty($hdr['content-length']))
+		sscanf($hdr['content-length'], '%d', $len);
 
-	$myread = max($myl, 512);
-	$myj = "";
-	$boundarystr = "\n--".$boundary;
+	$chunksz = max($len, 512);
+	$payload = '';
+	$boundarystr = "\n--" . $boundary;
 	do {
-		$tmp = fread($fh, $myread);
-		if ($tmp == FALSE || strlen($tmp) > 1024*1024*2)
+		$tmp = fread($fh, $chunksz);
+		if ($tmp === FALSE)
 			break;
-		$myj .= $tmp;
 
-		if ($myl) {
-			$myread -= strlen($tmp);
+		$payload .= $tmp;
+
+		if ($len) {
+			$len -= strlen($tmp);
 		} else {
-			$bpos = strpos($myj, $boundarystr, strlen($myj)-strlen($tmp)-strlen($boundarystr)-1);
+			$bpos = strpos($payload, $boundarystr, strlen($payload) - strlen($tmp) - strlen($boundarystr) - 1);
 			if ($bpos !== FALSE) {
 				if ($bpos > 0 && $tmp[$bpos-1] == '\r')
 					$bpos--;
-				$myj = substr($myj, 0, $bpos);
+				$payload = substr($payload, 0, $bpos);
 				break;
 			}
 		}
-	} while ($myread > 0);
+	} while ($len > 0);
 
         fclose($fh);
 
-	return $myj;
+	return $payload;
 }
 
 // Checks for in-progress event
