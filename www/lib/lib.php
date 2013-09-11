@@ -178,14 +178,26 @@ class user{
 				return false;
 			}
 		}
-		if ($this->updateActiveUsers()) { $_SESSION['message'] = USER_KICKED; session_destroy(); return false; } #update records, check if user was kicked
-		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual']) return false; #require login when opening admin pages from client
-		if ($type == 'devices' && !$this->info['access_setup'] && $_GET['XML']) { return true; }
-		if ($type == 'backup' && !$this->info['access_backup'] && !$this->info['access_setup']) { return false; }
-		if ($this->info['access_setup']) { return true; } #admin user all priveleges granted
-			else {
-				return ($type != 'admin' || ($type == 'backup' && $this->info['access_backup'] )) ? true : false; #page does not require admin priv and if its backup user must have permissions
-			}
+		// update records, check if user was kicked
+		if ($this->updateActiveUsers()) {
+			$_SESSION['message'] = USER_KICKED;
+			session_destroy();
+			return false;
+		}
+		// require login when opening admin pages from client
+		if ($_SESSION['from_client'] && !$_SESSION['from_client_manual'])
+			return false;
+		if ($type == 'devices' && !$this->info['access_setup'] && $_GET['XML'])
+			return true;
+		if ($type == 'backup' && !$this->info['access_backup'] && !$this->info['access_setup'])
+			return false;
+		// admin user all priveleges granted
+		if ($this->info['access_setup'])
+			return true;
+		else {
+			// page does not require admin priv
+			return ($type != 'admin');
+		}
 	}
 	public function checkAccessPermissions($type){
 		if (!$this->userStatus($type)){
