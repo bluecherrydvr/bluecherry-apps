@@ -143,14 +143,18 @@ static int get_creds(BC_DB_RES dbres, char *creds, size_t size)
  * @returns 0 on success, -1 on error.
  */
 static int parse_dev_path(char *dst, size_t sz, const char *val,
-			  const char *creds, const char *defport,
-			  const char *proto)
+			  const char *creds, const char *defhost,
+			  const char *defport, const char *proto)
 {
 	char *spec = strdupa(val);
 	const char *port, *path;
 	unsigned int r;
 
 	split_pp(spec, &port, &path);
+
+	/* XXX: Workaround. Sometimes hostname isn't present.
+	 * Should be removed at some point. */
+	const char *host = *spec ? spec : defhost;
 
 	if (!path) {
 		/* Broken spec. */
@@ -161,7 +165,7 @@ static int parse_dev_path(char *dst, size_t sz, const char *val,
 		port = defport;
 
 	/* Create the URL */
-	r = snprintf(dst, sz, "%s://%s%s:%s%s", proto, creds, spec, port, path);
+	r = snprintf(dst, sz, "%s://%s%s:%s%s", proto, creds, host, port, path);
 
 	if (r >= sz)
 		return -1;
@@ -182,18 +186,25 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	if (val && *val) {
 		char url[1024];
 
-		int r = parse_dev_path(url, sizeof(url), val, creds, "554",
-				       "rtsp");
+		int r = parse_dev_path(url, sizeof(url), val, creds,
+				       "XXX", "554", "rtsp");
 		if (r)
 			return -1;
 
 		bc->input = new rtp_device(url);
 	}
 
+	char *defhost = strdupa(val);
+	{
+		char *p = strchr(defhost, '|');
+		if (p)
+			*p = 0;
+	}
+
 	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	if (val && *val) {
 		int r = parse_dev_path(bc->mjpeg_url, sizeof(bc->mjpeg_url),
-				       val, creds, "80", "http");
+				       val, creds, defhost, "80", "http");
 
 		if (r)
 			return -1;
