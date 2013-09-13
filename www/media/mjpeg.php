@@ -1,7 +1,6 @@
 <?php DEFINE('INDVR', true);
 
-#lib
-include("../lib/lib.php");  #common functions
+include("../lib/lib.php");
 
 function mkreq($url)
 {
@@ -63,7 +62,7 @@ function image_err($msg)
 	exit;
 }
 
-#auth check
+// auth check
 $current_user = new user('id', $_SESSION['id']);
 $current_user->checkAccessPermissions('basic');
 
@@ -196,20 +195,20 @@ session_write_close();
 
 $out_multipart = isset($_GET['multipart']);
 
-# Check to see if this device has a URL to get the MJPEG
+// Check to see if this device has a URL to get the MJPEG
 $url = bc_get_mjpeg_url($bch);
 if (!$url) {
-	# Nope, so try to start up the local device
+	// Nope, so try to start up the local device
 	if (bc_set_mjpeg($bch) == false)
 		image_err("Failed to set MJPEG");
 
 	if (bc_handle_start($bch) == false)
 		image_err("Faled to start");
 } else {
-	# Get the boundary as well
+	// Get the boundary as well
 	get_boundary($url);
-	# Some devices (Axis) add an extra -- on the boundary that is not in the output.
-	# Strip it. Bug #992
+	/* Some devices (Axis) add an extra -- on the boundary that is not in
+	 * the output. Strip it. Bug #992 */
 	if (substr($boundary, 0, 2) == "--")
 		$boundary = substr($boundary, 2);
 }
@@ -298,9 +297,9 @@ function print_image($url) {
 	flush();
 
 	if ($tm - $start_time > 3600*2) {
-		/* Bug #914: Work around bad httpd memory allocation strategies by
-		 * dropping the connection every two hours to force a new request.
-		 * Won't be relevant after RTP anyway. */
+		/* Bug #914: Work around bad httpd memory allocation strategies
+		 * by dropping the connection every two hours to force a new
+		 * request. Won't be relevant after RTP anyway. */
 		$out_multipart = false;
 	}
 }
