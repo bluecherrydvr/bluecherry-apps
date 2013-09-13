@@ -99,7 +99,7 @@ function hdr_parse($fh)
 
 function get_boundary($url)
 {
-	global $boundary, $single_url;
+	global $boundary, $src_single;
 
 	$fh = mkreq($url);
 	if (!$fh)
@@ -108,9 +108,9 @@ function get_boundary($url)
 	$hdr = hdr_parse($fh);
 
 	$matches = array();
-	$single_url = !preg_match('/^multipart\/.*;\s*boundary=(\S+)/i',
+	$src_single = !preg_match('/^multipart\/.*;\s*boundary=(\S+)/i',
 				 $hdr['content-type'], $matches);
-	if (!$single_url)
+	if (!$src_single)
 		$boundary = $matches[1];
 
 	fclose($fh);
@@ -118,14 +118,14 @@ function get_boundary($url)
 
 function get_one_jpeg($url)
 {
-	global $single_url, $boundary;
+	global $src_single, $boundary;
 
 	$fh = mkreq($url);
 	if (!$fh)
 		return;
 
 	// For multipart/mixed, skip the initial header
-	if (!$single_url) {
+	if (!$src_single) {
 		hdr_parse($fh);
 
 		// Skip boundary
@@ -185,7 +185,7 @@ $bch = bc_handle_get_byid($id);
 if ($bch == false)
 	image_err("No such device");
 
-$single_url = FALSE;
+$src_single = FALSE;
 $boundary = "BCMJPEGBOUNDARY";
 
 header("Cache-Control: no-cache");
@@ -319,7 +319,7 @@ if ($url) {
 	bc_handle_free($bch);
 
 	// For this case, we pass off to curl
-	if ($out_multipart and $single_url == FALSE and !$intv_low and $intv == 1) {
+	if ($out_multipart and $src_single == FALSE and !$intv_low and $intv == 1) {
 		/* -m is for the bug #914 workaround; see print_image */
 		passthru("curl -s -m 7200 " . escapeshellarg($url));
 		exit;
