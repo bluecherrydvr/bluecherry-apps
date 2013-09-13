@@ -23,7 +23,8 @@ Class liveViewDevices{
 		$cookies = explode(';', $_SESSION['load_layout']);
 		foreach ($cookies as $key => $cookie){
 			$cookie = explode(':', $cookie);
-			setcookie($cookie[0], $cookie[1]);
+			if (!empty($cookie[1]))
+				setcookie($cookie[0], $cookie[1]);
 		}
 		unset($_SESSION['load_layout']);
 	}
