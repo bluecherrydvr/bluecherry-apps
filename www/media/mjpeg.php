@@ -240,8 +240,8 @@ if (isset($_GET['activity']))
 
 $start_time = time();
 
-function print_image() {
-	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
+function print_image($url) {
+	global $multi, $bch, $boundary, $intv_low, $intv_time;
 	global $intv_cnt, $intv, $id, $is_active, $active_time;
 	global $start_time;
 
@@ -308,7 +308,7 @@ function print_image() {
 	}
 }
 
-# For multi, let's do some weird stuff
+// For multi, let's do some weird stuff
 if ($multi) {
 	set_time_limit(0);
 	@apache_setenv('no-gzip', 1);
@@ -317,7 +317,7 @@ if ($multi) {
 		ob_end_flush();
 }
 
-# Cleanup some unused resources
+// Cleanup some unused resources
 if ($url) {
 	bc_handle_free($bch);
 
@@ -332,7 +332,7 @@ if ($url) {
 }
 
 do {
-	print_image();
+	print_image($url);
 } while($multi);
 
 bc_db_close();
