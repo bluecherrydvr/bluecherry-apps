@@ -194,10 +194,7 @@ header("Pragma: no-cache");
 
 session_write_close();
 
-if (isset($_GET['multipart']))
-	$multi = true;
-else
-	$multi = false;
+$out_multipart = isset($_GET['multipart']);
 
 # Check to see if this device has a URL to get the MJPEG
 $url = bc_get_mjpeg_url($bch);
@@ -217,7 +214,7 @@ if (!$url) {
 		$boundary = substr($boundary, 2);
 }
 
-if ($multi)
+if ($out_multipart)
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
 
 $intv_low = false;
@@ -241,7 +238,7 @@ if (isset($_GET['activity']))
 $start_time = time();
 
 function print_image($url) {
-	global $multi, $bch, $boundary, $intv_low, $intv_time;
+	global $out_multipart, $bch, $boundary, $intv_low, $intv_time;
 	global $intv_cnt, $intv, $id, $is_active, $active_time;
 	global $start_time;
 
@@ -279,13 +276,13 @@ function print_image($url) {
 		}
 
 		$header = "Bluecherry-Active: ".($is_active ? "true" : "false");
-		if ($multi)
+		if ($out_multipart)
 			print $header."\r\n";
 		else
 			header($header);
 	}
 
-	if ($multi) {
+	if ($out_multipart) {
 		print "Content-type: image/jpeg\r\n";
 		print "Content-size: " . strlen($myj) . "\r\n\r\n";
 	} else {
@@ -295,7 +292,7 @@ function print_image($url) {
 	print $myj;
 	unset($myj);
 
-	if ($multi)
+	if ($out_multipart)
 		print "\r\n--$boundary\r\n";
 
 	flush();
@@ -304,12 +301,12 @@ function print_image($url) {
 		/* Bug #914: Work around bad httpd memory allocation strategies by
 		 * dropping the connection every two hours to force a new request.
 		 * Won't be relevant after RTP anyway. */
-		$multi = false;
+		$out_multipart = false;
 	}
 }
 
 // For multi, let's do some weird stuff
-if ($multi) {
+if ($out_multipart) {
 	set_time_limit(0);
 	@apache_setenv('no-gzip', 1);
 	@ini_set('zlib.output_compression', 0);
@@ -322,7 +319,7 @@ if ($url) {
 	bc_handle_free($bch);
 
 	// For this case, we pass off to curl
-	if ($multi and $single_url == FALSE and !$intv_low and $intv == 1) {
+	if ($out_multipart and $single_url == FALSE and !$intv_low and $intv == 1) {
 		/* -m is for the bug #914 workaround; see print_image */
 		passthru("curl -s -m 7200 " . escapeshellarg($url));
 		exit;
@@ -333,7 +330,7 @@ if ($url) {
 
 do {
 	print_image($url);
-} while($multi);
+} while($out_multipart);
 
 bc_db_close();
 if (!$url)
