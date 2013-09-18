@@ -29,10 +29,13 @@ function mkreq($url)
 
 	fwrite($fh, $req);
 
-	// FIXME: check response
-	fgets($fh);
+	// Check for successful request
+	$resp = explode(' ', fgets($fh));
+	if ($resp[1] == '200')
+		return $fh;
 
-	return $fh;
+	fclose($fh);
+	return null;
 }
 
 function image_err($msg)
