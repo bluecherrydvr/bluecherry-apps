@@ -696,7 +696,7 @@ static int check_trial_expired()
 
 	fail:
 	bc_status_component_error("The %d day trial of Bluecherry has expired. You can "
-		"buy a license from http://www.bluecherrydvr.com/", TRIAL_DAYS);
+		"buy a license from http://store.bluecherry.net/licenses", TRIAL_DAYS);
 	return -1;
 }
 
