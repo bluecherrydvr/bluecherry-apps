@@ -44,139 +44,6 @@ if ($this_camera[0]['disabled'] == true){
 	image_err(str_replace('%ID%', $_GET['id'], MJPEG_DEVICE_NOT_FOUND));
 }
 
-function get_boundary($url_full)
-{
-	global $boundary, $single_url;
-
-	$url = parse_url($url_full);
-	if (!$url)
-		return;
-
-	if (empty($url['port']))
-		$url['port'] = 80;
-
-	if (!empty($url['user']) and !empty($url['pass']))
-		$auth = base64_encode($url['user'] . ":" . $url['pass']);
-	else
-		$auth = false;
-
-	$fh = fsockopen($url['host'], $url['port']);
-	if (!$fh)
-		return;
-
-	if (empty($url['query']))
-		$path = $url['path'];
-	else
-		$path = $url['path'] . "?" . $url['query'];
-
-
-	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
-	fwrite($fh, "Host: ". $url['host'] ."\r\n");
-	if ($auth)
-		fwrite($fh, "Authorization: Basic $auth\r\n");
-	fwrite($fh, "\r\n");
-
-	$myb = "";
-	// Read the header to get the Content-Type
-	while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n" || $msg == "\n")
-			break;
-		$matches = array();
-		if (preg_match('/^Content-Type:\s*multipart\/x-mixed-replace\s*;.*boundary=(\S+)/i', $msg, $matches)) {
-			$boundary = $matches[1];
-			fclose($fh);
-			return;
-		} else if (stristr($msg, 'Content-Type:'))
-			break;
-	}
-	fclose($fh);
-
-	if ($msg == FALSE)
-		return;
-
-	/* The URL only supplies us one JPEG per request, so we make it a feed */
-	if (stristr($msg, "Content-Type: image/jpeg"))
-		$single_url = TRUE;
-}
-
-function get_one_jpeg($url_full)
-{
-	global $single_url, $boundary;
-
-	$url = parse_url($url_full);
-	if (!$url)
-		return;
-
-	if (empty($url['port']))
-		$url['port'] = 80;
-
-	if (!empty($url['user']) and !empty($url['pass']))
-		$auth = base64_encode($url['user'] . ":" . $url['pass']);
-	else
-		$auth = false;
-
-	$fh = fsockopen($url['host'], $url['port']);
-	if (!$fh)
-		return;
-
-	if (empty($url['query']))
-		$path = $url['path'];
-	else
-		$path = $url['path'] . "?" . $url['query'];
-
-	fwrite($fh, "GET ". $path ." HTTP/1.0\r\n");
-	fwrite($fh, "Host: ". $url['host'] ."\r\n");
-	if ($auth)
-		fwrite($fh, "Authorization: Basic $auth\r\n");
-	fwrite($fh, "\r\n");
-
-        $myl = 0;
-	$myj = FALSE;
-
-	// For multipart/mixed, skip the initial header
-	if ($single_url == FALSE) {
-		while (($msg = fgets($fh)) != FALSE) {
-			if ($msg == "\r\n" || $msg == "\n")
-				break;
-		}
-		// Skip boundary
-		fgets($fh);
-	}
-
-        // Read the header to get the Content-Length
-        while (($msg = fgets($fh)) != FALSE) {
-		if ($msg == "\r\n" || $msg == "\n")
-			break;
-		sscanf($msg, "Content-Length: %d", $myl);
-        }
-
-	$myread = max($myl, 512);
-	$myj = "";
-	$boundarystr = "\n--".$boundary;
-	do {
-		$tmp = fread($fh, $myread);
-		if ($tmp == FALSE || strlen($tmp) > 1024*1024*2)
-			break;
-		$myj .= $tmp;
-
-		if ($myl) {
-			$myread -= strlen($tmp);
-		} else {
-			$bpos = strpos($myj, $boundarystr, strlen($myj)-strlen($tmp)-strlen($boundarystr)-1);
-			if ($bpos !== FALSE) {
-				if ($bpos > 0 && $tmp[$bpos-1] == '\r')
-					$bpos--;
-				$myj = substr($myj, 0, $bpos);
-				break;
-			}
-		}
-	} while ($myread > 0);
-
-        fclose($fh);
-
-	return $myj;
-}
-
 // Checks for in-progress event
 function check_active($id)
 {
@@ -192,8 +59,8 @@ if (!isset($_GET['id']))
 	image_err("No device ID supplied");
 
 $id = intval($_GET['id']);
-$bch = bc_handle_get_byid($id);
-if ($bch == false)
+$coder = coder_handle_get_byid($id);
+if ($coder == false)
 	image_err("No such device");
 
 $single_url = FALSE;
@@ -210,23 +77,9 @@ if (isset($_GET['multipart']))
 else
 	$multi = false;
 
-# Check to see if this device has a URL to get the MJPEG
-$url = bc_get_mjpeg_url($bch);
-if (!$url) {
-	# Nope, so try to start up the local device
-	if (bc_set_mjpeg($bch) == false)
-		image_err("Failed to set MJPEG");
-
-	if (bc_handle_start($bch) == false)
-		image_err("Faled to start");
-} else {
-	# Get the boundary as well
-	get_boundary($url);
-	# Some devices (Axis) add an extra -- on the boundary that is not in the output.
-	# Strip it. Bug #992
-	if (substr($boundary, 0, 2) == "--")
-		$boundary = substr($boundary, 2);
-}
+# Nope, so try to start up the local device
+if (coder_handle_start($coder) == false)
+	image_err("Faled to start");
 
 if ($multi)
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
@@ -252,22 +105,14 @@ if (isset($_GET['activity']))
 $start_time = time();
 
 function print_image() {
-	global $multi, $bch, $boundary, $url, $intv_low, $intv_time;
+	global $multi, $coder, $boundary, $intv_low, $intv_time;
 	global $intv_cnt, $intv, $id, $is_active, $active_time;
 	global $start_time;
 
 	$myl = 0;
 	$myj = FALSE;
 
-	if ($url) {
-		$myj = get_one_jpeg($url);
-	} else {
-		if (bc_buf_get($bch) == false) {
-			sleep(1);
-			return;
-		}
-		$myj = bc_buf_data($bch);
-	}
+	$myj = coder_buf_data($coder);
 
 	$tm = time();
 
@@ -328,26 +173,13 @@ if ($multi) {
 		ob_end_flush();
 }
 
-# Cleanup some unused resources
-if ($url) {
-	bc_handle_free($bch);
-
-	// For this case, we pass off to curl
-	if ($multi and $single_url == FALSE and !$intv_low and $intv == 1) {
-		/* -m is for the bug #914 workaround; see print_image */
-		passthru("curl -s -m 7200 " . escapeshellarg($url));
-		exit;
-	}
-
-	// Other url cases, we handle in the loop
-}
-
 do {
 	print_image();
+	usleep(20000);
 } while($multi);
 
 bc_db_close();
-if (!$url)
-	bc_handle_free($bch);
+
+coder_handle_free($coder);
 
 ?>

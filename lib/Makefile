@@ -1,6 +1,6 @@
 include ../mk.conf
 
-LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd
+LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lz -lbsd -lavcodec -lavformat -lavutil -lswscale
 LDFLAGS		+= -lavutil -lavformat -lavcodec
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
@@ -9,7 +9,7 @@ SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
 		  bc-key.o bc-media.o rtp_device.o bc-ptz.o \
 		  input_device.o v4l2_device.o stream_elements.o \
-		  logging.o
+		  logging.o transcoder.o
 
 all: $(SOLIBVER) FORCE
 

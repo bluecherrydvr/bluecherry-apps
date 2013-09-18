@@ -254,4 +254,11 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
 int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
 	       int pan_speed, int tilt_speed, int pset_id);
 
+/* class for for rtsp->jpeg transcoding */
+class transcoder;
+/* create transcoder for rtsp->jpeg */
+class transcoder *coder_handle_get(int device_id);
+/* destory transcoder */
+void coder_handle_free(class transcoder *coder);
+
 #endif /* __LIBBLUECHERRY_H */

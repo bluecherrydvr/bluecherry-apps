@@ -22,6 +22,7 @@
 #include "rtp_device.h"
 #include "v4l2_device.h"
 #include "stream_elements.h"
+#include "transcoder.h"
 
 #define reset_vbuf(__vb) do {				\
 	memset((__vb), 0, sizeof(*(__vb)));		\
@@ -309,5 +310,17 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->saturation = bc_db_get_val_int(dbres, "saturation");
 
 	return 0;
+}
+
+class transcoder *coder_handle_get(int device_id)
+{
+	class transcoder *coder = new transcoder(device_id);
+	return coder;
+}
+
+void coder_handle_free(class transcoder *coder)
+{
+	coder->stop();
+	free(coder);
 }
 

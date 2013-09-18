@@ -13,17 +13,21 @@
 #define LOGGING_H // XXX
 #include "libbluecherry.h"
 #include "v4l2_device.h"
+#include "transcoder.h"
+
 extern "C" {
 #include "php.h"
 #include "ext/standard/php_standard.h"
 }
 
 static char bch_name[] = "BC Handle";
+static char coder_name[] = "CODER Hanlde";
 
 #define BCDB_NAME		"BC-DB Handle"
 #define BC_CONFIG_DEFAULT	"/etc/bluecherry.conf"
 
 static int bch_id;
+static int coder_id;
 
 static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 {
@@ -35,10 +39,23 @@ static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 	return;
 }
 
+static void coder_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
+{
+	class transcoder *coder = (class transcoder *)rsrc->ptr;
+
+	if (coder)
+		coder_handle_free(coder);
+
+	return;
+}
+
 PHP_MINIT_FUNCTION(bluecherry)
 {
 	bch_id = zend_register_list_destructors_ex(bch_destructor, NULL,
 						   bch_name, module_number);
+
+	coder_id = zend_register_list_destructors_ex(coder_destructor, NULL,
+						   coder_name, module_number);
 
 	REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
 	REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
@@ -76,6 +93,20 @@ PHP_MINFO_FUNCTION(bluecherry)
 	}								\
 } while(0)
 
+#define CODER_GET_RES(__func) do {					\
+	zval *z_ctx;							\
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",	\
+				  &z_ctx) == FAILURE)			\
+		RETURN_FALSE;						\
+	ZEND_FETCH_RESOURCE(coder, class transcoder *, &z_ctx, -1,	\
+			    coder_name, coder_id);			\
+	if (coder == NULL) {						\
+		php_error_docref(NULL TSRMLS_CC, E_WARNING,		\
+			__func ": invalid context");			\
+		RETURN_FALSE;						\
+	}								\
+} while(0)
+
 PHP_FUNCTION(bc_db_open)
 {
 	if (bc_db_open(BC_CONFIG_DEFAULT))
@@ -92,6 +123,7 @@ PHP_FUNCTION(bc_db_close)
 
 PHP_FUNCTION(bc_db_escape_string)
 {
+	zval *z_ctx;
 	char *str;
 	int str_len;
 	char *tmp_str, *tmp_str_cpy;
@@ -117,6 +149,7 @@ PHP_FUNCTION(bc_db_escape_string)
 
 PHP_FUNCTION(bc_db_query)
 {
+	zval *z_ctx;
 	char *sql;
 	int sql_len;
 
@@ -138,6 +171,7 @@ PHP_FUNCTION(bc_db_last_insert_rowid)
 
 PHP_FUNCTION(bc_db_get_table)
 {
+	zval *z_ctx;
 	BC_DB_RES dbres;
 	char *sql;
 	int sql_len;
@@ -412,6 +446,8 @@ PHP_FUNCTION(bc_buf_size)
 PHP_FUNCTION(bc_buf_data)
 {
 	struct bc_handle *bch;
+        unsigned char *data;
+	int size;
 
 	BCH_GET_RES("bc_buf_data");
 
@@ -502,6 +538,80 @@ PHP_FUNCTION(bc_license_devices_allowed)
 	RETURN_LONG(num);
 }
 
+PHP_FUNCTION(coder_handle_get_byid)
+{
+	class transcoder *coder;
+	long id;
+	BC_DB_RES dbres;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &id) == FAILURE)
+		RETURN_FALSE;
+
+	if (id < 0)
+		RETURN_FALSE;
+
+	if (bc_db_open(BC_CONFIG_DEFAULT))
+		RETURN_FALSE;
+
+	dbres = bc_db_get_table("SELECT * FROM Devices LEFT OUTER JOIN "
+				"AvailableSources USING (device) WHERE "
+				"Devices.id=%ld AND disabled=0", id);
+
+	if (dbres == NULL)
+		RETURN_FALSE;
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		RETURN_FALSE;
+	}
+
+	coder = coder_handle_get((int)id);
+
+	bc_db_free_table(dbres);
+
+	if (coder == NULL)
+		RETURN_FALSE;
+
+	ZEND_REGISTER_RESOURCE(return_value, coder, coder_id);
+}
+
+PHP_FUNCTION(coder_handle_start)
+{
+	class transcoder *coder;
+
+	CODER_GET_RES("coder_handle_start");
+
+	if (!coder || coder->start() < 0)
+		RETURN_FALSE;
+
+	RETURN_TRUE;
+}
+
+PHP_FUNCTION(coder_buf_data)
+{
+	class transcoder *coder;
+
+	CODER_GET_RES("coder_buf_data");
+
+    unsigned char data[300 * 1024];
+	int size = 0;
+
+	coder->get_image(data, size);
+
+	RETURN_STRINGL(reinterpret_cast<const char*>(data), size, 1);
+}
+
+PHP_FUNCTION(coder_handle_free)
+{
+	class transcoder *coder;
+
+	CODER_GET_RES("coder_handle_free");
+
+	zend_list_delete((long)coder);
+
+	RETURN_TRUE;
+}
+
 static zend_function_entry bluecherry_functions[] = {
 	/* Bluecherry DB Handlers */
 	PHP_FE(bc_db_open, NULL)
@@ -527,6 +637,11 @@ static zend_function_entry bluecherry_functions[] = {
 	PHP_FE(bc_license_check, NULL)
 	PHP_FE(bc_license_check_auth, NULL)
 	PHP_FE(bc_license_devices_allowed, NULL)
+	/* transcoding */
+	PHP_FE(coder_handle_get_byid, NULL)
+	PHP_FE(coder_handle_start, NULL)
+	PHP_FE(coder_buf_data, NULL)
+	PHP_FE(coder_handle_free, NULL)
 	{NULL, NULL, NULL}
 };
 
