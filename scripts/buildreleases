@@ -30,7 +30,10 @@ VERSION := $(shell sed 's/.*(1://;s/).*//;1q' debian/changelog)
 endif
 
 release: FORCE
-	cd $O; md5sum $(foreach d,$(DIST), $d/* debug/$d/*) >> $O/md5sum.txt
+	cd $O; md5sum $(foreach d,$(DIST),$(foreach a,$(ARCH), \
+		$d/bluecherry_$(VERSION)_$a.deb \
+		debug/$d/bluecherry-dbg_$(VERSION)_$a.deb \
+	)) >> $O/md5sum.txt
 
 upgrade:
 
