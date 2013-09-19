@@ -323,7 +323,7 @@ if ($url) {
 	// For this case, we pass off to curl
 	if ($out_multipart and $src_single == FALSE and !$intv_low and $intv == 1) {
 		/* -m is for the bug #914 workaround; see print_image */
-		passthru("curl -s -m 7200 " . escapeshellarg($url));
+		passthru("curl --anyauth -s -m 7200 " . escapeshellarg($url));
 		exit;
 	}
 
