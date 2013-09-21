@@ -2,7 +2,86 @@
 
 include("../lib/lib.php");
 
-function mkreq($url)
+class HttpAuth {
+	private $user, $pass;
+
+	private function basic()
+	{
+		return 'Basic '
+			. base64_encode($this->user . ':' . $this->pass);
+	}
+
+	private $nc = 0, $uri, $realm, $nonce, $opaque;
+	private function digest()
+	{
+		// XXX: check lowest PHP version > 5.3.0
+		$cnonce = base64_encode(openssl_random_pseudo_bytes(9));
+		$nc = sprintf("%08x", ++$this->nc);
+
+		$h_auth = md5(implode(':', array($this->user, $this->realm,
+						 $this->pass)));
+		$resp = md5(implode(':', array($h_auth, $this->nonce, $nc,
+					       $cnonce, 'auth',
+					       md5('GET:' . $this->uri))));
+
+		$comp = array(
+			'username' => $this->user,
+			'realm'    => $this->realm,
+			'nonce'    => $this->nonce,
+			'uri'      => $this->uri,
+			'cnonce'   => $cnonce,
+			'response' => $resp,
+			'opaque'   => $this->opaque,
+			);
+
+		$out = 'Digest';
+		foreach ($comp as $k => $v)
+			$out .= " $k=\"$v\",";
+		
+		return $out . " qop=\"auth\", nc=$nc";
+	}
+
+	public function __construct($uri, $user, $pass)
+	{
+		$this->uri = $uri;
+		$this->user = $user;
+		$this->pass = $pass;
+	}
+
+	public function get()
+	{
+		if (empty($this->user) or empty($this->pass))
+			return '';
+
+		$ret = empty($this->realm) ? $this->basic() : $this->digest();
+		return "Authorization: $ret\r\n";
+	}
+
+	public function parse($s)
+	{
+		preg_match_all('/([a-z]+)=("[^"]*"|[^ ,]*)/', $s, $matches);
+		$parm = array();
+
+		for ($i = 0; $i < count($matches[1]); $i++) {
+			$v = $matches[2][$i];
+			if ($v[0] == '"')
+				$v = substr($v, 1, -1);
+			$parm[$matches[1][$i]] = $v;
+		}
+
+		$this->realm =  $parm['realm'];
+		$this->nonce = $parm['nonce'];
+		$this->opaque = isset($parm['opaque']) ? $parm['opaque'] : '';
+	}
+
+	public function digest_tried()
+	{
+		return isset($this->realm);
+	}
+}
+
+
+function mkreq($url, &$auth)
 {
 	$purl = parse_url($url);
 	if (!$purl)
@@ -14,27 +93,58 @@ function mkreq($url)
 	if (!empty($purl['query']))
 		$path .= "?" . $purl['query'];
 
-	$auth = (empty($purl['user']) or empty($purl['pass'])) ? "" :
-		"Authorization: Basic " .
-		base64_encode($purl['user'] . ":" . $purl['pass']) .
-		"\r\n";
+	if (empty($auth))
+		$auth = new HttpAuth($path, $purl['user'], $purl['pass']);
 
-	$req = "GET " . $path . " HTTP/1.0\r\n"
-		. "Host: " . $purl['host'] . "\r\n"
-		. $auth . "\r\n";
+	$req = "GET $path HTTP/1.0\r\n"
+		. "Host: " . $purl['host'] . "\r\n";
 
-	$fh = fsockopen($purl['host'], $port);
-	if (!$fh)
-		return null;
+        for (;;) {
+		$fh = fsockopen($purl['host'], $port);
+		if (!$fh)
+			return null;
 
-	fwrite($fh, $req);
+		$tosend = $req . $auth->get() . "\r\n";
+		while (!empty($tosend)) {
+			$written = fwrite($fh, $tosend);
+			if ($written === FALSE) {
+				error_log($url.": Write failed");
+				break 2; // Abort
+			}
 
-	// Check for successful request
-	$resp = explode(' ', fgets($fh));
-	if ($resp[1] == '200')
-		return $fh;
+			$tosend = substr($tosend, $written);
+		}
 
-	fclose($fh);
+		// Check status code
+		$status_str = stream_get_line($fh, 900, "\r\n");
+		error_log("DEBUG: auth status => ".$status_str);
+		$resp = explode(' ', $status_str, 3);
+		switch ($resp[1]) {
+		case '200': // Success
+			return $fh;
+
+		case '401': // Oops, lets try Digest
+			// If we already tried Digest, abort
+			if ($auth->digest_tried())
+				break 2;
+
+			$hdr = hdr_parse($fh);
+
+			// Abort if Digest is not offered
+			if (strpos($hdr['www-authenticate'], 'Digest') === FALSE)
+				break 2;
+
+			$auth->parse($hdr['www-authenticate']);
+			break;
+
+		default:    // Abort
+			break 2;
+		}
+		fclose($fh);
+	}
+
+	if (is_resource($fh))
+		fclose($fh);
 	return null;
 }
 
@@ -83,12 +193,13 @@ function hdr_parse($fh)
 {
 	$hdr = array();
 
-	while (($tmp = fgets($fh)) !== FALSE) {
-		if ($tmp[0] == '\r' or $tmp[0] == '\n')
+	for (;;) {
+		$tmp = stream_get_line($fh, 900, "\r\n");
+		if (empty($tmp) or $tmp[0] == '\r' or $tmp[0] == '\n')
 			break;
 
 		if ($tmp[0] != ' ') {
-			$h = explode(':', $tmp);
+			$h = explode(':', $tmp, 2);
 			$k = strtolower($h[0]);
 			$hdr[$k] = ltrim($h[1]);
 		} else {
@@ -99,11 +210,11 @@ function hdr_parse($fh)
 	return $hdr;
 }
 
-function get_boundary($url)
+function get_boundary($url, &$auth)
 {
 	global $boundary, $src_single;
 
-	$fh = mkreq($url);
+	$fh = mkreq($url, $auth);
 	if (!$fh)
 		return;
 
@@ -118,11 +229,11 @@ function get_boundary($url)
 	fclose($fh);
 }
 
-function get_one_jpeg($url)
+function get_one_jpeg($url, &$auth)
 {
 	global $src_single, $boundary;
 
-	$fh = mkreq($url);
+	$fh = mkreq($url, $auth);
 	if (!$fh)
 		return;
 
@@ -199,6 +310,7 @@ session_write_close();
 $out_multipart = isset($_GET['multipart']);
 
 // Check to see if this device has a URL to get the MJPEG
+$auth = null;
 $url = bc_get_mjpeg_url($bch);
 if (!$url) {
 	// Nope, so try to start up the local device
@@ -209,7 +321,7 @@ if (!$url) {
 		image_err("Faled to start");
 } else {
 	// Get the boundary as well
-	get_boundary($url);
+	get_boundary($url, $auth);
 	/* Some devices (Axis) add an extra -- on the boundary that is not in
 	 * the output. Strip it. Bug #992 */
 	if (substr($boundary, 0, 2) == "--")
@@ -239,7 +351,7 @@ if (isset($_GET['activity']))
 
 $start_time = time();
 
-function print_image($url) {
+function print_image($url, &$auth) {
 	global $out_multipart, $bch, $boundary, $intv_low, $intv_time;
 	global $intv_cnt, $intv, $id, $is_active, $active_time;
 	global $start_time;
@@ -248,7 +360,7 @@ function print_image($url) {
 	$myj = FALSE;
 
 	if ($url) {
-		$myj = get_one_jpeg($url);
+		$myj = get_one_jpeg($url, $auth);
 	} else {
 		if (bc_buf_get($bch) == false) {
 			sleep(1);
@@ -331,7 +443,7 @@ if ($url) {
 }
 
 do {
-	print_image($url);
+	print_image($url, $auth);
 } while($out_multipart);
 
 bc_db_close();
