@@ -1,6 +1,4 @@
-include ../mk.conf
-
-CPPFLAGS	+= -iquote $(topdir)/server
+CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
@@ -8,14 +6,14 @@ TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
 
 all: $(TARGETS)
 
-getaudio: %:%.o $(topdir)/server/g723-dec.o
+getaudio: %:%.o $(TOPDIR)/server/g723-dec.o
 	$(LD) -o $@ $^ $(LDFLAGS) -lasound
 
 bc-license: %:%.o
 	$(CXX) -o $@ $^
 
-$(topdir)/server/g723-dec.o: %.o:%.c %.h
-	$(MAKE) -C $(@D) $(@F)
+$(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
+	$(BCMK) -C "$(@D)" $(@F)
 
 clean:
 	rm -f $(TARGETS) *.o

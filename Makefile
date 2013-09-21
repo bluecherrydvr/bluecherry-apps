@@ -1,15 +1,23 @@
-export topdir = $(CURDIR)
-include mk.conf
+TOPDIR := $(CURDIR)
+STAGE  := $(CURDIR)/stage
+BCMK   = $(MAKE) -f "$(TOPDIR)"/BCMK.conf -f BCMK
 
-#MAKEFLAGS += --warn-undefined-variables
+export TOPDIR STAGE BCMK
 
-SUBDIR = $(MAKE) $@ -C
+SUBDIRS = misc lib server utils php5
 
-all clean install: FORCE
-	$(SUBDIR) misc
-	$(SUBDIR) lib
-	$(SUBDIR) server
-	$(SUBDIR) utils
-	$(SUBDIR) php5 -f Makefile.local
 
-FORCE:
+# Goal blacklist, required in order to support debhelper
+goal-bl   = distclean realclean test check
+
+goals     := $(filter-out $(goal-bl),$(sort all $(notdir $(MAKECMDGOALS))))
+sub-goals := $(foreach g,$(goals),$(SUBDIRS:=/$g))
+
+$(goals): %:$(foreach d,$(SUBDIRS),$d/%) FORCE ;
+
+$(sub-goals): FORCE
+	@$(BCMK) -C "$(@D)" $(@F)
+
+$(SUBDIRS): %:%/all FORCE ;
+
+FORCE: ;

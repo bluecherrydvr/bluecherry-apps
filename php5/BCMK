@@ -1,5 +1,3 @@
-include ../mk.conf
-
 EXTDIR		:= $(shell php-config --extension-dir)
 MODULE		= bluecherry
 PHP_RPATH	= no
@@ -19,7 +17,7 @@ Makefile: configure
 	./configure --with-php-config=php-config CXX="$(CXX)" LDFLAGS="$(LDFLAGS)"
 
 modules/$(MODULE).so: Makefile $(LIB) FORCE
-	$(MAKE) -f Makefile "CXXFLAGS=$(CXXFLAGS)"
+	$(MAKE) CXXFLAGS="$(CXXFLAGS)"
 
 install: modules/$(MODULE).so $(MODULE).ini
 	$(INSTALL_DATA) -D modules/$(MODULE).so \
