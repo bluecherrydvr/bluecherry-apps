@@ -212,21 +212,32 @@ function hdr_parse($fh)
 
 function get_boundary($url, &$auth)
 {
-	global $boundary, $src_single;
+	global $src_single;
+
+	$boundary = "BCMJPEGBOUNDARY";
+
+	if (!$url)
+		return $boundary;
 
 	$fh = mkreq($url, $auth);
 	if (!$fh)
-		return;
+		return $boundary;
 
 	$hdr = hdr_parse($fh);
 
 	$matches = array();
 	$src_single = !preg_match('/^multipart\/.*;\s*boundary=(\S+)/i',
 				 $hdr['content-type'], $matches);
-	if (!$src_single)
+	if (!$src_single) {
 		$boundary = $matches[1];
+		/* Some devices (Axis) add an extra -- on the boundary that is
+		 * not in the output. Strip it. Bug #992 */
+		if (substr($boundary, 0, 2) == "--")
+			$boundary = substr($boundary, 2);
+	}
 
 	fclose($fh);
+	return $boundary;
 }
 
 function get_one_jpeg($url, &$auth)
@@ -299,7 +310,6 @@ if ($bch == false)
 	image_err("No such device");
 
 $src_single = FALSE;
-$boundary = "BCMJPEGBOUNDARY";
 
 header("Cache-Control: no-cache");
 header("Cache-Control: private");
@@ -319,14 +329,9 @@ if (!$url) {
 
 	if (bc_handle_start($bch) == false)
 		image_err("Faled to start");
-} else {
-	// Get the boundary as well
-	get_boundary($url, $auth);
-	/* Some devices (Axis) add an extra -- on the boundary that is not in
-	 * the output. Strip it. Bug #992 */
-	if (substr($boundary, 0, 2) == "--")
-		$boundary = substr($boundary, 2);
 }
+
+$boundary = get_boundary($url, $auth);
 
 if ($out_multipart)
         header("Content-type: multipart/x-mixed-replace; boundary=$boundary");
