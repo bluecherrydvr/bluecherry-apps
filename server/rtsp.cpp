@@ -53,8 +53,12 @@ int rtsp_server::setup(int port)
 	if (serverfd < 0)
 		return -1;
 
-	int yes = 1;
+	const int yes = 1, no = 0;
 	if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+		goto error;
+
+
+	if (setsockopt(serverfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) < 0)
 		goto error;
 
 	struct sockaddr_in6 addr;
