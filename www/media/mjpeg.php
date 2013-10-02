@@ -37,7 +37,7 @@ class HttpAuth {
 		$out = 'Digest';
 		foreach ($comp as $k => $v)
 			$out .= " $k=\"$v\",";
-		
+
 		return $out . " qop=\"auth\", nc=$nc";
 	}
 
@@ -117,7 +117,6 @@ function mkreq($url, &$auth)
 
 		// Check status code
 		$status_str = stream_get_line($fh, 900, "\r\n");
-		error_log("DEBUG: auth status => ".$status_str);
 		$resp = explode(' ', $status_str, 3);
 		switch ($resp[1]) {
 		case '200': // Success
