@@ -22,6 +22,17 @@
 class stream_packet;
 class stream_properties;
 
+// device status
+typedef enum {
+	BC_CAM_STATUS_OK = 0,
+	BC_CAM_STATUS_CONNECT_ERROR,    /* Can not connect to camera.
+					 * - IP Camera   : incorrect addr/port
+					 * - V4L2 Camera : device not found
+					 */
+	BC_CAM_STATUS_EAUTH, /* Authentication error */
+	BC_CAM_STATUS_EIO,     /* Stream error */
+} bc_cam_status_code_t;
+
 /* input_device provides an abstract interface implemented by device backends, such
  * as v4l2_device and rtp_device. Generally, each bc_handle has an input_device, which
  * while running will be repeatedly polled with read_packet(), which should block until
@@ -59,7 +70,17 @@ public:
 	 * stream_consumer. */
 	std::shared_ptr<const stream_properties> properties() const { return current_properties; }
 
+	/* set device id of camera */
+	void set_device_id(int id);
+
+	/* set camera's status */
+	void set_status(bc_cam_status_code_t status);
+
 protected:
+
+	int m_device_id;
+	int m_status_count;
+
 	bool _audio_enabled, _started;
 	std::string _error_message;
 	/* Incremental counter for packets emitted by this device, which should increment

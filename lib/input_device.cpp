@@ -1,7 +1,8 @@
 #include "libbluecherry.h"
 
 input_device::input_device()
-	: _audio_enabled(false), _started(false), next_packet_seq(0) 
+	: _audio_enabled(false), _started(false), next_packet_seq(0),
+	  m_status_count(-1);
 {
 }
 
@@ -203,3 +204,41 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	}
 }
 
+void input_device::set_device_id(int id)
+{
+	m_device_id = id;
+}
+
+void input_device::set_status(bc_cam_status_code_t status)
+{
+	BC_DB_RES dbres;
+	time_t curr_time = time(NULL);
+
+	if (m_status_count == -1)  {
+		/* get the existence of camera's status. */
+		dbres = bc_db_get_table("SELECT count(*) count"
+					" FROM DevicesStatus"
+					" WHERE device_id=%d", m_device_id);
+
+		if (!dbres || bc_db_fetch_row(dbres) != 0)
+			return;
+
+		m_status_count = bc_db_get_val_int(dbres, "count");
+
+		bc_db_free_table(dbres);
+	}
+
+	if (m_status_count == 0) {
+		/* Insert the new status code for the first time */
+		bc_db_query("INSERT INTO DevicesStatus"
+			    " (device_id, status_code, status_timestamp)"
+			    " VALUES (%d, %d, %lu)",
+			    m_device_id, status, curr_time);
+	} else {
+		/* Update the new status code */
+		bc_db_query("UPDATE DevicesStatus"
+			    " SET status_code = %d, status_timestamp = %lu"
+			    " WHERE device_id = %d",
+			    status, curr_time, m_device_id);
+	}
+}
