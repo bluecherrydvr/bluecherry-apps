@@ -78,7 +78,10 @@ int rtp_device::start()
 	char tmp[24];
 
 	if (ctx)
+	{
+		set_status(BC_CAM_STATUS_UNKOWN_ERROR);
 		return 0;
+	}
 
 	bc_log(Debug, "Opening RTSP session from URL: %s", url);
 
@@ -98,6 +101,14 @@ int rtp_device::start()
 		ctx = 0;
 		av_dict_free(&avopt);
 		av_dict_free(&opt_copy);
+
+		if (re == -5)
+			set_status(BC_CAM_STATUS_CONNECT_ERROR);
+		else if (re == -1094995529)
+			set_status(BC_CAM_STATUS_INVALID_AUTH_URL);
+		else
+			set_status(BC_CAM_STATUS_STREAM_ERROR); 
+
 		return -1;
 	}
 
@@ -123,6 +134,9 @@ int rtp_device::start()
 	if (re < 0) {
 		stop();
 		av_strerror(re, error_message, sizeof(error_message));
+
+		set_status(BC_CAM_STATUS_STREAM_ERROR); 
+
 		return -1;
 	}
 
@@ -162,6 +176,8 @@ int rtp_device::start()
 
 	update_properties();
 	_started = true;
+
+	set_status(BC_CAM_STATUS_NORMAL); 
 
 	return 0;
 }

@@ -131,6 +131,9 @@ error:
 		close(dev_fd);
 		dev_fd = -1;
 	}
+
+	/* if contructor was fail, then set the camera_status as BC_CAM_STATUS_CONNECT_ERROR */
+	set_status(BC_CAM_STATUS_CONNECT_ERROR); 
 }
 
 v4l2_device::~v4l2_device()
@@ -258,10 +261,14 @@ int v4l2_device::start()
 	}
 
 	if (v4l2_bufs_prepare())
+	{
+		set_status(BC_CAM_STATUS_STREAM_ERROR); 
 		return -1;
+	}
 
 	if (ioctl(dev_fd, VIDIOC_STREAMON, &type) < 0) {
 		set_error_message("STREAMON failed");
+		set_status(BC_CAM_STATUS_STREAM_ERROR); 
 		return -1;
 	}
 
@@ -274,6 +281,7 @@ int v4l2_device::start()
 
 		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0) {
 			set_error_message("QUERYBUF failed");
+			set_status(BC_CAM_STATUS_STREAM_ERROR); 
 			return -1;
 		}
 
@@ -282,6 +290,7 @@ int v4l2_device::start()
 
 		if (ioctl(dev_fd, VIDIOC_QBUF, &vb) < 0) {
 			set_error_message("QBUF failed");
+			set_status(BC_CAM_STATUS_STREAM_ERROR); 
 			return -1;
 		}
 	}
@@ -291,6 +300,10 @@ int v4l2_device::start()
 
 	_started = true;
 	update_properties();
+
+	/* if the "start" function was finished susseccfully, then set the camera's status as BC_CAM_STATUS_NORMAL */
+	set_status(BC_CAM_STATUS_NORMAL); 
+
 	return 0;
 }
 
