@@ -301,7 +301,6 @@ int v4l2_device::start()
 	_started = true;
 	update_properties();
 
-	/* if the "start" function was finished susseccfully, then set the camera's status as BC_CAM_STATUS_NORMAL */
 	set_status(BC_CAM_STATUS_NORMAL); 
 
 	return 0;

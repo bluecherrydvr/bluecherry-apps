@@ -79,6 +79,7 @@ public:
 protected:
 
 	int _device_id; 
+	int _status_count;
 
 	bool _audio_enabled, _started;
 	std::string _error_message;

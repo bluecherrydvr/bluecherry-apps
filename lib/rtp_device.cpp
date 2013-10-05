@@ -79,7 +79,7 @@ int rtp_device::start()
 
 	if (ctx)
 	{
-		set_status(BC_CAM_STATUS_UNKOWN_ERROR);
+		set_status(BC_CAM_STATUS_NORMAL);
 		return 0;
 	}
 

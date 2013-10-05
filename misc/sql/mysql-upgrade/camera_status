@@ -4,4 +4,4 @@ create table DevicesStatus (
   status_timestamp integer NOT NULL,
   PRIMARY KEY (device_id),
   CONSTRAINT fk_Devices_id FOREIGN KEY (device_id) REFERENCES Devices (id) ON DELETE CASCADE
-) ENGINE=INNODB DEFAULT CHARSET=latin1; 
+); 
