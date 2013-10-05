@@ -3,6 +3,7 @@
 input_device::input_device()
 	: _audio_enabled(false), _started(false), next_packet_seq(0) 
 {
+	_status_count = -1;
 }
 
 input_device::~input_device()
@@ -203,3 +204,43 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	}
 }
 
+void input_device::set_device_id(int device_id)
+{
+	_device_id = device_id;
+}
+
+void input_device::set_status(bc_cam_status_code_t status)
+{
+	BC_DB_RES dbres;
+	time_t curr_time = time(NULL);
+
+	if (_status_count == -1)
+	{
+		/* get the existence of camera's status. */
+		dbres = bc_db_get_table("SELECT count(*) count FROM DevicesStatus WHERE device_id=%d", _device_id);
+
+		if (!dbres)
+			return;
+
+		if (bc_db_fetch_row(dbres) != 0)
+			return;
+
+		_status_count = bc_db_get_val_int(dbres, "count");
+
+		bc_db_free_table(dbres);
+	}
+
+	if (_status_count == 0)
+	{
+		/* insert the new status code at first time */
+		bc_db_query("INSERT INTO DevicesStatus (device_id, status_code, status_timestamp) "
+			"VALUES (%d, %d, %lu)", _device_id, status, curr_time);
+	}
+	else
+	{
+		/* update the new status code */
+		bc_db_query("UPDATE DevicesStatus SET status_code = %d, status_timestamp = %lu "
+			"WHERE device_id = %d", status, curr_time, _device_id);
+	}
+
+} 
