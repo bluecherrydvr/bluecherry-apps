@@ -1,0 +1,13 @@
+#!/bin/sh
+minver() {
+  v="$1"; shift
+  ./vercmp "`"$@" | sed 's/[^0-9]*//;s/ .*//;q'`" lt "$v" && {
+    echo "$1 version $v or later required"
+    exit 1
+  }
+}
+
+while read c; do minver $c; done <<'EOF'
+4.3	gcc --version
+EOF
+exit 0
