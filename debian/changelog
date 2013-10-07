@@ -1,4 +1,4 @@
-bluecherry (1.2.1.3-1) unstable; urgency=low
+bluecherry (1:2.1.3-1) unstable; urgency=low
 
   * Added support for IP cameras that require Digest auth. method
   * Improved database connection-loss recovery
