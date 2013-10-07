@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 PACKAGE = bluecherry
-MAINTAINER = John Brooks <john.brooks@bluecherry.net>
+MAINTAINER = Ismael Luceno <ismael.luceno@corp.bluecherry.net>
 
 # Ubuntu
 DIST =	lucid \
