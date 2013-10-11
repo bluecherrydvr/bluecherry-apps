@@ -62,6 +62,10 @@ public:
 
 	pthread_t		thread;
 
+	/* monitering of the recording-thread */	
+	unsigned int		thread_iteration;
+	pthread_t		monitor_thread;
+
 	/* Event/Media handling */
 	bc_event_cam_t          event;
 
@@ -80,6 +84,7 @@ public:
 
 	/* Internal */
 	void run();
+	void monitor();
 
 	bool update_motion_thresholds();
 
