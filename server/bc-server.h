@@ -66,6 +66,9 @@ public:
 	unsigned int		thread_iteration;
 	pthread_t		monitor_thread;
 
+	/* motion thread */
+	pthread_t		motion_thread;
+
 	/* Event/Media handling */
 	bc_event_cam_t          event;
 

@@ -113,6 +113,13 @@ static void *bc_monitor_thread(void *data)
 	return NULL;
 }
 
+static void *bc_motion_thread(void *data)
+{
+	struct motion_processor *bc_mproc = (struct motion_processor*) data;
+	bc_mproc->run();
+	return NULL;
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
@@ -192,8 +199,10 @@ void bc_record::run()
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->create_flag_consumer());
 
-					std::thread th(&motion_processor::run, m_processor);
-					th.detach();
+					if (pthread_create(&motion_thread, NULL, bc_motion_thread, m_processor) == 0)
+					{
+						pthread_detach(motion_thread);
+					}
 				}
 
 				std::thread th(&motion_handler::run, m_handler);
@@ -246,7 +255,8 @@ error:
 void bc_record::monitor()
 {
 	unsigned int	pre_iteration = 0;
-	
+	unsigned int	pre_motion_iteration = 0;
+
 	while (!thread_should_die) {
 		sleep(100);
 
@@ -276,6 +286,25 @@ void bc_record::monitor()
 		else
 		{
 			pre_iteration = thread_iteration;
+
+			if (m_processor != 0)
+			{
+				if (pre_motion_iteration == m_processor->thread_iteration) {
+					void *status;			
+					pthread_cancel(motion_thread);
+					pthread_join(motion_thread, &status);
+
+					if (pthread_create(&motion_thread, NULL, bc_motion_thread, m_processor) == 0)
+					{
+						pthread_detach(motion_thread);
+					}
+
+				}
+				else
+				{
+					pre_motion_iteration = m_processor->thread_iteration;
+				}
+			}
 		}
 	}
 }
