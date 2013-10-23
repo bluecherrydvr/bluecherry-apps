@@ -106,14 +106,24 @@ static void *bc_device_thread(void *data)
 	return (void*)bc_rec->thread_should_die;
 }
 
+static void *bc_monitor_thread(void *data)
+{
+	struct bc_record *bc_rec = (struct bc_record*) data;
+	bc_rec->monitor();
+	return NULL;
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
 	int ret;
-	unsigned iteration = 0;
+	thread_iteration = 0;
 
 	log.log(Info, "Setting up device");
 	bc_log_context_push(log);
+
+	int oldtype;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
 
 	while (!thread_should_die) {
 		/* Set by bc_record_update_cfg */
@@ -123,7 +133,7 @@ void bc_record::run()
 		}
 
 		update_osd(this);
-		if (!(iteration++ % 50))
+		if (!(thread_iteration++ % 50))
 			check_schedule(this);
 
 		if (!bc->input->is_started()) {
@@ -231,6 +241,43 @@ error:
 
 	if (bc->type == BC_DEVICE_V4L2)
 		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
+}
+
+void bc_record::monitor()
+{
+	unsigned int	pre_iteration = 0;
+	
+	while (!thread_should_die) {
+		sleep(100);
+
+		if (pre_iteration == thread_iteration) {
+			void *status;			
+			pthread_cancel(thread);
+			pthread_join(thread, &status);
+
+			bc->input->stop();
+
+			sleep(10);
+
+			destroy_elements();
+
+			stop_handle_properly(this);
+
+			bc_event_cam_end(&event);
+
+			if (bc->type == BC_DEVICE_V4L2)
+				reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
+
+			sched_cur = 'N';
+			sched_last = 0;
+
+			pthread_create(&thread, NULL, bc_device_thread, this);
+		}
+		else
+		{
+			pre_iteration = thread_iteration;
+		}
+	}
 }
 
 bc_record::bc_record(int i)
