@@ -5,7 +5,7 @@ include("../lib/lib.php");  #common functions
 if (empty($_POST)){
 	$locations = data::query("SELECT * FROM Storage");
 } else {
-	data::query("DELETE FROM Storage");
+	data::query("DELETE FROM Storage", true);
 	$status = true;
 	foreach($_POST['path'] as $key => $path){
 		$max = intval($_POST['max'][$key]);
