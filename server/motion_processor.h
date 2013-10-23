@@ -32,6 +32,8 @@ public:
 	void destroy();
 	void run();
 
+	unsigned int		thread_iteration;
+
 private:
 	AVCodecContext *decode_ctx;
 	bool destroy_flag;

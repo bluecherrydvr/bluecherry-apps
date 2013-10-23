@@ -59,9 +59,15 @@ void motion_processor::run()
 
 	bc_log_context_push(log);
 
+	int oldtype;
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+	thread_iteration = 0;
+
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
 	{
+		thread_iteration++;
+
 		if (buffer.empty()) {
 			buffer_wait.wait(l);
 			continue;
