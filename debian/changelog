@@ -3,6 +3,8 @@ bluecherry (1:2.1.3-1) unstable; urgency=low
   * Added support for IP cameras that require Digest auth. method
   * Improved database connection-loss recovery
   * Fixed IPv4 support on systems that enforce IPv6-only sockets by default
+  * Bug #114 #118: Fixed broken recording 
+  * Bug #113: Fixed crazed motion detection
 
  -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 07 Oct 2013 20:13:53 -0300
 
