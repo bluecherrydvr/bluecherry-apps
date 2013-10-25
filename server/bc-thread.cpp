@@ -399,6 +399,8 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		return 0;
 	}
 
+	pthread_create(&bc_rec->monitor_thread, NULL, bc_monitor_thread, bc_rec);
+
 	// XXX useless?
 	/* Throttle thread starting */
 	sleep(1);
