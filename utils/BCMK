@@ -13,7 +13,7 @@ bc-license: %:%.o
 	$(CXX) -o $@ $^
 
 $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
-	$(BCMK) -C "$(@D)" $(@F)
+	$(BCMK) -C "$O/$(@D)" -f "$(TOPDIR)/$(@D)"/BCMK $(@F)
 
 clean:
 	rm -f $(TARGETS) *.o

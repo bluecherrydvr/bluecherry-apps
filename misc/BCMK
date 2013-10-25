@@ -1,7 +1,8 @@
 all: build FORCE
 
-configure = cd $(dir $@) && CC="ccache gcc" CXX="ccache g++" \
-	    ./configure --prefix=$(STAGE) --disable-static --enable-shared
+configure = mkdir -p "$(dir $@)"; cd "$(dir $@)" && \
+	    CC="ccache gcc" CXX="ccache g++" \
+	    $(TOPDIR)/misc/$(dir $@)configure --prefix="$(STAGE)" --disable-static --enable-shared
 
  ###############
 ### libconfig ###
