@@ -647,6 +647,7 @@ int v4l2_device::set_motion_thresh_global(char value)
 	return 0;
 }
 
+
 int v4l2_device::set_motion_thresh(const char *map, size_t size)
 {
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
@@ -659,27 +660,44 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 	if (caps() & BC_CAM_CAP_V4L2_PAL)
 		vh = 18;
 
-	if (size < 22 * vh)
+	if (size < 22 * vh) {
+		bc_log(Debug, "Received motion threshold map of wrong size");
 		return -1;
+	}
 
-	/* Our input map is 22*vh, but the device is actually twice that.
-	 * Fields are doubled accordingly. */
-	for (unsigned int i = 0; i < (vh*2); i++) {
-		for (unsigned int j = 0; j < 44; j++) {
-			unsigned int pos = ((i / 2) * 22) + (j / 2);
-			if (map[pos] < '0' || map[pos] > '5')
-				return -1;
+	for (unsigned int y = 0, pos = 0; y < vh; y++) {
+		for (unsigned int x = 0; x < 22; x++, pos++) {
+			char val = range(map[pos], '0', '5') - '0';
 
-			/* One more than the actual block number, because the driver
-			 * expects this. 0 sets the global threshold. */
-			vc.value = (unsigned)(i * 64 + j + 1) << 16;
-			vc.value |= solo_value_map[map[pos] - '0'];
+			vc.value = solo_value_map[val];
 
+			/* One more than the actual block number, because
+			 * 0 sets the global threshold. */
+			vc.value |= (y << 23) + (x << 17) + (1 << 16);
+
+			/* Set motion threshold on a 2x2 sector. Our input map
+			 * has half the resolution the devices work with, in
+			 * both directions. */
 			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-				return -1;
+				goto error;
+
+			vc.value += 1 << 16;
+			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
+			        goto error;
+
+			vc.value += 1 << 23;
+			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
+			        goto error;
+
+			vc.value -= 1 << 16;
+			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
+				goto error;
 		}
 	}
 
 	return 0;
-}
 
+error:
+	bc_log(Error, "Error setting motion threshold: %s", strerror(errno));
+	return -1;
+}

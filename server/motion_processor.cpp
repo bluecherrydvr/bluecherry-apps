@@ -348,13 +348,12 @@ int motion_processor::set_motion_thresh_global(char value)
 
 int motion_processor::set_motion_thresh(const char *map, size_t size)
 {
-	size_t i;
 	if (size < 32*24)
 		return -1;
 	size = 32*24;
 
 	std::lock_guard<std::mutex> l(lock);
-	for (i = 0; i < size; ++i) {
+	for (size_t i = 0; i < size; ++i) {
 		if (map[i] < '0' || map[i] > '5')
 			return -1;
 		thresholds[i] = generic_value_map[map[i] - '0'];

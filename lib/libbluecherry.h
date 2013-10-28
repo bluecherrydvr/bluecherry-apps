@@ -254,4 +254,15 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres);
 int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
 	       int pan_speed, int tilt_speed, int pset_id);
 
+#ifdef __cplusplus
+template <typename num>
+num range(num n, num min, num max) {
+	return (n < min) ? min : ((n > max) ? max : n);
+}
+#else
+#define range(n, min, max) ({ \
+	typeof(n) t = n; \
+	(t < min) ? min : ((t > max) ? max : t); })
+#endif
+
 #endif /* __LIBBLUECHERRY_H */
