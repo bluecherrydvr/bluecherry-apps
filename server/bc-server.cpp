@@ -21,6 +21,7 @@ extern "C" {
 
 #include "bc-server.h"
 #include "rtsp.h"
+#include "watchdog.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -126,6 +127,7 @@ static const char *component_string(bc_status_component c)
 		case STATUS_MEDIA_CHECK: return "media";
 		case STATUS_LICENSE: return "licensing";
 		case STATUS_SOLO_DETECT: return "solo6x10";
+		case STATUS_WATCHDOG: return "watchdog";
 		default: return "";
 	}
 }
@@ -853,6 +855,10 @@ int main(int argc, char **argv)
 
 		/* Every about 2 minutes */
 		if ((loops & 127) == 0) {
+			bc_status_component_begin(STATUS_WATCHDOG);
+			bc_watchdog_check_all();
+			bc_status_component_end(STATUS_WATCHDOG, 0);
+
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;

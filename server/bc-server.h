@@ -94,6 +94,7 @@ typedef enum {
 	STATUS_MEDIA_CHECK,
 	STATUS_LICENSE,
 	STATUS_SOLO_DETECT,
+	STATUS_WATCHDOG,
 	NUM_STATUS_COMPONENTS // must be the last entry
 } bc_status_component;
 
