@@ -59,9 +59,15 @@ void motion_processor::run()
 
 	bc_log_context_push(log);
 
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+	bc_watchdog_add(&m_watchdog, motion_processor::watchdog_cb);
+
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
 	{
+		bc_watchdog_update(&m_watchdog);
+
 		if (buffer.empty()) {
 			buffer_wait.wait(l);
 			continue;
@@ -132,6 +138,8 @@ void motion_processor::run()
 
 		l.lock();
 	}
+
+	bc_watchdog_rm(&m_watchdog);
 
 	bc_log(Debug, "motion_processor destroying");
 	l.unlock();
@@ -362,3 +370,31 @@ int motion_processor::set_motion_thresh(const char *map, size_t size)
 	return 0;
 }
 
+static void *bc_mproc_thread(void *data)
+{
+	motion_processor *mp = (motion_processor *)data;
+	mp->run();
+	return NULL;
+}
+
+void motion_processor::watchdog_cb(struct watchdog *w)
+{
+	motion_processor *mp = (motion_processor *)
+		((char*)w - __builtin_offsetof(motion_processor, m_watchdog));
+	pthread_cancel(mp->m_thread);
+	pthread_join(mp->m_thread, NULL);
+	mp->start_thread();
+}
+
+void motion_processor::start_thread()
+{
+	int ret;
+
+	ret = pthread_create(&m_thread, NULL, bc_mproc_thread, this);
+	if (ret != 0) {
+		bc_log(Error, "Error starting motion processor thread: %s",
+		       strerror(errno));
+		return;
+	}
+	pthread_detach(m_thread);
+}

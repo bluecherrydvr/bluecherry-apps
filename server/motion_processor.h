@@ -2,6 +2,7 @@
 #define MOTION_PROCESSOR_H
 
 #include "stream_elements.h"
+#include "watchdog.h"
 
 struct AVCodecContext;
 
@@ -32,6 +33,8 @@ public:
 	void destroy();
 	void run();
 
+	void start_thread();
+
 private:
 	AVCodecContext *decode_ctx;
 	bool destroy_flag;
@@ -47,7 +50,11 @@ private:
 	bool decode_create(const stream_properties &prop);
 	void decode_destroy();
 	int detect(AVFrame *frame);
+
+	pthread_t m_thread;
+	struct watchdog m_watchdog;
+
+	static void watchdog_cb(struct watchdog *w);
 };
 
 #endif
-

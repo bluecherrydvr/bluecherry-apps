@@ -188,8 +188,7 @@ void bc_record::run()
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->create_flag_consumer());
 
-					std::thread th(&motion_processor::run, m_processor);
-					th.detach();
+					m_processor->start_thread();
 				}
 
 				std::thread th(&motion_handler::run, m_handler);
