@@ -2,14 +2,31 @@
 
 static struct watchdog *watchdogs_list = 0;
 
+static
+void __bc_watchdog_rm(struct watchdog *p, struct watchdog *base)
+{
+	struct watchdog *cur, *prev = base ? base : watchdogs_list;
+
+	if (!base && __sync_bool_compare_and_swap(&watchdogs_list, p, p->next))
+		return;
+
+	for (; (cur = prev->next); prev = cur) {
+		if (cur != p)
+			continue;
+		prev->next = cur->next;
+	}
+}
+
 void bc_watchdog_check_all()
 {
-	struct watchdog *p = watchdogs_list;
-	for (; p; p = p->next) {
+	struct watchdog *p = watchdogs_list, *prev = 0;
+	for (; p; prev = p, p = p->next) {
 		if (p->cnt)
 			p->cnt = 0;
-		else
+		else {
+			__bc_watchdog_rm(p, prev);
 			p->cb(p);
+		}
 	}
 }
 
@@ -30,16 +47,7 @@ void bc_watchdog_add(struct watchdog *p, watchdog_cb_t cb)
 	} while (!__sync_bool_compare_and_swap(&watchdogs_list, list, p));
 }
 
-
 void bc_watchdog_rm(struct watchdog *p)
 {
-	if (__sync_bool_compare_and_swap(&watchdogs_list, p, p->next))
-		return;
-
-	struct watchdog *cur, *prev = watchdogs_list;
-	for (; (cur = prev->next); prev = cur) {
-		if (cur != p)
-			continue;
-		prev->next = cur->next;
-	}
+	__bc_watchdog_rm(p, 0);
 }
