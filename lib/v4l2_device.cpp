@@ -667,7 +667,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 
 	for (unsigned int y = 0, pos = 0; y < vh; y++) {
 		for (unsigned int x = 0; x < 22; x++, pos++) {
-			char val = range(map[pos], '0', '5') - '0';
+			int val = range(map[pos], '0', '5') - '0';
 
 			vc.value = solo_value_map[val];
 
