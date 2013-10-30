@@ -274,7 +274,7 @@ function get_one_jpeg($url, &$auth)
 		if ($len) {
 			$len -= strlen($tmp);
 		} else {
-			$bpos = strpos($payload, $boundarystr, strlen($payload) - strlen($tmp) - strlen($boundarystr) - 1);
+			$bpos = strpos($payload, $boundarystr, max(0, strlen($payload) - strlen($tmp) - strlen($boundarystr)));
 			if ($bpos !== FALSE) {
 				if ($bpos > 0 && $tmp[$bpos-1] == '\r')
 					$bpos--;
