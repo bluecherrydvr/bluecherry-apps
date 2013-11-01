@@ -48,7 +48,7 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 
 void signals_setup()
 {
-	int sig[] = { SIGCHLD, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
+	const int sig[] = { SIGCHLD, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
