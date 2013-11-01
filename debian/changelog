@@ -1,3 +1,14 @@
+bluecherry (1:2.1.4-1) unstable; urgency=low
+
+  * Fixed data leaks from dead threads
+  * Fixed broken "Unknown error" reports from watchdog component
+  * Use single-threaded decoding
+  * Improved backtracing support
+  * Fixed threads cleanup
+  * Miscellaneus fixes
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Fri, 01 Nov 2013 19:48:02 -0300
+
 bluecherry (1:2.1.3-1) unstable; urgency=low
 
   * Added support for IP cameras that require Digest auth. method
