@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <pthread.h>
 #include "motion_processor.h"
 
 extern "C" {
@@ -53,6 +54,13 @@ static enum PixelFormat fix_pix_fmt(int fmt)
 	}
 }
 
+void motion_processor::thread_cleanup(void *data)
+{
+	motion_processor *mp = (motion_processor *)data;
+
+	mp->lock.unlock();
+}
+
 void motion_processor::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
@@ -60,6 +68,7 @@ void motion_processor::run()
 	bc_log_context_push(log);
 
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+	pthread_cleanup_push(thread_cleanup, this);
 
 	bc_watchdog_add(&m_watchdog, motion_processor::watchdog_cb);
 
@@ -141,8 +150,8 @@ void motion_processor::run()
 
 	bc_watchdog_rm(&m_watchdog);
 
+	pthread_cleanup_pop(1);
 	bc_log(Debug, "motion_processor destroying");
-	l.unlock();
 	delete this;
 }
 

@@ -55,6 +55,7 @@ private:
 	struct watchdog m_watchdog;
 
 	static void watchdog_cb(struct watchdog *w);
+	static void thread_cleanup(void *data);
 };
 
 #endif
