@@ -1,5 +1,8 @@
 #include <unistd.h>
 #include <pthread.h>
+
+#include "bt.h"
+
 #include "motion_processor.h"
 
 extern "C" {
@@ -59,6 +62,7 @@ void motion_processor::thread_cleanup(void *data)
 	motion_processor *mp = (motion_processor *)data;
 
 	mp->lock.unlock();
+	bt("monitor_processor unexpectedly cancelled", RET_ADDR);
 }
 
 void motion_processor::run()
@@ -148,9 +152,11 @@ void motion_processor::run()
 		l.lock();
 	}
 
+	l.unlock();
 	bc_watchdog_rm(&m_watchdog);
 
-	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(0);
+
 	bc_log(Debug, "motion_processor destroying");
 	delete this;
 }

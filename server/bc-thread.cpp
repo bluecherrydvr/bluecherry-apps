@@ -10,6 +10,8 @@
 #include <time.h>
 #include <thread>
 
+#include "bt.h"
+
 #include "bc-server.h"
 #include "rtp_device.h"
 #include "v4l2_device.h"
@@ -106,6 +108,12 @@ static void *bc_device_thread(void *data)
 	return (void*)bc_rec->thread_should_die;
 }
 
+static
+void bc_rec_thread_cleanup(void *data)
+{
+	bt("bc_record unexpectedly cancelled", RET_ADDR);
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
@@ -116,6 +124,8 @@ void bc_record::run()
 	bc_log_context_push(log);
 
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+	pthread_cleanup_push(bc_rec_thread_cleanup, NULL);
 
 	/* Register a watchdog for the thread */
 	bc_watchdog_add(&this->watchdog, watchdog_cb);
@@ -232,6 +242,8 @@ error:
 
 	/* Remove the thread watchdog */
 	bc_watchdog_rm(&this->watchdog);
+
+	pthread_cleanup_pop(0);
 
 	destroy_elements();
 	stop_handle_properly(this);
