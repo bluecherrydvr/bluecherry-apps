@@ -4,9 +4,7 @@
 #include <signal.h>
 #include <execinfo.h>
 
-#define RET_ADDR (__builtin_extract_return_addr(__builtin_return_address(0)))
-
-static void bt(int signum, void *p) __attribute__((noreturn));
+#include "bt.h"
 
 static const char * const sig_name[] = {
 	[SIGABRT] = "Aborted",
@@ -16,17 +14,23 @@ static const char * const sig_name[] = {
 	[SIGFPE]  = "Floating point exception",
 };
 
-static void bt(int signum, void *p)
+void bt(const char *err, const void *p)
 {
-	fprintf(stderr, "F: %s at %p\n\nBacktrace:\n", sig_name[signum], p);
+	fprintf(stderr, "F: %s at %p\n\nBacktrace:\n", err, p);
 	fflush(stderr);
 
-	void *btrace[18];
+	void *btrace[32];
 
-	size_t size = backtrace(btrace, sizeof(btrace) / sizeof(btrace[0]));
-	backtrace_symbols_fd(btrace + 2, size - 2, STDERR_FILENO);
+	size_t first, size = backtrace(btrace, sizeof(btrace) / sizeof(btrace[0]));
 
-	_exit(signum);
+	for (first = 0; first < size && btrace[first] != p ; first++);
+	if (first >= size) {
+		fprintf(stderr,
+			"E: Can't find starting point in the backtrace\n");
+		return;
+	}
+
+	backtrace_symbols_fd(btrace + first, size - first, STDERR_FILENO);
 }
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
@@ -35,15 +39,18 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 
 	switch (signum) {
 	case SIGABRT:
-		bt(signum, RET_ADDR);
+		bt(sig_name[signum], RET_ADDR);
 	case SIGBUS:
 	case SIGSEGV:
 	case SIGILL:
 	case SIGFPE:
-		bt(signum, info->si_addr);
+		bt(sig_name[signum], info->si_addr);
+	default:
+		/* SIGCHLD */
+		return;
 	}
 
-	/* SIGCHLD */
+	_exit(signum);
 }
 
 void signals_setup()
