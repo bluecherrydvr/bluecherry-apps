@@ -6,8 +6,9 @@ bluecherry (1:2.1.4-1) unstable; urgency=low
   * Improved backtracing support
   * Fixed threads cleanup
   * Miscellaneus fixes
+  * Fixed segfault when client disconnects with open streams
 
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Fri, 01 Nov 2013 19:48:02 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 07 Nov 2013 14:47:33 -0300
 
 bluecherry (1:2.1.3-1) unstable; urgency=low
 
