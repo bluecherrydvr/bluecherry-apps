@@ -24,7 +24,7 @@ static struct bc_db_ops *db_ops = NULL;
 static void bc_db_lock(void)
 {
 	if (pthread_mutex_lock(&db_lock) == EDEADLK)
-		bc_log(Bug, "Deadlock detected while obtaining db_lock");
+		bc_log(Error, "Deadlock detected while obtaining db_lock");
 }
 
 static void bc_db_unlock(void)
