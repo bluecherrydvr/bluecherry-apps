@@ -4,6 +4,7 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
+#include <bsd/string.h>
 #include <unistd.h>
 #include "bc-server.h"
 #include "rtsp.h"
@@ -377,7 +378,7 @@ int rtsp_connection::readable()
 		return -1;
 	}
 
-	unsigned int rd = read(fd, rdbuf + rdbuf_len, sizeof(rdbuf) - rdbuf_len - 1);
+	ssize_t rd = read(fd, rdbuf + rdbuf_len, sizeof(rdbuf) - rdbuf_len - 1);
 	if (rd < 1)
 		return -1;
 
@@ -450,32 +451,57 @@ struct rtsp_message
 	}
 };
 
-static char *split_line(char **save)
+static char *memsep(char **ptr, char sep, char *limit)
 {
-	char *re = *save;
-	char *p = *save;
-	if (!*p)
+	if (!**ptr)
 		return NULL;
-	for (; *p; ++p) {
-		if (*p == '\r') {
+
+	char *ret = *ptr;
+	char *p = *ptr;
+
+	for (; p < limit && *p; ++p) {
+		if (*p == sep) {
+			*ptr = p + 1;
 			*p = 0;
-			*save = p+1;
-			if (**save == '\n')
-				(*save)++;
-			break;
-		} else if (*p == '\n') {
-			*p = 0;
-			*save = p+1;
 			break;
 		}
 	}
-	return re;
+
+	return ret;
 }
 
-int rtsp_connection::parse()
+static char *split_line(char **ptr, char *limit)
 {
+	if (!**ptr)
+		return NULL;
+
+	char *ret = *ptr;
+	char *p = *ptr;
+
+	for (char v; p < limit && *p; ++p) {
+		v = *p;
+		if (v == '\r' || v == '\n') {
+			*ptr = p + 1 + (v == '\r' && *(p + 1) == '\n');
+			*p = 0;
+			break;
+		}
+	}
+	return ret;
+}
+
+ssize_t rtsp_connection::parse()
+{
+	const unsigned rdbuf_lim = sizeof(rdbuf) / sizeof(rdbuf[0]);
+
+	if (rdbuf_len >= rdbuf_lim) {
+		bc_log(Bug, "rdbuf_len >= rdbuf_lim");
+		rdbuf_len = rdbuf_lim - 1;
+	}
+
 	rdbuf[rdbuf_len] = 0;
 
+	/* XXX Can't be replaced by strnstr because Ubuntu Precise's libbsd
+	 * doesn't implement it :( */
 	char *end = strstr(rdbuf, "\r\n\r\n");
 	if (!end)
 		return 0;
@@ -484,16 +510,16 @@ int rtsp_connection::parse()
 	rtsp_message req;
 	char *p = rdbuf;
 	char *ln;
-	while ((ln = split_line(&p))) {
+	while ((ln = split_line(&p, rdbuf + rdbuf_lim))) {
 		if (!*ln)
 			break;
 
 		if (req.method.empty()) {
 			/* Request line */
 			char *lp = ln;
-			req.method = strsep(&lp, " ");
-			req.uri = strsep(&lp, " ");
-			req.version = strsep(&lp, " ");
+			req.method = memsep(&lp, ' ', rdbuf + rdbuf_lim);
+			req.uri = memsep(&lp, ' ', rdbuf + rdbuf_lim);
+			req.version = memsep(&lp, ' ', rdbuf + rdbuf_lim);
 			if (req.method.empty() || req.uri.empty() || req.version.empty()) {
 				sendResponse(rtsp_message(req, 400, "Bad request"));
 				return -1;
@@ -505,7 +531,7 @@ int rtsp_connection::parse()
 			continue;
 		}
 
-		char *value = strchr(ln, ':');
+		char *value = (char *)memchr(ln, ':', rdbuf_lim - (ln - rdbuf));
 		if (!value) {
 			sendResponse(rtsp_message(req, 400, "Bad request"));
 			return -1;

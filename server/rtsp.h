@@ -83,7 +83,7 @@ private:
 
 	std::map<int,rtsp_session*> sessions;
 
-	int parse();
+	ssize_t parse();
 	void sendResponse(const rtsp_message &response);
 
 	bool authenticate(rtsp_message &request, int device_id = -1);
