@@ -1,8 +1,6 @@
 #include <unistd.h>
-#include <stdio.h>
 #include <string.h>
 #include <signal.h>
-#include <execinfo.h>
 
 #include "bt.h"
 
@@ -13,25 +11,6 @@ static const char * const sig_name[] = {
 	[SIGILL]  = "Illegal instruction",
 	[SIGFPE]  = "Floating point exception",
 };
-
-void bt(const char *err, const void *p)
-{
-	fprintf(stderr, "F: %s at %p\n\nBacktrace:\n", err, p);
-	fflush(stderr);
-
-	void *btrace[32];
-
-	size_t first, size = backtrace(btrace, sizeof(btrace) / sizeof(btrace[0]));
-
-	for (first = 0; first < size && btrace[first] != p ; first++);
-	if (first >= size) {
-		fprintf(stderr,
-			"E: Can't find starting point in the backtrace\n");
-		return;
-	}
-
-	backtrace_symbols_fd(btrace + first, size - first, STDERR_FILENO);
-}
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
