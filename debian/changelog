@@ -7,8 +7,9 @@ bluecherry (1:2.1.4-1) unstable; urgency=low
   * Fixed threads cleanup
   * Miscellaneus fixes
   * Fixed segfault when client disconnects with open streams
+  * Revert default log level to Info, except for recording threads
 
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 07 Nov 2013 14:47:33 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 07 Nov 2013 23:20:56 -0300
 
 bluecherry (1:2.1.3-1) unstable; urgency=low
 
