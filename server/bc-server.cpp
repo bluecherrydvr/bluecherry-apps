@@ -807,7 +807,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	bc_log(Info, "Started Bluecherry daemon");
+	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
+	       __VERSION__ ")");
 
 	/* Mutex */
 	bc_initialize_mutexes();

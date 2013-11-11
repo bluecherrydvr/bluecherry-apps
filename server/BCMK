@@ -2,6 +2,9 @@ CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lswscale
 
+BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*).*//;1q' $(TOPDIR)/debian/changelog)
+CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
+
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  bc-detect.o streaming.o rtsp.o signals.o motion_processor.o \
