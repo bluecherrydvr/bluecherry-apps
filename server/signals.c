@@ -18,7 +18,7 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 
 	switch (signum) {
 	case SIGABRT:
-		bt(sig_name[signum], RET_ADDR);
+		info->si_addr = RET_ADDR;
 	case SIGBUS:
 	case SIGSEGV:
 	case SIGILL:
