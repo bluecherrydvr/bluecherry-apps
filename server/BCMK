@@ -2,6 +2,9 @@ CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lswscale
 
+# Required by our call-tracing implementation
+LDFLAGS		+= -ldl
+
 BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*).*//;1q' $(TOPDIR)/debian/changelog)
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 
