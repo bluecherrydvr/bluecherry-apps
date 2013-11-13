@@ -1,0 +1,24 @@
+-- FIXME: not reversible!
+START TRANSACTION;
+
+-- Update event tables constraints to use ON DELETE CASCADE, to allow
+-- straightforward deletion of records on media cleanup routine.
+ALTER TABLE EventsCam
+      DROP FOREIGN KEY EventsCam_ibfk_1,
+      ADD CONSTRAINT fk_Media$EventsCam
+	  FOREIGN KEY (media_id) REFERENCES Media(id)
+	  ON DELETE CASCADE;
+
+ALTER TABLE EventComments
+      DROP FOREIGN KEY EventComments_ibfk_1,
+      ADD CONSTRAINT fk_EventsCam$EventComments
+	  FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+	  ON DELETE CASCADE;
+
+ALTER TABLE EventTags
+      DROP FOREIGN KEY EventTags_ibfk_1,
+      ADD CONSTRAINT fk_EventsCam$EventTags
+	  FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+	  ON DELETE CASCADE;
+
+COMMIT;
