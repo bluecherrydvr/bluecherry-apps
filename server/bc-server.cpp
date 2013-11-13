@@ -430,7 +430,7 @@ static int bc_cleanup_media()
 	/* XXX: We limit the files to 100 because otherwise updating the db
 	 * would take too long */
 	dbres = bc_db_get_table("SELECT * from Media WHERE archive=0 AND "
-				"filepath!='' ORDER BY start ASC LIMIT 100");
+				"filepath!='' ORDER BY id ASC LIMIT 100");
 
 	if (!dbres) {
 		bc_status_component_error("Database error during media cleanup");
@@ -462,10 +462,16 @@ static int bc_cleanup_media()
 		}
 
 		removed++;
-		if (__bc_db_query("UPDATE Media SET filepath='',size=0 "
-		                  "WHERE id=%d", id)) {
-			bc_status_component_error("Database error during media cleanup");
+		
+		if (__bc_db_query("DELETE FROM EventsCam "
+		                  "WHERE media_id=%d", id)) {
+			bc_status_component_error("Database error during EventsCam cleanup");
 		}
+
+		if (__bc_db_query("DELETE FROM Media "
+		                  "WHERE id=%d", id)) {
+			bc_status_component_error("Database error during Media cleanup");
+		}	
 
 		/* Every four files removed check if enough space has been
 		 * freed.
