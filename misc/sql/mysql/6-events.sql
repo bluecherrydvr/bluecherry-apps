@@ -41,7 +41,8 @@ CREATE TABLE EventsCam (
 	archive boolean NOT NULL DEFAULT FALSE,	-- archive the event's video/audio?
 	media_id integer,
 	details text DEFAULT NULL,
-	FOREIGN KEY (media_id) REFERENCES Media(id),
+	CONSTRAINT fk_media_id FOREIGN KEY (media_id) REFERENCES Media(id)
+		ON DELETE CASCADE,
 	FOREIGN KEY (level_id) REFERENCES EventLevels(id),
         FOREIGN KEY (device_id) REFERENCES Devices(id),
         FOREIGN KEY (type_id) REFERENCES EventTypesCam(id)
@@ -66,7 +67,8 @@ CREATE TABLE EventComments (
 	event_id integer,
 	user_id integer,
 	comment varchar(160),
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	CONSTRAINT fk_event_id FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+		ON DELETE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES Users(id)
 );
 
@@ -91,6 +93,7 @@ CREATE TABLE EventTags (
 	event_id integer,
 	tag_id varchar(10),
 	user_id integer,
-	FOREIGN KEY (event_id) REFERENCES EventsCam(id),
+	CONSTRAINT fk_event_id FOREIGN KEY (event_id) REFERENCES EventsCam(id)
+		ON DELETE CASCADE,
 	FOREIGN KEY (user_id) REFERENCES Users(id)
 );
