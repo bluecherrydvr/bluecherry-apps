@@ -6,8 +6,14 @@
 
 /* This file contains initialization code for libav */
 
+#include <stdlib.h>
 #include <bsd/string.h>
-#include "bc-server.h"
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+
+#include "logc.h"
+
+int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
  * so a real encoder isn't neeeded, but one must be present for the process to
@@ -25,32 +31,35 @@ static int fake_h264_close(AVCodecContext *ctx)
 	return 0;
 }
 
-static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize,
-			   void *data)
+static int fake_h264_encode2(AVCodecContext *ctx, AVPacket *pkt,
+			     const AVFrame *frame, int *gotpkt)
 {
 	(void)ctx;
-	(void)buf;
-	(void)bufsize;
-	(void)data;
+	(void)pkt;
+	(void)frame;
+	(void)gotpkt;
 	return -1;
 }
 
 static AVCodec fake_h264_encoder = {
-	"fakeh264", /* name */
-	AVMEDIA_TYPE_VIDEO, /* type */
-	CODEC_ID_H264, /* id */
-	0, /* priv_data_size */
-	fake_h264_init, /* init */
-	fake_h264_frame, /* encode */
-	fake_h264_close, /* close */
-	0, /* decode */
-	CODEC_CAP_DELAY, /* capabilities */
-	0, /* next */
-	0, /* flush */
-	0, /* suipported_framerates */
-	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P,
-				     PIX_FMT_NONE }, /* pix_fmts */
-	"Fake H.264 Encoder for RTP Muxing", /* long_name */
+	.name		= "fakeh264",
+	.long_name	= "Fake H.264 Encoder for RTP Muxing",
+	.type		= AVMEDIA_TYPE_VIDEO,
+	.id		= AV_CODEC_ID_H264,
+	.init		= fake_h264_init,
+	.encode2	= fake_h264_encode2,
+	.close		= fake_h264_close,
+	.decode		= 0,
+	.next		= 0,
+	.flush		= 0,
+	.capabilities	= CODEC_CAP_DELAY,
+	.priv_data_size	= 0,
+	.supported_framerates = 0,
+	.pix_fmts	= (const enum PixelFormat[]) {
+		PIX_FMT_YUV420P,
+		PIX_FMT_YUVJ420P,
+		PIX_FMT_NONE,
+	},
 };
 
 
@@ -60,7 +69,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	(void)avcl;
 
-	log_level bc_level = Info;
+	enum log_level bc_level = Info;
 	switch (level) {
 		case AV_LOG_PANIC: bc_level = Fatal; break;
 		case AV_LOG_FATAL: bc_level = Error; break;
@@ -74,13 +83,9 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		default: return;
 	}
 
-	const log_context &context = bc_log_context();
-	if (!context.level_check(bc_level))
-		return;
-
 	char msg[1024] = "[libav] ";
 	strlcat(msg, fmt, sizeof(msg));
-	context.vlog(bc_level, msg, ap);
+	bc_log(bc_level, msg, ap);
 }
 
 

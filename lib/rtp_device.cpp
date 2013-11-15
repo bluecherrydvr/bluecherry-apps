@@ -146,7 +146,7 @@ int rtp_device::start()
 				bc_log(Warning, "RTSP session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
-			} else if (stream->codec->codec_id == CODEC_ID_NONE) {
+			} else if (stream->codec->codec_id == AV_CODEC_ID_NONE) {
 				bc_log(Error, "No matching audio codec for stream; ignoring audio");
 				continue;
 			}
@@ -197,7 +197,7 @@ int rtp_device::read_packet()
 	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
 	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
 	 * everything. */
-	if (ctx->streams[frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
+	if (ctx->streams[frame.stream_index]->codec->codec_id == AV_CODEC_ID_MPEG4) {
 		const uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
 		if (frame.size >= 47 && frame.stream_index == video_stream_index
 		    && memcmp(frame.data, b2_header, sizeof(b2_header)) == 0

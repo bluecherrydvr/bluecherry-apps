@@ -142,6 +142,7 @@ int bc_streaming_is_setup(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_is_active(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
+extern "C"
 int bc_av_lockmgr(void **mutex, enum AVLockOp op);
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);
@@ -155,9 +156,11 @@ int bc_mkdir_recursive(char *path);
 
 int has_audio(struct bc_record *bc_rec);
 
-extern "C" void signals_setup();
+extern "C" {
+	void signals_setup();
 
-void bc_libav_init();
-void bc_libav_term();
+	void bc_libav_init();
+	void bc_libav_term();
+}
 
 #endif /* __BC_SERVER_H */

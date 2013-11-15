@@ -11,9 +11,8 @@
 
 extern "C" {
 #include <libavutil/mathematics.h>
+#include <libavformat/avio.h>
 }
-
-#define RTP_MAX_PACKET_SIZE 1472
 
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
@@ -48,7 +47,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
 	 * to do that, because the rtp muxer only handles one stream. */
 
-	url_open_dyn_packet_buf(&ctx->pb, RTP_MAX_PACKET_SIZE);
+	avio_open_dyn_buf(&ctx->pb);
 
 	if ((i = avformat_write_header(ctx, NULL)) < 0) {
 		char error[512];
@@ -140,7 +139,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 
 	bc_rec->rtsp_stream->sendPackets(buf, bufsz, opkt.flags);
 	av_free(buf);
-	url_open_dyn_packet_buf(&bc_rec->stream_ctx->pb, RTP_MAX_PACKET_SIZE);
+	avio_open_dyn_buf(&bc_rec->stream_ctx->pb);
 
 	return 1;
 }
