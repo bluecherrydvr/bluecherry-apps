@@ -5,14 +5,7 @@
 #include <string>
 #include <cstdarg>
 
-enum log_level {
-	Debug,
-	Info,
-	Warning,
-	Error,
-	Bug,
-	Fatal
-};
+#include "logc.h"
 
 class server_log
 {
@@ -55,12 +48,6 @@ private:
 	std::shared_ptr<data> d;
 };
 
-/* Log a message to the context on the top of the stack for the current thread.
- * See bc_log_context_push for details.
- *
- * The minimum level of the context (or, if unset, the process default) will be applied. 
- * Printf-style formatting is used. */
-void bc_log(log_level l, const char *msg, ...) __attribute__ ((format (printf, 2, 3)));
 /* Returns the log_context at the top of the stack for the current thread,
  * as would be used by bc_log.
  *
