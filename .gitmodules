@@ -1,0 +1,3 @@
+[submodule "misc/libav"]
+	path = misc/libav
+	url = git://git.libav.org/libav.git
