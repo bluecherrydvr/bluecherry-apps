@@ -36,8 +36,6 @@ release: FORCE
 		debug/$d/bluecherry-dbg_$(VERSION)_$a.deb \
 	)) >> $O/md5sum.txt
 
-upgrade:
-
 #
 # Nightly builds
 #
@@ -61,12 +59,21 @@ debian/changelog: FORCE
 # Generate targets for releases
 #
 define GEN_REL_TARGET # dist,arch
-release: release-$1_$2
+all-releases: release-$1_$2
 release-$1_$2: release-deps FORCE
 	mkdir -p $O/$1 $O/debug/$1
 	schroot -c $1_$2 fakeroot debian/rules clean binary
-	mv ../$(PACKAGE)_$(VERSION)_$2.deb $O/$1
-	mv ../$(PACKAGE)-dbg_$(VERSION)_$2.deb $O/debug/$1
+	mv ../$(PACKAGE)_$(VERSION)_$2.deb \
+		../$(PACKAGE)_$(VERSION)_$2.deb.$1
+	mv ../$(PACKAGE)-dbg_$(VERSION)_$2.deb \
+		../$(PACKAGE)-dbg_$(VERSION)_$2.deb.$1
+
+release: move-$1_$2
+move-$1_$2: all-releases
+	mv ../$(PACKAGE)_$(VERSION)_$2.deb.$1 \
+		$O/$1/$(PACKAGE)_$(VERSION)_$2.deb
+	mv ../$(PACKAGE)-dbg_$(VERSION)_$2.deb.$1 \
+		$O/debug/$1/$(PACKAGE)-dbg_$(VERSION)_$2.deb
 
 upgrade: upgrade-$1_$2
 upgrade-$1_$2: FORCE
@@ -75,7 +82,9 @@ upgrade-$1_$2: FORCE
 
 endef
 
-release-deps:
+all-releases: FORCE ;
+release-deps: FORCE ;
+upgrade: FORCE ;
 
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
 $(call GEN_REL_TARGET,$(dist),$(arch)))))
