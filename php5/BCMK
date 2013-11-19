@@ -4,7 +4,7 @@ PHP_RPATH	= no
 export PHP_RPATH
 
 LDFLAGS  += -lavutil
-CXXFLAGS += -Wno-write-strings
+CXXFLAGS += -fPIC -Wno-write-strings
 
 export LD_LIBRARY_PATH=$(STAGE)/lib
 
