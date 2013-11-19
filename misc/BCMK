@@ -15,7 +15,7 @@ libconfig-clean: FORCE
 	-rm libconfig/Makefile
 
 libconfig/Makefile:
-	$(configure) --disable-examples
+	$(configure) --disable-examples -disable-cxx
 
 $(libconfig-libs): libconfig/Makefile
 	$(MAKE) $(MAKEARGS) -C libconfig install
