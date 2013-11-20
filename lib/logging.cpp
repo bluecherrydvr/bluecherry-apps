@@ -123,12 +123,17 @@ const log_context &bc_log_context()
 	return log_context::default_context();
 }
 
-void bc_log(log_level l, const char *msg, ...)
+void bc_vlog(log_level l, const char *msg, va_list args)
 {
 	const log_context &context = bc_log_context();
+	context.vlog(l, msg, args);
+}
+
+void bc_log(log_level l, const char *msg, ...)
+{
 	va_list args;
 	va_start(args, msg);
-	context.vlog(l, msg, args);
+	bc_vlog(l, msg, args);
 	va_end(args);
 }
 
