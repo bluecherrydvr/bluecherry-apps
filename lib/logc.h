@@ -13,7 +13,8 @@ enum log_level {
 	Fatal
 };
 
-/* Log a message to the context on the top of the stack for the current thread.
+/**
+ * Log a message to the context on the top of the stack for the current thread.
  * See bc_log_context_push for details.
  *
  * The minimum level of the context (or, if unset, the process default) will
@@ -23,6 +24,7 @@ enum log_level {
  */
 void bc_log(enum log_level l, const char *msg, ...)
 	__attribute__ ((format (printf, 2, 3)));
+void bc_vlog(enum log_level l, const char *msg, va_list args);
 
 #ifdef __cplusplus
 }
