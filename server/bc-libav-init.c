@@ -85,7 +85,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 
 	char msg[1024] = "[libav] ";
 	strlcat(msg, fmt, sizeof(msg));
-	bc_log(bc_level, msg, ap);
+	bc_vlog(bc_level, msg, ap);
 }
 
 
