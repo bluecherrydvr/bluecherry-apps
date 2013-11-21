@@ -424,7 +424,7 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 	if (avcodec_open2(oc, codec, NULL) < 0)
 		goto end;
 
-	size = avpicture_get_size(PIX_FMT_YUVJ420P, oc->width, oc->height);
+	size = avpicture_get_size(oc->pix_fmt, oc->width, oc->height);
 	memcpy(&frame, &rawFrame, sizeof(AVFrame));
 	if (rawFrame.format != PIX_FMT_YUVJ420P) {
 		SwsContext *sws = 0;
