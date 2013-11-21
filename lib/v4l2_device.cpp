@@ -632,10 +632,7 @@ int v4l2_device::set_motion(bool on)
 
 int v4l2_device::set_motion_thresh_global(char value)
 {
-	int val = value - '0';
-	if (val < 0 || val > 5)
-		return -1;
-
+	int val = range(value, '0', '5') - '0';
 	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
