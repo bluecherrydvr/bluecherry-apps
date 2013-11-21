@@ -357,9 +357,7 @@ static uint8_t generic_value_map[] = {
 
 int motion_processor::set_motion_thresh_global(char value)
 {
-	int val = value - '0';
-	if (val < 0 || val > 5)
-		return -1;
+	int val = range(value, '0', '5') - '0';
 
 	/* Locking may not be necessary, but done out of an abundance of caution.. */
 	std::lock_guard<std::mutex> l(lock);
@@ -377,9 +375,8 @@ int motion_processor::set_motion_thresh(const char *map, size_t size)
 
 	std::lock_guard<std::mutex> l(lock);
 	for (size_t i = 0; i < size; ++i) {
-		if (map[i] < '0' || map[i] > '5')
-			return -1;
-		thresholds[i] = generic_value_map[map[i] - '0'];
+		int idx = range(map[i], '0', '5') - '0';
+		thresholds[i] = generic_value_map[idx];
 	}
 
 	return 0;
