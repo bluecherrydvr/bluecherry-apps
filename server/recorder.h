@@ -2,6 +2,7 @@
 #define RECORDER_H
 
 #include "stream_elements.h"
+#include "watchdog.h"
 
 struct AVCodecContext;
 struct bc_record;
@@ -18,6 +19,7 @@ public:
 	void destroy();
 	void run();
 
+	void start_thread();
 private:
 	int device_id;
 	bool destroy_flag;
@@ -33,6 +35,12 @@ private:
 	std::string media_file_path(time_t start);
 	void recording_end();
 	void do_error_event(bc_event_level_t level, bc_event_cam_type_t type);
+
+	pthread_t m_thread;
+	bool m_processing;
+	struct watchdog	m_watchdog;
+	static void watchdog_cb(struct watchdog *w);
+	static void thread_cleanup(void *data);
 };
 
 #endif

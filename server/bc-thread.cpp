@@ -174,8 +174,7 @@ void bc_record::run()
 				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
 				rec->set_logging_context(log);
 				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-				std::thread th(&recorder::run, rec);
-				th.detach();
+				rec->start_thread();
 			} else if (sched_cur == 'M') {
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
@@ -186,8 +185,7 @@ void bc_record::run()
 				rec->set_logging_context(log);
 				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
 				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
-				rec_th.detach();
+				rec->start_thread();
 
 				if (bc->type == BC_DEVICE_V4L2) {
 					static_cast<v4l2_device*>(bc->input)->set_motion(true);
@@ -259,6 +257,8 @@ void bc_record::watchdog_cb(struct watchdog *w)
 	struct bc_record *bc_rec = (bc_record *)
 		((char *)w - __builtin_offsetof(bc_record, watchdog));
 
+	bc_rec->watchdog_flag = true;
+
 	pthread_cancel(bc_rec->thread);
 	pthread_join(bc_rec->thread, NULL);
 
@@ -274,6 +274,8 @@ void bc_record::watchdog_cb(struct watchdog *w)
 	bc_rec->sched_last = 0;
 
 	pthread_create(&bc_rec->thread, NULL, bc_device_thread, bc_rec);
+
+	bc_rec->watchdog_flag = false;
 }
 
 bc_record::bc_record(int i)
@@ -302,6 +304,8 @@ bc_record::bc_record(int i)
 	m_processor = 0;
 	m_handler = 0;
 	rec = 0;
+
+	watchdog_flag = false;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
