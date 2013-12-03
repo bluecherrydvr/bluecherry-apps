@@ -246,7 +246,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
 		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
+		st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
 		st->codec->channels = 1;
 		st->codec->time_base = (AVRational){1, 8000};
 
@@ -321,7 +321,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	}
 
 	/* Open output file */
-	if (avio_open(&oc->pb, path.c_str(), URL_WRONLY) < 0) {
+	if (avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE) < 0) {
 		bc_log(Error, "Cannot open media output file %s",
 			   file_path.c_str());
 		goto error;
@@ -397,9 +397,12 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 		return -1;
 	}
 
-	AVCodec *codec = avcodec_find_encoder(CODEC_ID_MJPEG);
+	AVPacket opkt;
+	av_init_packet(&opkt);
+
+	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
 	AVCodecContext *oc = 0;
-	uint8_t *buf = 0, *swsBuf = 0;
+	uint8_t *swsBuf = 0;
 	FILE *file = 0;
 	int size, re = -1;
 
@@ -440,13 +443,15 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 		sws_freeContext(sws);
 	}
 
-	buf  = new uint8_t[size];
-	size = avcodec_encode_video(oc, buf, size, &frame);
-	if (size < 1) {
-		char error[512];
-		av_strerror(size, error, sizeof(error));
-		bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
-		goto end;
+	{
+		int got_packet;
+		int ret = avcodec_encode_video2(oc, &opkt, &frame, &got_packet);
+		if (ret < 0 || !got_packet) {
+			char error[512];
+			av_strerror(ret, error, sizeof(error));
+			bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
+			goto end;
+		}
 	}
 
 	file = fopen(snapshot_file.c_str(), "w");
@@ -455,17 +460,26 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 		goto end;
 	}
 
-	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
+	if (fwrite(opkt.data, 1, opkt.size, file) < (unsigned)opkt.size) {
 		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 
-	file = 0;
 	re   = 0;
+
 end:
 	if (file)
 		fclose(file);
-	delete[] buf;
+
+	/* Free the data allocated by avcodec_encode_video2 */
+	if (opkt.side_data_elems > 0) {
+		for (int i = 0; i < opkt.side_data_elems; i++)
+			av_free(opkt.side_data[i].data);
+		av_free(opkt.side_data);
+	}
+	if (opkt.data)
+		av_free(opkt.data);
+
 	delete[] swsBuf;
 	av_free(rawFrame.data[0]);
 	avcodec_close(oc);

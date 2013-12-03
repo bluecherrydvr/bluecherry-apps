@@ -39,7 +39,8 @@ static int fake_h264_close(AVCodecContext *ctx)
 	return 0;
 }
 
-static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void *data)
+static int fake_h264_encode2(AVCodecContext *ctx, AVPacket *pkt,
+			     const AVFrame *frame, int *gotpkt)
 {
 	return -1;
 }
@@ -47,10 +48,10 @@ static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void 
 AVCodec fake_h264_encoder = {
 	.name           = "fakeh264",
 	.type           = AVMEDIA_TYPE_VIDEO,
-	.id             = CODEC_ID_H264,
+	.id             = AV_CODEC_ID_H264,
 	.priv_data_size = 0,
 	.init           = fake_h264_init,
-	.encode         = fake_h264_frame,
+	.encode2        = fake_h264_encode2,
 	.close          = fake_h264_close,
 	.capabilities   = CODEC_CAP_DELAY,
 	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
@@ -195,12 +196,7 @@ void setup_output(const char *file)
 	}
 #endif
 
-	if (av_set_parameters(out_ctx, NULL) < 0) {
-		fprintf(stderr, "Could not set params\n");
-		exit(1);
-	}
-
-	if (codec == NULL || avcodec_open(vst->codec, codec) < 0) {
+	if (codec == NULL || avcodec_open2(vst->codec, codec, NULL) < 0) {
 		fprintf(stderr, "Could not open video encoder\n");
 		exit(1);
 	}
@@ -210,5 +206,5 @@ void setup_output(const char *file)
 		exit(1);
 	}
 
-	av_write_header(out_ctx);
+	avformat_write_header(out_ctx, NULL);
 }

@@ -11,6 +11,7 @@
 
 #include <mysql/mysql.h>
 #include <mysql/errmsg.h>
+#include <mysql/mysqld_error.h>
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
@@ -124,6 +125,7 @@ static _Bool is_con_lost(MYSQL *con)
 	case CR_CONN_HOST_ERROR:
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
+	case ER_SERVER_SHUTDOWN:
 		return 1;
 	default:
 		return 0;
@@ -138,15 +140,21 @@ static int bc_db_mysql_query(const char *query)
 	if (my_con == NULL)
 		return -1;
 
-	unsigned int retries = 3;
-	for (; (ret = mysql_query(my_con, query)) && retries; retries--) {
-		if (!is_con_lost(my_con))
-			break;
-
-		/* reconnect to DBMS */
-		my_con = reset_con();
-		if (!my_con)
-			break;
+	ret = mysql_query(my_con, query);
+	if (ret){
+		if (is_con_lost(my_con)) {
+			unsigned int retries = 30;
+			do {
+				sleep(1);
+				retries--;
+				/* reconnect to DBMS */
+				my_con = reset_con();
+			} while (my_con == NULL && retries);
+		
+			if (my_con) {
+				ret = mysql_query(my_con, query);
+			}
+		}
 	}
 
 	if (ret)

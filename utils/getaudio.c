@@ -9,8 +9,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <libavutil/mathematics.h>
+#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/mathematics.h>
+
 #include <alsa/asoundlib.h>
 
 #include "g723-dec.h"
@@ -84,7 +86,6 @@ int main(int argc, char **argv)
 	alsadev = argv[optind];
 
 	/* Startup the avformat stuff first */
-	avcodec_init();
 	av_register_all();
 
 	fmt_out = av_guess_format(NULL, outfile, NULL);
@@ -101,31 +102,29 @@ int main(int argc, char **argv)
 	if (st == NULL)
 		err("opening new stream");
 
-	st->codec->codec_id = CODEC_ID_MP2;
+	st->codec->codec_id = AV_CODEC_ID_MP2;
 	st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 	st->codec->bit_rate = 32000;
 	st->codec->sample_rate = 16000;
-	st->codec->sample_fmt = SAMPLE_FMT_S16;
+	st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
 	st->codec->channels = 1;
 	st->codec->time_base = (AVRational){1, 16000};
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-	if (av_set_parameters(oc, NULL) < 0)
-		err("setting params");
 
 	codec = avcodec_find_encoder(st->codec->codec_id);
 	if (codec == NULL)
 		err("finding encoder");
 
-	if (avcodec_open(st->codec, codec) < 0)
+	if (avcodec_open2(st->codec, codec, NULL) < 0)
 		err("opening encoder");
 
 	if (avio_open(&oc->pb, outfile, AVIO_FLAG_WRITE) < 0)
 		err("opening out file");
 
-	av_write_header(oc);
+	avformat_write_header(oc, NULL);
 
 	/* Open the alsa device */
 	if (snd_pcm_open(&pcm, alsadev, SND_PCM_STREAM_CAPTURE,
@@ -159,6 +158,7 @@ int main(int argc, char **argv)
 	/* Initialize g723 decoder */
 	g723_init(&g723_state);
 
+	unsigned sample_count = 0;
 	while (1) {
 		int size = snd_pcm_readi(pcm, g723_data, sizeof(g723_data));
 		int frame_size = st->codec->frame_size;
@@ -178,8 +178,23 @@ int main(int argc, char **argv)
 
 		av_init_packet(&pkt);
 
-		pkt.size = avcodec_encode_audio(st->codec, mp2_out,
-						sizeof(mp2_out), pcm_buf);
+		AVFrame frame;
+		avcodec_get_frame_defaults(&frame);
+		frame.nb_samples = frame_size;
+	        avcodec_fill_audio_frame(&frame, st->codec->channels,
+					 st->codec->sample_fmt,
+					 pcm_buf, pcm_buf_size, 1);
+		/* XXX is this needed actually? can we avoid settin the pts? */
+		frame.pts = av_rescale_q(sample_count,
+					 (AVRational){1,st->codec->sample_rate},
+					 st->codec->time_base);
+		sample_count += frame.nb_samples;
+
+		int got_pkt;
+		pkt.data = mp2_out;
+		pkt.size = sizeof(mp2_out);
+		int ret = avcodec_encode_audio2(st->codec, &pkt, &frame,
+						&got_pkt);
 
 		if (pcm_buf_size > frame_size)
 			memcpy(pcm_buf, pcm_buf + frame_size,
@@ -187,7 +202,7 @@ int main(int argc, char **argv)
 
 		pcm_buf_size -= frame_size;
 
-		if (pkt.size == 0)
+		if (ret < 0 || !got_pkt || pkt.size == 0)
 			continue;
 
 		if (st->codec->coded_frame->pts != AV_NOPTS_VALUE)

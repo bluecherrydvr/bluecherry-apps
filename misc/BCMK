@@ -25,15 +25,15 @@ $(libconfig-libs): libconfig/Makefile
  ###############
 pkgs += libav
 LIBAV_INSTALL = $(call lpath, \
-		avcodec.so.53 \
-		avformat.so.53 \
-		avutil.so.51 \
+		avcodec.so.55 \
+		avformat.so.55 \
+		avutil.so.52 \
 		swscale.so.2)
 
 install-libs += $(LIBAV_INSTALL)
 
 conf-libav-disable = pthreads debug doc \
-	ffmpeg avconv avplay avprobe avserver avdevice avfilter
+	programs avconv avplay avprobe avserver avdevice avfilter
 conf-libav = $(foreach q,$(conf-libav-disable), --disable-$q)
 libav/config.mak:
 	$(configure) $(conf-libav) --enable-pic --cc="$(CC)"
