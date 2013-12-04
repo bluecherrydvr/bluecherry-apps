@@ -25,19 +25,39 @@ void recorder::destroy()
 	buffer_wait.notify_all();
 }
 
+void recorder::thread_cleanup(void *data)
+{
+	recorder *rec = (recorder *)data;
+
+	if (rec->m_processing == false)
+		return;
+
+	rec->lock.unlock();
+}
+
 void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
 
 	bc_log_context_push(log);
 
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+	pthread_cleanup_push(thread_cleanup, this);
+
+	bc_watchdog_add(&m_watchdog, recorder::watchdog_cb);
+
 	std::unique_lock<std::mutex> l(lock);
 	while (!destroy_flag)
 	{
+		bc_watchdog_update(&m_watchdog);
+		m_processing = false;
+
 		if (buffer.empty()) {
 			buffer_wait.wait(l);
 			continue;
 		}
+
+		m_processing = true;
 
 		stream_packet packet = buffer.front();
 		buffer.pop_front();
@@ -88,6 +108,10 @@ end:
 	l.unlock();
 	recording_end();
 	bc_event_cam_end(&current_event);
+
+	bc_watchdog_rm(&m_watchdog);
+	pthread_cleanup_pop(0);
+
 	delete this;
 }
 
@@ -199,3 +223,42 @@ void recorder::do_error_event(bc_event_level_t level, bc_event_cam_type_t type)
 	}
 }
 
+static void *bc_recorder_thread(void *data)
+{
+	recorder *rec = (recorder *)data;
+	rec->run();
+	return NULL;
+}
+
+void recorder::watchdog_cb(struct watchdog *w)
+{
+	recorder *rec = (recorder *)
+		((char*)w - __builtin_offsetof(recorder, m_watchdog));
+
+	if (rec->m_processing == false)
+	{
+		bc_watchdog_update(&rec->m_watchdog);
+		return;
+	}
+
+	pthread_cancel(rec->m_thread);
+	pthread_join(rec->m_thread, NULL);
+
+	rec->recording_end();
+
+	bc_event_cam_end(&rec->current_event);
+
+	rec->start_thread();
+}
+
+void recorder::start_thread()
+{
+	int ret;
+
+	ret = pthread_create(&m_thread, NULL, bc_recorder_thread, this);
+	if (ret != 0) {
+		bc_log(Error, "Error starting recording processor thread: %s", strerror(errno));
+		return;
+	}
+	pthread_detach(m_thread);
+}
