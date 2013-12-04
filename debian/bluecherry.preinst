@@ -9,11 +9,11 @@ case "$1" in
 		fi
 		;;
 	install)
-		if ! id bluecherry > /dev/null 2>&1; then
+		if ! id bc-services > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-				-U -G audio,video -M -U -r bluecherry
+				-U -G audio,video -M -U -r bc-services
 			# And www-data will need it too
-			usermod -a -G video,audio,bluecherry,dialout www-data
+			usermod -a -G video,audio,bc-services,dialout www-data
 		fi
 		if which service >/dev/null 2>&1; then
 			service bluecherry stop || true

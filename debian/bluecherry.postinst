@@ -7,7 +7,7 @@
 dbc_generate_include_args="-o template_infile=/usr/share/bluecherry/bluecherry.conf.in"
 dbc_generate_include=template:/etc/bluecherry.conf
 dbc_generate_include_perms=0640
-dbc_generate_include_owner=bluecherry:bluecherry
+dbc_generate_include_owner=bc-services:bc-services
 
 dbc_go bluecherry $@
 
@@ -16,18 +16,18 @@ case "$1" in
 		ucfr bluecherry /etc/bluecherry.conf
 
 		# Fixup some permissions
-		chown bluecherry:bluecherry /var/lib/bluecherry
+		chown bc-services:bc-services /var/lib/bluecherry
 		chmod 770 /var/lib/bluecherry
-		chown bluecherry:bluecherry /var/run/bluecherry
+		chown bc-services:bc-services /var/run/bluecherry
 		chmod 750 /var/run/bluecherry
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
 
 		if id syslog > /dev/null 2>&1; then
-			chown syslog:bluecherry /var/log/bluecherry.log
+			chown syslog:bc-services /var/log/bluecherry.log
 		else
-			chown root:bluecherry /var/log/bluecherry.log
+			chown root:bc-services /var/log/bluecherry.log
 		fi
 		chmod 640 /var/log/bluecherry.log
 
