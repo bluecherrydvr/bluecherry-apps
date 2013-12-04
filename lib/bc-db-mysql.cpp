@@ -65,7 +65,6 @@ static MYSQL *reset_con(void)
 	MYSQL *ret = mysql_real_connect(my_con_global, dbhost, dbuser, dbpass,
 					dbname, dbport, dbsock, 0);
 	if (!ret) {
-		bc_log(Fatal, "Can't connect to MySQL");
 		mysql_close(my_con_global);
 		my_con_global = NULL;
 		return NULL;
