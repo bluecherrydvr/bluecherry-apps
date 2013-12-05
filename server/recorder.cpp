@@ -2,6 +2,7 @@
 #include "recorder.h"
 #include "bc-server.h"
 #include "media_writer.h"
+#include <sys/time.h>
 
 recorder::recorder(const bc_record *bc_rec)
 	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false),
@@ -25,9 +26,29 @@ void recorder::destroy()
 	buffer_wait.notify_all();
 }
 
+static void event_trigger_notifications(bc_event_cam_t event)
+{
+	pid_t pid = fork();
+	if (pid < 0) {
+		bc_log(Bug, "cannot fork for event notification");
+		return;
+	}
+
+	/* Parent process */
+	if (pid)
+		return;
+
+	char id[24] = { 0 };
+	snprintf(id, sizeof(id), "%lu", event->media.table_id);
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
+	exit(1);
+}
+
 void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
+
+	struct timeval startTime, currTime;
 
 	bc_log_context_push(log);
 
@@ -76,6 +97,19 @@ void recorder::run()
 				sleep(10);
 				goto end;
 			}
+
+			if (need_snapshot)
+				gettimeofday(&startTime, NULL);
+		}
+
+		if (need_snapshot && packet.is_key_frame() && packet.is_video_frame()) {
+			gettimeofday(&currTime, NULL);
+
+			if (currTime.tv_sec - startTime.tv_sec > BC_SNAPTSHOT_DEALY) {
+				get_snapshot(packet);
+				event_trigger_notifications(current_event);
+				need_snapshot = false;
+			}
 		}
 
 		writer->write_packet(packet);
@@ -91,24 +125,6 @@ end:
 	delete this;
 }
 
-static void event_trigger_notifications(bc_event_cam_t event)
-{
-	pid_t pid = fork();
-	if (pid < 0) {
-		bc_log(Bug, "cannot fork for event notification");
-		return;
-	}
-
-	/* Parent process */
-	if (pid)
-		return;
-
-	char id[24] = { 0 };
-	snprintf(id, sizeof(id), "%lu", event->media.table_id);
-	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
-	exit(1);
-}
-
 int recorder::recording_start(time_t start_ts, const stream_packet &first_packet)
 {
 	bc_event_cam_t nevent = NULL;
@@ -117,7 +133,7 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		start_ts = time(NULL);
 
 	recording_end();
-	std::string outfile = media_file_path(start_ts);
+	outfile = media_file_path(start_ts);
 	if (outfile.empty()) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
@@ -140,16 +156,19 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	bc_event_cam_end(&current_event);
 	current_event = nevent;
 
+	/* Notification script */
+	if (recording_type == BC_EVENT_CAM_T_MOTION)
+		need_snapshot = true;
+
+	return 0;
+}
+
+void recorder::get_snapshot(const stream_packet &first_packet)
+{
 	/* JPEG snapshot */
 	std::string snapshot = outfile;
 	snapshot.replace(snapshot.size()-3, 3, "jpg");
 	writer->snapshot(snapshot, first_packet);
-
-	/* Notification script */
-	if (recording_type == BC_EVENT_CAM_T_MOTION)
-		event_trigger_notifications(current_event);
-
-	return 0;
 }
 
 std::string recorder::media_file_path(time_t start_ts)
@@ -187,6 +206,8 @@ void recorder::recording_end()
 		writer->close();
 	delete writer;
 	writer = 0;
+
+	need_snapshot = false;
 }
 
 void recorder::do_error_event(bc_event_level_t level, bc_event_cam_type_t type)
