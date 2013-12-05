@@ -257,8 +257,6 @@ void bc_record::watchdog_cb(struct watchdog *w)
 	struct bc_record *bc_rec = (bc_record *)
 		((char *)w - __builtin_offsetof(bc_record, watchdog));
 
-	bc_rec->watchdog_flag = true;
-
 	pthread_cancel(bc_rec->thread);
 	pthread_join(bc_rec->thread, NULL);
 
@@ -274,8 +272,6 @@ void bc_record::watchdog_cb(struct watchdog *w)
 	bc_rec->sched_last = 0;
 
 	pthread_create(&bc_rec->thread, NULL, bc_device_thread, bc_rec);
-
-	bc_rec->watchdog_flag = false;
 }
 
 bc_record::bc_record(int i)
@@ -304,8 +300,6 @@ bc_record::bc_record(int i)
 	m_processor = 0;
 	m_handler = 0;
 	rec = 0;
-
-	watchdog_flag = false;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)

@@ -81,12 +81,10 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 		av_free(buf);
 	}
 
-	if (!bc_rec->watchdog_flag) {
-		for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
-			avcodec_close(ctx->streams[i]->codec);
-			av_freep(&ctx->streams[i]->codec);
-			av_freep(&ctx->streams[i]);
-		}
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+		avcodec_close(ctx->streams[i]->codec);
+		av_freep(&ctx->streams[i]->codec);
+		av_freep(&ctx->streams[i]);
 	}
 
 	av_free(ctx);
