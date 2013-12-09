@@ -99,19 +99,15 @@ void server_log::open()
 	pthread_key_create(&bc_log_thread_context, destroy_thread_context);
 }
 
+inline static char lvl2char(enum log_level l)
+{
+	const char lvlid[] = { 'D', 'I', 'W', 'E', 'B', 'F' };
+	return (l < sizeof(lvlid)) ? lvlid[l] : '?';
+}
+
 void server_log::write(log_level l, const char *context, const char *msg)
 {
-	char level = '?';
-	switch (l) {
-		case Debug: level = 'D'; break;
-		case Info: level = 'I'; break;
-		case Warning: level = 'W'; break;
-		case Error: level = 'E'; break;
-		case Bug: level = 'B'; break;
-		case Fatal: level = 'F'; break;
-	}
-
-	syslog(LOG_INFO | LOG_DAEMON, "%c(%s): %s", level, context, msg);
+	syslog(LOG_INFO | LOG_DAEMON, "%c(%s): %s", lvl2char(l), context, msg);
 }
 
 const log_context &bc_log_context()
