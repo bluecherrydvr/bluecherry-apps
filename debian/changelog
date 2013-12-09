@@ -1,3 +1,17 @@
+bluecherry (1:2.1.5-1) lucid precise squeeze wheezy; urgency=low
+
+  * Fixed double call-trace on SIGABRT
+  * New call-tracing implementation
+  * Improved media cleanup speed
+  * Fixed cleanup of events
+  * Implemented available recording time estimation
+  * Fixed motion threshold ranges
+  * Changed username used by bluecherry services to "bc-services"
+  * Fixed logging issues and implemented message de-duplication
+  * Fixed keep-alive request for ACTi cameras
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 09 Dec 2013 19:24:03 -0300
+
 bluecherry (1:2.1.4-1) unstable; urgency=low
 
   * Fixed data leaks from dead threads
