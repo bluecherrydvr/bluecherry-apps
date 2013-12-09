@@ -1,7 +1,8 @@
-#include "logging.h"
 #include <syslog.h>
 #include <pthread.h>
 #include <vector>
+#include "logging.h"
+#include "fnv.h"
 
 extern char *__progname;
 static log_context *bc_default_context = 0;
@@ -20,8 +21,10 @@ struct log_context::data {
 	const std::string name;
 	log_level level;
 
+	uint64_t lastmsg;
+
 	data(const std::string &n)
-		: name(n), level((log_level)-1)
+		: name(n), level((log_level)-1), lastmsg(0)
 	{
 	}
 };
@@ -90,6 +93,13 @@ void log_context::vlog(log_level l, const char *msg, va_list args) const
 
 	char buf[1024];
 	vsnprintf(buf, sizeof(buf), msg, args);
+
+	uint64_t msghash = fnv_str(buf);
+	if (d->lastmsg == msghash)
+		return;
+
+	d->lastmsg = msghash;
+
 	server_log::write(l, d->name.c_str(), buf);
 }
 
