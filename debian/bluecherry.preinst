@@ -7,6 +7,10 @@ case "$1" in
 			echo "Please 'dpkg -P bluecherry' before installing this new package"
 			exit 1
 		fi
+		if ! id bc-services > /dev/null 2>&1; then
+			sed -i 's/^bluecherry:/bc-services:/' /etc/passwd \
+				/etc/group /etc/shadow /etc/gshadow
+		fi
 		;;
 	install)
 		if ! id bc-services > /dev/null 2>&1; then
