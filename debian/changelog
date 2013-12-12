@@ -1,3 +1,13 @@
+bluecherry (1:2.1.4-2) unstable; urgency=low
+
+  * Fixed double call-trace on SIGABRT
+  * New call-tracing implementation
+  * Improved media cleanup speed
+  * Fixed logging issues and implemented message de-duplication
+  * Fixed keep-alive request for ACTi cameras
+
+ -- Ismael Luceno <ismael.luceno@gmail.com>  Thu, 12 Dec 2013 20:29:32 -0300
+
 bluecherry (1:2.1.4-1) unstable; urgency=low
 
   * Fixed data leaks from dead threads
