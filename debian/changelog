@@ -1,3 +1,10 @@
+bluecherry (1:2.1.5-2) lucid precise squeeze wheezy; urgency=low
+
+  * Fixed upgrading and downgrading from 2.1.5
+  * Added safeguard against reserved username reuse
+
+ -- Ismael Luceno <ismael.luceno@gmail.com>  Fri, 13 Dec 2013 16:27:42 -0300
+
 bluecherry (1:2.1.5-1) lucid precise squeeze wheezy; urgency=low
 
   * Fixed double call-trace on SIGABRT
