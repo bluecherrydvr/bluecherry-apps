@@ -1,12 +1,12 @@
 Dependencies (server):
- * mysql
- * libbsd
- * php
- * udev
+ * mysql (debian: libmysqlclient-dev)
+ * libbsd (debian: libbsd-dev)
+ * php (debian: php5-dev)
+ * udev (debian: libudev-dev)
 
 Dependencies (libav):
  * yasm
- * alsa-lib
+ * alsa-lib (debian: libasound2-dev)
 
 Bundled libraries:
  * libconfig
