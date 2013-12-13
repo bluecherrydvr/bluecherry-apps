@@ -46,7 +46,7 @@ release-deps: debian/changelog
 endif
 
 # log-paths is used to filter-out uninteresting changes
-log-paths = lib server www misc/sql
+log-paths = debian lib server www misc/sql
 log-date = $(shell date -R)
 
 debian/changelog: FORCE
