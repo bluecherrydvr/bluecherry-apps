@@ -9,6 +9,16 @@ if [ -f /usr/share/debconf/confmodule ]; then
 fi
 
 case "$1" in
+	upgrade)
+		if dpkg --compare-versions "$2" lt 1:2.1.5-1; then
+			if id bluecherry >/dev/null 2>&1; then
+				echo "Error: bluecherry username already exists"
+				exit 1
+			fi
+			sed -i 's/^bc-services:/bluecherry:/' /etc/passwd \
+				/etc/group /etc/shadow /etc/gshadow
+		fi
+	;;
 	remove)
 		a2dissite bluecherry
 
