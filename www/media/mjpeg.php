@@ -197,7 +197,7 @@ function hdr_parse($fh)
 		if (empty($tmp) or $tmp[0] == '\r' or $tmp[0] == '\n')
 			break;
 
-		if ($tmp[0] != ' ') {
+		if ($tmp[0] != ' ' && $tmp[0] != "\t") {
 			$h = explode(':', $tmp, 2);
 			$k = strtolower($h[0]);
 			$hdr[$k] = ltrim($h[1]);
