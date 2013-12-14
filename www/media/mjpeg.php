@@ -200,7 +200,8 @@ function hdr_parse($fh)
 		if ($tmp[0] != ' ' && $tmp[0] != "\t") {
 			$h = explode(':', $tmp, 2);
 			$k = strtolower($h[0]);
-			$hdr[$k] = ltrim($h[1]);
+			$hdr[$k] = (array_key_exists($k, $hdr) ?
+				$hdr[$k] . ',' : '') . ltrim($h[1]);
 		} else {
 			$hdr[$k] .= ltrim($tmp);
 		}
