@@ -65,7 +65,7 @@ public:
 	pthread_t		thread;
 
 	struct watchdog		watchdog;
-
+	
 	/* Event/Media handling */
 	bc_event_cam_t          event;
 

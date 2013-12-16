@@ -174,8 +174,7 @@ void bc_record::run()
 				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
 				rec->set_logging_context(log);
 				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-				std::thread th(&recorder::run, rec);
-				th.detach();
+				rec->start_thread();
 			} else if (sched_cur == 'M') {
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
@@ -186,8 +185,7 @@ void bc_record::run()
 				rec->set_logging_context(log);
 				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
 				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
-				rec_th.detach();
+				rec->start_thread();
 
 				if (bc->type == BC_DEVICE_V4L2) {
 					static_cast<v4l2_device*>(bc->input)->set_motion(true);
