@@ -27,6 +27,8 @@ extern pthread_mutex_t mutex_streaming_setup;
 /* Default configuration file */
 #define BC_CONFIG_DEFAULT      "/etc/bluecherry.conf"
 
+#define BC_SNAPTSHOT_DEALY      2
+
 class bc_record
 {
 public:
