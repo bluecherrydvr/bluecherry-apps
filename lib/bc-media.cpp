@@ -88,6 +88,11 @@ bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
 			goto error;
 
 		bce->media.table_id = bc_db_last_insert_rowid();
+
+		/* XXX: Lost connection? */
+		if (!bce->media.table_id)
+			goto error;
+
 		snprintf(media_id_str, sizeof(media_id_str), "%lu", bce->media.table_id);
 	} else
 		strcpy(media_id_str, "NULL");
