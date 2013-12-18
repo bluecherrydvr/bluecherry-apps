@@ -522,7 +522,7 @@ static int bc_check_media(void)
  out:
 	pthread_mutex_unlock(&media_lock);
 
-	for (int i = 0; i < MAX_STOR_LOCS; i++)
+	for (int i = 0; i < MAX_STOR_LOCS && *media_stor[i].path; i++)
 		bc_estimate_recording_time(media_stor[i].path);
 
 	return ret;
