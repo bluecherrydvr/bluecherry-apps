@@ -109,6 +109,48 @@ static void event_trigger_notifications(bc_event_cam_t event)
 	exit(1);
 }
 
+
+/**
+ * Get the path for a media file on the current device with the given start
+ * time, creating folders if necessary. Repeated calls may return different
+ * results; use writer to get the current media file's path.
+ */
+static
+char *media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
+{
+	struct tm tm;
+	char date[12], fname[14];
+
+	if (bc_get_media_loc(dst, sizeof(dst)) < 0)
+		return NULL;
+
+	size_t loc_len = strlen(dst);
+
+	localtime_r(&start_ts, &tm);
+	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
+	strftime(fname, sizeof(fname), "/%H-%M-%S.mkv", &tm);
+
+	len -= loc_len;
+	size_t dir_len = snprintf(dst + loc_len, len, "%s/%06d",
+				  date, device_id);
+	if (dir_len >= len)
+		return NULL;
+
+	if (bc_mkdir_recursive(dst) < 0) {
+		bc_log(Error, "Cannot create media directory %s: %m", dst);
+		return NULL;
+	}
+
+	len -= dir_len;
+	dst += loc_len + dir_len;
+
+	/* Append file name */
+	memcpy(dst, fname, len);
+
+	/* Return pointer to file extension */
+	return dst + 10;
+}
+
 int recorder::recording_start(time_t start_ts, const stream_packet &first_packet)
 {
 	bc_event_cam_t nevent = NULL;
@@ -117,20 +159,22 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		start_ts = time(NULL);
 
 	recording_end();
-	std::string outfile = media_file_path(start_ts);
-	if (outfile.empty()) {
+	char outfile[PATH_MAX];
+	char *ext = media_file_path(outfile, sizeof(outfile), start_ts,
+				    device_id);
+	if (!ext) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
 	}
 
 	writer = new media_writer;
-	if (writer->open(outfile, *first_packet.properties().get()) != 0) {
+	if (writer->open(std::string(outfile), *first_packet.properties().get()) != 0) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
 	}
 
 	bc_event_level_t level = (recording_type == BC_EVENT_CAM_T_MOTION) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
-	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type, outfile.c_str());
+	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type, outfile);
 
 	if (!nevent) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
@@ -141,40 +185,14 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	current_event = nevent;
 
 	/* JPEG snapshot */
-	std::string snapshot = outfile;
-	snapshot.replace(snapshot.size()-3, 3, "jpg");
-	writer->snapshot(snapshot, first_packet);
+	strcpy(ext, "jpg");
+	writer->snapshot(outfile, first_packet);
 
 	/* Notification script */
 	if (recording_type == BC_EVENT_CAM_T_MOTION)
 		event_trigger_notifications(current_event);
 
 	return 0;
-}
-
-std::string recorder::media_file_path(time_t start_ts)
-{
-	struct tm tm;
-	char date[12], mytime[10], dir[PATH_MAX];
-	char stor[PATH_MAX];
-
-	if (bc_get_media_loc(stor, sizeof(stor)) < 0)
-		return std::string();
-
-	localtime_r(&start_ts, &tm);
-
-	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
-	strftime(mytime, sizeof(mytime), "%H-%M-%S", &tm);
-	if (snprintf(dir, sizeof(dir), "%s/%s/%06d", stor, date, device_id) >= (int)sizeof(dir))
-		return std::string();
-	if (bc_mkdir_recursive(dir) < 0) {
-		bc_log(Error, "Cannot create media directory %s: %m", dir);
-		return std::string();
-	}
-
-	std::string path = dir;
-	path += "/" + std::string(mytime) + ".mkv";
-	return path;
 }
 
 void recorder::recording_end()

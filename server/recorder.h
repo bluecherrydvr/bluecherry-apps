@@ -27,10 +27,6 @@ private:
 	bc_event_cam_t current_event;
 
 	int recording_start(time_t start, const stream_packet &first_packet);
-	/* Get the path for a media file on the current device with the given start time,
-	 * creating folders if necessary. Repeated calls may return different results; use
-	 * writer to get the current media file's path. */
-	std::string media_file_path(time_t start);
 	void recording_end();
 	void do_error_event(bc_event_level_t level, bc_event_cam_type_t type);
 };
