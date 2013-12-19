@@ -1,8 +1,10 @@
 #include <syslog.h>
 #include <pthread.h>
 #include <vector>
+#include <string.h>
 #include "logging.h"
 #include "fnv.h"
+#include "bc-syslog.h"
 
 extern char *__progname;
 static log_context *bc_default_context = 0;
@@ -129,7 +131,17 @@ inline static char lvl2char(enum log_level l)
 
 void server_log::write(log_level l, const char *context, const char *msg)
 {
-	syslog(LOG_INFO | LOG_DAEMON, "%c(%s): %s", lvl2char(l), context, msg);
+	struct iovec iov[3];
+	char ctx[20];
+
+	iov[1].iov_base = ctx;
+	iov[1].iov_len = snprintf(ctx, sizeof(ctx), "%c(%s): ",
+				  lvl2char(l), context);
+
+	iov[2].iov_base = (void*)msg;
+	iov[2].iov_len = strlen(msg) + 1;
+
+	bc_syslogv(iov, sizeof(iov) / sizeof(iov[0]));
 }
 
 const log_context &bc_log_context()

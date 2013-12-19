@@ -10,7 +10,7 @@
 #include <execinfo.h>
 #include <dlfcn.h>
 #include "bt.h"
-
+#include "bc-syslog.h"
 
 #define VSET(v, base, len) {		\
 	struct iovec *__v = &(v);	\
@@ -36,7 +36,7 @@ unsigned bt_fill_entry(struct iovec *out, char *faddr, char *saddr, size_t addr)
 {
 	Dl_info d;
 
-	unsigned last = 3;
+	unsigned last = 4;
 
 	int ret = dladdr((void *)addr, &d);
 	if (!ret) {
@@ -74,26 +74,26 @@ void bt_print_entries(size_t *btrace, unsigned len, size_t p, const char *err)
 	struct iovec out[9];
 
 
-	VSTR(out[0], "BUG: ");
-	VSTR(out[1], err);
-	VSTR(out[2], " at 0x");
-	VBUF(out[3], addr[0]);
-	VSTR(out[4], "\n\nCall trace:\n");
+	VSTR(out[1], "BUG: ");
+	VSTR(out[2], err);
+	VSTR(out[3], " at 0x");
+	VBUF(out[4], addr[0]);
 	ptrtohex(addr[0], PTRS_SZ, rebase(p));
+	bc_syslogv(out, 5);
 
-	writev(STDERR_FILENO, out, 5);
+	VSTR(out[1], "Call trace:");
+	bc_syslogv(out, 2);
 
 	if (!len)
 		return;
 
-	VSTR(out[0], "[0x");
-	VBUF(out[1], addr[0]);
-	VSTR(out[2], "] ");
+	VSTR(out[1], "[0x");
+	VBUF(out[2], addr[0]);
+	VSTR(out[3], "] ");
 
-	for (; len; len--) {
+	while (len--) {
 		unsigned last = bt_fill_entry(out, addr[0], addr[1], *btrace++);
-		VSTR(out[last++], "\n");
-		writev(STDERR_FILENO, out, last);
+		bc_syslogv(out, last);
 	}
 }
 

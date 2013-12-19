@@ -22,6 +22,7 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 #include "watchdog.h"
+#include "bc-syslog.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -751,6 +752,8 @@ int main(int argc, char **argv)
 	int bg = 1;
 	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
+
+	bc_syslog_init();
 
 	umask(027);
 
