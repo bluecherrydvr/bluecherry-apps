@@ -22,9 +22,10 @@ struct log_context::data {
 	log_level level;
 
 	uint64_t lastmsg;
+	unsigned lastmsgcnt;
 
 	data(const std::string &n)
-		: name(n), level((log_level)-1), lastmsg(0)
+		: name(n), level((log_level)-1), lastmsg(0), lastmsgcnt(0)
 	{
 	}
 };
@@ -95,9 +96,20 @@ void log_context::vlog(log_level l, const char *msg, va_list args) const
 	vsnprintf(buf, sizeof(buf), msg, args);
 
 	uint64_t msghash = fnv_str(buf);
-	if (d->lastmsg == msghash)
-		return;
 
+	if (d->lastmsg == msghash) {
+		d->lastmsgcnt++;
+		return;
+	}
+
+	if (d->lastmsgcnt) {
+		char bufc[60];
+		snprintf(bufc, sizeof(bufc), "Last message repeated %d times!",
+			 d->lastmsgcnt);
+		server_log::write(l, d->name.c_str(), bufc);
+	}
+
+	d->lastmsgcnt = 0;
 	d->lastmsg = msghash;
 
 	server_log::write(l, d->name.c_str(), buf);
