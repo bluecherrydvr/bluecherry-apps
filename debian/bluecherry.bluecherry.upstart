@@ -10,6 +10,8 @@ stop on runlevel [016]
 
 respawn
 
+console none
+
 pre-start script
     mkdir -p /var/run/bluecherry
     chown bc-services:bc-services /var/run/bluecherry
