@@ -11,6 +11,7 @@
 
 #include <mysql/mysql.h>
 #include <mysql/errmsg.h>
+#include <mysql/mysqld_error.h>
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
@@ -123,6 +124,7 @@ static _Bool is_con_lost(MYSQL *con)
 	case CR_CONN_HOST_ERROR:
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
+	case ER_SERVER_SHUTDOWN:
 		return 1;
 	default:
 		return 0;
