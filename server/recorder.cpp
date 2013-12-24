@@ -222,3 +222,8 @@ void recorder::do_error_event(bc_event_level_t level, bc_event_cam_type_t type)
 	}
 }
 
+void recorder::set_buffer_time(int prerecord)
+{
+	buffer.set_duration(prerecord);
+}
+
