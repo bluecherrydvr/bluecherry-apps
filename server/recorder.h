@@ -14,6 +14,7 @@ public:
 	virtual ~recorder();
 
 	void set_recording_type(bc_event_cam_type_t type);
+	void set_buffer_time(int prerecord);
 
 	void destroy();
 	void run();
