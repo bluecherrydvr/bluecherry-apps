@@ -389,7 +389,7 @@ end:
 	return have_picture;
 }
 
-int media_writer::snapshot(const std::string &snapshot_file, const stream_packet &pkt)
+int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 {
 	AVFrame rawFrame, frame;
 	if (decode_one_packet(pkt, &rawFrame) < 1) {
@@ -449,7 +449,7 @@ int media_writer::snapshot(const std::string &snapshot_file, const stream_packet
 		goto end;
 	}
 
-	file = fopen(snapshot_file.c_str(), "w");
+	file = fdopen(snapshotfd, "w");
 	if (!file) {
 		bc_log(Error, "snapshot: cannot create file: %s", strerror(errno));
 		goto end;

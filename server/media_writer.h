@@ -20,7 +20,7 @@ public:
 	bool write_packet(const stream_packet &pkt);
 
 	/* Save a JPG snapshot of a frame at file_path. */
-	static int snapshot(const std::string &file_path, const stream_packet &pkt);
+	static int snapshot(int snapshotfd, const stream_packet &pkt);
 
 protected:
 	std::string file_path;
