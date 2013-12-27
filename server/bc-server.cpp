@@ -746,6 +746,12 @@ static log_level str_to_log_level(const char *str)
 	}
 }
 
+static
+void db_cleanup(void)
+{
+	bc_db_query("DELETE FROM Media WHERE filepath=''");
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -841,6 +847,8 @@ int main(int argc, char **argv)
 		return 1;
 
 	bc_log(Info, "SQL database connection opened");
+
+	db_cleanup();
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
 	{
