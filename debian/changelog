@@ -1,3 +1,13 @@
+bluecherry (1:2.1.6-1) lucid precise squeeze wheezy; urgency=low
+
+  * Improved logging implementation
+  * Add DB cleanup at startup
+  * Misc. bugfixes
+  * Fail gracefully on event start if DB connection is lost
+  * Bug #127: Fixed pre and post-recording duration
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 26 Dec 2013 23:43:04 -0300
+
 bluecherry (1:2.1.5-2) lucid precise squeeze wheezy; urgency=low
 
   * Fixed upgrading and downgrading from 2.1.5
