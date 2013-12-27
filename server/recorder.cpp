@@ -48,7 +48,7 @@ void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
 
-	struct timeval startTime, currTime;
+	time_t startTime, currTime;
 
 	bc_log_context_push(log);
 
@@ -99,13 +99,13 @@ void recorder::run()
 			}
 
 			if (need_snapshot)
-				gettimeofday(&startTime, NULL);
+				startTime = time(NULL);
 		}
 
 		if (need_snapshot && packet.is_key_frame() && packet.is_video_frame()) {
-			gettimeofday(&currTime, NULL);
+			currTime = time(NULL);
 
-			if (currTime.tv_sec - startTime.tv_sec > BC_SNAPTSHOT_DEALY) {
+			if (currTime - startTime > BC_SNAPTSHOT_DEALY) {
 				get_snapshot(packet);
 				event_trigger_notifications(current_event);
 				need_snapshot = false;
