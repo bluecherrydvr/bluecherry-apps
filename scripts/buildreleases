@@ -27,7 +27,9 @@ $(error No changes since $(ver-tag))
 endif
 VERSION := $(ver-tag:v%=%)-9999~nightly$(ver-chg)~$(ver-id)
 else
-VERSION := $(shell sed 's/.*([^:]*://;s/).*//;1q' debian/changelog)
+ver-tmp := $(shell sed 's/.*([^:]*://;s/).*//;1q' debian/changelog)
+ver-tag := v$(subst -1,,$(ver-tmp))
+VERSION := $(ver-tmp)
 endif
 
 release: FORCE
