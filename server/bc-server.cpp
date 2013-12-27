@@ -657,8 +657,8 @@ static void bc_check_inprogress(void)
 			m_id = bc_db_get_val_int(dbres, "media_id");
 
 			bc_log(Info, "Deleting empty media %s", filepath);
-
-			bc_db_query("DELETE FROM EventsCam WHERE id=%u", e_id);
+			// XXX: Deleted automatically by cascading
+			// bc_db_query("DELETE FROM EventsCam WHERE id=%u", e_id);
 			bc_db_query("DELETE FROM Media WHERE id=%u", m_id);
 
 			unlink(filepath);
