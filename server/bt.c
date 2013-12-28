@@ -11,14 +11,7 @@
 #include <dlfcn.h>
 #include "bt.h"
 #include "bc-syslog.h"
-
-#define VSET(v, base, len) {		\
-	struct iovec *__v = &(v);	\
-	__v->iov_base = (void *)(base); \
-	__v->iov_len = (len);		\
-}
-#define VSTR(v, str) VSET((v), (str), strlen(str))
-#define VBUF(v, buf) VSET((v), (buf), sizeof(buf))
+#include "iov-macros.h"
 
 static
 void ptrtohex(char *dst, unsigned size, size_t ptr)

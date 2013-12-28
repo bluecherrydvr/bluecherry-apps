@@ -141,7 +141,7 @@ void server_log::write(log_level l, const char *context, const char *msg)
 	iov[2].iov_base = (void*)msg;
 	iov[2].iov_len = strlen(msg) + 1;
 
-	bc_syslogv(iov, sizeof(iov) / sizeof(iov[0]));
+	bc_syslogv(iov, VLEN(iov));
 }
 
 const log_context &bc_log_context()

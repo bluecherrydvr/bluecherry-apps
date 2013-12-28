@@ -3,6 +3,7 @@
 #include <sys/un.h>
 
 #include "bc-syslog.h"
+#include "iov-macros.h"
 
 static int syslog_fd;
 
@@ -23,15 +24,6 @@ void bc_syslog_init()
 
 	syslog_fd = sock;
 }
-
-
-#define VSET(v, base, len) {		\
-	struct iovec *__v = &(v);	\
-	__v->iov_base = (void *)(base); \
-	__v->iov_len = (len);		\
-}
-#define VSTR(v, str) VSET((v), (str), strlen(str))
-#define VBUF(v, buf) VSET((v), (buf), sizeof(buf))
 
 
 void bc_syslogv(struct iovec *iov, int iovcnt)
