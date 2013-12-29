@@ -5,6 +5,7 @@
 #include "logging.h"
 #include "fnv.h"
 #include "bc-syslog.h"
+#include "iov-macros.h"
 
 extern char *__progname;
 static log_context *bc_default_context = 0;
@@ -131,17 +132,15 @@ inline static char lvl2char(enum log_level l)
 
 void server_log::write(log_level l, const char *context, const char *msg)
 {
-	struct iovec iov[3];
+	const unsigned logv_len = 2;
+	bc_logv *logv = bc_logv_alloc(logv_len);
 	char ctx[20];
 
-	iov[1].iov_base = ctx;
-	iov[1].iov_len = snprintf(ctx, sizeof(ctx), "%c(%s): ",
-				  lvl2char(l), context);
+	VSET(logv[0], ctx, snprintf(ctx, sizeof(ctx), "%c(%s): ",
+				    lvl2char(l), context));
+	VSTR(logv[1], msg);
 
-	iov[2].iov_base = (void*)msg;
-	iov[2].iov_len = strlen(msg) + 1;
-
-	bc_syslogv(iov, VLEN(iov));
+	bc_syslogv(logv, logv_len);
 }
 
 const log_context &bc_log_context()
