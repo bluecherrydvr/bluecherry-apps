@@ -20,7 +20,7 @@ void bc_syslog_init()
 		.sun_path = "/dev/log",
 	};
 
-	if (connect(sock, &usock, sizeof(usock)))
+	if (connect(sock, (struct sockaddr *)&usock, sizeof(usock)))
 		_exit(1);
 
 	syslog_fd = sock;
