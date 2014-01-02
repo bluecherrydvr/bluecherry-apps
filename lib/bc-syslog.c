@@ -10,7 +10,7 @@
 #include "bc-syslog.h"
 #include "iov-macros.h"
 
-static char hostname[16];
+static char prgid[48];
 
 static int syslog_fd;
 
@@ -31,17 +31,29 @@ void bc_syslog_init()
 
 	syslog_fd = sock;
 
-	int ret = gethostname(hostname, sizeof(hostname));
+	char *p = prgid;
+	int p_len = sizeof(prgid);
+
+	const int hn_max_len = 16;
+	int ret = gethostname(p, hn_max_len);
 	if (ret == -1) {
 		if (errno == ENAMETOOLONG)
-			hostname[sizeof(hostname) - 1] = 0;
+			p[hn_max_len] = 0;
 		else
-			strcpy(hostname, "localhost");
+			strcpy(p, "localhost");
 	}
+	{
+		size_t hn_len = strlen(p);
+		p[hn_len++] = ' ';
+		p += hn_len;
+		p_len -= hn_len;
+	}
+
+	snprintf(p, p_len, "bc-server[%d]", getpid());
 }
 
 static
-size_t mkmsghdr(char *dst, size_t max, unsigned prio, const char *host)
+size_t mkmsghdr(char *dst, size_t max, unsigned prio)
 {
 	struct tm tm;
 	time_t t = time(NULL);
@@ -54,16 +66,16 @@ size_t mkmsghdr(char *dst, size_t max, unsigned prio, const char *host)
 
 	/* XXX: getpid on glibc caches the result, using another libc might
 	 * require catching it ourselves... */
-	return snprintf(dst, max, "<%u>%s %2d %02d:%02d:%02d %s bc-server[%d]: ",
+	return snprintf(dst, max, "<%u>%s %2d %02d:%02d:%02d %s: ",
 			prio, month[tm.tm_mon],
 			tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
-			host, getpid());
+			prgid);
 }
 
 void bc_syslogv(bc_logv *iov, int iovcnt)
 {
 	char hdr[72];
-	size_t hdr_size = mkmsghdr(hdr, sizeof(hdr), 30, hostname);
+	size_t hdr_size = mkmsghdr(hdr, sizeof(hdr), 30);
 
 	iov--;
 	iovcnt++;
