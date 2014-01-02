@@ -34,6 +34,7 @@ void bc_syslog_init()
 	char *p = prgid;
 	int p_len = sizeof(prgid);
 
+#ifdef BC_SYSLOG_USE_HOSTNAME
 	const int hn_max_len = 16;
 	int ret = gethostname(p, hn_max_len);
 	if (ret == -1) {
@@ -48,6 +49,7 @@ void bc_syslog_init()
 		p += hn_len;
 		p_len -= hn_len;
 	}
+#endif
 
 	snprintf(p, p_len, "bc-server[%d]", getpid());
 }
