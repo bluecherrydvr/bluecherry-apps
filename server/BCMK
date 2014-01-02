@@ -21,7 +21,7 @@ bc-server: $(LIB) $(SERVER_OBJS)
 install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_DATA) -D rsyslog.conf \
-		$(DESTDIR)$(etc_dir)/rsyslog.d/99-bluecherry.conf
+		$(DESTDIR)$(etc_dir)/rsyslog.d/10-bluecherry.conf
 
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
