@@ -134,10 +134,14 @@ void server_log::write(log_level l, const char *context, const char *msg)
 {
 	const unsigned logv_len = 2;
 	bc_logv *logv = bc_logv_alloc(logv_len);
-	char ctx[20];
+	char ctx[64];
 
-	VSET(logv[0], ctx, snprintf(ctx, sizeof(ctx), "%c(%s): ",
-				    lvl2char(l), context));
+	size_t ctxlen = snprintf(ctx, sizeof(ctx), "%c(%s): ", lvl2char(l),
+				 context);
+	if (ctxlen > sizeof(ctx))
+		ctxlen = sizeof(ctx);
+
+	VSET(logv[0], ctx, ctxlen);
 	VSTR(logv[1], msg);
 
 	bc_syslogv(logv, logv_len);
