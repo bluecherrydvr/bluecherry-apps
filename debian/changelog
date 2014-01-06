@@ -1,3 +1,9 @@
+bluecherry (1:2.1.6-4) lucid precise squeeze wheezy; urgency=low
+
+  * Fix handling of truncated context string in logs
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 06 Jan 2014 15:16:45 -0300
+
 bluecherry (1:2.1.6-3) lucid precise squeeze wheezy; urgency=low
 
   * Do not log to /var/log/syslog
