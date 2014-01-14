@@ -86,7 +86,7 @@ int bc_db_open(const char *bc_config)
 		return 0;
 
 	if (!bc_config) {
-		bc_log(Fatal, "No configuration file specfied");
+		bc_log(Fatal, "No configuration file specified");
 		return -1;
 	}
 
