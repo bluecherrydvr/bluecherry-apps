@@ -27,7 +27,6 @@ CREATE TABLE Storage (
 	path varchar(512) NOT NULL,
 	max_thresh decimal(5,2) NOT NULL,
 	min_thresh decimal(5,2) NOT NULL,
-	record_time integer,
 	UNIQUE (path)
 );
 

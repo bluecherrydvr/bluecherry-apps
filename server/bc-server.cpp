@@ -491,20 +491,6 @@ done:
 	return 0;
 }
 
-static void bc_estimate_recording_time(const char *path)
-{
-	const char query[] = "UPDATE Storage SET record_time = ("
-		" SELECT (%" PRId64 ") * period / size + period"
-		" FROM (SELECT SUM("
-			"CASE WHEN end - start < 0 THEN 0 ELSE end - start END"
-		") period, SUM(size) DIV 1048576 size"
-		" FROM Media WHERE filepath LIKE '%s%%') q)"
-		" WHERE path = '%s'";
-
-	uint64_t free_space = path_freespace(path) >> 20;
-	__bc_db_query(query, free_space, path, path);
-}
-
 static int bc_check_media(void)
 {
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
@@ -522,9 +508,6 @@ static int bc_check_media(void)
 
  out:
 	pthread_mutex_unlock(&media_lock);
-
-	for (int i = 0; i < MAX_STOR_LOCS && *media_stor[i].path; i++)
-		bc_estimate_recording_time(media_stor[i].path);
 
 	return ret;
 }
