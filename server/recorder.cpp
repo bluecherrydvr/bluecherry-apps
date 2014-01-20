@@ -125,7 +125,7 @@ char *media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
 	struct tm tm;
 	char date[12], fname[14];
 
-	size_t loc_len = bc_get_media_loc(dst, sizeof(dst));
+	size_t loc_len = bc_get_media_loc(dst, len);
 	if (loc_len > len)
 		return NULL;
 
