@@ -406,18 +406,17 @@ const char *select_best_path(void)
 	return ret ? ret->path : NULL;
 }
 
-int bc_get_media_loc(char *dest, size_t size)
+size_t bc_get_media_loc(char *dest, size_t size)
 {
-	int ret = 0;
-	dest[0] = 0;
+	size_t ret = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log(Error, "Deadlock detected in media_lock on get_loc");
 
 	const char *sel = select_best_path();
 
-	if (!sel || strlcpy(dest, sel, size) > size)
-		ret = -1;
+	if (sel)
+		ret = strlcpy(dest, sel, size);
 
 	pthread_mutex_unlock(&media_lock);
 	return ret;

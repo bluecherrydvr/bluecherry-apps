@@ -128,7 +128,7 @@ int bc_status_component_end(bc_status_component component, int ok);
 
 extern char global_sched[7 * 24 + 1];
 
-int bc_get_media_loc(char *dest, size_t size);
+size_t bc_get_media_loc(char *dest, size_t size);
 
 /* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
  * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */
