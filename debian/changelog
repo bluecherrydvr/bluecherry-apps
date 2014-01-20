@@ -2,6 +2,7 @@ bluecherry (1:2.1.7-1) lucid precise squeeze wheezy; urgency=low
 
   * Available recording time estimation now done on-the-fly
   * Fixes to license checking code
+  * Fixed recording path truncation issues
 
  -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 20 Jan 2014 16:54:13 -0300
 
