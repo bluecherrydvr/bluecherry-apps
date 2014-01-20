@@ -1,3 +1,10 @@
+bluecherry (1:2.1.7-1) lucid precise squeeze wheezy; urgency=low
+
+  * Available recording time estimation now done on-the-fly
+  * Fixes to license checking code
+
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 20 Jan 2014 16:54:13 -0300
+
 bluecherry (1:2.1.6-4) lucid precise squeeze wheezy; urgency=low
 
   * Fix handling of truncated context string in logs
