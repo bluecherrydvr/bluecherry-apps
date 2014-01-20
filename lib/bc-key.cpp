@@ -16,6 +16,7 @@
 #include <set>
 #include <string>
 #include <bsd/string.h>
+#include <limits.h>
 
 #ifndef BC_KEY_STANDALONE
 #include "libbluecherry.h"
@@ -262,14 +263,15 @@ int bc_license_check_auth(const char *key, const char *auth)
 
 int bc_license_machine_id(char *out, size_t out_sz)
 {
+	const char ifs[] = "\3eth" "\3eno" "\4wlan" "\3wlo";
 	char buf[1024];
 	char id_buf[6];
 	struct ifconf ifc;
 	struct ifreq *ifr;
 	int fd;
 	int re = -1;
-	int if_count;
-	int i;
+	unsigned if_count;
+	unsigned nic = UINT_MAX;
 
 	if (out_sz < 10)
 		return -ENOBUFS;
@@ -287,23 +289,32 @@ int bc_license_machine_id(char *out, size_t out_sz)
 	if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
 		re = -errno;
 		goto end;
+	} else if (ifc.ifc_len == sizeof(buf)) {
+		/* XXX buf too small, should we retry with bigger buf? */
 	}
 
 	ifr = ifc.ifc_req;
 	if_count = ifc.ifc_len / sizeof(struct ifreq);
 
-	for (i = 0; i < if_count; ++i) {
+	for (unsigned i = 0; i < if_count; i++) {
 		if (ioctl(fd, SIOCGIFHWADDR, &ifr[i]) < 0) {
 			re = -errno;
 			continue;
 		}
 
-		if (i && strncmp(ifr[i].ifr_name, "eth", 3) && strncmp(ifr[i].ifr_name, "wlan", 4))
-			continue;
+		for (const char *p = ifs; *p; p += *p + 1) {
+			const char *n = ifr[i].ifr_name;
+			if (strncmp(n, p + 1, *p) != 0)
+				continue;
 
-		memcpy(id_buf, ifr[i].ifr_hwaddr.sa_data, 6);
-		if (i)
+			unsigned tmp = (n[0] << 8) |
+				strtoul(n + *p, NULL, 10);
+			if (tmp < nic) {
+				nic = tmp;
+				memcpy(id_buf, ifr[i].ifr_hwaddr.sa_data, 6);
+			}
 			break;
+		}
 	}
 
 	base32_encode(out, 10, id_buf+1, 5);
