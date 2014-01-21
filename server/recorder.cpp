@@ -134,7 +134,7 @@ char *media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
 	strftime(fname, sizeof(fname), "/%H-%M-%S.mkv", &tm);
 
 	len -= loc_len;
-	size_t dir_len = snprintf(dst + loc_len, len, "%s/%06d",
+	size_t dir_len = snprintf(dst + loc_len, len, "/%s/%06d",
 				  date, device_id);
 	if (dir_len >= len)
 		return NULL;
