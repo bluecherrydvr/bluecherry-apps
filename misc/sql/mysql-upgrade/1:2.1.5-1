@@ -23,7 +23,4 @@ ALTER TABLE EventTags
 	  FOREIGN KEY (event_id) REFERENCES EventsCam(id)
 	  ON DELETE CASCADE;
 
--- Add record_time
-ALTER TABLE Storage ADD record_time integer;
-
 COMMIT;

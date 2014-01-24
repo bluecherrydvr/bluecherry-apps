@@ -1,1 +1,0 @@
-ALTER TABLE Storage DROP COLUMN record_time;
