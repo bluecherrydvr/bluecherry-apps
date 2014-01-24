@@ -30,7 +30,7 @@ CREATE TABLE Storage (
 	UNIQUE (path)
 );
 
-INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00, NULL);
+INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00);
 
 
 CREATE TABLE ServerStatus (
