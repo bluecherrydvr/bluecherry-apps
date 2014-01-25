@@ -8,32 +8,14 @@ bluecherry (1:2.1.7-1) lucid precise squeeze wheezy; urgency=low
 
 bluecherry (1:2.1.6-4) lucid precise squeeze wheezy; urgency=low
 
-  * Fix handling of truncated context string in logs
-
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 06 Jan 2014 15:16:45 -0300
-
-bluecherry (1:2.1.6-3) lucid precise squeeze wheezy; urgency=low
-
-  * Do not log to /var/log/syslog
-
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 02 Jan 2014 17:46:58 -0300
-
-bluecherry (1:2.1.6-2) lucid precise squeeze wheezy; urgency=low
-
-  * Updated build environments
-  * Internal syslog wrapper API fixes
-
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Sat, 28 Dec 2013 23:03:51 -0300
-
-bluecherry (1:2.1.6-1) lucid precise squeeze wheezy; urgency=low
-
   * Improved logging implementation
   * Add DB cleanup at startup
   * Misc. bugfixes
   * Fail gracefully on event start if DB connection is lost
+  * Updated build environments
   * Bug #127: Fixed pre and post-recording duration
 
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Thu, 26 Dec 2013 23:43:04 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 06 Jan 2014 15:16:45 -0300
 
 bluecherry (1:2.1.5-2) lucid precise squeeze wheezy; urgency=low
 
