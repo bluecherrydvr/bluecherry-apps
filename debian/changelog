@@ -1,8 +1,9 @@
-bluecherry (1:2.1.7-2) unstable; urgency=low
+bluecherry (1:2.1.7-3) unstable; urgency=low
 
   * Installation fixes
+  * Upgraded toolchains (due to GCC bugs)
 
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Fri, 31 Jan 2014 16:04:59 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Wed, 05 Feb 2014 20:47:59 -0300
 
 bluecherry (1:2.1.7-1) lucid precise squeeze wheezy; urgency=low
 
