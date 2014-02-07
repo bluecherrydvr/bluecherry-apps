@@ -48,7 +48,7 @@ static uint32_t get_best_pixfmt(int fd)
 }
 
 v4l2_device::v4l2_device(BC_DB_RES dbres)
-	: dev_fd(-1), cam_caps(0), codec_id(CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
+	: dev_fd(-1), cam_caps(0), codec_id(AV_CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
 	  buffers(0), dev_id(0), got_vop(0)
 {
 	memset(&p_buf, 0, sizeof(p_buf));
@@ -103,10 +103,10 @@ v4l2_device::v4l2_device(BC_DB_RES dbres)
 	fmt = get_best_pixfmt(dev_fd);
 	switch (fmt) {
 	case V4L2_PIX_FMT_MPEG4:
-		codec_id = CODEC_ID_MPEG4;
+		codec_id = AV_CODEC_ID_MPEG4;
 		break;
 	case V4L2_PIX_FMT_H264:
-		codec_id = CODEC_ID_H264;
+		codec_id = AV_CODEC_ID_H264;
 		break;
 	default:
 		bc_log(Error, "Unknown '%c%c%c%c' pixel format",
@@ -445,10 +445,10 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 
 		uint32_t fmt;
 		switch (codec_id) {
-		case CODEC_ID_MPEG4:
+		case AV_CODEC_ID_MPEG4:
 			fmt = V4L2_PIX_FMT_MPEG4;
 			break;
-		case CODEC_ID_H264:
+		case AV_CODEC_ID_H264:
 			fmt = V4L2_PIX_FMT_H264;
 			break;
 		default:
@@ -560,15 +560,15 @@ void v4l2_device::update_properties()
 	stream_properties *p = new stream_properties;
 
 	p->video.codec_id = codec_id;
-	p->video.pix_fmt = PIX_FMT_YUV420P;
+	p->video.pix_fmt = AV_PIX_FMT_YUV420P;
 	p->video.width = vfmt.fmt.pix.width;
 	p->video.height = vfmt.fmt.pix.height;
 	p->video.time_base.num = vparm.parm.capture.timeperframe.numerator;
 	p->video.time_base.den = vparm.parm.capture.timeperframe.denominator;
 
-	if (p->video.codec_id == CODEC_ID_NONE) {
+	if (p->video.codec_id == AV_CODEC_ID_NONE) {
 		bc_log(Warning, "Invalid Video Format, assuming H.264");
-		p->video.codec_id = CODEC_ID_H264;
+		p->video.codec_id = AV_CODEC_ID_H264;
 	}
 
 #if 0
@@ -584,7 +584,7 @@ void v4l2_device::update_properties()
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
-		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
+		enum AVCodecID codec_id = AV_CODEC_ID_PCM_S16LE;
 
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
@@ -599,7 +599,7 @@ void v4l2_device::update_properties()
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
 		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
+		st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
 		st->codec->channels = 1;
 		st->codec->time_base = (AVRational){1, 8000};
 
