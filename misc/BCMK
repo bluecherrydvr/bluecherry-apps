@@ -42,7 +42,7 @@ libav-clean: FORCE
 	-$(MAKE) -C libav distclean
 
 $(LIBAV_INSTALL): libav/config.mak
-	$(MAKE) $(MAKEARGS) V=1 -C libav install
+	$(MAKE) $(MAKEARGS) V=1 -C libav -j $(NCPU) install
 
  ####################
 ### Common targets ###
