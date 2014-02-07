@@ -41,7 +41,7 @@ static int smjpeg_probe(AVProbeData *p)
     return 0;
 }
 
-static int smjpeg_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int smjpeg_read_header(AVFormatContext *s)
 {
     SMJPEGContext *sc = s->priv_data;
     AVStream *ast = NULL, *vst = NULL;
@@ -52,7 +52,7 @@ static int smjpeg_read_header(AVFormatContext *s, AVFormatParameters *ap)
     avio_skip(pb, 8); // magic
     version = avio_rb32(pb);
     if (version)
-        av_log_ask_for_sample(s, "unknown version %d\n", version);
+        avpriv_request_sample(s, "Unknown version %d", version);
 
     duration = avio_rb32(pb); // in msec
 
@@ -77,8 +77,8 @@ static int smjpeg_read_header(AVFormatContext *s, AVFormatParameters *ap)
             break;
         case SMJPEG_SND:
             if (ast) {
-                av_log_ask_for_sample(s, "multiple audio streams not supported\n");
-                return AVERROR_INVALIDDATA;
+                avpriv_request_sample(s, "Multiple audio streams");
+                return AVERROR_PATCHWELCOME;
             }
             hlength = avio_rb32(pb);
             if (hlength < 8)
@@ -100,7 +100,7 @@ static int smjpeg_read_header(AVFormatContext *s, AVFormatParameters *ap)
             break;
         case SMJPEG_VID:
             if (vst) {
-                av_log_ask_for_sample(s, "multiple video streams not supported\n");
+                avpriv_request_sample(s, "Multiple video streams");
                 return AVERROR_INVALIDDATA;
             }
             hlength = avio_rb32(pb);
@@ -135,10 +135,13 @@ static int smjpeg_read_header(AVFormatContext *s, AVFormatParameters *ap)
 static int smjpeg_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
     SMJPEGContext *sc = s->priv_data;
-    uint32_t dtype, ret, size, timestamp;
+    uint32_t dtype, size, timestamp;
+    int64_t pos;
+    int ret;
 
     if (s->pb->eof_reached)
         return AVERROR_EOF;
+    pos   = avio_tell(s->pb);
     dtype = avio_rl32(s->pb);
     switch (dtype) {
     case SMJPEG_SNDD:
@@ -147,6 +150,7 @@ static int smjpeg_read_packet(AVFormatContext *s, AVPacket *pkt)
         ret = av_get_packet(s->pb, pkt, size);
         pkt->stream_index = sc->audio_stream_index;
         pkt->pts = timestamp;
+        pkt->pos = pos;
         break;
     case SMJPEG_VIDD:
         timestamp = avio_rb32(s->pb);
@@ -154,6 +158,7 @@ static int smjpeg_read_packet(AVFormatContext *s, AVPacket *pkt)
         ret = av_get_packet(s->pb, pkt, size);
         pkt->stream_index = sc->video_stream_index;
         pkt->pts = timestamp;
+        pkt->pos = pos;
         break;
     case SMJPEG_DONE:
         ret = AVERROR_EOF;
@@ -174,4 +179,5 @@ AVInputFormat ff_smjpeg_demuxer = {
     .read_header    = smjpeg_read_header,
     .read_packet    = smjpeg_read_packet,
     .extensions     = "mjpg",
+    .flags          = AVFMT_GENERIC_INDEX,
 };

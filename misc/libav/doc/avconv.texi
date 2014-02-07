@@ -79,6 +79,126 @@ The format option may be needed for raw input files.
 
 @c man end DESCRIPTION
 
+@chapter Detailed description
+@c man begin DETAILED DESCRIPTION
+
+The transcoding process in @command{avconv} for each output can be described by
+the following diagram:
+
+@example
+ _______              ______________               _________              ______________            ________
+|       |            |              |             |         |            |              |          |        |
+| input |  demuxer   | encoded data |   decoder   | decoded |  encoder   | encoded data |  muxer   | output |
+| file  | ---------> | packets      |  ---------> | frames  | ---------> | packets      | -------> | file   |
+|_______|            |______________|             |_________|            |______________|          |________|
+
+@end example
+
+@command{avconv} calls the libavformat library (containing demuxers) to read
+input files and get packets containing encoded data from them. When there are
+multiple input files, @command{avconv} tries to keep them synchronized by
+tracking lowest timestamp on any active input stream.
+
+Encoded packets are then passed to the decoder (unless streamcopy is selected
+for the stream, see further for a description). The decoder produces
+uncompressed frames (raw video/PCM audio/...) which can be processed further by
+filtering (see next section). After filtering the frames are passed to the
+encoder, which encodes them and outputs encoded packets again. Finally those are
+passed to the muxer, which writes the encoded packets to the output file.
+
+@section Filtering
+Before encoding, @command{avconv} can process raw audio and video frames using
+filters from the libavfilter library. Several chained filters form a filter
+graph.  @command{avconv} distinguishes between two types of filtergraphs -
+simple and complex.
+
+@subsection Simple filtergraphs
+Simple filtergraphs are those that have exactly one input and output, both of
+the same type. In the above diagram they can be represented by simply inserting
+an additional step between decoding and encoding:
+
+@example
+ _________                        __________              ______________
+|         |                      |          |            |              |
+| decoded |  simple filtergraph  | filtered |  encoder   | encoded data |
+| frames  | -------------------> | frames   | ---------> | packets      |
+|_________|                      |__________|            |______________|
+
+@end example
+
+Simple filtergraphs are configured with the per-stream @option{-filter} option
+(with @option{-vf} and @option{-af} aliases for video and audio respectively).
+A simple filtergraph for video can look for example like this:
+
+@example
+ _______        _____________        _______        _____        ________
+|       |      |             |      |       |      |     |      |        |
+| input | ---> | deinterlace | ---> | scale | ---> | fps | ---> | output |
+|_______|      |_____________|      |_______|      |_____|      |________|
+
+@end example
+
+Note that some filters change frame properties but not frame contents. E.g. the
+@code{fps} filter in the example above changes number of frames, but does not
+touch the frame contents. Another example is the @code{setpts} filter, which
+only sets timestamps and otherwise passes the frames unchanged.
+
+@subsection Complex filtergraphs
+Complex filtergraphs are those which cannot be described as simply a linear
+processing chain applied to one stream. This is the case e.g. when the graph has
+more than one input and/or output, or when output stream type is different from
+input. They can be represented with the following diagram:
+
+@example
+ _________
+|         |
+| input 0 |\                    __________
+|_________| \                  |          |
+             \   _________    /| output 0 |
+              \ |         |  / |__________|
+ _________     \| complex | /
+|         |     |         |/
+| input 1 |---->| filter  |\
+|_________|     |         | \   __________
+               /| graph   |  \ |          |
+              / |         |   \| output 1 |
+ _________   /  |_________|    |__________|
+|         | /
+| input 2 |/
+|_________|
+
+@end example
+
+Complex filtergraphs are configured with the @option{-filter_complex} option.
+Note that this option is global, since a complex filtergraph by its nature
+cannot be unambiguously associated with a single stream or file.
+
+A trivial example of a complex filtergraph is the @code{overlay} filter, which
+has two video inputs and one video output, containing one video overlaid on top
+of the other. Its audio counterpart is the @code{amix} filter.
+
+@section Stream copy
+Stream copy is a mode selected by supplying the @code{copy} parameter to the
+@option{-codec} option. It makes @command{avconv} omit the decoding and encoding
+step for the specified stream, so it does only demuxing and muxing. It is useful
+for changing the container format or modifying container-level metadata. The
+diagram above will in this case simplify to this:
+
+@example
+ _______              ______________            ________
+|       |            |              |          |        |
+| input |  demuxer   | encoded data |  muxer   | output |
+| file  | ---------> | packets      | -------> | file   |
+|_______|            |______________|          |________|
+
+@end example
+
+Since there is no decoding or encoding, it is very fast and there is no quality
+loss. However it might not work in some cases because of many factors. Applying
+filters is obviously also impossible, since filters work on uncompressed data.
+
+@c man end DETAILED DESCRIPTION
+
 @chapter Stream selection
 @c man begin STREAM SELECTION
 
@@ -113,6 +233,9 @@ input file name
 @item -y (@emph{global})
 Overwrite output files without asking.
 
+@item -n (@emph{global})
+Immediately exit when output files already exist.
+
 @item -c[:@var{stream_specifier}] @var{codec} (@emph{input/output,per-stream})
 @itemx -codec[:@var{stream_specifier}] @var{codec} (@emph{input/output,per-stream})
 Select an encoder (when used before an output file) or a decoder (when used
@@ -142,9 +265,15 @@ Set the file size limit.
 
 @item -ss @var{position} (@emph{input/output})
 When used as an input option (before @code{-i}), seeks in this input file to
-@var{position}. When used as an output option (before an output filename),
-decodes but discards input until the timestamps reach @var{position}. This is
-slower, but more accurate.
+@var{position}. Note the in most formats it is not possible to seek exactly, so
+@command{avconv} will seek to the closest seek point before @var{position}.
+When transcoding and @option{-accurate_seek} is enabled (the default), this
+extra segment between the seek point and @var{position} will be decoded and
+discarded. When doing stream copy or when @option{-noaccurate_seek} is used, it
+will be preserved.
+
+When used as an output option (before an output filename), decodes but discards
+input until the timestamps reach @var{position}.
 
 @var{position} may be either in seconds or in @code{hh:mm:ss[.xxx]} form.
 
@@ -207,6 +336,15 @@ codec-dependent.
 @var{filter_graph} is a description of the filter graph to apply to
 the stream. Use @code{-filters} to show all the available filters
 (including also sources and sinks).
+
+See also the @option{-filter_complex} option if you want to create filter graphs
+with multiple inputs and/or outputs.
+
+@item -filter_script[:@var{stream_specifier}] @var{filename} (@emph{output,per-stream})
+This option is similar to @option{-filter}, the only difference is that its
+argument is the name of the file from which a filtergraph description is to be
+read.
+
 @item -pre[:@var{stream_specifier}] @var{preset_name} (@emph{output,per-stream})
 Specify the preset for matching stream(s).
 
@@ -254,10 +392,28 @@ attachments.
 @item -vframes @var{number} (@emph{output})
 Set the number of video frames to record. This is an alias for @code{-frames:v}.
 @item -r[:@var{stream_specifier}] @var{fps} (@emph{input/output,per-stream})
-Set frame rate (Hz value, fraction or abbreviation), (default = 25).
+Set frame rate (Hz value, fraction or abbreviation).
+
+As an input option, ignore any timestamps stored in the file and instead
+generate timestamps assuming constant frame rate @var{fps}.
+
+As an output option, duplicate or drop input frames to achieve constant output
+frame rate @var{fps} (note that this actually causes the @code{fps} filter to be
+inserted to the end of the corresponding filtergraph).
+
 @item -s[:@var{stream_specifier}] @var{size} (@emph{input/output,per-stream})
-Set frame size. The format is @samp{wxh} (default - same as source).
-The following abbreviations are recognized:
+Set frame size.
+
+As an input option, this is a shortcut for the @option{video_size} private
+option, recognized by some demuxers for which the frame size is either not
+stored in the file or is configurable -- e.g. raw video or video grabbers.
+
+As an output option, this inserts the @code{scale} video filter to the
+@emph{end} of the corresponding filtergraph. Please use the @code{scale} filter
+directly to insert it at the beginning or some other place.
+
+The format is @samp{wxh} (default - same as source).  The following
+abbreviations are recognized:
 @table @samp
 @item sqcif
 128x96
@@ -329,34 +485,11 @@ numerator and denominator of the aspect ratio. For example "4:3",
 
 @item -vn (@emph{output})
 Disable video recording.
-@item -bt @var{tolerance}
-Set video bitrate tolerance (in bits, default 4000k).
-Has a minimum value of: (target_bitrate/target_framerate).
-In 1-pass mode, bitrate tolerance specifies how far ratecontrol is
-willing to deviate from the target average bitrate value. This is
-not related to min/max bitrate. Lowering tolerance too much has
-an adverse effect on quality.
-@item -maxrate @var{bitrate}
-Set max video bitrate (in bit/s).
-Requires -bufsize to be set.
-@item -minrate @var{bitrate}
-Set min video bitrate (in bit/s).
-Most useful in setting up a CBR encode:
-@example
-avconv -i myfile.avi -b 4000k -minrate 4000k -maxrate 4000k -bufsize 1835k out.m2v
-@end example
-It is of little use elsewise.
-@item -bufsize @var{size}
-Set video buffer verifier buffer size (in bits).
+
 @item -vcodec @var{codec} (@emph{output})
 Set the video codec. This is an alias for @code{-codec:v}.
-@item -same_quant
-Use same quantizer as source (implies VBR).
 
-Note that this is NOT SAME QUALITY. Do not use this option unless you know you
-need it.
-
-@item -pass @var{n}
+@item -pass[:@var{stream_specifier}] @var{n} (@emph{output,per-stream})
 Select the pass number (1 or 2). It is used to do two-pass
 video encoding. The statistics of the video are recorded in the first
 pass into a log file (see also the option -passlogfile),
@@ -369,7 +502,7 @@ avconv -i foo.mov -c:v libxvid -pass 1 -an -f rawvideo -y NUL
 avconv -i foo.mov -c:v libxvid -pass 1 -an -f rawvideo -y /dev/null
 @end example
 
-@item -passlogfile @var{prefix} (@emph{global})
+@item -passlogfile[:@var{stream_specifier}] @var{prefix} (@emph{output,per-stream})
 Set two-pass log file name prefix to @var{prefix}, the default file name
 prefix is ``av2pass''. The complete file name will be
 @file{PREFIX-N.log}, where N is a number specific to the output
@@ -391,143 +524,12 @@ Set pixel format. Use @code{-pix_fmts} to show all the supported
 pixel formats.
 @item -sws_flags @var{flags} (@emph{input/output})
 Set SwScaler flags.
-@item -g @var{gop_size}
-Set the group of pictures size.
 @item -vdt @var{n}
 Discard threshold.
-@item -qmin @var{q}
-minimum video quantizer scale (VBR)
-@item -qmax @var{q}
-maximum video quantizer scale (VBR)
-@item -qdiff @var{q}
-maximum difference between the quantizer scales (VBR)
-@item -qblur @var{blur}
-video quantizer scale blur (VBR) (range 0.0 - 1.0)
-@item -qcomp @var{compression}
-video quantizer scale compression (VBR) (default 0.5).
-Constant of ratecontrol equation. Recommended range for default rc_eq: 0.0-1.0
-
-@item -lmin @var{lambda}
-minimum video lagrange factor (VBR)
-@item -lmax @var{lambda}
-max video lagrange factor (VBR)
-@item -mblmin @var{lambda}
-minimum macroblock quantizer scale (VBR)
-@item -mblmax @var{lambda}
-maximum macroblock quantizer scale (VBR)
-
-These four options (lmin, lmax, mblmin, mblmax) use 'lambda' units,
-but you may use the QP2LAMBDA constant to easily convert from 'q' units:
-@example
-avconv -i src.ext -lmax 21*QP2LAMBDA dst.ext
-@end example
-
-@item -rc_init_cplx @var{complexity}
-initial complexity for single pass encoding
-@item -b_qfactor @var{factor}
-qp factor between P- and B-frames
-@item -i_qfactor @var{factor}
-qp factor between P- and I-frames
-@item -b_qoffset @var{offset}
-qp offset between P- and B-frames
-@item -i_qoffset @var{offset}
-qp offset between P- and I-frames
-@item -rc_eq @var{equation}
-Set rate control equation (see section "Expression Evaluation")
-(default = @code{tex^qComp}).
-
-When computing the rate control equation expression, besides the
-standard functions defined in the section "Expression Evaluation", the
-following functions are available:
-@table @var
-@item bits2qp(bits)
-@item qp2bits(qp)
-@end table
-
-and the following constants are available:
-@table @var
-@item iTex
-@item pTex
-@item tex
-@item mv
-@item fCode
-@item iCount
-@item mcVar
-@item var
-@item isI
-@item isP
-@item isB
-@item avgQP
-@item qComp
-@item avgIITex
-@item avgPITex
-@item avgPPTex
-@item avgBPTex
-@item avgTex
-@end table
 
 @item -rc_override[:@var{stream_specifier}] @var{override} (@emph{output,per-stream})
 rate control override for specific intervals
-@item -me_method @var{method}
-Set motion estimation method to @var{method}.
-Available methods are (from lowest to best quality):
-@table @samp
-@item zero
-Try just the (0, 0) vector.
-@item phods
-@item log
-@item x1
-@item hex
-@item umh
-@item epzs
-(default method)
-@item full
-exhaustive search (slow and marginally better than epzs)
-@end table
 
-@item -er @var{n}
-Set error resilience to @var{n}.
-@table @samp
-@item 1
-FF_ER_CAREFUL (default)
-@item 2
-FF_ER_COMPLIANT
-@item 3
-FF_ER_AGGRESSIVE
-@item 4
-FF_ER_VERY_AGGRESSIVE
-@end table
-
-@item -ec @var{bit_mask}
-Set error concealment to @var{bit_mask}. @var{bit_mask} is a bit mask of
-the following values:
-@table @samp
-@item 1
-FF_EC_GUESS_MVS (default = enabled)
-@item 2
-FF_EC_DEBLOCK (default = enabled)
-@end table
-
-@item -bf @var{frames}
-Use 'frames' B-frames (supported for MPEG-1, MPEG-2 and MPEG-4).
-@item -mbd @var{mode}
-macroblock decision
-@table @samp
-@item 0
-FF_MB_DECISION_SIMPLE: Use mb_cmp (cannot change it yet in avconv).
-@item 1
-FF_MB_DECISION_BITS: Choose the one which needs the fewest bits.
-@item 2
-FF_MB_DECISION_RD: rate distortion
-@end table
-
-@item -bug @var{param}
-Work around encoder bugs that are not auto-detected.
-@item -strict @var{strictness}
-How strictly to follow the standards.
-
-@item -deinterlace
-Deinterlace pictures.
 @item -vstats
 Dump video coding statistics to @file{vstats_HHMMSS.log}.
 @item -vstats_file @var{file}
@@ -550,6 +552,42 @@ The timestamps must be specified in ascending order.
 @item -copyinkf[:@var{stream_specifier}] (@emph{output,per-stream})
 When doing stream copy, copy also non-key frames found at the
 beginning.
+
+@item -hwaccel[:@var{stream_specifier}] @var{hwaccel} (@emph{input,per-stream})
+Use hardware acceleration to decode the matching stream(s). The allowed values
+of @var{hwaccel} are:
+@table @option
+@item none
+Do not use any hardware acceleration (the default).
+
+@item auto
+Automatically select the hardware acceleration method.
+
+@item vdpau
+Use VDPAU (Video Decode and Presentation API for Unix) hardware acceleration.
+@end table
+
+This option has no effect if the selected hwaccel is not available or not
+supported by the chosen decoder.
+
+Note that most acceleration methods are intended for playback and will not be
+faster than software decoding on modern CPUs. Additionally, @command{avconv}
+will usually need to copy the decoded frames from the GPU memory into the system
+memory, resulting in further performance loss. This option is thus mainly
+useful for testing.
+
+@item -hwaccel_device[:@var{stream_specifier}] @var{hwaccel_device} (@emph{input,per-stream})
+Select a device to use for hardware acceleration.
+
+This option only makes sense when the @option{-hwaccel} option is also
+specified. Its exact meaning depends on the specific hardware acceleration
+method chosen.
+
+@table @option
+@item vdpau
+For VDPAU, this option specifies the X11 display/screen to use. If this option
+is not specified, the value of the @var{DISPLAY} environment variable is used
+@end table
 @end table
 
 @section Audio Options
@@ -576,6 +614,11 @@ Set the audio codec. This is an alias for @code{-codec:a}.
 @item -sample_fmt[:@var{stream_specifier}] @var{sample_fmt} (@emph{output,per-stream})
 Set the audio sample format. Use @code{-sample_fmts} to get a list
 of supported sample formats.
+@item -af @var{filter_graph} (@emph{output})
+@var{filter_graph} is a description of the filter graph to apply to
+the input audio.
+Use the option "-filters" to show all the available filters (including
+also sources and sinks).  This is an alias for @code{-filter:a}.
 @end table
 
 @section Advanced Audio options:
@@ -583,28 +626,6 @@ of supported sample formats.
 @table @option
 @item -atag @var{fourcc/tag} (@emph{output})
 Force audio tag/fourcc. This is an alias for @code{-tag:a}.
-@item -audio_service_type @var{type}
-Set the type of service that the audio stream contains.
-@table @option
-@item ma
-Main Audio Service (default)
-@item ef
-Effects
-@item vi
-Visually Impaired
-@item hi
-Hearing Impaired
-@item di
-Dialogue
-@item co
-Commentary
-@item em
-Emergency
-@item vo
-Voice Over
-@item ka
-Karaoke
-@end table
 @end table
 
 @section Subtitle options:
@@ -616,17 +637,10 @@ Set the subtitle codec. This is an alias for @code{-codec:s}.
 Disable subtitle recording.
 @end table
 
-@section Audio/Video grab options
-
-@table @option
-@item -isync (@emph{global})
-Synchronize read on input.
-@end table
-
 @section Advanced options
 
 @table @option
-@item -map [-]@var{input_file_id}[:@var{stream_specifier}][,@var{sync_file_id}[:@var{stream_specifier}]] (@emph{output})
+@item -map [-]@var{input_file_id}[:@var{stream_specifier}][,@var{sync_file_id}[:@var{stream_specifier}]] | @var{[linklabel]} (@emph{output})
 
 Designate one or more input streams as a source for the output file. Each input
 stream is identified by the input file index @var{input_file_id} and
@@ -641,6 +655,10 @@ the source for output stream 1, etc.
 
 A @code{-} character before the stream identifier creates a "negative" mapping.
 It disables matching streams from already created mappings.
+
+An alternative @var{[linklabel]} form will map outputs from complex filter
+graphs (see the @option{-filter_complex} option) to the output file.
+@var{linklabel} must correspond to a defined output link label in the graph.
 
 For example, to map ALL streams from the first input file to output
 @example
@@ -736,12 +754,11 @@ Exit after avconv has been running for @var{duration} seconds.
 Dump each input packet to stderr.
 @item -hex (@emph{global})
 When dumping packets, also dump the payload.
-@item -ps @var{size}
-Set RTP payload size in bytes.
 @item -re (@emph{input})
-Read input at native frame rate. Mainly used to simulate a grab device.
-@item -threads @var{count}
-Thread count.
+Read input at native frame rate. Mainly used to simulate a grab device
+or live input stream (e.g. when reading from a file). Should not be used
+with actual grab devices or live input streams (where it can cause packet
+loss).
 @item -vsync @var{parameter}
 Video sync method.
 
@@ -768,11 +785,12 @@ Audio sync method. "Stretches/squeezes" the audio stream to match the timestamps
 the parameter is the maximum samples per second by which the audio is changed.
 -async 1 is a special case where only the start of the audio stream is corrected
 without any later correction.
+This option has been deprecated. Use the @code{asyncts} audio filter instead.
 @item -copyts
 Copy timestamps from input to output.
 @item -copytb
 Copy input stream time base from input to output when stream copying.
-@item -shortest
+@item -shortest (@emph{output})
 Finish encoding when the shortest input stream ends.
 @item -dts_delta_threshold
 Timestamp discontinuity delta threshold.
@@ -797,14 +815,72 @@ Set bitstream filters for matching streams. @var{bistream_filters} is
 a comma-separated list of bitstream filters. Use the @code{-bsfs} option
 to get the list of bitstream filters.
 @example
-avconv -i h264.mp4 -c:v copy -vbsf h264_mp4toannexb -an out.h264
+avconv -i h264.mp4 -c:v copy -bsf:v h264_mp4toannexb -an out.h264
 @end example
 @example
-avconv -i file.mov -an -vn -sbsf mov2textsub -c:s copy -f rawvideo sub.txt
+avconv -i file.mov -an -vn -bsf:s mov2textsub -c:s copy -f rawvideo sub.txt
 @end example
 
 @item -tag[:@var{stream_specifier}] @var{codec_tag} (@emph{output,per-stream})
 Force a tag/fourcc for matching streams.
+
+@item -filter_complex @var{filtergraph} (@emph{global})
+Define a complex filter graph, i.e. one with arbitrary number of inputs and/or
+outputs. For simple graphs -- those with one input and one output of the same
+type -- see the @option{-filter} options. @var{filtergraph} is a description of
+the filter graph, as described in @ref{Filtergraph syntax}.
+
+Input link labels must refer to input streams using the
+@code{[file_index:stream_specifier]} syntax (i.e. the same as @option{-map}
+uses). If @var{stream_specifier} matches multiple streams, the first one will be
+used. An unlabeled input will be connected to the first unused input stream of
+the matching type.
+
+Output link labels are referred to with @option{-map}. Unlabeled outputs are
+added to the first output file.
+
+Note that with this option it is possible to use only lavfi sources without
+normal input files.
+
+For example, to overlay an image over video
+@example
+avconv -i video.mkv -i image.png -filter_complex '[0:v][1:v]overlay[out]' -map
+'[out]' out.mkv
+@end example
+Here @code{[0:v]} refers to the first video stream in the first input file,
+which is linked to the first (main) input of the overlay filter. Similarly the
+first video stream in the second input is linked to the second (overlay) input
+of overlay.
+
+Assuming there is only one video stream in each input file, we can omit input
+labels, so the above is equivalent to
+@example
+avconv -i video.mkv -i image.png -filter_complex 'overlay[out]' -map
+'[out]' out.mkv
+@end example
+
+Furthermore we can omit the output label and the single output from the filter
+graph will be added to the output file automatically, so we can simply write
+@example
+avconv -i video.mkv -i image.png -filter_complex 'overlay' out.mkv
+@end example
+
+To generate 5 seconds of pure red video using lavfi @code{color} source:
+@example
+avconv -filter_complex 'color=red' -t 5 out.mkv
+@end example
+
+@item -filter_complex_script @var{filename} (@emph{global})
+This option is similar to @option{-filter_complex}, the only difference is that
+its argument is the name of the file from which a complex filtergraph
+description is to be read.
+
+@item -accurate_seek (@emph{input})
+This option enables or disables accurate seeking in input files with the
+@option{-ss} option. It is enabled by default, so seeking is accurate when
+transcoding. Use @option{-noaccurate_seek} to disable it, which may be useful
+e.g. when copying some streams and transcoding the others.
+
 @end table
 @c man end OPTIONS
 
@@ -833,7 +909,7 @@ frame rate or decrease the frame size.
 @item
 If your computer is not fast enough, you can speed up the
 compression at the expense of the compression ratio. You can use
-'-me zero' to speed up motion estimation, and '-intra' to disable
+'-me zero' to speed up motion estimation, and '-g 0' to disable
 motion estimation completely (you have only I-frames, which means it
 is about as good as JPEG compression).
 
@@ -1027,10 +1103,24 @@ avconv -i test1.avi -i test2.avi -map 0.3 -map 0.2 -map 0.1 -map 0.0 -c copy tes
 The resulting output file @file{test12.avi} will contain first four streams from
 the input file in reverse order.
 
+@item
+To force CBR video output:
+@example
+avconv -i myfile.avi -b 4000k -minrate 4000k -maxrate 4000k -bufsize 1835k out.m2v
+@end example
+
+@item
+The four options lmin, lmax, mblmin and mblmax use 'lambda' units,
+but you may use the QP2LAMBDA constant to easily convert from 'q' units:
+@example
+avconv -i src.ext -lmax 21*QP2LAMBDA dst.ext
+@end example
+
 @end itemize
 @c man end EXAMPLES
 
 @include eval.texi
+@include decoders.texi
 @include encoders.texi
 @include demuxers.texi
 @include muxers.texi

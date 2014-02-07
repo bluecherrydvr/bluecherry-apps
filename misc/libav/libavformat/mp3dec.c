@@ -29,6 +29,16 @@
 #include "id3v1.h"
 #include "libavcodec/mpegaudiodecheader.h"
 
+#define XING_FLAG_FRAMES 0x01
+#define XING_FLAG_SIZE   0x02
+#define XING_FLAG_TOC    0x04
+
+#define XING_TOC_COUNT 100
+
+typedef struct MP3DecContext {
+    int xing_toc;
+} MP3DecContext;
+
 /* mp3 read */
 
 static int mp3_read_probe(AVProbeData *p)
@@ -63,12 +73,54 @@ static int mp3_read_probe(AVProbeData *p)
     }
     // keep this in sync with ac3 probe, both need to avoid
     // issues with MPEG-files!
-    if   (first_frames>=4) return AVPROBE_SCORE_MAX/2+1;
-    else if(max_frames>500)return AVPROBE_SCORE_MAX/2;
-    else if(max_frames>=4) return AVPROBE_SCORE_MAX/4;
-    else if(max_frames>=1) return 1;
-    else                   return 0;
+    if (first_frames >= 4) return AVPROBE_SCORE_EXTENSION + 1;
+
+    if (max_frames) {
+        int pes = 0, i;
+        unsigned int code = -1;
+
+#define VIDEO_ID 0x000001e0
+#define AUDIO_ID 0x000001c0
+        /* do a search for mpegps headers to be able to properly bias
+         * towards mpegps if we detect this stream as both. */
+        for (i = 0; i<p->buf_size; i++) {
+            code = (code << 8) + p->buf[i];
+            if ((code & 0xffffff00) == 0x100) {
+                if     ((code & 0x1f0) == VIDEO_ID) pes++;
+                else if((code & 0x1e0) == AUDIO_ID) pes++;
+            }
+        }
+
+        if (pes)
+            max_frames = (max_frames + pes - 1) / pes;
+    }
+    if      (max_frames >  500) return AVPROBE_SCORE_EXTENSION;
+    else if (max_frames >= 4)   return AVPROBE_SCORE_EXTENSION / 2;
+    else if (max_frames >= 1)   return 1;
+    else                        return 0;
 //mpegps_mp3_unrecognized_format.mpg has max_frames=3
+}
+
+static void read_xing_toc(AVFormatContext *s, int64_t filesize, int64_t duration)
+{
+    int i;
+    MP3DecContext *mp3 = s->priv_data;
+
+    if (!filesize &&
+        !(filesize = avio_size(s->pb))) {
+        av_log(s, AV_LOG_WARNING, "Cannot determine file size, skipping TOC table.\n");
+        return;
+    }
+
+    for (i = 0; i < XING_TOC_COUNT; i++) {
+        uint8_t b = avio_r8(s->pb);
+
+        av_add_index_entry(s->streams[0],
+                           av_rescale(b, filesize, 256),
+                           av_rescale(i, duration, XING_TOC_COUNT),
+                           0, 0, AVINDEX_KEYFRAME);
+    }
+    mp3->xing_toc = 1;
 }
 
 /**
@@ -82,6 +134,7 @@ static int mp3_parse_vbr_tags(AVFormatContext *s, AVStream *st, int64_t base)
     const int64_t xing_offtbl[2][2] = {{32, 17}, {17,9}};
     MPADecodeHeader c;
     int vbrtag_size = 0;
+    int is_cbr;
 
     v = avio_rb32(s->pb);
     if(ff_mpa_check_header(v) < 0)
@@ -92,15 +145,21 @@ static int mp3_parse_vbr_tags(AVFormatContext *s, AVStream *st, int64_t base)
     if(c.layer != 3)
         return -1;
 
+    spf = c.lsf ? 576 : 1152; /* Samples per frame, layer 3 */
+
     /* Check for Xing / Info tag */
     avio_skip(s->pb, xing_offtbl[c.lsf == 1][c.nb_channels == 1]);
     v = avio_rb32(s->pb);
-    if(v == MKBETAG('X', 'i', 'n', 'g') || v == MKBETAG('I', 'n', 'f', 'o')) {
+    is_cbr = v == MKBETAG('I', 'n', 'f', 'o');
+    if (v == MKBETAG('X', 'i', 'n', 'g') || is_cbr) {
         v = avio_rb32(s->pb);
-        if(v & 0x1)
+        if(v & XING_FLAG_FRAMES)
             frames = avio_rb32(s->pb);
-        if(v & 0x2)
+        if(v & XING_FLAG_SIZE)
             size = avio_rb32(s->pb);
+        if (v & XING_FLAG_TOC && frames)
+            read_xing_toc(s, size, av_rescale_q(frames, (AVRational){spf, c.sample_rate},
+                                    st->time_base));
     }
 
     /* Check for VBRI tag (always 32 bytes after end of mpegaudio header) */
@@ -111,8 +170,8 @@ static int mp3_parse_vbr_tags(AVFormatContext *s, AVStream *st, int64_t base)
         if(avio_rb16(s->pb) == 1) {
             /* skip delay and quality */
             avio_skip(s->pb, 4);
-            frames = avio_rb32(s->pb);
             size = avio_rb32(s->pb);
+            frames = avio_rb32(s->pb);
         }
     }
 
@@ -122,18 +181,16 @@ static int mp3_parse_vbr_tags(AVFormatContext *s, AVStream *st, int64_t base)
     /* Skip the vbr tag frame */
     avio_seek(s->pb, base + vbrtag_size, SEEK_SET);
 
-    spf = c.lsf ? 576 : 1152; /* Samples per frame, layer 3 */
     if(frames)
         st->duration = av_rescale_q(frames, (AVRational){spf, c.sample_rate},
                                     st->time_base);
-    if(size && frames)
+    if (size && frames && !is_cbr)
         st->codec->bit_rate = av_rescale(size, 8 * c.sample_rate, frames * (int64_t)spf);
 
     return 0;
 }
 
-static int mp3_read_header(AVFormatContext *s,
-                           AVFormatParameters *ap)
+static int mp3_read_header(AVFormatContext *s)
 {
     AVStream *st;
     int64_t off;
@@ -143,7 +200,7 @@ static int mp3_read_header(AVFormatContext *s,
         return AVERROR(ENOMEM);
 
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-    st->codec->codec_id = CODEC_ID_MP3;
+    st->codec->codec_id = AV_CODEC_ID_MP3;
     st->need_parsing = AVSTREAM_PARSE_FULL;
     st->start_time = 0;
 
@@ -166,17 +223,13 @@ static int mp3_read_header(AVFormatContext *s,
 
 static int mp3_read_packet(AVFormatContext *s, AVPacket *pkt)
 {
-    int ret, size;
-    //    AVStream *st = s->streams[0];
+    int ret;
 
-    size= MP3_PACKET_SIZE;
-
-    ret= av_get_packet(s->pb, pkt, size);
+    ret = av_get_packet(s->pb, pkt, MP3_PACKET_SIZE);
+    if (ret < 0)
+        return ret;
 
     pkt->stream_index = 0;
-    if (ret <= 0) {
-        return AVERROR(EIO);
-    }
 
     if (ret > ID3v1_TAG_SIZE &&
         memcmp(&pkt->data[ret - ID3v1_TAG_SIZE], "TAG", 3) == 0)
@@ -188,12 +241,46 @@ static int mp3_read_packet(AVFormatContext *s, AVPacket *pkt)
     return ret;
 }
 
+static int mp3_seek(AVFormatContext *s, int stream_index, int64_t timestamp,
+                    int flags)
+{
+    MP3DecContext *mp3 = s->priv_data;
+    AVIndexEntry *ie;
+    AVStream *st = s->streams[0];
+    int64_t ret  = av_index_search_timestamp(st, timestamp, flags);
+    uint32_t header = 0;
+
+    if (!mp3->xing_toc)
+        return AVERROR(ENOSYS);
+
+    if (ret < 0)
+        return ret;
+
+    ie = &st->index_entries[ret];
+    ret = avio_seek(s->pb, ie->pos, SEEK_SET);
+    if (ret < 0)
+        return ret;
+
+    while (!s->pb->eof_reached) {
+        header = (header << 8) + avio_r8(s->pb);
+        if (ff_mpa_check_header(header) >= 0) {
+            ff_update_cur_dts(s, st, ie->timestamp);
+            ret = avio_seek(s->pb, -4, SEEK_CUR);
+            return (ret >= 0) ? 0 : ret;
+        }
+    }
+
+    return AVERROR_EOF;
+}
+
 AVInputFormat ff_mp3_demuxer = {
     .name           = "mp3",
-    .long_name      = NULL_IF_CONFIG_SMALL("MPEG audio layer 2/3"),
+    .long_name      = NULL_IF_CONFIG_SMALL("MP2/3 (MPEG audio layer 2/3)"),
     .read_probe     = mp3_read_probe,
     .read_header    = mp3_read_header,
     .read_packet    = mp3_read_packet,
-    .flags= AVFMT_GENERIC_INDEX,
-    .extensions = "mp2,mp3,m2a", /* XXX: use probe */
+    .read_seek      = mp3_seek,
+    .priv_data_size = sizeof(MP3DecContext),
+    .flags          = AVFMT_GENERIC_INDEX,
+    .extensions     = "mp2,mp3,m2a,mpa", /* XXX: use probe */
 };

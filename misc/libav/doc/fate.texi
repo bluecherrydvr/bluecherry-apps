@@ -26,8 +26,11 @@ that is provided separately from the actual source distribution.
 
 To inform the build system about the testsuite location, pass
 @option{--samples=<path to the samples>} to @command{configure} or set the
-@var{SAMPLES} Make variable or the @var{FATE_SAMPLES} environment variable
+@var{SAMPLES} Make variable or the @var{LIBAV_SAMPLES} environment variable
 to a suitable value.
+
+To use a custom wrapper to run the test, pass @option{--target-exec} to
+@command{configure} or set the @var{TARGET_EXEC} Make variable.
 
 The dataset is available through @command{rsync}, is possible to fetch
 the current sample using the straight rsync command or through a specific
@@ -48,45 +51,67 @@ Specific Makefile targets and Makefile variables are available:
 
 @anchor{Makefile target}
 @section FATE Makefile targets
+
 @table @option
 @item fate-list
 List all fate/regression test targets.
+
 @item fate-rsync
 Shortcut to download the fate test samples to the specified testsuite location.
+
 @item fate
 Run the FATE test suite (requires the fate-suite dataset).
 @end table
 
-@section Fate Makefile variables
+@section FATE Makefile variables
 @table @option
 @item V
 Verbosity level, can be set to 0, 1 or 2.
+
 @table @option
-    @item 0
-    show just the test arguments
-    @item 1
-    show just the command used in the test
-    @item 2
-    show everything
+@item 0
+show just the test arguments
+
+@item 1
+show just the command used in the test
+
+@item 2
+show everything
 @end table
+
 @item SAMPLES
 Specify or override the path to the FATE samples at make time, it has a
 meaning only while running the regression tests.
+
 @item THREADS
 Specify how many threads to use while running regression tests, it is
 quite useful to detect thread-related regressions.
+
+@item THREAD_TYPE
+Specify which threading strategy test, either @var{slice} or @var{frame},
+by default @var{slice+frame}
+
+@item CPUFLAGS
+Specify a mask to be applied to autodetected CPU flags.
+
+@item TARGET_EXEC
+Specify or override the wrapper used to run the tests.
+
+@item GEN
+Set to @var{1} to generate the missing or mismatched references.
 @end table
 
 @example
-    make V=1 SAMPLES=/var/fate/samples THREADS=2 fate
+    make V=1 SAMPLES=/var/fate/samples THREADS=2 CPUFLAGS=mmx fate
 @end example
 
 @chapter Automated Tests
 In order to automatically testing specific configurations, e.g. multiple
 compilers, @command{tests/fate.sh} is provided.
 
-This shell script builds Libav, runs the regression tests and prepares a
-report that can be sent to @url{fate.libav.org} or directly examined locally.
+This shell script builds Libav, runs the regression tests and prepares
+a report that can be sent to @url{http://fate.libav.org/} or directly
+examined locally.
 
 @section Testing Profiles
 The configuration file passed to @command{fate.sh} is shell scripts as well.
@@ -107,16 +132,20 @@ samples=/path/to/fate/samples
 workdir=                                # directory in which to do all the work
 fate_recv="ssh -T fate@@fate.libav.org"  # command to submit report
 comment=                                # optional description
+build_only=     # set to "yes" for a compile-only instance that skips tests
 
 # the following are optional and map to configure options
 arch=
 cpu=
 cross_prefix=
+as=
 cc=
+ld=
 target_os=
 sysroot=
 target_exec=
 target_path=
+target_samples=
 extra_cflags=
 extra_ldflags=
 extra_libs=
@@ -128,8 +157,12 @@ makeopts=       # extra options passed to 'make'
                 # stdout, defaults to 'tar c'
 @end example
 
+@section Special Instances
+The @var{TARGET_EXEC} option provides a way to run FATE wrapped in
+@command{valgrind}, @command{qemu-user} or @command{wine} or on remote targets
+through @command{ssh}.
+
 @section Submitting Reports
 In order to send reports you need to create an @command{ssh} key and send it
 to @email{root@@libav.org}.
 The current server fingerprint is @var{a4:99:d7:d3:1c:92:0d:56:d6:d5:61:be:01:ae:7d:e6}
-

@@ -21,11 +21,11 @@
  * misc parsing utilities
  */
 
-#include <sys/time.h>
 #include <time.h>
 
 #include "avstring.h"
 #include "avutil.h"
+#include "common.h"
 #include "eval.h"
 #include "log.h"
 #include "random_seed.h"
@@ -107,8 +107,7 @@ int av_parse_video_size(int *width_ptr, int *height_ptr, const char *str)
         }
     }
     if (i == n) {
-        p = str;
-        width = strtol(p, &p, 10);
+        width = strtol(str, &p, 10);
         if (*p)
             p++;
         height = strtol(p, &p, 10);
@@ -355,7 +354,7 @@ int av_parse_color(uint8_t *rgba_color, const char *color_string, int slen,
     }
 
     if (tail) {
-        unsigned long int alpha;
+        double alpha;
         const char *alpha_string = tail;
         if (!strncmp(alpha_string, "0x", 2)) {
             alpha = strtoul(alpha_string, &tail, 16);
@@ -363,7 +362,7 @@ int av_parse_color(uint8_t *rgba_color, const char *color_string, int slen,
             alpha = 255 * strtod(alpha_string, &tail);
         }
 
-        if (tail == alpha_string || *tail || alpha > 255) {
+        if (tail == alpha_string || *tail || alpha > 255 || alpha < 0) {
             av_log(log_ctx, AV_LOG_ERROR, "Invalid alpha value specifier '%s' in '%s'\n",
                    alpha_string, color_string);
             return AVERROR(EINVAL);
@@ -386,7 +385,7 @@ static int date_get_num(const char **pp,
     val = 0;
     for(i = 0; i < len_max; i++) {
         c = *p;
-        if (!isdigit(c))
+        if (!av_isdigit(c))
             break;
         val = (val * 10) + c - '0';
         p++;
@@ -484,7 +483,7 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration)
 {
     const char *p;
     int64_t t;
-    struct tm dt;
+    struct tm dt = { 0 };
     int i;
     static const char * const date_fmt[] = {
         "%Y-%m-%d",
@@ -499,7 +498,6 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration)
     char lastch;
     int negative = 0;
 
-#undef time
     time_t now = time(0);
 
     len = strlen(timestr);
@@ -508,8 +506,6 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration)
     else
         lastch = '\0';
     is_utc = (lastch == 'z' || lastch == 'Z');
-
-    memset(&dt, 0, sizeof(dt));
 
     p = timestr;
     q = NULL;
@@ -559,15 +555,17 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration)
         /* parse timestr as HH:MM:SS */
         q = small_strptime(p, time_fmt[0], &dt);
         if (!q) {
+            char *o;
             /* parse timestr as S+ */
-            dt.tm_sec = strtol(p, (char **)&q, 10);
-            if (q == p) {
+            dt.tm_sec = strtol(p, &o, 10);
+            if (o == p) {
                 /* the parsing didn't succeed */
                 *timeval = INT64_MIN;
                 return AVERROR(EINVAL);
             }
             dt.tm_min = 0;
             dt.tm_hour = 0;
+            q = o;
         }
     }
 
@@ -595,7 +593,7 @@ int av_parse_time(int64_t *timeval, const char *timestr, int duration)
         int val, n;
         q++;
         for (val = 0, n = 100000; n >= 1; n /= 10, q++) {
-            if (!isdigit(*q))
+            if (!av_isdigit(*q))
                 break;
             val += n * (*q - '0');
         }
@@ -646,14 +644,12 @@ int av_find_info_tag(char *arg, int arg_size, const char *tag1, const char *info
 
 #ifdef TEST
 
-#undef printf
-
 int main(void)
 {
     printf("Testing av_parse_video_rate()\n");
     {
         int i;
-        const char *rates[] = {
+        static const char *const rates[] = {
             "-inf",
             "inf",
             "nan",
@@ -683,10 +679,10 @@ int main(void)
 
         for (i = 0; i < FF_ARRAY_ELEMS(rates); i++) {
             int ret;
-            AVRational q = (AVRational){0, 0};
-            ret = av_parse_video_rate(&q, rates[i]),
-            printf("'%s' -> %d/%d ret:%d\n",
-                   rates[i], q.num, q.den, ret);
+            AVRational q = { 0, 0 };
+            ret = av_parse_video_rate(&q, rates[i]);
+            printf("'%s' -> %d/%d %s\n",
+                   rates[i], q.num, q.den, ret ? "ERROR" : "OK");
         }
     }
 
@@ -694,9 +690,7 @@ int main(void)
     {
         int i;
         uint8_t rgba[4];
-        const char *color_names[] = {
-            "bikeshed",
-            "RaNdOm",
+        static const char *const color_names[] = {
             "foo",
             "red",
             "Red ",
@@ -737,7 +731,8 @@ int main(void)
 
         for (i = 0;  i < FF_ARRAY_ELEMS(color_names); i++) {
             if (av_parse_color(rgba, color_names[i], -1, NULL) >= 0)
-                printf("%s -> R(%d) G(%d) B(%d) A(%d)\n", color_names[i], rgba[0], rgba[1], rgba[2], rgba[3]);
+                printf("%s -> R(%d) G(%d) B(%d) A(%d)\n",
+                       color_names[i], rgba[0], rgba[1], rgba[2], rgba[3]);
         }
     }
 

@@ -1,4 +1,4 @@
-#! /usr/bin/perl -w
+#!/usr/bin/env perl
 
 #   Copyright (C) 1999, 2000, 2001 Free Software Foundation, Inc.
 
@@ -23,6 +23,8 @@
 # markup to Perl POD format.  It's intended to be used to extract
 # something suitable for a manpage from a Texinfo document.
 
+use warnings;
+
 $output = 0;
 $skipping = 0;
 %sects = ();
@@ -36,7 +38,7 @@ $shift = "";
 %defs = ();
 $fnno = 1;
 $inf = "";
-$ibase = "";
+@ibase = ();
 
 while ($_ = shift) {
     if (/^-D(.*)$/) {
@@ -52,6 +54,8 @@ while ($_ = shift) {
         die "flags may only contain letters, digits, hyphens, dashes and underscores\n"
             unless $flag =~ /^[a-zA-Z0-9_-]+$/;
         $defs{$flag} = $value;
+    } elsif (/^-I(.*)$/) {
+        push @ibase, $1 ne "" ? $1 : shift;
     } elsif (/^-/) {
         usage();
     } else {
@@ -61,10 +65,12 @@ while ($_ = shift) {
     }
 }
 
+push @ibase, ".";
+
 if (defined $in) {
     $inf = gensym();
     open($inf, "<$in") or die "opening \"$in\": $!\n";
-    $ibase = $1 if $in =~ m|^(.+)/[^/]+$|;
+    push @ibase, $1 if $in =~ m|^(.+)/[^/]+$|;
 } else {
     $inf = \*STDIN;
 }
@@ -74,7 +80,7 @@ if (defined $out) {
 }
 
 while(defined $inf) {
-while(<$inf>) {
+INF: while(<$inf>) {
     # Certain commands are discarded without further processing.
     /^\@(?:
          [a-z]+index            # @*index: useful only in complete manual
@@ -104,11 +110,10 @@ while(<$inf>) {
         push @instack, $inf;
         $inf = gensym();
 
-        # Try cwd and $ibase.
-        open($inf, "<" . $1)
-            or open($inf, "<" . $ibase . "/" . $1)
-                or die "cannot open $1 or $ibase/$1: $!\n";
-        next;
+        for (@ibase) {
+            open($inf, "<" . $_ . "/" . $1) and next INF;
+        }
+        die "cannot open $1: $!\n";
     };
 
     # Look for blocks surrounded by @c man begin SECTION ... @c man end.
@@ -158,7 +163,7 @@ while(<$inf>) {
         } elsif ($ended =~ /^(?:example|smallexample|display)$/) {
             $shift = "";
             $_ = "";        # need a paragraph break
-        } elsif ($ended =~ /^(?:itemize|enumerate|[fv]?table)$/) {
+        } elsif ($ended =~ /^(?:itemize|enumerate|(?:multi|[fv])?table)$/) {
             $_ = "\n=back\n";
             $ic = pop @icstack;
         } else {
@@ -259,7 +264,7 @@ while(<$inf>) {
         $endw = "enumerate";
     };
 
-    /^\@([fv]?table)\s+(\@[a-z]+)/ and do {
+    /^\@((?:multi|[fv])?table)\s+(\@[a-z]+)/ and do {
         push @endwstack, $endw;
         push @icstack, $ic;
         $endw = $1;
@@ -268,6 +273,7 @@ while(<$inf>) {
         $ic =~ s/\@(?:code|kbd)/C/;
         $ic =~ s/\@(?:dfn|var|emph|cite|i)/I/;
         $ic =~ s/\@(?:file)/F/;
+        $ic =~ s/\@(?:columnfractions)//;
         $_ = "\n=over 4\n";
     };
 
@@ -276,6 +282,21 @@ while(<$inf>) {
         $endw = $1;
         $shift = "\t";
         $_ = "";        # need a paragraph break
+    };
+
+    /^\@item\s+(.*\S)\s*$/ and $endw eq "multitable" and do {
+        my $columns = $1;
+        $columns =~ s/\@tab/ : /;
+
+        $_ = "\n=item B&LT;". $columns ."&GT;\n";
+    };
+
+    /^\@tab\s+(.*\S)\s*$/ and $endw eq "multitable" and do {
+        my $columns = $1;
+        $columns =~ s/\@tab/ : /;
+
+        $_ = " : ". $columns;
+        $section =~ s/\n+\s+$//;
     };
 
     /^\@itemx?\s*(.+)?$/ and do {

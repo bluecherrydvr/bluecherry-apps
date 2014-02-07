@@ -20,6 +20,7 @@
  */
 
 #include "libavutil/avstring.h"
+#include "libavutil/common.h"
 #include "libavutil/parseutils.h"
 #include "avcodec.h"
 #include "ass.h"
@@ -110,7 +111,7 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                                     for (j=sptr-2; j>=0; j--)
                                         if (stack[j].param[i][0]) {
                                             out += snprintf(out, out_end-out,
-                                                            stack[j].param[i]);
+                                                            "%s", stack[j].param[i]);
                                             break;
                                         }
                         } else {
@@ -146,7 +147,7 @@ static const char *srt_to_ass(AVCodecContext *avctx, char *out, char *out_end,
                             for (i=0; i<PARAM_NUMBER; i++)
                                 if (stack[sptr].param[i][0])
                                     out += snprintf(out, out_end-out,
-                                                    stack[sptr].param[i]);
+                                                    "%s", stack[sptr].param[i]);
                         }
                     } else if (!buffer[1] && strspn(buffer, "bisu") == 1) {
                         out += snprintf(out, out_end-out,
@@ -235,7 +236,7 @@ AVCodec ff_srt_decoder = {
     .name         = "srt",
     .long_name    = NULL_IF_CONFIG_SMALL("SubRip subtitle"),
     .type         = AVMEDIA_TYPE_SUBTITLE,
-    .id           = CODEC_ID_SRT,
+    .id           = AV_CODEC_ID_SRT,
     .init         = ff_ass_subtitle_header_default,
     .decode       = srt_decode_frame,
 };

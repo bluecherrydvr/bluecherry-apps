@@ -25,17 +25,21 @@
  * Started from sample code by Juan J. Sierralta P.
  */
 
+#include "config.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
+#if HAVE_UNISTD_H
 #include <unistd.h>
+#endif
 #include <math.h>
 
 #include "libavutil/cpu.h"
 #include "libavutil/common.h"
 #include "libavutil/lfg.h"
+#include "libavutil/time.h"
 
+#include "dct.h"
 #include "simple_idct.h"
 #include "aandcttab.h"
 #include "faandct.h"
@@ -43,61 +47,49 @@
 #include "x86/idct_xvid.h"
 #include "dctref.h"
 
-#undef printf
-
-void ff_mmx_idct(DCTELEM *data);
-void ff_mmxext_idct(DCTELEM *data);
-
-void odivx_idct_c(short *block);
-
 // BFIN
-void ff_bfin_idct(DCTELEM *block);
-void ff_bfin_fdct(DCTELEM *block);
+void ff_bfin_idct(int16_t *block);
+void ff_bfin_fdct(int16_t *block);
 
 // ALTIVEC
-void fdct_altivec(DCTELEM *block);
-//void idct_altivec(DCTELEM *block);?? no routine
+void ff_fdct_altivec(int16_t *block);
 
 // ARM
-void ff_j_rev_dct_arm(DCTELEM *data);
-void ff_simple_idct_arm(DCTELEM *data);
-void ff_simple_idct_armv5te(DCTELEM *data);
-void ff_simple_idct_armv6(DCTELEM *data);
-void ff_simple_idct_neon(DCTELEM *data);
-
-void ff_simple_idct_axp(DCTELEM *data);
+void ff_j_rev_dct_arm(int16_t *data);
+void ff_simple_idct_arm(int16_t *data);
+void ff_simple_idct_armv5te(int16_t *data);
+void ff_simple_idct_armv6(int16_t *data);
+void ff_simple_idct_neon(int16_t *data);
 
 struct algo {
     const char *name;
-    void (*func)(DCTELEM *block);
+    void (*func)(int16_t *block);
     enum formattag { NO_PERM, MMX_PERM, MMX_SIMPLE_PERM, SCALE_PERM,
                      SSE2_PERM, PARTTRANS_PERM } format;
     int mm_support;
     int nonspec;
 };
 
-#ifndef FAAN_POSTSCALE
-#define FAAN_SCALE SCALE_PERM
-#else
-#define FAAN_SCALE NO_PERM
-#endif
-
 static int cpu_flags;
 
 static const struct algo fdct_tab[] = {
     { "REF-DBL",        ff_ref_fdct,           NO_PERM    },
-    { "FAAN",           ff_faandct,            FAAN_SCALE },
-    { "IJG-AAN-INT",    fdct_ifast,            SCALE_PERM },
+    { "FAAN",           ff_faandct,            NO_PERM    },
+    { "IJG-AAN-INT",    ff_fdct_ifast,         SCALE_PERM },
     { "IJG-LLM-INT",    ff_jpeg_fdct_islow_8,  NO_PERM    },
 
-#if HAVE_MMX
+#if HAVE_MMX_INLINE
     { "MMX",            ff_fdct_mmx,           NO_PERM,   AV_CPU_FLAG_MMX     },
-    { "MMX2",           ff_fdct_mmx2,          NO_PERM,   AV_CPU_FLAG_MMX2    },
+#endif
+#if HAVE_MMXEXT_INLINE
+    { "MMXEXT",         ff_fdct_mmxext,        NO_PERM,   AV_CPU_FLAG_MMXEXT  },
+#endif
+#if HAVE_SSE2_INLINE
     { "SSE2",           ff_fdct_sse2,          NO_PERM,   AV_CPU_FLAG_SSE2    },
 #endif
 
 #if HAVE_ALTIVEC
-    { "altivecfdct",    fdct_altivec,          NO_PERM,   AV_CPU_FLAG_ALTIVEC },
+    { "altivecfdct",    ff_fdct_altivec,       NO_PERM,   AV_CPU_FLAG_ALTIVEC },
 #endif
 
 #if ARCH_BFIN
@@ -110,17 +102,17 @@ static const struct algo fdct_tab[] = {
 static const struct algo idct_tab[] = {
     { "FAANI",          ff_faanidct,           NO_PERM  },
     { "REF-DBL",        ff_ref_idct,           NO_PERM  },
-    { "INT",            j_rev_dct,             MMX_PERM },
+    { "INT",            ff_j_rev_dct,          MMX_PERM },
     { "SIMPLE-C",       ff_simple_idct_8,      NO_PERM  },
 
-#if HAVE_MMX
-#if CONFIG_GPL
-    { "LIBMPEG2-MMX",   ff_mmx_idct,           MMX_PERM,  AV_CPU_FLAG_MMX,  1 },
-    { "LIBMPEG2-MMX2",  ff_mmxext_idct,        MMX_PERM,  AV_CPU_FLAG_MMX2, 1 },
-#endif
+#if HAVE_MMX_INLINE
     { "SIMPLE-MMX",     ff_simple_idct_mmx,  MMX_SIMPLE_PERM, AV_CPU_FLAG_MMX },
     { "XVID-MMX",       ff_idct_xvid_mmx,      NO_PERM,   AV_CPU_FLAG_MMX,  1 },
-    { "XVID-MMX2",      ff_idct_xvid_mmx2,     NO_PERM,   AV_CPU_FLAG_MMX2, 1 },
+#endif
+#if HAVE_MMXEXT_INLINE
+    { "XVID-MMXEXT",    ff_idct_xvid_mmxext,   NO_PERM,   AV_CPU_FLAG_MMXEXT, 1 },
+#endif
+#if HAVE_SSE2_INLINE
     { "XVID-SSE2",      ff_idct_xvid_sse2,     SSE2_PERM, AV_CPU_FLAG_SSE2, 1 },
 #endif
 
@@ -133,30 +125,19 @@ static const struct algo idct_tab[] = {
     { "INT-ARM",        ff_j_rev_dct_arm,      MMX_PERM },
 #endif
 #if HAVE_ARMV5TE
-    { "SIMPLE-ARMV5TE", ff_simple_idct_armv5te,NO_PERM  },
+    { "SIMPLE-ARMV5TE", ff_simple_idct_armv5te,NO_PERM,   AV_CPU_FLAG_ARMV5TE },
 #endif
 #if HAVE_ARMV6
-    { "SIMPLE-ARMV6",   ff_simple_idct_armv6,  MMX_PERM },
+    { "SIMPLE-ARMV6",   ff_simple_idct_armv6,  MMX_PERM,  AV_CPU_FLAG_ARMV6   },
 #endif
-#if HAVE_NEON
-    { "SIMPLE-NEON",    ff_simple_idct_neon,   PARTTRANS_PERM },
-#endif
-
-#if ARCH_ALPHA
-    { "SIMPLE-ALPHA",   ff_simple_idct_axp,    NO_PERM },
+#if HAVE_NEON && ARCH_ARM
+    { "SIMPLE-NEON",    ff_simple_idct_neon, PARTTRANS_PERM, AV_CPU_FLAG_NEON },
 #endif
 
     { 0 }
 };
 
 #define AANSCALE_BITS 12
-
-static int64_t gettime(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
-}
 
 #define NB_ITS 20000
 #define NB_ITS_SPEED 50000
@@ -186,18 +167,10 @@ static void idct_mmx_init(void)
     }
 }
 
-DECLARE_ALIGNED(16, static DCTELEM, block)[64];
-DECLARE_ALIGNED(8,  static DCTELEM, block1)[64];
+DECLARE_ALIGNED(16, static int16_t, block)[64];
+DECLARE_ALIGNED(8,  static int16_t, block1)[64];
 
-static inline void mmx_emms(void)
-{
-#if HAVE_MMX
-    if (cpu_flags & AV_CPU_FLAG_MMX)
-        __asm__ volatile ("emms\n\t");
-#endif
-}
-
-static void init_block(DCTELEM block[64], int test, int is_idct, AVLFG *prng)
+static void init_block(int16_t block[64], int test, int is_idct, AVLFG *prng)
 {
     int i, j;
 
@@ -225,7 +198,7 @@ static void init_block(DCTELEM block[64], int test, int is_idct, AVLFG *prng)
     }
 }
 
-static void permute(DCTELEM dst[64], const DCTELEM src[64], int perm)
+static void permute(int16_t dst[64], const int16_t src[64], int perm)
 {
     int i;
 
@@ -249,7 +222,7 @@ static void permute(DCTELEM dst[64], const DCTELEM src[64], int perm)
 
 static int dct_error(const struct algo *dct, int test, int is_idct, int speed)
 {
-    void (*ref)(DCTELEM *block) = is_idct ? ff_ref_idct : ff_ref_fdct;
+    void (*ref)(int16_t *block) = is_idct ? ff_ref_idct : ff_ref_fdct;
     int it, i, scale;
     int err_inf, v;
     int64_t err2, ti, ti1, it1, err_sum = 0;
@@ -271,7 +244,7 @@ static int dct_error(const struct algo *dct, int test, int is_idct, int speed)
         permute(block, block1, dct->format);
 
         dct->func(block);
-        mmx_emms();
+        emms_c();
 
         if (dct->format == SCALE_PERM) {
             for (i = 0; i < 64; i++) {
@@ -328,7 +301,7 @@ static int dct_error(const struct algo *dct, int test, int is_idct, int speed)
     init_block(block, test, is_idct, &prng);
     permute(block1, block, dct->format);
 
-    ti = gettime();
+    ti = av_gettime();
     it1 = 0;
     do {
         for (it = 0; it < NB_ITS_SPEED; it++) {
@@ -336,9 +309,9 @@ static int dct_error(const struct algo *dct, int test, int is_idct, int speed)
             dct->func(block);
         }
         it1 += NB_ITS_SPEED;
-        ti1 = gettime() - ti;
+        ti1 = av_gettime() - ti;
     } while (ti1 < 1000000);
-    mmx_emms();
+    emms_c();
 
     printf("%s %s: %0.1f kdct/s\n", is_idct ? "IDCT" : "DCT", dct->name,
            (double) it1 * 1000.0 / (double) ti1);
@@ -469,7 +442,7 @@ static void idct248_error(const char *name,
     if (!speed)
         return;
 
-    ti = gettime();
+    ti = av_gettime();
     it1 = 0;
     do {
         for (it = 0; it < NB_ITS_SPEED; it++) {
@@ -478,9 +451,9 @@ static void idct248_error(const char *name,
             idct248_put(img_dest, 8, block);
         }
         it1 += NB_ITS_SPEED;
-        ti1 = gettime() - ti;
+        ti1 = av_gettime() - ti;
     } while (ti1 < 1000000);
-    mmx_emms();
+    emms_c();
 
     printf("%s %s: %0.1f kdct/s\n", 1 ? "IDCT248" : "DCT248", name,
            (double) it1 * 1000.0 / (double) ti1);
@@ -496,6 +469,10 @@ static void help(void)
            "-4          test IDCT248 implementations\n"
            "-t          speed test\n");
 }
+
+#if !HAVE_GETOPT
+#include "compat/getopt.c"
+#endif
 
 int main(int argc, char **argv)
 {
@@ -546,5 +523,8 @@ int main(int argc, char **argv)
             }
     }
 
-    return err;
+    if (err)
+        printf("Error: %d.\n", err);
+
+    return !!err;
 }

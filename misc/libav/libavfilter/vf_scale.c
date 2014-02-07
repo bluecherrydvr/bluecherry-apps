@@ -23,14 +23,22 @@
  * scale video filter
  */
 
+#include <stdio.h>
+#include <string.h>
+
 #include "avfilter.h"
+#include "formats.h"
+#include "internal.h"
+#include "video.h"
 #include "libavutil/avstring.h"
 #include "libavutil/eval.h"
+#include "libavutil/internal.h"
 #include "libavutil/mathematics.h"
+#include "libavutil/opt.h"
 #include "libavutil/pixdesc.h"
 #include "libswscale/swscale.h"
 
-static const char *var_names[] = {
+static const char *const var_names[] = {
     "PI",
     "PHI",
     "E",
@@ -61,6 +69,7 @@ enum var_name {
 };
 
 typedef struct {
+    const AVClass *class;
     struct SwsContext *sws;     ///< software scaler context
 
     /**
@@ -75,23 +84,23 @@ typedef struct {
     int slice_y;                ///< top of current output slice
     int input_is_pal;           ///< set to 1 if the input format is paletted
 
-    char w_expr[256];           ///< width  expression string
-    char h_expr[256];           ///< height expression string
+    char *w_expr;               ///< width  expression string
+    char *h_expr;               ///< height expression string
+    char *flags_str;
 } ScaleContext;
 
-static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int init(AVFilterContext *ctx)
 {
     ScaleContext *scale = ctx->priv;
-    const char *p;
 
-    av_strlcpy(scale->w_expr, "iw", sizeof(scale->w_expr));
-    av_strlcpy(scale->h_expr, "ih", sizeof(scale->h_expr));
+    if (scale->flags_str) {
+        const AVClass *class = sws_get_class();
+        const AVOption    *o = av_opt_find(&class, "sws_flags", NULL, 0,
+                                           AV_OPT_SEARCH_FAKE_OBJ);
+        int ret = av_opt_eval_flags(&class, o, scale->flags_str, &scale->flags);
 
-    scale->flags = SWS_BILINEAR;
-    if (args) {
-        sscanf(args, "%255[^:]:%255[^:]", scale->w_expr, scale->h_expr);
-        p = strstr(args,"flags=");
-        if (p) scale->flags = strtoul(p+6, NULL, 0);
+        if (ret < 0)
+            return ret;
     }
 
     return 0;
@@ -107,28 +116,30 @@ static av_cold void uninit(AVFilterContext *ctx)
 static int query_formats(AVFilterContext *ctx)
 {
     AVFilterFormats *formats;
-    enum PixelFormat pix_fmt;
+    enum AVPixelFormat pix_fmt;
     int ret;
 
     if (ctx->inputs[0]) {
         formats = NULL;
-        for (pix_fmt = 0; pix_fmt < PIX_FMT_NB; pix_fmt++)
-            if (   sws_isSupportedInput(pix_fmt)
-                && (ret = avfilter_add_format(&formats, pix_fmt)) < 0) {
-                avfilter_formats_unref(&formats);
+        for (pix_fmt = 0; pix_fmt < AV_PIX_FMT_NB; pix_fmt++)
+            if ((sws_isSupportedInput(pix_fmt) ||
+                 sws_isSupportedEndiannessConversion(pix_fmt))
+                && (ret = ff_add_format(&formats, pix_fmt)) < 0) {
+                ff_formats_unref(&formats);
                 return ret;
             }
-        avfilter_formats_ref(formats, &ctx->inputs[0]->out_formats);
+        ff_formats_ref(formats, &ctx->inputs[0]->out_formats);
     }
     if (ctx->outputs[0]) {
         formats = NULL;
-        for (pix_fmt = 0; pix_fmt < PIX_FMT_NB; pix_fmt++)
-            if (    sws_isSupportedOutput(pix_fmt)
-                && (ret = avfilter_add_format(&formats, pix_fmt)) < 0) {
-                avfilter_formats_unref(&formats);
+        for (pix_fmt = 0; pix_fmt < AV_PIX_FMT_NB; pix_fmt++)
+            if ((sws_isSupportedOutput(pix_fmt) ||
+                 sws_isSupportedEndiannessConversion(pix_fmt))
+                && (ret = ff_add_format(&formats, pix_fmt)) < 0) {
+                ff_formats_unref(&formats);
                 return ret;
             }
-        avfilter_formats_ref(formats, &ctx->outputs[0]->in_formats);
+        ff_formats_ref(formats, &ctx->outputs[0]->in_formats);
     }
 
     return 0;
@@ -139,6 +150,7 @@ static int config_props(AVFilterLink *outlink)
     AVFilterContext *ctx = outlink->src;
     AVFilterLink *inlink = outlink->src->inputs[0];
     ScaleContext *scale = ctx->priv;
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(inlink->format);
     int64_t w, h;
     double var_values[VARS_NB], res;
     char *expr;
@@ -151,11 +163,12 @@ static int config_props(AVFilterLink *outlink)
     var_values[VAR_IN_H]  = var_values[VAR_IH] = inlink->h;
     var_values[VAR_OUT_W] = var_values[VAR_OW] = NAN;
     var_values[VAR_OUT_H] = var_values[VAR_OH] = NAN;
-    var_values[VAR_DAR]   = var_values[VAR_A]  = (float) inlink->w / inlink->h;
+    var_values[VAR_A]     = (double) inlink->w / inlink->h;
     var_values[VAR_SAR]   = inlink->sample_aspect_ratio.num ?
-        (float) inlink->sample_aspect_ratio.num / inlink->sample_aspect_ratio.den : 1;
-    var_values[VAR_HSUB]  = 1<<av_pix_fmt_descriptors[inlink->format].log2_chroma_w;
-    var_values[VAR_VSUB]  = 1<<av_pix_fmt_descriptors[inlink->format].log2_chroma_h;
+        (double) inlink->sample_aspect_ratio.num / inlink->sample_aspect_ratio.den : 1;
+    var_values[VAR_DAR]   = var_values[VAR_A] * var_values[VAR_SAR];
+    var_values[VAR_HSUB]  = 1 << desc->log2_chroma_w;
+    var_values[VAR_VSUB]  = 1 << desc->log2_chroma_h;
 
     /* evaluate width and height */
     av_expr_parse_and_eval(&res, (expr = scale->w_expr),
@@ -203,20 +216,26 @@ static int config_props(AVFilterLink *outlink)
     outlink->h = h;
 
     /* TODO: make algorithm configurable */
-    av_log(ctx, AV_LOG_INFO, "w:%d h:%d fmt:%s -> w:%d h:%d fmt:%s flags:0x%0x\n",
-           inlink ->w, inlink ->h, av_pix_fmt_descriptors[ inlink->format].name,
-           outlink->w, outlink->h, av_pix_fmt_descriptors[outlink->format].name,
+    av_log(ctx, AV_LOG_VERBOSE, "w:%d h:%d fmt:%s -> w:%d h:%d fmt:%s flags:0x%0x\n",
+           inlink ->w, inlink ->h, av_get_pix_fmt_name(inlink->format),
+           outlink->w, outlink->h, av_get_pix_fmt_name(outlink->format),
            scale->flags);
 
-    scale->input_is_pal = av_pix_fmt_descriptors[inlink->format].flags & PIX_FMT_PAL;
+    scale->input_is_pal = desc->flags & AV_PIX_FMT_FLAG_PAL ||
+                          desc->flags & AV_PIX_FMT_FLAG_PSEUDOPAL;
 
     if (scale->sws)
         sws_freeContext(scale->sws);
-    scale->sws = sws_getContext(inlink ->w, inlink ->h, inlink ->format,
-                                outlink->w, outlink->h, outlink->format,
-                                scale->flags, NULL, NULL, NULL);
-    if (!scale->sws)
-        return AVERROR(EINVAL);
+    if (inlink->w == outlink->w && inlink->h == outlink->h &&
+        inlink->format == outlink->format)
+        scale->sws = NULL;
+    else {
+        scale->sws = sws_getContext(inlink ->w, inlink ->h, inlink ->format,
+                                    outlink->w, outlink->h, outlink->format,
+                                    scale->flags, NULL, NULL, NULL);
+        if (!scale->sws)
+            return AVERROR(EINVAL);
+    }
 
 
     if (inlink->sample_aspect_ratio.num)
@@ -234,60 +253,76 @@ fail:
     return ret;
 }
 
-static void start_frame(AVFilterLink *link, AVFilterBufferRef *picref)
+static int filter_frame(AVFilterLink *link, AVFrame *in)
 {
     ScaleContext *scale = link->dst->priv;
     AVFilterLink *outlink = link->dst->outputs[0];
-    AVFilterBufferRef *outpicref;
+    AVFrame *out;
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(link->format);
 
-    scale->hsub = av_pix_fmt_descriptors[link->format].log2_chroma_w;
-    scale->vsub = av_pix_fmt_descriptors[link->format].log2_chroma_h;
+    if (!scale->sws)
+        return ff_filter_frame(outlink, in);
 
-    outpicref = avfilter_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
-    avfilter_copy_buffer_ref_props(outpicref, picref);
-    outpicref->video->w = outlink->w;
-    outpicref->video->h = outlink->h;
+    scale->hsub = desc->log2_chroma_w;
+    scale->vsub = desc->log2_chroma_h;
 
-    outlink->out_buf = outpicref;
+    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
+    if (!out) {
+        av_frame_free(&in);
+        return AVERROR(ENOMEM);
+    }
 
-    av_reduce(&outpicref->video->pixel_aspect.num, &outpicref->video->pixel_aspect.den,
-              (int64_t)picref->video->pixel_aspect.num * outlink->h * link->w,
-              (int64_t)picref->video->pixel_aspect.den * outlink->w * link->h,
+    av_frame_copy_props(out, in);
+    out->width  = outlink->w;
+    out->height = outlink->h;
+
+    av_reduce(&out->sample_aspect_ratio.num, &out->sample_aspect_ratio.den,
+              (int64_t)in->sample_aspect_ratio.num * outlink->h * link->w,
+              (int64_t)in->sample_aspect_ratio.den * outlink->w * link->h,
               INT_MAX);
 
-    scale->slice_y = 0;
-    avfilter_start_frame(outlink, avfilter_ref_buffer(outpicref, ~0));
+    sws_scale(scale->sws, in->data, in->linesize, 0, in->height,
+              out->data, out->linesize);
+
+    av_frame_free(&in);
+    return ff_filter_frame(outlink, out);
 }
 
-static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
-{
-    ScaleContext *scale = link->dst->priv;
-    int out_h;
-    AVFilterBufferRef *cur_pic = link->cur_buf;
-    const uint8_t *data[4];
+#define OFFSET(x) offsetof(ScaleContext, x)
+#define FLAGS AV_OPT_FLAG_VIDEO_PARAM
+static const AVOption options[] = {
+    { "w",     "Output video width",          OFFSET(w_expr),    AV_OPT_TYPE_STRING, { .str = "iw" },       .flags = FLAGS },
+    { "h",     "Output video height",         OFFSET(h_expr),    AV_OPT_TYPE_STRING, { .str = "ih" },       .flags = FLAGS },
+    { "flags", "Flags to pass to libswscale", OFFSET(flags_str), AV_OPT_TYPE_STRING, { .str = "bilinear" }, .flags = FLAGS },
+    { NULL },
+};
 
-    if (scale->slice_y == 0 && slice_dir == -1)
-        scale->slice_y = link->dst->outputs[0]->h;
+static const AVClass scale_class = {
+    .class_name = "scale",
+    .item_name  = av_default_item_name,
+    .option     = options,
+    .version    = LIBAVUTIL_VERSION_INT,
+};
 
-    data[0] = cur_pic->data[0] +  y               * cur_pic->linesize[0];
-    data[1] = scale->input_is_pal ?
-              cur_pic->data[1] :
-              cur_pic->data[1] + (y>>scale->vsub) * cur_pic->linesize[1];
-    data[2] = cur_pic->data[2] + (y>>scale->vsub) * cur_pic->linesize[2];
-    data[3] = cur_pic->data[3] +  y               * cur_pic->linesize[3];
+static const AVFilterPad avfilter_vf_scale_inputs[] = {
+    {
+        .name        = "default",
+        .type        = AVMEDIA_TYPE_VIDEO,
+        .filter_frame = filter_frame,
+    },
+    { NULL }
+};
 
-    out_h = sws_scale(scale->sws, data, cur_pic->linesize, y, h,
-                      link->dst->outputs[0]->out_buf->data,
-                      link->dst->outputs[0]->out_buf->linesize);
+static const AVFilterPad avfilter_vf_scale_outputs[] = {
+    {
+        .name         = "default",
+        .type         = AVMEDIA_TYPE_VIDEO,
+        .config_props = config_props,
+    },
+    { NULL }
+};
 
-    if (slice_dir == -1)
-        scale->slice_y -= out_h;
-    avfilter_draw_slice(link->dst->outputs[0], scale->slice_y, out_h, slice_dir);
-    if (slice_dir == 1)
-        scale->slice_y += out_h;
-}
-
-AVFilter avfilter_vf_scale = {
+AVFilter ff_vf_scale = {
     .name      = "scale",
     .description = NULL_IF_CONFIG_SMALL("Scale the input video to width:height size and/or convert the image format."),
 
@@ -297,15 +332,8 @@ AVFilter avfilter_vf_scale = {
     .query_formats = query_formats,
 
     .priv_size = sizeof(ScaleContext),
+    .priv_class = &scale_class,
 
-    .inputs    = (AVFilterPad[]) {{ .name             = "default",
-                                    .type             = AVMEDIA_TYPE_VIDEO,
-                                    .start_frame      = start_frame,
-                                    .draw_slice       = draw_slice,
-                                    .min_perms        = AV_PERM_READ, },
-                                  { .name = NULL}},
-    .outputs   = (AVFilterPad[]) {{ .name             = "default",
-                                    .type             = AVMEDIA_TYPE_VIDEO,
-                                    .config_props     = config_props, },
-                                  { .name = NULL}},
+    .inputs    = avfilter_vf_scale_inputs,
+    .outputs   = avfilter_vf_scale_outputs,
 };

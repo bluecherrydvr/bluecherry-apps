@@ -25,22 +25,54 @@
 #define AVCODEC_VDPAU_INTERNAL_H
 
 #include <stdint.h>
+#include <vdpau/vdpau.h>
+
+#include "avcodec.h"
 #include "mpegvideo.h"
+#include "version.h"
 
-void ff_vdpau_add_data_chunk(MpegEncContext *s, const uint8_t *buf,
-                             int buf_size);
+/** Extract VdpVideoSurface from a Picture */
+static inline uintptr_t ff_vdpau_get_surface_id(Picture *pic)
+{
+    return (uintptr_t)pic->f.data[3];
+}
 
-void ff_vdpau_mpeg_picture_complete(MpegEncContext *s, const uint8_t *buf,
-                                    int buf_size, int slice_count);
+#if !FF_API_BUFS_VDPAU
+union AVVDPAUPictureInfo {
+    VdpPictureInfoH264        h264;
+    VdpPictureInfoMPEG1Or2    mpeg;
+    VdpPictureInfoVC1          vc1;
+    VdpPictureInfoMPEG4Part2 mpeg4;
+};
+#else
+#include "vdpau.h"
+#endif
 
-void ff_vdpau_h264_picture_start(MpegEncContext *s);
-void ff_vdpau_h264_set_reference_frames(MpegEncContext *s);
-void ff_vdpau_h264_picture_complete(MpegEncContext *s);
+struct vdpau_picture_context {
+    /**
+     * VDPAU picture information.
+     */
+    union AVVDPAUPictureInfo info;
 
-void ff_vdpau_vc1_decode_picture(MpegEncContext *s, const uint8_t *buf,
-                                 int buf_size);
+    /**
+     * Allocated size of the bitstream_buffers table.
+     */
+    int bitstream_buffers_allocated;
 
-void ff_vdpau_mpeg4_decode_picture(MpegEncContext *s, const uint8_t *buf,
-                                   int buf_size);
+    /**
+     * Useful bitstream buffers in the bitstream buffers table.
+     */
+    int bitstream_buffers_used;
+
+   /**
+     * Table of bitstream buffers.
+     */
+    VdpBitstreamBuffer *bitstream_buffers;
+};
+
+int ff_vdpau_common_start_frame(Picture *pic,
+                                const uint8_t *buffer, uint32_t size);
+int ff_vdpau_mpeg_end_frame(AVCodecContext *avctx);
+int ff_vdpau_add_buffer(Picture *pic, const uint8_t *buf, uint32_t buf_size);
 
 #endif /* AVCODEC_VDPAU_INTERNAL_H */

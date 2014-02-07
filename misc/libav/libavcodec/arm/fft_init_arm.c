@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/arm/cpu.h"
 #include "libavcodec/fft.h"
 #include "libavcodec/rdft.h"
 #include "libavcodec/synth_filter.h"
@@ -25,21 +26,26 @@
 void ff_fft_permute_neon(FFTContext *s, FFTComplex *z);
 void ff_fft_calc_neon(FFTContext *s, FFTComplex *z);
 
+void ff_imdct_half_vfp(FFTContext *s, FFTSample *output, const FFTSample *input);
+
 void ff_imdct_calc_neon(FFTContext *s, FFTSample *output, const FFTSample *input);
 void ff_imdct_half_neon(FFTContext *s, FFTSample *output, const FFTSample *input);
 void ff_mdct_calc_neon(FFTContext *s, FFTSample *output, const FFTSample *input);
 
 void ff_rdft_calc_neon(struct RDFTContext *s, FFTSample *z);
 
-void ff_synth_filter_float_neon(FFTContext *imdct,
-                                float *synth_buf_ptr, int *synth_buf_offset,
-                                float synth_buf2[32], const float window[512],
-                                float out[32], const float in[32],
-                                float scale);
-
 av_cold void ff_fft_init_arm(FFTContext *s)
 {
-    if (HAVE_NEON) {
+    int cpu_flags = av_get_cpu_flags();
+
+    if (have_vfp(cpu_flags)) {
+#if CONFIG_MDCT
+        if (!have_vfpv3(cpu_flags))
+            s->imdct_half   = ff_imdct_half_vfp;
+#endif
+    }
+
+    if (have_neon(cpu_flags)) {
         s->fft_permute  = ff_fft_permute_neon;
         s->fft_calc     = ff_fft_calc_neon;
 #if CONFIG_MDCT
@@ -54,15 +60,9 @@ av_cold void ff_fft_init_arm(FFTContext *s)
 #if CONFIG_RDFT
 av_cold void ff_rdft_init_arm(RDFTContext *s)
 {
-    if (HAVE_NEON)
-        s->rdft_calc    = ff_rdft_calc_neon;
-}
-#endif
+    int cpu_flags = av_get_cpu_flags();
 
-#if CONFIG_DCA_DECODER
-av_cold void ff_synth_filter_init_arm(SynthFilterContext *s)
-{
-    if (HAVE_NEON)
-        s->synth_filter_float = ff_synth_filter_float_neon;
+    if (have_neon(cpu_flags))
+        s->rdft_calc    = ff_rdft_calc_neon;
 }
 #endif

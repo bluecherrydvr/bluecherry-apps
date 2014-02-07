@@ -48,8 +48,6 @@
 #define DC1394_FRAMERATE_240   FRAMERATE_240
 #endif
 
-#undef free
-
 typedef struct dc1394_data {
     AVClass *class;
 #if HAVE_LIBDC1394_1
@@ -73,12 +71,12 @@ typedef struct dc1394_data {
 struct dc1394_frame_format {
     int width;
     int height;
-    enum PixelFormat pix_fmt;
+    enum AVPixelFormat pix_fmt;
     int frame_size_id;
 } dc1394_frame_formats[] = {
-    { 320, 240, PIX_FMT_UYVY422, DC1394_VIDEO_MODE_320x240_YUV422 },
-    { 640, 480, PIX_FMT_UYYVYY411, DC1394_VIDEO_MODE_640x480_YUV411 },
-    { 640, 480, PIX_FMT_UYVY422, DC1394_VIDEO_MODE_640x480_YUV422 },
+    { 320, 240, AV_PIX_FMT_UYVY422,   DC1394_VIDEO_MODE_320x240_YUV422 },
+    { 640, 480, AV_PIX_FMT_UYYVYY411, DC1394_VIDEO_MODE_640x480_YUV411 },
+    { 640, 480, AV_PIX_FMT_UYVY422,   DC1394_VIDEO_MODE_640x480_YUV422 },
     { 0, 0, 0, 0 } /* gotta be the last one */
 };
 
@@ -101,7 +99,7 @@ struct dc1394_frame_rate {
 #define DEC AV_OPT_FLAG_DECODING_PARAM
 static const AVOption options[] = {
 #if HAVE_LIBDC1394_1
-    { "channel", "", offsetof(dc1394_data, channel), AV_OPT_TYPE_INT, {.dbl = 0}, 0, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
+    { "channel", "", offsetof(dc1394_data, channel), AV_OPT_TYPE_INT, {.i64 = 0}, 0, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
 #endif
     { "video_size", "A string describing frame size, such as 640x480 or hd720.", OFFSET(video_size), AV_OPT_TYPE_STRING, {.str = "qvga"}, 0, 0, DEC },
     { "pixel_format", "", OFFSET(pixel_format), AV_OPT_TYPE_STRING, {.str = "uyvy422"}, 0, 0, DEC },
@@ -117,19 +115,19 @@ static const AVClass libdc1394_class = {
 };
 
 
-static inline int dc1394_read_common(AVFormatContext *c, AVFormatParameters *ap,
+static inline int dc1394_read_common(AVFormatContext *c,
                                      struct dc1394_frame_format **select_fmt, struct dc1394_frame_rate **select_fps)
 {
     dc1394_data* dc1394 = c->priv_data;
     AVStream* vst;
     struct dc1394_frame_format *fmt;
     struct dc1394_frame_rate *fps;
-    enum PixelFormat pix_fmt;
+    enum AVPixelFormat pix_fmt;
     int width, height;
     AVRational framerate;
     int ret = 0;
 
-    if ((pix_fmt = av_get_pix_fmt(dc1394->pixel_format)) == PIX_FMT_NONE) {
+    if ((pix_fmt = av_get_pix_fmt(dc1394->pixel_format)) == AV_PIX_FMT_NONE) {
         av_log(c, AV_LOG_ERROR, "No such pixel format: %s.\n", dc1394->pixel_format);
         ret = AVERROR(EINVAL);
         goto out;
@@ -168,7 +166,7 @@ static inline int dc1394_read_common(AVFormatContext *c, AVFormatParameters *ap,
     }
     avpriv_set_pts_info(vst, 64, 1, 1000);
     vst->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    vst->codec->codec_id = CODEC_ID_RAWVIDEO;
+    vst->codec->codec_id = AV_CODEC_ID_RAWVIDEO;
     vst->codec->time_base.den = framerate.num;
     vst->codec->time_base.num = framerate.den;
     vst->codec->width = fmt->width;
@@ -191,7 +189,7 @@ out:
 }
 
 #if HAVE_LIBDC1394_1
-static int dc1394_v1_read_header(AVFormatContext *c, AVFormatParameters * ap)
+static int dc1394_v1_read_header(AVFormatContext *c)
 {
     dc1394_data* dc1394 = c->priv_data;
     AVStream* vst;
@@ -200,7 +198,7 @@ static int dc1394_v1_read_header(AVFormatContext *c, AVFormatParameters * ap)
     struct dc1394_frame_format *fmt = NULL;
     struct dc1394_frame_rate *fps = NULL;
 
-    if (dc1394_read_common(c,ap,&fmt,&fps) != 0)
+    if (dc1394_read_common(c, &fmt, &fps) != 0)
         return -1;
 
     /* Now let us prep the hardware. */
@@ -285,7 +283,7 @@ static int dc1394_v1_close(AVFormatContext * context)
 }
 
 #elif HAVE_LIBDC1394_2
-static int dc1394_v2_read_header(AVFormatContext *c, AVFormatParameters * ap)
+static int dc1394_v2_read_header(AVFormatContext *c)
 {
     dc1394_data* dc1394 = c->priv_data;
     dc1394camera_list_t *list;
@@ -293,7 +291,7 @@ static int dc1394_v2_read_header(AVFormatContext *c, AVFormatParameters * ap)
     struct dc1394_frame_format *fmt = NULL;
     struct dc1394_frame_rate *fps = NULL;
 
-    if (dc1394_read_common(c,ap,&fmt,&fps) != 0)
+    if (dc1394_read_common(c, &fmt, &fps) != 0)
        return -1;
 
     /* Now let us prep the hardware. */

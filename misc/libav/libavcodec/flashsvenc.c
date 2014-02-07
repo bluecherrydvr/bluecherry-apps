@@ -49,6 +49,7 @@
 #include <zlib.h>
 
 #include "avcodec.h"
+#include "internal.h"
 #include "put_bits.h"
 #include "bytestream.h"
 
@@ -56,7 +57,6 @@
 typedef struct FlashSVContext {
     AVCodecContext *avctx;
     uint8_t        *previous_frame;
-    AVFrame         frame;
     int             image_width, image_height;
     int             block_width, block_height;
     uint8_t        *tmpblock;
@@ -88,6 +88,21 @@ static int copy_region_enc(uint8_t *sptr, uint8_t *dptr, int dx, int dy,
     return 0;
 }
 
+static av_cold int flashsv_encode_end(AVCodecContext *avctx)
+{
+    FlashSVContext *s = avctx->priv_data;
+
+    deflateEnd(&s->zstream);
+
+    av_free(s->encbuffer);
+    av_free(s->previous_frame);
+    av_free(s->tmpblock);
+
+    av_frame_free(&avctx->coded_frame);
+
+    return 0;
+}
+
 static av_cold int flashsv_encode_init(AVCodecContext *avctx)
 {
     FlashSVContext *s = avctx->priv_data;
@@ -116,11 +131,17 @@ static av_cold int flashsv_encode_init(AVCodecContext *avctx)
         return AVERROR(ENOMEM);
     }
 
+    avctx->coded_frame = av_frame_alloc();
+    if (!avctx->coded_frame) {
+        flashsv_encode_end(avctx);
+        return AVERROR(ENOMEM);
+    }
+
     return 0;
 }
 
 
-static int encode_bitstream(FlashSVContext *s, AVFrame *p, uint8_t *buf,
+static int encode_bitstream(FlashSVContext *s, const AVFrame *p, uint8_t *buf,
                             int buf_size, int block_width, int block_height,
                             uint8_t *previous_frame, int *I_frame)
 {
@@ -194,18 +215,15 @@ static int encode_bitstream(FlashSVContext *s, AVFrame *p, uint8_t *buf,
 }
 
 
-static int flashsv_encode_frame(AVCodecContext *avctx, uint8_t *buf,
-                                int buf_size, void *data)
+static int flashsv_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+                                const AVFrame *pict, int *got_packet)
 {
     FlashSVContext * const s = avctx->priv_data;
-    AVFrame *pict = data;
-    AVFrame * const p = &s->frame;
+    const AVFrame * const p = pict;
     uint8_t *pfptr;
     int res;
     int I_frame = 0;
     int opt_w = 4, opt_h = 4;
-
-    *p = *pict;
 
     /* First frame needs to be a keyframe */
     if (avctx->frame_number == 0) {
@@ -228,15 +246,15 @@ static int flashsv_encode_frame(AVCodecContext *avctx, uint8_t *buf,
         I_frame = 1;
     }
 
-    if (buf_size < s->image_width * s->image_height * 3) {
+    if ((res = ff_alloc_packet(pkt, s->image_width * s->image_height * 3)) < 0) {
         //Conservative upper bound check for compressed data
-        av_log(avctx, AV_LOG_ERROR, "buf_size %d <  %d\n",
-               buf_size, s->image_width * s->image_height * 3);
-        return -1;
+        av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n",
+               s->image_width * s->image_height * 3);
+        return res;
     }
 
-    res = encode_bitstream(s, p, buf, buf_size, opt_w * 16, opt_h * 16,
-                           pfptr, &I_frame);
+    pkt->size = encode_bitstream(s, p, pkt->data, pkt->size, opt_w * 16, opt_h * 16,
+                                 pfptr, &I_frame);
 
     //save the current frame
     if (p->linesize[0] > 0)
@@ -248,42 +266,30 @@ static int flashsv_encode_frame(AVCodecContext *avctx, uint8_t *buf,
 
     //mark the frame type so the muxer can mux it correctly
     if (I_frame) {
-        p->pict_type      = AV_PICTURE_TYPE_I;
-        p->key_frame      = 1;
+        avctx->coded_frame->pict_type      = AV_PICTURE_TYPE_I;
+        avctx->coded_frame->key_frame      = 1;
         s->last_key_frame = avctx->frame_number;
         av_dlog(avctx, "Inserting keyframe at frame %d\n", avctx->frame_number);
     } else {
-        p->pict_type = AV_PICTURE_TYPE_P;
-        p->key_frame = 0;
+        avctx->coded_frame->pict_type = AV_PICTURE_TYPE_P;
+        avctx->coded_frame->key_frame = 0;
     }
 
-    avctx->coded_frame = p;
-
-    return res;
-}
-
-static av_cold int flashsv_encode_end(AVCodecContext *avctx)
-{
-    FlashSVContext *s = avctx->priv_data;
-
-    deflateEnd(&s->zstream);
-
-    av_free(s->encbuffer);
-    av_free(s->previous_frame);
-    av_free(s->tmpblock);
+    if (avctx->coded_frame->key_frame)
+        pkt->flags |= AV_PKT_FLAG_KEY;
+    *got_packet = 1;
 
     return 0;
 }
 
 AVCodec ff_flashsv_encoder = {
     .name           = "flashsv",
+    .long_name      = NULL_IF_CONFIG_SMALL("Flash Screen Video"),
     .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = CODEC_ID_FLASHSV,
+    .id             = AV_CODEC_ID_FLASHSV,
     .priv_data_size = sizeof(FlashSVContext),
     .init           = flashsv_encode_init,
-    .encode         = flashsv_encode_frame,
+    .encode2        = flashsv_encode_frame,
     .close          = flashsv_encode_end,
-    .pix_fmts       = (const enum PixelFormat[]){PIX_FMT_BGR24, PIX_FMT_NONE},
-    .long_name      = NULL_IF_CONFIG_SMALL("Flash Screen Video"),
+    .pix_fmts       = (const enum AVPixelFormat[]){ AV_PIX_FMT_BGR24, AV_PIX_FMT_NONE },
 };
-

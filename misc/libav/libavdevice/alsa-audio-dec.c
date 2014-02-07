@@ -52,13 +52,12 @@
 
 #include "alsa-audio.h"
 
-static av_cold int audio_read_header(AVFormatContext *s1,
-                                     AVFormatParameters *ap)
+static av_cold int audio_read_header(AVFormatContext *s1)
 {
     AlsaData *s = s1->priv_data;
     AVStream *st;
     int ret;
-    enum CodecID codec_id;
+    enum AVCodecID codec_id;
     snd_pcm_sw_params_t *sw_params;
 
     st = avformat_new_stream(s1, NULL);
@@ -143,7 +142,7 @@ static int audio_read_packet(AVFormatContext *s1, AVPacket *pkt)
     ts_delay += res;
     pkt->pts = timestamp.tv_sec * 1000000LL
                + (timestamp.tv_nsec * st->codec->sample_rate
-                  - ts_delay * 1000000000LL + st->codec->sample_rate * 500LL)
+                  - (int64_t)ts_delay * 1000000000LL + st->codec->sample_rate * 500LL)
                / (st->codec->sample_rate * 1000LL);
 
     pkt->size = res * s->frame_size;
@@ -152,8 +151,8 @@ static int audio_read_packet(AVFormatContext *s1, AVPacket *pkt)
 }
 
 static const AVOption options[] = {
-    { "sample_rate", "", offsetof(AlsaData, sample_rate), AV_OPT_TYPE_INT, {.dbl = 48000}, 1, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
-    { "channels",    "", offsetof(AlsaData, channels),    AV_OPT_TYPE_INT, {.dbl = 2},     1, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
+    { "sample_rate", "", offsetof(AlsaData, sample_rate), AV_OPT_TYPE_INT, {.i64 = 48000}, 1, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
+    { "channels",    "", offsetof(AlsaData, channels),    AV_OPT_TYPE_INT, {.i64 = 2},     1, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
     { NULL },
 };
 

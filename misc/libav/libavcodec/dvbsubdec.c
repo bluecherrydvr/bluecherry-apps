@@ -34,8 +34,6 @@
 #define cm (ff_cropTbl + MAX_NEG_CROP)
 
 #ifdef DEBUG
-#undef fprintf
-#undef perror
 #if 0
 static void png_save(const char *filename, uint8_t *bitmap, int w, int h,
                      uint32_t *rgba_palette)
@@ -150,7 +148,7 @@ static void png_save2(const char *filename, uint32_t *bitmap, int w, int h)
 }
 #endif
 
-#define RGBA(r,g,b,a) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define RGBA(r,g,b,a) (((unsigned)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 
 typedef struct DVBSubCLUT {
     int id;
@@ -1465,11 +1463,11 @@ static int dvbsub_decode(AVCodecContext *avctx,
 
 AVCodec ff_dvbsub_decoder = {
     .name           = "dvbsub",
+    .long_name      = NULL_IF_CONFIG_SMALL("DVB subtitles"),
     .type           = AVMEDIA_TYPE_SUBTITLE,
-    .id             = CODEC_ID_DVB_SUBTITLE,
+    .id             = AV_CODEC_ID_DVB_SUBTITLE,
     .priv_data_size = sizeof(DVBSubContext),
     .init           = dvbsub_init_decoder,
     .close          = dvbsub_close_decoder,
     .decode         = dvbsub_decode,
-    .long_name = NULL_IF_CONFIG_SMALL("DVB subtitles"),
 };

@@ -32,11 +32,15 @@
 
 #include <float.h>
 
+#include "libavutil/common.h"
 #include "libavutil/mathematics.h"
 #include "libavutil/opt.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/parseutils.h"
 #include "avfilter.h"
+#include "formats.h"
+#include "internal.h"
+#include "video.h"
 
 typedef struct {
     const AVClass *class;
@@ -49,37 +53,31 @@ typedef struct {
     char *duration;             ///< total duration of the generated video
     AVRational sar;             ///< sample aspect ratio
 
-    void (* fill_picture_fn)(AVFilterContext *ctx, AVFilterBufferRef *picref);
+    void (* fill_picture_fn)(AVFilterContext *ctx, AVFrame *frame);
 
     /* only used by rgbtest */
     int rgba_map[4];
 } TestSourceContext;
 
 #define OFFSET(x) offsetof(TestSourceContext, x)
+#define FLAGS AV_OPT_FLAG_VIDEO_PARAM
 
 static const AVOption testsrc_options[] = {
-    { "size",     "set video size",     OFFSET(size),     FF_OPT_TYPE_STRING, {.str = "320x240"}},
-    { "s",        "set video size",     OFFSET(size),     FF_OPT_TYPE_STRING, {.str = "320x240"}},
-    { "rate",     "set video rate",     OFFSET(rate),     FF_OPT_TYPE_STRING, {.str = "25"},    },
-    { "r",        "set video rate",     OFFSET(rate),     FF_OPT_TYPE_STRING, {.str = "25"},    },
-    { "duration", "set video duration", OFFSET(duration), FF_OPT_TYPE_STRING, {.str = NULL},    },
-    { "sar",      "set video sample aspect ratio", OFFSET(sar), FF_OPT_TYPE_RATIONAL, {1},  0, INT_MAX },
+    { "size",     "set video size",     OFFSET(size),     AV_OPT_TYPE_STRING, {.str = "320x240"},     .flags = FLAGS },
+    { "s",        "set video size",     OFFSET(size),     AV_OPT_TYPE_STRING, {.str = "320x240"},     .flags = FLAGS },
+    { "rate",     "set video rate",     OFFSET(rate),     AV_OPT_TYPE_STRING, {.str = "25"},          .flags = FLAGS },
+    { "r",        "set video rate",     OFFSET(rate),     AV_OPT_TYPE_STRING, {.str = "25"},          .flags = FLAGS },
+    { "duration", "set video duration", OFFSET(duration), AV_OPT_TYPE_STRING, {.str = NULL},          .flags = FLAGS },
+    { "sar",      "set video sample aspect ratio", OFFSET(sar), AV_OPT_TYPE_RATIONAL, {.dbl = 1},  0, INT_MAX, FLAGS },
     { NULL },
 };
 
-static av_cold int init_common(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int init_common(AVFilterContext *ctx)
 {
     TestSourceContext *test = ctx->priv;
     AVRational frame_rate_q;
     int64_t duration = -1;
     int ret = 0;
-
-    av_opt_set_defaults(test);
-
-    if ((ret = (av_set_options_string(test, args, "=", ":"))) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error parsing options string: '%s'\n", args);
-        return ret;
-    }
 
     if ((ret = av_parse_video_size(&test->w, &test->h, test->size)) < 0) {
         av_log(ctx, AV_LOG_ERROR, "Invalid frame size: '%s'\n", test->size);
@@ -126,27 +124,23 @@ static int config_props(AVFilterLink *outlink)
 static int request_frame(AVFilterLink *outlink)
 {
     TestSourceContext *test = outlink->src->priv;
-    AVFilterBufferRef *picref;
+    AVFrame *frame;
 
     if (test->max_pts >= 0 && test->pts > test->max_pts)
         return AVERROR_EOF;
-    picref = avfilter_get_video_buffer(outlink, AV_PERM_WRITE,
-                                       test->w, test->h);
-    picref->pts = test->pts++;
-    picref->pos = -1;
-    picref->video->key_frame = 1;
-    picref->video->interlaced = 0;
-    picref->video->pict_type = AV_PICTURE_TYPE_I;
-    picref->video->pixel_aspect = test->sar;
+    frame = ff_get_video_buffer(outlink, test->w, test->h);
+    if (!frame)
+        return AVERROR(ENOMEM);
+
+    frame->pts                 = test->pts++;
+    frame->key_frame           = 1;
+    frame->interlaced_frame    = 0;
+    frame->pict_type           = AV_PICTURE_TYPE_I;
+    frame->sample_aspect_ratio = test->sar;
     test->nb_frame++;
-    test->fill_picture_fn(outlink->src, picref);
+    test->fill_picture_fn(outlink->src, frame);
 
-    avfilter_start_frame(outlink, avfilter_ref_buffer(picref, ~0));
-    avfilter_draw_slice(outlink, 0, picref->video->h, 1);
-    avfilter_end_frame(outlink);
-    avfilter_unref_buffer(picref);
-
-    return 0;
+    return ff_filter_frame(outlink, frame);
 }
 
 #if CONFIG_TESTSRC_FILTER
@@ -234,7 +228,7 @@ static void draw_digit(int digit, uint8_t *dst, unsigned dst_linesize,
 
 #define GRADIENT_SIZE (6 * 256)
 
-static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
+static void test_fill_picture(AVFilterContext *ctx, AVFrame *frame)
 {
     TestSourceContext *test = ctx->priv;
     uint8_t *p, *p0;
@@ -248,9 +242,9 @@ static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
     int seg_size;
     int second;
     int i;
-    uint8_t *data = picref->data[0];
-    int width  = picref->video->w;
-    int height = picref->video->h;
+    uint8_t *data = frame->data[0];
+    int width  = frame->width;
+    int height = frame->height;
 
     /* draw colored bars and circle */
     radius = (width + height) / 4;
@@ -280,11 +274,11 @@ static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
         }
         quad0 += dquad_y;
         dquad_y += 2;
-        p0 += picref->linesize[0];
+        p0 += frame->linesize[0];
     }
 
     /* draw sliding color line */
-    p = data + picref->linesize[0] * height * 3/4;
+    p = data + frame->linesize[0] * height * 3/4;
     grad = (256 * test->nb_frame * test->time_base.num / test->time_base.den) %
         GRADIENT_SIZE;
     rgrad = 0;
@@ -313,8 +307,8 @@ static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
             grad -= GRADIENT_SIZE;
     }
     for (y = height / 8; y > 0; y--) {
-        memcpy(p, p - picref->linesize[0], 3 * width);
-        p += picref->linesize[0];
+        memcpy(p, p - frame->linesize[0], 3 * width);
+        p += frame->linesize[0];
     }
 
     /* draw digits */
@@ -323,10 +317,10 @@ static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
         second = test->nb_frame * test->time_base.num / test->time_base.den;
         x = width - (width - seg_size * 64) / 2;
         y = (height - seg_size * 13) / 2;
-        p = data + (x*3 + y * picref->linesize[0]);
+        p = data + (x*3 + y * frame->linesize[0]);
         for (i = 0; i < 8; i++) {
             p -= 3 * 8 * seg_size;
-            draw_digit(second % 10, p, picref->linesize[0], seg_size);
+            draw_digit(second % 10, p, frame->linesize[0], seg_size);
             second /= 10;
             if (second == 0)
                 break;
@@ -334,39 +328,45 @@ static void test_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
     }
 }
 
-static av_cold int test_init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int test_init(AVFilterContext *ctx)
 {
     TestSourceContext *test = ctx->priv;
 
-    test->class = &testsrc_class;
     test->fill_picture_fn = test_fill_picture;
-    return init_common(ctx, args, opaque);
+    return init_common(ctx);
 }
 
 static int test_query_formats(AVFilterContext *ctx)
 {
-    static const enum PixelFormat pix_fmts[] = {
-        PIX_FMT_RGB24, PIX_FMT_NONE
+    static const enum AVPixelFormat pix_fmts[] = {
+        AV_PIX_FMT_RGB24, AV_PIX_FMT_NONE
     };
-    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
     return 0;
 }
 
-AVFilter avfilter_vsrc_testsrc = {
+static const AVFilterPad avfilter_vsrc_testsrc_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_VIDEO,
+        .request_frame = request_frame,
+        .config_props  = config_props,
+    },
+    { NULL }
+};
+
+AVFilter ff_vsrc_testsrc = {
     .name          = "testsrc",
     .description   = NULL_IF_CONFIG_SMALL("Generate test pattern."),
     .priv_size     = sizeof(TestSourceContext),
+    .priv_class    = &testsrc_class,
     .init          = test_init,
 
     .query_formats = test_query_formats,
 
-    .inputs    = (AVFilterPad[]) {{ .name = NULL}},
+    .inputs    = NULL,
 
-    .outputs   = (AVFilterPad[]) {{ .name = "default",
-                                    .type = AVMEDIA_TYPE_VIDEO,
-                                    .request_frame = request_frame,
-                                    .config_props  = config_props, },
-                                  { .name = NULL }},
+    .outputs   = avfilter_vsrc_testsrc_outputs,
 };
 
 #endif /* CONFIG_TESTSRC_FILTER */
@@ -390,29 +390,29 @@ static const AVClass rgbtestsrc_class = {
 #define A 3
 
 static void rgbtest_put_pixel(uint8_t *dst, int dst_linesize,
-                              int x, int y, int r, int g, int b, enum PixelFormat fmt,
+                              int x, int y, int r, int g, int b, enum AVPixelFormat fmt,
                               int rgba_map[4])
 {
     int32_t v;
     uint8_t *p;
 
     switch (fmt) {
-    case PIX_FMT_BGR444: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4); break;
-    case PIX_FMT_RGB444: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b >> 4) << 8) | ((g >> 4) << 4) | (r >> 4); break;
-    case PIX_FMT_BGR555: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r>>3)<<10) | ((g>>3)<<5) | (b>>3); break;
-    case PIX_FMT_RGB555: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b>>3)<<10) | ((g>>3)<<5) | (r>>3); break;
-    case PIX_FMT_BGR565: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r>>3)<<11) | ((g>>2)<<5) | (b>>3); break;
-    case PIX_FMT_RGB565: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b>>3)<<11) | ((g>>2)<<5) | (r>>3); break;
-    case PIX_FMT_RGB24:
-    case PIX_FMT_BGR24:
+    case AV_PIX_FMT_BGR444: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4); break;
+    case AV_PIX_FMT_RGB444: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b >> 4) << 8) | ((g >> 4) << 4) | (r >> 4); break;
+    case AV_PIX_FMT_BGR555: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r>>3)<<10) | ((g>>3)<<5) | (b>>3); break;
+    case AV_PIX_FMT_RGB555: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b>>3)<<10) | ((g>>3)<<5) | (r>>3); break;
+    case AV_PIX_FMT_BGR565: ((uint16_t*)(dst + y*dst_linesize))[x] = ((r>>3)<<11) | ((g>>2)<<5) | (b>>3); break;
+    case AV_PIX_FMT_RGB565: ((uint16_t*)(dst + y*dst_linesize))[x] = ((b>>3)<<11) | ((g>>2)<<5) | (r>>3); break;
+    case AV_PIX_FMT_RGB24:
+    case AV_PIX_FMT_BGR24:
         v = (r << (rgba_map[R]*8)) + (g << (rgba_map[G]*8)) + (b << (rgba_map[B]*8));
         p = dst + 3*x + y*dst_linesize;
         AV_WL24(p, v);
         break;
-    case PIX_FMT_RGBA:
-    case PIX_FMT_BGRA:
-    case PIX_FMT_ARGB:
-    case PIX_FMT_ABGR:
+    case AV_PIX_FMT_RGBA:
+    case AV_PIX_FMT_BGRA:
+    case AV_PIX_FMT_ARGB:
+    case AV_PIX_FMT_ABGR:
         v = (r << (rgba_map[R]*8)) + (g << (rgba_map[G]*8)) + (b << (rgba_map[B]*8));
         p = dst + 4*x + y*dst_linesize;
         AV_WL32(p, v);
@@ -420,13 +420,13 @@ static void rgbtest_put_pixel(uint8_t *dst, int dst_linesize,
     }
 }
 
-static void rgbtest_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref)
+static void rgbtest_fill_picture(AVFilterContext *ctx, AVFrame *frame)
 {
     TestSourceContext *test = ctx->priv;
-    int x, y, w = picref->video->w, h = picref->video->h;
+    int x, y, w = frame->width, h = frame->height;
 
     for (y = 0; y < h; y++) {
-         for (x = 0; x < picref->video->w; x++) {
+         for (x = 0; x < w; x++) {
              int c = 256*x/w;
              int r = 0, g = 0, b = 0;
 
@@ -434,32 +434,31 @@ static void rgbtest_fill_picture(AVFilterContext *ctx, AVFilterBufferRef *picref
              else if (3*y < 2*h) g = c;
              else                b = c;
 
-             rgbtest_put_pixel(picref->data[0], picref->linesize[0], x, y, r, g, b,
+             rgbtest_put_pixel(frame->data[0], frame->linesize[0], x, y, r, g, b,
                                ctx->outputs[0]->format, test->rgba_map);
          }
      }
 }
 
-static av_cold int rgbtest_init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int rgbtest_init(AVFilterContext *ctx)
 {
     TestSourceContext *test = ctx->priv;
 
-    test->class = &rgbtestsrc_class;
     test->fill_picture_fn = rgbtest_fill_picture;
-    return init_common(ctx, args, opaque);
+    return init_common(ctx);
 }
 
 static int rgbtest_query_formats(AVFilterContext *ctx)
 {
-    static const enum PixelFormat pix_fmts[] = {
-        PIX_FMT_RGBA, PIX_FMT_ARGB, PIX_FMT_BGRA, PIX_FMT_ABGR,
-        PIX_FMT_BGR24, PIX_FMT_RGB24,
-        PIX_FMT_RGB444, PIX_FMT_BGR444,
-        PIX_FMT_RGB565, PIX_FMT_BGR565,
-        PIX_FMT_RGB555, PIX_FMT_BGR555,
-        PIX_FMT_NONE
+    static const enum AVPixelFormat pix_fmts[] = {
+        AV_PIX_FMT_RGBA, AV_PIX_FMT_ARGB, AV_PIX_FMT_BGRA, AV_PIX_FMT_ABGR,
+        AV_PIX_FMT_BGR24, AV_PIX_FMT_RGB24,
+        AV_PIX_FMT_RGB444, AV_PIX_FMT_BGR444,
+        AV_PIX_FMT_RGB565, AV_PIX_FMT_BGR565,
+        AV_PIX_FMT_RGB555, AV_PIX_FMT_BGR555,
+        AV_PIX_FMT_NONE
     };
-    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
     return 0;
 }
 
@@ -468,32 +467,39 @@ static int rgbtest_config_props(AVFilterLink *outlink)
     TestSourceContext *test = outlink->src->priv;
 
     switch (outlink->format) {
-    case PIX_FMT_ARGB:  test->rgba_map[A] = 0; test->rgba_map[R] = 1; test->rgba_map[G] = 2; test->rgba_map[B] = 3; break;
-    case PIX_FMT_ABGR:  test->rgba_map[A] = 0; test->rgba_map[B] = 1; test->rgba_map[G] = 2; test->rgba_map[R] = 3; break;
-    case PIX_FMT_RGBA:
-    case PIX_FMT_RGB24: test->rgba_map[R] = 0; test->rgba_map[G] = 1; test->rgba_map[B] = 2; test->rgba_map[A] = 3; break;
-    case PIX_FMT_BGRA:
-    case PIX_FMT_BGR24: test->rgba_map[B] = 0; test->rgba_map[G] = 1; test->rgba_map[R] = 2; test->rgba_map[A] = 3; break;
+    case AV_PIX_FMT_ARGB:  test->rgba_map[A] = 0; test->rgba_map[R] = 1; test->rgba_map[G] = 2; test->rgba_map[B] = 3; break;
+    case AV_PIX_FMT_ABGR:  test->rgba_map[A] = 0; test->rgba_map[B] = 1; test->rgba_map[G] = 2; test->rgba_map[R] = 3; break;
+    case AV_PIX_FMT_RGBA:
+    case AV_PIX_FMT_RGB24: test->rgba_map[R] = 0; test->rgba_map[G] = 1; test->rgba_map[B] = 2; test->rgba_map[A] = 3; break;
+    case AV_PIX_FMT_BGRA:
+    case AV_PIX_FMT_BGR24: test->rgba_map[B] = 0; test->rgba_map[G] = 1; test->rgba_map[R] = 2; test->rgba_map[A] = 3; break;
     }
 
     return config_props(outlink);
 }
 
-AVFilter avfilter_vsrc_rgbtestsrc = {
+static const AVFilterPad avfilter_vsrc_rgbtestsrc_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_VIDEO,
+        .request_frame = request_frame,
+        .config_props  = rgbtest_config_props,
+    },
+    { NULL }
+};
+
+AVFilter ff_vsrc_rgbtestsrc = {
     .name          = "rgbtestsrc",
     .description   = NULL_IF_CONFIG_SMALL("Generate RGB test pattern."),
     .priv_size     = sizeof(TestSourceContext),
+    .priv_class    = &rgbtestsrc_class,
     .init          = rgbtest_init,
 
     .query_formats = rgbtest_query_formats,
 
-    .inputs    = (AVFilterPad[]) {{ .name = NULL}},
+    .inputs    = NULL,
 
-    .outputs   = (AVFilterPad[]) {{ .name = "default",
-                                    .type = AVMEDIA_TYPE_VIDEO,
-                                    .request_frame = request_frame,
-                                    .config_props  = rgbtest_config_props, },
-                                  { .name = NULL }},
+    .outputs   = avfilter_vsrc_rgbtestsrc_outputs,
 };
 
 #endif /* CONFIG_RGBTESTSRC_FILTER */

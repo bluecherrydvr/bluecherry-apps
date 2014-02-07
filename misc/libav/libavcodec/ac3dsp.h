@@ -125,6 +125,23 @@ typedef struct AC3DSPContext {
     int (*compute_mantissa_size)(uint16_t mant_cnt[6][16]);
 
     void (*extract_exponents)(uint8_t *exp, int32_t *coef, int nb_coefs);
+
+    void (*downmix)(float **samples, float (*matrix)[2], int out_ch,
+                    int in_ch, int len);
+
+    /**
+     * Apply symmetric window in 16-bit fixed-point.
+     * @param output destination array
+     *               constraints: 16-byte aligned
+     * @param input  source array
+     *               constraints: 16-byte aligned
+     * @param window window array
+     *               constraints: 16-byte aligned, at least len/2 elements
+     * @param len    full window length
+     *               constraints: multiple of ? greater than zero
+     */
+    void (*apply_window_int16)(int16_t *output, const int16_t *input,
+                               const int16_t *window, unsigned int len);
 } AC3DSPContext;
 
 void ff_ac3dsp_init    (AC3DSPContext *c, int bit_exact);

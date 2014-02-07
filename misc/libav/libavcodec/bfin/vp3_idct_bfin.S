@@ -22,7 +22,7 @@
 /*
    This blackfin DSP code implements an 8x8 inverse type II DCT.
 
-Prototype       : void ff_bfin_vp3_idct(DCTELEM *in)
+Prototype       : void ff_bfin_vp3_idct(int16_t *in)
 
 Registers Used  : A0, A1, R0-R7, I0-I3, B0, B2, B3, M0-M2, L0-L3, P0-P5, LC0.
 
@@ -51,7 +51,7 @@ coefs:
 .short 0x7D8A;           //cos(pi/16)
 
 #if defined(__FDPIC__) && CONFIG_SRAM
-.section .l1.data.A
+.section .l1.data.A,"aw",@progbits
 #endif
 
 vtmp: .space 256
@@ -63,7 +63,7 @@ vtmp: .space 256
 
 .text
 DEFUN(vp3_idct,mL1,
-        (DCTELEM *block)):
+        (int16_t *block)):
 
 /********************** Function Prologue *********************************/
     link 16;
@@ -278,5 +278,3 @@ DEFUN(vp3_idct,mL1,
     unlink;
     RTS;
 DEFUN_END(vp3_idct)
-
-

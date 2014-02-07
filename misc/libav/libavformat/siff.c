@@ -19,6 +19,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -76,12 +77,13 @@ static int create_audio_stream(AVFormatContext *s, SIFFContext *c)
     if (!ast)
         return -1;
     ast->codec->codec_type      = AVMEDIA_TYPE_AUDIO;
-    ast->codec->codec_id        = CODEC_ID_PCM_U8;
+    ast->codec->codec_id        = AV_CODEC_ID_PCM_U8;
     ast->codec->channels        = 1;
-    ast->codec->bits_per_coded_sample = c->bits;
+    ast->codec->channel_layout  = AV_CH_LAYOUT_MONO;
+    ast->codec->bits_per_coded_sample = 8;
     ast->codec->sample_rate     = c->rate;
-    ast->codec->frame_size      = c->block_align;
     avpriv_set_pts_info(ast, 16, 1, c->rate);
+    ast->start_time = 0;
     return 0;
 }
 
@@ -120,11 +122,11 @@ static int siff_parse_vbv1(AVFormatContext *s, SIFFContext *c, AVIOContext *pb)
     if (!st)
         return -1;
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    st->codec->codec_id   = CODEC_ID_VB;
+    st->codec->codec_id   = AV_CODEC_ID_VB;
     st->codec->codec_tag  = MKTAG('V', 'B', 'V', '1');
     st->codec->width      = width;
     st->codec->height     = height;
-    st->codec->pix_fmt    = PIX_FMT_PAL8;
+    st->codec->pix_fmt    = AV_PIX_FMT_PAL8;
     avpriv_set_pts_info(st, 16, 1, 12);
 
     c->cur_frame = 0;
@@ -153,7 +155,7 @@ static int siff_parse_soun(AVFormatContext *s, SIFFContext *c, AVIOContext *pb)
     return create_audio_stream(s, c);
 }
 
-static int siff_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int siff_read_header(AVFormatContext *s)
 {
     AVIOContext *pb = s->pb;
     SIFFContext *c = s->priv_data;
@@ -211,9 +213,10 @@ static int siff_read_packet(AVFormatContext *s, AVPacket *pkt)
             pkt->stream_index = 0;
             c->curstrm = -1;
         }else{
-            if (av_get_packet(s->pb, pkt, c->sndsize - 4) < 0)
+            if ((size = av_get_packet(s->pb, pkt, c->sndsize - 4)) < 0)
                 return AVERROR(EIO);
             pkt->stream_index = 1;
+            pkt->duration     = size;
             c->curstrm = 0;
         }
         if(!c->cur_frame || c->curstrm)
@@ -224,6 +227,7 @@ static int siff_read_packet(AVFormatContext *s, AVPacket *pkt)
         size = av_get_packet(s->pb, pkt, c->block_align);
         if(size <= 0)
             return AVERROR(EIO);
+        pkt->duration = size;
     }
     return pkt->size;
 }
@@ -235,5 +239,5 @@ AVInputFormat ff_siff_demuxer = {
     .read_probe     = siff_probe,
     .read_header    = siff_read_header,
     .read_packet    = siff_read_packet,
-    .extensions = "vb,son"
+    .extensions     = "vb,son",
 };

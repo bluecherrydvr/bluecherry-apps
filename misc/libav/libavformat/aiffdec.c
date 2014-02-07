@@ -31,21 +31,22 @@
 
 typedef struct {
     int64_t data_end;
+    int block_duration;
 } AIFFInputContext;
 
-static enum CodecID aiff_codec_get_id(int bps)
+static enum AVCodecID aiff_codec_get_id(int bps)
 {
     if (bps <= 8)
-        return CODEC_ID_PCM_S8;
+        return AV_CODEC_ID_PCM_S8;
     if (bps <= 16)
-        return CODEC_ID_PCM_S16BE;
+        return AV_CODEC_ID_PCM_S16BE;
     if (bps <= 24)
-        return CODEC_ID_PCM_S24BE;
+        return AV_CODEC_ID_PCM_S24BE;
     if (bps <= 32)
-        return CODEC_ID_PCM_S32BE;
+        return AV_CODEC_ID_PCM_S32BE;
 
     /* bigger than 32 isn't allowed  */
-    return CODEC_ID_NONE;
+    return AV_CODEC_ID_NONE;
 }
 
 /* returns the size of the found tag */
@@ -85,9 +86,12 @@ static void get_meta(AVFormatContext *s, const char *key, int size)
 }
 
 /* Returns the number of sound data frames or negative on error */
-static unsigned int get_aiff_header(AVIOContext *pb, AVCodecContext *codec,
-                             int size, unsigned version)
+static unsigned int get_aiff_header(AVFormatContext *s, int size,
+                                    unsigned version)
 {
+    AVIOContext *pb        = s->pb;
+    AVCodecContext *codec  = s->streams[0]->codec;
+    AIFFInputContext *aiff = s->priv_data;
     int exp;
     uint64_t val;
     double sample_rate;
@@ -106,44 +110,47 @@ static unsigned int get_aiff_header(AVIOContext *pb, AVCodecContext *codec,
     codec->sample_rate = sample_rate;
     size -= 18;
 
-    /* Got an AIFF-C? */
+    /* get codec id for AIFF-C */
     if (version == AIFF_C_VERSION1) {
         codec->codec_tag = avio_rl32(pb);
         codec->codec_id  = ff_codec_get_id(ff_codec_aiff_tags, codec->codec_tag);
+        size -= 4;
+    }
 
+    if (version != AIFF_C_VERSION1 || codec->codec_id == AV_CODEC_ID_PCM_S16BE) {
+        codec->codec_id = aiff_codec_get_id(codec->bits_per_coded_sample);
+        codec->bits_per_coded_sample = av_get_bits_per_sample(codec->codec_id);
+        aiff->block_duration = 1;
+    } else {
         switch (codec->codec_id) {
-        case CODEC_ID_PCM_S16BE:
-            codec->codec_id = aiff_codec_get_id(codec->bits_per_coded_sample);
-            codec->bits_per_coded_sample = av_get_bits_per_sample(codec->codec_id);
+        case AV_CODEC_ID_PCM_F32BE:
+        case AV_CODEC_ID_PCM_F64BE:
+        case AV_CODEC_ID_PCM_S16LE:
+        case AV_CODEC_ID_PCM_ALAW:
+        case AV_CODEC_ID_PCM_MULAW:
+            aiff->block_duration = 1;
             break;
-        case CODEC_ID_ADPCM_IMA_QT:
+        case AV_CODEC_ID_ADPCM_IMA_QT:
             codec->block_align = 34*codec->channels;
-            codec->frame_size = 64;
             break;
-        case CODEC_ID_MACE3:
+        case AV_CODEC_ID_MACE3:
             codec->block_align = 2*codec->channels;
-            codec->frame_size = 6;
             break;
-        case CODEC_ID_MACE6:
+        case AV_CODEC_ID_MACE6:
             codec->block_align = 1*codec->channels;
-            codec->frame_size = 6;
             break;
-        case CODEC_ID_GSM:
+        case AV_CODEC_ID_GSM:
             codec->block_align = 33;
-            codec->frame_size = 160;
             break;
-        case CODEC_ID_QCELP:
+        case AV_CODEC_ID_QCELP:
             codec->block_align = 35;
-            codec->frame_size= 160;
             break;
         default:
             break;
         }
-        size -= 4;
-    } else {
-        /* Need the codec type */
-        codec->codec_id = aiff_codec_get_id(codec->bits_per_coded_sample);
-        codec->bits_per_coded_sample = av_get_bits_per_sample(codec->codec_id);
+        if (codec->block_align > 0)
+            aiff->block_duration = av_get_audio_frame_duration(codec,
+                                                               codec->block_align);
     }
 
     /* Block align needs to be computed in all cases, as the definition
@@ -151,8 +158,10 @@ static unsigned int get_aiff_header(AVIOContext *pb, AVCodecContext *codec,
     if (!codec->block_align)
         codec->block_align = (codec->bits_per_coded_sample * codec->channels) >> 3;
 
-    codec->bit_rate = (codec->frame_size ? codec->sample_rate/codec->frame_size :
-                       codec->sample_rate) * (codec->block_align << 3);
+    if (aiff->block_duration) {
+        codec->bit_rate = codec->sample_rate * (codec->block_align << 3) /
+                          aiff->block_duration;
+    }
 
     /* Chunk is over */
     if (size)
@@ -174,8 +183,7 @@ static int aiff_probe(AVProbeData *p)
 }
 
 /* aiff input */
-static int aiff_read_header(AVFormatContext *s,
-                            AVFormatParameters *ap)
+static int aiff_read_header(AVFormatContext *s)
 {
     int size, filesize;
     int64_t offset = 0;
@@ -214,7 +222,7 @@ static int aiff_read_header(AVFormatContext *s,
         switch (tag) {
         case MKTAG('C', 'O', 'M', 'M'):     /* Common chunk */
             /* Then for the complete header info */
-            st->nb_frames = get_aiff_header(pb, st->codec, size, version);
+            st->nb_frames = get_aiff_header(s, size, version);
             if (st->nb_frames < 0)
                 return st->nb_frames;
             if (offset > 0) // COMM is after SSND
@@ -264,17 +272,16 @@ static int aiff_read_header(AVFormatContext *s,
         }
     }
 
+got_sound:
     if (!st->codec->block_align) {
-        av_log(s, AV_LOG_ERROR, "could not find COMM tag\n");
+        av_log(s, AV_LOG_ERROR, "could not find COMM tag or invalid block_align value\n");
         return -1;
     }
 
-got_sound:
     /* Now positioned, get the sound data start and end */
     avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
     st->start_time = 0;
-    st->duration = st->codec->frame_size ?
-        st->nb_frames * st->codec->frame_size : st->nb_frames;
+    st->duration = st->nb_frames * aiff->block_duration;
 
     /* Position the stream at the first block */
     avio_seek(pb, offset, SEEK_SET);
@@ -309,6 +316,7 @@ static int aiff_read_packet(AVFormatContext *s,
 
     /* Only one stream in an AIFF file */
     pkt->stream_index = 0;
+    pkt->duration     = (res / st->codec->block_align) * aiff->block_duration;
     return 0;
 }
 
@@ -319,6 +327,6 @@ AVInputFormat ff_aiff_demuxer = {
     .read_probe     = aiff_probe,
     .read_header    = aiff_read_header,
     .read_packet    = aiff_read_packet,
-    .read_seek      = pcm_read_seek,
-    .codec_tag= (const AVCodecTag* const []){ff_codec_aiff_tags, 0},
+    .read_seek      = ff_pcm_read_seek,
+    .codec_tag      = (const AVCodecTag* const []){ ff_codec_aiff_tags, 0 },
 };

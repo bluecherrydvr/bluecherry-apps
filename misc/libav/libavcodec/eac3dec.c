@@ -140,7 +140,7 @@ void ff_eac3_apply_spectral_extension(AC3DecodeContext *s)
            each band. */
         bin = s->spx_src_start_freq;
         for (bnd = 0; bnd < s->num_spx_bands; bnd++) {
-            float nscale = s->spx_noise_blend[ch][bnd] * rms_energy[bnd] * (1.0f/(1<<31));
+            float nscale = s->spx_noise_blend[ch][bnd] * rms_energy[bnd] * (1.0f / INT32_MIN);
             float sscale = s->spx_signal_blend[ch][bnd];
             for (i = 0; i < s->spx_band_sizes[bnd]; i++) {
                 float noise  = nscale * (int32_t)av_lfg_get(&s->dith_state);
@@ -300,7 +300,7 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
        application can select from. each independent stream can also contain
        dependent streams which are used to add or replace channels. */
     if (s->frame_type == EAC3_FRAME_TYPE_DEPENDENT) {
-        av_log_missing_feature(s->avctx, "Dependent substream decoding", 1);
+        avpriv_request_sample(s->avctx, "Dependent substream decoding");
         return AAC_AC3_PARSE_ERROR_FRAME_TYPE;
     } else if (s->frame_type == EAC3_FRAME_TYPE_RESERVED) {
         av_log(s->avctx, AV_LOG_ERROR, "Reserved frame type\n");
@@ -312,7 +312,7 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
        associated to an independent stream have matching substream id's. */
     if (s->substreamid) {
         /* only decode substream with id=0. skip any additional substreams. */
-        av_log_missing_feature(s->avctx, "Additional substreams", 1);
+        avpriv_request_sample(s->avctx, "Additional substreams");
         return AAC_AC3_PARSE_ERROR_FRAME_TYPE;
     }
 
@@ -321,8 +321,8 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
            rates in bit allocation.  The best assumption would be that it is
            handled like AC-3 DolbyNet, but we cannot be sure until we have a
            sample which utilizes this feature. */
-        av_log_missing_feature(s->avctx, "Reduced sampling rates", 1);
-        return -1;
+        avpriv_request_sample(s->avctx, "Reduced sampling rate");
+        return AVERROR_PATCHWELCOME;
     }
     skip_bits(gbc, 5); // skip bitstream id
 
@@ -345,23 +345,23 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
     if (get_bits1(gbc)) {
         /* center and surround mix levels */
         if (s->channel_mode > AC3_CHMODE_STEREO) {
-            skip_bits(gbc, 2);  // skip preferred stereo downmix mode
+            s->preferred_downmix = get_bits(gbc, 2);
             if (s->channel_mode & 1) {
                 /* if three front channels exist */
-                skip_bits(gbc, 3); //skip Lt/Rt center mix level
-                s->center_mix_level = get_bits(gbc, 3);
+                s->center_mix_level_ltrt = get_bits(gbc, 3);
+                s->center_mix_level      = get_bits(gbc, 3);
             }
             if (s->channel_mode & 4) {
                 /* if a surround channel exists */
-                skip_bits(gbc, 3); //skip Lt/Rt surround mix level
-                s->surround_mix_level = get_bits(gbc, 3);
+                s->surround_mix_level_ltrt = av_clip(get_bits(gbc, 3), 3, 7);
+                s->surround_mix_level      = av_clip(get_bits(gbc, 3), 3, 7);
             }
         }
 
         /* lfe mix level */
-        if (s->lfe_on && get_bits1(gbc)) {
+        if (s->lfe_on && (s->lfe_mix_level_exists = get_bits1(gbc))) {
             // TODO: use LFE mix level
-            skip_bits(gbc, 5); // skip LFE mix level code
+            s->lfe_mix_level = get_bits(gbc, 5);
         }
 
         /* info for mixing with other streams and substreams */
@@ -413,10 +413,11 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
         s->bitstream_mode = get_bits(gbc, 3);
         skip_bits(gbc, 2); // skip copyright bit and original bitstream bit
         if (s->channel_mode == AC3_CHMODE_STEREO) {
-            skip_bits(gbc, 4); // skip Dolby surround and headphone mode
+            s->dolby_surround_mode  = get_bits(gbc, 2);
+            s->dolby_headphone_mode = get_bits(gbc, 2);
         }
         if (s->channel_mode >= AC3_CHMODE_2F2R) {
-            skip_bits(gbc, 2); // skip Dolby surround EX mode
+            s->dolby_surround_ex_mode = get_bits(gbc, 2);
         }
         for (i = 0; i < (s->channel_mode ? 1 : 2); i++) {
             if (get_bits1(gbc)) {
@@ -491,7 +492,7 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
     s->skip_syntax       = get_bits1(gbc);
     parse_spx_atten_data = get_bits1(gbc);
 
-    /* coupling strategy occurance and coupling use per block */
+    /* coupling strategy occurrence and coupling use per block */
     num_cpl_blocks = 0;
     if (s->channel_mode > 1) {
         for (blk = 0; blk < s->num_blocks; blk++) {
@@ -593,7 +594,7 @@ int ff_eac3_parse_header(AC3DecodeContext *s)
            It is likely the offset of each block within the frame. */
         int block_start_bits = (s->num_blocks-1) * (4 + av_log2(s->frame_size-2));
         skip_bits_long(gbc, block_start_bits);
-        av_log_missing_feature(s->avctx, "Block start info", 1);
+        avpriv_request_sample(s->avctx, "Block start info");
     }
 
     /* syntax state initialization */

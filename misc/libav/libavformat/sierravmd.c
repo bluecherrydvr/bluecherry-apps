@@ -27,6 +27,7 @@
  *   http://www.pcisys.net/~melanson/codecs/
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -75,11 +76,10 @@ static int vmd_probe(AVProbeData *p)
         return 0;
 
     /* only return half certainty since this check is a bit sketchy */
-    return AVPROBE_SCORE_MAX / 2;
+    return AVPROBE_SCORE_EXTENSION;
 }
 
-static int vmd_read_header(AVFormatContext *s,
-                           AVFormatParameters *ap)
+static int vmd_read_header(AVFormatContext *s)
 {
     VmdDemuxContext *vmd = s->priv_data;
     AVIOContext *pb = s->pb;
@@ -88,7 +88,7 @@ static int vmd_read_header(AVFormatContext *s,
     unsigned char *raw_frame_table;
     int raw_frame_table_size;
     int64_t current_offset;
-    int i, j;
+    int i, j, ret;
     unsigned int total_frames;
     int64_t current_audio_pts = 0;
     unsigned char chunk[BYTES_PER_FRAME_RECORD];
@@ -111,7 +111,7 @@ static int vmd_read_header(AVFormatContext *s,
     avpriv_set_pts_info(vst, 33, 1, 10);
     vmd->video_stream_index = vst->index;
     vst->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    vst->codec->codec_id = vmd->is_indeo3 ? CODEC_ID_INDEO3 : CODEC_ID_VMDVIDEO;
+    vst->codec->codec_id = vmd->is_indeo3 ? AV_CODEC_ID_INDEO3 : AV_CODEC_ID_VMDVIDEO;
     vst->codec->codec_tag = 0;  /* no fourcc */
     vst->codec->width = AV_RL16(&vmd->vmd_header[12]);
     vst->codec->height = AV_RL16(&vmd->vmd_header[14]);
@@ -131,9 +131,15 @@ static int vmd_read_header(AVFormatContext *s,
             return AVERROR(ENOMEM);
         vmd->audio_stream_index = st->index;
         st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-        st->codec->codec_id = CODEC_ID_VMDAUDIO;
+        st->codec->codec_id = AV_CODEC_ID_VMDAUDIO;
         st->codec->codec_tag = 0;  /* no fourcc */
-        st->codec->channels = (vmd->vmd_header[811] & 0x80) ? 2 : 1;
+        if (vmd->vmd_header[811] & 0x80) {
+            st->codec->channels       = 2;
+            st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+        } else {
+            st->codec->channels       = 1;
+            st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+        }
         st->codec->sample_rate = vmd->sample_rate;
         st->codec->block_align = AV_RL16(&vmd->vmd_header[806]);
         if (st->codec->block_align & 0x8000) {
@@ -169,15 +175,13 @@ static int vmd_read_header(AVFormatContext *s,
     raw_frame_table = av_malloc(raw_frame_table_size);
     vmd->frame_table = av_malloc((vmd->frame_count * vmd->frames_per_block + sound_buffers) * sizeof(vmd_frame));
     if (!raw_frame_table || !vmd->frame_table) {
-        av_free(raw_frame_table);
-        av_free(vmd->frame_table);
-        return AVERROR(ENOMEM);
+        ret = AVERROR(ENOMEM);
+        goto error;
     }
     if (avio_read(pb, raw_frame_table, raw_frame_table_size) !=
         raw_frame_table_size) {
-        av_free(raw_frame_table);
-        av_free(vmd->frame_table);
-        return AVERROR(EIO);
+        ret = AVERROR(EIO);
+        goto error;
     }
 
     total_frames = 0;
@@ -193,6 +197,11 @@ static int vmd_read_header(AVFormatContext *s,
             avio_read(pb, chunk, BYTES_PER_FRAME_RECORD);
             type = chunk[0];
             size = AV_RL32(&chunk[2]);
+            if (size > INT_MAX / 2) {
+                av_log(s, AV_LOG_ERROR, "Invalid frame size\n");
+                ret = AVERROR_INVALIDDATA;
+                goto error;
+            }
             if(!size && type != 1)
                 continue;
             switch(type) {
@@ -229,6 +238,11 @@ static int vmd_read_header(AVFormatContext *s,
     vmd->frame_count = total_frames;
 
     return 0;
+
+error:
+    av_free(raw_frame_table);
+    av_free(vmd->frame_table);
+    return ret;
 }
 
 static int vmd_read_packet(AVFormatContext *s,
@@ -283,7 +297,7 @@ static int vmd_read_close(AVFormatContext *s)
 
 AVInputFormat ff_vmd_demuxer = {
     .name           = "vmd",
-    .long_name      = NULL_IF_CONFIG_SMALL("Sierra VMD format"),
+    .long_name      = NULL_IF_CONFIG_SMALL("Sierra VMD"),
     .priv_data_size = sizeof(VmdDemuxContext),
     .read_probe     = vmd_probe,
     .read_header    = vmd_read_header,

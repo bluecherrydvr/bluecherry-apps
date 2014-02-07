@@ -27,7 +27,6 @@
 
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
-#include "dsputil.h"
 #include "mathops.h"
 #include "simple_idct.h"
 
@@ -50,10 +49,9 @@
    and the butterfly must be multiplied by 0.5 * sqrt(2.0) */
 #define C_SHIFT (4+1+12)
 
-static inline void idct4col_put(uint8_t *dest, int line_size, const DCTELEM *col)
+static inline void idct4col_put(uint8_t *dest, int line_size, const int16_t *col)
 {
     int c0, c1, c2, c3, a0, a1, a2, a3;
-    const uint8_t *cm = ff_cropTbl + MAX_NEG_CROP;
 
     a0 = col[8*0];
     a1 = col[8*2];
@@ -63,13 +61,13 @@ static inline void idct4col_put(uint8_t *dest, int line_size, const DCTELEM *col
     c2 = ((a0 - a2) << (CN_SHIFT - 1)) + (1 << (C_SHIFT - 1));
     c1 = a1 * C1 + a3 * C2;
     c3 = a1 * C2 - a3 * C1;
-    dest[0] = cm[(c0 + c1) >> C_SHIFT];
+    dest[0] = av_clip_uint8((c0 + c1) >> C_SHIFT);
     dest += line_size;
-    dest[0] = cm[(c2 + c3) >> C_SHIFT];
+    dest[0] = av_clip_uint8((c2 + c3) >> C_SHIFT);
     dest += line_size;
-    dest[0] = cm[(c2 - c3) >> C_SHIFT];
+    dest[0] = av_clip_uint8((c2 - c3) >> C_SHIFT);
     dest += line_size;
-    dest[0] = cm[(c0 - c1) >> C_SHIFT];
+    dest[0] = av_clip_uint8((c0 - c1) >> C_SHIFT);
 }
 
 #define BF(k) \
@@ -87,10 +85,10 @@ static inline void idct4col_put(uint8_t *dest, int line_size, const DCTELEM *col
 /* XXX: I think a 1.0/sqrt(2) normalization should be needed to
    compensate the extra butterfly stage - I don't have the full DV
    specification */
-void ff_simple_idct248_put(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct248_put(uint8_t *dest, int line_size, int16_t *block)
 {
     int i;
-    DCTELEM *ptr;
+    int16_t *ptr;
 
     /* butterfly */
     ptr = block;
@@ -130,10 +128,9 @@ void ff_simple_idct248_put(uint8_t *dest, int line_size, DCTELEM *block)
 #define C2 C_FIX(0.2705980501)
 #define C3 C_FIX(0.5)
 #define C_SHIFT (4+1+12)
-static inline void idct4col_add(uint8_t *dest, int line_size, const DCTELEM *col)
+static inline void idct4col_add(uint8_t *dest, int line_size, const int16_t *col)
 {
     int c0, c1, c2, c3, a0, a1, a2, a3;
-    const uint8_t *cm = ff_cropTbl + MAX_NEG_CROP;
 
     a0 = col[8*0];
     a1 = col[8*1];
@@ -143,13 +140,13 @@ static inline void idct4col_add(uint8_t *dest, int line_size, const DCTELEM *col
     c2 = (a0 - a2)*C3 + (1 << (C_SHIFT - 1));
     c1 = a1 * C1 + a3 * C2;
     c3 = a1 * C2 - a3 * C1;
-    dest[0] = cm[dest[0] + ((c0 + c1) >> C_SHIFT)];
+    dest[0] = av_clip_uint8(dest[0] + ((c0 + c1) >> C_SHIFT));
     dest += line_size;
-    dest[0] = cm[dest[0] + ((c2 + c3) >> C_SHIFT)];
+    dest[0] = av_clip_uint8(dest[0] + ((c2 + c3) >> C_SHIFT));
     dest += line_size;
-    dest[0] = cm[dest[0] + ((c2 - c3) >> C_SHIFT)];
+    dest[0] = av_clip_uint8(dest[0] + ((c2 - c3) >> C_SHIFT));
     dest += line_size;
-    dest[0] = cm[dest[0] + ((c0 - c1) >> C_SHIFT)];
+    dest[0] = av_clip_uint8(dest[0] + ((c0 - c1) >> C_SHIFT));
 }
 
 #define RN_SHIFT 15
@@ -158,10 +155,9 @@ static inline void idct4col_add(uint8_t *dest, int line_size, const DCTELEM *col
 #define R2 R_FIX(0.2705980501)
 #define R3 R_FIX(0.5)
 #define R_SHIFT 11
-static inline void idct4row(DCTELEM *row)
+static inline void idct4row(int16_t *row)
 {
     int c0, c1, c2, c3, a0, a1, a2, a3;
-    //const uint8_t *cm = ff_cropTbl + MAX_NEG_CROP;
 
     a0 = row[0];
     a1 = row[1];
@@ -177,7 +173,7 @@ static inline void idct4row(DCTELEM *row)
     row[3]= (c0 - c1) >> R_SHIFT;
 }
 
-void ff_simple_idct84_add(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct84_add(uint8_t *dest, int line_size, int16_t *block)
 {
     int i;
 
@@ -192,7 +188,7 @@ void ff_simple_idct84_add(uint8_t *dest, int line_size, DCTELEM *block)
     }
 }
 
-void ff_simple_idct48_add(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct48_add(uint8_t *dest, int line_size, int16_t *block)
 {
     int i;
 
@@ -207,7 +203,7 @@ void ff_simple_idct48_add(uint8_t *dest, int line_size, DCTELEM *block)
     }
 }
 
-void ff_simple_idct44_add(uint8_t *dest, int line_size, DCTELEM *block)
+void ff_simple_idct44_add(uint8_t *dest, int line_size, int16_t *block)
 {
     int i;
 
@@ -222,7 +218,7 @@ void ff_simple_idct44_add(uint8_t *dest, int line_size, DCTELEM *block)
     }
 }
 
-void ff_prores_idct(DCTELEM *block, const int16_t *qmat)
+void ff_prores_idct(int16_t *block, const int16_t *qmat)
 {
     int i;
 

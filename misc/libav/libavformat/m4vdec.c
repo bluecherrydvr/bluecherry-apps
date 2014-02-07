@@ -45,8 +45,8 @@ static int mpeg4video_probe(AVProbeData *probe_packet)
     }
 
     if (VOP >= VISO && VOP >= VOL && VO >= VOL && VOL > 0 && res==0)
-        return AVPROBE_SCORE_MAX/2;
+        return AVPROBE_SCORE_EXTENSION;
     return 0;
 }
 
-FF_DEF_RAWVIDEO_DEMUXER(m4v, "raw MPEG-4 video format", mpeg4video_probe, "m4v", CODEC_ID_MPEG4)
+FF_DEF_RAWVIDEO_DEMUXER(m4v, "raw MPEG-4 video", mpeg4video_probe, "m4v", AV_CODEC_ID_MPEG4)

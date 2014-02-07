@@ -27,19 +27,18 @@
  * @see http://linux-fbdev.sourceforge.net/
  */
 
-/* #define DEBUG */
-
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <sys/time.h>
 #include <sys/mman.h>
 #include <time.h>
 #include <linux/fb.h>
 
+#include "libavutil/internal.h"
 #include "libavutil/log.h"
 #include "libavutil/mem.h"
 #include "libavutil/opt.h"
+#include "libavutil/time.h"
 #include "libavutil/parseutils.h"
 #include "libavutil/pixdesc.h"
 #include "libavformat/avformat.h"
@@ -48,20 +47,20 @@
 struct rgb_pixfmt_map_entry {
     int bits_per_pixel;
     int red_offset, green_offset, blue_offset, alpha_offset;
-    enum PixelFormat pixfmt;
+    enum AVPixelFormat pixfmt;
 };
 
 static struct rgb_pixfmt_map_entry rgb_pixfmt_map[] = {
     // bpp, red_offset,  green_offset, blue_offset, alpha_offset, pixfmt
-    {  32,       0,           8,          16,           24,   PIX_FMT_RGBA  },
-    {  32,      16,           8,           0,           24,   PIX_FMT_BGRA  },
-    {  32,       8,          16,          24,            0,   PIX_FMT_ARGB  },
-    {  32,       3,           2,           8,            0,   PIX_FMT_ABGR  },
-    {  24,       0,           8,          16,            0,   PIX_FMT_RGB24 },
-    {  24,      16,           8,           0,            0,   PIX_FMT_BGR24 },
+    {  32,       0,           8,          16,           24,   AV_PIX_FMT_RGBA  },
+    {  32,      16,           8,           0,           24,   AV_PIX_FMT_BGRA  },
+    {  32,       8,          16,          24,            0,   AV_PIX_FMT_ARGB  },
+    {  32,       3,           2,           8,            0,   AV_PIX_FMT_ABGR  },
+    {  24,       0,           8,          16,            0,   AV_PIX_FMT_RGB24 },
+    {  24,      16,           8,           0,            0,   AV_PIX_FMT_BGR24 },
 };
 
-static enum PixelFormat get_pixfmt_from_fb_varinfo(struct fb_var_screeninfo *varinfo)
+static enum AVPixelFormat get_pixfmt_from_fb_varinfo(struct fb_var_screeninfo *varinfo)
 {
     int i;
 
@@ -74,7 +73,7 @@ static enum PixelFormat get_pixfmt_from_fb_varinfo(struct fb_var_screeninfo *var
             return entry->pixfmt;
     }
 
-    return PIX_FMT_NONE;
+    return AV_PIX_FMT_NONE;
 }
 
 typedef struct {
@@ -95,12 +94,11 @@ typedef struct {
     uint8_t *data;           ///< framebuffer data
 } FBDevContext;
 
-av_cold static int fbdev_read_header(AVFormatContext *avctx,
-                                     AVFormatParameters *ap)
+static av_cold int fbdev_read_header(AVFormatContext *avctx)
 {
     FBDevContext *fbdev = avctx->priv_data;
     AVStream *st = NULL;
-    enum PixelFormat pix_fmt;
+    enum AVPixelFormat pix_fmt;
     int ret, flags = O_RDONLY;
 
     ret = av_parse_video_rate(&fbdev->framerate_q, fbdev->framerate);
@@ -117,7 +115,7 @@ av_cold static int fbdev_read_header(AVFormatContext *avctx,
     if (avctx->flags & AVFMT_FLAG_NONBLOCK)
         flags |= O_NONBLOCK;
 
-    if ((fbdev->fd = open(avctx->filename, flags)) == -1) {
+    if ((fbdev->fd = avpriv_open(avctx->filename, flags)) == -1) {
         ret = AVERROR(errno);
         av_log(avctx, AV_LOG_ERROR,
                "Could not open framebuffer device '%s': %s\n",
@@ -140,7 +138,7 @@ av_cold static int fbdev_read_header(AVFormatContext *avctx,
     }
 
     pix_fmt = get_pixfmt_from_fb_varinfo(&fbdev->varinfo);
-    if (pix_fmt == PIX_FMT_NONE) {
+    if (pix_fmt == AV_PIX_FMT_NONE) {
         ret = AVERROR(EINVAL);
         av_log(avctx, AV_LOG_ERROR,
                "Framebuffer pixel format not supported.\n");
@@ -161,7 +159,7 @@ av_cold static int fbdev_read_header(AVFormatContext *avctx,
     }
 
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    st->codec->codec_id   = CODEC_ID_RAWVIDEO;
+    st->codec->codec_id   = AV_CODEC_ID_RAWVIDEO;
     st->codec->width      = fbdev->width;
     st->codec->height     = fbdev->height;
     st->codec->pix_fmt    = pix_fmt;
@@ -172,7 +170,7 @@ av_cold static int fbdev_read_header(AVFormatContext *avctx,
     av_log(avctx, AV_LOG_INFO,
            "w:%d h:%d bpp:%d pixfmt:%s fps:%d/%d bit_rate:%d\n",
            fbdev->width, fbdev->height, fbdev->varinfo.bits_per_pixel,
-           av_pix_fmt_descriptors[pix_fmt].name,
+           av_get_pix_fmt_name(pix_fmt),
            fbdev->framerate_q.num, fbdev->framerate_q.den,
            st->codec->bit_rate);
     return 0;
@@ -234,7 +232,7 @@ static int fbdev_read_packet(AVFormatContext *avctx, AVPacket *pkt)
     return fbdev->frame_size;
 }
 
-av_cold static int fbdev_read_close(AVFormatContext *avctx)
+static av_cold int fbdev_read_close(AVFormatContext *avctx)
 {
     FBDevContext *fbdev = avctx->priv_data;
 

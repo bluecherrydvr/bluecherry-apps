@@ -1,10 +1,11 @@
 All the numerical options, if not specified otherwise, accept in input
 a string representing a number, which may contain one of the
-International System number postfixes, for example 'K', 'M', 'G'.
-If 'i' is appended after the postfix, powers of 2 are used instead of
-powers of 10. The 'B' postfix multiplies the value for 8, and can be
-appended after another postfix or used alone. This allows using for
-example 'KB', 'MiB', 'G' and 'B' as postfix.
+SI unit prefixes, for example 'K', 'M', 'G'.
+If 'i' is appended after the prefix, binary prefixes are used,
+which are based on powers of 1024 instead of powers of 1000.
+The 'B' postfix multiplies the value by 8, and can be
+appended after a unit prefix or used alone. This allows using for
+example 'KB', 'MiB', 'G' and 'B' as number postfix.
 
 Options which do not take arguments are boolean options, and set the
 corresponding value to true. They can be set to false by prefixing
@@ -51,8 +52,33 @@ These options are shared amongst the av* tools.
 @item -L
 Show license.
 
-@item -h, -?, -help, --help
-Show help.
+@item -h, -?, -help, --help [@var{arg}]
+Show help. An optional parameter may be specified to print help about a specific
+item.
+
+Possible values of @var{arg} are:
+@table @option
+@item decoder=@var{decoder_name}
+Print detailed information about the decoder named @var{decoder_name}. Use the
+@option{-decoders} option to get a list of all decoders.
+
+@item encoder=@var{encoder_name}
+Print detailed information about the encoder named @var{encoder_name}. Use the
+@option{-encoders} option to get a list of all encoders.
+
+@item demuxer=@var{demuxer_name}
+Print detailed information about the demuxer named @var{demuxer_name}. Use the
+@option{-formats} option to get a list of all demuxers and muxers.
+
+@item muxer=@var{muxer_name}
+Print detailed information about the muxer named @var{muxer_name}. Use the
+@option{-formats} option to get a list of all muxers and demuxers.
+
+@item filter=@var{filter_name}
+Print detailed information about the filter name @var{filter_name}. Use the
+@option{-filters} option to get a list of all filters.
+
+@end table
 
 @item -version
 Show version.
@@ -69,23 +95,16 @@ Encoding available
 @end table
 
 @item -codecs
-Show available codecs.
+Show all codecs known to libavcodec.
 
-The fields preceding the codec names have the following meanings:
-@table @samp
-@item D
-Decoding available
-@item E
-Encoding available
-@item V/A/S
-Video/audio/subtitle codec
-@item S
-Codec supports slices
-@item D
-Codec supports direct rendering
-@item T
-Codec can handle input truncated at random locations instead of only at frame boundaries
-@end table
+Note that the term 'codec' is used throughout this documentation as a shortcut
+for what is more correctly called a media bitstream format.
+
+@item -decoders
+Show available decoders.
+
+@item -encoders
+Show all available encoders.
 
 @item -bsfs
 Show available bitstream filters.
@@ -124,6 +143,10 @@ the environment variable @env{AV_LOG_FORCE_COLOR}.
 The use of the environment variable @env{NO_COLOR} is deprecated and
 will be dropped in a following Libav version.
 
+@item -cpuflags mask (@emph{global})
+Set a mask that's applied to autodetected CPU flags. This option is intended
+for testing. Do not use it unless you know what you're doing.
+
 @end table
 
 @section AVOptions
@@ -156,3 +179,6 @@ use @option{-option 0}/@option{-option 1}.
 
 Note2 old undocumented way of specifying per-stream AVOptions by prepending
 v/a/s to the options name is now obsolete and will be removed soon.
+
+@include avoptions_codec.texi
+@include avoptions_format.texi

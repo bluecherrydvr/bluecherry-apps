@@ -30,20 +30,16 @@
 #define BITSTREAM_READER_LE
 #include "avcodec.h"
 #include "get_bits.h"
-#include "dsputil.h"
 #include "ivi_dsp.h"
 #include "ivi_common.h"
 #include "indeo4data.h"
-
-#define IVI4_STREAM_ANALYSER    0
-#define IVI4_DEBUG_CHECKSUM     0
 
 /**
  *  Indeo 4 frame types.
  */
 enum {
     FRAMETYPE_INTRA       = 0,
-    FRAMETYPE_BIDIR1      = 1,  ///< bidirectional frame
+    FRAMETYPE_INTRA1      = 1,  ///< intra frame with slightly different bitstream coding
     FRAMETYPE_INTER       = 2,  ///< non-droppable P-frame
     FRAMETYPE_BIDIR       = 3,  ///< bidirectional frame
     FRAMETYPE_INTER_NOREF = 4,  ///< droppable P-frame
@@ -54,54 +50,14 @@ enum {
 #define IVI4_PIC_SIZE_ESC   7
 
 
-typedef struct {
-    GetBitContext   gb;
-    AVFrame         frame;
-    RVMapDesc       rvmap_tabs[9];   ///< local corrected copy of the static rvmap tables
-
-    uint32_t        frame_num;
-    int             frame_type;
-    int             prev_frame_type; ///< frame type of the previous frame
-    uint32_t        data_size;       ///< size of the frame data in bytes from picture header
-    int             is_scalable;
-    int             transp_status;   ///< transparency mode status: 1 - enabled
-
-    IVIPicConfig    pic_conf;
-    IVIPlaneDesc    planes[3];       ///< color planes
-
-    int             buf_switch;      ///< used to switch between three buffers
-    int             dst_buf;         ///< buffer index for the currently decoded frame
-    int             ref_buf;         ///< inter frame reference buffer index
-
-    IVIHuffTab      mb_vlc;          ///< current macroblock table descriptor
-    IVIHuffTab      blk_vlc;         ///< current block table descriptor
-
-    uint16_t        checksum;        ///< frame checksum
-
-    uint8_t         rvmap_sel;
-    uint8_t         in_imf;
-    uint8_t         in_q;            ///< flag for explicitly stored quantiser delta
-    uint8_t         pic_glob_quant;
-    uint8_t         unknown1;
-
-#if IVI4_STREAM_ANALYSER
-    uint8_t         has_b_frames;
-    uint8_t         has_transp;
-    uint8_t         uses_tiling;
-    uint8_t         uses_haar;
-    uint8_t         uses_fullpel;
-#endif
-} IVI4DecContext;
-
-
 static const struct {
     InvTransformPtr *inv_trans;
     DCTransformPtr  *dc_trans;
     int             is_2d_trans;
 } transforms[18] = {
     { ff_ivi_inverse_haar_8x8,  ff_ivi_dc_haar_2d,       1 },
-    { NULL, NULL, 0 }, /* inverse Haar 8x1 */
-    { NULL, NULL, 0 }, /* inverse Haar 1x8 */
+    { ff_ivi_row_haar8,         ff_ivi_dc_haar_2d,       0 },
+    { ff_ivi_col_haar8,         ff_ivi_dc_haar_2d,       0 },
     { ff_ivi_put_pixels_8x8,    ff_ivi_put_dc_pixel_8x8, 1 },
     { ff_ivi_inverse_slant_8x8, ff_ivi_dc_slant_2d,      1 },
     { ff_ivi_row_slant8,        ff_ivi_dc_row_slant,     1 },
@@ -109,13 +65,13 @@ static const struct {
     { NULL, NULL, 0 }, /* inverse DCT 8x8 */
     { NULL, NULL, 0 }, /* inverse DCT 8x1 */
     { NULL, NULL, 0 }, /* inverse DCT 1x8 */
-    { NULL, NULL, 0 }, /* inverse Haar 4x4 */
+    { ff_ivi_inverse_haar_4x4,  ff_ivi_dc_haar_2d,       1 },
     { ff_ivi_inverse_slant_4x4, ff_ivi_dc_slant_2d,      1 },
     { NULL, NULL, 0 }, /* no transform 4x4 */
-    { NULL, NULL, 0 }, /* inverse Haar 1x4 */
-    { NULL, NULL, 0 }, /* inverse Haar 4x1 */
-    { NULL, NULL, 0 }, /* inverse slant 1x4 */
-    { NULL, NULL, 0 }, /* inverse slant 4x1 */
+    { ff_ivi_row_haar4,         ff_ivi_dc_haar_2d,       0 },
+    { ff_ivi_col_haar4,         ff_ivi_dc_haar_2d,       0 },
+    { ff_ivi_row_slant4,        ff_ivi_dc_row_slant,     0 },
+    { ff_ivi_col_slant4,        ff_ivi_dc_col_slant,     0 },
     { NULL, NULL, 0 }, /* inverse DCT 4x4 */
 };
 
@@ -158,7 +114,7 @@ static inline int scale_tile_size(int def_size, int size_factor)
  *  @param[in]     avctx     pointer to the AVCodecContext
  *  @return        result code: 0 = OK, negative number = error
  */
-static int decode_pic_hdr(IVI4DecContext *ctx, AVCodecContext *avctx)
+static int decode_pic_hdr(IVI45DecContext *ctx, AVCodecContext *avctx)
 {
     int             pic_size_indx, i, p;
     IVIPicConfig    pic_conf;
@@ -176,8 +132,7 @@ static int decode_pic_hdr(IVI4DecContext *ctx, AVCodecContext *avctx)
     }
 
 #if IVI4_STREAM_ANALYSER
-    if (   ctx->frame_type == FRAMETYPE_BIDIR1
-        || ctx->frame_type == FRAMETYPE_BIDIR)
+    if (ctx->frame_type == FRAMETYPE_BIDIR)
         ctx->has_b_frames = 1;
 #endif
 
@@ -254,6 +209,7 @@ static int decode_pic_hdr(IVI4DecContext *ctx, AVCodecContext *avctx)
     if (ivi_pic_config_cmp(&pic_conf, &ctx->pic_conf)) {
         if (ff_ivi_init_planes(ctx->planes, &pic_conf)) {
             av_log(avctx, AV_LOG_ERROR, "Couldn't reallocate color planes!\n");
+            ctx->pic_conf.luma_bands = 0;
             return AVERROR(ENOMEM);
         }
 
@@ -322,7 +278,7 @@ static int decode_pic_hdr(IVI4DecContext *ctx, AVCodecContext *avctx)
  *  @param[in]     avctx     pointer to the AVCodecContext
  *  @return        result code: 0 = OK, negative number = error
  */
-static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
+static int decode_band_hdr(IVI45DecContext *ctx, IVIBandDesc *band,
                            AVCodecContext *avctx)
 {
     int plane, band_num, indx, transform_id, scan_indx;
@@ -337,6 +293,7 @@ static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
 
     band->is_empty = get_bits1(&ctx->gb);
     if (!band->is_empty) {
+        int old_blk_size = band->blk_size;
         /* skip header size
          * If header size is not given, header size is 4 bytes. */
         if (get_bits1(&ctx->gb))
@@ -372,13 +329,14 @@ static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
 
         if (!get_bits1(&ctx->gb) || ctx->frame_type == FRAMETYPE_INTRA) {
             transform_id = get_bits(&ctx->gb, 5);
-            if (!transforms[transform_id].inv_trans) {
-                av_log_ask_for_sample(avctx, "Unimplemented transform: %d!\n", transform_id);
+            if (transform_id >= FF_ARRAY_ELEMS(transforms) ||
+                !transforms[transform_id].inv_trans) {
+                avpriv_request_sample(avctx, "Transform %d", transform_id);
                 return AVERROR_PATCHWELCOME;
             }
             if ((transform_id >= 7 && transform_id <= 9) ||
                  transform_id == 17) {
-                av_log_ask_for_sample(avctx, "DCT transform not supported yet!\n");
+                avpriv_request_sample(avctx, "DCT transform");
                 return AVERROR_PATCHWELCOME;
             }
 
@@ -390,25 +348,59 @@ static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
             band->inv_transform = transforms[transform_id].inv_trans;
             band->dc_transform  = transforms[transform_id].dc_trans;
             band->is_2d_trans   = transforms[transform_id].is_2d_trans;
+            if (transform_id < 10)
+                band->transform_size = 8;
+            else
+                band->transform_size = 4;
+
+            if (band->blk_size != band->transform_size)
+                return AVERROR_INVALIDDATA;
 
             scan_indx = get_bits(&ctx->gb, 4);
             if (scan_indx == 15) {
                 av_log(avctx, AV_LOG_ERROR, "Custom scan pattern encountered!\n");
                 return AVERROR_INVALIDDATA;
             }
+            if (scan_indx > 4 && scan_indx < 10) {
+                if (band->blk_size != 4)
+                    return AVERROR_INVALIDDATA;
+            } else if (band->blk_size != 8)
+                return AVERROR_INVALIDDATA;
+
             band->scan = scan_index_to_tab[scan_indx];
 
             band->quant_mat = get_bits(&ctx->gb, 5);
-            if (band->quant_mat == 31) {
-                av_log(avctx, AV_LOG_ERROR, "Custom quant matrix encountered!\n");
+            if (band->quant_mat >= FF_ARRAY_ELEMS(quant_index_to_tab)) {
+
+                if (band->quant_mat == 31)
+                    av_log(avctx, AV_LOG_ERROR,
+                           "Custom quant matrix encountered!\n");
+                else
+                    avpriv_request_sample(avctx, "Quantization matrix %d",
+                                          band->quant_mat);
+                band->quant_mat = -1;
+                return AVERROR_INVALIDDATA;
+            }
+        } else {
+            if (old_blk_size != band->blk_size) {
+                av_log(avctx, AV_LOG_ERROR,
+                       "The band block size does not match the configuration "
+                       "inherited\n");
+                return AVERROR_INVALIDDATA;
+            }
+            if (band->quant_mat < 0) {
+                av_log(avctx, AV_LOG_ERROR, "Invalid quant_mat inherited\n");
                 return AVERROR_INVALIDDATA;
             }
         }
 
         /* decode block huffman codebook */
-        if (ff_ivi_dec_huff_desc(&ctx->gb, get_bits1(&ctx->gb), IVI_BLK_HUFF,
-                                 &band->blk_vlc, avctx))
-            return AVERROR_INVALIDDATA;
+        if (!get_bits1(&ctx->gb))
+            band->blk_vlc.tab = ctx->blk_vlc.tab;
+        else
+            if (ff_ivi_dec_huff_desc(&ctx->gb, 1, IVI_BLK_HUFF,
+                                     &band->blk_vlc, avctx))
+                return AVERROR_INVALIDDATA;
 
         /* select appropriate rvmap table for this band */
         band->rvmap_sel = get_bits1(&ctx->gb) ? get_bits(&ctx->gb, 3) : 8;
@@ -457,7 +449,7 @@ static int decode_band_hdr(IVI4DecContext *ctx, IVIBandDesc *band,
  *  @param[in]     avctx     pointer to the AVCodecContext
  *  @return        result code: 0 = OK, negative number = error
  */
-static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
+static int decode_mb_info(IVI45DecContext *ctx, IVIBandDesc *band,
                           IVITile *tile, AVCodecContext *avctx)
 {
     int         x, y, mv_x, mv_y, mv_delta, offs, mb_offset, blks_per_mb,
@@ -500,7 +492,7 @@ static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
                 }
 
                 mb->mv_x = mb->mv_y = 0; /* no motion vector coded */
-                if (band->inherit_mv) {
+                if (band->inherit_mv && ref_mb) {
                     /* motion vector inheritance */
                     if (mv_scale) {
                         mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
@@ -512,8 +504,12 @@ static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
                 }
             } else {
                 if (band->inherit_mv) {
-                    mb->type = ref_mb->type; /* copy mb_type from corresponding reference mb */
-                } else if (ctx->frame_type == FRAMETYPE_INTRA) {
+                    /* copy mb_type from corresponding reference mb */
+                    if (!ref_mb)
+                        return AVERROR_INVALIDDATA;
+                    mb->type = ref_mb->type;
+                } else if (ctx->frame_type == FRAMETYPE_INTRA ||
+                           ctx->frame_type == FRAMETYPE_INTRA1) {
                     mb->type = 0; /* mb_type is always INTRA for intra-frames */
                 } else {
                     mb->type = get_bits(&ctx->gb, mb_type_bits);
@@ -535,14 +531,15 @@ static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
                     mb->mv_x = mb->mv_y = 0; /* there is no motion vector in intra-macroblocks */
                 } else {
                     if (band->inherit_mv) {
-                        /* motion vector inheritance */
-                        if (mv_scale) {
-                            mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
-                            mb->mv_y = ivi_scale_mv(ref_mb->mv_y, mv_scale);
-                        } else {
-                            mb->mv_x = ref_mb->mv_x;
-                            mb->mv_y = ref_mb->mv_y;
-                        }
+                        if (ref_mb)
+                            /* motion vector inheritance */
+                            if (mv_scale) {
+                                mb->mv_x = ivi_scale_mv(ref_mb->mv_x, mv_scale);
+                                mb->mv_y = ivi_scale_mv(ref_mb->mv_y, mv_scale);
+                            } else {
+                                mb->mv_x = ref_mb->mv_x;
+                                mb->mv_y = ref_mb->mv_y;
+                            }
                     } else {
                         /* decode motion vector deltas */
                         mv_delta = get_vlc2(&ctx->gb, ctx->mb_vlc.tab->table,
@@ -573,128 +570,15 @@ static int decode_mb_info(IVI4DecContext *ctx, IVIBandDesc *band,
 
 
 /**
- *  Decode an Indeo 4 band.
- *
- *  @param[in,out] ctx       pointer to the decoder context
- *  @param[in,out] band      pointer to the band descriptor
- *  @param[in]     avctx     pointer to the AVCodecContext
- *  @return        result code: 0 = OK, negative number = error
- */
-static int decode_band(IVI4DecContext *ctx, int plane_num,
-                       IVIBandDesc *band, AVCodecContext *avctx)
-{
-    int         result, i, t, pos, idx1, idx2;
-    IVITile     *tile;
-
-    band->buf     = band->bufs[ctx->dst_buf];
-    band->ref_buf = band->bufs[ctx->ref_buf];
-
-    result = decode_band_hdr(ctx, band, avctx);
-    if (result) {
-        av_log(avctx, AV_LOG_ERROR, "Error decoding band header\n");
-        return result;
-    }
-
-    if (band->is_empty) {
-        av_log(avctx, AV_LOG_ERROR, "Empty band encountered!\n");
-        return AVERROR_INVALIDDATA;
-    }
-
-    band->rv_map = &ctx->rvmap_tabs[band->rvmap_sel];
-
-    /* apply corrections to the selected rvmap table if present */
-    for (i = 0; i < band->num_corr; i++) {
-        idx1 = band->corr[i * 2];
-        idx2 = band->corr[i * 2 + 1];
-        FFSWAP(uint8_t, band->rv_map->runtab[idx1], band->rv_map->runtab[idx2]);
-        FFSWAP(int16_t, band->rv_map->valtab[idx1], band->rv_map->valtab[idx2]);
-    }
-
-    pos = get_bits_count(&ctx->gb);
-
-    for (t = 0; t < band->num_tiles; t++) {
-        tile = &band->tiles[t];
-
-        tile->is_empty = get_bits1(&ctx->gb);
-        if (tile->is_empty) {
-            ff_ivi_process_empty_tile(avctx, band, tile,
-                                      (ctx->planes[0].bands[0].mb_size >> 3) - (band->mb_size >> 3));
-            av_dlog(avctx, "Empty tile encountered!\n");
-        } else {
-            tile->data_size = ff_ivi_dec_tile_data_size(&ctx->gb);
-            if (!tile->data_size) {
-                av_log(avctx, AV_LOG_ERROR, "Tile data size is zero!\n");
-                return AVERROR_INVALIDDATA;
-            }
-
-            result = decode_mb_info(ctx, band, tile, avctx);
-            if (result < 0)
-                break;
-
-            result = ff_ivi_decode_blocks(&ctx->gb, band, tile);
-            if (result < 0 || ((get_bits_count(&ctx->gb) - pos) >> 3) != tile->data_size) {
-                av_log(avctx, AV_LOG_ERROR, "Corrupted tile data encountered!\n");
-                break;
-            }
-
-            pos += tile->data_size << 3; // skip to next tile
-        }
-    }
-
-    /* restore the selected rvmap table by applying its corrections in reverse order */
-    for (i = band->num_corr - 1; i >= 0; i--) {
-        idx1 = band->corr[i * 2];
-        idx2 = band->corr[i * 2 + 1];
-        FFSWAP(uint8_t, band->rv_map->runtab[idx1], band->rv_map->runtab[idx2]);
-        FFSWAP(int16_t, band->rv_map->valtab[idx1], band->rv_map->valtab[idx2]);
-    }
-
-#if defined(DEBUG) && IVI4_DEBUG_CHECKSUM
-    if (band->checksum_present) {
-        uint16_t chksum = ivi_calc_band_checksum(band);
-        if (chksum != band->checksum) {
-            av_log(avctx, AV_LOG_ERROR,
-                   "Band checksum mismatch! Plane %d, band %d, received: %x, calculated: %x\n",
-                   band->plane, band->band_num, band->checksum, chksum);
-        }
-    }
-#endif
-
-    align_get_bits(&ctx->gb);
-
-    return 0;
-}
-
-
-static av_cold int decode_init(AVCodecContext *avctx)
-{
-    IVI4DecContext *ctx = avctx->priv_data;
-
-    ff_ivi_init_static_vlc();
-
-    /* copy rvmap tables in our context so we can apply changes to them */
-    memcpy(ctx->rvmap_tabs, ff_ivi_rvmap_tabs, sizeof(ff_ivi_rvmap_tabs));
-
-    /* Force allocation of the internal buffers */
-    /* during picture header decoding.          */
-    ctx->pic_conf.pic_width  = 0;
-    ctx->pic_conf.pic_height = 0;
-
-    avctx->pix_fmt = PIX_FMT_YUV410P;
-
-    return 0;
-}
-
-
-/**
  *  Rearrange decoding and reference buffers.
  *
  *  @param[in,out] ctx       pointer to the decoder context
  */
-static void switch_buffers(IVI4DecContext *ctx)
+static void switch_buffers(IVI45DecContext *ctx)
 {
     switch (ctx->prev_frame_type) {
     case FRAMETYPE_INTRA:
+    case FRAMETYPE_INTRA1:
     case FRAMETYPE_INTER:
         ctx->buf_switch ^= 1;
         ctx->dst_buf     = ctx->buf_switch;
@@ -706,6 +590,7 @@ static void switch_buffers(IVI4DecContext *ctx)
 
     switch (ctx->frame_type) {
     case FRAMETYPE_INTRA:
+    case FRAMETYPE_INTRA1:
         ctx->buf_switch = 0;
         /* FALLTHROUGH */
     case FRAMETYPE_INTER:
@@ -720,95 +605,33 @@ static void switch_buffers(IVI4DecContext *ctx)
 }
 
 
-static int decode_frame(AVCodecContext *avctx, void *data, int *data_size,
-                        AVPacket *avpkt)
+static int is_nonnull_frame(IVI45DecContext *ctx)
 {
-    IVI4DecContext  *ctx = avctx->priv_data;
-    const uint8_t   *buf = avpkt->data;
-    int             buf_size = avpkt->size;
-    int             result, p, b;
-
-    init_get_bits(&ctx->gb, buf, buf_size * 8);
-
-    result = decode_pic_hdr(ctx, avctx);
-    if (result) {
-        av_log(avctx, AV_LOG_ERROR, "Error decoding picture header\n");
-        return result;
-    }
-
-    switch_buffers(ctx);
-
-    if (ctx->frame_type < FRAMETYPE_NULL_FIRST) {
-        for (p = 0; p < 3; p++) {
-            for (b = 0; b < ctx->planes[p].num_bands; b++) {
-                result = decode_band(ctx, p, &ctx->planes[p].bands[b], avctx);
-                if (result) {
-                    av_log(avctx, AV_LOG_ERROR,
-                           "Error decoding band: %d, plane: %d\n", b, p);
-                    return result;
-                }
-            }
-        }
-    }
-
-    /* If the bidirectional mode is enabled, next I and the following P frame will */
-    /* be sent together. Unfortunately the approach below seems to be the only way */
-    /* to handle the B-frames mode. That's exactly the same Intel decoders do.     */
-    if (ctx->frame_type == FRAMETYPE_INTRA) {
-        while (get_bits(&ctx->gb, 8)); // skip version string
-        skip_bits_long(&ctx->gb, 64);  // skip padding, TODO: implement correct 8-bytes alignment
-        if (get_bits_left(&ctx->gb) > 18 && show_bits(&ctx->gb, 18) == 0x3FFF8)
-            av_log(avctx, AV_LOG_ERROR, "Buffer contains IP frames!\n");
-    }
-
-    if (ctx->frame.data[0])
-        avctx->release_buffer(avctx, &ctx->frame);
-
-    ctx->frame.reference = 0;
-    if ((result = avctx->get_buffer(avctx, &ctx->frame)) < 0) {
-        av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return result;
-    }
-
-    if (ctx->is_scalable) {
-        ff_ivi_recompose_haar(&ctx->planes[0], ctx->frame.data[0], ctx->frame.linesize[0], 4);
-    } else {
-        ff_ivi_output_plane(&ctx->planes[0], ctx->frame.data[0], ctx->frame.linesize[0]);
-    }
-
-    ff_ivi_output_plane(&ctx->planes[2], ctx->frame.data[1], ctx->frame.linesize[1]);
-    ff_ivi_output_plane(&ctx->planes[1], ctx->frame.data[2], ctx->frame.linesize[2]);
-
-    *data_size = sizeof(AVFrame);
-    *(AVFrame*)data = ctx->frame;
-
-    return buf_size;
+    return ctx->frame_type < FRAMETYPE_NULL_FIRST;
 }
 
 
-static av_cold int decode_close(AVCodecContext *avctx)
+static av_cold int decode_init(AVCodecContext *avctx)
 {
-    IVI4DecContext *ctx = avctx->priv_data;
+    IVI45DecContext *ctx = avctx->priv_data;
 
-    ff_ivi_free_buffers(&ctx->planes[0]);
+    ff_ivi_init_static_vlc();
 
-    if (ctx->frame.data[0])
-        avctx->release_buffer(avctx, &ctx->frame);
+    /* copy rvmap tables in our context so we can apply changes to them */
+    memcpy(ctx->rvmap_tabs, ff_ivi_rvmap_tabs, sizeof(ff_ivi_rvmap_tabs));
 
-#if IVI4_STREAM_ANALYSER
-    if (ctx->is_scalable)
-        av_log(avctx, AV_LOG_ERROR, "This video uses scalability mode!\n");
-    if (ctx->uses_tiling)
-        av_log(avctx, AV_LOG_ERROR, "This video uses local decoding!\n");
-    if (ctx->has_b_frames)
-        av_log(avctx, AV_LOG_ERROR, "This video contains B-frames!\n");
-    if (ctx->has_transp)
-        av_log(avctx, AV_LOG_ERROR, "Transparency mode is enabled!\n");
-    if (ctx->uses_haar)
-        av_log(avctx, AV_LOG_ERROR, "This video uses Haar transform!\n");
-    if (ctx->uses_fullpel)
-        av_log(avctx, AV_LOG_ERROR, "This video uses fullpel motion vectors!\n");
-#endif
+    /* Force allocation of the internal buffers */
+    /* during picture header decoding.          */
+    ctx->pic_conf.pic_width  = 0;
+    ctx->pic_conf.pic_height = 0;
+
+    avctx->pix_fmt = AV_PIX_FMT_YUV410P;
+
+    ctx->decode_pic_hdr   = decode_pic_hdr;
+    ctx->decode_band_hdr  = decode_band_hdr;
+    ctx->decode_mb_info   = decode_mb_info;
+    ctx->switch_buffers   = switch_buffers;
+    ctx->is_nonnull_frame = is_nonnull_frame;
 
     return 0;
 }
@@ -816,11 +639,12 @@ static av_cold int decode_close(AVCodecContext *avctx)
 
 AVCodec ff_indeo4_decoder = {
     .name           = "indeo4",
-    .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = CODEC_ID_INDEO4,
-    .priv_data_size = sizeof(IVI4DecContext),
-    .init           = decode_init,
-    .close          = decode_close,
-    .decode         = decode_frame,
     .long_name      = NULL_IF_CONFIG_SMALL("Intel Indeo Video Interactive 4"),
+    .type           = AVMEDIA_TYPE_VIDEO,
+    .id             = AV_CODEC_ID_INDEO4,
+    .priv_data_size = sizeof(IVI45DecContext),
+    .init           = decode_init,
+    .close          = ff_ivi_decode_close,
+    .decode         = ff_ivi_decode_frame,
+    .capabilities   = CODEC_CAP_DR1,
 };

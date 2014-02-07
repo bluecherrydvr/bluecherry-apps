@@ -50,12 +50,14 @@ static int avs_probe(AVProbeData * p)
 
     d = p->buf;
     if (d[0] == 'w' && d[1] == 'W' && d[2] == 0x10 && d[3] == 0)
-        return 50;
+        /* Ensure the buffer probe scores higher than the extension probe.
+         * This avoids problems with misdetection as AviSynth scripts. */
+        return AVPROBE_SCORE_EXTENSION + 1;
 
     return 0;
 }
 
-static int avs_read_header(AVFormatContext * s, AVFormatParameters * ap)
+static int avs_read_header(AVFormatContext * s)
 {
     AvsFormat *avs = s->priv_data;
 
@@ -124,7 +126,7 @@ static int avs_read_audio_packet(AVFormatContext * s, AVPacket * pkt)
     int ret, size;
 
     size = avio_tell(s->pb);
-    ret = voc_get_packet(s, pkt, avs->st_audio, avs->remaining_audio_size);
+    ret = ff_voc_get_packet(s, pkt, avs->st_audio, avs->remaining_audio_size);
     size = avio_tell(s->pb) - size;
     avs->remaining_audio_size -= size;
 
@@ -183,13 +185,12 @@ static int avs_read_packet(AVFormatContext * s, AVPacket * pkt)
                     if (avs->st_video == NULL)
                         return AVERROR(ENOMEM);
                     avs->st_video->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-                    avs->st_video->codec->codec_id = CODEC_ID_AVS;
+                    avs->st_video->codec->codec_id = AV_CODEC_ID_AVS;
                     avs->st_video->codec->width = avs->width;
                     avs->st_video->codec->height = avs->height;
                     avs->st_video->codec->bits_per_coded_sample=avs->bits_per_sample;
                     avs->st_video->nb_frames = avs->nb_frames;
-                    avs->st_video->codec->time_base = (AVRational) {
-                    1, avs->fps};
+                    avs->st_video->avg_frame_rate = (AVRational){avs->fps, 1};
                 }
                 return avs_read_video_packet(s, pkt, type, sub_type, size,
                                              palette, palette_size);
@@ -221,7 +222,7 @@ static int avs_read_close(AVFormatContext * s)
 
 AVInputFormat ff_avs_demuxer = {
     .name           = "avs",
-    .long_name      = NULL_IF_CONFIG_SMALL("AVS format"),
+    .long_name      = NULL_IF_CONFIG_SMALL("AVS"),
     .priv_data_size = sizeof(AvsFormat),
     .read_probe     = avs_probe,
     .read_header    = avs_read_header,

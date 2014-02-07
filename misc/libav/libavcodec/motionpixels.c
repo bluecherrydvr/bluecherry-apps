@@ -22,6 +22,7 @@
 #include "avcodec.h"
 #include "get_bits.h"
 #include "dsputil.h"
+#include "internal.h"
 
 #define MAX_HUFF_CODES 16
 
@@ -35,7 +36,7 @@ typedef struct HuffCode {
 
 typedef struct MotionPixelsContext {
     AVCodecContext *avctx;
-    AVFrame frame;
+    AVFrame *frame;
     DSPContext dsp;
     uint8_t *changes_map;
     int offset_bits_len;
@@ -49,6 +50,19 @@ typedef struct MotionPixelsContext {
     int bswapbuf_size;
 } MotionPixelsContext;
 
+static av_cold int mp_decode_end(AVCodecContext *avctx)
+{
+    MotionPixelsContext *mp = avctx->priv_data;
+
+    av_freep(&mp->changes_map);
+    av_freep(&mp->vpt);
+    av_freep(&mp->hpt);
+    av_freep(&mp->bswapbuf);
+    av_frame_free(&mp->frame);
+
+    return 0;
+}
+
 static av_cold int mp_decode_init(AVCodecContext *avctx)
 {
     MotionPixelsContext *mp = avctx->priv_data;
@@ -57,12 +71,19 @@ static av_cold int mp_decode_init(AVCodecContext *avctx)
 
     motionpixels_tableinit();
     mp->avctx = avctx;
-    dsputil_init(&mp->dsp, avctx);
+    ff_dsputil_init(&mp->dsp, avctx);
     mp->changes_map = av_mallocz(avctx->width * h4);
     mp->offset_bits_len = av_log2(avctx->width * avctx->height) + 1;
     mp->vpt = av_mallocz(avctx->height * sizeof(YuvPixel));
     mp->hpt = av_mallocz(h4 * w4 / 16 * sizeof(YuvPixel));
-    avctx->pix_fmt = PIX_FMT_RGB555;
+    avctx->pix_fmt = AV_PIX_FMT_RGB555;
+
+    mp->frame = av_frame_alloc();
+    if (!mp->frame) {
+        mp_decode_end(avctx);
+        return AVERROR(ENOMEM);
+    }
+
     return 0;
 }
 
@@ -83,14 +104,14 @@ static void mp_read_changes_map(MotionPixelsContext *mp, GetBitContext *gb, int 
             continue;
         w = FFMIN(w, mp->avctx->width  - x);
         h = FFMIN(h, mp->avctx->height - y);
-        pixels = (uint16_t *)&mp->frame.data[0][y * mp->frame.linesize[0] + x * 2];
+        pixels = (uint16_t *)&mp->frame->data[0][y * mp->frame->linesize[0] + x * 2];
         while (h--) {
             mp->changes_map[offset] = w;
             if (read_color)
                 for (i = 0; i < w; ++i)
                     pixels[i] = color;
             offset += mp->avctx->width;
-            pixels += mp->frame.linesize[0] / 2;
+            pixels += mp->frame->linesize[0] / 2;
         }
     }
 }
@@ -142,7 +163,7 @@ static YuvPixel mp_get_yuv_from_rgb(MotionPixelsContext *mp, int x, int y)
 {
     int color;
 
-    color = *(uint16_t *)&mp->frame.data[0][y * mp->frame.linesize[0] + x * 2];
+    color = *(uint16_t *)&mp->frame->data[0][y * mp->frame->linesize[0] + x * 2];
     return mp_rgb_yuv_table[color];
 }
 
@@ -151,7 +172,7 @@ static void mp_set_rgb_from_yuv(MotionPixelsContext *mp, int x, int y, const Yuv
     int color;
 
     color = mp_yuv_to_rgb(p->y, p->v, p->u, 1);
-    *(uint16_t *)&mp->frame.data[0][y * mp->frame.linesize[0] + x * 2] = color;
+    *(uint16_t *)&mp->frame->data[0][y * mp->frame->linesize[0] + x * 2] = color;
 }
 
 static int mp_get_vlc(MotionPixelsContext *mp, GetBitContext *gb)
@@ -159,6 +180,7 @@ static int mp_get_vlc(MotionPixelsContext *mp, GetBitContext *gb)
     int i;
 
     i = (mp->codes_count == 1) ? 0 : get_vlc2(gb, mp->vlc.table, mp->max_codes_bits, 1);
+    i = FFMIN(i, FF_ARRAY_ELEMS(mp->codes) - 1);
     return mp->codes[i].delta;
 }
 
@@ -190,10 +212,13 @@ static void mp_decode_line(MotionPixelsContext *mp, GetBitContext *gb, int y)
             p = mp_get_yuv_from_rgb(mp, x - 1, y);
         } else {
             p.y += mp_gradient(mp, 0, mp_get_vlc(mp, gb));
+            p.y = av_clip(p.y, 0, 31);
             if ((x & 3) == 0) {
                 if ((y & 3) == 0) {
                     p.v += mp_gradient(mp, 1, mp_get_vlc(mp, gb));
+                    p.v = av_clip(p.v, -32, 31);
                     p.u += mp_gradient(mp, 2, mp_get_vlc(mp, gb));
+                    p.u = av_clip(p.u, -32, 31);
                     mp->hpt[((y / 4) * mp->avctx->width + x) / 4] = p;
                 } else {
                     p.v = mp->hpt[((y / 4) * mp->avctx->width + x) / 4].v;
@@ -217,9 +242,12 @@ static void mp_decode_frame_helper(MotionPixelsContext *mp, GetBitContext *gb)
             p = mp_get_yuv_from_rgb(mp, 0, y);
         } else {
             p.y += mp_gradient(mp, 0, mp_get_vlc(mp, gb));
+            p.y = av_clip(p.y, 0, 31);
             if ((y & 3) == 0) {
                 p.v += mp_gradient(mp, 1, mp_get_vlc(mp, gb));
+                p.v = av_clip(p.v, -32, 31);
                 p.u += mp_gradient(mp, 2, mp_get_vlc(mp, gb));
+                p.u = av_clip(p.u, -32, 31);
             }
             mp->vpt[y] = p;
             mp_set_rgb_from_yuv(mp, 0, y, &p);
@@ -231,20 +259,18 @@ static void mp_decode_frame_helper(MotionPixelsContext *mp, GetBitContext *gb)
 }
 
 static int mp_decode_frame(AVCodecContext *avctx,
-                                 void *data, int *data_size,
+                                 void *data, int *got_frame,
                                  AVPacket *avpkt)
 {
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     MotionPixelsContext *mp = avctx->priv_data;
     GetBitContext gb;
-    int i, count1, count2, sz;
+    int i, count1, count2, sz, ret;
 
-    mp->frame.reference = 1;
-    mp->frame.buffer_hints = FF_BUFFER_HINTS_VALID | FF_BUFFER_HINTS_PRESERVE | FF_BUFFER_HINTS_REUSABLE;
-    if (avctx->reget_buffer(avctx, &mp->frame)) {
+    if ((ret = ff_reget_buffer(avctx, mp->frame)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "reget_buffer() failed\n");
-        return -1;
+        return ret;
     }
 
     /* le32 bitstream msb first */
@@ -270,7 +296,7 @@ static int mp_decode_frame(AVCodecContext *avctx,
         goto end;
 
     if (mp->changes_map[0] == 0) {
-        *(uint16_t *)mp->frame.data[0] = get_bits(&gb, 15);
+        *(uint16_t *)mp->frame->data[0] = get_bits(&gb, 15);
         mp->changes_map[0] = 1;
     }
     mp_read_codes_table(mp, &gb);
@@ -286,36 +312,23 @@ static int mp_decode_frame(AVCodecContext *avctx,
     if (init_vlc(&mp->vlc, mp->max_codes_bits, mp->codes_count, &mp->codes[0].size, sizeof(HuffCode), 1, &mp->codes[0].code, sizeof(HuffCode), 4, 0))
         goto end;
     mp_decode_frame_helper(mp, &gb);
-    free_vlc(&mp->vlc);
+    ff_free_vlc(&mp->vlc);
 
 end:
-    *data_size = sizeof(AVFrame);
-    *(AVFrame *)data = mp->frame;
+    if ((ret = av_frame_ref(data, mp->frame)) < 0)
+        return ret;
+    *got_frame       = 1;
     return buf_size;
-}
-
-static av_cold int mp_decode_end(AVCodecContext *avctx)
-{
-    MotionPixelsContext *mp = avctx->priv_data;
-
-    av_freep(&mp->changes_map);
-    av_freep(&mp->vpt);
-    av_freep(&mp->hpt);
-    av_freep(&mp->bswapbuf);
-    if (mp->frame.data[0])
-        avctx->release_buffer(avctx, &mp->frame);
-
-    return 0;
 }
 
 AVCodec ff_motionpixels_decoder = {
     .name           = "motionpixels",
+    .long_name      = NULL_IF_CONFIG_SMALL("Motion Pixels video"),
     .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = CODEC_ID_MOTIONPIXELS,
+    .id             = AV_CODEC_ID_MOTIONPIXELS,
     .priv_data_size = sizeof(MotionPixelsContext),
     .init           = mp_decode_init,
     .close          = mp_decode_end,
     .decode         = mp_decode_frame,
     .capabilities   = CODEC_CAP_DR1,
-    .long_name = NULL_IF_CONFIG_SMALL("Motion Pixels video"),
 };

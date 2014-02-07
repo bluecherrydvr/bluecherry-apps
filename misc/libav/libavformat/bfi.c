@@ -26,6 +26,7 @@
  * @see http://wiki.multimedia.cx/index.php?title=BFI
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -47,7 +48,7 @@ static int bfi_probe(AVProbeData * p)
         return 0;
 }
 
-static int bfi_read_header(AVFormatContext * s, AVFormatParameters * ap)
+static int bfi_read_header(AVFormatContext * s)
 {
     BFIContext *bfi = s->priv_data;
     AVIOContext *pb = s->pb;
@@ -89,13 +90,14 @@ static int bfi_read_header(AVFormatContext * s, AVFormatParameters * ap)
     /* Set up the video codec... */
     avpriv_set_pts_info(vstream, 32, 1, fps);
     vstream->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    vstream->codec->codec_id   = CODEC_ID_BFI;
-    vstream->codec->pix_fmt    = PIX_FMT_PAL8;
+    vstream->codec->codec_id   = AV_CODEC_ID_BFI;
+    vstream->codec->pix_fmt    = AV_PIX_FMT_PAL8;
 
     /* Set up the audio codec now... */
     astream->codec->codec_type      = AVMEDIA_TYPE_AUDIO;
-    astream->codec->codec_id        = CODEC_ID_PCM_U8;
+    astream->codec->codec_id        = AV_CODEC_ID_PCM_U8;
     astream->codec->channels        = 1;
+    astream->codec->channel_layout  = AV_CH_LAYOUT_MONO;
     astream->codec->bits_per_coded_sample = 8;
     astream->codec->bit_rate        =
         astream->codec->sample_rate * astream->codec->bits_per_coded_sample;
@@ -130,6 +132,10 @@ static int bfi_read_packet(AVFormatContext * s, AVPacket * pkt)
         video_offset    = avio_rl32(pb);
         audio_size      = video_offset - audio_offset;
         bfi->video_size = chunk_size - video_offset;
+        if (audio_size < 0 || bfi->video_size < 0) {
+            av_log(s, AV_LOG_ERROR, "Invalid audio/video offsets or chunk size\n");
+            return AVERROR_INVALIDDATA;
+        }
 
         //Tossing an audio packet at the audio decoder.
         ret = av_get_packet(pb, pkt, audio_size);
@@ -138,9 +144,7 @@ static int bfi_read_packet(AVFormatContext * s, AVPacket * pkt)
 
         pkt->pts          = bfi->audio_frame;
         bfi->audio_frame += ret;
-    }
-
-    else {
+    } else if (bfi->video_size > 0) {
 
         //Tossing a video packet at the video decoder.
         ret = av_get_packet(pb, pkt, bfi->video_size);
@@ -152,6 +156,9 @@ static int bfi_read_packet(AVFormatContext * s, AVPacket * pkt)
 
         /* One less frame to read. A cursory decrement. */
         bfi->nframes--;
+    } else {
+        /* Empty video packet */
+        ret = AVERROR(EAGAIN);
     }
 
     bfi->avflag       = !bfi->avflag;

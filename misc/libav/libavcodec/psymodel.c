@@ -19,9 +19,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <string.h>
+
 #include "avcodec.h"
 #include "psymodel.h"
 #include "iirfilter.h"
+#include "libavutil/mem.h"
 
 extern const FFPsyModel ff_aac_psy_model;
 
@@ -51,7 +54,7 @@ av_cold int ff_psy_init(FFPsyContext *ctx, AVCodecContext *avctx, int num_lens,
     }
 
     switch (ctx->avctx->codec_id) {
-    case CODEC_ID_AAC:
+    case AV_CODEC_ID_AAC:
         ctx->model = &ff_aac_psy_model;
         break;
     }
@@ -112,20 +115,15 @@ av_cold struct FFPsyPreprocessContext* ff_psy_preprocess_init(AVCodecContext *av
     return ctx;
 }
 
-void ff_psy_preprocess(struct FFPsyPreprocessContext *ctx,
-                       const int16_t *audio, int16_t *dest,
-                       int tag, int channels)
+void ff_psy_preprocess(struct FFPsyPreprocessContext *ctx, float **audio, int channels)
 {
-    int ch, i;
+    int ch;
+    int frame_size = ctx->avctx->frame_size;
+
     if (ctx->fstate) {
         for (ch = 0; ch < channels; ch++)
-            ff_iir_filter(ctx->fcoeffs, ctx->fstate[tag+ch], ctx->avctx->frame_size,
-                          audio + ch, ctx->avctx->channels,
-                          dest  + ch, ctx->avctx->channels);
-    } else {
-        for (ch = 0; ch < channels; ch++)
-            for (i = 0; i < ctx->avctx->frame_size; i++)
-                dest[i*ctx->avctx->channels + ch] = audio[i*ctx->avctx->channels + ch];
+            ff_iir_filter_flt(ctx->fcoeffs, ctx->fstate[ch], frame_size,
+                              &audio[ch][frame_size], 1, &audio[ch][frame_size], 1);
     }
 }
 
@@ -139,4 +137,3 @@ av_cold void ff_psy_preprocess_end(struct FFPsyPreprocessContext *ctx)
     av_freep(&ctx->fstate);
     av_free(ctx);
 }
-

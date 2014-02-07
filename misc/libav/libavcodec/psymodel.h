@@ -109,7 +109,7 @@ typedef struct FFPsyModel {
      *
      * @return suggested window information in a structure
      */
-    FFPsyWindowInfo (*window)(FFPsyContext *ctx, const int16_t *audio, const int16_t *la, int channel, int prev_type);
+    FFPsyWindowInfo (*window)(FFPsyContext *ctx, const float *audio, const float *la, int channel, int prev_type);
 
     /**
      * Perform psychoacoustic analysis and set band info (threshold, energy) for a group of channels.
@@ -137,9 +137,9 @@ typedef struct FFPsyModel {
  *
  * @return zero if successful, a negative value if not
  */
-av_cold int ff_psy_init(FFPsyContext *ctx, AVCodecContext *avctx, int num_lens,
-                        const uint8_t **bands, const int* num_bands,
-                        int num_groups, const uint8_t *group_map);
+int ff_psy_init(FFPsyContext *ctx, AVCodecContext *avctx, int num_lens,
+                const uint8_t **bands, const int *num_bands,
+                int num_groups, const uint8_t *group_map);
 
 /**
  * Determine what group a channel belongs to.
@@ -156,7 +156,7 @@ FFPsyChannelGroup *ff_psy_find_group(FFPsyContext *ctx, int channel);
  *
  * @param ctx model context
  */
-av_cold void ff_psy_end(FFPsyContext *ctx);
+void ff_psy_end(FFPsyContext *ctx);
 
 
 /**************************************************************************
@@ -168,24 +168,20 @@ struct FFPsyPreprocessContext;
 /**
  * psychoacoustic model audio preprocessing initialization
  */
-av_cold struct FFPsyPreprocessContext* ff_psy_preprocess_init(AVCodecContext *avctx);
+struct FFPsyPreprocessContext *ff_psy_preprocess_init(AVCodecContext *avctx);
 
 /**
  * Preprocess several channel in audio frame in order to compress it better.
  *
  * @param ctx      preprocessing context
- * @param audio    samples to preprocess
- * @param dest     place to put filtered samples
- * @param tag      channel number
- * @param channels number of channel to preprocess (some additional work may be done on stereo pair)
+ * @param audio    samples to be filtered (in place)
+ * @param channels number of channel to preprocess
  */
-void ff_psy_preprocess(struct FFPsyPreprocessContext *ctx,
-                       const int16_t *audio, int16_t *dest,
-                       int tag, int channels);
+void ff_psy_preprocess(struct FFPsyPreprocessContext *ctx, float **audio, int channels);
 
 /**
  * Cleanup audio preprocessing module.
  */
-av_cold void ff_psy_preprocess_end(struct FFPsyPreprocessContext *ctx);
+void ff_psy_preprocess_end(struct FFPsyPreprocessContext *ctx);
 
 #endif /* AVCODEC_PSYMODEL_H */

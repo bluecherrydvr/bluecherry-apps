@@ -26,9 +26,8 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/time.h>
-#include <time.h>
 
+#include "libavutil/internal.h"
 #include "libavutil/log.h"
 #include "libavutil/opt.h"
 #include "libavformat/avformat.h"
@@ -81,7 +80,7 @@ static int dv1394_start(struct dv1394_data *dv)
     return 0;
 }
 
-static int dv1394_read_header(AVFormatContext * context, AVFormatParameters * ap)
+static int dv1394_read_header(AVFormatContext * context)
 {
     struct dv1394_data *dv = context->priv_data;
 
@@ -90,7 +89,7 @@ static int dv1394_read_header(AVFormatContext * context, AVFormatParameters * ap
         goto failed;
 
     /* Open and initialize DV1394 device */
-    dv->fd = open(context->filename, O_RDONLY);
+    dv->fd = avpriv_open(context->filename, O_RDONLY);
     if (dv->fd < 0) {
         av_log(context, AV_LOG_ERROR, "Failed to open DV interface: %s\n", strerror(errno));
         goto failed;
@@ -213,10 +212,10 @@ static int dv1394_close(AVFormatContext * context)
 }
 
 static const AVOption options[] = {
-    { "standard", "", offsetof(struct dv1394_data, format), AV_OPT_TYPE_INT, {.dbl = DV1394_NTSC}, DV1394_PAL, DV1394_NTSC, AV_OPT_FLAG_DECODING_PARAM, "standard" },
-    { "PAL",      "", 0, AV_OPT_TYPE_CONST, {.dbl = DV1394_PAL},   0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
-    { "NTSC",     "", 0, AV_OPT_TYPE_CONST, {.dbl = DV1394_NTSC},  0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
-    { "channel",  "", offsetof(struct dv1394_data, channel), AV_OPT_TYPE_INT, {.dbl = DV1394_DEFAULT_CHANNEL}, 0, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
+    { "standard", "", offsetof(struct dv1394_data, format), AV_OPT_TYPE_INT, {.i64 = DV1394_NTSC}, DV1394_NTSC, DV1394_PAL, AV_OPT_FLAG_DECODING_PARAM, "standard" },
+    { "PAL",      "", 0, AV_OPT_TYPE_CONST, {.i64 = DV1394_PAL},   0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
+    { "NTSC",     "", 0, AV_OPT_TYPE_CONST, {.i64 = DV1394_NTSC},  0, 0, AV_OPT_FLAG_DECODING_PARAM, "standard" },
+    { "channel",  "", offsetof(struct dv1394_data, channel), AV_OPT_TYPE_INT, {.i64 = DV1394_DEFAULT_CHANNEL}, 0, INT_MAX, AV_OPT_FLAG_DECODING_PARAM },
     { NULL },
 };
 

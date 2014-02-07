@@ -16,15 +16,22 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "config.h"
 #include "file.h"
+#include "internal.h"
 #include "log.h"
+#include "mem.h"
 #include <fcntl.h>
 #include <sys/stat.h>
+#if HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+#if HAVE_IO_H
+#include <io.h>
+#endif
 #if HAVE_MMAP
 #include <sys/mman.h>
 #elif HAVE_MAPVIEWOFFILE
-#include <io.h>
 #include <windows.h>
 #endif
 
@@ -43,7 +50,7 @@ int av_file_map(const char *filename, uint8_t **bufptr, size_t *size,
                 int log_offset, void *log_ctx)
 {
     FileLogContext file_log_ctx = { &file_log_ctx_class, log_offset, log_ctx };
-    int err, fd = open(filename, O_RDONLY);
+    int err, fd = avpriv_open(filename, O_RDONLY);
     struct stat st;
     av_unused void *ptr;
     off_t off_size;
@@ -129,21 +136,3 @@ void av_file_unmap(uint8_t *bufptr, size_t size)
     av_free(bufptr);
 #endif
 }
-
-#ifdef TEST
-
-#undef printf
-
-int main(void)
-{
-    uint8_t *buf;
-    size_t size;
-    if (av_file_map("file.c", &buf, &size, 0, NULL) < 0)
-        return 1;
-
-    buf[0] = 's';
-    printf("%s", buf);
-    av_file_unmap(buf, size);
-    return 0;
-}
-#endif

@@ -24,6 +24,7 @@
  */
 
 #include "libavutil/bswap.h"
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "avformat.h"
 #include "internal.h"
@@ -98,7 +99,7 @@ static int smacker_probe(AVProbeData *p)
         return 0;
 }
 
-static int smacker_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int smacker_read_header(AVFormatContext *s)
 {
     AVIOContext *pb = s->pb;
     SmackerContext *smk = s->priv_data;
@@ -161,9 +162,9 @@ static int smacker_read_header(AVFormatContext *s, AVFormatParameters *ap)
     smk->videoindex = st->index;
     st->codec->width = smk->width;
     st->codec->height = smk->height;
-    st->codec->pix_fmt = PIX_FMT_PAL8;
+    st->codec->pix_fmt = AV_PIX_FMT_PAL8;
     st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    st->codec->codec_id = CODEC_ID_SMACKVIDEO;
+    st->codec->codec_id = AV_CODEC_ID_SMACKVIDEO;
     st->codec->codec_tag = smk->magic;
     /* Smacker uses 100000 as internal timebase */
     if(smk->pts_inc < 0)
@@ -182,20 +183,26 @@ static int smacker_read_header(AVFormatContext *s, AVFormatParameters *ap)
             smk->indexes[i] = ast[i]->index;
             ast[i]->codec->codec_type = AVMEDIA_TYPE_AUDIO;
             if (smk->aflags[i] & SMK_AUD_BINKAUD) {
-                ast[i]->codec->codec_id = CODEC_ID_BINKAUDIO_RDFT;
+                ast[i]->codec->codec_id = AV_CODEC_ID_BINKAUDIO_RDFT;
             } else if (smk->aflags[i] & SMK_AUD_USEDCT) {
-                ast[i]->codec->codec_id = CODEC_ID_BINKAUDIO_DCT;
+                ast[i]->codec->codec_id = AV_CODEC_ID_BINKAUDIO_DCT;
             } else if (smk->aflags[i] & SMK_AUD_PACKED){
-                ast[i]->codec->codec_id = CODEC_ID_SMACKAUDIO;
+                ast[i]->codec->codec_id = AV_CODEC_ID_SMACKAUDIO;
                 ast[i]->codec->codec_tag = MKTAG('S', 'M', 'K', 'A');
             } else {
-                ast[i]->codec->codec_id = CODEC_ID_PCM_U8;
+                ast[i]->codec->codec_id = AV_CODEC_ID_PCM_U8;
             }
-            ast[i]->codec->channels = (smk->aflags[i] & SMK_AUD_STEREO) ? 2 : 1;
+            if (smk->aflags[i] & SMK_AUD_STEREO) {
+                ast[i]->codec->channels       = 2;
+                ast[i]->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+            } else {
+                ast[i]->codec->channels       = 1;
+                ast[i]->codec->channel_layout = AV_CH_LAYOUT_MONO;
+            }
             ast[i]->codec->sample_rate = smk->rates[i];
             ast[i]->codec->bits_per_coded_sample = (smk->aflags[i] & SMK_AUD_16BITS) ? 16 : 8;
-            if(ast[i]->codec->bits_per_coded_sample == 16 && ast[i]->codec->codec_id == CODEC_ID_PCM_U8)
-                ast[i]->codec->codec_id = CODEC_ID_PCM_S16LE;
+            if(ast[i]->codec->bits_per_coded_sample == 16 && ast[i]->codec->codec_id == AV_CODEC_ID_PCM_U8)
+                ast[i]->codec->codec_id = AV_CODEC_ID_PCM_S16LE;
             avpriv_set_pts_info(ast[i], 64, 1, ast[i]->codec->sample_rate
                     * ast[i]->codec->channels * ast[i]->codec->bits_per_coded_sample / 8);
         }
@@ -203,7 +210,8 @@ static int smacker_read_header(AVFormatContext *s, AVFormatParameters *ap)
 
 
     /* load trees to extradata, they will be unpacked by decoder */
-    st->codec->extradata = av_malloc(smk->treesize + 16);
+    st->codec->extradata = av_mallocz(smk->treesize + 16 +
+                                      FF_INPUT_BUFFER_PADDING_SIZE);
     st->codec->extradata_size = smk->treesize + 16;
     if(!st->codec->extradata){
         av_log(s, AV_LOG_ERROR, "Cannot allocate %i bytes of extradata\n", smk->treesize + 16);
@@ -265,8 +273,15 @@ static int smacker_read_packet(AVFormatContext *s, AVPacket *pkt)
                     sz += (t & 0x7F) + 1;
                     pal += ((t & 0x7F) + 1) * 3;
                 } else if(t & 0x40){ /* copy with offset */
-                    off = avio_r8(s->pb) * 3;
+                    off = avio_r8(s->pb);
                     j = (t & 0x3F) + 1;
+                    if (off + j > 0x100) {
+                        av_log(s, AV_LOG_ERROR,
+                               "Invalid palette update, offset=%d length=%d extends beyond palette size\n",
+                               off, j);
+                        return AVERROR_INVALIDDATA;
+                    }
+                    off *= 3;
                     while(j-- && sz < 256) {
                         *pal++ = oldpal[off + 0];
                         *pal++ = oldpal[off + 1];
@@ -289,17 +304,21 @@ static int smacker_read_packet(AVFormatContext *s, AVPacket *pkt)
         /* if audio chunks are present, put them to stack and retrieve later */
         for(i = 0; i < 7; i++) {
             if(flags & 1) {
-                int size;
-                uint8_t *tmpbuf;
+                uint32_t size;
+                int err;
 
                 size = avio_rl32(s->pb) - 4;
+                if (!size || size > frame_size) {
+                    av_log(s, AV_LOG_ERROR, "Invalid audio part size\n");
+                    return AVERROR_INVALIDDATA;
+                }
                 frame_size -= size;
                 frame_size -= 4;
                 smk->curstream++;
-                tmpbuf = av_realloc(smk->bufs[smk->curstream], size);
-                if (!tmpbuf)
-                    return AVERROR(ENOMEM);
-                smk->bufs[smk->curstream] = tmpbuf;
+                if ((err = av_reallocp(&smk->bufs[smk->curstream], size)) < 0) {
+                    smk->buf_sizes[smk->curstream] = 0;
+                    return err;
+                }
                 smk->buf_sizes[smk->curstream] = size;
                 ret = avio_read(s->pb, smk->bufs[smk->curstream], size);
                 if(ret != size)
@@ -308,7 +327,7 @@ static int smacker_read_packet(AVFormatContext *s, AVPacket *pkt)
             }
             flags >>= 1;
         }
-        if (frame_size < 0)
+        if (frame_size < 0 || frame_size >= INT_MAX/2)
             return AVERROR_INVALIDDATA;
         if (av_new_packet(pkt, frame_size + 769))
             return AVERROR(ENOMEM);
@@ -320,10 +339,13 @@ static int smacker_read_packet(AVFormatContext *s, AVPacket *pkt)
         if(ret != frame_size)
             return AVERROR(EIO);
         pkt->stream_index = smk->videoindex;
+        pkt->pts          = smk->cur_frame;
         pkt->size = ret + 769;
         smk->cur_frame++;
         smk->nextpos = avio_tell(s->pb);
     } else {
+        if (smk->stream_id[smk->curstream] < 0)
+            return AVERROR_INVALIDDATA;
         if (av_new_packet(pkt, smk->buf_sizes[smk->curstream]))
             return AVERROR(ENOMEM);
         memcpy(pkt->data, smk->bufs[smk->curstream], smk->buf_sizes[smk->curstream]);

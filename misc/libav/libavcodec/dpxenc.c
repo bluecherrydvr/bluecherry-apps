@@ -19,12 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/imgutils.h"
 #include "avcodec.h"
+#include "internal.h"
 
 typedef struct DPXContext {
-    AVFrame picture;
     int big_endian;
     int bits_per_component;
     int descriptor;
@@ -34,7 +35,10 @@ static av_cold int encode_init(AVCodecContext *avctx)
 {
     DPXContext *s = avctx->priv_data;
 
-    avctx->coded_frame = &s->picture;
+    avctx->coded_frame = av_frame_alloc();
+    if (!avctx->coded_frame)
+        return AVERROR(ENOMEM);
+
     avctx->coded_frame->pict_type = AV_PICTURE_TYPE_I;
     avctx->coded_frame->key_frame = 1;
 
@@ -43,14 +47,14 @@ static av_cold int encode_init(AVCodecContext *avctx)
     s->descriptor         = 50; /* RGB */
 
     switch (avctx->pix_fmt) {
-    case PIX_FMT_RGB24:
+    case AV_PIX_FMT_RGB24:
         break;
-    case PIX_FMT_RGBA:
+    case AV_PIX_FMT_RGBA:
         s->descriptor = 51; /* RGBA */
         break;
-    case PIX_FMT_RGB48LE:
+    case AV_PIX_FMT_RGB48LE:
         s->big_endian = 0;
-    case PIX_FMT_RGB48BE:
+    case AV_PIX_FMT_RGB48BE:
         s->bits_per_component = avctx->bits_per_raw_sample ? avctx->bits_per_raw_sample : 16;
         break;
     default:
@@ -99,15 +103,23 @@ static void encode_rgb48_10bit(AVCodecContext *avctx, const AVPicture *pic,
     }
 }
 
-static int encode_frame(AVCodecContext *avctx, unsigned char *buf,
-                        int buf_size, void *data)
+static int encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+                        const AVFrame *frame, int *got_packet)
 {
     DPXContext *s = avctx->priv_data;
-    int size;
+    int size, ret;
+    uint8_t *buf;
 
 #define HEADER_SIZE 1664  /* DPX Generic header */
-    if (buf_size < HEADER_SIZE)
-        return -1;
+    if (s->bits_per_component == 10)
+        size = avctx->height * avctx->width * 4;
+    else
+        size = avpicture_get_size(avctx->pix_fmt, avctx->width, avctx->height);
+    if ((ret = ff_alloc_packet(pkt, size + HEADER_SIZE)) < 0) {
+        av_log(avctx, AV_LOG_ERROR, "Error getting output packet.\n");
+        return ret;
+    }
+    buf = pkt->data;
 
     memset(buf, 0, HEADER_SIZE);
 
@@ -117,7 +129,8 @@ static int encode_frame(AVCodecContext *avctx, unsigned char *buf,
     memcpy (buf +   8, "V1.0", 4);
     write32(buf +  20, 1); /* new image */
     write32(buf +  24, HEADER_SIZE);
-    memcpy (buf + 160, LIBAVCODEC_IDENT, FFMIN(sizeof(LIBAVCODEC_IDENT), 100));
+    if (!(avctx->flags & CODEC_FLAG_BITEXACT))
+        memcpy (buf + 160, LIBAVCODEC_IDENT, FFMIN(sizeof(LIBAVCODEC_IDENT), 100));
     write32(buf + 660, 0xFFFFFFFF); /* unencrypted */
 
     /* Image information header */
@@ -138,17 +151,14 @@ static int encode_frame(AVCodecContext *avctx, unsigned char *buf,
     switch (s->bits_per_component) {
     case 8:
     case 16:
-        size = avpicture_layout(data, avctx->pix_fmt,
+        size = avpicture_layout((const AVPicture*)frame, avctx->pix_fmt,
                                 avctx->width, avctx->height,
-                                buf + HEADER_SIZE, buf_size - HEADER_SIZE);
+                                buf + HEADER_SIZE, pkt->size - HEADER_SIZE);
         if (size < 0)
             return size;
         break;
     case 10:
-        size = avctx->height * avctx->width * 4;
-        if (buf_size < HEADER_SIZE + size)
-            return -1;
-        encode_rgb48_10bit(avctx, data, buf + HEADER_SIZE);
+        encode_rgb48_10bit(avctx, (const AVPicture*)frame, buf + HEADER_SIZE);
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Unsupported bit depth: %d\n", s->bits_per_component);
@@ -158,21 +168,32 @@ static int encode_frame(AVCodecContext *avctx, unsigned char *buf,
     size += HEADER_SIZE;
 
     write32(buf + 16, size); /* file size */
-    return size;
+
+    pkt->flags |= AV_PKT_FLAG_KEY;
+    *got_packet = 1;
+
+    return 0;
+}
+
+static av_cold int encode_close(AVCodecContext *avctx)
+{
+    av_frame_free(&avctx->coded_frame);
+    return 0;
 }
 
 AVCodec ff_dpx_encoder = {
     .name = "dpx",
+    .long_name = NULL_IF_CONFIG_SMALL("DPX image"),
     .type = AVMEDIA_TYPE_VIDEO,
-    .id   = CODEC_ID_DPX,
+    .id   = AV_CODEC_ID_DPX,
     .priv_data_size = sizeof(DPXContext),
     .init   = encode_init,
-    .encode = encode_frame,
-    .pix_fmts = (const enum PixelFormat[]){
-        PIX_FMT_RGB24,
-        PIX_FMT_RGBA,
-        PIX_FMT_RGB48LE,
-        PIX_FMT_RGB48BE,
-        PIX_FMT_NONE},
-    .long_name = NULL_IF_CONFIG_SMALL("DPX image"),
+    .encode2 = encode_frame,
+    .close   = encode_close,
+    .pix_fmts = (const enum AVPixelFormat[]){
+        AV_PIX_FMT_RGB24,
+        AV_PIX_FMT_RGBA,
+        AV_PIX_FMT_RGB48LE,
+        AV_PIX_FMT_RGB48BE,
+        AV_PIX_FMT_NONE},
 };

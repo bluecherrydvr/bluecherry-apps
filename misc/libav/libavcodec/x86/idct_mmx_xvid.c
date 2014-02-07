@@ -40,8 +40,14 @@
  */
 
 #include <inttypes.h>
+
+#include "config.h"
 #include "libavcodec/avcodec.h"
+#include "libavutil/mem.h"
+#include "dsputil_x86.h"
 #include "idct_xvid.h"
+
+#if HAVE_MMX_INLINE
 
 //=============================================================================
 // Macros and other preprocessor constants
@@ -501,12 +507,29 @@ __asm__ volatile(
     :: "r"(block), "r"(rounder_0), "r"(tab_i_04_mmx), "r"(tg_1_16));
 }
 
+void ff_idct_xvid_mmx_put(uint8_t *dest, int line_size, int16_t *block)
+{
+    ff_idct_xvid_mmx(block);
+    ff_put_pixels_clamped_mmx(block, dest, line_size);
+}
+
+void ff_idct_xvid_mmx_add(uint8_t *dest, int line_size, int16_t *block)
+{
+    ff_idct_xvid_mmx(block);
+    ff_add_pixels_clamped_mmx(block, dest, line_size);
+}
+
+#endif /* HAVE_MMX_INLINE */
+
+#if HAVE_MMXEXT_INLINE
+
 //-----------------------------------------------------------------------------
 // void idct_xmm(uint16_t block[64]);
 //-----------------------------------------------------------------------------
 
 
-void ff_idct_xvid_mmx2(short *block){
+void ff_idct_xvid_mmxext(short *block)
+{
 __asm__ volatile(
             //# Process each row
     DCT_8_INV_ROW_XMM(0*16(%0), 0*16(%0), 64*0(%2), 8*0(%1))
@@ -524,3 +547,16 @@ __asm__ volatile(
     :: "r"(block), "r"(rounder_0), "r"(tab_i_04_xmm), "r"(tg_1_16));
 }
 
+void ff_idct_xvid_mmxext_put(uint8_t *dest, int line_size, int16_t *block)
+{
+    ff_idct_xvid_mmxext(block);
+    ff_put_pixels_clamped_mmx(block, dest, line_size);
+}
+
+void ff_idct_xvid_mmxext_add(uint8_t *dest, int line_size, int16_t *block)
+{
+    ff_idct_xvid_mmxext(block);
+    ff_add_pixels_clamped_mmx(block, dest, line_size);
+}
+
+#endif /* HAVE_MMXEXT_INLINE */

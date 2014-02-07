@@ -25,6 +25,7 @@
 #include "libavutil/imgutils.h"
 #include "avcodec.h"
 #include "bytestream.h"
+#include "internal.h"
 
 /** Maximum RLE code for bulk copy */
 #define MAX_RLE_BULK   127
@@ -35,7 +36,6 @@
 
 typedef struct QtrleEncContext {
     AVCodecContext *avctx;
-    AVFrame frame;
     int pixel_size;
     AVPicture previous_frame;
     unsigned int max_buf_size;
@@ -59,6 +59,19 @@ typedef struct QtrleEncContext {
     uint8_t* skip_table;
 } QtrleEncContext;
 
+static av_cold int qtrle_encode_end(AVCodecContext *avctx)
+{
+    QtrleEncContext *s = avctx->priv_data;
+
+    av_frame_free(&avctx->coded_frame);
+
+    avpicture_free(&s->previous_frame);
+    av_free(s->rlecode_table);
+    av_free(s->length_table);
+    av_free(s->skip_table);
+    return 0;
+}
+
 static av_cold int qtrle_encode_init(AVCodecContext *avctx)
 {
     QtrleEncContext *s = avctx->priv_data;
@@ -69,13 +82,13 @@ static av_cold int qtrle_encode_init(AVCodecContext *avctx)
     s->avctx=avctx;
 
     switch (avctx->pix_fmt) {
-    case PIX_FMT_RGB555BE:
+    case AV_PIX_FMT_RGB555BE:
         s->pixel_size = 2;
         break;
-    case PIX_FMT_RGB24:
+    case AV_PIX_FMT_RGB24:
         s->pixel_size = 3;
         break;
-    case PIX_FMT_ARGB:
+    case AV_PIX_FMT_ARGB:
         s->pixel_size = 4;
         break;
     default:
@@ -96,18 +109,24 @@ static av_cold int qtrle_encode_init(AVCodecContext *avctx)
         return -1;
     }
 
-    s->max_buf_size = s->avctx->width*s->avctx->height*s->pixel_size /* image base material */
+    s->max_buf_size = s->avctx->width*s->avctx->height*s->pixel_size*2 /* image base material */
                       + 15                                           /* header + footer */
                       + s->avctx->height*2                           /* skip code+rle end */
                       + s->avctx->width/MAX_RLE_BULK + 1             /* rle codes */;
-    avctx->coded_frame = &s->frame;
+
+    avctx->coded_frame = av_frame_alloc();
+    if (!avctx->coded_frame) {
+        qtrle_encode_end(avctx);
+        return AVERROR(ENOMEM);
+    }
+
     return 0;
 }
 
 /**
  * Compute the best RLE sequence for a line
  */
-static void qtrle_encode_line(QtrleEncContext *s, AVFrame *p, int line, uint8_t **buf)
+static void qtrle_encode_line(QtrleEncContext *s, const AVFrame *p, int line, uint8_t **buf)
 {
     int width=s->avctx->width;
     int i;
@@ -120,7 +139,7 @@ static void qtrle_encode_line(QtrleEncContext *s, AVFrame *p, int line, uint8_t 
     unsigned int skipcount;
     /* This will be the number of consecutive equal pixels in the current
      * frame, starting from the ith one also */
-    unsigned int av_uninit(repeatcount);
+    unsigned int repeatcount;
 
     /* The cost of the three different possibilities */
     int total_bulk_cost;
@@ -140,7 +159,7 @@ static void qtrle_encode_line(QtrleEncContext *s, AVFrame *p, int line, uint8_t 
 
     for (i = width - 1; i >= 0; i--) {
 
-        if (!s->frame.key_frame && !memcmp(this_line, prev_line, s->pixel_size))
+        if (!s->avctx->coded_frame->key_frame && !memcmp(this_line, prev_line, s->pixel_size))
             skipcount = FFMIN(skipcount + 1, MAX_RLE_SKIP);
         else
             skipcount = 0;
@@ -237,14 +256,14 @@ static void qtrle_encode_line(QtrleEncContext *s, AVFrame *p, int line, uint8_t 
 }
 
 /** Encode frame including header */
-static int encode_frame(QtrleEncContext *s, AVFrame *p, uint8_t *buf)
+static int encode_frame(QtrleEncContext *s, const AVFrame *p, uint8_t *buf)
 {
     int i;
     int start_line = 0;
     int end_line = s->avctx->height;
     uint8_t *orig_buf = buf;
 
-    if (!s->frame.key_frame) {
+    if (!s->avctx->coded_frame->key_frame) {
         unsigned line_size = s->avctx->width * s->pixel_size;
         for (start_line = 0; start_line < s->avctx->height; start_line++)
             if (memcmp(p->data[0] + start_line*p->linesize[0],
@@ -278,19 +297,17 @@ static int encode_frame(QtrleEncContext *s, AVFrame *p, uint8_t *buf)
     return buf - orig_buf;
 }
 
-static int qtrle_encode_frame(AVCodecContext *avctx, uint8_t *buf, int buf_size, void *data)
+static int qtrle_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+                              const AVFrame *pict, int *got_packet)
 {
     QtrleEncContext * const s = avctx->priv_data;
-    AVFrame *pict = data;
-    AVFrame * const p = &s->frame;
-    int chunksize;
+    AVFrame * const p = avctx->coded_frame;
+    int ret;
 
-    *p = *pict;
-
-    if (buf_size < s->max_buf_size) {
+    if ((ret = ff_alloc_packet(pkt, s->max_buf_size)) < 0) {
         /* Upper bound check for compressed data */
-        av_log(avctx, AV_LOG_ERROR, "buf_size %d <  %d\n", buf_size, s->max_buf_size);
-        return -1;
+        av_log(avctx, AV_LOG_ERROR, "Error getting output packet of size %d.\n", s->max_buf_size);
+        return ret;
     }
 
     if (avctx->gop_size == 0 || (s->avctx->frame_number % avctx->gop_size) == 0) {
@@ -303,32 +320,29 @@ static int qtrle_encode_frame(AVCodecContext *avctx, uint8_t *buf, int buf_size,
         p->key_frame = 0;
     }
 
-    chunksize = encode_frame(s, pict, buf);
+    pkt->size = encode_frame(s, pict, pkt->data);
 
     /* save the current frame */
-    av_picture_copy(&s->previous_frame, (AVPicture *)p, avctx->pix_fmt, avctx->width, avctx->height);
-    return chunksize;
-}
+    av_picture_copy(&s->previous_frame, (const AVPicture *)pict,
+                    avctx->pix_fmt, avctx->width, avctx->height);
 
-static av_cold int qtrle_encode_end(AVCodecContext *avctx)
-{
-    QtrleEncContext *s = avctx->priv_data;
+    if (p->key_frame)
+        pkt->flags |= AV_PKT_FLAG_KEY;
+    *got_packet = 1;
 
-    avpicture_free(&s->previous_frame);
-    av_free(s->rlecode_table);
-    av_free(s->length_table);
-    av_free(s->skip_table);
     return 0;
 }
 
 AVCodec ff_qtrle_encoder = {
     .name           = "qtrle",
+    .long_name      = NULL_IF_CONFIG_SMALL("QuickTime Animation (RLE) video"),
     .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = CODEC_ID_QTRLE,
+    .id             = AV_CODEC_ID_QTRLE,
     .priv_data_size = sizeof(QtrleEncContext),
     .init           = qtrle_encode_init,
-    .encode         = qtrle_encode_frame,
+    .encode2        = qtrle_encode_frame,
     .close          = qtrle_encode_end,
-    .pix_fmts = (const enum PixelFormat[]){PIX_FMT_RGB24, PIX_FMT_RGB555BE, PIX_FMT_ARGB, PIX_FMT_NONE},
-    .long_name = NULL_IF_CONFIG_SMALL("QuickTime Animation (RLE) video"),
+    .pix_fmts       = (const enum AVPixelFormat[]){
+        AV_PIX_FMT_RGB24, AV_PIX_FMT_RGB555BE, AV_PIX_FMT_ARGB, AV_PIX_FMT_NONE
+    },
 };

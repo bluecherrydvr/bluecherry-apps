@@ -76,12 +76,8 @@ the option @var{pixel_format}.
 @item -stats
 Show the stream duration, the codec parameters, the current position in
 the stream and the audio/video synchronisation drift.
-@item -debug
-Print specific debug info.
 @item -bug
 Work around bugs.
-@item -vismv
-Visualize motion vectors.
 @item -fast
 Non-spec-compliant optimizations.
 @item -genpts
@@ -159,6 +155,7 @@ Seek to percentage in file corresponding to fraction of width.
 @c man end
 
 @include eval.texi
+@include decoders.texi
 @include demuxers.texi
 @include muxers.texi
 @include indevs.texi

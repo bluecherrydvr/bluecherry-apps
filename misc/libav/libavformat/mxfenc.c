@@ -30,8 +30,7 @@
  * SMPTE RP224: Registry of SMPTE Universal Labels
  */
 
-//#define DEBUG
-
+#include <inttypes.h>
 #include <math.h>
 #include <time.h>
 
@@ -82,13 +81,13 @@ typedef struct {
 } MXFContainerEssenceEntry;
 
 static const struct {
-    enum CodecID id;
+    enum AVCodecID id;
     int index;
 } mxf_essence_mappings[] = {
-    { CODEC_ID_MPEG2VIDEO, 0 },
-    { CODEC_ID_PCM_S24LE,  1 },
-    { CODEC_ID_PCM_S16LE,  1 },
-    { CODEC_ID_NONE }
+    { AV_CODEC_ID_MPEG2VIDEO, 0 },
+    { AV_CODEC_ID_PCM_S24LE,  1 },
+    { AV_CODEC_ID_PCM_S16LE,  1 },
+    { AV_CODEC_ID_NONE }
 };
 
 static void mxf_write_wav_desc(AVFormatContext *s, AVStream *st);
@@ -366,7 +365,7 @@ static void klv_encode_ber4_length(AVIOContext *pb, int len)
 /*
  * Get essence container ul index
  */
-static int mxf_get_essence_container_ul_index(enum CodecID id)
+static int mxf_get_essence_container_ul_index(enum AVCodecID id)
 {
     int i;
     for (i = 0; mxf_essence_mappings[i].id; i++)
@@ -1183,7 +1182,7 @@ static void mxf_write_klv_fill(AVFormatContext *s)
     }
 }
 
-static void mxf_write_partition(AVFormatContext *s, int bodysid,
+static int mxf_write_partition(AVFormatContext *s, int bodysid,
                                 int indexsid,
                                 const uint8_t *key, int write_metadata)
 {
@@ -1192,6 +1191,7 @@ static void mxf_write_partition(AVFormatContext *s, int bodysid,
     int64_t header_byte_count_offset;
     unsigned index_byte_count = 0;
     uint64_t partition_offset = avio_tell(pb);
+    int err;
 
     if (!mxf->edit_unit_byte_count && mxf->edit_units_count)
         index_byte_count = 85 + 12+(s->nb_streams+1)*6 +
@@ -1206,10 +1206,11 @@ static void mxf_write_partition(AVFormatContext *s, int bodysid,
     }
 
     if (!memcmp(key, body_partition_key, 16)) {
-        mxf->body_partition_offset =
-            av_realloc(mxf->body_partition_offset,
-                       (mxf->body_partitions_count+1)*
-                       sizeof(*mxf->body_partition_offset));
+        if ((err = av_reallocp_array(&mxf->body_partition_offset, mxf->body_partitions_count + 1,
+                                     sizeof(*mxf->body_partition_offset))) < 0) {
+            mxf->body_partitions_count = 0;
+            return err;
+        }
         mxf->body_partition_offset[mxf->body_partitions_count++] = partition_offset;
     }
 
@@ -1274,6 +1275,8 @@ static void mxf_write_partition(AVFormatContext *s, int bodysid,
     }
 
     avio_flush(pb);
+
+    return 0;
 }
 
 static const UID mxf_mpeg2_codec_uls[] = {
@@ -1476,8 +1479,8 @@ static int mxf_write_header(AVFormatContext *s)
                     av_log(s, AV_LOG_ERROR, "MXF D-10 only support one audio track\n");
                     return -1;
                 }
-                if (st->codec->codec_id != CODEC_ID_PCM_S16LE &&
-                    st->codec->codec_id != CODEC_ID_PCM_S24LE) {
+                if (st->codec->codec_id != AV_CODEC_ID_PCM_S16LE &&
+                    st->codec->codec_id != AV_CODEC_ID_PCM_S24LE) {
                     av_log(s, AV_LOG_ERROR, "MXF D-10 only support 16 or 24 bits le audio\n");
                 }
                 sc->index = ((MXFStreamContext*)s->streams[0]->priv_data)->index + 1;
@@ -1519,11 +1522,6 @@ static int mxf_write_header(AVFormatContext *s)
         sc->order = AV_RB32(sc->track_essence_element_key+12);
     }
 
-#if FF_API_TIMESTAMP
-    if (s->timestamp)
-        timestamp = s->timestamp;
-    else
-#endif
     if (t = av_dict_get(s->metadata, "creation_time", NULL, 0))
         timestamp = ff_iso8601_to_unix_time(t->value);
     if (timestamp)
@@ -1550,7 +1548,7 @@ static int mxf_write_header(AVFormatContext *s)
 static const uint8_t system_metadata_pack_key[]        = { 0x06,0x0E,0x2B,0x34,0x02,0x05,0x01,0x01,0x0D,0x01,0x03,0x01,0x04,0x01,0x01,0x00 };
 static const uint8_t system_metadata_package_set_key[] = { 0x06,0x0E,0x2B,0x34,0x02,0x43,0x01,0x01,0x0D,0x01,0x03,0x01,0x04,0x01,0x02,0x01 };
 
-static uint32_t ff_framenum_to_12m_time_code(unsigned frame, int drop, int fps)
+static uint32_t framenum_to_12m_time_code(unsigned frame, int drop, int fps)
 {
     return (0                                    << 31) | // color frame flag
            (drop                                 << 30) | // drop  frame flag
@@ -1596,7 +1594,8 @@ static void mxf_write_system_item(AVFormatContext *s)
     avio_wb64(pb, 0); // creation date/time stamp
 
     avio_w8(pb, 0x81); // SMPTE 12M time code
-    time_code = ff_framenum_to_12m_time_code(frame, mxf->timecode_drop_frame, mxf->timecode_base);
+    time_code = framenum_to_12m_time_code(frame, mxf->timecode_drop_frame,
+                                          mxf->timecode_base);
     avio_wb32(pb, time_code);
     avio_wb32(pb, 0); // binary group data
     avio_wb64(pb, 0);
@@ -1657,7 +1656,7 @@ static void mxf_write_d10_audio_packet(AVFormatContext *s, AVStream *st, AVPacke
     while (samples < end) {
         for (i = 0; i < st->codec->channels; i++) {
             uint32_t sample;
-            if (st->codec->codec_id == CODEC_ID_PCM_S24LE) {
+            if (st->codec->codec_id == AV_CODEC_ID_PCM_S24LE) {
                 sample = AV_RL24(samples)<< 4;
                 samples += 3;
             } else {
@@ -1678,17 +1677,18 @@ static int mxf_write_packet(AVFormatContext *s, AVPacket *pkt)
     AVStream *st = s->streams[pkt->stream_index];
     MXFStreamContext *sc = st->priv_data;
     MXFIndexEntry ie = {0};
+    int err;
 
     if (!mxf->edit_unit_byte_count && !(mxf->edit_units_count % EDIT_UNITS_PER_BODY)) {
-        mxf->index_entries = av_realloc(mxf->index_entries,
-            (mxf->edit_units_count + EDIT_UNITS_PER_BODY)*sizeof(*mxf->index_entries));
-        if (!mxf->index_entries) {
+        if ((err = av_reallocp_array(&mxf->index_entries, mxf->edit_units_count
+                                     + EDIT_UNITS_PER_BODY, sizeof(*mxf->index_entries))) < 0) {
+            mxf->edit_units_count = 0;
             av_log(s, AV_LOG_ERROR, "could not allocate index entries\n");
-            return -1;
+            return err;
         }
     }
 
-    if (st->codec->codec_id == CODEC_ID_MPEG2VIDEO) {
+    if (st->codec->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
         if (!mxf_parse_mpeg2_frame(s, st, pkt, &ie)) {
             av_log(s, AV_LOG_ERROR, "could not get mpeg2 profile and level\n");
             return -1;
@@ -1697,11 +1697,13 @@ static int mxf_write_packet(AVFormatContext *s, AVPacket *pkt)
 
     if (!mxf->header_written) {
         if (mxf->edit_unit_byte_count) {
-            mxf_write_partition(s, 1, 2, header_open_partition_key, 1);
+            if ((err = mxf_write_partition(s, 1, 2, header_open_partition_key, 1)) < 0)
+                return err;
             mxf_write_klv_fill(s);
             mxf_write_index_table_segment(s);
         } else {
-            mxf_write_partition(s, 0, 0, header_open_partition_key, 1);
+            if ((err = mxf_write_partition(s, 0, 0, header_open_partition_key, 1)) < 0)
+                return err;
         }
         mxf->header_written = 1;
     }
@@ -1711,8 +1713,8 @@ static int mxf_write_packet(AVFormatContext *s, AVPacket *pkt)
             (!mxf->edit_units_count || mxf->edit_units_count > EDIT_UNITS_PER_BODY) &&
             !(ie.flags & 0x33)) { // I frame, Gop start
             mxf_write_klv_fill(s);
-            mxf_write_partition(s, 1, 2, body_partition_key, 0);
-
+            if ((err = mxf_write_partition(s, 1, 2, body_partition_key, 0)) < 0)
+                return err;
             mxf_write_klv_fill(s);
             mxf_write_index_table_segment(s);
         }
@@ -1781,16 +1783,18 @@ static int mxf_write_footer(AVFormatContext *s)
 {
     MXFContext *mxf = s->priv_data;
     AVIOContext *pb = s->pb;
+    int err;
 
     mxf->duration = mxf->last_indexed_edit_unit + mxf->edit_units_count;
 
     mxf_write_klv_fill(s);
     mxf->footer_partition_offset = avio_tell(pb);
     if (mxf->edit_unit_byte_count) { // no need to repeat index
-        mxf_write_partition(s, 0, 0, footer_partition_key, 0);
+        if ((err = mxf_write_partition(s, 0, 0, footer_partition_key, 0)) < 0)
+            return err;
     } else {
-        mxf_write_partition(s, 0, 2, footer_partition_key, 0);
-
+        if ((err = mxf_write_partition(s, 0, 2, footer_partition_key, 0)) < 0)
+            return err;
         mxf_write_klv_fill(s);
         mxf_write_index_table_segment(s);
     }
@@ -1801,15 +1805,15 @@ static int mxf_write_footer(AVFormatContext *s)
     if (s->pb->seekable) {
         avio_seek(pb, 0, SEEK_SET);
         if (mxf->edit_unit_byte_count) {
-            mxf_write_partition(s, 1, 2, header_closed_partition_key, 1);
+            if ((err = mxf_write_partition(s, 1, 2, header_closed_partition_key, 1)) < 0)
+                return err;
             mxf_write_klv_fill(s);
             mxf_write_index_table_segment(s);
         } else {
-            mxf_write_partition(s, 0, 0, header_closed_partition_key, 1);
+            if ((err = mxf_write_partition(s, 0, 0, header_closed_partition_key, 1)) < 0)
+                return err;
         }
     }
-
-    avio_flush(pb);
 
     ff_audio_interleave_close(s);
 
@@ -1863,7 +1867,7 @@ static int mxf_interleave_get_packet(AVFormatContext *s, AVPacket *out, AVPacket
         }
 
         *out = pktl->pkt;
-        //av_log(s, AV_LOG_DEBUG, "out st:%d dts:%lld\n", (*out).stream_index, (*out).dts);
+        av_dlog(s, "out st:%d dts:%"PRId64"\n", (*out).stream_index, (*out).dts);
         s->packet_buffer = pktl->next;
         if(s->streams[pktl->pkt.stream_index]->last_in_packet_buffer == pktl)
             s->streams[pktl->pkt.stream_index]->last_in_packet_buffer= NULL;
@@ -1895,12 +1899,12 @@ static int mxf_interleave(AVFormatContext *s, AVPacket *out, AVPacket *pkt, int 
 
 AVOutputFormat ff_mxf_muxer = {
     .name              = "mxf",
-    .long_name         = NULL_IF_CONFIG_SMALL("Material eXchange Format"),
+    .long_name         = NULL_IF_CONFIG_SMALL("MXF (Material eXchange Format)"),
     .mime_type         = "application/mxf",
     .extensions        = "mxf",
     .priv_data_size    = sizeof(MXFContext),
-    .audio_codec       = CODEC_ID_PCM_S16LE,
-    .video_codec       = CODEC_ID_MPEG2VIDEO,
+    .audio_codec       = AV_CODEC_ID_PCM_S16LE,
+    .video_codec       = AV_CODEC_ID_MPEG2VIDEO,
     .write_header      = mxf_write_header,
     .write_packet      = mxf_write_packet,
     .write_trailer     = mxf_write_footer,
@@ -1910,11 +1914,11 @@ AVOutputFormat ff_mxf_muxer = {
 
 AVOutputFormat ff_mxf_d10_muxer = {
     .name              = "mxf_d10",
-    .long_name         = NULL_IF_CONFIG_SMALL("Material eXchange Format, D-10 Mapping"),
+    .long_name         = NULL_IF_CONFIG_SMALL("MXF (Material eXchange Format) D-10 Mapping"),
     .mime_type         = "application/mxf",
     .priv_data_size    = sizeof(MXFContext),
-    .audio_codec       = CODEC_ID_PCM_S16LE,
-    .video_codec       = CODEC_ID_MPEG2VIDEO,
+    .audio_codec       = AV_CODEC_ID_PCM_S16LE,
+    .video_codec       = AV_CODEC_ID_MPEG2VIDEO,
     .write_header      = mxf_write_header,
     .write_packet      = mxf_write_packet,
     .write_trailer     = mxf_write_footer,

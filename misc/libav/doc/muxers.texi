@@ -13,7 +13,7 @@ You can disable all the muxers with the configure option
 with the options @code{--enable-muxer=@var{MUXER}} /
 @code{--disable-muxer=@var{MUXER}}.
 
-The option @code{-formats} of the ff* tools will display the list of
+The option @code{-formats} of the av* tools will display the list of
 enabled muxers.
 
 A description of some of the currently available muxers follows.
@@ -90,6 +90,32 @@ avconv -i INPUT -c:a pcm_u8 -c:v mpeg2video -f framecrc -
 
 See also the @ref{crc} muxer.
 
+@anchor{hls}
+@section hls
+
+Apple HTTP Live Streaming muxer that segments MPEG-TS according to
+the HTTP Live Streaming specification.
+
+It creates a playlist file and numbered segment files. The output
+filename specifies the playlist filename; the segment filenames
+receive the same basename as the playlist, a sequential number and
+a .ts extension.
+
+@example
+avconv -i in.nut out.m3u8
+@end example
+
+@table @option
+@item -hls_time @var{seconds}
+Set the segment length in seconds.
+@item -hls_list_size @var{size}
+Set the maximum number of playlist entries.
+@item -hls_wrap @var{wrap}
+Set the number after which index wraps.
+@item -start_number @var{number}
+Start the sequence from @var{number}.
+@end table
+
 @anchor{image2}
 @section image2
 
@@ -140,6 +166,89 @@ Note also that the pattern must not necessarily contain "%d" or
 @file{img.jpeg} from the input video you can employ the command:
 @example
 avconv -i in.avi -f image2 -frames:v 1 img.jpeg
+@end example
+
+@table @option
+@item -start_number @var{number}
+Start the sequence from @var{number}.
+
+@item -update @var{number}
+If @var{number} is nonzero, the filename will always be interpreted as just a
+filename, not a pattern, and this file will be continuously overwritten with new
+images.
+
+@end table
+
+@section MOV/MP4/ISMV
+
+The mov/mp4/ismv muxer supports fragmentation. Normally, a MOV/MP4
+file has all the metadata about all packets stored in one location
+(written at the end of the file, it can be moved to the start for
+better playback using the @command{qt-faststart} tool). A fragmented
+file consists of a number of fragments, where packets and metadata
+about these packets are stored together. Writing a fragmented
+file has the advantage that the file is decodable even if the
+writing is interrupted (while a normal MOV/MP4 is undecodable if
+it is not properly finished), and it requires less memory when writing
+very long files (since writing normal MOV/MP4 files stores info about
+every single packet in memory until the file is closed). The downside
+is that it is less compatible with other applications.
+
+Fragmentation is enabled by setting one of the AVOptions that define
+how to cut the file into fragments:
+
+@table @option
+@item -movflags frag_keyframe
+Start a new fragment at each video keyframe.
+@item -frag_duration @var{duration}
+Create fragments that are @var{duration} microseconds long.
+@item -frag_size @var{size}
+Create fragments that contain up to @var{size} bytes of payload data.
+@item -movflags frag_custom
+Allow the caller to manually choose when to cut fragments, by
+calling @code{av_write_frame(ctx, NULL)} to write a fragment with
+the packets written so far. (This is only useful with other
+applications integrating libavformat, not from @command{avconv}.)
+@item -min_frag_duration @var{duration}
+Don't create fragments that are shorter than @var{duration} microseconds long.
+@end table
+
+If more than one condition is specified, fragments are cut when
+one of the specified conditions is fulfilled. The exception to this is
+@code{-min_frag_duration}, which has to be fulfilled for any of the other
+conditions to apply.
+
+Additionally, the way the output file is written can be adjusted
+through a few other options:
+
+@table @option
+@item -movflags empty_moov
+Write an initial moov atom directly at the start of the file, without
+describing any samples in it. Generally, an mdat/moov pair is written
+at the start of the file, as a normal MOV/MP4 file, containing only
+a short portion of the file. With this option set, there is no initial
+mdat atom, and the moov atom only describes the tracks but has
+a zero duration.
+
+Files written with this option set do not work in QuickTime.
+This option is implicitly set when writing ismv (Smooth Streaming) files.
+@item -movflags separate_moof
+Write a separate moof (movie fragment) atom for each track. Normally,
+packets for all tracks are written in a moof atom (which is slightly
+more efficient), but with this option set, the muxer writes one moof/mdat
+pair for each track, making it easier to separate tracks.
+
+This option is implicitly set when writing ismv (Smooth Streaming) files.
+@item -movflags faststart
+Run a second pass moving the index (moov atom) to the beginning of the file.
+This operation can take a while, and will not work in various situations such
+as fragmented output, thus it is not enabled by default.
+@end table
+
+Smooth Streaming content can be pushed in real time to a publishing
+point on IIS with this muxer. Example:
+@example
+avconv -re @var{<normal input/transcoding options>} -movflags isml+frag_keyframe -f ismv http://server/publishingpoint.isml/Streams(Encoder1)
 @end example
 
 @section mpegts
@@ -268,6 +377,27 @@ For example a 3D WebM clip can be created using the following command line:
 avconv -i sample_left_right_clip.mpg -an -c:v libvpx -metadata STEREO_MODE=left_right -y stereo_clip.webm
 @end example
 
+This muxer supports the following options:
+
+@table @option
+
+@item reserve_index_space
+By default, this muxer writes the index for seeking (called cues in Matroska
+terms) at the end of the file, because it cannot know in advance how much space
+to leave for the index at the beginning of the file. However for some use cases
+-- e.g.  streaming where seeking is possible but slow -- it is useful to put the
+index at the beginning of the file.
+
+If this option is set to a non-zero value, the muxer will reserve a given amount
+of space in the file header and then try to write the cues there when the muxing
+finishes. If the available space does not suffice, muxing will fail. A safe size
+for most use cases should be about 50kB per hour of video.
+
+Note that cues are only written if the output is seekable and this option will
+have no effect if it is not.
+
+@end table
+
 @section segment
 
 Basic stream segmenter.
@@ -292,11 +422,70 @@ Set segment duration to @var{t} seconds.
 Generate also a listfile named @var{name}.
 @item segment_list_size @var{size}
 Overwrite the listfile once it reaches @var{size} entries.
+@item segment_wrap @var{limit}
+Wrap around segment index once it reaches @var{limit}.
 @end table
 
 @example
 avconv -i in.mkv -c copy -map 0 -f segment -list out.list out%03d.nut
 @end example
 
+@section mp3
+
+The MP3 muxer writes a raw MP3 stream with an ID3v2 header at the beginning and
+optionally an ID3v1 tag at the end. ID3v2.3 and ID3v2.4 are supported, the
+@code{id3v2_version} option controls which one is used. Setting
+@code{id3v2_version} to 0 will disable the ID3v2 header completely. The legacy
+ID3v1 tag is not written by default, but may be enabled with the
+@code{write_id3v1} option.
+
+The muxer may also write a Xing frame at the beginning, which contains the
+number of frames in the file. It is useful for computing duration of VBR files.
+The Xing frame is written if the output stream is seekable and if the
+@code{write_xing} option is set to 1 (the default).
+
+The muxer supports writing ID3v2 attached pictures (APIC frames). The pictures
+are supplied to the muxer in form of a video stream with a single packet. There
+can be any number of those streams, each will correspond to a single APIC frame.
+The stream metadata tags @var{title} and @var{comment} map to APIC
+@var{description} and @var{picture type} respectively. See
+@url{http://id3.org/id3v2.4.0-frames} for allowed picture types.
+
+Note that the APIC frames must be written at the beginning, so the muxer will
+buffer the audio frames until it gets all the pictures. It is therefore advised
+to provide the pictures as soon as possible to avoid excessive buffering.
+
+Examples:
+
+Write an mp3 with an ID3v2.3 header and an ID3v1 footer:
+@example
+avconv -i INPUT -id3v2_version 3 -write_id3v1 1 out.mp3
+@end example
+
+Attach a picture to an mp3:
+@example
+avconv -i input.mp3 -i cover.png -c copy -metadata:s:v title="Album cover"
+-metadata:s:v comment="Cover (Front)" out.mp3
+@end example
+
+Write a "clean" MP3 without any extra features:
+@example
+avconv -i input.wav -write_xing 0 -id3v2_version 0 out.mp3
+@end example
+
+@section ogg
+
+Ogg container muxer.
+
+@table @option
+@item -page_duration @var{duration}
+Preferred page duration, in microseconds. The muxer will attempt to create
+pages that are approximately @var{duration} microseconds long. This allows the
+user to compromise between seek granularity and container overhead. The default
+is 1 second. A value of 0 will fill all segments, making pages as large as
+possible. A value of 1 will effectively use 1 packet-per-page in most
+situations, giving a small seek granularity at the cost of additional container
+overhead.
+@end table
 
 @c man end MUXERS

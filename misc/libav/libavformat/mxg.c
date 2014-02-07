@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include "libavutil/channel_layout.h"
+#include "libavutil/internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavcodec/mjpeg.h"
 #include "avformat.h"
@@ -37,7 +39,7 @@ typedef struct MXGContext {
     unsigned int cache_size;
 } MXGContext;
 
-static int mxg_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int mxg_read_header(AVFormatContext *s)
 {
     AVStream *video_st, *audio_st;
     MXGContext *mxg = s->priv_data;
@@ -47,15 +49,16 @@ static int mxg_read_header(AVFormatContext *s, AVFormatParameters *ap)
     if (!video_st)
         return AVERROR(ENOMEM);
     video_st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-    video_st->codec->codec_id = CODEC_ID_MXPEG;
+    video_st->codec->codec_id = AV_CODEC_ID_MXPEG;
     avpriv_set_pts_info(video_st, 64, 1, 1000000);
 
     audio_st = avformat_new_stream(s, NULL);
     if (!audio_st)
         return AVERROR(ENOMEM);
     audio_st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-    audio_st->codec->codec_id = CODEC_ID_PCM_ALAW;
+    audio_st->codec->codec_id = AV_CODEC_ID_PCM_ALAW;
     audio_st->codec->channels = 1;
+    audio_st->codec->channel_layout = AV_CH_LAYOUT_MONO;
     audio_st->codec->sample_rate = 8000;
     audio_st->codec->bits_per_coded_sample = 8;
     audio_st->codec->block_align = 1;
@@ -166,7 +169,12 @@ static int mxg_read_packet(AVFormatContext *s, AVPacket *pkt)
 
                 pkt->pts = pkt->dts = mxg->dts;
                 pkt->stream_index = 0;
+#if FF_API_DESTRUCT_PACKET
+FF_DISABLE_DEPRECATION_WARNINGS
                 pkt->destruct = NULL;
+FF_ENABLE_DEPRECATION_WARNINGS
+#endif
+                pkt->buf  = NULL;
                 pkt->size = mxg->buffer_ptr - mxg->soi_ptr;
                 pkt->data = mxg->soi_ptr;
 
@@ -204,7 +212,12 @@ static int mxg_read_packet(AVFormatContext *s, AVPacket *pkt)
                     /* time (GMT) of first sample in usec since 1970, little-endian */
                     pkt->pts = pkt->dts = AV_RL64(startmarker_ptr + 8);
                     pkt->stream_index = 1;
+#if FF_API_DESTRUCT_PACKET
+FF_DISABLE_DEPRECATION_WARNINGS
                     pkt->destruct = NULL;
+FF_ENABLE_DEPRECATION_WARNINGS
+#endif
+                    pkt->buf  = NULL;
                     pkt->size = size - 14;
                     pkt->data = startmarker_ptr + 16;
 
@@ -240,11 +253,11 @@ static int mxg_close(struct AVFormatContext *s)
 }
 
 AVInputFormat ff_mxg_demuxer = {
-    .name = "mxg",
-    .long_name = NULL_IF_CONFIG_SMALL("MxPEG clip file format"),
+    .name           = "mxg",
+    .long_name      = NULL_IF_CONFIG_SMALL("MxPEG clip"),
     .priv_data_size = sizeof(MXGContext),
-    .read_header = mxg_read_header,
-    .read_packet = mxg_read_packet,
-    .read_close = mxg_close,
-    .extensions = "mxg"
+    .read_header    = mxg_read_header,
+    .read_packet    = mxg_read_packet,
+    .read_close     = mxg_close,
+    .extensions     = "mxg",
 };

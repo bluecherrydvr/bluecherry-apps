@@ -27,6 +27,8 @@
 #include "avcodec.h"
 #include "dsputil.h"
 #include "bytestream.h"
+#include "internal.h"
+
 #include "libavutil/colorspace.h"
 #include "libavutil/imgutils.h"
 
@@ -45,6 +47,8 @@ typedef struct PGSSubPresentation {
     int y;
     int id_number;
     int object_number;
+    uint8_t composition_flag;
+    int64_t pts;
 } PGSSubPresentation;
 
 typedef struct PGSSubPicture {
@@ -63,7 +67,7 @@ typedef struct PGSSubContext {
 
 static av_cold int init_decoder(AVCodecContext *avctx)
 {
-    avctx->pix_fmt = PIX_FMT_PAL8;
+    avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
     return 0;
 }
@@ -270,20 +274,24 @@ static void parse_palette_segment(AVCodecContext *avctx,
  * @todo TODO: Implement cropping
  * @todo TODO: Implement forcing of subtitles
  */
-static void parse_presentation_segment(AVCodecContext *avctx,
-                                       const uint8_t *buf, int buf_size)
+static int parse_presentation_segment(AVCodecContext *avctx,
+                                      const uint8_t *buf, int buf_size,
+                                      int64_t pts)
 {
     PGSSubContext *ctx = avctx->priv_data;
 
-    int x, y;
+    int x, y, ret;
 
     int w = bytestream_get_be16(&buf);
     int h = bytestream_get_be16(&buf);
 
+    ctx->presentation.pts = pts;
+
     av_dlog(avctx, "Video Dimensions %dx%d\n",
             w, h);
-    if (av_image_check_size(w, h, 0, avctx) >= 0)
-        avcodec_set_dimensions(avctx, w, h);
+    ret = ff_set_dimensions(avctx, w, h);
+    if (ret < 0)
+        return ret;
 
     /* Skip 1 bytes of unknown, frame rate? */
     buf++;
@@ -299,16 +307,17 @@ static void parse_presentation_segment(AVCodecContext *avctx,
     buf += 3;
 
     ctx->presentation.object_number = bytestream_get_byte(&buf);
+    ctx->presentation.composition_flag = 0;
     if (!ctx->presentation.object_number)
-        return;
+        return 0;
 
     /*
-     * Skip 4 bytes of unknown:
+     * Skip 3 bytes of unknown:
      *     object_id_ref (2 bytes),
      *     window_id_ref,
-     *     composition_flag (0x80 - object cropped, 0x40 - object forced)
      */
-    buf += 4;
+    buf += 3;
+    ctx->presentation.composition_flag = bytestream_get_byte(&buf);
 
     x = bytestream_get_be16(&buf);
     y = bytestream_get_be16(&buf);
@@ -326,6 +335,8 @@ static void parse_presentation_segment(AVCodecContext *avctx,
     /* Fill in dimensions */
     ctx->presentation.x = x;
     ctx->presentation.y = y;
+
+    return 0;
 }
 
 /**
@@ -356,6 +367,8 @@ static int display_end_segment(AVCodecContext *avctx, void *data,
      */
 
     memset(sub, 0, sizeof(*sub));
+    sub->pts = ctx->presentation.pts;
+
     // Blank if last object_number was 0.
     // Note that this may be wrong for more complex subtitles.
     if (!ctx->presentation.object_number)
@@ -367,6 +380,9 @@ static int display_end_segment(AVCodecContext *avctx, void *data,
     sub->rects     = av_mallocz(sizeof(*sub->rects));
     sub->rects[0]  = av_mallocz(sizeof(*sub->rects[0]));
     sub->num_rects = 1;
+
+    if (ctx->presentation.composition_flag & 0x40)
+        sub->rects[0]->flags |= AV_SUBTITLE_FLAG_FORCED;
 
     sub->rects[0]->x    = ctx->presentation.x;
     sub->rects[0]->y    = ctx->presentation.y;
@@ -402,7 +418,7 @@ static int decode(AVCodecContext *avctx, void *data, int *data_size,
     const uint8_t *buf_end;
     uint8_t       segment_type;
     int           segment_length;
-    int i;
+    int i, ret;
 
     av_dlog(avctx, "PGS sub packet:\n");
 
@@ -441,12 +457,14 @@ static int decode(AVCodecContext *avctx, void *data, int *data_size,
             parse_picture_segment(avctx, buf, segment_length);
             break;
         case PRESENTATION_SEGMENT:
-            parse_presentation_segment(avctx, buf, segment_length);
+            ret = parse_presentation_segment(avctx, buf, segment_length, avpkt->pts);
+            if (ret < 0)
+                return ret;
             break;
         case WINDOW_SEGMENT:
             /*
              * Window Segment Structure (No new information provided):
-             *     2 bytes: Unkown,
+             *     2 bytes: Unknown,
              *     2 bytes: X position of subtitle,
              *     2 bytes: Y position of subtitle,
              *     2 bytes: Width of subtitle,
@@ -470,11 +488,11 @@ static int decode(AVCodecContext *avctx, void *data, int *data_size,
 
 AVCodec ff_pgssub_decoder = {
     .name           = "pgssub",
+    .long_name      = NULL_IF_CONFIG_SMALL("HDMV Presentation Graphic Stream subtitles"),
     .type           = AVMEDIA_TYPE_SUBTITLE,
-    .id             = CODEC_ID_HDMV_PGS_SUBTITLE,
+    .id             = AV_CODEC_ID_HDMV_PGS_SUBTITLE,
     .priv_data_size = sizeof(PGSSubContext),
     .init           = init_decoder,
     .close          = close_decoder,
     .decode         = decode,
-    .long_name = NULL_IF_CONFIG_SMALL("HDMV Presentation Graphic Stream subtitles"),
 };

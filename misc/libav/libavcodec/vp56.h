@@ -26,18 +26,49 @@
 #ifndef AVCODEC_VP56_H
 #define AVCODEC_VP56_H
 
-#include "vp56data.h"
 #include "dsputil.h"
 #include "get_bits.h"
+#include "hpeldsp.h"
 #include "bytestream.h"
+#include "h264chroma.h"
+#include "videodsp.h"
+#include "vp3dsp.h"
 #include "vp56dsp.h"
 
 typedef struct vp56_context VP56Context;
 
-typedef struct {
-    int16_t x;
+typedef enum {
+    VP56_FRAME_NONE     =-1,
+    VP56_FRAME_CURRENT  = 0,
+    VP56_FRAME_PREVIOUS = 1,
+    VP56_FRAME_GOLDEN   = 2,
+    VP56_FRAME_GOLDEN2  = 3,
+} VP56Frame;
+
+typedef enum {
+    VP56_MB_INTER_NOVEC_PF = 0,  /**< Inter MB, no vector, from previous frame */
+    VP56_MB_INTRA          = 1,  /**< Intra MB */
+    VP56_MB_INTER_DELTA_PF = 2,  /**< Inter MB, above/left vector + delta, from previous frame */
+    VP56_MB_INTER_V1_PF    = 3,  /**< Inter MB, first vector, from previous frame */
+    VP56_MB_INTER_V2_PF    = 4,  /**< Inter MB, second vector, from previous frame */
+    VP56_MB_INTER_NOVEC_GF = 5,  /**< Inter MB, no vector, from golden frame */
+    VP56_MB_INTER_DELTA_GF = 6,  /**< Inter MB, above/left vector + delta, from golden frame */
+    VP56_MB_INTER_4V       = 7,  /**< Inter MB, 4 vectors, from previous frame */
+    VP56_MB_INTER_V1_GF    = 8,  /**< Inter MB, first vector, from golden frame */
+    VP56_MB_INTER_V2_GF    = 9,  /**< Inter MB, second vector, from golden frame */
+} VP56mb;
+
+typedef struct VP56Tree {
+  int8_t val;
+  int8_t prob_idx;
+} VP56Tree;
+
+typedef struct VP56mv {
+    DECLARE_ALIGNED(4, int16_t, x);
     int16_t y;
-} DECLARE_ALIGNED(4, , VP56mv);
+} VP56mv;
+
+#define VP56_SIZE_CHANGE 1
 
 typedef void (*VP56ParseVectorAdjustment)(VP56Context *s,
                                           VP56mv *vect);
@@ -51,7 +82,7 @@ typedef int  (*VP56ParseCoeffModels)(VP56Context *s);
 typedef int  (*VP56ParseHeader)(VP56Context *s, const uint8_t *buf,
                                 int buf_size, int *golden_frame);
 
-typedef struct {
+typedef struct VP56RangeCoder {
     int high;
     int bits; /* stored negated (i.e. negative "bits" is a positive number of
                  bits left) in order to eliminate a negate in cache refilling */
@@ -60,18 +91,18 @@ typedef struct {
     unsigned int code_word;
 } VP56RangeCoder;
 
-typedef struct {
+typedef struct VP56RefDc {
     uint8_t not_null_dc;
     VP56Frame ref_frame;
-    DCTELEM dc_coeff;
+    int16_t dc_coeff;
 } VP56RefDc;
 
-typedef struct {
+typedef struct VP56Macroblock {
     uint8_t type;
     VP56mv mv;
 } VP56Macroblock;
 
-typedef struct {
+typedef struct VP56Model {
     uint8_t coeff_reorder[64];       /* used in vp6 only */
     uint8_t coeff_index_to_pos[64];  /* used in vp6 only */
     uint8_t vector_sig[2];           /* delta sign */
@@ -90,11 +121,13 @@ typedef struct {
 
 struct vp56_context {
     AVCodecContext *avctx;
-    DSPContext dsp;
+    H264ChromaContext h264chroma;
+    HpelDSPContext hdsp;
+    VideoDSPContext vdsp;
+    VP3DSPContext vp3dsp;
     VP56DSPContext vp56dsp;
-    ScanTable scantable;
-    AVFrame frames[4];
-    AVFrame *framep[6];
+    uint8_t idct_scantable[64];
+    AVFrame *frames[4];
     uint8_t *edge_emu_buffer_alloc;
     uint8_t *edge_emu_buffer;
     VP56RangeCoder c;
@@ -112,18 +145,17 @@ struct vp56_context {
     int quantizer;
     uint16_t dequant_dc;
     uint16_t dequant_ac;
-    int8_t *qscale_table;
 
     /* DC predictors management */
     VP56RefDc *above_blocks;
     VP56RefDc left_block[4];
     int above_block_idx[6];
-    DCTELEM prev_dc[3][3];    /* [plan][ref_frame] */
+    int16_t prev_dc[3][3];    /* [plan][ref_frame] */
 
     /* blocks / macroblock */
     VP56mb mb_type;
     VP56Macroblock *macroblocks;
-    DECLARE_ALIGNED(16, DCTELEM, block_coeff)[6][64];
+    DECLARE_ALIGNED(16, int16_t, block_coeff)[6][64];
 
     /* motion vectors */
     VP56mv mv[6];  /* vectors for each block in MB */
@@ -171,10 +203,10 @@ struct vp56_context {
 };
 
 
-void ff_vp56_init(AVCodecContext *avctx, int flip, int has_alpha);
+int ff_vp56_init(AVCodecContext *avctx, int flip, int has_alpha);
 int ff_vp56_free(AVCodecContext *avctx);
 void ff_vp56_init_dequant(VP56Context *s, int quantizer);
-int ff_vp56_decode_frame(AVCodecContext *avctx, void *data, int *data_size,
+int ff_vp56_decode_frame(AVCodecContext *avctx, void *data, int *got_frame,
                          AVPacket *avpkt);
 
 

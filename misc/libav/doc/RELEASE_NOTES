@@ -1,82 +1,81 @@
 Release Notes
 =============
 
-* 0.8 "Forbidden Fruit"
+* 10 "Eks"
 
 General notes
 -------------
 
-This release continues the API cleanups that have begun with the
-previous release. While it is binary compatible with 0.7, many parts of
-the public API were deprecated and will be removed in the git master and
-later releases. Please consult the doc/APIchanges file to see
-intended replacements for the deprecated APIs.
+One of the main features of this release is the addition of reference-counted
+data buffers to Libav and their use in various structures. Specifically, the
+data buffers used by AVPacket and AVFrame can now be reference counted, which
+should allow to significantly simplify many use cases. In addition,
+reference-counted AVFrames can now be used in libavfilter, avoiding the need
+for a separate libavfilter-specific frame structure. Frames can now be passed
+straight from the decoders into filters or from filters to encoders.
 
-Furthermore, our work on the 'ffmpeg' command-line tool has resulted in
-major revisions to its interface. In order to not break existing scripts
-and applications, we have chosen to introduce a new tool called
-'avconv', and keep the traditional 'ffmpeg' frontend for end-user's
-convenience. Please see the Changelog file for details how 'avconv'
-differs from 'ffmpeg'.
+These additions made it necessary to bump the major versions of libavcodec,
+libavformat, libavdevice, libavfilter, and libavutil, which was accompanied by
+dropping some old deprecated APIs. These libraries are thus not ABI- or API-
+compatible with the previous release. All the other libraries (libavresample
+and libswscale) should be both ABI- and API-compatible.
 
-Additionally, this release introduces a number of new interesting codecs
-such as the Apple Prores, Flash Screen Video 2 and Windows Media Image,
-and muxers such as LATM or CELT in Ogg, among many others. Moreover, our
-H.264 decoder has been improved to decode 4:2:2 material and our libx264
-wrapper now allows to produce 4:2:2 and 4:4:4 video.
+Another major point is the inclusion of the HEVC (AKA H.265, the successor of
+H.264) decoder in the main codebase. It was started in 2012 as a Libav Google
+Summer of Code project by Guillaume Martres and subsequently completed with
+the assistance of the OpenHEVC project and several Libav developers.
 
-See the Changelog file for a list of significant changes.
+As usual, this release also contains support for other new formats, many smaller
+new features and countless bug fixes. We can highlight a native VP9 decoder,
+with encoding provided through libvpx, native decoders for WebP, JPEG 2000, and
+AIC, as well as improved WavPack support with encoding through libwavpack,
+support for more AAC flavors (LD - low delay, ELD - enhanced low delay), slice
+multithreading in libavfilter, or muxing chapters in ASF. Furthermore there is
+more fine-grained detection of host and target libc, which should allow better
+portability to various cross compilation scenarios.
+
+See the Changelog file for a fuller list of significant changes.
 
 Please note that our policy on bug reports has not changed. We still only accept
 bug reports against HEAD of the Libav trunk repository. If you are experiencing
 issues with any formally released version of Libav, please try a current version
-of the development code to check if the issue still exists. If it does, make your
-report against the development code following the usual bug reporting guidelines.
+of the development code to check if the issue still exists. If it does, make
+your report against the development code following the usual bug reporting
+guidelines.
 
 
 API changes
 -----------
 
-A number of additional APIs have been introduced and some existing
-functions have been deprecated and are scheduled for removal in the next
-release. Significant API changes include:
+A number of additional APIs have been introduced and some existing functions
+have been deprecated and are scheduled for removal in the next release.
+Significant API changes include:
 
-* new audio decoding API which decodes from an AVPacket to an AVFrame and
-is able to use AVCodecContext.get_buffer() in the similar way as video decoding.
+[libavutil]
++ added the reference-counted buffers API (buffers.h)
++ moved the AVFrame struct to libavutil and added a new API for working with
+  reference-counted AVFrames (frame.h)
 
-* new audio encoding API which encodes from an AVFrame to an AVPacket, thus
-allowing it to properly output timing information and side data.
+[libavcodec]
++ added an API for working with reference-counted AVPackets (av_packet_*)
++- converted VDPAU to the hwaccel framework; the old way of using VDPAU is no
+   longer supported
+- old audio encoding and decoding APIs removed
+- old video encoding API removed
+- deprecated enum CodecID removed (enum AVCodecID should be used instead)
+- deprecated audio resampling API removed (libavresample should be used
+  instead)
 
-* rewritten AVOptions API with better built-in support for private options.
+[libavfilter]
++- replaced AVFilterBufferRef with AVFrame; AVFilterBufferRef and everything
+   related to it still exists, but is deprecated
++ converted all filters to use the AVOptions system for configuration, it is
+  now possible to query the supported options, their values and set them
+  directly with av_opt_*
++ added a slice multithreading framework
++- merged avfiltergraph.h to avfilter.h, using AVFilterGraph is now explicitly
+   mandatory (it was implicitly required even before); added new API for
+   allocating and initializing filters
 
-* private options support for demuxers [avformat_open_input()], muxers
-[avformat_write_header()], encoders and decoders [avcodec_open2()].
-As a result, many format- or codec-specific fields and flags in AVFormatContext
-and AVCodecContext were deprecated -- notably most of CODEC_FLAG2_* and many
-CODEC_FLAG_*.
-
-* new API for custom IO interrupt callbacks.
-
-* #include cleanup in libavutil -- libavutil/avutil.h no longer includes all
-the other headers in libavutil, they must be included manually. One specific
-result is that libavutil/mathematics.h is no longer included from
-libavcodec/avcodec.h, which is a common source of errors.
-
-Please see the file doc/APIchanges for details along with
-similar programmer-centric information.
-
-
-
-Other notable changes
----------------------
-
-Libavcodec and libavformat built as shared libraries now hide non-public
-symbols. This will break applications using those symbols. Possible solutions
-are, in order of preference:
-1) Try finding a way of accomplishing the same with public API.
-2) If there is no corresponding public API, but you think there should be,
-post a request on the user mailing list or IRC channel.
-3) Finally if your program needs access to Libav internals for some special
-reason then the best solution is to link statically.
-
-Please see the Changelog file for a more detailed list of changes.
+Please see the file doc/APIchanges for details along with similar
+programmer-centric information.

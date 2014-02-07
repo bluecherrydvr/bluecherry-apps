@@ -26,7 +26,8 @@
 
 #include "avformat.h"
 
-#define MOV_INDEX_CLUSTER_SIZE 16384
+#define MOV_FRAG_INFO_ALLOC_INCREMENT 64
+#define MOV_INDEX_CLUSTER_SIZE 1024
 #define MOV_TIMESCALE 1000
 
 #define RTP_MAX_PACKET_SIZE 1450
@@ -38,12 +39,14 @@
 // avconv -i testinput.avi  -f psp -r 14.985 -s 320x240 -b 768 -ar 24000 -ab 32 M4V00001.MP4
 #define MODE_3G2  0x10
 #define MODE_IPOD 0x20
+#define MODE_ISM  0x40
+#define MODE_F4V  0x80
 
 typedef struct MOVIentry {
     uint64_t     pos;
     int64_t      dts;
     unsigned int size;
-    unsigned int samplesInChunk;
+    unsigned int samples_in_chunk;
     unsigned int entries;
     int          cts;
 #define MOV_SYNC_SAMPLE         0x0001
@@ -59,36 +62,46 @@ typedef struct HintSample {
     int own_data;
 } HintSample;
 
-typedef struct {
+typedef struct HintSampleQueue {
     int size;
     int len;
     HintSample *samples;
 } HintSampleQueue;
 
-typedef struct MOVIndex {
+typedef struct MOVFragmentInfo {
+    int64_t offset;
+    int64_t time;
+    int64_t duration;
+    int64_t tfrf_offset;
+} MOVFragmentInfo;
+
+typedef struct MOVTrack {
     int         mode;
     int         entry;
     unsigned    timescale;
     uint64_t    time;
-    int64_t     trackDuration;
-    long        sampleCount;
-    long        sampleSize;
-    int         hasKeyframes;
+    int64_t     track_duration;
+    long        sample_count;
+    long        sample_size;
+    int         has_keyframes;
 #define MOV_TRACK_CTTS         0x0001
 #define MOV_TRACK_STPS         0x0002
+#define MOV_TRACK_ENABLED      0x0004
     uint32_t    flags;
     int         language;
-    int         trackID;
+    int         track_id;
     int         tag; ///< stsd fourcc
     AVCodecContext *enc;
 
-    int         vosLen;
-    uint8_t     *vosData;
+    int         vos_len;
+    uint8_t     *vos_data;
     MOVIentry   *cluster;
+    unsigned    cluster_capacity;
     int         audio_vbr;
     int         height; ///< active picture (w/o VBI) height for D-10/IMX
     uint32_t    tref_tag;
     int         tref_id; ///< trackID of the referenced track
+    int64_t     start_dts;
 
     int         hint_track;   ///< the track that hints this track, -1 if no hint track is set
     int         src_track;    ///< the track that this hint track describes
@@ -97,7 +110,29 @@ typedef struct MOVIndex {
     int64_t     cur_rtp_ts_unwrapped;
     uint32_t    max_packet_size;
 
+    int64_t     default_duration;
+    uint32_t    default_sample_flags;
+    uint32_t    default_size;
+
     HintSampleQueue sample_queue;
+
+    AVIOContext *mdat_buf;
+    int64_t     data_offset;
+    int64_t     frag_start;
+    int64_t     tfrf_offset;
+
+    int         nb_frag_info;
+    MOVFragmentInfo *frag_info;
+    unsigned    frag_info_capacity;
+
+    struct {
+        int64_t struct_offset;
+        int     first_packet_seq;
+        int     first_packet_entry;
+        int     packet_seq;
+        int     packet_entry;
+        int     slices;
+    } vc1_info;
 } MOVTrack;
 
 typedef struct MOVMuxContext {
@@ -115,9 +150,26 @@ typedef struct MOVMuxContext {
     int iods_skip;
     int iods_video_profile;
     int iods_audio_profile;
+
+    int fragments;
+    int max_fragment_duration;
+    int min_fragment_duration;
+    int max_fragment_size;
+    int ism_lookahead;
+    AVIOContext *mdat_buf;
+
+    int64_t reserved_moov_pos;
 } MOVMuxContext;
 
 #define FF_MOV_FLAG_RTP_HINT 1
+#define FF_MOV_FLAG_FRAGMENT 2
+#define FF_MOV_FLAG_EMPTY_MOOV 4
+#define FF_MOV_FLAG_FRAG_KEYFRAME 8
+#define FF_MOV_FLAG_SEPARATE_MOOF 16
+#define FF_MOV_FLAG_FRAG_CUSTOM 32
+#define FF_MOV_FLAG_ISML 64
+#define FF_MOV_FLAG_FASTSTART 128
+#define FF_MOV_FLAG_OMIT_TFHD_OFFSET 256
 
 int ff_mov_write_packet(AVFormatContext *s, AVPacket *pkt);
 

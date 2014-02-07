@@ -25,7 +25,15 @@
 #define AVCODEC_VDPAU_H
 
 /**
- * @defgroup Decoder VDPAU Decoder and Renderer
+ * @file
+ * @ingroup lavc_codec_hwaccel_vdpau
+ * Public libavcodec VDPAU header.
+ */
+
+
+/**
+ * @defgroup lavc_codec_hwaccel_vdpau VDPAU Decoder and Renderer
+ * @ingroup lavc_codec_hwaccel
  *
  * VDPAU hardware acceleration has two modules
  * - VDPAU decoding
@@ -38,14 +46,111 @@
  * and rendering (API calls) are done as part of the VDPAU
  * presentation (vo_vdpau.c) module.
  *
- * @defgroup  VDPAU_Decoding VDPAU Decoding
- * @ingroup Decoder
  * @{
  */
 
 #include <vdpau/vdpau.h>
 #include <vdpau/vdpau_x11.h>
 
+#include "libavutil/attributes.h"
+
+#include "avcodec.h"
+#include "version.h"
+
+#if FF_API_BUFS_VDPAU
+union AVVDPAUPictureInfo {
+    VdpPictureInfoH264        h264;
+    VdpPictureInfoMPEG1Or2    mpeg;
+    VdpPictureInfoVC1          vc1;
+    VdpPictureInfoMPEG4Part2 mpeg4;
+};
+#endif
+
+/**
+ * This structure is used to share data between the libavcodec library and
+ * the client video application.
+ * The user shall zero-allocate the structure and make it available as
+ * AVCodecContext.hwaccel_context. Members can be set by the user once
+ * during initialization or through each AVCodecContext.get_buffer()
+ * function call. In any case, they must be valid prior to calling
+ * decoding functions.
+ *
+ * The size of this structure is not a part of the public ABI and must not
+ * be used outside of libavcodec. Use av_vdpau_alloc_context() to allocate an
+ * AVVDPAUContext.
+ */
+typedef struct AVVDPAUContext {
+    /**
+     * VDPAU decoder handle
+     *
+     * Set by user.
+     */
+    VdpDecoder decoder;
+
+    /**
+     * VDPAU decoder render callback
+     *
+     * Set by the user.
+     */
+    VdpDecoderRender *render;
+
+#if FF_API_BUFS_VDPAU
+    /**
+     * VDPAU picture information
+     *
+     * Set by libavcodec.
+     */
+    attribute_deprecated
+    union AVVDPAUPictureInfo info;
+
+    /**
+     * Allocated size of the bitstream_buffers table.
+     *
+     * Set by libavcodec.
+     */
+    attribute_deprecated
+    int bitstream_buffers_allocated;
+
+    /**
+     * Useful bitstream buffers in the bitstream buffers table.
+     *
+     * Set by libavcodec.
+     */
+    attribute_deprecated
+    int bitstream_buffers_used;
+
+   /**
+     * Table of bitstream buffers.
+     * The user is responsible for freeing this buffer using av_freep().
+     *
+     * Set by libavcodec.
+     */
+    attribute_deprecated
+    VdpBitstreamBuffer *bitstream_buffers;
+#endif
+} AVVDPAUContext;
+
+/**
+ * Allocate an AVVDPAUContext.
+ *
+ * @return Newly-allocated AVVDPAUContext or NULL on failure.
+ */
+AVVDPAUContext *av_vdpau_alloc_context(void);
+
+/**
+ * Get a decoder profile that should be used for initializing a VDPAU decoder.
+ * Should be called from the AVCodecContext.get_format() callback.
+ *
+ * @param avctx the codec context being used for decoding the stream
+ * @param profile a pointer into which the result will be written on success.
+ *                The contents of profile are undefined if this function returns
+ *                an error.
+ *
+ * @return 0 on success (non-negative), a negative AVERROR on failure.
+ */
+int av_vdpau_get_profile(AVCodecContext *avctx, VdpDecoderProfile *profile);
+
+#if FF_API_CAP_VDPAU
 /** @brief The videoSurface is used for rendering. */
 #define FF_VDPAU_STATE_USED_FOR_RENDER 1
 
@@ -68,12 +173,7 @@ struct vdpau_render_state {
     int state; ///< Holds FF_VDPAU_STATE_* values.
 
     /** picture parameter information for all supported codecs */
-    union VdpPictureInfo {
-        VdpPictureInfoH264        h264;
-        VdpPictureInfoMPEG1Or2    mpeg;
-        VdpPictureInfoVC1          vc1;
-        VdpPictureInfoMPEG4Part2 mpeg4;
-    } info;
+    union AVVDPAUPictureInfo info;
 
     /** Describe size/location of the compressed video data.
         Set to 0 when freeing bitstream_buffers. */
@@ -82,6 +182,7 @@ struct vdpau_render_state {
     /** The user is responsible for freeing this buffer using av_freep(). */
     VdpBitstreamBuffer *bitstream_buffers;
 };
+#endif
 
 /* @}*/
 

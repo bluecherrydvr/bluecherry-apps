@@ -27,8 +27,8 @@
 
 #include "avformat.h"
 #include "internal.h"
-#include "riff.h"
 #include "isom.h"
+#include "mov_chan.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/intfloat.h"
 #include "libavutil/dict.h"
@@ -102,7 +102,7 @@ static int read_kuki_chunk(AVFormatContext *s, int64_t size)
     if (size < 0 || size > INT_MAX - FF_INPUT_BUFFER_PADDING_SIZE)
         return -1;
 
-    if (st->codec->codec_id == CODEC_ID_AAC) {
+    if (st->codec->codec_id == AV_CODEC_ID_AAC) {
         /* The magic cookie format for AAC is an mp4 esds atom.
            The lavc AAC decoder requires the data from the codec specific
            description as extradata input. */
@@ -113,26 +113,48 @@ static int read_kuki_chunk(AVFormatContext *s, int64_t size)
         ff_mov_read_esds(s, pb, atom);
         skip = size - (avio_tell(pb) - strt);
         if (skip < 0 || !st->codec->extradata ||
-            st->codec->codec_id != CODEC_ID_AAC) {
+            st->codec->codec_id != AV_CODEC_ID_AAC) {
             av_log(s, AV_LOG_ERROR, "invalid AAC magic cookie\n");
             return AVERROR_INVALIDDATA;
         }
         avio_skip(pb, skip);
-    } else if (st->codec->codec_id == CODEC_ID_ALAC) {
+    } else if (st->codec->codec_id == AV_CODEC_ID_ALAC) {
 #define ALAC_PREAMBLE 12
 #define ALAC_HEADER   36
-        if (size < ALAC_PREAMBLE + ALAC_HEADER) {
+#define ALAC_NEW_KUKI 24
+        uint8_t preamble[12];
+        if (size < ALAC_NEW_KUKI) {
             av_log(s, AV_LOG_ERROR, "invalid ALAC magic cookie\n");
             avio_skip(pb, size);
             return AVERROR_INVALIDDATA;
         }
-        avio_skip(pb, ALAC_PREAMBLE);
+        avio_read(pb, preamble, ALAC_PREAMBLE);
+
         st->codec->extradata = av_mallocz(ALAC_HEADER + FF_INPUT_BUFFER_PADDING_SIZE);
         if (!st->codec->extradata)
             return AVERROR(ENOMEM);
-        avio_read(pb, st->codec->extradata, ALAC_HEADER);
+
+        /* For the old style cookie, we skip 12 bytes, then read 36 bytes.
+         * The new style cookie only contains the last 24 bytes of what was
+         * 36 bytes in the old style cookie, so we fabricate the first 12 bytes
+         * in that case to maintain compatibility. */
+        if (!memcmp(&preamble[4], "frmaalac", 8)) {
+            if (size < ALAC_PREAMBLE + ALAC_HEADER) {
+                av_log(s, AV_LOG_ERROR, "invalid ALAC magic cookie\n");
+                av_freep(&st->codec->extradata);
+                return AVERROR_INVALIDDATA;
+            }
+            avio_read(pb, st->codec->extradata, ALAC_HEADER);
+            avio_skip(pb, size - ALAC_PREAMBLE - ALAC_HEADER);
+        } else {
+            AV_WB32(st->codec->extradata, 36);
+            memcpy(&st->codec->extradata[4], "alac", 4);
+            AV_WB32(&st->codec->extradata[8], 0);
+            memcpy(&st->codec->extradata[12], preamble, 12);
+            avio_read(pb, &st->codec->extradata[24], ALAC_NEW_KUKI - 12);
+            avio_skip(pb, size - ALAC_NEW_KUKI);
+        }
         st->codec->extradata_size = ALAC_HEADER;
-        avio_skip(pb, size - ALAC_PREAMBLE - ALAC_HEADER);
     } else {
         st->codec->extradata = av_mallocz(size + FF_INPUT_BUFFER_PADDING_SIZE);
         if (!st->codec->extradata)
@@ -150,8 +172,8 @@ static int read_pakt_chunk(AVFormatContext *s, int64_t size)
     AVIOContext *pb = s->pb;
     AVStream *st      = s->streams[0];
     CaffContext *caf  = s->priv_data;
-    int64_t pos = 0, ccount;
-    int num_packets, i;
+    int64_t pos = 0, ccount, num_packets;
+    int i;
 
     ccount = avio_tell(pb);
 
@@ -170,10 +192,11 @@ static int read_pakt_chunk(AVFormatContext *s, int64_t size)
         st->duration += caf->frames_per_packet ? caf->frames_per_packet : ff_mp4_read_descr_len(pb);
     }
 
-    if (avio_tell(pb) - ccount != size) {
+    if (avio_tell(pb) - ccount > size) {
         av_log(s, AV_LOG_ERROR, "error reading packet table\n");
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
+    avio_skip(pb, ccount + size - avio_tell(pb));
 
     caf->num_bytes = pos;
     return 0;
@@ -194,8 +217,7 @@ static void read_info_chunk(AVFormatContext *s, int64_t size)
     }
 }
 
-static int read_header(AVFormatContext *s,
-                       AVFormatParameters *ap)
+static int read_header(AVFormatContext *s)
 {
     AVIOContext *pb = s->pb;
     CaffContext *caf  = s->priv_data;
@@ -242,6 +264,11 @@ static int read_header(AVFormatContext *s,
             if (caf->data_size > 0 && pb->seekable)
                 avio_skip(pb, caf->data_size);
             found_data = 1;
+            break;
+
+        case MKBETAG('c','h','a','n'):
+            if ((ret = ff_mov_read_chan(s, s->pb, st, size)) < 0)
+                return ret;
             break;
 
         /* magic cookie chunk */
@@ -359,7 +386,7 @@ static int read_seek(AVFormatContext *s, int stream_index,
 {
     AVStream *st = s->streams[0];
     CaffContext *caf = s->priv_data;
-    int64_t pos;
+    int64_t pos, packet_cnt, frame_cnt;
 
     timestamp = FFMAX(timestamp, 0);
 
@@ -368,27 +395,32 @@ static int read_seek(AVFormatContext *s, int stream_index,
         pos = caf->bytes_per_packet * timestamp / caf->frames_per_packet;
         if (caf->data_size > 0)
             pos = FFMIN(pos, caf->data_size);
-        caf->packet_cnt = pos / caf->bytes_per_packet;
-        caf->frame_cnt  = caf->frames_per_packet * caf->packet_cnt;
+        packet_cnt = pos / caf->bytes_per_packet;
+        frame_cnt  = caf->frames_per_packet * packet_cnt;
     } else if (st->nb_index_entries) {
-        caf->packet_cnt = av_index_search_timestamp(st, timestamp, flags);
-        caf->frame_cnt  = st->index_entries[caf->packet_cnt].timestamp;
-        pos             = st->index_entries[caf->packet_cnt].pos;
+        packet_cnt = av_index_search_timestamp(st, timestamp, flags);
+        frame_cnt  = st->index_entries[packet_cnt].timestamp;
+        pos        = st->index_entries[packet_cnt].pos;
     } else {
         return -1;
     }
 
-    avio_seek(s->pb, pos + caf->data_start, SEEK_SET);
+    if (avio_seek(s->pb, pos + caf->data_start, SEEK_SET) < 0)
+        return -1;
+
+    caf->packet_cnt = packet_cnt;
+    caf->frame_cnt  = frame_cnt;
+
     return 0;
 }
 
 AVInputFormat ff_caf_demuxer = {
     .name           = "caf",
-    .long_name      = NULL_IF_CONFIG_SMALL("Apple Core Audio Format"),
+    .long_name      = NULL_IF_CONFIG_SMALL("Apple CAF (Core Audio Format)"),
     .priv_data_size = sizeof(CaffContext),
     .read_probe     = probe,
     .read_header    = read_header,
     .read_packet    = read_packet,
     .read_seek      = read_seek,
-    .codec_tag = (const AVCodecTag*[]){ff_codec_caf_tags, 0},
+    .codec_tag      = (const AVCodecTag* const []){ ff_codec_caf_tags, 0 },
 };

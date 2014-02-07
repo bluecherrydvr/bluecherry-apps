@@ -28,9 +28,6 @@
 #include "libavutil/mathematics.h"
 #include "libavformat/avformat.h"
 
-#undef printf
-#undef fprintf
-
 static char buffer[20];
 
 static const char *ret_str(int v)
@@ -93,11 +90,10 @@ int main(int argc, char **argv)
     }
 
     for(i=0; ; i++){
-        AVPacket pkt;
+        AVPacket pkt = { 0 };
         AVStream *av_uninit(st);
         char ts_buf[60];
 
-        memset(&pkt, 0, sizeof(pkt));
         if(ret>=0){
             ret= av_read_frame(ic, &pkt);
             if(ret>=0){

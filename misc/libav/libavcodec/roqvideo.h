@@ -24,18 +24,18 @@
 
 #include "libavutil/lfg.h"
 #include "avcodec.h"
-#include "dsputil.h"
+#include "bytestream.h"
 
-typedef struct {
+typedef struct roq_cell {
     unsigned char y[4];
     unsigned char u, v;
 } roq_cell;
 
-typedef struct {
+typedef struct roq_qcell {
     int idx[4];
 } roq_qcell;
 
-typedef struct {
+typedef struct motion_vect {
     int d[2];
 } motion_vect;
 
@@ -44,8 +44,6 @@ struct RoqTempData;
 typedef struct RoqContext {
 
     AVCodecContext *avctx;
-    DSPContext dsp;
-    AVFrame frames[2];
     AVFrame *last_frame;
     AVFrame *current_frame;
     int first_frame;
@@ -53,8 +51,7 @@ typedef struct RoqContext {
     roq_cell cb2x2[256];
     roq_qcell cb4x4[256];
 
-    const unsigned char *buf;
-    int size;
+    GetByteContext gb;
     int width, height;
 
     /* Encoder only data */
@@ -69,7 +66,7 @@ typedef struct RoqContext {
 
     unsigned int framesSinceKeyframe;
 
-    AVFrame *frame_to_enc;
+    const AVFrame *frame_to_enc;
     uint8_t *out_buf;
     struct RoqTempData *tmpData;
 } RoqContext;

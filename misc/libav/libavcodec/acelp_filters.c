@@ -22,6 +22,7 @@
 
 #include <inttypes.h>
 
+#include "libavutil/common.h"
 #include "avcodec.h"
 #include "acelp_filters.h"
 
@@ -142,4 +143,3 @@ void ff_tilt_compensation(float *mem, float tilt, float *samples, int size)
     samples[0] -= tilt * *mem;
     *mem = new_tilt_mem;
 }
-

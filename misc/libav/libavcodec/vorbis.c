@@ -62,10 +62,8 @@ int ff_vorbis_len2vlc(uint8_t *bits, uint32_t *codes, unsigned num)
 
     for (p = 0; (bits[p] == 0) && (p < num); ++p)
         ;
-    if (p == num) {
-//        av_log(vc->avccontext, AV_LOG_INFO, "An empty codebook. Heh?! \n");
+    if (p == num)
         return 0;
-    }
 
     codes[p] = 0;
     if (bits[p] > 32)
@@ -119,7 +117,8 @@ int ff_vorbis_len2vlc(uint8_t *bits, uint32_t *codes, unsigned num)
     return 0;
 }
 
-void ff_vorbis_ready_floor1_list(vorbis_floor1_entry * list, int values)
+int ff_vorbis_ready_floor1_list(AVCodecContext *avctx,
+                                vorbis_floor1_entry *list, int values)
 {
     int i;
     list[0].sort = 0;
@@ -143,6 +142,11 @@ void ff_vorbis_ready_floor1_list(vorbis_floor1_entry * list, int values)
     for (i = 0; i < values - 1; i++) {
         int j;
         for (j = i + 1; j < values; j++) {
+            if (list[i].x == list[j].x) {
+                av_log(avctx, AV_LOG_ERROR,
+                       "Duplicate value found in floor 1 X coordinates\n");
+                return AVERROR_INVALIDDATA;
+            }
             if (list[list[i].sort].x > list[list[j].sort].x) {
                 int tmp = list[i].sort;
                 list[i].sort = list[j].sort;
@@ -150,9 +154,10 @@ void ff_vorbis_ready_floor1_list(vorbis_floor1_entry * list, int values)
             }
         }
     }
+    return 0;
 }
 
-static inline void render_line_unrolled(intptr_t x, uint8_t y, int x1,
+static inline void render_line_unrolled(intptr_t x, int y, int x1,
                                         intptr_t sy, int ady, int adx,
                                         float *buf)
 {
@@ -164,30 +169,30 @@ static inline void render_line_unrolled(intptr_t x, uint8_t y, int x1,
         if (err >= 0) {
             err += ady - adx;
             y   += sy;
-            buf[x++] = ff_vorbis_floor1_inverse_db_table[y];
+            buf[x++] = ff_vorbis_floor1_inverse_db_table[av_clip_uint8(y)];
         }
-        buf[x] = ff_vorbis_floor1_inverse_db_table[y];
+        buf[x] = ff_vorbis_floor1_inverse_db_table[av_clip_uint8(y)];
     }
     if (x <= 0) {
         if (err + ady >= 0)
             y += sy;
-        buf[x] = ff_vorbis_floor1_inverse_db_table[y];
+        buf[x] = ff_vorbis_floor1_inverse_db_table[av_clip_uint8(y)];
     }
 }
 
-static void render_line(int x0, uint8_t y0, int x1, int y1, float *buf)
+static void render_line(int x0, int y0, int x1, int y1, float *buf)
 {
     int dy  = y1 - y0;
     int adx = x1 - x0;
     int ady = FFABS(dy);
     int sy  = dy < 0 ? -1 : 1;
-    buf[x0] = ff_vorbis_floor1_inverse_db_table[y0];
+    buf[x0] = ff_vorbis_floor1_inverse_db_table[av_clip_uint8(y0)];
     if (ady*2 <= adx) { // optimized common case
         render_line_unrolled(x0, y0, x1, sy, ady, adx, buf);
     } else {
         int base  = dy / adx;
         int x     = x0;
-        uint8_t y = y0;
+        int y     = y0;
         int err   = -adx;
         ady -= FFABS(base) * adx;
         while (++x < x1) {
@@ -197,7 +202,7 @@ static void render_line(int x0, uint8_t y0, int x1, int y1, float *buf)
                 err -= adx;
                 y   += sy;
             }
-            buf[x] = ff_vorbis_floor1_inverse_db_table[y];
+            buf[x] = ff_vorbis_floor1_inverse_db_table[av_clip_uint8(y)];
         }
     }
 }
@@ -206,8 +211,7 @@ void ff_vorbis_floor1_render_list(vorbis_floor1_entry * list, int values,
                                   uint16_t *y_list, int *flag,
                                   int multiplier, float *out, int samples)
 {
-    int lx, i;
-    uint8_t ly;
+    int lx, ly, i;
     lx = 0;
     ly = y_list[0] * multiplier;
     for (i = 1; i < values; i++) {

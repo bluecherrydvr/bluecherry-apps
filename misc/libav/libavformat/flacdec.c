@@ -21,14 +21,14 @@
 
 #include "libavcodec/flac.h"
 #include "avformat.h"
+#include "flac_picture.h"
 #include "internal.h"
 #include "rawdec.h"
 #include "oggdec.h"
 #include "vorbiscomment.h"
 #include "libavcodec/bytestream.h"
 
-static int flac_read_header(AVFormatContext *s,
-                             AVFormatParameters *ap)
+static int flac_read_header(AVFormatContext *s)
 {
     int ret, metadata_last=0, metadata_type, metadata_size, found_streaminfo=0;
     uint8_t header[4];
@@ -37,7 +37,7 @@ static int flac_read_header(AVFormatContext *s,
     if (!st)
         return AVERROR(ENOMEM);
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-    st->codec->codec_id = CODEC_ID_FLAC;
+    st->codec->codec_id = AV_CODEC_ID_FLAC;
     st->need_parsing = AVSTREAM_PARSE_FULL;
     /* the parameters will be extracted from the compressed bitstream */
 
@@ -56,6 +56,7 @@ static int flac_read_header(AVFormatContext *s,
         /* allocate and read metadata block for supported types */
         case FLAC_METADATA_TYPE_STREAMINFO:
         case FLAC_METADATA_TYPE_CUESHEET:
+        case FLAC_METADATA_TYPE_PICTURE:
         case FLAC_METADATA_TYPE_VORBIS_COMMENT:
             buffer = av_mallocz(metadata_size + FF_INPUT_BUFFER_PADDING_SIZE);
             if (!buffer) {
@@ -122,6 +123,13 @@ static int flac_read_header(AVFormatContext *s,
                 offset += ti * 12;
                 avpriv_new_chapter(s, track, st->time_base, start, AV_NOPTS_VALUE, isrc);
             }
+        } else if (metadata_type == FLAC_METADATA_TYPE_PICTURE) {
+            ret = ff_flac_parse_picture(s, buffer, metadata_size);
+            av_freep(&buffer);
+            if (ret < 0) {
+                av_log(s, AV_LOG_ERROR, "Error parsing attached picture.\n");
+                return ret;
+            }
         } else {
             /* STREAMINFO must be the first block */
             if (!found_streaminfo) {
@@ -143,11 +151,9 @@ static int flac_read_header(AVFormatContext *s,
 
 static int flac_probe(AVProbeData *p)
 {
-    uint8_t *bufptr = p->buf;
-    uint8_t *end    = p->buf + p->buf_size;
-
-    if(bufptr > end-4 || memcmp(bufptr, "fLaC", 4)) return 0;
-    else                                            return AVPROBE_SCORE_MAX/2;
+    if (p->buf_size < 4 || memcmp(p->buf, "fLaC", 4))
+        return 0;
+    return AVPROBE_SCORE_EXTENSION;
 }
 
 AVInputFormat ff_flac_demuxer = {
@@ -156,7 +162,7 @@ AVInputFormat ff_flac_demuxer = {
     .read_probe     = flac_probe,
     .read_header    = flac_read_header,
     .read_packet    = ff_raw_read_partial_packet,
-    .flags= AVFMT_GENERIC_INDEX,
-    .extensions = "flac",
-    .value = CODEC_ID_FLAC,
+    .flags          = AVFMT_GENERIC_INDEX,
+    .extensions     = "flac",
+    .raw_codec_id   = AV_CODEC_ID_FLAC,
 };

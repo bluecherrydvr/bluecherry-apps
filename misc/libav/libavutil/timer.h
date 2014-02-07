@@ -28,8 +28,11 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "config.h"
+
+#include "log.h"
 
 #if   ARCH_ARM
 #   include "arm/timer.h"

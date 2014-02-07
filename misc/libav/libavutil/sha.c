@@ -22,10 +22,13 @@
  */
 
 #include <string.h>
+
+#include "attributes.h"
 #include "avutil.h"
 #include "bswap.h"
 #include "sha.h"
 #include "intreadwrite.h"
+#include "mem.h"
 
 /** hash context */
 typedef struct AVSHA {
@@ -37,7 +40,14 @@ typedef struct AVSHA {
     void     (*transform)(uint32_t *state, const uint8_t buffer[64]);
 } AVSHA;
 
+#if FF_API_CONTEXT_SIZE
 const int av_sha_size = sizeof(AVSHA);
+#endif
+
+struct AVSHA *av_sha_alloc(void)
+{
+    return av_mallocz(sizeof(struct AVSHA));
+}
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
@@ -181,7 +191,7 @@ static void sha256_transform(uint32_t *state, const uint8_t buffer[64])
 {
     unsigned int i, a, b, c, d, e, f, g, h;
     uint32_t block[64];
-    uint32_t T1, av_unused(T2);
+    uint32_t T1;
 
     a = state[0];
     b = state[1];
@@ -193,6 +203,7 @@ static void sha256_transform(uint32_t *state, const uint8_t buffer[64])
     h = state[7];
 #if CONFIG_SMALL
     for (i = 0; i < 64; i++) {
+        uint32_t T2;
         if (i < 16)
             T1 = blk0(i);
         else
@@ -242,7 +253,7 @@ static void sha256_transform(uint32_t *state, const uint8_t buffer[64])
 }
 
 
-int av_sha_init(AVSHA* ctx, int bits)
+av_cold int av_sha_init(AVSHA *ctx, int bits)
 {
     ctx->digest_len = bits >> 5;
     switch (bits) {
@@ -325,7 +336,6 @@ void av_sha_final(AVSHA* ctx, uint8_t *digest)
 
 #ifdef TEST
 #include <stdio.h>
-#undef printf
 
 int main(void)
 {

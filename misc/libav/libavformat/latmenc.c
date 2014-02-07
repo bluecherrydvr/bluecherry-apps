@@ -37,7 +37,7 @@ typedef struct {
 
 static const AVOption options[] = {
     {"smc-interval", "StreamMuxConfig interval.",
-     offsetof(LATMContext, mod), AV_OPT_TYPE_INT, {.dbl = 0x0014}, 0x0001, 0xffff, AV_OPT_FLAG_ENCODING_PARAM},
+     offsetof(LATMContext, mod), AV_OPT_TYPE_INT, {.i64 = 0x0014}, 0x0001, 0xffff, AV_OPT_FLAG_ENCODING_PARAM},
     {NULL},
 };
 
@@ -183,8 +183,8 @@ AVOutputFormat ff_latm_muxer = {
     .mime_type      = "audio/MP4A-LATM",
     .extensions     = "latm",
     .priv_data_size = sizeof(LATMContext),
-    .audio_codec    = CODEC_ID_AAC,
-    .video_codec    = CODEC_ID_NONE,
+    .audio_codec    = AV_CODEC_ID_AAC,
+    .video_codec    = AV_CODEC_ID_NONE,
     .write_header   = latm_write_header,
     .write_packet   = latm_write_packet,
     .priv_class     = &latm_muxer_class,

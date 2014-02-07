@@ -32,6 +32,9 @@
 #ifdef __MINGW32__
 #define fseeko(x, y, z) fseeko64(x, y, z)
 #define ftello(x)       ftello64(x)
+#elif defined(_WIN32)
+#define fseeko(x, y, z) _fseeki64(x, y, z)
+#define ftello(x)       _ftelli64(x)
 #endif
 
 #define BE_16(x) ((((uint8_t*)(x))[0] <<  8) | ((uint8_t*)(x))[1])
@@ -138,7 +141,6 @@ int main(int argc, char *argv[])
             }
             start_offset = ftello(infile);
         } else {
-
             /* 64-bit special case */
             if (atom_size == 1) {
                 if (fread(atom_bytes, ATOM_PREAMBLE_SIZE, 1, infile) != 1) {

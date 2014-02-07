@@ -337,12 +337,11 @@ void av_des_mac(AVDES *d, uint8_t *dst, const uint8_t *src, int count) {
 }
 
 #ifdef TEST
-#undef printf
-#undef rand
-#undef srand
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/time.h>
+
+#include "time.h"
+
 static uint64_t rand64(void) {
     uint64_t r = rand();
     r = (r << 32) | rand();
@@ -389,13 +388,11 @@ int main(void) {
 #ifdef GENTABLES
     int j;
 #endif
-    struct timeval tv;
     uint64_t key[3];
     uint64_t data;
     uint64_t ct;
     uint64_t roundkeys[16];
-    gettimeofday(&tv, NULL);
-    srand(tv.tv_sec * 1000 * 1000 + tv.tv_usec);
+    srand(av_gettime());
     key[0] = AV_RB64(test_key);
     data = AV_RB64(plain);
     gen_roundkeys(roundkeys, key[0]);

@@ -43,7 +43,7 @@ static int vqf_probe(AVProbeData *probe_packet)
     if (!memcmp(probe_packet->buf + 4, "00052200", 8))
         return AVPROBE_SCORE_MAX;
 
-    return AVPROBE_SCORE_MAX/2;
+    return AVPROBE_SCORE_EXTENSION;
 }
 
 static void add_metadata(AVFormatContext *s, uint32_t tag,
@@ -86,7 +86,7 @@ static const AVMetadataConv vqf_metadata_conv[] = {
     { 0 },
 };
 
-static int vqf_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int vqf_read_header(AVFormatContext *s)
 {
     VqfContext *c = s->priv_data;
     AVStream *st  = avformat_new_stream(s, NULL);
@@ -105,7 +105,7 @@ static int vqf_read_header(AVFormatContext *s, AVFormatParameters *ap)
     header_size = avio_rb32(s->pb);
 
     st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-    st->codec->codec_id   = CODEC_ID_TWINVQ;
+    st->codec->codec_id   = AV_CODEC_ID_TWINVQ;
     st->start_time = 0;
 
     do {
@@ -174,8 +174,19 @@ static int vqf_read_header(AVFormatContext *s, AVFormatParameters *ap)
         st->codec->sample_rate = 11025;
         break;
     default:
+        if (rate_flag < 8 || rate_flag > 44) {
+            av_log(s, AV_LOG_ERROR, "Invalid rate flag %d\n", rate_flag);
+            return AVERROR_INVALIDDATA;
+        }
         st->codec->sample_rate = rate_flag*1000;
         break;
+    }
+
+    if (read_bitrate / st->codec->channels <  8 ||
+        read_bitrate / st->codec->channels > 48) {
+        av_log(s, AV_LOG_ERROR, "Invalid bitrate per channel %d\n",
+               read_bitrate / st->codec->channels);
+        return AVERROR_INVALIDDATA;
     }
 
     switch (((st->codec->sample_rate/1000) << 8) +
@@ -201,7 +212,7 @@ static int vqf_read_header(AVFormatContext *s, AVFormatParameters *ap)
         return -1;
     }
     c->frame_bit_len = st->codec->bit_rate*size/st->codec->sample_rate;
-    avpriv_set_pts_info(st, 64, 1, st->codec->sample_rate);
+    avpriv_set_pts_info(st, 64, size, st->codec->sample_rate);
 
     /* put first 12 bytes of COMM chunk in extradata */
     if (!(st->codec->extradata = av_malloc(12 + FF_INPUT_BUFFER_PADDING_SIZE)))
@@ -220,11 +231,12 @@ static int vqf_read_packet(AVFormatContext *s, AVPacket *pkt)
     int ret;
     int size = (c->frame_bit_len - c->remaining_bits + 7)>>3;
 
-    pkt->pos          = avio_tell(s->pb);
-    pkt->stream_index = 0;
-
     if (av_new_packet(pkt, size+2) < 0)
         return AVERROR(EIO);
+
+    pkt->pos          = avio_tell(s->pb);
+    pkt->stream_index = 0;
+    pkt->duration     = 1;
 
     pkt->data[0] = 8 - c->remaining_bits; // Number of bits to skip
     pkt->data[1] = c->last_frame_bits;

@@ -21,7 +21,6 @@
 
 #include "avformat.h"
 
-#include <sys/time.h>
 #if HAVE_POLL_H
 #include <poll.h>
 #endif
@@ -32,6 +31,7 @@
 #include "avio_internal.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/avstring.h"
+#include "libavutil/time.h"
 #include "url.h"
 
 #define SDP_MAX_SIZE 16384
@@ -136,7 +136,7 @@ static int rtsp_write_header(AVFormatContext *s)
     return 0;
 }
 
-static int tcp_write_packet(AVFormatContext *s, RTSPStream *rtsp_st)
+int ff_rtsp_tcp_write_packet(AVFormatContext *s, RTSPStream *rtsp_st)
 {
     RTSPState *rt = s->priv_data;
     AVFormatContext *rtpctx = rtsp_st->transport_priv;
@@ -145,6 +145,7 @@ static int tcp_write_packet(AVFormatContext *s, RTSPStream *rtsp_st)
     uint8_t *interleave_header, *interleaved_packet;
 
     size = avio_close_dyn_buf(rtpctx->pb, &buf);
+    rtpctx->pb = NULL;
     ptr = buf;
     while (size > 4) {
         uint32_t packet_len = AV_RB32(ptr);
@@ -159,7 +160,7 @@ static int tcp_write_packet(AVFormatContext *s, RTSPStream *rtsp_st)
         size -= 4;
         if (packet_len > size || packet_len < 2)
             break;
-        if (ptr[1] >= RTCP_SR && ptr[1] <= RTCP_APP)
+        if (RTP_PT_IS_RTCP(ptr[1]))
             id = rtsp_st->interleaved_max; /* RTCP */
         else
             id = rtsp_st->interleaved_min; /* RTP */
@@ -171,8 +172,7 @@ static int tcp_write_packet(AVFormatContext *s, RTSPStream *rtsp_st)
         size -= packet_len;
     }
     av_free(buf);
-    ffio_open_dyn_packet_buf(&rtpctx->pb, RTSP_TCP_MAX_PACKET_SIZE);
-    return 0;
+    return ffio_open_dyn_packet_buf(&rtpctx->pb, RTSP_TCP_MAX_PACKET_SIZE);
 }
 
 static int rtsp_write_packet(AVFormatContext *s, AVPacket *pkt)
@@ -217,13 +217,18 @@ static int rtsp_write_packet(AVFormatContext *s, AVPacket *pkt)
      * packets, so we need to send them out on the TCP connection separately.
      */
     if (!ret && rt->lower_transport == RTSP_LOWER_TRANSPORT_TCP)
-        ret = tcp_write_packet(s, rtsp_st);
+        ret = ff_rtsp_tcp_write_packet(s, rtsp_st);
     return ret;
 }
 
 static int rtsp_write_close(AVFormatContext *s)
 {
     RTSPState *rt = s->priv_data;
+
+    // If we want to send RTCP_BYE packets, these are sent by av_write_trailer.
+    // Thus call this on all streams before doing the teardown. This is
+    // done within ff_rtsp_undo_setup.
+    ff_rtsp_undo_setup(s, 1);
 
     ff_rtsp_send_cmd_async(s, "TEARDOWN", rt->control_uri, NULL);
 
@@ -235,14 +240,13 @@ static int rtsp_write_close(AVFormatContext *s)
 
 AVOutputFormat ff_rtsp_muxer = {
     .name              = "rtsp",
-    .long_name         = NULL_IF_CONFIG_SMALL("RTSP output format"),
+    .long_name         = NULL_IF_CONFIG_SMALL("RTSP output"),
     .priv_data_size    = sizeof(RTSPState),
-    .audio_codec       = CODEC_ID_AAC,
-    .video_codec       = CODEC_ID_MPEG4,
+    .audio_codec       = AV_CODEC_ID_AAC,
+    .video_codec       = AV_CODEC_ID_MPEG4,
     .write_header      = rtsp_write_header,
     .write_packet      = rtsp_write_packet,
     .write_trailer     = rtsp_write_close,
-    .flags = AVFMT_NOFILE | AVFMT_GLOBALHEADER,
-    .priv_class = &rtsp_muxer_class,
+    .flags             = AVFMT_NOFILE | AVFMT_GLOBALHEADER,
+    .priv_class        = &rtsp_muxer_class,
 };
-

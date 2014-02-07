@@ -29,6 +29,7 @@
  * http://wiki.multimedia.cx/index.php?title=IFF
  */
 
+#include "libavutil/channel_layout.h"
 #include "libavutil/intreadwrite.h"
 #include "libavutil/dict.h"
 #include "avformat.h"
@@ -107,8 +108,7 @@ static int iff_probe(AVProbeData *p)
     return 0;
 }
 
-static int iff_read_header(AVFormatContext *s,
-                           AVFormatParameters *ap)
+static int iff_read_header(AVFormatContext *s)
 {
     IffDemuxContext *iff = s->priv_data;
     AVIOContext *pb = s->pb;
@@ -121,6 +121,7 @@ static int iff_read_header(AVFormatContext *s,
         return AVERROR(ENOMEM);
 
     st->codec->channels = 1;
+    st->codec->channel_layout = AV_CH_LAYOUT_MONO;
     avio_skip(pb, 8);
     // codec_tag used by ByteRun1 decoder to distinguish progressive (PBM) and interlaced (ILBM) content
     st->codec->codec_tag = avio_rl32(pb);
@@ -155,10 +156,21 @@ static int iff_read_header(AVFormatContext *s,
         case ID_CHAN:
             if (data_size < 4)
                 return AVERROR_INVALIDDATA;
-            st->codec->channels = (avio_rb32(pb) < 6) ? 1 : 2;
+            if (avio_rb32(pb) < 6) {
+                st->codec->channels       = 1;
+                st->codec->channel_layout = AV_CH_LAYOUT_MONO;
+            } else {
+                st->codec->channels       = 2;
+                st->codec->channel_layout = AV_CH_LAYOUT_STEREO;
+            }
             break;
 
         case ID_CMAP:
+            if (data_size < 3 || data_size > 768 || data_size % 3) {
+                 av_log(s, AV_LOG_ERROR, "Invalid CMAP chunk size %d\n",
+                        data_size);
+                 return AVERROR_INVALIDDATA;
+            }
             st->codec->extradata_size = data_size;
             st->codec->extradata      = av_malloc(data_size);
             if (!st->codec->extradata)
@@ -221,13 +233,13 @@ static int iff_read_header(AVFormatContext *s,
 
         switch(compression) {
         case COMP_NONE:
-            st->codec->codec_id = CODEC_ID_PCM_S8_PLANAR;
+            st->codec->codec_id = AV_CODEC_ID_PCM_S8_PLANAR;
             break;
         case COMP_FIB:
-            st->codec->codec_id = CODEC_ID_8SVX_FIB;
+            st->codec->codec_id = AV_CODEC_ID_8SVX_FIB;
             break;
         case COMP_EXP:
-            st->codec->codec_id = CODEC_ID_8SVX_EXP;
+            st->codec->codec_id = AV_CODEC_ID_8SVX_EXP;
             break;
         default:
             av_log(s, AV_LOG_ERROR, "unknown compression method\n");
@@ -242,10 +254,10 @@ static int iff_read_header(AVFormatContext *s,
     case AVMEDIA_TYPE_VIDEO:
         switch (compression) {
         case BITMAP_RAW:
-            st->codec->codec_id = CODEC_ID_IFF_ILBM;
+            st->codec->codec_id = AV_CODEC_ID_IFF_ILBM;
             break;
         case BITMAP_BYTERUN1:
-            st->codec->codec_id = CODEC_ID_IFF_BYTERUN1;
+            st->codec->codec_id = AV_CODEC_ID_IFF_BYTERUN1;
             break;
         default:
             av_log(s, AV_LOG_ERROR, "unknown compression method\n");
@@ -282,8 +294,8 @@ static int iff_read_packet(AVFormatContext *s,
 }
 
 AVInputFormat ff_iff_demuxer = {
-    .name           = "IFF",
-    .long_name      = NULL_IF_CONFIG_SMALL("IFF format"),
+    .name           = "iff",
+    .long_name      = NULL_IF_CONFIG_SMALL("IFF (Interchange File Format)"),
     .priv_data_size = sizeof(IffDemuxContext),
     .read_probe     = iff_probe,
     .read_header    = iff_read_header,

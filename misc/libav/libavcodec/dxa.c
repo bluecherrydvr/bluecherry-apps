@@ -27,8 +27,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "libavutil/common.h"
 #include "libavutil/intreadwrite.h"
 #include "avcodec.h"
+#include "internal.h"
 
 #include <zlib.h>
 
@@ -36,8 +38,7 @@
  * Decoder context
  */
 typedef struct DxaDecContext {
-    AVCodecContext *avctx;
-    AVFrame pic, prev;
+    AVFrame *prev;
 
     int dsize;
     uint8_t *decomp_buf;
@@ -47,12 +48,12 @@ typedef struct DxaDecContext {
 static const int shift1[6] = { 0, 8, 8, 8, 4, 4 };
 static const int shift2[6] = { 0, 0, 8, 4, 0, 4 };
 
-static int decode_13(AVCodecContext *avctx, DxaDecContext *c, uint8_t* dst, uint8_t *src, uint8_t *ref)
+static int decode_13(AVCodecContext *avctx, DxaDecContext *c, uint8_t* dst,
+                     int stride, uint8_t *src, uint8_t *ref)
 {
     uint8_t *code, *data, *mv, *msk, *tmp, *tmp2;
     int i, j, k;
     int type, x, y, d, d2;
-    int stride = c->pic.linesize[0];
     uint32_t mask;
 
     code = src  + 12;
@@ -179,7 +180,7 @@ static int decode_13(AVCodecContext *avctx, DxaDecContext *c, uint8_t* dst, uint
                 break;
             default:
                 av_log(avctx, AV_LOG_ERROR, "Unknown opcode %d\n", type);
-                return -1;
+                return AVERROR_INVALIDDATA;
             }
         }
         dst += stride * 4;
@@ -188,14 +189,15 @@ static int decode_13(AVCodecContext *avctx, DxaDecContext *c, uint8_t* dst, uint
     return 0;
 }
 
-static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPacket *avpkt)
+static int decode_frame(AVCodecContext *avctx, void *data, int *got_frame, AVPacket *avpkt)
 {
+    AVFrame *frame = data;
     const uint8_t *buf = avpkt->data;
     int buf_size = avpkt->size;
     DxaDecContext * const c = avctx->priv_data;
     uint8_t *outptr, *srcptr, *tmpptr;
     unsigned long dsize;
-    int i, j, compr;
+    int i, j, compr, ret;
     int stride;
     int orig_buf_size = buf_size;
     int pc = 0;
@@ -215,17 +217,17 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
         buf_size -= 768+4;
     }
 
-    if(avctx->get_buffer(avctx, &c->pic) < 0){
+    if ((ret = ff_get_buffer(avctx, frame, AV_GET_BUFFER_FLAG_REF)) < 0) {
         av_log(avctx, AV_LOG_ERROR, "get_buffer() failed\n");
-        return -1;
+        return ret;
     }
-    memcpy(c->pic.data[1], c->pal, AVPALETTE_SIZE);
-    c->pic.palette_has_changed = pc;
+    memcpy(frame->data[1], c->pal, AVPALETTE_SIZE);
+    frame->palette_has_changed = pc;
 
-    outptr = c->pic.data[0];
+    outptr = frame->data[0];
     srcptr = c->decomp_buf;
-    tmpptr = c->prev.data[0];
-    stride = c->pic.linesize[0];
+    tmpptr = c->prev->data[0];
+    stride = frame->linesize[0];
 
     if(buf[0]=='N' && buf[1]=='U' && buf[2]=='L' && buf[3]=='L')
         compr = -1;
@@ -235,54 +237,62 @@ static int decode_frame(AVCodecContext *avctx, void *data, int *data_size, AVPac
     dsize = c->dsize;
     if((compr != 4 && compr != -1) && uncompress(c->decomp_buf, &dsize, buf + 9, buf_size - 9) != Z_OK){
         av_log(avctx, AV_LOG_ERROR, "Uncompress failed!\n");
-        return -1;
+        return AVERROR_UNKNOWN;
     }
     switch(compr){
     case -1:
-        c->pic.key_frame = 0;
-        c->pic.pict_type = AV_PICTURE_TYPE_P;
-        if(c->prev.data[0])
-            memcpy(c->pic.data[0], c->prev.data[0], c->pic.linesize[0] * avctx->height);
+        frame->key_frame = 0;
+        frame->pict_type = AV_PICTURE_TYPE_P;
+        if (c->prev->data[0])
+            memcpy(frame->data[0], c->prev->data[0], frame->linesize[0] * avctx->height);
         else{ // Should happen only when first frame is 'NULL'
-            memset(c->pic.data[0], 0, c->pic.linesize[0] * avctx->height);
-            c->pic.key_frame = 1;
-            c->pic.pict_type = AV_PICTURE_TYPE_I;
+            memset(frame->data[0], 0, frame->linesize[0] * avctx->height);
+            frame->key_frame = 1;
+            frame->pict_type = AV_PICTURE_TYPE_I;
         }
         break;
     case 2:
-    case 3:
     case 4:
-    case 5:
-        c->pic.key_frame = !(compr & 1);
-        c->pic.pict_type = (compr & 1) ? AV_PICTURE_TYPE_P : AV_PICTURE_TYPE_I;
-        for(j = 0; j < avctx->height; j++){
-            if(compr & 1){
-                for(i = 0; i < avctx->width; i++)
-                    outptr[i] = srcptr[i] ^ tmpptr[i];
-                tmpptr += stride;
-            }else
+        frame->key_frame = 1;
+        frame->pict_type = AV_PICTURE_TYPE_I;
+        for (j = 0; j < avctx->height; j++) {
                 memcpy(outptr, srcptr, avctx->width);
+            outptr += stride;
+            srcptr += avctx->width;
+        }
+        break;
+    case 3:
+    case 5:
+        if (!tmpptr) {
+            av_log(avctx, AV_LOG_ERROR, "Missing reference frame.\n");
+            return AVERROR_INVALIDDATA;
+        }
+        frame->key_frame = 0;
+        frame->pict_type = AV_PICTURE_TYPE_P;
+        for (j = 0; j < avctx->height; j++) {
+            for (i = 0; i < avctx->width; i++)
+                outptr[i] = srcptr[i] ^ tmpptr[i];
+            tmpptr += stride;
             outptr += stride;
             srcptr += avctx->width;
         }
         break;
     case 12: // ScummVM coding
     case 13:
-        c->pic.key_frame = 0;
-        c->pic.pict_type = AV_PICTURE_TYPE_P;
-        decode_13(avctx, c, c->pic.data[0], srcptr, c->prev.data[0]);
+        frame->key_frame = 0;
+        frame->pict_type = AV_PICTURE_TYPE_P;
+        decode_13(avctx, c, frame->data[0], frame->linesize[0], srcptr, c->prev->data[0]);
         break;
     default:
         av_log(avctx, AV_LOG_ERROR, "Unknown/unsupported compression type %d\n", buf[4]);
-        return -1;
+        return AVERROR_INVALIDDATA;
     }
 
-    FFSWAP(AVFrame, c->pic, c->prev);
-    if(c->pic.data[0])
-        avctx->release_buffer(avctx, &c->pic);
+    av_frame_unref(c->prev);
+    if ((ret = av_frame_ref(c->prev, frame)) < 0)
+        return ret;
 
-    *data_size = sizeof(AVFrame);
-    *(AVFrame*)data = c->prev;
+    *got_frame = 1;
 
     /* always report that the buffer was completely consumed */
     return orig_buf_size;
@@ -292,13 +302,16 @@ static av_cold int decode_init(AVCodecContext *avctx)
 {
     DxaDecContext * const c = avctx->priv_data;
 
-    c->avctx = avctx;
-    avctx->pix_fmt = PIX_FMT_PAL8;
+    c->prev = av_frame_alloc();
+    if (!c->prev)
+        return AVERROR(ENOMEM);
+
+    avctx->pix_fmt = AV_PIX_FMT_PAL8;
 
     c->dsize = avctx->width * avctx->height * 2;
     if((c->decomp_buf = av_malloc(c->dsize)) == NULL) {
         av_log(avctx, AV_LOG_ERROR, "Can't allocate decompression buffer.\n");
-        return -1;
+        return AVERROR(ENOMEM);
     }
 
     return 0;
@@ -309,23 +322,19 @@ static av_cold int decode_end(AVCodecContext *avctx)
     DxaDecContext * const c = avctx->priv_data;
 
     av_freep(&c->decomp_buf);
-    if(c->prev.data[0])
-        avctx->release_buffer(avctx, &c->prev);
-    if(c->pic.data[0])
-        avctx->release_buffer(avctx, &c->pic);
+    av_frame_free(&c->prev);
 
     return 0;
 }
 
 AVCodec ff_dxa_decoder = {
     .name           = "dxa",
+    .long_name      = NULL_IF_CONFIG_SMALL("Feeble Files/ScummVM DXA"),
     .type           = AVMEDIA_TYPE_VIDEO,
-    .id             = CODEC_ID_DXA,
+    .id             = AV_CODEC_ID_DXA,
     .priv_data_size = sizeof(DxaDecContext),
     .init           = decode_init,
     .close          = decode_end,
     .decode         = decode_frame,
     .capabilities   = CODEC_CAP_DR1,
-    .long_name = NULL_IF_CONFIG_SMALL("Feeble Files/ScummVM DXA"),
 };
-

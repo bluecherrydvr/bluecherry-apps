@@ -24,6 +24,7 @@
 
 #include "libavcodec/avcodec.h"
 #include "metadata.h"
+#include "internal.h"
 
 /* EBML version supported */
 #define EBML_VERSION 1
@@ -175,6 +176,7 @@
 #define MATROSKA_ID_BLOCK      0xA1
 #define MATROSKA_ID_BLOCKDURATION 0x9B
 #define MATROSKA_ID_BLOCKREFERENCE 0xFB
+#define MATROSKA_ID_CODECSTATE 0xA4
 
 /* IDs in the attachments master */
 #define MATROSKA_ID_ATTACHEDFILE        0x61A7
@@ -242,13 +244,8 @@ typedef enum {
 
 typedef struct CodecTags{
     char str[20];
-    enum CodecID id;
+    enum AVCodecID id;
 }CodecTags;
-
-typedef struct CodecMime{
-    char str[32];
-    enum CodecID id;
-}CodecMime;
 
 /* max. depth in the EBML tree structure */
 #define EBML_MAX_DEPTH 16

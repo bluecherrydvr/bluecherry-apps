@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdint.h>
+
 #include "libavutil/mathematics.h"
 #include "avformat.h"
 #include "internal.h"
@@ -60,7 +62,7 @@ static int64_t get_pts(const uint8_t *p)
     if(sscanf(p, "%*[^,],%d:%d:%d%*c%d", &hour, &min, &sec, &hsec) != 4)
         return AV_NOPTS_VALUE;
 
-//    av_log(NULL, AV_LOG_ERROR, "%d %d %d %d %d [%s]\n", i, hour, min, sec, hsec, p);
+    av_dlog(NULL, "%d %d %d %d [%s]\n", hour, min, sec, hsec, p);
 
     min+= 60*hour;
     sec+= 60*min;
@@ -68,12 +70,13 @@ static int64_t get_pts(const uint8_t *p)
     return sec*100+hsec;
 }
 
-static int event_cmp(uint8_t **a, uint8_t **b)
+static int event_cmp(const void *_a, const void *_b)
 {
+    const uint8_t *const *a = _a, *const *b = _b;
     return get_pts(*a) - get_pts(*b);
 }
 
-static int read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int read_header(AVFormatContext *s)
 {
     int i, len, header_remaining;
     ASSContext *ass = s->priv_data;
@@ -88,7 +91,7 @@ static int read_header(AVFormatContext *s, AVFormatParameters *ap)
         return -1;
     avpriv_set_pts_info(st, 64, 1, 100);
     st->codec->codec_type = AVMEDIA_TYPE_SUBTITLE;
-    st->codec->codec_id= CODEC_ID_SSA;
+    st->codec->codec_id= AV_CODEC_ID_SSA;
 
     header_remaining= INT_MAX;
     dst[0] = &st->codec->extradata;
@@ -131,7 +134,7 @@ static int read_header(AVFormatContext *s, AVFormatParameters *ap)
         p++;
     }
 
-    qsort(ass->event, ass->event_count, sizeof(*ass->event), (void*)event_cmp);
+    qsort(ass->event, ass->event_count, sizeof(*ass->event), event_cmp);
 
     return 0;
 
@@ -205,7 +208,7 @@ static int read_seek2(AVFormatContext *s, int stream_index,
 
 AVInputFormat ff_ass_demuxer = {
     .name           = "ass",
-    .long_name      = NULL_IF_CONFIG_SMALL("Advanced SubStation Alpha subtitle format"),
+    .long_name      = NULL_IF_CONFIG_SMALL("SSA (SubStation Alpha) subtitle"),
     .priv_data_size = sizeof(ASSContext),
     .read_probe     = probe,
     .read_header    = read_header,

@@ -28,7 +28,9 @@
  */
 
 #include "avcodec.h"
+#include "internal.h"
 #include "g722.h"
+#include "libavutil/common.h"
 
 #define FREEZE_INTERVAL 128
 
@@ -41,9 +43,22 @@
 #define MIN_TRELLIS 0
 #define MAX_TRELLIS 16
 
+static av_cold int g722_encode_close(AVCodecContext *avctx)
+{
+    G722Context *c = avctx->priv_data;
+    int i;
+    for (i = 0; i < 2; i++) {
+        av_freep(&c->paths[i]);
+        av_freep(&c->node_buf[i]);
+        av_freep(&c->nodep_buf[i]);
+    }
+    return 0;
+}
+
 static av_cold int g722_encode_init(AVCodecContext * avctx)
 {
     G722Context *c = avctx->priv_data;
+    int ret;
 
     if (avctx->channels != 1) {
         av_log(avctx, AV_LOG_ERROR, "Only mono tracks are allowed.\n");
@@ -62,6 +77,10 @@ static av_cold int g722_encode_init(AVCodecContext * avctx)
             c->paths[i] = av_mallocz(max_paths * sizeof(**c->paths));
             c->node_buf[i] = av_mallocz(2 * frontier * sizeof(**c->node_buf));
             c->nodep_buf[i] = av_mallocz(2 * frontier * sizeof(**c->nodep_buf));
+            if (!c->paths[i] || !c->node_buf[i] || !c->nodep_buf[i]) {
+                ret = AVERROR(ENOMEM);
+                goto error;
+            }
         }
     }
 
@@ -87,6 +106,7 @@ static av_cold int g722_encode_init(AVCodecContext * avctx)
            a common packet size for VoIP applications */
         avctx->frame_size = 320;
     }
+    avctx->delay = 22;
 
     if (avctx->trellis) {
         /* validate trellis */
@@ -100,18 +120,9 @@ static av_cold int g722_encode_init(AVCodecContext * avctx)
     }
 
     return 0;
-}
-
-static av_cold int g722_encode_close(AVCodecContext *avctx)
-{
-    G722Context *c = avctx->priv_data;
-    int i;
-    for (i = 0; i < 2; i++) {
-        av_freep(&c->paths[i]);
-        av_freep(&c->node_buf[i]);
-        av_freep(&c->nodep_buf[i]);
-    }
-    return 0;
+error:
+    g722_encode_close(avctx);
+    return ret;
 }
 
 static const int16_t low_quant[33] = {
@@ -128,8 +139,8 @@ static inline void filter_samples(G722Context *c, const int16_t *samples,
     c->prev_samples[c->prev_samples_pos++] = samples[0];
     c->prev_samples[c->prev_samples_pos++] = samples[1];
     ff_g722_apply_qmf(c->prev_samples + c->prev_samples_pos - 24, &xout1, &xout2);
-    *xlow  = xout1 + xout2 >> 13;
-    *xhigh = xout1 - xout2 >> 13;
+    *xlow  = xout1 + xout2 >> 14;
+    *xhigh = xout1 - xout2 >> 14;
     if (c->prev_samples_pos >= PREV_SAMPLES_BUF_SIZE) {
         memmove(c->prev_samples,
                 c->prev_samples + c->prev_samples_pos - 22,
@@ -174,7 +185,7 @@ static void g722_encode_trellis(G722Context *c, int trellis,
     for (i = 0; i < 2; i++) {
         nodes[i] = c->nodep_buf[i];
         nodes_next[i] = c->nodep_buf[i] + frontier;
-        memset(c->nodep_buf[i], 0, 2 * frontier * sizeof(*c->nodep_buf));
+        memset(c->nodep_buf[i], 0, 2 * frontier * sizeof(*c->nodep_buf[i]));
         nodes[i][0] = c->node_buf[i] + frontier;
         nodes[i][0]->ssd = 0;
         nodes[i][0]->path = 0;
@@ -337,38 +348,48 @@ static void g722_encode_no_trellis(G722Context *c,
         encode_byte(c, dst++, &samples[i]);
 }
 
-static int g722_encode_frame(AVCodecContext *avctx,
-                             uint8_t *dst, int buf_size, void *data)
+static int g722_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
+                             const AVFrame *frame, int *got_packet_ptr)
 {
     G722Context *c = avctx->priv_data;
-    const int16_t *samples = data;
-    int nb_samples;
+    const int16_t *samples = (const int16_t *)frame->data[0];
+    int nb_samples, out_size, ret;
 
-    nb_samples = avctx->frame_size - (avctx->frame_size & 1);
-
-    if (avctx->trellis)
-        g722_encode_trellis(c, avctx->trellis, dst, nb_samples, samples);
-    else
-        g722_encode_no_trellis(c, dst, nb_samples, samples);
-
-    /* handle last frame with odd frame_size */
-    if (nb_samples < avctx->frame_size) {
-        int16_t last_samples[2] = { samples[nb_samples], samples[nb_samples] };
-        encode_byte(c, &dst[nb_samples >> 1], last_samples);
+    out_size = (frame->nb_samples + 1) / 2;
+    if ((ret = ff_alloc_packet(avpkt, out_size))) {
+        av_log(avctx, AV_LOG_ERROR, "Error getting output packet\n");
+        return ret;
     }
 
-    return (avctx->frame_size + 1) >> 1;
+    nb_samples = frame->nb_samples - (frame->nb_samples & 1);
+
+    if (avctx->trellis)
+        g722_encode_trellis(c, avctx->trellis, avpkt->data, nb_samples, samples);
+    else
+        g722_encode_no_trellis(c, avpkt->data, nb_samples, samples);
+
+    /* handle last frame with odd frame_size */
+    if (nb_samples < frame->nb_samples) {
+        int16_t last_samples[2] = { samples[nb_samples], samples[nb_samples] };
+        encode_byte(c, &avpkt->data[nb_samples >> 1], last_samples);
+    }
+
+    if (frame->pts != AV_NOPTS_VALUE)
+        avpkt->pts = frame->pts - ff_samples_to_time_base(avctx, avctx->delay);
+    *got_packet_ptr = 1;
+    return 0;
 }
 
 AVCodec ff_adpcm_g722_encoder = {
     .name           = "g722",
+    .long_name      = NULL_IF_CONFIG_SMALL("G.722 ADPCM"),
     .type           = AVMEDIA_TYPE_AUDIO,
-    .id             = CODEC_ID_ADPCM_G722,
+    .id             = AV_CODEC_ID_ADPCM_G722,
     .priv_data_size = sizeof(G722Context),
     .init           = g722_encode_init,
     .close          = g722_encode_close,
-    .encode         = g722_encode_frame,
+    .encode2        = g722_encode_frame,
     .capabilities   = CODEC_CAP_SMALL_LAST_FRAME,
-    .long_name      = NULL_IF_CONFIG_SMALL("G.722 ADPCM"),
-    .sample_fmts    = (const enum AVSampleFormat[]){AV_SAMPLE_FMT_S16,AV_SAMPLE_FMT_NONE},
+    .sample_fmts    = (const enum AVSampleFormat[]){ AV_SAMPLE_FMT_S16,
+                                                     AV_SAMPLE_FMT_NONE },
 };

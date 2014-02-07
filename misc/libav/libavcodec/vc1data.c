@@ -84,7 +84,7 @@ const uint8_t ff_vc1_mbmode_intfrp[2][15][4] = {
     }
 };
 
-const int ff_vc1_fps_nr[5] = { 24, 25, 30, 50, 60 },
+const int ff_vc1_fps_nr[7] = { 24, 25, 30, 50, 60, 48, 72 },
           ff_vc1_fps_dr[2] = { 1000, 1001 };
 const uint8_t ff_vc1_pquant_table[3][32] = {
     /* Implicit quantizer */
@@ -645,7 +645,7 @@ const uint8_t ff_vc1_2ref_mvdata_bits[8][126] = {
   }
 };
 
-const uint8_t wmv3_dc_scale_table[32] = {
+const uint8_t ff_wmv3_dc_scale_table[32] = {
      0,  2,  4,  8,  8,  8,  9,  9, 10, 10, 11, 11, 12, 12, 13, 13,
     14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21
 };
@@ -1094,7 +1094,7 @@ const int32_t ff_vc1_dqscale[63] = {
 };
 
 /* P Interlaced field picture MV predictor scaling values (Table 114) */
-const uint16_t vc1_field_mvpred_scales[2][7][4] = {
+const uint16_t ff_vc1_field_mvpred_scales[2][7][4] = {
 // Refdist:
 //      0       1       2       3 or greater
   { // current field is first
@@ -1118,7 +1118,7 @@ const uint16_t vc1_field_mvpred_scales[2][7][4] = {
 };
 
 /* B Interlaced field picture backward MV predictor scaling values for first field (Table 115) */
-const uint16_t vc1_b_field_mvpred_scales[7][4] = {
+const uint16_t ff_vc1_b_field_mvpred_scales[7][4] = {
     // BRFD:
     //  0       1       2       3 or greater
     { 171,    205,    219,    228 },   // SCALESAME
@@ -1128,4 +1128,8 @@ const uint16_t vc1_b_field_mvpred_scales[7][4] = {
     {  11,     13,     14,     14 },   // SCALEZONE1_Y
     {  26,     17,     12,     10 },   // ZONE1OFFSET_X
     {   7,      4,      3,      3 }    // ZONE1OFFSET_Y
+};
+
+const int ff_vc1_ac_sizes[AC_MODES] = {
+    186, 169, 133, 149, 103, 103, 163, 175
 };

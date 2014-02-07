@@ -22,16 +22,17 @@
 #define AVCODEC_ARM_DCA_H
 
 #include <stdint.h>
-#include "config.h"
-#include "libavutil/intmath.h"
 
-#if HAVE_ARMV6 && HAVE_INLINE_ASM && AV_GCC_VERSION_AT_LEAST(4,4)
+#include "config.h"
+#include "libavcodec/mathops.h"
+
+#if HAVE_ARMV6_INLINE && AV_GCC_VERSION_AT_LEAST(4,4)
 
 #define decode_blockcodes decode_blockcodes
 static inline int decode_blockcodes(int code1, int code2, int levels,
-                                    int *values)
+                                    int32_t *values)
 {
-    int v0, v1, v2, v3, v4, v5;
+    int32_t v0, v1, v2, v3, v4, v5;
 
     __asm__ ("smmul   %8,  %14, %18           \n"
              "smmul   %11, %15, %18           \n"
@@ -79,7 +80,7 @@ static inline int decode_blockcodes(int code1, int code2, int levels,
 
 #endif
 
-#if HAVE_NEON && HAVE_INLINE_ASM && HAVE_ASM_MOD_Y
+#if HAVE_NEON_INLINE && HAVE_ASM_MOD_Y
 
 #define int8x8_fmul_int32 int8x8_fmul_int32
 static inline void int8x8_fmul_int32(float *dst, const int8_t *src, int scale)

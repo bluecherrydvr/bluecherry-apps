@@ -25,6 +25,7 @@
  * VC-1 and WMV3 parser
  */
 
+#include "libavutil/attributes.h"
 #include "parser.h"
 #include "vc1.h"
 #include "get_bits.h"
@@ -57,16 +58,16 @@ static void vc1_extract_headers(AVCodecParserContext *s, AVCodecContext *avctx,
         if(size <= 0) continue;
         switch(AV_RB32(start)){
         case VC1_CODE_SEQHDR:
-            vc1_decode_sequence_header(avctx, &vpc->v, &gb);
+            ff_vc1_decode_sequence_header(avctx, &vpc->v, &gb);
             break;
         case VC1_CODE_ENTRYPOINT:
-            vc1_decode_entry_point(avctx, &vpc->v, &gb);
+            ff_vc1_decode_entry_point(avctx, &vpc->v, &gb);
             break;
         case VC1_CODE_FRAME:
             if(vpc->v.profile < PROFILE_ADVANCED)
-                vc1_parse_frame_header    (&vpc->v, &gb);
+                ff_vc1_parse_frame_header    (&vpc->v, &gb);
             else
-                vc1_parse_frame_header_adv(&vpc->v, &gb);
+                ff_vc1_parse_frame_header_adv(&vpc->v, &gb);
 
             /* keep AV_PICTURE_TYPE_BI internal to VC1 */
             if (vpc->v.s.pict_type == AV_PICTURE_TYPE_BI)
@@ -87,6 +88,11 @@ static void vc1_extract_headers(AVCodecParserContext *s, AVCodecContext *avctx,
                     s->repeat_pict = vpc->v.rptfrm * 2 + 1;
                 }
             }
+
+            if (vpc->v.broadcast && vpc->v.interlace && !vpc->v.psf)
+                s->field_order = vpc->v.tff ? AV_FIELD_TT : AV_FIELD_BB;
+            else
+                s->field_order = AV_FIELD_PROGRESSIVE;
 
             break;
         }
@@ -184,18 +190,18 @@ static int vc1_split(AVCodecContext *avctx,
     return 0;
 }
 
-static int vc1_parse_init(AVCodecParserContext *s)
+static av_cold int vc1_parse_init(AVCodecParserContext *s)
 {
     VC1ParseContext *vpc = s->priv_data;
     vpc->v.s.slice_context_count = 1;
-    return 0;
+    return ff_vc1_init_common(&vpc->v);
 }
 
 AVCodecParser ff_vc1_parser = {
-    .codec_ids      = { CODEC_ID_VC1 },
+    .codec_ids      = { AV_CODEC_ID_VC1 },
     .priv_data_size = sizeof(VC1ParseContext),
     .parser_init    = vc1_parse_init,
     .parser_parse   = vc1_parse,
-    .parser_close   = ff_parse1_close,
+    .parser_close   = ff_parse_close,
     .split          = vc1_split,
 };

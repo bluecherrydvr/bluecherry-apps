@@ -202,8 +202,8 @@ Just create an "input.avs" text file with this single line ...
   avconv -i input.avs
 @end example
 
-For ANY other help on Avisynth, please visit the
-@uref{http://www.avisynth.org/, Avisynth homepage}.
+For ANY other help on AviSynth, please visit the
+@uref{http://www.avisynth.org/, AviSynth homepage}.
 
 @section How can I join video files?
 
@@ -216,15 +216,14 @@ equally humble @code{copy} under Windows), and finally transcoding back to your
 format of choice.
 
 @example
-avconv -i input1.avi -same_quant intermediate1.mpg
-avconv -i input2.avi -same_quant intermediate2.mpg
+avconv -i input1.avi intermediate1.mpg
+avconv -i input2.avi intermediate2.mpg
 cat intermediate1.mpg intermediate2.mpg > intermediate_all.mpg
-avconv -i intermediate_all.mpg -same_quant output.avi
+avconv -i intermediate_all.mpg output.avi
 @end example
 
-Notice that you should either use @code{-same_quant} or set a reasonably high
-bitrate for your intermediate and output files, if you want to preserve
-video quality.
+Notice that you should set a reasonably high bitrate for your intermediate and
+output files, if you want to preserve video quality.
 
 Also notice that you may avoid the huge intermediate files by taking advantage
 of named pipes, should your platform support it:
@@ -232,10 +231,10 @@ of named pipes, should your platform support it:
 @example
 mkfifo intermediate1.mpg
 mkfifo intermediate2.mpg
-avconv -i input1.avi -same_quant -y intermediate1.mpg < /dev/null &
-avconv -i input2.avi -same_quant -y intermediate2.mpg < /dev/null &
+avconv -i input1.avi -y intermediate1.mpg < /dev/null &
+avconv -i input2.avi -y intermediate2.mpg < /dev/null &
 cat intermediate1.mpg intermediate2.mpg |\
-avconv -f mpeg -i - -same_quant -c:v mpeg4 -acodec libmp3lame output.avi
+avconv -f mpeg -i - -c:v mpeg4 -acodec libmp3lame output.avi
 @end example
 
 Similarly, the yuv4mpegpipe format, and the raw video, raw audio codecs also
@@ -262,7 +261,7 @@ cat temp1.a temp2.a > all.a &
 cat temp1.v temp2.v > all.v &
 avconv -f u16le -acodec pcm_s16le -ac 2 -ar 44100 -i all.a \
        -f yuv4mpegpipe -i all.v \
-       -same_quant -y output.flv
+       -y output.flv
 rm temp[12].[av] all.[av]
 @end example
 
@@ -302,27 +301,8 @@ with @code{#ifdef}s related to the compiler.
 
 @section Is Microsoft Visual C++ supported?
 
-No. Microsoft Visual C++ is not compliant to the C99 standard and does
-not - among other things - support the inline assembly used in Libav.
-If you wish to use MSVC++ for your
-project then you can link the MSVC++ code with libav* as long as
-you compile the latter with a working C compiler. For more information, see
-the @emph{Microsoft Visual C++ compatibility} section in the Libav
-documentation.
-
-There have been efforts to make Libav compatible with MSVC++ in the
-past. However, they have all been rejected as too intrusive, especially
-since MinGW does the job adequately. None of the core developers
-work with MSVC++ and thus this item is low priority. Should you find
-the silver bullet that solves this problem, feel free to shoot it at us.
-
-We strongly recommend you to move over from MSVC++ to MinGW tools.
-
-@section Can I use Libav under Windows?
-
-Yes, but the Cygwin or MinGW tools @emph{must} be used to compile Libav.
-Read the @emph{Windows} section in the Libav documentation to find more
-information.
+Yes. Please see the @uref{platform.html, Microsoft Visual C++}
+section in the Libav documentation.
 
 @section Can you add automake, libtool or autoconf support?
 
@@ -356,8 +336,8 @@ to use them you have to append -D__STDC_CONSTANT_MACROS to your CXXFLAGS
 
 @section I have a file in memory / a API different from *open/*read/ libc how do I use it with libavformat?
 
-You have to implement a URLProtocol, see @file{libavformat/file.c} in
-Libav and @file{libmpdemux/demux_lavf.c} in MPlayer sources.
+You have to create a custom AVIOContext using @code{avio_alloc_context},
+see @file{libavformat/aviobuf.c} in Libav and @file{libmpdemux/demux_lavf.c} in MPlayer2 sources.
 
 @section Why is @code{make fate} not running all tests?
 

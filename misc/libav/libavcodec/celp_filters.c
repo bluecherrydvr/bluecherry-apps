@@ -24,6 +24,7 @@
 
 #include "avcodec.h"
 #include "celp_filters.h"
+#include "libavutil/common.h"
 
 void ff_celp_convolve_circ(int16_t* fc_out, const int16_t* fc_in,
                            const int16_t* filter, int len)
@@ -58,22 +59,21 @@ void ff_celp_circ_addf(float *out, const float *in,
 int ff_celp_lp_synthesis_filter(int16_t *out, const int16_t *filter_coeffs,
                                 const int16_t *in, int buffer_length,
                                 int filter_length, int stop_on_overflow,
-                                int rounder)
+                                int shift, int rounder)
 {
     int i,n;
 
     for (n = 0; n < buffer_length; n++) {
-        int sum = rounder;
+        int sum = -rounder, sum1;
         for (i = 1; i <= filter_length; i++)
-            sum -= filter_coeffs[i-1] * out[n-i];
+            sum += filter_coeffs[i-1] * out[n-i];
 
-        sum = (sum >> 12) + in[n];
+        sum1 = ((-sum >> 12) + in[n]) >> shift;
+        sum  = av_clip_int16(sum1);
 
-        if (sum + 0x8000 > 0xFFFFU) {
-            if (stop_on_overflow)
-                return 1;
-            sum = (sum >> 31) ^ 32767;
-        }
+        if (stop_on_overflow && sum != sum1)
+            return 1;
+
         out[n] = sum;
     }
 
@@ -133,9 +133,8 @@ void ff_celp_lp_synthesis_filterf(float *out, const float *filter_coeffs,
         out2 -= val * old_out2;
         out3 -= val * old_out3;
 
-        old_out3 = out[-5];
-
         for (i = 5; i <= filter_length; i += 2) {
+            old_out3 = out[-i];
             val = filter_coeffs[i-1];
 
             out0 -= val * old_out3;
@@ -154,7 +153,6 @@ void ff_celp_lp_synthesis_filterf(float *out, const float *filter_coeffs,
 
             FFSWAP(float, old_out0, old_out2);
             old_out1 = old_out3;
-            old_out3 = out[-i-2];
         }
 
         tmp0 = out0;

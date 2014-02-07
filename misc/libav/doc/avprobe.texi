@@ -41,19 +41,8 @@ Options are used to list some of the formats supported by avprobe or
 for specifying which information to display, and for setting how
 avprobe will show it.
 
-avprobe output is designed to be easily parsable by a textual filter,
-and consists of one or more sections of the form:
-@example
-[SECTION]
-key1=val1
-...
-keyN=valN
-[/SECTION]
-@end example
-
-Metadata tags stored in the container or in the streams are recognized
-and printed in the corresponding "FORMAT" or "STREAM" section, and
-are prefixed by the string "TAG:".
+avprobe output is designed to be easily parsable by any INI or JSON
+parsers.
 
 @c man end
 
@@ -68,6 +57,19 @@ are prefixed by the string "TAG:".
 
 @item -f @var{format}
 Force format to use.
+
+@item -of @var{formatter}
+Use a specific formatter to output the document. The following
+formatters are available
+@table @option
+@item ini
+
+@item json
+
+@item old
+Pseudo-INI format that used to be the only one available in old
+avprobe versions.
+@end table
 
 @item -unit
 Show the unit of the displayed values.
@@ -93,6 +95,11 @@ stream.
 
 All the container format information is printed within a section with
 name "FORMAT".
+
+@item -show_format_entry @var{name}
+Like @option{-show_format}, but only prints the specified entry of the
+container format information, rather than all. This option may be given more
+than once, then all specified entries will be shown.
 
 @item -show_packets
 Show information about each packet contained in the input multimedia

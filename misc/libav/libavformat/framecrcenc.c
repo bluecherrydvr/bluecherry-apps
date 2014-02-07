@@ -21,24 +21,27 @@
 
 #include "libavutil/adler32.h"
 #include "avformat.h"
+#include "internal.h"
 
 static int framecrc_write_packet(struct AVFormatContext *s, AVPacket *pkt)
 {
     uint32_t crc = av_adler32_update(0, pkt->data, pkt->size);
     char buf[256];
 
-    snprintf(buf, sizeof(buf), "%d, %"PRId64", %d, 0x%08x\n", pkt->stream_index, pkt->dts, pkt->size, crc);
+    snprintf(buf, sizeof(buf), "%d, %10"PRId64", %10"PRId64", %8d, %8d, 0x%08x\n",
+             pkt->stream_index, pkt->dts, pkt->pts, pkt->duration, pkt->size, crc);
     avio_write(s->pb, buf, strlen(buf));
-    avio_flush(s->pb);
     return 0;
 }
 
 AVOutputFormat ff_framecrc_muxer = {
     .name              = "framecrc",
-    .long_name         = NULL_IF_CONFIG_SMALL("framecrc testing format"),
+    .long_name         = NULL_IF_CONFIG_SMALL("framecrc testing"),
     .extensions        = "",
-    .audio_codec       = CODEC_ID_PCM_S16LE,
-    .video_codec       = CODEC_ID_RAWVIDEO,
+    .audio_codec       = AV_CODEC_ID_PCM_S16LE,
+    .video_codec       = AV_CODEC_ID_RAWVIDEO,
+    .write_header      = ff_framehash_write_header,
     .write_packet      = framecrc_write_packet,
-    .flags             = AVFMT_VARIABLE_FPS,
+    .flags             = AVFMT_VARIABLE_FPS | AVFMT_TS_NONSTRICT |
+                         AVFMT_TS_NEGATIVE,
 };

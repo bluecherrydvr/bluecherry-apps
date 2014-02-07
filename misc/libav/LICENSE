@@ -1,5 +1,5 @@
 Libav:
-------
+======
 
 Most files in Libav are under the GNU Lesser General Public License version 2.1
 or later (LGPL v2.1+). Read the file COPYING.LGPLv2.1 for details. Some other
@@ -13,34 +13,53 @@ configure to activate them. In this case, Libav's license changes to GPL v2+.
 
 Specifically, the GPL parts of Libav are
 
-- libpostproc
-- optional x86 optimizations in the files
-  libavcodec/x86/idct_mmx.c
 - the X11 grabber in libavdevice/x11grab.c
-
-There are a handful of files under other licensing terms, namely:
-
-* The files libavcodec/jfdctfst.c, libavcodec/jfdctint.c, libavcodec/jrevdct.c
-  are taken from libjpeg, see the top of the files for licensing details.
+- the texi2pod.pl tool
+- the following filters in libavfilter:
+    - vf_blackframe.c
+    - vf_boxblur.c
+    - vf_cropdetect.c
+    - vf_delogo.c
+    - vf_hqdn3d.c
 
 Should you, for whatever reason, prefer to use version 3 of the (L)GPL, then
 the configure parameter --enable-version3 will activate this licensing option
 for you. Read the file COPYING.LGPLv3 or, if you have enabled GPL parts,
 COPYING.GPLv3 to learn the exact legal terms that apply in this case.
 
+There are a handful of files under other licensing terms, namely:
 
-external libraries:
--------------------
+* The files libavcodec/jfdctfst.c, libavcodec/jfdctint_template.c and
+  libavcodec/jrevdct.c are taken from libjpeg, see the top of the files for
+  licensing details. Specifically note that you must credit the IJG in the
+  documentation accompanying your program if you only distribute executables.
+  You must also indicate any changes including additions and deletions to
+  those three files in the documentation.
 
-Some external libraries, e.g. libx264, are under GPL and can be used in
-conjunction with Libav. They require --enable-gpl to be passed to configure
-as well.
 
-The OpenCORE external libraries are under the Apache License 2.0. That license
-is incompatible with the LGPL v2.1 and the GPL v2, but not with version 3 of
-those licenses. So to combine the OpenCORE libraries with Libav, the license
-version needs to be upgraded by passing --enable-version3 to configure.
+external libraries
+==================
 
-The nonfree external library libfaac can be hooked up in Libav. You need to
-pass --enable-nonfree to configure to enable it. Employ this option with care
-as Libav then becomes nonfree and unredistributable.
+Libav can be combined with a number of external libraries, which sometimes
+affect the licensing of binaries resulting from the combination.
+
+compatible libraries
+--------------------
+
+The libcdio, libx264, libxavs and libxvid libraries are under GPL. When
+combining them with Libav, Libav needs to be licensed as GPL as well by
+passing --enable-gpl to configure.
+
+The OpenCORE and VisualOn libraries are under the Apache License 2.0. That
+license is incompatible with the LGPL v2.1 and the GPL v2, but not with
+version 3 of those licenses. So to combine these libraries with Libav, the
+license version needs to be upgraded by passing --enable-version3 to configure.
+
+incompatible libraries
+----------------------
+
+The Fraunhofer AAC library, FAAC and OpenSSL are under licenses incompatible
+with all (L)GPL versions. Thus, unfortunately, since both licenses cannot be
+satisfied simultaneously, binaries resulting from the combination of Libav
+with these libraries are nonfree und unredistributable. If you wish to enable
+any of these libraries nonetheless, pass --enable-nonfree to configure.

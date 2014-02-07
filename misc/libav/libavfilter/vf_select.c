@@ -25,10 +25,14 @@
 
 #include "libavutil/eval.h"
 #include "libavutil/fifo.h"
+#include "libavutil/internal.h"
 #include "libavutil/mathematics.h"
+#include "libavutil/opt.h"
 #include "avfilter.h"
+#include "internal.h"
+#include "video.h"
 
-static const char *var_names[] = {
+static const char *const var_names[] = {
     "E",                 ///< Euler number
     "PHI",               ///< golden ratio
     "PI",                ///< greek pi
@@ -105,7 +109,6 @@ enum var_name {
     VAR_PREV_SELECTED_N,
 
     VAR_KEY,
-    VAR_POS,
 
     VAR_VARS_NB
 };
@@ -113,6 +116,8 @@ enum var_name {
 #define FIFO_SIZE 8
 
 typedef struct {
+    const AVClass *class;
+    char *expr_str;
     AVExpr *expr;
     double var_values[VAR_VARS_NB];
     double select;
@@ -120,18 +125,19 @@ typedef struct {
     AVFifoBuffer *pending_frames; ///< FIFO buffer of video frames
 } SelectContext;
 
-static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int init(AVFilterContext *ctx)
 {
     SelectContext *select = ctx->priv;
     int ret;
 
-    if ((ret = av_expr_parse(&select->expr, args ? args : "1",
+    if ((ret = av_expr_parse(&select->expr, select->expr_str,
                              var_names, NULL, NULL, NULL, NULL, 0, ctx)) < 0) {
-        av_log(ctx, AV_LOG_ERROR, "Error while parsing expression '%s'\n", args);
+        av_log(ctx, AV_LOG_ERROR, "Error while parsing expression '%s'\n",
+               select->expr_str);
         return ret;
     }
 
-    select->pending_frames = av_fifo_alloc(FIFO_SIZE*sizeof(AVFilterBufferRef*));
+    select->pending_frames = av_fifo_alloc(FIFO_SIZE*sizeof(AVFrame*));
     if (!select->pending_frames) {
         av_log(ctx, AV_LOG_ERROR, "Failed to allocate pending frames buffer.\n");
         return AVERROR(ENOMEM);
@@ -178,35 +184,33 @@ static int config_input(AVFilterLink *inlink)
 #define D2TS(d)  (isnan(d) ? AV_NOPTS_VALUE : (int64_t)(d))
 #define TS2D(ts) ((ts) == AV_NOPTS_VALUE ? NAN : (double)(ts))
 
-static int select_frame(AVFilterContext *ctx, AVFilterBufferRef *picref)
+static int select_frame(AVFilterContext *ctx, AVFrame *frame)
 {
     SelectContext *select = ctx->priv;
     AVFilterLink *inlink = ctx->inputs[0];
     double res;
 
     if (isnan(select->var_values[VAR_START_PTS]))
-        select->var_values[VAR_START_PTS] = TS2D(picref->pts);
+        select->var_values[VAR_START_PTS] = TS2D(frame->pts);
     if (isnan(select->var_values[VAR_START_T]))
-        select->var_values[VAR_START_T] = TS2D(picref->pts) * av_q2d(inlink->time_base);
+        select->var_values[VAR_START_T] = TS2D(frame->pts) * av_q2d(inlink->time_base);
 
-    select->var_values[VAR_PTS] = TS2D(picref->pts);
-    select->var_values[VAR_T  ] = TS2D(picref->pts) * av_q2d(inlink->time_base);
-    select->var_values[VAR_POS] = picref->pos == -1 ? NAN : picref->pos;
-    select->var_values[VAR_PREV_PTS] = TS2D(picref ->pts);
+    select->var_values[VAR_PTS] = TS2D(frame->pts);
+    select->var_values[VAR_T  ] = TS2D(frame->pts) * av_q2d(inlink->time_base);
+    select->var_values[VAR_PREV_PTS] = TS2D(frame->pts);
 
     select->var_values[VAR_INTERLACE_TYPE] =
-        !picref->video->interlaced     ? INTERLACE_TYPE_P :
-        picref->video->top_field_first ? INTERLACE_TYPE_T : INTERLACE_TYPE_B;
-    select->var_values[VAR_PICT_TYPE] = picref->video->pict_type;
+        !frame->interlaced_frame     ? INTERLACE_TYPE_P :
+        frame->top_field_first ? INTERLACE_TYPE_T : INTERLACE_TYPE_B;
+    select->var_values[VAR_PICT_TYPE] = frame->pict_type;
 
     res = av_expr_eval(select->expr, select->var_values, NULL);
     av_log(inlink->dst, AV_LOG_DEBUG,
-           "n:%d pts:%d t:%f pos:%d interlace_type:%c key:%d pict_type:%c "
+           "n:%d pts:%d t:%f interlace_type:%c key:%d pict_type:%c "
            "-> select:%f\n",
            (int)select->var_values[VAR_N],
            (int)select->var_values[VAR_PTS],
            select->var_values[VAR_T],
-           (int)select->var_values[VAR_POS],
            select->var_values[VAR_INTERLACE_TYPE] == INTERLACE_TYPE_P ? 'P' :
            select->var_values[VAR_INTERLACE_TYPE] == INTERLACE_TYPE_T ? 'T' :
            select->var_values[VAR_INTERLACE_TYPE] == INTERLACE_TYPE_B ? 'B' : '?',
@@ -225,45 +229,28 @@ static int select_frame(AVFilterContext *ctx, AVFilterBufferRef *picref)
     return res;
 }
 
-static void start_frame(AVFilterLink *inlink, AVFilterBufferRef *picref)
+static int filter_frame(AVFilterLink *inlink, AVFrame *frame)
 {
     SelectContext *select = inlink->dst->priv;
 
-    select->select = select_frame(inlink->dst, picref);
+    select->select = select_frame(inlink->dst, frame);
     if (select->select) {
         /* frame was requested through poll_frame */
         if (select->cache_frames) {
-            if (!av_fifo_space(select->pending_frames))
+            if (!av_fifo_space(select->pending_frames)) {
                 av_log(inlink->dst, AV_LOG_ERROR,
                        "Buffering limit reached, cannot cache more frames\n");
-            else
-                av_fifo_generic_write(select->pending_frames, &picref,
-                                      sizeof(picref), NULL);
-            return;
+                av_frame_free(&frame);
+            } else
+                av_fifo_generic_write(select->pending_frames, &frame,
+                                      sizeof(frame), NULL);
+            return 0;
         }
-        avfilter_start_frame(inlink->dst->outputs[0], avfilter_ref_buffer(picref, ~0));
+        return ff_filter_frame(inlink->dst->outputs[0], frame);
     }
-}
 
-static void draw_slice(AVFilterLink *inlink, int y, int h, int slice_dir)
-{
-    SelectContext *select = inlink->dst->priv;
-
-    if (select->select && !select->cache_frames)
-        avfilter_draw_slice(inlink->dst->outputs[0], y, h, slice_dir);
-}
-
-static void end_frame(AVFilterLink *inlink)
-{
-    SelectContext *select = inlink->dst->priv;
-    AVFilterBufferRef *picref = inlink->cur_buf;
-
-    if (select->select) {
-        if (select->cache_frames)
-            return;
-        avfilter_end_frame(inlink->dst->outputs[0]);
-    }
-    avfilter_unref_buffer(picref);
+    av_frame_free(&frame);
+    return 0;
 }
 
 static int request_frame(AVFilterLink *outlink)
@@ -274,17 +261,14 @@ static int request_frame(AVFilterLink *outlink)
     select->select = 0;
 
     if (av_fifo_size(select->pending_frames)) {
-        AVFilterBufferRef *picref;
-        av_fifo_generic_read(select->pending_frames, &picref, sizeof(picref), NULL);
-        avfilter_start_frame(outlink, avfilter_ref_buffer(picref, ~0));
-        avfilter_draw_slice(outlink, 0, outlink->h, 1);
-        avfilter_end_frame(outlink);
-        avfilter_unref_buffer(picref);
-        return 0;
+        AVFrame *frame;
+
+        av_fifo_generic_read(select->pending_frames, &frame, sizeof(frame), NULL);
+        return ff_filter_frame(outlink, frame);
     }
 
     while (!select->select) {
-        int ret = avfilter_request_frame(inlink);
+        int ret = ff_request_frame(inlink);
         if (ret < 0)
             return ret;
     }
@@ -299,55 +283,80 @@ static int poll_frame(AVFilterLink *outlink)
     int count, ret;
 
     if (!av_fifo_size(select->pending_frames)) {
-        if ((count = avfilter_poll_frame(inlink)) <= 0)
+        if ((count = ff_poll_frame(inlink)) <= 0)
             return count;
         /* request frame from input, and apply select condition to it */
         select->cache_frames = 1;
         while (count-- && av_fifo_space(select->pending_frames)) {
-            ret = avfilter_request_frame(inlink);
+            ret = ff_request_frame(inlink);
             if (ret < 0)
                 break;
         }
         select->cache_frames = 0;
     }
 
-    return av_fifo_size(select->pending_frames)/sizeof(AVFilterBufferRef *);
+    return av_fifo_size(select->pending_frames)/sizeof(AVFrame*);
 }
 
 static av_cold void uninit(AVFilterContext *ctx)
 {
     SelectContext *select = ctx->priv;
-    AVFilterBufferRef *picref;
+    AVFrame *frame;
 
     av_expr_free(select->expr);
     select->expr = NULL;
 
     while (select->pending_frames &&
-           av_fifo_generic_read(select->pending_frames, &picref, sizeof(picref), NULL) == sizeof(picref))
-        avfilter_unref_buffer(picref);
+           av_fifo_generic_read(select->pending_frames, &frame, sizeof(frame), NULL) == sizeof(frame))
+        av_frame_free(&frame);
     av_fifo_free(select->pending_frames);
     select->pending_frames = NULL;
 }
 
-AVFilter avfilter_vf_select = {
+#define OFFSET(x) offsetof(SelectContext, x)
+#define FLAGS AV_OPT_FLAG_VIDEO_PARAM
+static const AVOption options[] = {
+    { "expr", "An expression to use for selecting frames", OFFSET(expr_str), AV_OPT_TYPE_STRING, { .str = "1" }, .flags = FLAGS },
+    { NULL },
+};
+
+static const AVClass select_class = {
+    .class_name = "select",
+    .item_name  = av_default_item_name,
+    .option     = options,
+    .version    = LIBAVUTIL_VERSION_INT,
+};
+
+static const AVFilterPad avfilter_vf_select_inputs[] = {
+    {
+        .name             = "default",
+        .type             = AVMEDIA_TYPE_VIDEO,
+        .get_video_buffer = ff_null_get_video_buffer,
+        .config_props     = config_input,
+        .filter_frame     = filter_frame,
+    },
+    { NULL }
+};
+
+static const AVFilterPad avfilter_vf_select_outputs[] = {
+    {
+        .name          = "default",
+        .type          = AVMEDIA_TYPE_VIDEO,
+        .poll_frame    = poll_frame,
+        .request_frame = request_frame,
+    },
+    { NULL }
+};
+
+AVFilter ff_vf_select = {
     .name      = "select",
     .description = NULL_IF_CONFIG_SMALL("Select frames to pass in output."),
     .init      = init,
     .uninit    = uninit,
 
     .priv_size = sizeof(SelectContext),
+    .priv_class = &select_class,
 
-    .inputs    = (AVFilterPad[]) {{ .name             = "default",
-                                    .type             = AVMEDIA_TYPE_VIDEO,
-                                    .get_video_buffer = avfilter_null_get_video_buffer,
-                                    .config_props     = config_input,
-                                    .start_frame      = start_frame,
-                                    .draw_slice       = draw_slice,
-                                    .end_frame        = end_frame },
-                                  { .name = NULL }},
-    .outputs   = (AVFilterPad[]) {{ .name             = "default",
-                                    .type             = AVMEDIA_TYPE_VIDEO,
-                                    .poll_frame       = poll_frame,
-                                    .request_frame    = request_frame, },
-                                  { .name = NULL}},
+    .inputs    = avfilter_vf_select_inputs,
+    .outputs   = avfilter_vf_select_outputs,
 };

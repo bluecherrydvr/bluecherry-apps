@@ -20,12 +20,12 @@
 
 #include <stdio.h>
 #include <string.h>              /* for memset() */
-#include <unistd.h>
 #include <stdlib.h>
 #include <inttypes.h>
 
 #include "swscale.h"
 #include "rgb2rgb.h"
+#include "libavutil/mem.h"
 
 #define SIZE    1000
 #define srcByte 0x55
@@ -33,7 +33,7 @@
 
 #define FUNC(s, d, n) { s, d, #n, n }
 
-int main(int argc, char **argv)
+int main(void)
 {
     int i, funcNum;
     uint8_t *srcBuffer = av_malloc(SIZE);

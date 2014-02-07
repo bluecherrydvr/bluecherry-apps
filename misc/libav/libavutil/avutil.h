@@ -31,17 +31,49 @@
  *
  * @section libav_intro Introduction
  *
- * This document describe the usage of the different libraries
+ * This document describes the usage of the different libraries
  * provided by Libav.
  *
  * @li @ref libavc "libavcodec" encoding/decoding library
- * @li @subpage libavfilter graph based frame editing library
+ * @li @ref lavfi "libavfilter" graph-based frame editing library
  * @li @ref libavf "libavformat" I/O and muxing/demuxing library
  * @li @ref lavd "libavdevice" special devices muxing/demuxing library
  * @li @ref lavu "libavutil" common utility library
- * @li @subpage libpostproc post processing library
- * @li @subpage libswscale  color conversion and scaling library
+ * @li @ref lavr "libavresample" audio resampling, format conversion and mixing
+ * @li @ref libsws "libswscale"  color conversion and scaling library
  *
+ * @section libav_versioning Versioning and compatibility
+ *
+ * Each of the Libav libraries contains a version.h header, which defines a
+ * major, minor and micro version number with the
+ * <em>LIBRARYNAME_VERSION_{MAJOR,MINOR,MICRO}</em> macros. The major version
+ * number is incremented with backward incompatible changes - e.g. removing
+ * parts of the public API, reordering public struct members, etc. The minor
+ * version number is incremented for backward compatible API changes or major
+ * new features - e.g. adding a new public function or a new decoder. The micro
+ * version number is incremented for smaller changes that a calling program
+ * might still want to check for - e.g. changing behavior in a previously
+ * unspecified situation.
+ *
+ * Libav guarantees backward API and ABI compatibility for each library as long
+ * as its major version number is unchanged. This means that no public symbols
+ * will be removed or renamed. Types and names of the public struct members and
+ * values of public macros and enums will remain the same (unless they were
+ * explicitly declared as not part of the public API). Documented behavior will
+ * not change.
+ *
+ * In other words, any correct program that works with a given Libav snapshot
+ * should work just as well without any changes with any later snapshot with the
+ * same major versions. This applies to both rebuilding the program against new
+ * Libav versions or to replacing the dynamic Libav libraries that a program
+ * links against.
+ *
+ * However, new public symbols may be added and new members may be appended to
+ * public structs whose size is not part of public ABI (most public structs in
+ * Libav). New macros and enum values may be added. Behavior in undocumented
+ * situations may change slightly (and be documented). All those are accompanied
+ * by an entry in doc/APIchanges and incrementing either the minor or micro
+ * version number.
  */
 
 /**
@@ -95,6 +127,12 @@
  *
  * @}
  *
+ * @defgroup lavu_log Logging Facility
+ *
+ * @{
+ *
+ * @}
+ *
  * @defgroup lavu_misc Other
  *
  * @{
@@ -106,95 +144,14 @@
  * @{
  *
  * @}
- */
-
-
-/**
+ *
  * @defgroup preproc_misc Preprocessor String Macros
  *
- * String manipulation macros
- *
  * @{
- */
-
-#define AV_STRINGIFY(s)         AV_TOSTRING(s)
-#define AV_TOSTRING(s) #s
-
-#define AV_GLUE(a, b) a ## b
-#define AV_JOIN(a, b) AV_GLUE(a, b)
-
-#define AV_PRAGMA(s) _Pragma(#s)
-
-/**
+ *
  * @}
  */
 
-/**
- * @defgroup version_utils Library Version Macros
- *
- * Useful to check and match library version in order to maintain
- * backward compatibility.
- *
- * @{
- */
-
-#define AV_VERSION_INT(a, b, c) (a<<16 | b<<8 | c)
-#define AV_VERSION_DOT(a, b, c) a ##.## b ##.## c
-#define AV_VERSION(a, b, c) AV_VERSION_DOT(a, b, c)
-
-/**
- * @}
- *
- * @defgroup lavu_ver Version and Build diagnostics
- *
- * Macros and function useful to check at compiletime and at runtime
- * which version of libavutil is in use.
- *
- * @{
- */
-
-#define LIBAVUTIL_VERSION_MAJOR 51
-#define LIBAVUTIL_VERSION_MINOR 21
-#define LIBAVUTIL_VERSION_MICRO  0
-
-#define LIBAVUTIL_VERSION_INT   AV_VERSION_INT(LIBAVUTIL_VERSION_MAJOR, \
-                                               LIBAVUTIL_VERSION_MINOR, \
-                                               LIBAVUTIL_VERSION_MICRO)
-#define LIBAVUTIL_VERSION       AV_VERSION(LIBAVUTIL_VERSION_MAJOR,     \
-                                           LIBAVUTIL_VERSION_MINOR,     \
-                                           LIBAVUTIL_VERSION_MICRO)
-#define LIBAVUTIL_BUILD         LIBAVUTIL_VERSION_INT
-
-#define LIBAVUTIL_IDENT         "Lavu" AV_STRINGIFY(LIBAVUTIL_VERSION)
-
-/**
- * @}
- *
- * @defgroup depr_guards Deprecation guards
- * Those FF_API_* defines are not part of public API.
- * They may change, break or disappear at any time.
- *
- * They are used mostly internally to mark code that will be removed
- * on the next major version.
- *
- * @{
- */
-#ifndef FF_API_GET_BITS_PER_SAMPLE_FMT
-#define FF_API_GET_BITS_PER_SAMPLE_FMT (LIBAVUTIL_VERSION_MAJOR < 52)
-#endif
-#ifndef FF_API_FIND_OPT
-#define FF_API_FIND_OPT                 (LIBAVUTIL_VERSION_MAJOR < 52)
-#endif
-#ifndef FF_API_AV_FIFO_PEEK
-#define FF_API_AV_FIFO_PEEK             (LIBAVUTIL_VERSION_MAJOR < 52)
-#endif
-#ifndef FF_API_OLD_AVOPTIONS
-#define FF_API_OLD_AVOPTIONS            (LIBAVUTIL_VERSION_MAJOR < 52)
-#endif
-
-/**
- * @}
- */
 
 /**
  * @addtogroup lavu_ver
@@ -315,8 +272,9 @@ char av_get_picture_type_char(enum AVPictureType pict_type);
  * @}
  */
 
-#include "common.h"
 #include "error.h"
+#include "version.h"
+#include "macros.h"
 
 /**
  * @}

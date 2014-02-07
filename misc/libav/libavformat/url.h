@@ -31,7 +31,6 @@
 #include "libavutil/dict.h"
 #include "libavutil/log.h"
 
-#if !FF_API_OLD_AVIO
 #define URL_PROTOCOL_FLAG_NESTED_SCHEME 1 /*< The protocol name can be the first part of a nested protocol scheme */
 #define URL_PROTOCOL_FLAG_NETWORK       2 /*< The protocol uses network */
 
@@ -60,6 +59,19 @@ typedef struct URLProtocol {
      * for those nested protocols.
      */
     int     (*url_open2)(URLContext *h, const char *url, int flags, AVDictionary **options);
+
+    /**
+     * Read data from the protocol.
+     * If data is immediately available (even less than size), EOF is
+     * reached or an error occurs (including EINTR), return immediately.
+     * Otherwise:
+     * In non-blocking mode, return AVERROR(EAGAIN) immediately.
+     * In blocking mode, wait for data/EOF/error with a short timeout (0.1s),
+     * and return AVERROR(EAGAIN) on timeout.
+     * Checking interrupt_callback, looping on EINTR and EAGAIN and until
+     * enough data has been read is left to the calling function; see
+     * retry_transfer_wrapper in avio.c.
+     */
     int     (*url_read)( URLContext *h, unsigned char *buf, int size);
     int     (*url_write)(URLContext *h, const unsigned char *buf, int size);
     int64_t (*url_seek)( URLContext *h, int64_t pos, int whence);
@@ -69,12 +81,14 @@ typedef struct URLProtocol {
     int64_t (*url_read_seek)(URLContext *h, int stream_index,
                              int64_t timestamp, int flags);
     int (*url_get_file_handle)(URLContext *h);
+    int (*url_get_multi_file_handle)(URLContext *h, int **handles,
+                                     int *numhandles);
+    int (*url_shutdown)(URLContext *h, int flags);
     int priv_data_size;
     const AVClass *priv_data_class;
     int flags;
     int (*url_check)(URLContext *h, int mask);
 } URLProtocol;
-#endif
 
 /**
  * Create a URLContext for accessing to the resource indicated by
@@ -190,11 +204,28 @@ int64_t ffurl_size(URLContext *h);
 int ffurl_get_file_handle(URLContext *h);
 
 /**
- * Register the URLProtocol protocol.
+ * Return the file descriptors associated with this URL.
  *
- * @param size the size of the URLProtocol struct referenced
+ * @return 0 on success or <0 on error.
  */
-int ffurl_register_protocol(URLProtocol *protocol, int size);
+int ffurl_get_multi_file_handle(URLContext *h, int **handles, int *numhandles);
+
+/**
+ * Signal the URLContext that we are done reading or writing the stream.
+ *
+ * @param h pointer to the resource
+ * @param flags flags which control how the resource indicated by url
+ * is to be shutdown
+ *
+ * @return a negative value if an error condition occurred, 0
+ * otherwise
+ */
+int ffurl_shutdown(URLContext *h, int flags);
+
+/**
+ * Register the URLProtocol protocol.
+ */
+int ffurl_register_protocol(URLProtocol *protocol);
 
 /**
  * Check if the user has requested to interrup a blocking function
@@ -212,5 +243,42 @@ URLProtocol *ffurl_protocol_next(URLProtocol *prev);
 /* udp.c */
 int ff_udp_set_remote_url(URLContext *h, const char *uri);
 int ff_udp_get_local_port(URLContext *h);
+
+/**
+ * Assemble a URL string from components. This is the reverse operation
+ * of av_url_split.
+ *
+ * Note, this requires networking to be initialized, so the caller must
+ * ensure ff_network_init has been called.
+ *
+ * @see av_url_split
+ *
+ * @param str the buffer to fill with the url
+ * @param size the size of the str buffer
+ * @param proto the protocol identifier, if null, the separator
+ *              after the identifier is left out, too
+ * @param authorization an optional authorization string, may be null.
+ *                      An empty string is treated the same as a null string.
+ * @param hostname the host name string
+ * @param port the port number, left out from the string if negative
+ * @param fmt a generic format string for everything to add after the
+ *            host/port, may be null
+ * @return the number of characters written to the destination buffer
+ */
+int ff_url_join(char *str, int size, const char *proto,
+                const char *authorization, const char *hostname,
+                int port, const char *fmt, ...) av_printf_format(7, 8);
+
+/*
+ * Convert a relative url into an absolute url, given a base url.
+ *
+ * @param buf the buffer where output absolute url is written
+ * @param size the size of buf
+ * @param base the base url, may be equal to buf.
+ * @param rel the new url, which is interpreted relative to base
+ */
+void ff_make_absolute_url(char *buf, int size, const char *base,
+                          const char *rel);
+
 
 #endif /* AVFORMAT_URL_H */

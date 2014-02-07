@@ -19,44 +19,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#include <stdint.h>
+
 #include "libavutil/intreadwrite.h"
 #include "libavutil/intfloat.h"
 #include "avformat.h"
 #include "internal.h"
 #include "ffm.h"
-#if CONFIG_AVSERVER
-#include <unistd.h>
-
-int64_t ffm_read_write_index(int fd)
-{
-    uint8_t buf[8];
-
-    lseek(fd, 8, SEEK_SET);
-    if (read(fd, buf, 8) != 8)
-        return AVERROR(EIO);
-    return AV_RB64(buf);
-}
-
-int ffm_write_write_index(int fd, int64_t pos)
-{
-    uint8_t buf[8];
-    int i;
-
-    for(i=0;i<8;i++)
-        buf[i] = (pos >> (56 - i * 8)) & 0xff;
-    lseek(fd, 8, SEEK_SET);
-    if (write(fd, buf, 8) != 8)
-        return AVERROR(EIO);
-    return 8;
-}
-
-void ffm_set_write_index(AVFormatContext *s, int64_t pos, int64_t file_size)
-{
-    FFMContext *ffm = s->priv_data;
-    ffm->write_index = pos;
-    ffm->file_size = file_size;
-}
-#endif // CONFIG_AVSERVER
 
 static int ffm_is_avail_data(AVFormatContext *s, int size)
 {
@@ -167,7 +136,7 @@ static int ffm_read_data(AVFormatContext *s,
 
 /* ensure that acutal seeking happens between FFM_PACKET_SIZE
    and file_size - FFM_PACKET_SIZE */
-static void ffm_seek1(AVFormatContext *s, int64_t pos1)
+static int64_t ffm_seek1(AVFormatContext *s, int64_t pos1)
 {
     FFMContext *ffm = s->priv_data;
     AVIOContext *pb = s->pb;
@@ -176,7 +145,7 @@ static void ffm_seek1(AVFormatContext *s, int64_t pos1)
     pos = FFMIN(pos1, ffm->file_size - FFM_PACKET_SIZE);
     pos = FFMAX(pos, FFM_PACKET_SIZE);
     av_dlog(s, "seek to %"PRIx64" -> %"PRIx64"\n", pos1, pos);
-    avio_seek(pb, pos, SEEK_SET);
+    return avio_seek(pb, pos, SEEK_SET);
 }
 
 static int64_t get_dts(AVFormatContext *s, int64_t pos)
@@ -240,9 +209,6 @@ static void adjust_write_index(AVFormatContext *s)
         ffm->write_index += pos_max;
     }
 
-    //printf("Adjusted write index from %"PRId64" to %"PRId64": pts=%0.6f\n", orig_write_index, ffm->write_index, pts / 1000000.);
-    //printf("pts range %0.6f - %0.6f\n", get_dts(s, 0) / 1000000. , get_dts(s, ffm->file_size - 2 * FFM_PACKET_SIZE) / 1000000. );
-
  end:
     avio_seek(pb, ptr, SEEK_SET);
 }
@@ -259,7 +225,7 @@ static int ffm_close(AVFormatContext *s)
 }
 
 
-static int ffm_read_header(AVFormatContext *s, AVFormatParameters *ap)
+static int ffm_read_header(AVFormatContext *s)
 {
     FFMContext *ffm = s->priv_data;
     AVStream *st;
@@ -332,8 +298,6 @@ static int ffm_read_header(AVFormatContext *s, AVFormatParameters *ap)
             codec->dct_algo = avio_rb32(pb);
             codec->strict_std_compliance = avio_rb32(pb);
             codec->max_b_frames = avio_rb32(pb);
-            codec->luma_elim_threshold = avio_rb32(pb);
-            codec->chroma_elim_threshold = avio_rb32(pb);
             codec->mpeg_quant = avio_rb32(pb);
             codec->intra_dc_precision = avio_rb32(pb);
             codec->me_method = avio_rb32(pb);
@@ -359,7 +323,6 @@ static int ffm_read_header(AVFormatContext *s, AVFormatParameters *ap)
             codec->sample_rate = avio_rb32(pb);
             codec->channels = avio_rl16(pb);
             codec->frame_size = avio_rl16(pb);
-            codec->sample_fmt = (int16_t) avio_rl16(pb);
             break;
         default:
             goto fail;
@@ -487,7 +450,8 @@ static int ffm_seek(AVFormatContext *s, int stream_index, int64_t wanted_pts, in
     pos = (flags & AVSEEK_FLAG_BACKWARD) ? pos_min : pos_max;
 
  found:
-    ffm_seek1(s, pos);
+    if (ffm_seek1(s, pos) < 0)
+        return -1;
 
     /* reset read state */
     ffm->read_state = READ_HEADER;
@@ -509,7 +473,7 @@ static int ffm_probe(AVProbeData *p)
 
 AVInputFormat ff_ffm_demuxer = {
     .name           = "ffm",
-    .long_name      = NULL_IF_CONFIG_SMALL("FFM (AVserver live feed) format"),
+    .long_name      = NULL_IF_CONFIG_SMALL("FFM (AVserver live feed)"),
     .priv_data_size = sizeof(FFMContext),
     .read_probe     = ffm_probe,
     .read_header    = ffm_read_header,
