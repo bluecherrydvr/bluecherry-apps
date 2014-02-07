@@ -37,7 +37,7 @@ unsigned bt_fill_entry(struct iovec *out, char *faddr, char *saddr, size_t addr)
 		return last;
 	}
 
-	ptrtohex(faddr, PTRS_SZ, addr - (size_t)d.dli_fbase);
+	ptrtohex(faddr, PTRS_SZ, addr);
 
 	if (d.dli_sname) {
 		VSTR(out[last++], d.dli_sname);
@@ -52,22 +52,13 @@ unsigned bt_fill_entry(struct iovec *out, char *faddr, char *saddr, size_t addr)
 }
 
 static
-size_t rebase(size_t p)
-{
-	Dl_info d;
-
-	int ret = dladdr((void *)p, &d);
-	return p - (ret ? (size_t)d.dli_fbase : 0x400000);
-}
-
-static
 void bt_print_entries(size_t *btrace, unsigned len, size_t p, const char *err)
 {
 	char addr[2][PTRS_SZ];
 	bc_logv *out = bc_logv_alloc(8);
 
 
-	ptrtohex(addr[0], PTRS_SZ, rebase(p));
+	ptrtohex(addr[0], PTRS_SZ, p);
 
 	VSTR(out[0], "BUG: ");
 	VSTR(out[1], err);
