@@ -50,9 +50,9 @@ void motion_processor::destroy()
 static enum PixelFormat fix_pix_fmt(int fmt)
 {
 	switch (fmt) {
-	case PIX_FMT_YUVJ420P: return PIX_FMT_YUV420P;
-	case PIX_FMT_YUVJ422P: return PIX_FMT_YUV422P;
-	case PIX_FMT_YUVJ444P: return PIX_FMT_YUV444P;
+	case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
+	case AV_PIX_FMT_YUVJ422P: return AV_PIX_FMT_YUV422P;
+	case AV_PIX_FMT_YUVJ444P: return AV_PIX_FMT_YUV444P;
 	default: return (enum PixelFormat)fmt;
 	}
 }
@@ -203,17 +203,17 @@ int motion_processor::detect(AVFrame *rawFrame)
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), rawFrame->width, rawFrame->height,
-		PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
+		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
 	/* XXX preallocated buffer? */
-	int bufSize = avpicture_get_size(PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
+	int bufSize = avpicture_get_size(AV_PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
 	uint8_t *buf = (uint8_t*)av_malloc(bufSize);
 	if (!buf)
 		return -1;
 
 	AVFrame frame;
 	avcodec_get_frame_defaults(&frame);
-	avpicture_fill((AVPicture*)&frame, buf, PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
+	avpicture_fill((AVPicture*)&frame, buf, AV_PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
 		  rawFrame->height, frame.data, frame.linesize);

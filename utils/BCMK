@@ -1,8 +1,8 @@
 CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
-TARGETS		= getjpeg getaudio pelcocmd ptzcmd \
-		  rtsp-record bc-license
+TARGETS		= getjpeg pelcocmd ptzcmd \
+		  bc-license
 
 all: $(TARGETS)
 

@@ -47,13 +47,13 @@ static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize, void 
 AVCodec fake_h264_encoder = {
 	.name           = "fakeh264",
 	.type           = AVMEDIA_TYPE_VIDEO,
-	.id             = CODEC_ID_H264,
+	.id             = AV_CODEC_ID_H264,
 	.priv_data_size = 0,
 	.init           = fake_h264_init,
 	.encode         = fake_h264_frame,
 	.close          = fake_h264_close,
 	.capabilities   = CODEC_CAP_DELAY,
-	.pix_fmts       = (const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P, PIX_FMT_NONE },
+	.pix_fmts       = (const enum PixelFormat[]) { AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_NONE },
 	.long_name      = "Fake H.264 Encoder for RTP Muxing",
 };
 

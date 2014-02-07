@@ -153,7 +153,7 @@ void stream_keyframe_buffer::apply_bound()
 }
 
 stream_properties::video_properties::video_properties()
-	: codec_id(CODEC_ID_NONE), pix_fmt(PIX_FMT_NONE), width(0), height(0),
+	: codec_id(AV_CODEC_ID_NONE), pix_fmt(AV_PIX_FMT_NONE), width(0), height(0),
 	  time_base({ 1, 1 }), profile(FF_PROFILE_UNKNOWN)
 {
 }
@@ -178,7 +178,7 @@ void stream_properties::video_properties::apply(AVCodecContext *cc) const
 }
 
 stream_properties::audio_properties::audio_properties()
-	: codec_id(CODEC_ID_NONE), bit_rate(0), sample_rate(0), sample_fmt(SAMPLE_FMT_NONE),
+	: codec_id(AV_CODEC_ID_NONE), bit_rate(0), sample_rate(0), sample_fmt(AV_SAMPLE_FMT_NONE),
 	  channels(0), time_base({ 1, 1}), profile(FF_PROFILE_UNKNOWN)
 {
 }
