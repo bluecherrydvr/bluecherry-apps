@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+#include <assert.h>
 #include <string>
 
 extern "C" {
@@ -194,14 +195,14 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	st->time_base.den = fden;
 	st->time_base.num = fnum;
 
-	if (bc_rec->bc->v4l2.codec_id == CODEC_ID_NONE) {
+	if (bc_rec->bc->v4l2.codec_id == AV_CODEC_ID_NONE) {
 		bc_dev_warn(bc_rec, "Invalid CODEC, assuming H264");
-		st->codec->codec_id = CODEC_ID_H264;
+		st->codec->codec_id = AV_CODEC_ID_H264;
 	} else
 		st->codec->codec_id = bc_rec->bc->v4l2.codec_id;
 
 	/* h264 requires us to work around libavcodec broken defaults */
-	if (st->codec->codec_id == CODEC_ID_H264) {
+	if (st->codec->codec_id == AV_CODEC_ID_H264) {
 		st->codec->me_range = 16;
 		st->codec->me_subpel_quality = 7;
 		st->codec->qmin = 10;
@@ -213,7 +214,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 	}
 
 	st->codec->codec_type = AVMEDIA_TYPE_VIDEO;
-	st->codec->pix_fmt = PIX_FMT_YUV420P;
+	st->codec->pix_fmt = AV_PIX_FMT_YUV420P;
 	st->codec->width = width;
 	st->codec->height = height;
 	st->codec->time_base.num = fnum;
@@ -231,7 +232,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 
 	/* Setup new audio stream */
 	if (has_audio(bc_rec)) {
-		enum CodecID codec_id = CODEC_ID_PCM_S16LE;
+		enum AVCodecID codec_id = AV_CODEC_ID_PCM_S16LE;
 
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
@@ -246,7 +247,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 
 		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = SAMPLE_FMT_S16;
+		st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
 		st->codec->channels = 1;
 		st->codec->time_base = (AVRational){1, 8000};
 
@@ -321,7 +322,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	}
 
 	/* Open output file */
-	if (avio_open(&oc->pb, path.c_str(), URL_WRONLY) < 0) {
+	if (avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE) < 0) {
 		bc_log(Error, "Cannot open media output file %s",
 			   file_path.c_str());
 		goto error;
@@ -391,15 +392,17 @@ end:
 
 int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 {
+  int ret;
+
 	AVFrame rawFrame, frame;
 	if (decode_one_packet(pkt, &rawFrame) < 1) {
 		bc_log(Info, "snapshot: no video frame for snapshot");
 		return -1;
 	}
 
-	AVCodec *codec = avcodec_find_encoder(CODEC_ID_MJPEG);
+	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
 	AVCodecContext *oc = 0;
-	uint8_t *buf = 0, *swsBuf = 0;
+	uint8_t *swsBuf = 0;
 	FILE *file = 0;
 	int size, re = -1;
 
@@ -410,7 +413,7 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 
 	oc->width   = rawFrame.width;
 	oc->height  = rawFrame.height;
-	oc->pix_fmt = PIX_FMT_YUVJ420P;
+	oc->pix_fmt = AV_PIX_FMT_YUVJ420P;
 	oc->mb_lmin = oc->lmin = oc->qmin * FF_QP2LAMBDA;
 	oc->mb_lmax = oc->lmax = oc->qmax * FF_QP2LAMBDA;
 	oc->flags  |= CODEC_FLAG_QSCALE;
@@ -423,10 +426,10 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 
 	size = avpicture_get_size(oc->pix_fmt, oc->width, oc->height);
 	memcpy(&frame, &rawFrame, sizeof(AVFrame));
-	if (rawFrame.format != PIX_FMT_YUVJ420P) {
+	if (rawFrame.format != AV_PIX_FMT_YUVJ420P) {
 		SwsContext *sws = 0;
 		sws = sws_getCachedContext(0, rawFrame.width, rawFrame.height, (PixelFormat)rawFrame.format,
-		                           rawFrame.width, rawFrame.height, PIX_FMT_YUVJ420P,
+		                           rawFrame.width, rawFrame.height, AV_PIX_FMT_YUVJ420P,
 		                           SWS_BICUBIC, NULL, NULL, NULL);
 		if (!sws) {
 			bc_log(Bug, "snapshot: cannot convert pixel format for JPEG (format is %d)", rawFrame.format);
@@ -434,20 +437,31 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 		}
 
 		swsBuf = new uint8_t[size];
-		avpicture_fill((AVPicture*)&frame, swsBuf, PIX_FMT_YUVJ420P, rawFrame.width, rawFrame.height);
+		avpicture_fill((AVPicture*)&frame, swsBuf, AV_PIX_FMT_YUVJ420P, rawFrame.width, rawFrame.height);
 		sws_scale(sws, (const uint8_t**)rawFrame.data, rawFrame.linesize, 0, rawFrame.height,
 		          frame.data, frame.linesize);
 		sws_freeContext(sws);
 	}
 
-	buf  = new uint8_t[size];
-	size = avcodec_encode_video(oc, buf, size, &frame);
-	if (size < 1) {
+  int got_pkt;
+  AVPacket avpkt;
+  av_init_packet(&avpkt);
+  avpkt.data = NULL;
+  avpkt.size = 0;
+	ret = avcodec_encode_video2(oc, &avpkt, &frame, &got_pkt);
+	if (ret < 0) {
 		char error[512];
 		av_strerror(size, error, sizeof(error));
 		bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
 		goto end;
 	}
+
+	if (!got_pkt) {
+		bc_log(Bug, "snapshot: encoded frame, but got no packet on output");
+		goto end;
+	}
+
+	assert(avpkt.size && avpkt.data);
 
 	file = fdopen(snapshotfd, "w");
 	if (!file) {
@@ -455,7 +469,8 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 		goto end;
 	}
 
-	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
+	// TODO Use libavformat muxer (AVFormatContext) instead
+	if (fwrite(avpkt.data, 1, avpkt.size, file) < (unsigned)size || fclose(file)) {
 		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
@@ -465,7 +480,7 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 end:
 	if (file)
 		fclose(file);
-	delete[] buf;
+	av_free_packet(&avpkt);
 	delete[] swsBuf;
 	av_free(rawFrame.data[0]);
 	avcodec_close(oc);

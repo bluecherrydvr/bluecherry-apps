@@ -89,7 +89,7 @@ class stream_properties
 {
 public:
 	struct video_properties {
-		enum CodecID codec_id;
+		enum AVCodecID codec_id;
 		enum PixelFormat pix_fmt;
 		int width;
 		int height;
@@ -106,7 +106,7 @@ public:
 	} video;
 
 	struct audio_properties {
-		enum CodecID codec_id;
+		enum AVCodecID codec_id;
 		int bit_rate;
 		int sample_rate;
 		enum AVSampleFormat sample_fmt;
@@ -121,7 +121,7 @@ public:
 		void apply(AVCodecContext *cc) const;
 	} audio;
 
-	bool has_audio() const { return audio.codec_id != CODEC_ID_NONE; }
+	bool has_audio() const { return audio.codec_id != AV_CODEC_ID_NONE; }
 };
 
 /* Reference counted container for the data in a stream_packet.

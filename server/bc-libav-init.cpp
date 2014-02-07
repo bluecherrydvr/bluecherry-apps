@@ -25,33 +25,17 @@ static int fake_h264_close(AVCodecContext *ctx)
 	return 0;
 }
 
-static int fake_h264_frame(AVCodecContext *ctx, uint8_t *buf, int bufsize,
-			   void *data)
+static int fake_h264_frame(AVCodecContext *ctx, AVPacket *avpkt,
+		const AVFrame *frame, int *got_packet_ptr)
 {
 	(void)ctx;
-	(void)buf;
-	(void)bufsize;
-	(void)data;
+	(void)avpkt;
+	(void)frame;
+	(void)got_packet_ptr;
 	return -1;
 }
 
-static AVCodec fake_h264_encoder = {
-	"fakeh264", /* name */
-	AVMEDIA_TYPE_VIDEO, /* type */
-	CODEC_ID_H264, /* id */
-	0, /* priv_data_size */
-	fake_h264_init, /* init */
-	fake_h264_frame, /* encode */
-	fake_h264_close, /* close */
-	0, /* decode */
-	CODEC_CAP_DELAY, /* capabilities */
-	0, /* next */
-	0, /* flush */
-	0, /* suipported_framerates */
-	(const enum PixelFormat[]) { PIX_FMT_YUV420P, PIX_FMT_YUVJ420P,
-				     PIX_FMT_NONE }, /* pix_fmts */
-	"Fake H.264 Encoder for RTP Muxing", /* long_name */
-};
+static AVCodec fake_h264_encoder;
 
 
 /* Warning: Must be reentrant; this may be called from many device threads at
@@ -91,6 +75,16 @@ void bc_libav_init()
 		exit(1);
 	}
 
+	fake_h264_encoder.name = "fakeh264";
+	fake_h264_encoder.type = AVMEDIA_TYPE_VIDEO;
+	fake_h264_encoder.id = AV_CODEC_ID_H264;
+	fake_h264_encoder.priv_data_size = 0;
+	fake_h264_encoder.init = fake_h264_init;
+	fake_h264_encoder.encode2 = fake_h264_frame;
+	fake_h264_encoder.close = fake_h264_close;
+	fake_h264_encoder.pix_fmts = (const enum PixelFormat[]) { AV_PIX_FMT_YUV420P,
+		AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_NONE };
+	fake_h264_encoder.long_name = "Fake H.264 Encoder for RTP Muxing";
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();
