@@ -20,51 +20,74 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	AVFormatContext *ctx;
 	AVStream *video_st;
 	AVCodec *codec;
-	int i;
+	int ret = -1;
+	uint8_t *bufptr;
 
-	if (bc_rec->stream_ctx)
+	if (bc_rec->stream_ctx) {
+		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
 		return 0;
+	}
 
-	ctx = bc_rec->stream_ctx = avformat_alloc_context();
-	if (!ctx)
-		return -1;
+	ctx = avformat_alloc_context();
+	if (!ctx) {
+		ret = AVERROR(ENOMEM);
+		goto error;
+	}
 
 	ctx->oformat = av_guess_format("rtp", NULL, NULL);
-	if (!ctx->oformat)
+	if (!ctx->oformat) {
+		bc_rec->log.log(Error, "RTP output format not available");
 		goto error;
+	}
 
 	video_st = avformat_new_stream(ctx, NULL);
-	if (!video_st)
+	if (!video_st) {
+		bc_rec->log.log(Error, "Couldn't add stream to RTP muxer");
 		goto error;
+	}
+
 	bc_rec->bc->input->properties()->video.apply(video_st->codec);
 
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 	codec = avcodec_find_encoder(video_st->codec->codec_id);
-	if (!codec || avcodec_open2(video_st->codec, codec, NULL) < 0)
+	if (!codec) {
+		bc_rec->log.log(Error, "Encoder for codec_id %d not found", (int)video_st->codec->codec_id);
 		goto error;
+	}
+
+	if ((ret = avcodec_open2(video_st->codec, codec, NULL)) < 0) {
+		bc_rec->log.log(Error, "Failed to open encoder");
+		goto error;
+	}
 
 	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
 	 * to do that, because the rtp muxer only handles one stream. */
 
 	avio_open_dyn_buf(&ctx->pb);
 
-	if ((i = avformat_write_header(ctx, NULL)) < 0) {
-		char error[512];
-		av_strerror(i, error, sizeof(error));
-		bc_rec->log.log(Error, "Live streaming failed: %s", error);
-		bc_streaming_destroy(bc_rec);
-		return i;
+	if ((ret = avformat_write_header(ctx, NULL)) < 0) {
+		bc_rec->log.log(Error, "Initializing muxer for RTP streaming failed");
+		goto mux_open_error;
 	}
 
+	bc_rec->stream_ctx = ctx;
 	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, ctx);
 
 	return 0;
 
+mux_open_error:
+	avio_close_dyn_buf(ctx->pb, &bufptr);
+	av_free(bufptr);
+	avcodec_close(video_st->codec);
 error:
-	bc_streaming_destroy(bc_rec);
-	return -1;
+	avformat_free_context(ctx);
+
+	char errbuf[100];
+	av_strerror(ret, errbuf, sizeof(errbuf));
+	bc_rec->log.log(Error, "bc_streaming_setup() failed: %s", errbuf);
+	return ret;
 }
 
 void bc_streaming_destroy(struct bc_record *bc_rec)
