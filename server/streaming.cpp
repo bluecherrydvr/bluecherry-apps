@@ -47,6 +47,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	}
 
 	bc_rec->bc->input->properties()->video.apply(video_st->codec);
+	bc_rec->log.log(Debug, "time_base: %d/%d", video_st->codec->time_base.num, video_st->codec->time_base.den);
 
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
