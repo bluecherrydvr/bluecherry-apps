@@ -36,7 +36,7 @@ conf-libav-disable = pthreads debug doc \
 	avconv avplay avprobe avserver avdevice avfilter
 conf-libav = $(foreach q,$(conf-libav-disable), --disable-$q)
 libav/config.mak:
-	$(configure) $(conf-libav) --enable-pic --cc="$(CC)"
+	$(configure) $(conf-libav) --enable-pic --cc="$(CC)" --enable-debug --extra-cflags='-O0 -g -ggdb'
 
 libav-clean: FORCE
 	-$(MAKE) -C libav distclean
