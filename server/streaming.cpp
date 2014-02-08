@@ -66,6 +66,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
 	 * to do that, because the rtp muxer only handles one stream. */
 
+	ctx->packet_size = RTP_MAX_PACKET_SIZE;
 	avio_open_dyn_buf(&ctx->pb);
 
 	if ((ret = avformat_write_header(ctx, NULL)) < 0) {
