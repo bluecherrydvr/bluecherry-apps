@@ -315,7 +315,7 @@ int rtp_device::read_packet()
 
 void rtp_device::create_stream_packet(AVPacket *src)
 {
-	uint8_t *buf = new uint8_t[src->size];
+	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE/* HACK to avoid overreads by optimized functions */];
 	memcpy(buf, src->data, src->size);
 
 	current_packet = stream_packet(buf, current_properties);
