@@ -9,6 +9,7 @@
 extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
+#include <libavutil/dict.h>
 }
 
 motion_processor::motion_processor()
@@ -164,6 +165,7 @@ void motion_processor::run()
 
 bool motion_processor::decode_create(const stream_properties &prop)
 {
+	int ret;
 	if (decode_ctx)
 		return true;
 
@@ -174,8 +176,11 @@ bool motion_processor::decode_create(const stream_properties &prop)
 	prop.video.apply(decode_ctx);
 
 	// XXX we may want to set some options here, such as disabling threaded decoding
-	if (avcodec_open2(decode_ctx, codec, NULL) < 0) {
-		avcodec_close(decode_ctx);
+	AVDictionary *decoder_opts = NULL;
+	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
+	ret = avcodec_open2(decode_ctx, codec, &decoder_opts);
+	av_dict_free(&decoder_opts);
+	if (ret < 0) {
 		av_free(decode_ctx);
 		decode_ctx = 0;
 	}
@@ -333,10 +338,7 @@ int motion_processor::detect(AVFrame *rawFrame)
 
 		free(val);
 	} else {
-		if (refFrame) {
-			av_free(refFrame->data[0]);
-			av_free(refFrame);
-		}
+		av_frame_free(&refFrame);
 		refFrame = av_frame_clone(frame);
 		assert(refFrame);
 	}
