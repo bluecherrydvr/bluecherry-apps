@@ -11,15 +11,26 @@
 
 extern "C" {
 #include <libavutil/mathematics.h>
+#include <libavutil/dict.h>
 }
 
-#define RTP_MAX_PACKET_SIZE 1472
+/* We use TCP-interleaved RTSP output, so we're limited with 2-bytes length
+ * field */
+#define RTP_MAX_PACKET_SIZE 0xffff
+
+static int io_write(void *opaque, uint8_t *buf, int buf_size)
+{
+	struct bc_record *bc_rec = (struct bc_record *)opaque;
+	bc_rec->rtsp_stream->sendPackets(buf, buf_size, bc_rec->cur_pkt_flags);
+	return buf_size;
+}
 
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	AVFormatContext *ctx;
 	AVStream *video_st;
 	AVCodec *codec;
+	AVDictionary *muxer_opts = NULL;
 	int ret = -1;
 	uint8_t *bufptr;
 
@@ -67,9 +78,28 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	 * to do that, because the rtp muxer only handles one stream. */
 
 	ctx->packet_size = RTP_MAX_PACKET_SIZE;
-	avio_open_dyn_buf(&ctx->pb);
 
-	if ((ret = avformat_write_header(ctx, NULL)) < 0) {
+	// This I/O context will call our functions to output the byte stream
+	bufptr = (unsigned char *)av_malloc(RTP_MAX_PACKET_SIZE);
+	if (!bufptr) {
+		ret = AVERROR(ENOMEM);
+		goto error;
+	}
+
+	ctx->pb = avio_alloc_context(/* buffer and its size */bufptr, RTP_MAX_PACKET_SIZE,
+			/* write flag */1,
+			/* context pointer passed to functions */bc_rec,
+			/* read function */NULL,
+			/* write function */io_write,
+			/* seek function */NULL);
+	if (!ctx->pb) {
+		fprintf(stderr, "Failed to allocate I/O context\n");
+		goto error;
+	}
+	ctx->pb->seekable = 0;  // Adjust accordingly
+
+	av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
+	if ((ret = avformat_write_header(ctx, &muxer_opts)) < 0) {
 		bc_rec->log.log(Error, "Initializing muxer for RTP streaming failed");
 		goto mux_open_error;
 	}
@@ -80,7 +110,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	return 0;
 
 mux_open_error:
-	avio_close_dyn_buf(ctx->pb, &bufptr);
+	avio_close(ctx->pb);
 	av_free(bufptr);
 	avcodec_close(video_st->codec);
 error:
@@ -101,9 +131,7 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 
 	if (ctx->pb) {
 		av_write_trailer(ctx);
-		uint8_t *buf = 0;
-		avio_close_dyn_buf(ctx->pb, &buf);
-		av_free(buf);
+		avio_close(ctx->pb);
 	}
 
 	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
@@ -144,10 +172,14 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q,
 				bc_rec->stream_ctx->streams[0]->time_base);
 	}
+	opkt.dts          = opkt.pts;  /* Not safe, but stream_packet doesn't hold dts */
 
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0; /* XXX */
+
+	bc_rec->cur_pkt_flags = pkt.flags;
+	bc_rec->pkt_first_chunk = true;
 
 	re = av_write_frame(bc_rec->stream_ctx, &opkt);
 	if (re < 0) {
@@ -159,14 +191,6 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		stop_handle_properly(bc_rec);
 		return -1;
 	}
-
-	uint8_t *buf = 0;
-	int bufsz = avio_close_dyn_buf(bc_rec->stream_ctx->pb, &buf);
-
-	bc_rec->rtsp_stream->sendPackets(buf, bufsz, opkt.flags);
-	av_free(buf);
-	avio_open_dyn_buf(&bc_rec->stream_ctx->pb);
-
 	return 1;
 }
 
