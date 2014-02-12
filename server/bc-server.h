@@ -82,6 +82,9 @@ public:
 	class motion_handler *m_handler;
 	class recorder *rec;
 
+	int cur_pkt_flags;
+	bool pkt_first_chunk;
+
 	/* Internal */
 	void run();
 

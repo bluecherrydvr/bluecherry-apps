@@ -1053,56 +1053,34 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
 {
 	tlock(&sessions_lock);
-	bool first = true;
-	for (unsigned int p = 0; p+4 <= size; ) {
-		uint8_t *pkt    = buf + p;
-		uint32_t pkt_sz = AV_RB32(pkt);
+	bool first = bc_rec->pkt_first_chunk;
+	bc_rec->pkt_first_chunk = false;
 
-		if (pkt_sz > size - p - 4)
-			pkt_sz = size - p - 4;
-
-		/* The packet must be at least 8 bytes to hold the RTP header */
-		if (pkt_sz < 12) {
-			p += 4 + pkt_sz;
+	for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
+		if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
 			continue;
+		/* Send packet, including the interleaving header */
+		/* Prepare interleaving header */
+		uint8_t *pkt = (uint8_t*)av_malloc(size + 4);
+		if (!pkt) {
+			bc_log(Fatal, "Failed to allocate memory for data streaming");
+			break;
 		}
-
-		/* The packet buffer is prefixed with a 4-byte length by the output
-		 * code; this is NOT part of the actual RTP stream. We can replace
-		 * this with the four-byte header used by RTSP's interleaved TCP mode.
-	 	 */
-		/* If the RTP packet_type is 200 or 201, this is a RTCP packet.
-		 * This data is totally wrong for clients; we need to rewrite these for
-		 * each stream. Drop them for now. */
-		if (pkt[5] == 200 || pkt[5] == 201) {
-			p += 4 + pkt_sz;
-			continue;
-		}
-
 		pkt[0] = '$';
-		AV_WB16(pkt + 2, (uint16_t)pkt_sz);
-
-		for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
-			if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
-				continue;
-			/* TCP interleaving channel */
-			pkt[1] = (uint8_t) (*it)->channel_rtp;
-			/* Rewrite RTP sequence number */
-			AV_WB16(pkt + 6, (*it)->rtp_seq++);
-			/* Send packet, including the interleaving header */
-			(*it)->connection->send((char*)pkt, 4 + pkt_sz, (flags & AV_PKT_FLAG_KEY) ?
-			                                                 rtsp_write_buffer::Reference :
-									 rtsp_write_buffer::Inter,
-									(first) ?
-									 rtsp_write_buffer::First :
-									 rtsp_write_buffer::Partial);
-			/* If we're not on keyframe-only mode, unset the needKeyframe flag.
-			 * Otherwise, it always stays true. */
-			(*it)->needKeyframe = (*it)->keyframeOnly;
-		}
-
-		p += 4 + pkt_sz;
-		first = false;
+		pkt[1] = 0;
+		AV_WB16(pkt + 2, size);
+		memcpy(pkt + 4, buf, size);
+		AV_WB16(pkt + 6, (*it)->rtp_seq++);
+		(*it)->connection->send((char*)pkt, size + 4, (flags & AV_PKT_FLAG_KEY) ?
+				rtsp_write_buffer::Reference :
+				rtsp_write_buffer::Inter,
+				(first) ?
+				rtsp_write_buffer::First :
+				rtsp_write_buffer::Partial);
+		av_free(pkt);
+		/* If we're not on keyframe-only mode, unset the needKeyframe flag.
+		 * Otherwise, it always stays true. */
+		(*it)->needKeyframe = (*it)->keyframeOnly;
 	}
 	pthread_mutex_unlock(&sessions_lock);
 }
