@@ -88,7 +88,7 @@ int rtp_device::start()
 	av_dict_set(&avopt, "threads", "1", 0);
 
 	/* Get the stream over TCP */
-	av_dict_set(&avopt, "rtsp_transport", "tcp", 0);
+	//av_dict_set(&avopt, "rtsp_transport", "tcp", 0);  // TODO Optionize
 
 	AVDictionary *opt_copy = 0;
 	av_dict_copy(&opt_copy, avopt, 0);
