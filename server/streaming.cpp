@@ -110,8 +110,8 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	return 0;
 
 mux_open_error:
-	avio_close(ctx->pb);
 	av_free(bufptr);
+	av_freep(&ctx->pb);
 	avcodec_close(video_st->codec);
 error:
 	avformat_free_context(ctx);
@@ -131,16 +131,10 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 
 	if (ctx->pb) {
 		av_write_trailer(ctx);
-		avio_close(ctx->pb);
+		av_freep(&ctx->pb);
 	}
 
-	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
-		avcodec_close(ctx->streams[i]->codec);
-		av_freep(&ctx->streams[i]->codec);
-		av_freep(&ctx->streams[i]);
-	}
-
-	av_free(ctx);
+	avformat_free_context(ctx);
 	bc_rec->stream_ctx = NULL;
 
 	rtsp_stream::remove(bc_rec);
