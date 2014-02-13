@@ -14,9 +14,7 @@ extern "C" {
 #include <libavutil/dict.h>
 }
 
-/* We use TCP-interleaved RTSP output, so we're limited with 2-bytes length
- * field */
-#define RTP_MAX_PACKET_SIZE 0xffff
+#define RTP_MAX_PACKET_SIZE 1472
 
 static int io_write(void *opaque, uint8_t *buf, int buf_size)
 {
