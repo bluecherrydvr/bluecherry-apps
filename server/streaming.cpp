@@ -177,6 +177,10 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 
 	re = av_write_frame(bc_rec->stream_ctx, &opkt);
 	if (re < 0) {
+		if (re == AVERROR(EINVAL)) {
+			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
+			return 1;
+		}
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
 		bc_rec->log.log(Error, "Can't write to live stream: %s", err);
