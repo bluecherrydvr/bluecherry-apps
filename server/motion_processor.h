@@ -41,8 +41,6 @@ private:
 
 	struct SwsContext *convContext;
 	AVFrame           *refFrame;
-	int                refFrameHeight;
-	int                refFrameWidth;
 	int64_t            last_tested_pts;
 	uint8_t            skip_count;
 	uint8_t            thresholds[768];

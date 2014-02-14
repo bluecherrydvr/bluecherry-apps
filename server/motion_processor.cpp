@@ -14,7 +14,7 @@ extern "C" {
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  refFrameHeight(0), refFrameWidth(0), last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -232,7 +232,7 @@ int motion_processor::detect(AVFrame *rawFrame)
 	}
 #endif
 
-	if (refFrame && refFrameHeight == rawFrame->height && refFrameWidth == rawFrame->width)
+	if (refFrame && refFrame->height == rawFrame->height && refFrame->width == rawFrame->width)
 	{
 		uint8_t *ref = refFrame->data[0];
 		uint8_t *cur = frame->data[0];
