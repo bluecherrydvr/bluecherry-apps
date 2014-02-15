@@ -381,21 +381,29 @@ end:
 	return have_picture;
 }
 
-int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
+int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 {
   int ret;
-
-	AVFrame *rawFrame = av_frame_alloc(), *frame = av_frame_alloc();
-	if (decode_one_packet(pkt, rawFrame) < 1) {
-		bc_log(Info, "snapshot: no video frame for snapshot");
-		return -1;
-	}
-
+	AVFrame *rawFrame = av_frame_alloc();
+	AVFrame *frame = av_frame_alloc();
 	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
-	AVCodecContext *oc = 0;
-	FILE *file = 0;
+	AVCodecContext *oc = NULL;
+	FILE *file = fopen(outfile, "w");
 	int re = -1;
 	bool avpicture_allocated = false;
+	int got_pkt;
+	AVPacket avpkt;
+
+	if (decode_one_packet(pkt, rawFrame) < 1) {
+		// TODO Fix allocated frames leak
+		bc_log(Info, "snapshot: no video frame for snapshot");
+		goto end;
+	}
+
+	if (!file) {
+		bc_log(Error, "Failed to open file '%s' to save snapshot", outfile);
+		goto end;
+	}
 
 	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
 		bc_log(Bug, "snapshot: cannot allocate encoder context for snapshot");
@@ -438,8 +446,6 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 		av_frame_move_ref(frame, rawFrame);
 	}
 
-  int got_pkt;
-  AVPacket avpkt;
   av_init_packet(&avpkt);
   avpkt.data = NULL;
   avpkt.size = 0;
@@ -460,20 +466,13 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 
 	assert(avpkt.size && avpkt.data);
 
-	file = fdopen(snapshotfd, "w");
-	if (!file) {
-		bc_log(Error, "snapshot: cannot create file: %s", strerror(errno));
-		goto end;
-	}
-
 	// TODO Use libavformat muxer (AVFormatContext) instead
 	if (fwrite(avpkt.data, 1, avpkt.size, file) < (unsigned)avpkt.size) {
 		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 
-	file = 0;
-	re   = 0;
+	re = 0;
 end:
 	if (file)
 		fclose(file);
