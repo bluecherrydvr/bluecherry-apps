@@ -1,8 +1,4 @@
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
 #include "recorder.h"
 #include "bc-server.h"
 #include "media_writer.h"
@@ -189,8 +185,7 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	/* JPEG snapshot */
 	strcpy(ext, "jpg");
-	int snapshotfd = creat(outfile, 0644);
-	writer->snapshot(snapshotfd, first_packet);
+	writer->snapshot(outfile, first_packet);
 
 	/* Notification script */
 	if (recording_type == BC_EVENT_CAM_T_MOTION)
