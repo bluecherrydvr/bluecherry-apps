@@ -463,7 +463,7 @@ static int bc_cleanup_media()
 
 		removed++;
 
-		if (__bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+		if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
 			bc_status_component_error("Database error during Media cleanup");
 		}
 
