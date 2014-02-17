@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "bt.h"
 
@@ -8,11 +9,12 @@
 extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
+#include <libavutil/dict.h>
 }
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  refFrameHeight(0), refFrameWidth(0), last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -50,9 +52,9 @@ void motion_processor::destroy()
 static enum PixelFormat fix_pix_fmt(int fmt)
 {
 	switch (fmt) {
-	case PIX_FMT_YUVJ420P: return PIX_FMT_YUV420P;
-	case PIX_FMT_YUVJ422P: return PIX_FMT_YUV422P;
-	case PIX_FMT_YUVJ444P: return PIX_FMT_YUV444P;
+	case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
+	case AV_PIX_FMT_YUVJ422P: return AV_PIX_FMT_YUV422P;
+	case AV_PIX_FMT_YUVJ444P: return AV_PIX_FMT_YUV444P;
 	default: return (enum PixelFormat)fmt;
 	}
 }
@@ -113,11 +115,10 @@ void motion_processor::run()
 		avpkt.data  = const_cast<uint8_t*>(pkt.data());
 		avpkt.size  = pkt.size;
 
-		AVFrame frame;
-		avcodec_get_frame_defaults(&frame);
+		AVFrame *frame = av_frame_alloc();
 
 		int have_picture = 0;
-		int re = avcodec_decode_video2(decode_ctx, &frame, &have_picture, &avpkt);
+		int re = avcodec_decode_video2(decode_ctx, frame, &have_picture, &avpkt);
 		if (re < 0) {
 			bc_log(Info, "Decoding failed for motion processor");
 		} else if (have_picture) {
@@ -141,12 +142,13 @@ void motion_processor::run()
 			if (!skip) {
 				last_tested_pts = pkt.pts;
 				skip_count = 0;
-				int re = detect(&frame);
+				int re = detect(frame);
 				if (re == 1)
 					pkt.flags |= stream_packet::MotionFlag;
 			}
 		}
 
+		av_frame_free(&frame);
 		output_source->send(pkt);
 
 		l.lock();
@@ -163,6 +165,7 @@ void motion_processor::run()
 
 bool motion_processor::decode_create(const stream_properties &prop)
 {
+	int ret;
 	if (decode_ctx)
 		return true;
 
@@ -173,8 +176,11 @@ bool motion_processor::decode_create(const stream_properties &prop)
 	prop.video.apply(decode_ctx);
 
 	// XXX we may want to set some options here, such as disabling threaded decoding
-	if (avcodec_open2(decode_ctx, codec, NULL) < 0) {
-		avcodec_close(decode_ctx);
+	AVDictionary *decoder_opts = NULL;
+	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
+	ret = avcodec_open2(decode_ctx, codec, &decoder_opts);
+	av_dict_free(&decoder_opts);
+	if (ret < 0) {
 		av_free(decode_ctx);
 		decode_ctx = 0;
 	}
@@ -203,20 +209,16 @@ int motion_processor::detect(AVFrame *rawFrame)
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), rawFrame->width, rawFrame->height,
-		PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
+		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
-	/* XXX preallocated buffer? */
-	int bufSize = avpicture_get_size(PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
-	uint8_t *buf = (uint8_t*)av_malloc(bufSize);
-	if (!buf)
-		return -1;
-
-	AVFrame frame;
-	avcodec_get_frame_defaults(&frame);
-	avpicture_fill((AVPicture*)&frame, buf, PIX_FMT_GRAY8, rawFrame->width, rawFrame->height);
+	AVFrame *frame = av_frame_alloc();
+	frame->format = AV_PIX_FMT_GRAY8;
+	frame->width = rawFrame->width;
+	frame->height = rawFrame->height;
+	avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
-		  rawFrame->height, frame.data, frame.linesize);
+		  rawFrame->height, frame->data, frame->linesize);
 
 #ifdef DEBUG_DUMP_MOTION_DATA
 	if (!md->dumpfile) {
@@ -230,14 +232,14 @@ int motion_processor::detect(AVFrame *rawFrame)
 	}
 #endif
 
-	if (refFrame && refFrameHeight == rawFrame->height && refFrameWidth == rawFrame->width)
+	if (refFrame && refFrame->height == rawFrame->height && refFrame->width == rawFrame->width)
 	{
 		uint8_t *ref = refFrame->data[0];
-		uint8_t *cur = frame.data[0];
+		uint8_t *cur = frame->data[0];
 		uint8_t *val = 0;
 		uint8_t cv = 0; /* current value, for val[0] */
 		uint8_t lv = 0;
-		int w = frame.linesize[0], h = rawFrame->height;
+		int w = frame->linesize[0], h = rawFrame->height;
 		int total = w * h;
 		int x = 0, y = 0;
 		int threshold_cell_w = ceil(w/32.0);
@@ -335,19 +337,14 @@ int motion_processor::detect(AVFrame *rawFrame)
 		}
 
 		free(val);
-		av_free(buf);
 	} else {
-		if (refFrame) {
-			av_free(refFrame->data[0]);
-			av_free(refFrame);
-		}
-		refFrame = avcodec_alloc_frame();
-		/* Using sizeof(AVFrame) is forbidden, but we link against our own libav. */
-		memcpy(refFrame, &frame, sizeof(frame));
-		refFrameHeight = rawFrame->height;
-		refFrameWidth  = rawFrame->width;
+		av_frame_free(&refFrame);
+		refFrame = av_frame_clone(frame);
+		assert(refFrame);
 	}
 
+	avpicture_free((AVPicture*)frame);
+	av_frame_free(&frame);
 	return ret;
 }
 

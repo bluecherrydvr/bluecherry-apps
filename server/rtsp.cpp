@@ -35,7 +35,11 @@ rtsp_server::rtsp_server()
 	memset(fds, 0, sizeof(fds));
 	memset(connections, 0, sizeof(connections));
 	wakeupfd[0] = wakeupfd[1] = -1;
-	pthread_mutex_init(&poll_mutex, 0);
+
+	pthread_mutexattr_t attr;
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&poll_mutex, &attr);
 }
 
 rtsp_server::~rtsp_server()
@@ -93,13 +97,17 @@ void rtsp_server::run()
 		return;
 
 	int errors = 0;
+	pthread_mutex_lock(&poll_mutex);
 	for (;;) {
+		nfds_t n_fds_snapshot = n_fds;
+		struct pollfd *fds_snapshot = new struct pollfd[n_fds];
+		memcpy(fds_snapshot, fds, sizeof(struct pollfd) * n_fds);
+		pthread_mutex_unlock(&poll_mutex);
+		int n = poll(fds_snapshot, n_fds_snapshot, 100/*ms*/);
 		pthread_mutex_lock(&poll_mutex);
-		int n = poll(fds, n_fds, -1);
-                pthread_mutex_unlock(&poll_mutex);
 
-		if (n < 0) {
-			if (errno == EINTR)
+		if (n <= 0) {
+			if (n == 0 || errno == EINTR)
 				continue;
 			bc_log(Error, "poll error: %s", strerror(errno));
 			/* This is nowhere near ideal. We should reset everything instead, but
@@ -111,8 +119,8 @@ void rtsp_server::run()
 				continue;
 		}
 
-		for (int i = 0; i < n_fds; ++i) {
-			if (!fds[i].revents)
+		for (int i = 0; i < n_fds_snapshot; ++i) {
+			if (!fds_snapshot[i].revents)
 				continue;
 
 			rtsp_connection *c = connections[i];
@@ -123,10 +131,10 @@ void rtsp_server::run()
 			 * We don't have to worry about missing events; if they aren't handled, they'll
 			 * poll again immediately. */
 
-			int revents = fds[i].revents;
-			fds[i].revents = 0;
+			int revents = fds_snapshot[i].revents;
+			fds_snapshot[i].revents = 0;
 
-			if (fds[i].fd == serverfd) {
+			if (fds_snapshot[i].fd == serverfd) {
 				acceptConnection();
 			} else if (c) {
 				int re = -1;
@@ -141,7 +149,7 @@ void rtsp_server::run()
 					--i;
 					continue;
 				}
-			} else if (fds[i].fd == wakeupfd[0]) {
+			} else if (fds_snapshot[i].fd == wakeupfd[0]) {
 				char buf[128];
 				int rd = read(wakeupfd[0], buf, sizeof(buf));
 				int reason = 0;
@@ -154,10 +162,12 @@ void rtsp_server::run()
 					rtsp_stream::collectGarbage();
 			} else {
 				bc_log(Bug, "Unknown FD in RTSP poll");
-				fds[i].events = 0;
+				fds_snapshot[i].events = 0;
 			}
 		}
+		delete[] fds_snapshot;
 	}
+	pthread_mutex_unlock(&poll_mutex);
 }
 
 void *rtsp_server::runThread(void *p)
@@ -601,45 +611,12 @@ void rtsp_connection::sendResponse(const rtsp_message &response)
 	send(buf, strlen(buf));
 }
 
-/** Lock with implicit timeout & checks */
-static
-int tlock(pthread_mutex_t *mutex)
-{
-	struct timespec timeout;
-
-	int re = clock_gettime(CLOCK_REALTIME, &timeout);
-	if (re) {
-		bc_log(Error, "Clock error: %s", strerror(errno));
-		return re;
-	}
-
-	/* XXX: we might need a smaller timeout */
-	timeout.tv_sec += 30;
-
-	re = pthread_mutex_timedlock(mutex, &timeout);
-	switch (re) {
-	case EDEADLK:
-		bc_log(Error, "Deadlock detected");
-		/* TODO: print backtrace */
-		pthread_exit(NULL);
-	case EOWNERDEAD:
-		/* This wakes up all the threads, but with an unusable mutex */
-		pthread_mutex_unlock(mutex);
-	default:
-		bc_log(Debug, "Mutex error: %s", strerror(errno));
-		pthread_exit(NULL);
-	case 0: /* success */
-		break;
-	}
-	return 0;
-}
-
 int rtsp_connection::send(const char *buf, int size, int type, int flag)
 {
 	int re = 0;
 	int wr;
 
-	tlock(&write_lock);
+	pthread_mutex_lock(&write_lock);
 	if (wrbuf) {
 		/* rtsp_write_buffer makes a copy of the data */
 		rtsp_write_buffer *wbuf = new rtsp_write_buffer(buf, size, type, flag);
@@ -680,7 +657,7 @@ end:
 int rtsp_connection::writable()
 {
 	int re = 0;
-	tlock(&write_lock);
+	pthread_mutex_lock(&write_lock);
 
 	while (wrbuf) {
 		int wr = write(fd, wrbuf->data + wrbuf->pos,
@@ -923,7 +900,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 	st->sdp = sdp;
 	st->nb_streams = ctx->nb_streams;
 
-	tlock(&streams_lock);
+	pthread_mutex_lock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(st->uri);
 	if (it != streams.end()) {
 		/* XXX XXX XXX safe? */
@@ -963,7 +940,7 @@ rtsp_stream::~rtsp_stream()
  * arbitrary (recording) thread and the RTSP thread. */
 void rtsp_stream::remove(struct bc_record *bc)
 {
-	tlock(&streams_lock);
+	pthread_mutex_lock(&streams_lock);
 	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ++it) {
 		if (it->second->bc_rec == bc) {
 			/* Flag for garbage collection */
@@ -978,7 +955,7 @@ void rtsp_stream::remove(struct bc_record *bc)
 
 void rtsp_stream::collectGarbage()
 {
-	tlock(&streams_lock);
+	pthread_mutex_lock(&streams_lock);
 	for (std::map<std::string,rtsp_stream*>::iterator it = streams.begin(); it != streams.end(); ) {
 		if (it->second->bc_rec) {
 			it++;
@@ -1004,7 +981,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 			uri.erase(p);
 	}
 
-	tlock(&streams_lock);
+	pthread_mutex_lock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(uri);
 	if (it != streams.end())
 		st = it->second;
@@ -1015,7 +992,7 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 
 void rtsp_stream::addSession(rtsp_session *session)
 {
-	tlock(&sessions_lock);
+	pthread_mutex_lock(&sessions_lock);
 	sessions.push_back(session);
 	if (session->isActive())
 		_activeSessionCount++;
@@ -1024,7 +1001,7 @@ void rtsp_stream::addSession(rtsp_session *session)
 
 void rtsp_stream::removeSession(rtsp_session *session)
 {
-	tlock(&sessions_lock);
+	pthread_mutex_lock(&sessions_lock);
 
 	int active = 0;
 	std::vector<rtsp_session*>::iterator erase = sessions.end();
@@ -1052,57 +1029,35 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 
 void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
 {
-	tlock(&sessions_lock);
-	bool first = true;
-	for (unsigned int p = 0; p+4 <= size; ) {
-		uint8_t *pkt    = buf + p;
-		uint32_t pkt_sz = AV_RB32(pkt);
+	pthread_mutex_lock(&sessions_lock);
+	bool first = bc_rec->pkt_first_chunk;
+	bc_rec->pkt_first_chunk = false;
 
-		if (pkt_sz > size - p - 4)
-			pkt_sz = size - p - 4;
-
-		/* The packet must be at least 8 bytes to hold the RTP header */
-		if (pkt_sz < 12) {
-			p += 4 + pkt_sz;
+	for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
+		if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
 			continue;
+		/* Send packet, including the interleaving header */
+		/* Prepare interleaving header */
+		uint8_t *pkt = (uint8_t*)av_malloc(size + 4);
+		if (!pkt) {
+			bc_log(Fatal, "Failed to allocate memory for data streaming");
+			break;
 		}
-
-		/* The packet buffer is prefixed with a 4-byte length by the output
-		 * code; this is NOT part of the actual RTP stream. We can replace
-		 * this with the four-byte header used by RTSP's interleaved TCP mode.
-	 	 */
-		/* If the RTP packet_type is 200 or 201, this is a RTCP packet.
-		 * This data is totally wrong for clients; we need to rewrite these for
-		 * each stream. Drop them for now. */
-		if (pkt[5] == 200 || pkt[5] == 201) {
-			p += 4 + pkt_sz;
-			continue;
-		}
-
 		pkt[0] = '$';
-		AV_WB16(pkt + 2, (uint16_t)pkt_sz);
-
-		for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
-			if (!(*it)->isActive() || ((*it)->needKeyframe && !(flags & AV_PKT_FLAG_KEY)))
-				continue;
-			/* TCP interleaving channel */
-			pkt[1] = (uint8_t) (*it)->channel_rtp;
-			/* Rewrite RTP sequence number */
-			AV_WB16(pkt + 6, (*it)->rtp_seq++);
-			/* Send packet, including the interleaving header */
-			(*it)->connection->send((char*)pkt, 4 + pkt_sz, (flags & AV_PKT_FLAG_KEY) ?
-			                                                 rtsp_write_buffer::Reference :
-									 rtsp_write_buffer::Inter,
-									(first) ?
-									 rtsp_write_buffer::First :
-									 rtsp_write_buffer::Partial);
-			/* If we're not on keyframe-only mode, unset the needKeyframe flag.
-			 * Otherwise, it always stays true. */
-			(*it)->needKeyframe = (*it)->keyframeOnly;
-		}
-
-		p += 4 + pkt_sz;
-		first = false;
+		pkt[1] = 0;
+		AV_WB16(pkt + 2, size);
+		memcpy(pkt + 4, buf, size);
+		AV_WB16(pkt + 6, (*it)->rtp_seq++);
+		(*it)->connection->send((char*)pkt, size + 4, (flags & AV_PKT_FLAG_KEY) ?
+				rtsp_write_buffer::Reference :
+				rtsp_write_buffer::Inter,
+				(first) ?
+				rtsp_write_buffer::First :
+				rtsp_write_buffer::Partial);
+		av_free(pkt);
+		/* If we're not on keyframe-only mode, unset the needKeyframe flag.
+		 * Otherwise, it always stays true. */
+		(*it)->needKeyframe = (*it)->keyframeOnly;
 	}
 	pthread_mutex_unlock(&sessions_lock);
 }

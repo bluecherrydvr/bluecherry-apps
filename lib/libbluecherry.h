@@ -16,7 +16,7 @@
 #include <inttypes.h>
 
 extern "C" {
-#include <libavcodec/avcodec.h> /* for CodecID */
+#include <libavcodec/avcodec.h> /* for AVCodecID */
 #include <libavformat/avformat.h>
 }
 

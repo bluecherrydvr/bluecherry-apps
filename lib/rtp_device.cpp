@@ -88,7 +88,7 @@ int rtp_device::start()
 	av_dict_set(&avopt, "threads", "1", 0);
 
 	/* Get the stream over TCP */
-	av_dict_set(&avopt, "rtsp_transport", "tcp", 0);
+	//av_dict_set(&avopt, "rtsp_transport", "tcp", 0);  // TODO Optionize
 
 	AVDictionary *opt_copy = 0;
 	av_dict_copy(&opt_copy, avopt, 0);
@@ -146,7 +146,7 @@ int rtp_device::start()
 				bc_log(Warning, "RTSP session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
-			} else if (stream->codec->codec_id == CODEC_ID_NONE) {
+			} else if (stream->codec->codec_id == AV_CODEC_ID_NONE) {
 				bc_log(Error, "No matching audio codec for stream; ignoring audio");
 				continue;
 			}
@@ -197,7 +197,7 @@ int rtp_device::read_packet()
 	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
 	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
 	 * everything. */
-	if (ctx->streams[frame.stream_index]->codec->codec_id == CODEC_ID_MPEG4) {
+	if (ctx->streams[frame.stream_index]->codec->codec_id == AV_CODEC_ID_MPEG4) {
 		const uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
 		if (frame.size >= 47 && frame.stream_index == video_stream_index
 		    && memcmp(frame.data, b2_header, sizeof(b2_header)) == 0
@@ -315,7 +315,7 @@ int rtp_device::read_packet()
 
 void rtp_device::create_stream_packet(AVPacket *src)
 {
-	uint8_t *buf = new uint8_t[src->size];
+	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE/* HACK to avoid overreads by optimized functions */];
 	memcpy(buf, src->data, src->size);
 
 	current_packet = stream_packet(buf, current_properties);

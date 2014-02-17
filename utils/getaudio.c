@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	alsadev = argv[optind];
 
 	/* Startup the avformat stuff first */
-	avcodec_init();
+	avcodec_register_all();
 	av_register_all();
 
 	fmt_out = av_guess_format(NULL, outfile, NULL);
@@ -101,31 +101,28 @@ int main(int argc, char **argv)
 	if (st == NULL)
 		err("opening new stream");
 
-	st->codec->codec_id = CODEC_ID_MP2;
+	st->codec->codec_id = AV_CODEC_ID_MP2;
 	st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 	st->codec->bit_rate = 32000;
 	st->codec->sample_rate = 16000;
-	st->codec->sample_fmt = SAMPLE_FMT_S16;
+	st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
 	st->codec->channels = 1;
 	st->codec->time_base = (AVRational){1, 16000};
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-	if (av_set_parameters(oc, NULL) < 0)
-		err("setting params");
-
 	codec = avcodec_find_encoder(st->codec->codec_id);
 	if (codec == NULL)
 		err("finding encoder");
 
-	if (avcodec_open(st->codec, codec) < 0)
+	if (avcodec_open2(st->codec, codec, NULL) < 0)
 		err("opening encoder");
 
 	if (avio_open(&oc->pb, outfile, AVIO_FLAG_WRITE) < 0)
 		err("opening out file");
 
-	av_write_header(oc);
+	avformat_write_header(oc, NULL);
 
 	/* Open the alsa device */
 	if (snd_pcm_open(&pcm, alsadev, SND_PCM_STREAM_CAPTURE,
