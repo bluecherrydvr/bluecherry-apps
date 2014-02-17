@@ -1,9 +1,17 @@
-bluecherry (1:2.1.7-3) unstable; urgency=low
+bluecherry (1:2.1.7-4) lucid precise wheezy; urgency=low
 
   * Installation fixes
-  * Upgraded toolchains (due to GCC bugs)
+  * Upgraded toolchains
+  * Fixed MySQL-related crashed
+  * Moved from libav to latest ffmpeg
+  * Fixed motion detection and streaming errors
+  * Improved motion detection performance
+  * Default back to UDP now that it works better
+  * Filtered some bogus error messages
+  * Fixed locking problems
+  * Various cleanups
 
- -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Wed, 05 Feb 2014 20:47:59 -0300
+ -- Ismael Luceno <ismael.luceno@corp.bluecherry.net>  Mon, 17 Feb 2014 17:29:34 -0300
 
 bluecherry (1:2.1.7-1) lucid precise squeeze wheezy; urgency=low
 
