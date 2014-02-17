@@ -455,16 +455,17 @@ int media_writer::snapshot(int snapshotfd, const stream_packet &pkt)
 		goto end;
 	}
 
-	if (fwrite(buf, 1, size, file) < (unsigned)size || fclose(file)) {
+	if (fwrite(buf, 1, size, file) < (unsigned)size) {
 		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 
-	file = 0;
 	re   = 0;
 end:
 	if (file)
 		fclose(file);
+	else /* Avoid leaking the fd */
+		close(snapshotfd);
 	delete[] buf;
 	delete[] swsBuf;
 	av_free(rawFrame.data[0]);
