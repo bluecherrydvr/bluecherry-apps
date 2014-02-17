@@ -1,3 +1,7 @@
+bluecherry (1:2.1.7-4) unstable; urgency=low
+
+  * Migration to recent FFmpeg, libav* API usage fixes
+
 bluecherry (1:2.1.7-3) unstable; urgency=low
 
   * Installation fixes
