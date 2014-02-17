@@ -14,8 +14,17 @@ libconfig-clean: FORCE
 	-$(MAKE) -C libconfig clean
 	-rm libconfig/Makefile
 
-libconfig/Makefile:
+libconfig/Makefile: $(libconfig-volatile)
 	$(configure) --disable-examples -disable-cxx
+
+# XXX Workaround to avoid running the lexer/parser generators
+libconfig-volatile = libconfig/lib/grammar.c libconfig/lib/scanner.c
+$(libconfig-volatile-h): %.h:%.c
+libconfig/lib/scanner.c: %.c:%.l
+libconfig/lib/grammar.c: %.c:%.y
+libconfig/lib/%.c: %.h
+libconfig/lib/%:
+	test -f $@ && touch $@
 
 $(libconfig-libs): libconfig/Makefile
 	$(MAKE) $(MAKEARGS) -C libconfig install
