@@ -369,6 +369,10 @@ int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 	int got_pkt;
 	AVPacket avpkt;
 
+	av_init_packet(&avpkt);
+	avpkt.data = NULL;
+	avpkt.size = 0;
+
 	if (decode_one_packet(pkt, rawFrame) < 1) {
 		bc_log(Info, "snapshot: no video frame for snapshot");
 		goto end;
@@ -420,9 +424,6 @@ int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 		av_frame_move_ref(frame, rawFrame);
 	}
 
-	av_init_packet(&avpkt);
-	avpkt.data = NULL;
-	avpkt.size = 0;
 	ret = avcodec_encode_video2(oc, &avpkt, frame, &got_pkt);
 	if (avpicture_allocated)
 		avpicture_free((AVPicture*)frame);
