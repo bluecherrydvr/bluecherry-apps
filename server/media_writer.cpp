@@ -19,31 +19,6 @@ extern "C" {
 #include "bc-server.h"
 #include "rtp_device.h"
 
-int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
-{
-	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
-	switch (op) {
-		case AV_LOCK_CREATE:
-			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-			if (!*mutex)
-				return 1;
-			return !!pthread_mutex_init(*mutex, NULL);
-
-		case AV_LOCK_OBTAIN:
-			return !!pthread_mutex_lock(*mutex);
-
-		case AV_LOCK_RELEASE:
-			return !!pthread_mutex_unlock(*mutex);
-
-		case AV_LOCK_DESTROY:
-			pthread_mutex_destroy(*mutex);
-			free(*mutex);
-			return 0;
-	}
-
-	return 1;
-}
-
 media_writer::media_writer()
 	: oc(0), video_st(0), audio_st(0), output_pts_base(AV_NOPTS_VALUE)
 {

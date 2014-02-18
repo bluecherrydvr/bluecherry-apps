@@ -4,10 +4,12 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-/* This file contains initialization code for libav */
+/* This file contains initialization code for ffmpeg */
 
+#include <pthread.h>
 #include <bsd/string.h>
-#include "bc-server.h"
+#include <libavformat/avformat.h>
+#include "logc.h"
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
  * so a real encoder isn't neeeded, but one must be present for the process to
@@ -35,7 +37,21 @@ static int fake_h264_frame(AVCodecContext *ctx, AVPacket *avpkt,
 	return -1;
 }
 
-static AVCodec fake_h264_encoder;
+static AVCodec fake_h264_encoder = {
+	.name = "fakeh264",
+	.long_name = "Fake H.264 Encoder for RTP Muxing",
+	.type = AVMEDIA_TYPE_VIDEO,
+	.id = AV_CODEC_ID_H264,
+	.priv_data_size = 0,
+	.init = fake_h264_init,
+	.encode2 = fake_h264_frame,
+	.close = fake_h264_close,
+	.pix_fmts = (const enum PixelFormat[]) {
+		AV_PIX_FMT_YUV420P,
+		AV_PIX_FMT_YUVJ420P,
+		AV_PIX_FMT_NONE
+	},
+};
 
 
 /* Warning: Must be reentrant; this may be called from many device threads at
@@ -44,7 +60,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	(void)avcl;
 
-	log_level bc_level = Info;
+	enum log_level bc_level = Info;
 	switch (level) {
 		case AV_LOG_PANIC: bc_level = Fatal; break;
 		case AV_LOG_FATAL: bc_level = Error; break;
@@ -58,15 +74,35 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 		default: return;
 	}
 
-	const log_context &context = bc_log_context();
-	if (!context.level_check(bc_level))
-		return;
-
 	char msg[1024] = "[libav] ";
 	strlcat(msg, fmt, sizeof(msg));
-	context.vlog(bc_level, msg, ap);
+	bc_vlog(bc_level, msg, ap);
 }
 
+static int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
+{
+	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
+	switch (op) {
+		case AV_LOCK_CREATE:
+			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+			if (!*mutex)
+				return 1;
+			return !!pthread_mutex_init(*mutex, NULL);
+
+		case AV_LOCK_OBTAIN:
+			return !!pthread_mutex_lock(*mutex);
+
+		case AV_LOCK_RELEASE:
+			return !!pthread_mutex_unlock(*mutex);
+
+		case AV_LOCK_DESTROY:
+			pthread_mutex_destroy(*mutex);
+			free(*mutex);
+			return 0;
+	}
+
+	return 1;
+}
 
 void bc_libav_init()
 {
@@ -75,16 +111,6 @@ void bc_libav_init()
 		exit(1);
 	}
 
-	fake_h264_encoder.name = "fakeh264";
-	fake_h264_encoder.type = AVMEDIA_TYPE_VIDEO;
-	fake_h264_encoder.id = AV_CODEC_ID_H264;
-	fake_h264_encoder.priv_data_size = 0;
-	fake_h264_encoder.init = fake_h264_init;
-	fake_h264_encoder.encode2 = fake_h264_frame;
-	fake_h264_encoder.close = fake_h264_close;
-	fake_h264_encoder.pix_fmts = (const enum PixelFormat[]) { AV_PIX_FMT_YUV420P,
-		AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_NONE };
-	fake_h264_encoder.long_name = "Fake H.264 Encoder for RTP Muxing";
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();

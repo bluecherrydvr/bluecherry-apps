@@ -799,17 +799,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log(Fatal, "libav lock registration failed: %m");
-		exit(1);
-	}
-
 	signals_setup();
 
 	/* XXX This is not suitable for much of anything, really. */
 	srand((unsigned)(getpid() * time(NULL)));
 
-	bc_libav_init();
+	bc_ffmpeg_init();
 
 	if (bg && daemon(0, 0) == -1) {
 		bc_log(Fatal, "Fork failed: %m");
@@ -916,7 +911,7 @@ int main(int argc, char **argv)
 
 	bc_stop_threads();
 	bc_db_close();
-	bc_libav_init();
+	bc_ffmpeg_teardown();
 
 	return 0;
 }
