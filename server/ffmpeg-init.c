@@ -104,7 +104,7 @@ static int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 	return 1;
 }
 
-void bc_libav_init()
+void bc_ffmpeg_init()
 {
 	if (av_lockmgr_register(bc_av_lockmgr)) {
 		bc_log(Fatal, "libav lock registration failed: %m");
@@ -118,7 +118,7 @@ void bc_libav_init()
 	av_log_set_callback(av_log_cb);
 }
 
-void bc_libav_term()
+void bc_ffmpeg_teardown()
 {
 	av_lockmgr_register(NULL);
 }
