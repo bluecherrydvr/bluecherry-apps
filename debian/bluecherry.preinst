@@ -7,20 +7,13 @@ case "$1" in
 			echo "Please 'dpkg -P bluecherry' before installing this new package"
 			exit 1
 		fi
-		if ! id bc-services > /dev/null 2>&1; then
-			sed -i 's/^bluecherry:/bc-services:/' /etc/passwd \
-				/etc/group /etc/shadow /etc/gshadow
-		fi
 		;;
 	install)
-		if ! id bc-services > /dev/null 2>&1; then
+		if ! id bluecherry > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-				-U -G audio,video -M -U -r bc-services
+				-U -G audio,video -M -U -r bluecherry
 			# And www-data will need it too
-			usermod -a -G video,audio,bc-services,dialout www-data
-		else
-			echo "Error: bc-services user already exists!"
-			exit 1
+			usermod -a -G video,audio,bluecherry,dialout www-data
 		fi
 		if which service >/dev/null 2>&1; then
 			service bluecherry stop || true

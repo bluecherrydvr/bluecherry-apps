@@ -14,7 +14,7 @@ console none
 
 pre-start script
     mkdir -p /var/run/bluecherry
-    chown bc-services:bc-services /var/run/bluecherry
+    chown bluecherry:bluecherry /var/run/bluecherry
 end script
 
-exec /sbin/start-stop-daemon -Sx /usr/sbin/bc-server -mp /var/run/bluecherry/pid -- -s -u bc-services -g bc-services
+exec /sbin/start-stop-daemon -Sx /usr/sbin/bc-server -mp /var/run/bluecherry/pid -- -s -u bluecherry -g bluecherry
