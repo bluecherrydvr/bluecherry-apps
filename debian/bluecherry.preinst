@@ -12,9 +12,14 @@ case "$1" in
 		if ! id bluecherry > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
 				-U -G audio,video -M -U -r bluecherry
-			# And www-data will need it too
-			usermod -a -G video,audio,bluecherry,dialout www-data
+		else
+			# just to be sure we have such group, if user was created manually
+			groupadd bluecherry || true
+			usermod -c "Bluecherry DVR" -d /var/lib/bluecherry \
+				-g bluecherry -G audio,video bluecherry
 		fi
+		usermod -a -G video,audio,bluecherry,dialout www-data || true
+
 		if which service >/dev/null 2>&1; then
 			service bluecherry stop || true
 		else
