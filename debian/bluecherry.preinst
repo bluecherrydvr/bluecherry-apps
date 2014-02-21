@@ -1,14 +1,16 @@
 #!/bin/sh -e
 
+if [ "$1" = upgrade ]
+then
+	if dpkg --compare-versions "$2" lt "1:2.0.0-0beta8.0"; then
+		echo "UPGRADES WILL NOT WORK!!"
+		echo "Please 'dpkg -P bluecherry' before installing this new package"
+		exit 1
+	fi
+fi
+
 case "$1" in
-	upgrade)
-		if dpkg --compare-versions "$2" lt "1:2.0.0-0beta8.0"; then
-			echo "UPGRADES WILL NOT WORK!!"
-			echo "Please 'dpkg -P bluecherry' before installing this new package"
-			exit 1
-		fi
-		;;
-	install)
+	upgrade|install)
 		if ! id bluecherry > /dev/null 2>&1; then
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
 				-U -G audio,video -M -U -r bluecherry
