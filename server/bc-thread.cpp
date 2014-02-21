@@ -409,7 +409,7 @@ void bc_record::destroy_elements()
 		m_handler = 0;
 	}
 
-	if (bc->type == BC_DEVICE_V4L2)
+	if (bc && bc->type == BC_DEVICE_V4L2)
 		static_cast<v4l2_device*>(bc->input)->set_motion(false);
 }
 
