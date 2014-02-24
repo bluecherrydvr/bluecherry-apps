@@ -1,3 +1,10 @@
+bluecherry (1:2.1.7-6) lucid precise wheezy; urgency=low
+
+  * Installation fix
+  * Bugfixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 24 Feb 2014 09:02:25 -0600
+
 bluecherry (1:2.1.7-5) lucid precise wheezy; urgency=low
 
   * Change motion detection interval from 45 ms to 200 ms
