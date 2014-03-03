@@ -28,6 +28,8 @@ CREATE TABLE Devices (
 	-- IP camera specific values, varbinary because it's case sensitive
 	rtsp_username varbinary(256),
 	rtsp_password varbinary(256),
+	-- Whether to try TCP as RTP transport first
+	rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1,
 	-- In the format of IP|PORT|PATH just like device. If IP is empty,
 	-- then use the same IP as RTSP. If port is empty, use 80
 	mjpeg_path varbinary(256),

@@ -24,7 +24,7 @@ struct rtp_stream_data {
 class rtp_device : public input_device
 {
 public:
-	explicit rtp_device(const char *url);
+	explicit rtp_device(const char *url, bool rtp_prefer_tcp);
 	virtual ~rtp_device();
 
 	virtual int start();
@@ -40,6 +40,7 @@ public:
 
 private:
 	char url[1024];
+	bool rtp_prefer_tcp;
 	char error_message[512];
 
 	AVFormatContext *ctx;

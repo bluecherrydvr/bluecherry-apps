@@ -82,6 +82,7 @@ struct bc_device_config {
 	char driver[256];
 	char rtsp_username[64];
 	char rtsp_password[64];
+	bool rtsp_rtp_prefer_tcp;
 	char signal_type[16];
 	char motion_map[769];
 	char schedule[7 * 24 + 1];

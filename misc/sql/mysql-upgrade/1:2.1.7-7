@@ -1,0 +1,8 @@
+START TRANSACTION;
+
+-- Add rtsp_rtp_prefer_tcp field to Devices
+
+ALTER TABLE Devices
+			ADD COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1;
+
+COMMIT;

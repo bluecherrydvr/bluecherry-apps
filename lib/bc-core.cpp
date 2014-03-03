@@ -178,6 +178,22 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	const char *val;
 	bc->type = BC_DEVICE_RTP;
 
+	/* FIXME bc_device_config is already parsed from DB and saved in void*
+	 * __data, but completely unused and unreachable (bc_record type belongs to
+	 * server and not to lib) */
+
+	const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
+	bool rtsp_rtp_prefer_tcp;
+
+	if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
+		rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw) ? true : false;
+	} else {
+		bc_log(Error, "rtsp_rtp_prefer_tcp field is absent in Devices table, "
+				"DB schema not updated. Using default field value, \"true\"");
+		rtsp_rtp_prefer_tcp = true;
+	}
+
+
 	char creds[64];
 	if (get_creds(dbres, creds, sizeof(creds)) < 0)
 		return -1;
@@ -191,7 +207,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (r)
 			return -1;
 
-		bc->input = new rtp_device(url);
+		bc->input = new rtp_device(url, rtsp_rtp_prefer_tcp);
 	}
 
 	char *defhost = strdupa(val);
@@ -289,9 +305,18 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 	const char *rtsp_username = bc_db_get_val(dbres, "rtsp_username", NULL);
 	const char *rtsp_password = bc_db_get_val(dbres, "rtsp_password", NULL);
+	const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
 
 	if (!dev || !name || !driver || !schedule || !motion_map)
 		return -1;
+
+	if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
+		cfg->rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw) ? true : false;
+	} else {
+		bc_log(Error, "rtsp_rtp_prefer_tcp field is absent in Devices table, "
+				"DB schema not updated. Using default field value, \"true\"");
+		cfg->rtsp_rtp_prefer_tcp = true;
+	}
 
 	strlcpy(cfg->dev, dev, sizeof(cfg->dev));
 	strlcpy(cfg->name, name, sizeof(cfg->name));
