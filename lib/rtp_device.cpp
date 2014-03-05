@@ -92,6 +92,7 @@ int rtp_device::start()
 
 	if ((re = avformat_open_input(&ctx, url, NULL, &avopt)) != 0) {
 		av_strerror(re, error_message, sizeof(error_message));
+		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
 		ctx = 0;
 		av_dict_free(&avopt);
 		av_dict_free(&opt_copy);
@@ -120,6 +121,7 @@ int rtp_device::start()
 	if (re < 0) {
 		stop();
 		av_strerror(re, error_message, sizeof(error_message));
+		bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
 		return -1;
 	}
 
