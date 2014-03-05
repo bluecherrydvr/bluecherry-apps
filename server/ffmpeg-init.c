@@ -61,21 +61,20 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	(void)avcl;
 
 	enum log_level bc_level = Info;
+	const char *level_prefix;
 	switch (level) {
-		case AV_LOG_PANIC: bc_level = Fatal; break;
-		case AV_LOG_FATAL: bc_level = Error; break;
-		case AV_LOG_ERROR: bc_level = Warning; break;
-		case AV_LOG_WARNING:
-		case AV_LOG_INFO: bc_level = Info; break;
-#ifdef LIBAV_DEBUG
-		case AV_LOG_DEBUG:
-#endif
-		case AV_LOG_VERBOSE: bc_level = Debug; break;
-		default: return;
+		case AV_LOG_PANIC:   level_prefix = "panic"; break;
+		case AV_LOG_FATAL:   level_prefix = "fatal"; break;
+		case AV_LOG_ERROR:   level_prefix = "error"; break;
+		case AV_LOG_WARNING: level_prefix = "warning"; break;
+		case AV_LOG_INFO:    level_prefix = "info"; break;
+		case AV_LOG_VERBOSE: level_prefix = "verbose"; break;
+		case AV_LOG_DEBUG:   level_prefix = "debug"; break;
+		default:             level_prefix = "unknown";
 	}
 
 	char msg[1024] = "[libav] ";
-	strlcat(msg, fmt, sizeof(msg));
+	snprintf(msg, sizeof(msg), "[libav] %s %s", level_prefix, fmt);
 	bc_vlog(bc_level, msg, ap);
 }
 
