@@ -15,8 +15,6 @@ extern "C" {
 #include "g723-dec.h"
 }
 
-#include "watchdog.h"
-
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
@@ -64,8 +62,6 @@ public:
 
 	pthread_t		thread;
 
-	struct watchdog		watchdog;
-
 	/* Event/Media handling */
 	bc_event_cam_t          event;
 
@@ -94,7 +90,6 @@ private:
 	bc_record(int id);
 
 	void destroy_elements();
-	static void watchdog_cb(struct watchdog *w);
 };
 
 typedef enum {

@@ -21,7 +21,6 @@ extern "C" {
 
 #include "bc-server.h"
 #include "rtsp.h"
-#include "watchdog.h"
 #include "bc-syslog.h"
 
 /* Global Mutexes */
@@ -866,8 +865,6 @@ int main(int argc, char **argv)
 
 		/* Every about 2 minutes */
 		if ((loops & 127) == 0) {
-			bc_watchdog_check_all();
-
 			bc_status_component_begin(STATUS_LICENSE);
 			int old_n_devices = max_threads;
 			max_threads = 0;

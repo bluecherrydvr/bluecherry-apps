@@ -127,9 +127,6 @@ void bc_record::run()
 
 	pthread_cleanup_push(bc_rec_thread_cleanup, NULL);
 
-	/* Register a watchdog for the thread */
-	bc_watchdog_add(&this->watchdog, watchdog_cb);
-
 	while (!thread_should_die) {
 		/* Set by bc_record_update_cfg */
 		if (cfg_dirty) {
@@ -137,7 +134,6 @@ void bc_record::run()
 				break;
 		}
 
-		bc_watchdog_update(&this->watchdog);
 		update_osd(this);
 		if (!(iteration++ % 50))
 			check_schedule(this);
@@ -243,9 +239,6 @@ error:
 		sleep(10);
 	}
 
-	/* Remove the thread watchdog */
-	bc_watchdog_rm(&this->watchdog);
-
 	pthread_cleanup_pop(0);
 
 	destroy_elements();
@@ -256,28 +249,6 @@ error:
 		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
 }
 
-
-void bc_record::watchdog_cb(struct watchdog *w)
-{
-	struct bc_record *bc_rec = (bc_record *)
-		((char *)w - __builtin_offsetof(bc_record, watchdog));
-
-	pthread_cancel(bc_rec->thread);
-	pthread_join(bc_rec->thread, NULL);
-
-	bc_rec->bc->input->stop();
-
-	bc_rec->destroy_elements();
-
-	stop_handle_properly(bc_rec);
-
-	bc_event_cam_end(&bc_rec->event);
-
-	bc_rec->sched_cur = 'N';
-	bc_rec->sched_last = 0;
-
-	pthread_create(&bc_rec->thread, NULL, bc_device_thread, bc_rec);
-}
 
 bc_record::bc_record(int i)
 	: id(i), log("%d", i)

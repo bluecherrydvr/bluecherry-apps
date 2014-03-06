@@ -2,7 +2,6 @@
 #define MOTION_PROCESSOR_H
 
 #include "stream_elements.h"
-#include "watchdog.h"
 
 struct AVCodecContext;
 
@@ -50,9 +49,7 @@ private:
 	int detect(AVFrame *frame);
 
 	pthread_t m_thread;
-	struct watchdog m_watchdog;
 
-	static void watchdog_cb(struct watchdog *w);
 	static void thread_cleanup(void *data);
 };
 
