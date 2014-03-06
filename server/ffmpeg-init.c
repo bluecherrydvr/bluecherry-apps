@@ -60,7 +60,7 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 {
 	(void)avcl;
 
-	enum log_level bc_level = Info;
+	enum log_level bc_level = Debug;
 	const char *level_prefix;
 	switch (level) {
 		case AV_LOG_PANIC:   level_prefix = "panic"; break;
