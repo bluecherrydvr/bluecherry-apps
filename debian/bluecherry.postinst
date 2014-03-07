@@ -16,10 +16,10 @@ case "$1" in
 		ucfr bluecherry /etc/bluecherry.conf
 
 		# Fixup some permissions
-		chown bluecherry:bluecherry /var/lib/bluecherry
-		chmod 770 /var/lib/bluecherry
-		chown bluecherry:bluecherry /var/run/bluecherry
-		chmod 750 /var/run/bluecherry
+		chown -R bluecherry:bluecherry /var/lib/bluecherry
+		chmod -R 770 /var/lib/bluecherry
+		chown -R bluecherry:bluecherry /var/run/bluecherry
+		chmod -R 750 /var/run/bluecherry
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
