@@ -13,6 +13,7 @@
 
 extern "C" {
 #include <libavutil/mathematics.h>
+#include <libavutil/error.h>
 #include <libswscale/swscale.h>
 }
 
@@ -249,6 +250,7 @@ int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 
 int media_writer::open(const std::string &path, const stream_properties &properties)
 {
+	int ret;
 	AVCodec *codec;
 
 	if (oc)
@@ -305,7 +307,14 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	this->file_path = path;
 
-	avformat_write_header(oc, NULL);
+	ret = avformat_write_header(oc, NULL);
+	if (ret) {
+		char error[512];
+		av_strerror(ret, error, sizeof(error));
+		bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
+				file_path.c_str(), error, ret);
+		goto error;
+	}
 
 	return 0;
 
