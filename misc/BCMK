@@ -32,7 +32,7 @@ LIBAV_INSTALL = $(call lpath, \
 
 install-libs += $(LIBAV_INSTALL)
 
-conf-libav-disable = debug doc \
+conf-libav-disable = doc \
 	avdevice avfilter stripping
 # ffmpeg avconv avplay avprobe avserver
 conf-libav = $(foreach q,$(conf-libav-disable), --disable-$q)
