@@ -30,7 +30,7 @@ if (empty($current_user->data[0]['access_device_list'])){
 	$current_user->data[0]['access_device_list'] = '-1';
 }
 $query .= "EventsCam.device_id NOT IN ({$current_user->data[0]['access_device_list']}) ";
-$query .= "ORDER BY EventsCam.time DESC ";
+$query .= "ORDER BY EventsCam.id DESC ";
 $limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
 if ($limit < 1)
 	$limit = 15000; // #1015 - have a strict maximum to keep the server from running out of memory
