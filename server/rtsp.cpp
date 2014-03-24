@@ -637,7 +637,10 @@ int rtsp_connection::send(const char *buf, int size, int type, int flag)
 		wrbuf->pos = wr;
 		wrbuf_tail = wrbuf;
 
+		// deadlock avoidance, preserving locking order
+		pthread_mutex_unlock(&write_lock);
 		server->setFdEvents(fd, POLLIN | POLLOUT);
+		pthread_mutex_lock(&write_lock);
 		server->wake(WAKE_REPOLL);
 	}
 
@@ -677,7 +680,10 @@ int rtsp_connection::writable()
 
 	if (!wrbuf) {
 		wrbuf_tail = 0;
+		// deadlock avoidance, preserving locking order
+		pthread_mutex_unlock(&write_lock);
 		server->setFdEvents(fd, POLLIN);
+		pthread_mutex_lock(&write_lock);
 	}
 
 	pthread_mutex_unlock(&write_lock);
