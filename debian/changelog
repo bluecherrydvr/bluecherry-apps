@@ -1,3 +1,10 @@
+bluecherry (1:2.1.7-7) lucid precise wheezy; urgency=low
+
+  * Prefer TCP for RTSP RTP by default
+  * Bugfixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 27 Mar 2014 16:40:06 -0500
+
 bluecherry (1:2.1.7-6) lucid precise wheezy; urgency=low
 
   * Installation fix
