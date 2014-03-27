@@ -859,6 +859,11 @@ int main(int argc, char **argv)
 			bc_status_component_end(STATUS_SOLO_DETECT, ret == 0);
 		}
 
+		bc_status_component_begin(STATUS_MEDIA_CHECK);
+		/* Check media locations for full */
+		int mc_ret = bc_check_media();
+		bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
+
 		/* Every about 2 minutes */
 		if ((loops & 127) == 0) {
 			bc_watchdog_check_all();
@@ -885,11 +890,6 @@ int main(int argc, char **argv)
 			}
 
 			bc_status_component_end(STATUS_LICENSE, ret == 0);
-
-			bc_status_component_begin(STATUS_MEDIA_CHECK);
-			/* Check media locations for full */
-			int mc_ret = bc_check_media();
-			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
 	 	}
 
 		/* Every 8 seconds */
