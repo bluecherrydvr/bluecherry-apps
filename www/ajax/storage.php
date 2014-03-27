@@ -19,7 +19,7 @@ if (empty($_POST)){
 	foreach($_POST['path'] as $key => $path){
 		$max = intval($_POST['max'][$key]);
 		$min = $max - 10;
-		$status = (data::query("INSERT INTO Storage VALUES ({$key}, '{$path}', {$max}, {$min})", true)) ? $status : false;
+		$status = (data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES ({$key}, '{$path}', {$max}, {$min})", true)) ? $status : false;
 	}
 	data::responseXml($status);
 	exit;
