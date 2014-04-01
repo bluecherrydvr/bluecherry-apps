@@ -24,7 +24,7 @@ INSERT INTO GlobalSettings VALUES ('G_SMTP_SERVICE', 'default');
 
 CREATE TABLE Storage (
 	priority integer PRIMARY KEY NOT NULL,
-	path varchar(512) NOT NULL,
+	path varchar(333) NOT NULL,  -- max allowed key length is 1000 bytes, for UTF8 MySQL multiplies the varchar length by 3
 	max_thresh decimal(5,2) NOT NULL,
 	min_thresh decimal(5,2) NOT NULL,
 	UNIQUE (path)
