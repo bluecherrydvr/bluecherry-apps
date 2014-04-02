@@ -200,9 +200,43 @@ error:
 }
 
 
+static int canonicalize_path(const char *given_path, char *buf, size_t bufsiz)
+{
+	/* Getting canonical path using `readlink -m `.
+	 * readlink util resides in coreutils, actual logic is not exposed in
+	 * libraries and is too complex to copy-paste it.
+	 */
+	int r;
+	char cmd[PATH_MAX + 100];
+	/* Drop stderr and trailing newline */
+	snprintf(cmd, sizeof(cmd), "echo -n `readlink -m %s 2>/dev/null`", given_path);
+
+	FILE *pipe;
+	pipe = popen(cmd, "r");
+	if (!pipe) {
+		bc_log(Error, "Failed to exec readlink");
+		return 1;
+	}
+
+	size_t read = 0;
+	while (!feof(pipe) && read < bufsiz) {
+		r = fread(buf + read, 1, bufsiz - read, pipe);
+		read += r;
+	}
+	pclose(pipe);
+
+	if (read >= bufsiz)
+		return 1;  /* Shouldn't happen if bufsiz == PATH_MAX */
+
+	buf[read] = '\0';  /* Terminate with newline */
+	/* If result is empty, treat as failure */
+	return read ? 0 : 1;
+}
+
 static int load_storage_paths(void)
 {
 	BC_DB_RES dbres;
+	int ret = 0;
 
 	dbres = bc_db_get_table("SELECT * from Storage ORDER BY priority ASC");
 
@@ -225,9 +259,10 @@ static int load_storage_paths(void)
 		if (!path || !*path || max_thresh <= 0 || min_thresh <= 0)
 			continue;
 
-		if (strlcpy(media_stor[i].path, path, sizeof(media_stor[i].path)) >=
-		    sizeof(media_stor[i].path))
+		if (canonicalize_path(path, media_stor[i].path, sizeof(media_stor[i].path))) {
+			bc_log(Warning, "Failed to canonicalize storage path %s", path);
 			continue;
+		}
 
 		media_stor[i].max_thresh = max_thresh;
 		media_stor[i].min_thresh = min_thresh;
@@ -245,7 +280,15 @@ static int load_storage_paths(void)
 
 	if (i == 0) {
 		/* Fall back to one single default location */
-		strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
+		if (canonicalize_path("/var/lib/bluecherry/recordings",
+					media_stor[0].path, sizeof(media_stor[0].path))) {
+			bc_log(Warning, "Failed to canonicalize storage path"
+					" /var/lib/bluecherry/recordings");
+			ret = -1;
+			/* Due to main() logics, we still need to end up with valid state */
+			strcpy(media_stor[0].path, "/var/lib/bluecherry/recordings");
+
+		}
 		if (bc_mkdir_recursive(media_stor[0].path)) {
 			bc_status_component_error("Cannot create storage path %s: %m",
 			                          media_stor[i].path);
@@ -257,7 +300,7 @@ static int load_storage_paths(void)
 	pthread_mutex_unlock(&media_lock);
 
 	bc_db_free_table(dbres);
-	return 0;
+	return ret;
 }
 
 /* Update our global settings */
