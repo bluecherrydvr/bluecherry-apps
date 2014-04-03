@@ -3,6 +3,8 @@
 #include "bc-server.h"
 #include "media_writer.h"
 
+static void event_trigger_notifications(bc_event_cam_t event);
+
 recorder::recorder(const bc_record *bc_rec)
 	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false),
 	  recording_type(BC_EVENT_CAM_T_CONTINUOUS), writer(0), current_event(0)
@@ -28,6 +30,10 @@ void recorder::destroy()
 void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
+	bool snapshotting_proceeding = false;
+	int snapshots_limit = 1;  /* TODO Optionize */
+	int snapshots_done = 0;
+	int snapshotting_delay_since_motion_start_ms = 1000;  /* TODO Parameter set by user */
 
 	bc_log_context_push(log);
 
@@ -79,6 +85,53 @@ void recorder::run()
 		}
 
 		writer->write_packet(packet);
+
+		/* Snapshot(s) producing */
+
+		/* TODO Pass decoded picture to stream_packet if available. This is not
+		 * always the case (e.g. V4L2 devices pass encoded packets and we don't
+		 * decode it for motion detection because it is done by device itself, also
+		 * we don't decode if we just pull recording from e.g. ONVIF camera that
+		 * has on-camera motion detection.
+		 */
+
+		if (snapshotting_proceeding) {
+			int ret = writer->snapshot_feed(packet);
+			if (ret < 0) {
+				bc_log(Error, "Failed while feeding snapshot saver with more frames");
+				snapshotting_proceeding = false;
+			} else if (ret > 0) {
+				bc_log(Debug, "Still need to feed more frames to finish snapshot");
+			} else {
+				bc_log(Debug, "Finalized snapshot");
+				snapshotting_proceeding = false;
+				snapshots_done++;
+				// FIXME Seems it doesn't work with custom www paths and launches by hardcoded path:
+				// Could not open input file: /usr/share/bluecherry/www/lib/mailer.php
+				event_trigger_notifications(current_event);
+			}
+		} else if (recording_type == BC_EVENT_CAM_T_MOTION
+				&& snapshots_done < snapshots_limit
+				&& packet.is_video_frame() && packet.is_key_frame()
+				&& packet.ts_monotonic > (first_packet_ts_monotonic + buffer.duration()
+					/* TODO higher precision for time storage */
+					/* TODO support millisecond precision for delay option */
+					+ (snapshotting_delay_since_motion_start_ms/1000))) {
+			bc_log(Debug, "Making a snapshot");
+
+			// Push frames to decoder until picture is taken
+			// In some cases one AVPacket marked as keyframe is not enough, and next
+			// packet must be pushed to decoder, too.
+			int ret = writer->snapshot_create(snapshot_filename.c_str(), packet);
+			if (ret < 0) {
+				bc_log(Error, "Failed to make snapshot");
+			} else if (ret > 0) {
+				bc_log(Debug, "Need to feed more frames to finish snapshot");
+				snapshotting_proceeding = true;
+			} else {
+				bc_log(Debug, "Saved snapshot from single keyframe");
+			}
+		}
 
 end:
 		l.lock();
@@ -183,13 +236,10 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	bc_event_cam_end(&current_event);
 	current_event = nevent;
 
-	/* JPEG snapshot */
+	// Save timestamp of first packet
+	first_packet_ts_monotonic = first_packet.ts_monotonic;
 	strcpy(ext, "jpg");
-	writer->snapshot(outfile, first_packet);
-
-	/* Notification script */
-	if (recording_type == BC_EVENT_CAM_T_MOTION)
-		event_trigger_notifications(current_event);
+	snapshot_filename = outfile;
 
 	return 0;
 }

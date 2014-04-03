@@ -323,57 +323,130 @@ error:
 	return -1;
 }
 
-int media_writer::decode_one_packet(const stream_packet &pkt, AVFrame *frame)
+int media_writer::snapshot_create(const char *outfile, const stream_packet &pkt)
 {
-	AVCodecContext *ic = 0;
+	int ret;
+
+	snapshot_filename = outfile;
+	// Initialize decoder
+	ret = snapshot_decoder_init(pkt);
+	if (ret)
+		return ret;
+
+	// Feed decoder
+	return snapshot_feed(pkt);
+}
+
+/*
+ * This function automatically cleans up decoder in any case when its usage is
+ * not needed/possible anymore
+ */
+int media_writer::snapshot_feed(const stream_packet &pkt)
+{
+	int ret;
+	AVFrame *frame = NULL;
+
+	// Feed decoder
+	ret = snapshot_decode_frame(pkt, &frame);
+	if (!ret) {
+		bc_log(Debug, "Fed snapshot decoder with a frame and got picture");
+		assert (frame);
+	} else {
+		if (ret < 0) {
+			bc_log(Error, "Feeding snapshot decoder failed");
+			snapshot_decoder_cleanup();
+		} else if (ret > 0) {
+			bc_log(Debug, "Fed this frame to snapshot decoder, but it gave no picture - it needs more");
+		}
+		return ret;
+	}
+
+	// If decoder gave picture, snapshot_encode_write()
+	ret = snapshot_encode_write(frame);
+
+	// Unref the decoded frame
+	av_frame_free(&frame);
+
+	if (ret) {
+		bc_log(Error, "Encoding and writing snapshot file failed");
+	}
+	snapshot_decoder_cleanup();
+	return ret;
+}
+
+int media_writer::snapshot_decoder_init(const stream_packet &pkt)
+{
 	AVDictionary *decoder_opts = NULL;
 	std::shared_ptr<const stream_properties> properties = pkt.properties();
 	AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
-	int re = -1;
-	int have_picture = 0;
-	if (!codec || !(ic = avcodec_alloc_context3(codec))) {
-		bc_log(Warning, "decode_one_packet: cannot allocate decoder context for video");
+	int ret;
+	if (!codec || !(snapshot_decoder = avcodec_alloc_context3(codec))) {
+		bc_log(Error, "Failed to allocate snapshot decoder context");
 		return -1;
 	}
 
-	properties->video.apply(ic);
+	properties->video.apply(snapshot_decoder);
 
+	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
+	ret = avcodec_open2(snapshot_decoder, codec, &decoder_opts);
+	av_dict_free(&decoder_opts);
+	if (ret < 0) {
+		bc_log(Error, "Failed to initialize snapshot decoder context");
+		av_free(snapshot_decoder);
+	}
+	return ret;
+}
+
+/*
+ * @return negative on failure, 0 if we have picture, positive if no picture so far
+ */
+int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **frame_arg)
+{
+	int ret;
+	int have_picture;
 	AVPacket packet;
+	AVFrame *frame = av_frame_alloc();
 	av_init_packet(&packet);
-	packet.flags        = AV_PKT_FLAG_KEY;
-	packet.pts          = 0;
+	packet.flags        = pkt.is_key_frame() ? AV_PKT_FLAG_KEY : 0;
+	/* Setting DTS from PTS is silly, but in curent scheme DTS is lost.
+	 * Should work for decoding one frame right after keyframe (most of time?) */
+	packet.dts          = pkt.pts;
+	packet.pts          = pkt.pts;
 	packet.data         = const_cast<uint8_t*>(pkt.data());
 	packet.size         = pkt.size;
 
-	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);  // TODO Fix AVDictionary leak
-	if (avcodec_open2(ic, codec, &decoder_opts) < 0)
-		goto end;
+	if (!frame)
+		return AVERROR(ENOMEM);
 
-	re = avcodec_decode_video2(ic, frame, &have_picture, &packet);
-	if (re < 0) {
+	ret = avcodec_decode_video2(snapshot_decoder, frame, &have_picture, &packet);
+	if (ret < 0) {
 		char error[512];
-		av_strerror(re, error, sizeof(error));
-		bc_log(Warning, "decode_one_packet: cannot decode video frame: %s", error);
-		goto end;
+		av_strerror(ret, error, sizeof(error));
+		av_frame_free(&frame);
+		bc_log(Warning, "snapshot_decode_frame: decode video frame failed: %s", error);
+		return ret;
 	}
 
-end:
-	avcodec_close(ic);
-	av_free(ic);
-	if (re < 0)
-		return re;
-	return have_picture;
+	if (have_picture) {
+		*frame_arg = frame;
+		return 0;
+	} else {
+		av_frame_free(&frame);
+		return 1;
+	}
 }
 
-int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
+/*
+ * @return negative on error, 0 otherwise
+ */
+int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 {
-	int ret;
-	AVFrame *rawFrame = av_frame_alloc();
 	AVFrame *frame = av_frame_alloc();
 	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
 	AVCodecContext *oc = NULL;
-	FILE *file = fopen(outfile, "w");
+	FILE *file = fopen(snapshot_filename.c_str(), "w");
 	int re = -1;
+	int ret;
 	bool avpicture_allocated = false;
 	int got_pkt;
 	AVPacket avpkt;
@@ -382,18 +455,13 @@ int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 	avpkt.data = NULL;
 	avpkt.size = 0;
 
-	if (decode_one_packet(pkt, rawFrame) < 1) {
-		bc_log(Info, "snapshot: no video frame for snapshot");
-		goto end;
-	}
-
 	if (!file) {
-		bc_log(Error, "Failed to open file '%s' to save snapshot", outfile);
+		bc_log(Error, "Failed to open file '%s' to save snapshot", snapshot_filename.c_str());
 		goto end;
 	}
 
 	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
-		bc_log(Bug, "snapshot: cannot allocate encoder context for snapshot");
+		bc_log(Bug, "Failed to allocate encoder context for snapshot");
 		goto end;
 	}
 
@@ -416,7 +484,7 @@ int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 		                           rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P,
 		                           SWS_BICUBIC, NULL, NULL, NULL);
 		if (!sws) {
-			bc_log(Bug, "snapshot: cannot convert pixel format for JPEG (format is %d)", rawFrame->format);
+			bc_log(Bug, "Failed to convert pixel format for JPEG (format is %d)", rawFrame->format);
 			goto end;
 		}
 
@@ -452,7 +520,7 @@ int media_writer::snapshot(const char *outfile, const stream_packet &pkt)
 
 	// TODO Use libavformat muxer (AVFormatContext) instead
 	if (fwrite(avpkt.data, 1, avpkt.size, file) < (unsigned)avpkt.size) {
-		bc_log(Error, "snapshot: cannot write snapshot file: %s", strerror(errno));
+		bc_log(Error, "Failed to write snapshot file: %s", strerror(errno));
 		goto end;
 	}
 
@@ -461,9 +529,13 @@ end:
 	if (file)
 		fclose(file);
 	av_free_packet(&avpkt);
-	av_frame_free(&rawFrame);
 	av_frame_free(&frame);
 	avcodec_close(oc);
 	av_free(oc);
 	return re;
+}
+
+void media_writer::snapshot_decoder_cleanup(void) {
+	avcodec_close(snapshot_decoder);
+	av_freep(&snapshot_decoder);
 }

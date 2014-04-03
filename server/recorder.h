@@ -26,6 +26,8 @@ private:
 
 	media_writer *writer;
 	bc_event_cam_t current_event;
+	time_t first_packet_ts_monotonic;
+	std::string snapshot_filename;
 
 	int recording_start(time_t start, const stream_packet &first_packet);
 	void recording_end();
