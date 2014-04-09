@@ -90,6 +90,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 			/* read function */NULL,
 			/* write function */io_write,
 			/* seek function */NULL);
+	bufptr = NULL;  // ctx->pb now owns it
 	if (!ctx->pb) {
 		fprintf(stderr, "Failed to allocate I/O context\n");
 		goto error;
@@ -109,7 +110,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 
 mux_open_error:
 	av_free(bufptr);
-	av_freep(&ctx->pb);
+	avio_closep(&ctx->pb);
 	avcodec_close(video_st->codec);
 error:
 	avformat_free_context(ctx);
@@ -129,7 +130,7 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 
 	if (ctx->pb) {
 		av_write_trailer(ctx);
-		av_freep(&ctx->pb);
+		avio_closep(&ctx->pb);
 	}
 
 	avformat_free_context(ctx);
