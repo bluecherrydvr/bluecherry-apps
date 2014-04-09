@@ -190,11 +190,7 @@ void motion_processor::decode_destroy()
 		decode_ctx = 0;
 	}
 
-	if (refFrame) {
-		av_free(refFrame->data[0]);
-		av_free(refFrame);
-		refFrame = 0;
-	}
+	av_frame_free(&refFrame);
 }
 
 int motion_processor::detect(AVFrame *rawFrame)
