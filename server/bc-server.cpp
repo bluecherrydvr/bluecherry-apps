@@ -22,6 +22,7 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 #include "bc-syslog.h"
+#include "version.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -854,7 +855,7 @@ int main(int argc, char **argv)
 	}
 
 	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
-	       __VERSION__ ")");
+	       __VERSION__ ") " GIT_REVISION );
 
 	/* Mutex */
 	bc_initialize_mutexes();
