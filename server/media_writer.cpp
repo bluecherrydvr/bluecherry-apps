@@ -98,14 +98,9 @@ void media_writer::close()
 		if (oc->pb)
 			av_write_trailer(oc);
 
-		for (unsigned i = 0; i < oc->nb_streams; i++) {
-			av_freep(&oc->streams[i]->codec);
-			av_freep(&oc->streams[i]);
-		}
-
 		if (oc->pb)
 			avio_close(oc->pb);
-		av_free(oc);
+		avformat_free_context(oc);
 		oc = NULL;
 	}
 }
