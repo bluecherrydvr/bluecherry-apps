@@ -530,8 +530,18 @@ end:
 		fclose(file);
 	av_free_packet(&avpkt);
 	av_frame_free(&frame);
-	avcodec_close(oc);
-	av_free(oc);
+	if (oc) {
+		// Flush encoder
+		while (1) {
+			av_init_packet(&avpkt);
+			ret = avcodec_encode_video2(oc, &avpkt, NULL, &got_pkt);
+			if (!got_pkt || ret < 0)
+				break;
+			av_free_packet(&avpkt);
+		}
+		avcodec_close(oc);
+		av_free(oc);
+	}
 	return re;
 }
 
