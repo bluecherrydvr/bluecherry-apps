@@ -100,7 +100,7 @@ void rtsp_server::run()
 	pthread_mutex_lock(&poll_mutex);
 	for (;;) {
 		nfds_t n_fds_snapshot = n_fds;
-		struct pollfd *fds_snapshot = new struct pollfd[n_fds];
+		struct pollfd fds_snapshot[FD_MAX];
 		memcpy(fds_snapshot, fds, sizeof(struct pollfd) * n_fds);
 		pthread_mutex_unlock(&poll_mutex);
 		int n = poll(fds_snapshot, n_fds_snapshot, 100/*ms*/);
@@ -165,7 +165,6 @@ void rtsp_server::run()
 				fds_snapshot[i].events = 0;
 			}
 		}
-		delete[] fds_snapshot;
 	}
 	pthread_mutex_unlock(&poll_mutex);
 }
