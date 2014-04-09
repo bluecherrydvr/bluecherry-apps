@@ -91,10 +91,6 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 void media_writer::close()
 {
-	if (video_st)
-		avcodec_close(video_st->codec);
-	if (audio_st)
-		avcodec_close(audio_st->codec);
 	video_st = audio_st = NULL;
 	output_pts_base = AV_NOPTS_VALUE;
 
@@ -284,18 +280,6 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 		if (audio_st)
 			audio_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-	}
-
-	/* Open Video output */
-	codec = avcodec_find_encoder(video_st->codec->codec_id);
-	if (!codec || avcodec_open2(video_st->codec, codec, NULL) < 0) 
-		goto error;
-
-	/* Open Audio output */
-	if (audio_st) {
-		codec = avcodec_find_encoder(audio_st->codec->codec_id);
-		if (!codec || avcodec_open2(audio_st->codec, codec, NULL) < 0)
-			goto error;
 	}
 
 	/* Open output file */

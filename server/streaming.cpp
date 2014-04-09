@@ -61,17 +61,6 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
-	codec = avcodec_find_encoder(video_st->codec->codec_id);
-	if (!codec) {
-		bc_rec->log.log(Error, "Encoder for codec_id %d not found", (int)video_st->codec->codec_id);
-		goto error;
-	}
-
-	if ((ret = avcodec_open2(video_st->codec, codec, NULL)) < 0) {
-		bc_rec->log.log(Error, "Failed to open encoder");
-		goto error;
-	}
-
 	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
 	 * to do that, because the rtp muxer only handles one stream. */
 
@@ -111,7 +100,6 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 mux_open_error:
 	av_free(bufptr);
 	avio_closep(&ctx->pb);
-	avcodec_close(video_st->codec);
 error:
 	avformat_free_context(ctx);
 
