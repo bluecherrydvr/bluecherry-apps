@@ -1,3 +1,12 @@
+bluecherry (1:2.1.8) lucid precise wheezy; urgency=low
+
+  * Fix snapshotting issues
+  * Fix symlinked storage location cleaning issue
+  * Memory leaks fixes
+  * Various minor enhancements
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 09 Apr 2014 19:24:49 -0500
+
 bluecherry (1:2.1.7-7) lucid precise wheezy; urgency=low
 
   * Prefer TCP for RTSP RTP by default
