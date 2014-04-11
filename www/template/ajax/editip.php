@@ -23,11 +23,13 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 	<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><input id="mjpeg" type="Text" name="mjpeg" value="<?php echo $ipCamera->info['mjpeg_path'];?>" /></div>
 	<div style="display:none;"><label id="addipLabel"><?php echo AIP_IP_ADDR_MJPEG; ?></label><input type="Text" id="ipAddrMjpeg" name="ipAddrMjpeg" value="<?php echo $ipCamera->info['ipAddrMjpeg'];?>" /></div>
 	<div><label id="addipLabel"><?php echo AIP_PORT_MJPEG; ?></label><input id="portMjpeg" type="Text" name="portMjpeg" value="<?php echo $ipCamera->info['portMjpeg'];?>" /></div>
+	<div><label id="addipLabel"><?php echo IPCAM_TCPUDP_LEVEL; ?></label><select name="prefertcp"><option value="1">TCP</option><option value="0" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp']==0) ? "selected" : ""; ?>>UDP</option></select></div>
 	<div class="bClear"></div>
 	<div id="advancedSettingsSwitch">[<?php echo AIP_ADVANCED_SETTINGS; ?>]</div>
 	<div class="bClear"></div>
 	<div id="advancedSettings">
 		<div><label id="addipLabel"><?php echo IPCAM_DEBUG_LEVEL; ?></label><input type='checkbox' name='debug_level' <? echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>></div>
+		
 	</div>
 	<div class="bClear"></div>
 	<div><label id="addipLabel"></label><input id="saveButton" type="Submit" value="<?php echo SAVE_CHANGES; ?>" /></div>

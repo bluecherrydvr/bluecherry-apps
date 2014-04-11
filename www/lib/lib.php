@@ -513,6 +513,8 @@ class ipCamera{
 			$data['driver'] = $driver[0]['driver'];
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
+			
+			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 		return array(true, $data);
 	}
 	public function edit($data){

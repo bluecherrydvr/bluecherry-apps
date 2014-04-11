@@ -558,4 +558,6 @@ define('L_DISABLE', 'disable');
 
 define('BETA_LICENSE_WARNING', 'Please note that you are running a demo version of the Bluecherry software and it will be active for 30 days. Please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
 
+#ip cam props
+define('IPCAM_TCPUDP_LEVEL', 'Protocol');
 ?>
