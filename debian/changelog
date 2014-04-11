@@ -1,3 +1,9 @@
+bluecherry (1:2.1.8-2) lucid precise wheezy; urgency=low
+
+  * Bugfix related to media files allocation
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 11 Apr 2014 15:07:18 -0500
+
 bluecherry (1:2.1.8-1) lucid precise wheezy; urgency=low
 
   * Bugfixes
