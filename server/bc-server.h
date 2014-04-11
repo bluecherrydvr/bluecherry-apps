@@ -128,7 +128,8 @@ extern char global_sched[7 * 24 + 1];
 #define SNAPSHOT_DELAY_MS_DEFAULT 1000
 extern int snapshot_delay_ms;
 
-size_t bc_get_media_loc(char *dest, size_t size);
+/* @return 0 on success, negative if no free storage locations */
+int bc_get_media_loc(char *dest, size_t size);
 
 /* Decode one video packet into frame; returns 1 if successful, 0 if no frame, -1 on error.
  * If a frame is returned, the caller MUST free the data with av_free(frame->data[0]); */

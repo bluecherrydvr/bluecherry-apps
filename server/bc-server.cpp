@@ -443,8 +443,8 @@ const char *select_best_path(void)
 {
 	struct bc_storage *ret = NULL, *overused = NULL, *p;
 
+	uint64_t cur, best = 0, best_overused = 0;
 	for (p = media_stor; p < media_stor+MAX_STOR_LOCS && p->max_thresh; p++) {
-		uint64_t cur, best = 0, best_overused = 0;
 
 		cur = path_freespace(p->path);
 		if (cur < best)
@@ -465,17 +465,18 @@ const char *select_best_path(void)
 	return ret ? ret->path : NULL;
 }
 
-size_t bc_get_media_loc(char *dest, size_t size)
+int bc_get_media_loc(char *dest, size_t size)
 {
-	size_t ret = 0;
+	int ret = 0;
 
 	if (pthread_mutex_lock(&media_lock) == EDEADLK)
 		bc_log(Error, "Deadlock detected in media_lock on get_loc");
 
 	const char *sel = select_best_path();
-
-	if (sel)
-		ret = strlcpy(dest, sel, size);
+	if (!sel)
+		ret = -1;
+	else
+		strlcpy(dest, sel, size);
 
 	pthread_mutex_unlock(&media_lock);
 	return ret;

@@ -1,4 +1,6 @@
 #include <unistd.h>
+#include <assert.h>
+#include <bsd/string.h>
 #include "recorder.h"
 #include "bc-server.h"
 #include "media_writer.h"
@@ -165,39 +167,40 @@ static void event_trigger_notifications(bc_event_cam_t event)
  * time, creating folders if necessary. Repeated calls may return different
  * results; use writer to get the current media file's path.
  */
-static
-char *media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
+static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
 {
 	struct tm tm;
 	char date[12], fname[14];
+	char basepath[PATH_MAX];
+	int ret;
 
-	size_t loc_len = bc_get_media_loc(dst, len);
-	if (loc_len > len)
-		return NULL;
+	ret = bc_get_media_loc(basepath, sizeof(basepath));
+	if (ret < 0) {
+		bc_log(Error, "No free storage locations for new recordings!");
+		return -1;
+	}
 
 	localtime_r(&start_ts, &tm);
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 	strftime(fname, sizeof(fname), "/%H-%M-%S.mkv", &tm);
 
-	len -= loc_len;
-	size_t dir_len = snprintf(dst + loc_len, len, "/%s/%06d",
-				  date, device_id);
-	if (dir_len >= len)
-		return NULL;
-
-	if (bc_mkdir_recursive(dst) < 0) {
-		bc_log(Error, "Cannot create media directory %s: %m", dst);
-		return NULL;
+	/* Construct full path except final file name, for mkdir */
+	size_t dir_len = snprintf(dst, len, "%s/%s/%06d",
+				  basepath, date, device_id);
+	if (dir_len + sizeof(fname) >= len) {
+		bc_log(Error, "Too long resulting recording filename,"
+				" not fitting to %zu-bytes buffer", len);
+		return -1;
 	}
 
-	len -= dir_len;
-	dst += loc_len + dir_len;
+	if (bc_mkdir_recursive(dst) < 0) {
+		bc_log(Error, "Cannot create media directory %s", dst);
+		return -1;
+	}
 
-	/* Append file name */
-	memcpy(dst, fname, len);
+	strlcat(dst + dir_len, fname, len - dir_len);
 
-	/* Return pointer to file extension */
-	return dst + 10;
+	return 0;
 }
 
 int recorder::recording_start(time_t start_ts, const stream_packet &first_packet)
@@ -215,9 +218,8 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
 
 	char outfile[PATH_MAX];
-	char *ext = media_file_path(outfile, sizeof(outfile), start_ts,
-				    device_id);
-	if (!ext) {
+	int ret = media_file_path(outfile, sizeof(outfile), start_ts, device_id);
+	if (ret < 0) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
 	}
@@ -241,7 +243,11 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	// Save timestamp of first packet
 	first_packet_ts_monotonic = first_packet.ts_monotonic;
-	strcpy(ext, "jpg");
+	char *ext = strrchr(outfile, '.');
+	assert(ext);
+	if (!ext)
+		return -1;
+	strcpy(ext + 1, "jpg");
 	snapshot_filename = outfile;
 
 	return 0;
