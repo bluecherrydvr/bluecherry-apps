@@ -1,3 +1,10 @@
+bluecherry (1:2.1.8-1) lucid precise wheezy; urgency=low
+
+  * Bugfixes
+  * Parametrize snapshot delay from DB
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 11 Apr 2014 13:54:59 -0500
+
 bluecherry (1:2.1.8) lucid precise wheezy; urgency=low
 
   * Fix snapshotting issues
