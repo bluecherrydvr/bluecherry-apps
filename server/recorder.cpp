@@ -30,10 +30,6 @@ void recorder::destroy()
 void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
-	bool snapshotting_proceeding = false;
-	int snapshots_limit = 1;  /* TODO Optionize */
-	int snapshots_done = 0;
-	int snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
 
 	bc_log_context_push(log);
 
@@ -95,41 +91,42 @@ void recorder::run()
 		 * has on-camera motion detection.
 		 */
 
-		if (snapshotting_proceeding) {
-			int ret = writer->snapshot_feed(packet);
-			if (ret < 0) {
-				bc_log(Error, "Failed while feeding snapshot saver with more frames");
-				snapshotting_proceeding = false;
-			} else if (ret > 0) {
-				bc_log(Debug, "Still need to feed more frames to finish snapshot");
-			} else {
-				bc_log(Debug, "Finalized snapshot");
-				snapshotting_proceeding = false;
-				snapshots_done++;
-				// FIXME Seems it doesn't work with custom www paths and launches by hardcoded path:
-				// Could not open input file: /usr/share/bluecherry/www/lib/mailer.php
-				event_trigger_notifications(current_event);
-			}
-		} else if (recording_type == BC_EVENT_CAM_T_MOTION
-				&& snapshots_done < snapshots_limit
-				&& packet.is_video_frame() && packet.is_key_frame()
-				&& packet.ts_monotonic > (first_packet_ts_monotonic + buffer.duration()
-					/* TODO higher precision for time storage */
-					/* TODO support millisecond precision for delay option */
-					+ (snapshotting_delay_since_motion_start_ms/1000))) {
-			bc_log(Debug, "Making a snapshot");
+		if (recording_type == BC_EVENT_CAM_T_MOTION) {
+			if (snapshotting_proceeding) {
+				int ret = writer->snapshot_feed(packet);
+				if (ret < 0) {
+					bc_log(Error, "Failed while feeding snapshot saver with more frames");
+					snapshotting_proceeding = false;
+				} else if (ret > 0) {
+					bc_log(Debug, "Still need to feed more frames to finish snapshot");
+				} else {
+					bc_log(Debug, "Finalized snapshot");
+					snapshotting_proceeding = false;
+					snapshots_done++;
+					// FIXME Seems it doesn't work with custom www paths and launches by hardcoded path:
+					// Could not open input file: /usr/share/bluecherry/www/lib/mailer.php
+					event_trigger_notifications(current_event);
+				}
+			} else if (snapshots_done < snapshots_limit
+					&& packet.is_video_frame() && packet.is_key_frame()
+					&& packet.ts_monotonic > (first_packet_ts_monotonic + buffer.duration()
+						/* TODO higher precision for time storage */
+						/* TODO support millisecond precision for delay option */
+						+ (snapshotting_delay_since_motion_start_ms/1000))) {
+				bc_log(Debug, "Making a snapshot");
 
-			// Push frames to decoder until picture is taken
-			// In some cases one AVPacket marked as keyframe is not enough, and next
-			// packet must be pushed to decoder, too.
-			int ret = writer->snapshot_create(snapshot_filename.c_str(), packet);
-			if (ret < 0) {
-				bc_log(Error, "Failed to make snapshot");
-			} else if (ret > 0) {
-				bc_log(Debug, "Need to feed more frames to finish snapshot");
-				snapshotting_proceeding = true;
-			} else {
-				bc_log(Debug, "Saved snapshot from single keyframe");
+				// Push frames to decoder until picture is taken
+				// In some cases one AVPacket marked as keyframe is not enough, and next
+				// packet must be pushed to decoder, too.
+				int ret = writer->snapshot_create(snapshot_filename.c_str(), packet);
+				if (ret < 0) {
+					bc_log(Error, "Failed to make snapshot");
+				} else if (ret > 0) {
+					bc_log(Debug, "Need to feed more frames to finish snapshot");
+					snapshotting_proceeding = true;
+				} else {
+					bc_log(Debug, "Saved snapshot from single keyframe");
+				}
 			}
 		}
 
@@ -211,6 +208,12 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		start_ts = time(NULL);
 
 	recording_end();
+
+	snapshotting_proceeding = false;
+	snapshots_limit = 1;  /* TODO Optionize */
+	snapshots_done = 0;
+	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
+
 	char outfile[PATH_MAX];
 	char *ext = media_file_path(outfile, sizeof(outfile), start_ts,
 				    device_id);

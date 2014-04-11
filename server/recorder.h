@@ -29,6 +29,11 @@ private:
 	time_t first_packet_ts_monotonic;
 	std::string snapshot_filename;
 
+	bool snapshotting_proceeding;
+	int snapshots_limit;  /* TODO Optionize */
+	int snapshots_done;
+	int snapshotting_delay_since_motion_start_ms;
+
 	int recording_start(time_t start, const stream_packet &first_packet);
 	void recording_end();
 	void do_error_event(bc_event_level_t level, bc_event_cam_type_t type);
