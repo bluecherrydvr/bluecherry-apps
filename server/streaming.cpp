@@ -99,7 +99,8 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 
 mux_open_error:
 	av_free(bufptr);
-	avio_closep(&ctx->pb);
+	av_free(ctx->pb->buffer);
+	av_freep(&ctx->pb);
 error:
 	avformat_free_context(ctx);
 
@@ -118,7 +119,8 @@ void bc_streaming_destroy(struct bc_record *bc_rec)
 
 	if (ctx->pb) {
 		av_write_trailer(ctx);
-		avio_closep(&ctx->pb);
+		av_free(ctx->pb->buffer);
+		av_freep(&ctx->pb);
 	}
 
 	avformat_free_context(ctx);
