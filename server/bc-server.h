@@ -125,6 +125,8 @@ void bc_status_component_error(const char *error, ...);
 int bc_status_component_end(bc_status_component component, int ok);
 
 extern char global_sched[7 * 24 + 1];
+#define SNAPSHOT_DELAY_MS_DEFAULT 1000
+extern int snapshot_delay_ms;
 
 size_t bc_get_media_loc(char *dest, size_t size);
 

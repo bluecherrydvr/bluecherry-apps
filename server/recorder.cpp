@@ -33,7 +33,7 @@ void recorder::run()
 	bool snapshotting_proceeding = false;
 	int snapshots_limit = 1;  /* TODO Optionize */
 	int snapshots_done = 0;
-	int snapshotting_delay_since_motion_start_ms = 1000;  /* TODO Parameter set by user */
+	int snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
 
 	bc_log_context_push(log);
 

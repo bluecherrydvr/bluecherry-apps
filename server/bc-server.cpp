@@ -36,6 +36,7 @@ static int record_id = -1;
 static int solo_ready = 0;
 
 char global_sched[7 * 24 + 1];
+int snapshot_delay_ms;
 
 static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
 
@@ -327,6 +328,21 @@ static int bc_check_globals(void)
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
 		global_sched[sizeof(global_sched)-1] = 0;
+	}
+	bc_db_free_table(dbres);
+
+	/* Get snapshotting delay */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_SNAPSHOT_DELAY'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for snapshot delay");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		snapshot_delay_ms = bc_db_get_val_int(dbres, "value");
+	} else {
+		/* Set default */
+		snapshot_delay_ms = SNAPSHOT_DELAY_MS_DEFAULT;
 	}
 	bc_db_free_table(dbres);
 
