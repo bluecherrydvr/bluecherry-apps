@@ -19,9 +19,6 @@ extern "C" {
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
 
-/* Maximum length of recording */
-#define BC_MAX_RECORD_TIME 900
-
 /* Default configuration file */
 #define BC_CONFIG_DEFAULT      "/etc/bluecherry.conf"
 
@@ -127,6 +124,8 @@ int bc_status_component_end(bc_status_component component, int ok);
 extern char global_sched[7 * 24 + 1];
 #define SNAPSHOT_DELAY_MS_DEFAULT 1000
 extern int snapshot_delay_ms;
+#define MAX_RECORD_TIME_SEC_DEFAULT 900
+extern int max_record_time_sec;
 
 /* @return 0 on success, negative if no free storage locations */
 int bc_get_media_loc(char *dest, size_t size);

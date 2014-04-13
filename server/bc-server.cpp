@@ -37,6 +37,7 @@ static int solo_ready = 0;
 
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
+int max_record_time_sec;
 
 static pthread_mutex_t media_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -342,6 +343,21 @@ static int bc_check_globals(void)
 	} else {
 		/* Set default */
 		snapshot_delay_ms = SNAPSHOT_DELAY_MS_DEFAULT;
+	}
+	bc_db_free_table(dbres);
+
+	/* Get max recording time */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_MAX_RECORD_TIME'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for max recording time");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		max_record_time_sec = bc_db_get_val_int(dbres, "value");
+	} else {
+		/* Set default */
+		max_record_time_sec = MAX_RECORD_TIME_SEC_DEFAULT;
 	}
 	bc_db_free_table(dbres);
 

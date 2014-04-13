@@ -61,7 +61,7 @@ void recorder::run()
 		}
 
 		if (current_event && packet.is_key_frame() && packet.is_video_frame() &&
-				bc_event_media_length(current_event) > BC_MAX_RECORD_TIME) {
+				bc_event_media_length(current_event) > max_record_time_sec) {
 			recording_end();
 		}
 
