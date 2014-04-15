@@ -66,4 +66,15 @@ $GLOBALS['ptz'] = array(
 	'STOP_BIT' => array(1, 2),
 	'PARITY' => array('None', 'Even', 'Odd')
 );
+
+$GLOBALS['cts_record_durations'] = array(
+	'15' => '15 minutes' , 
+	'30' => '30 minutes', 
+	'60' => '1 hour', 
+	'120' => '2 hours', 
+	'180' => '3 hours', 
+	'240' => '4 hours',
+	'360' => '6 hours',
+);
+
 ?>

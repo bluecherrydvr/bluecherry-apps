@@ -1,4 +1,4 @@
-<?php defined('INDVR') or exit(); ?>
+<?php defined('INDVR') or exit(); include("../template/template.lib.php"); ?>
 <div id="generalSettings">
 <h1 id="header"><?php echo GLOBAL_SETTINGS; ?></h1>
 <form id="settingsForm" action="ajax/update.php" method="post">
@@ -8,6 +8,9 @@
 	<div class='title'><?php echo G_PERF_TITLE; ?></div>
 	<div><label><?php echo G_DVR_NAME; ?><span class='sub'><?php echo G_DVR_NAME_EX; ?></span></label><input type='text' name='G_DVR_NAME' value='<?php echo $global_settings->data['G_DVR_NAME']; ?>' /></div>
 	<div><label><?php echo G_DEV_NOTES; ?><span class='sub'><?php echo G_DEV_NOTES_EX; ?></span></label><textarea class='notes' name='G_DEV_NOTES'><?php echo $global_settings->data['G_DEV_NOTES']; ?></textarea></div>
+	<div><label><?php echo G_MAX_RECORD_TIME; ?><span class='sub'><?php echo G_MAX_RECORD_TIME_EX; ?></span></label>
+		<?php echo arrayToSelect($GLOBALS['cts_record_durations'], $global_settings->data['G_MAX_RECORD_TIME'], 'G_MAX_RECORD_TIME'); ?>
+	</div>
 </div>
 
 <div class='container-separator'>

@@ -79,6 +79,9 @@ define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 define('G_SMTP_TITLE', 'SMTP server configuration');
 define('G_PERF_TITLE', 'Performance/connectivity');
 
+define('G_MAX_RECORD_TIME', 'Record length');
+define('G_MAX_RECORD_TIME_EX', 'Split videos into segments of');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_USERNAME', 'Username');

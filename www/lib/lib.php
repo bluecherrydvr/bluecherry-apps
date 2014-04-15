@@ -766,6 +766,10 @@ class globalSettings{
 		foreach($data as $key => $entry){
 			$this->data[$entry['parameter']] = $entry['value'];
 		}
+		if (empty($this->data['G_MAX_RECORD_TIME'])) {
+			data::query("INSERT INTO GlobalSettings VALUES('G_MAX_RECORD_TIME', '15}')", true);
+			$this->data['G_MAX_RECORD_TIME'] = 15;
+		}
 	}
 	public static function getParameter($parameter){
 		$tmp = data::getObject('GlobalSettings', 'parameter', $parameter);
