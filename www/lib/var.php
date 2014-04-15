@@ -68,13 +68,12 @@ $GLOBALS['ptz'] = array(
 );
 
 $GLOBALS['cts_record_durations'] = array(
-	'15' => '15 minutes' , 
-	'30' => '30 minutes', 
-	'60' => '1 hour', 
-	'120' => '2 hours', 
-	'180' => '3 hours', 
-	'240' => '4 hours',
-	'360' => '6 hours',
+	'900' => '15 minutes' , 
+	'1800' => '30 minutes', 
+	'3600' => '1 hour', 
+	'7200' => '2 hours', 
+	'10800' => '3 hours', 
+	'14400' => '4 hours',
+	'21600' => '6 hours'
 );
-
 ?>

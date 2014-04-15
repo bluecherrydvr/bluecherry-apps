@@ -768,7 +768,7 @@ class globalSettings{
 		}
 		if (empty($this->data['G_MAX_RECORD_TIME'])) {
 			data::query("INSERT INTO GlobalSettings VALUES('G_MAX_RECORD_TIME', '15}')", true);
-			$this->data['G_MAX_RECORD_TIME'] = 15;
+			$this->data['G_MAX_RECORD_TIME'] = 900;
 		}
 	}
 	public static function getParameter($parameter){
