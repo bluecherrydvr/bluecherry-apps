@@ -10,6 +10,7 @@
 extern char *__progname;
 static log_context *bc_default_context = 0;
 static pthread_key_t bc_log_thread_context;
+static bool initialized = false;
 
 #define DEFAULT_LOG_LEVEL Info
 
@@ -92,6 +93,8 @@ void log_context::log(log_level l, const char *msg, ...) const
 
 void log_context::vlog(log_level l, const char *msg, va_list args) const
 {
+	if (!initialized)
+		return;
 	if (!level_check(l))
 		return;
 
@@ -122,6 +125,7 @@ void server_log::open()
 {
 	openlog(__progname, LOG_PID | LOG_PERROR, LOG_DAEMON);
 	pthread_key_create(&bc_log_thread_context, destroy_thread_context);
+	initialized = true;
 }
 
 inline static char lvl2char(enum log_level l)
@@ -158,6 +162,8 @@ const log_context &bc_log_context()
 
 void bc_vlog(log_level l, const char *msg, va_list args)
 {
+	if (!initialized)
+		return;
 	const log_context &context = bc_log_context();
 	context.vlog(l, msg, args);
 }
@@ -172,6 +178,8 @@ void bc_log(log_level l, const char *msg, ...)
 
 void bc_log_context_push(const log_context &context)
 {
+	if (!initialized)
+		return;
 	std::vector<log_context> *p = reinterpret_cast<std::vector<log_context>*>(
 			pthread_getspecific(bc_log_thread_context));
 
@@ -185,6 +193,8 @@ void bc_log_context_push(const log_context &context)
 
 void bc_log_context_pop()
 {
+	if (!initialized)
+		return;
 	std::vector<log_context> *p = reinterpret_cast<std::vector<log_context>*>(
 			pthread_getspecific(bc_log_thread_context));
 	if (p && !p->empty())
