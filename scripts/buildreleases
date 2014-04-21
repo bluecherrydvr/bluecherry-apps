@@ -4,7 +4,8 @@ MAINTAINER = Andrey Utkin <andrey.utkin@corp.bluecherry.net>
 
 # Ubuntu
 DIST =	lucid \
-	precise
+	precise \
+	trusty
 
 # Debian
 DIST +=	wheezy

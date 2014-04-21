@@ -1,7 +1,12 @@
 #!/usr/bin/make -f
-DIST = lucid \
-       precise \
-       squeeze
+
+# Ubuntu
+DIST =	lucid \
+	precise \
+	trusty
+
+# Debian
+DIST +=	wheezy
 
 ARCH = i386 amd64
 
