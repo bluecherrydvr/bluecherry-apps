@@ -12,8 +12,6 @@ ARCH = i386 amd64
 
 O = ../releases
 
-$(shell echo "#define GIT_REVISION \"`( git describe --dirty --always --long; echo ' '; git describe --all ) | tr -d '\n'`\"" > server/version.h)
-
 #
 # Magic suff from here
 #
@@ -84,8 +82,14 @@ upgrade-$1_$2: FORCE
 
 endef
 
+git-rev = $(shell git describe --dirty --always --long) \
+	$(shell git describe --all)
+
+server/version.h: FORCE
+	echo "#define GIT_REVISION \"$(git-rev)\"" > $@
+
 all-releases: FORCE ;
-release-deps: FORCE ;
+release-deps: server/version.h FORCE ;
 upgrade: FORCE ;
 
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
