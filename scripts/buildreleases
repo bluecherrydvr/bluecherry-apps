@@ -3,9 +3,7 @@ PACKAGE = bluecherry
 MAINTAINER = Andrey Utkin <andrey.utkin@corp.bluecherry.net>
 
 # Ubuntu
-DIST =	lucid \
-	precise \
-	trusty
+DIST = precise trusty
 
 # Debian
 DIST +=	wheezy
