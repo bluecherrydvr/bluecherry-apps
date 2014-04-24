@@ -105,8 +105,6 @@ void recorder::run()
 					bc_log(Debug, "Finalized snapshot");
 					snapshotting_proceeding = false;
 					snapshots_done++;
-					// FIXME Seems it doesn't work with custom www paths and launches by hardcoded path:
-					// Could not open input file: /usr/share/bluecherry/www/lib/mailer.php
 					event_trigger_notifications(current_event);
 				}
 			} else if (snapshots_done < snapshots_limit
@@ -128,6 +126,8 @@ void recorder::run()
 					snapshotting_proceeding = true;
 				} else {
 					bc_log(Debug, "Saved snapshot from single keyframe");
+					snapshots_done++;
+					event_trigger_notifications(current_event);
 				}
 			}
 		}
