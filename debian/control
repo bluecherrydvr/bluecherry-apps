@@ -11,8 +11,8 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
  libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix, php-mail, php-mail-mime,
- php-net-smtp, mail-transport-agent
-Suggests: solo6010-dkms, monit
+ php-net-smtp
+Suggests: solo6010-dkms, monit, mail-transport-agent
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.
