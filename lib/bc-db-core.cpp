@@ -17,20 +17,18 @@ enum bc_db_type {
 	BC_DB_MYSQL = 2,
 };
 
-static pthread_mutex_t db_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static struct bc_db_ops *db_ops = NULL;
 
 static void bc_db_lock(void)
 {
-	if (pthread_mutex_lock(&db_lock) == EDEADLK)
-		bc_log(Error, "Deadlock detected while obtaining db_lock");
+	pthread_mutex_lock(&db_lock);
 }
 
 static void bc_db_unlock(void)
 {
-	if (pthread_mutex_unlock(&db_lock) == EPERM)
-		bc_log(Bug, "Unlocking db_lock when not held");
+	pthread_mutex_unlock(&db_lock);
 }
 
 int bc_db_start_trans(void)

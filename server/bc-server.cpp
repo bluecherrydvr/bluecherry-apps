@@ -38,7 +38,7 @@ static int solo_ready = 0;
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
 
-static pthread_mutex_t media_lock = PTHREAD_ERRORCHECK_MUTEX_INITIALIZER_NP;
+static pthread_mutex_t media_lock = PTHREAD_MUTEX_INITIALIZER;
 
 struct bc_storage {
 	char path[PATH_MAX];
@@ -247,8 +247,7 @@ static int load_storage_paths(void)
 		return -1;
 	}
 
-	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log(Error, "Deadlock detected in media_lock on db_check");
+	pthread_mutex_lock(&media_lock);
 
 	memset(media_stor, 0, sizeof(media_stor));
 
@@ -469,8 +468,7 @@ int bc_get_media_loc(char *dest, size_t size)
 {
 	int ret = 0;
 
-	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log(Error, "Deadlock detected in media_lock on get_loc");
+	pthread_mutex_lock(&media_lock);
 
 	const char *sel = select_best_path();
 	if (!sel)
@@ -552,8 +550,7 @@ done:
 
 static int bc_check_media(void)
 {
-	if (pthread_mutex_lock(&media_lock) == EDEADLK)
-		bc_log(Error, "Deadlock detected in media_lock on check_media");
+	pthread_mutex_lock(&media_lock);
 
 	int ret = 0;
 
