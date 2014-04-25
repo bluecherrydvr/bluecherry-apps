@@ -165,27 +165,51 @@ void bc_record::run()
 
 			destroy_elements();
 
-			if (sched_cur == 'C') {
-				rec = new recorder(this);
-				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
-				rec->set_logging_context(log);
-				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-				std::thread th(&recorder::run, rec);
+			/*
+			 *
+			 * Continuous (C):
+			 * source --> recorder
+			 *
+			 * Motion (M):
+			 * V4L:
+			 * source =(indication & stream)=> motion_handler --> recorder
+			 * RTP:
+			 * source -+-> motion_processor -(indication)-> motion_handler --> recorder
+			 *         +---------------------(stream)-------^
+			 *
+			 *
+			 * Continuous recording + Motion logging (L), enabling snapshots & email notifications:
+			 * V4L:
+			 * source -+=(indication & stream)=> motion_handler --> recorder (snapshots only)
+			 *         +-> recorder
+			 *
+			 * RTP:
+			 * source -+-> motion_processor -(indication)-> motion_handler --> recorder (snapshots only)
+			 *         +---------------------(stream)-------^
+			 *         +-> recorder
+			 *
+			 */
+			if (sched_cur == 'C' || sched_cur == 'L') {
+				rec_continuous = new recorder(this);
+				rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
+				rec_continuous->set_logging_context(log);
+				bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
+				std::thread th(&recorder::run, rec_continuous);
 				th.detach();
-			} else if (sched_cur == 'M') {
+			} else if (sched_cur == 'M' || sched_cur == 'L') {
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
-				rec = new recorder(this);
-				rec->set_logging_context(log);
-				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
+				rec_motion = new recorder(this);
+				rec_motion->set_logging_context(log);
+				rec_motion->set_recording_type(sched_cur == 'M' ? BC_EVENT_CAM_T_MOTION : BC_EVENT_CAM_T_SNAPSHOTS_ONLY);
 
-				rec->set_buffer_time(cfg.prerecord);
+				rec_motion->set_buffer_time(cfg.prerecord);
 
-				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
+				m_handler->connect(rec_motion);
+				std::thread rec_th(&recorder::run, rec_motion);
 				rec_th.detach();
 
 				if (bc->type == BC_DEVICE_V4L2) {
@@ -202,6 +226,9 @@ void bc_record::run()
 
 				std::thread th(&motion_handler::run, m_handler);
 				th.detach();
+			} else {
+				log.log(Error, "Unknown sched_cur '%c'", sched_cur);
+				goto error;
 			}
 
 			sched_last = 0;
@@ -236,6 +263,7 @@ void bc_record::run()
 			}
 		continue;
 error:
+		// FIXME This would reasonably delay service shutdown
 		sleep(10);
 	}
 
@@ -275,7 +303,8 @@ bc_record::bc_record(int i)
 
 	m_processor = 0;
 	m_handler = 0;
-	rec = 0;
+	rec_continuous = 0;
+	rec_motion = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -362,10 +391,16 @@ bc_record::~bc_record()
 
 void bc_record::destroy_elements()
 {
-	if (rec) {
-		rec->disconnect();
-		rec->destroy();
-		rec = 0;
+	if (rec_continuous) {
+		rec_continuous->disconnect();
+		rec_continuous->destroy();
+		rec_continuous = 0;
+	}
+
+	if (rec_motion) {
+		rec_motion->disconnect();
+		rec_motion->destroy();
+		rec_motion = 0;
 	}
 
 	if (m_processor) {

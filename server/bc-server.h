@@ -76,7 +76,8 @@ public:
 	/* Motion detection & recording */
 	class motion_processor *m_processor;
 	class motion_handler *m_handler;
-	class recorder *rec;
+	class recorder *rec_continuous;
+	class recorder *rec_motion;
 
 	int cur_pkt_flags;
 	bool pkt_first_chunk;

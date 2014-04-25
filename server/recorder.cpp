@@ -224,14 +224,24 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		return -1;
 	}
 
-	writer = new media_writer;
-	if (writer->open(std::string(outfile), *first_packet.properties().get()) != 0) {
-		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+	char *ext = strrchr(outfile, '.');
+	assert(ext);
+	if (!ext)
 		return -1;
+	snapshot_filename.assign(outfile, ext-outfile);
+	snapshot_filename.append(".jpg");
+
+	writer = new media_writer;
+	if (recording_type != BC_EVENT_CAM_T_SNAPSHOTS_ONLY) {
+		if (writer->open(std::string(outfile), *first_packet.properties().get()) != 0) {
+			do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+			return -1;
+		}
 	}
 
-	bc_event_level_t level = (recording_type == BC_EVENT_CAM_T_MOTION) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
-	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type, outfile);
+	bc_event_level_t level = (recording_type != BC_EVENT_CAM_T_CONTINUOUS) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
+	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type,
+			(recording_type == BC_EVENT_CAM_T_SNAPSHOTS_ONLY) ? snapshot_filename.c_str() : outfile);
 
 	if (!nevent) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
@@ -243,12 +253,6 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	// Save timestamp of first packet
 	first_packet_ts_monotonic = first_packet.ts_monotonic;
-	char *ext = strrchr(outfile, '.');
-	assert(ext);
-	if (!ext)
-		return -1;
-	strcpy(ext + 1, "jpg");
-	snapshot_filename = outfile;
 
 	return 0;
 }
@@ -259,7 +263,7 @@ void recorder::recording_end()
 	if (current_event && bc_event_has_media(current_event))
 		bc_event_cam_end(&current_event);
 
-	if (writer)
+	if (writer && recording_type != BC_EVENT_CAM_T_SNAPSHOTS_ONLY)
 		writer->close();
 	delete writer;
 	writer = 0;
