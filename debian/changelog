@@ -1,3 +1,11 @@
+bluecherry (1:2.1.9) precise trusty wheezy; urgency=low
+
+  * Add RTP transport selection in web interface
+  * Add configuration of max recording duration
+  * Bugfixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 26 Apr 2014 16:17:03 -0500
+
 bluecherry (1:2.1.8-2) lucid precise wheezy; urgency=low
 
   * Bugfix related to media files allocation
