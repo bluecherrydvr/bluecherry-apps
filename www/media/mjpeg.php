@@ -283,7 +283,7 @@ function get_one_jpeg($url, &$auth)
 				break;
 			}
 		}
-	} while ($len > 0);
+	} while ($len > 0 && !feof($fh));
 
         fclose($fh);
 
