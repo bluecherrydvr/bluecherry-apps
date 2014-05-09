@@ -632,7 +632,7 @@ int v4l2_device::set_motion(bool on)
 
 int v4l2_device::set_motion_thresh_global(char value)
 {
-	int val = range(value, '0', '5') - '0';
+	int val = clamp(value, '0', '5') - '0';
 	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
 		vc.id = V4L2_CID_MOTION_THRESHOLD;
@@ -664,7 +664,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 
 	for (unsigned int y = 0, pos = 0; y < vh; y++) {
 		for (unsigned int x = 0; x < 22; x++, pos++) {
-			int val = range(map[pos], '0', '5') - '0';
+			int val = clamp(map[pos], '0', '5') - '0';
 
 			vc.value = solo_value_map[val];
 
