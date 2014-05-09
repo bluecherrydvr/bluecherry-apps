@@ -257,11 +257,11 @@ int bc_ptz_cmd(struct bc_handle *bc, unsigned int cmd, int delay,
 
 #ifdef __cplusplus
 template <typename num>
-num range(num n, num min, num max) {
+num clamp(num n, num min, num max) {
 	return (n < min) ? min : ((n > max) ? max : n);
 }
 #else
-#define range(n, min, max) ({ \
+#define clamp(n, min, max) ({ \
 	typeof(n) t = n; \
 	(t < min) ? min : ((t > max) ? max : t); })
 #endif
