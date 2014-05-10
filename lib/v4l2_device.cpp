@@ -651,26 +651,19 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -ENOSYS;
 
 	struct v4l2_control vc;
-	unsigned int vh = 15;
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 
-	if (caps() & BC_CAM_CAP_V4L2_PAL)
-		vh = 18;
-
+	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 	if (size < 22 * vh) {
 		bc_log(Debug, "Received motion threshold map of wrong size");
 		return -1;
 	}
 
-	for (unsigned int y = 0, pos = 0; y < vh; y++) {
-		for (unsigned int x = 0; x < 22; x++, pos++) {
-			int val = clamp(map[pos], '0', '5') - '0';
-
-			vc.value = solo_value_map[val];
-
-			/* One more than the actual block number, because
-			 * 0 sets the global threshold. */
-			vc.value |= (y << 23) + (x << 17) + (1 << 16);
+	/* NOTE: Zero sets the global threshold, so x starts at 1 */
+	for (unsigned y = 0, pos = 0; y < (vh << 23); y += (1 << 23)) {
+		for (unsigned x = (1 << 16); x <= (22 << 17); x += (1 << 17)) {
+			int val = clamp(map[pos++], '0', '5') - '0';
+			vc.value = y | x | solo_value_map[val];
 
 			/* Set motion threshold on a 2x2 sector. Our input map
 			 * has half the resolution the devices work with, in
