@@ -261,9 +261,13 @@ num clamp(num n, num min, num max) {
 	return (n < min) ? min : ((n > max) ? max : n);
 }
 #else
-#define clamp(n, min, max) ({ \
-	typeof(n) t = n; \
-	(t < min) ? min : ((t > max) ? max : t); })
+#define clamp(n, min, max) ({					\
+	typeof(n) _n = (n);					\
+	typeof(min) _min = (min);				\
+	typeof(max) _max = (max);				\
+	(void)(&_n == &_min);					\
+	(void)(&_n == &_max);					\
+	(_n < _min) ? _min : ((_n > _max) ? _max : _n); })
 #endif
 
 #endif /* __LIBBLUECHERRY_H */
