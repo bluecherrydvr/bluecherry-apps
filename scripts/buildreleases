@@ -82,14 +82,8 @@ upgrade-$1_$2: FORCE
 
 endef
 
-git-rev = $(shell git describe --dirty --always --long) \
-	$(shell git describe --all)
-
-server/version.h: FORCE
-	echo "#define GIT_REVISION \"$(git-rev)\"" > $@
-
 all-releases: FORCE ;
-release-deps: server/version.h FORCE ;
+release-deps: FORCE ;
 upgrade: FORCE ;
 
 $(eval $(foreach dist,$(DIST),$(foreach arch,$(ARCH),\
