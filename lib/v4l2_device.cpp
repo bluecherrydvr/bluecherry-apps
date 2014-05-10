@@ -644,7 +644,6 @@ int v4l2_device::set_motion_thresh_global(char value)
 	return 0;
 }
 
-
 int v4l2_device::set_motion_thresh(const char *map, size_t size)
 {
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
@@ -682,12 +681,16 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 			vc.value -= 1 << 16;
 			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
 				goto error;
+
+			continue;
+
+		error:
+			bc_log(Error, "Error setting motion threshold (%x): %s",
+			       vc.value, strerror(errno));
+			return -1;
 		}
 	}
 
 	return 0;
 
-error:
-	bc_log(Error, "Error setting motion threshold: %s", strerror(errno));
-	return -1;
 }
