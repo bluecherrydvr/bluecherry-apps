@@ -24,10 +24,9 @@ override_dh_installlogrotate:
 
 override_dh_auto_install:
 	dh_auto_install --destdir=debian/bluecherry
-	cat misc/sql/mysql/*.sql > \
-	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/install/mysql
-	cp misc/sql/mysql-upgrade/* \
-	    debian/bluecherry/usr/share/dbconfig-common/data/bluecherry/upgrade/mysql/
+	cp misc/sql/* debian/bluecherry/usr/share/bluecherry/
+	mkdir debian/bluecherry/DEBIAN
+	cp debian/templates debian/bluecherry/DEBIAN/ # TODO How to simplify this?
 	install -m640 -g www-data -D debian/bluecherry.conf.in \
 		debian/bluecherry/usr/share/bluecherry/bluecherry.conf.in
 	install -m644 -D debian/apache.conf \
@@ -38,6 +37,7 @@ override_dh_auto_install:
 #		debian/bluecherry/etc/apparmor.d/usr.sbin.bc-server
 	cp -a www/* debian/bluecherry/usr/share/bluecherry/www
 	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/version
+	mkdir debian/bluecherry/usr/share/bluecherry/mysql-upgrade
 
 override_dh_installdeb:
 	dh_installdeb

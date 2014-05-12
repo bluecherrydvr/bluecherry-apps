@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.0-0beta8.0"; then
+if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.3"; then
 	echo "UPGRADES WILL NOT WORK!!"
 	echo "Please 'dpkg -P bluecherry' before installing this new package"
 	exit 1
@@ -18,6 +18,18 @@ if [[ "$1" == upgrade ]] && dpkg --compare-versions "$2" lt "1:2.2"; then
 	then
 		echo "UPDATE GlobalSettings SET value = '900' WHERE parameter = 'G_MAX_RECORD_TIME'';" | mysql -D"$dbname" -u"$user" -p"$password"
 	fi
+fi
+
+if [[ "$1" == "install" ]]
+then
+	# Thus postinst distinguishes fresh install by 0-bytes conf file.
+	# /etc/bluecherry.conf is not set to be tracked in conffiles by Debian,
+	# because that requires the file to be actually stored in .deb and involves
+	# forced interaction with user to merge the config on upgrade when files
+	# mismatch (and this will be always the case because our config is generated
+	# by template).
+	mv /etc/bluecherry.conf{,.bkp} || true # Backup old one just in case
+	> /etc/bluecherry.conf
 fi
 
 case "$1" in

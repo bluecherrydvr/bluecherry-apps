@@ -2,10 +2,6 @@
 
 if [ -f /usr/share/debconf/confmodule ]; then
 	. /usr/share/debconf/confmodule
-	if [ -f /usr/share/dbconfig-common/dpkg/postrm.mysql ]; then
-		. /usr/share/dbconfig-common/dpkg/postrm.mysql
-		dbc_go bluecherry $@
-	fi
 fi
 
 case "$1" in

@@ -9,7 +9,7 @@ Standards-Version: 3.8.4
 Package: bluecherry
 Architecture: any
 Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ssl-cert, dbconfig-common, ucf, mysql-server, curl,
+Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl,
  libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix, php-mail, php-mail-mime,
  php-net-smtp
 Suggests: solo6010-dkms, monit, mail-transport-agent

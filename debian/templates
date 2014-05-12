@@ -1,0 +1,25 @@
+Template: bluecherry/mysql_admin_login
+Type: string
+Default: root
+Description: Please enter MySQL administrative user's name.
+ This is needed for assistance in creation of database for Bluecherry service.
+
+Template: bluecherry/mysql_admin_password
+Type: password
+Description: Please enter MySQL administrative user's password.
+ This is needed for assistance in creation of database for Bluecherry service.
+
+Template: bluecherry/db_name
+Type: string
+Default: bluecherry
+Description: Please enter the name for newly created database for Bluecherry service
+
+Template: bluecherry/db_user
+Type: string
+Default: bluecherry
+Description: Please enter the database user's name for Bluecherry service
+
+Template: bluecherry/db_password
+Type: password
+Default: bluecherry
+Description: Please enter the database user's password for Bluecherry service

@@ -1,2 +1,0 @@
-ALTER TABLE `notificationSchedules` ADD `disabled` BOOLEAN NOT NULL DEFAULT '0';
-ALTER TABLE `ipPtzCommandPresets` AUTO_INCREMENT = 9999;
