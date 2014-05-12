@@ -1,9 +1,23 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.0-0beta8.0"; then
 	echo "UPGRADES WILL NOT WORK!!"
 	echo "Please 'dpkg -P bluecherry' before installing this new package"
 	exit 1
+fi
+
+# Fixing https://github.com/bluecherrydvr/bluecherry-apps/issues/191
+if [[ "$1" == upgrade ]] && [[ "$2" == "1:2.1.9" ]]; then
+	# Parse config for DB credentials
+	TMP=`mktemp`
+	egrep '(dbname|user|password)' /etc/bluecherry.conf | tr -d ' ' > $TMP
+	source $TMP
+	rm $TMP
+	G_MAX_RECORD_TIME=`echo "SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_TIME'';" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+	if [[ $G_MAX_RECORD_TIME == "15" ]]
+	then
+		echo "UPDATE GlobalSettings SET value = '900' WHERE parameter = 'G_MAX_RECORD_TIME'';" | mysql -D"$dbname" -u"$user" -p"$password"
+	fi
 fi
 
 case "$1" in
