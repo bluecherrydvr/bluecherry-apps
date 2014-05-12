@@ -27,6 +27,8 @@ extern "C" {
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
 pthread_mutex_t mutex_streaming_setup;
+pthread_mutex_t mutex_snapshot_delay_ms;
+pthread_mutex_t mutex_max_record_time_sec;
 
 static std::vector<bc_record*> bc_rec_list;
 
@@ -120,6 +122,10 @@ static void bc_initialize_mutexes()
 	pthread_mutex_init(&mutex_global_sched,
 			   (pthread_mutexattr_t *) NULL);
 	pthread_mutex_init(&mutex_streaming_setup,
+			   (pthread_mutexattr_t *) NULL);
+	pthread_mutex_init(&mutex_snapshot_delay_ms,
+			   (pthread_mutexattr_t *) NULL);
+	pthread_mutex_init(&mutex_max_record_time_sec,
 			   (pthread_mutexattr_t *) NULL);
 }
 
@@ -338,12 +344,14 @@ static int bc_check_globals(void)
 	if (!dbres)
 		bc_status_component_error("Database failure for snapshot delay");
 
+	pthread_mutex_lock(&mutex_snapshot_delay_ms);
 	if (dbres && !bc_db_fetch_row(dbres)) {
 		snapshot_delay_ms = bc_db_get_val_int(dbres, "value");
 	} else {
 		/* Set default */
 		snapshot_delay_ms = SNAPSHOT_DELAY_MS_DEFAULT;
 	}
+	pthread_mutex_unlock(&mutex_snapshot_delay_ms);
 	bc_db_free_table(dbres);
 
 	/* Get max recording time */
@@ -353,12 +361,14 @@ static int bc_check_globals(void)
 	if (!dbres)
 		bc_status_component_error("Database failure for max recording time");
 
+	pthread_mutex_lock(&mutex_max_record_time_sec);
 	if (dbres && !bc_db_fetch_row(dbres)) {
 		max_record_time_sec = bc_db_get_val_int(dbres, "value");
 	} else {
 		/* Set default */
 		max_record_time_sec = MAX_RECORD_TIME_SEC_DEFAULT;
 	}
+	pthread_mutex_unlock(&mutex_max_record_time_sec);
 	bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */

@@ -18,6 +18,8 @@ extern "C" {
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
+extern pthread_mutex_t mutex_snapshot_delay_ms;
+extern pthread_mutex_t mutex_max_record_time_sec;
 
 /* Default configuration file */
 #define BC_CONFIG_DEFAULT      "/etc/bluecherry.conf"
