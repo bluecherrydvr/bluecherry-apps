@@ -1,3 +1,13 @@
+bluecherry (1:2.1.9-2) precise trusty wheezy; urgency=low
+
+  * Update incorrect maintainers email address.
+  * Fix lingering connections from Apache to MJPEG source
+  * Fix the issue of very short recording time activated by default
+  * Log additional info when solo card driver returns error
+  * More bugfixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 12 May 2014 19:06:35 -0500
+
 bluecherry (1:2.1.9) precise trusty wheezy; urgency=low
 
   * Add RTP transport selection in web interface
