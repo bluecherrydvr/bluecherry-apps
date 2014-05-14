@@ -1,3 +1,9 @@
+bluecherry (1:2.1.9-4) precise trusty wheezy; urgency=low
+
+  * Packaging fix
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 14 May 2014 14:49:41 -0500
+
 bluecherry (1:2.1.9-3) precise trusty wheezy; urgency=low
 
   * Fix Ubuntu 14 issues
