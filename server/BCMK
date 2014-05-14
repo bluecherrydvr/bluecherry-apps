@@ -15,7 +15,7 @@ SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 
 all: $(TARGETS) FORCE
 
-bc-server.o: version.h
+bc-server.o: FORCE
 
 bc-server: $(LIB) $(SERVER_OBJS)
 	$(CXX) $(LDFLAGS) $(SERVER_OBJS) -o $@
@@ -28,12 +28,7 @@ install: all rsyslog.conf FORCE
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)
 
-git-rev = $(shell git describe --dirty --always --long) \
-	$(shell git describe --all)
+FORCE:
 
-version.h: FORCE
-	echo "#define GIT_REVISION \"$(git-rev)\"" > $@
-
-FORCE:;
 
 -include $(SERVER_OBJS:%.o=%.d)
