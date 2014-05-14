@@ -10,7 +10,7 @@ fi
 if [[ "$1" == upgrade ]] && [[ "$2" == "1:2.1.9" ]]; then
 	# Parse config for DB credentials
 	TMP=`mktemp`
-	egrep '(dbname|user|password)' /etc/bluecherry.conf | tr -d ' ' > $TMP
+	egrep '(dbname|user|password)' /etc/bluecherry.conf | sed 's/ = /=/' > $TMP
 	source $TMP
 	rm $TMP
 	G_MAX_RECORD_TIME=`echo "SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_TIME'';" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
