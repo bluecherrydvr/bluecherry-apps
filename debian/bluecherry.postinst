@@ -51,6 +51,9 @@ case "$1" in
 		if [ -x /sbin/apparmor_parser ]; then
 			: #apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
 		fi
+
+		# Remove php ini (tracked previously as conffile) from old place
+		rm /etc/php5/conf.d/bluecherry.ini || true
 		;;
 esac
 
