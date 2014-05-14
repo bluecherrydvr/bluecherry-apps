@@ -31,7 +31,7 @@ override_dh_auto_install:
 	install -m640 -g www-data -D debian/bluecherry.conf.in \
 		debian/bluecherry/usr/share/bluecherry/bluecherry.conf.in
 	install -m644 -D debian/apache.conf \
-		debian/bluecherry/etc/apache2/sites-available/bluecherry
+		debian/bluecherry/etc/apache2/sites-available/bluecherry.conf
 	install -m644 debian/bluecherry.monit \
 		debian/bluecherry/etc/monit/conf.d/bluecherry
 #	install -m644 debian/bluecherry.apparmor \

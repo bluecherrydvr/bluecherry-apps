@@ -34,7 +34,7 @@ case "$1" in
 		# Apache modules and sites
 		a2enmod ssl
 		a2enmod php5
-		a2ensite bluecherry
+		a2ensite bluecherry.conf
 
 		if [ ! -z `which service` ]; then
 			service apache2 reload || true
