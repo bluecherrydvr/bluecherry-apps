@@ -1,3 +1,9 @@
+bluecherry (1:2.1.9-3) precise trusty wheezy; urgency=low
+
+  * Fix Ubuntu 14 issues
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 14 May 2014 12:02:16 -0500
+
 bluecherry (1:2.1.9-2) precise trusty wheezy; urgency=low
 
   * Update incorrect maintainers email address.
