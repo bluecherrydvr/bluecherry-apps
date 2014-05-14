@@ -23,9 +23,9 @@ install: modules/$(MODULE).so $(MODULE).ini
 	$(INSTALL_DATA) -D modules/$(MODULE).so \
 		$(DESTDIR)$(EXTDIR)/$(MODULE).so
 	$(INSTALL_DATA) -D $(MODULE).ini \
-		$(DESTDIR)$(etc_dir)/php5/apache2/conf.d/$(MODULE).ini
+		$(DESTDIR)$(etc_dir)/php5/apache2/conf.d/bluecherry_apache2.ini
 	$(INSTALL_DATA) -D $(MODULE).ini \
-		$(DESTDIR)$(etc_dir)/php5/cli/conf.d/$(MODULE).ini
+		$(DESTDIR)$(etc_dir)/php5/cli/conf.d/bluecherry_cli.ini
 
 clean:
 	test -f Makefile && $(MAKE) -f Makefile distclean || true
