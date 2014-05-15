@@ -36,6 +36,13 @@ case "$1" in
 		a2enmod php5
 		a2ensite bluecherry.conf
 
+		# Remove php ini (tracked previously as conffile) from old place
+		rm /etc/php5/conf.d/bluecherry.ini || true
+
+		# Remove a file prefiously tracked as conffile from old place
+		a2dissite bluecherry || true
+		rm /etc/apache2/sites-available/bluecherry || true
+
 		if [ ! -z `which service` ]; then
 			service apache2 reload || true
 			service rsyslog restart || true
@@ -52,8 +59,6 @@ case "$1" in
 			: #apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
 		fi
 
-		# Remove php ini (tracked previously as conffile) from old place
-		rm /etc/php5/conf.d/bluecherry.ini || true
 		;;
 esac
 
