@@ -35,6 +35,7 @@ case "$1" in
 
 		userdel bluecherry || true
 		groupdel bluecherry || true
+		db_purge || true
 	;;
 esac
 
