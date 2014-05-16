@@ -37,28 +37,28 @@
 				<li class='liveView'><?php echo MMENU_LIVEVIEW; ?></li>
 				<li class='downloadClient'><?php echo MMENU_CLIENT_DOWNLOAD; ?></li>
 				<hr>
-				<li id="news" class="news"><? echo MMENU_NEWS; ?></li>
+				<li id="news" class="news"><?php echo MMENU_NEWS; ?></li>
 				<hr>
-				<li id="general" class="settingsGeneral"><? echo MMENU_GS; ?></li>
-				<li id="storage" class="settingsStorage"><? echo MMENU_STORAGE; ?></li>
-				<li id="users" class="settingsUsers"><? echo MMENU_USERS; ?></li>
-				<li id="activeusers" class="activeUsers"><? echo MMENU_ACTIVE_USERS; ?></li>
+				<li id="general" class="settingsGeneral"><?php echo MMENU_GS; ?></li>
+				<li id="storage" class="settingsStorage"><?php echo MMENU_STORAGE; ?></li>
+				<li id="users" class="settingsUsers"><?php echo MMENU_USERS; ?></li>
+				<li id="activeusers" class="activeUsers"><?php echo MMENU_ACTIVE_USERS; ?></li>
 				<hr>
-				<li id="devices" class="devices"><? echo MMENU_DEVICES; ?></li>
-				<li id="deviceschedule" class="globalschedule"><? echo MMENU_SCHED; ?></li>
-				<li id="notifications" class="notifications"><? echo MMENU_NOTFICATIONS; ?></li>
+				<li id="devices" class="devices"><?php echo MMENU_DEVICES; ?></li>
+				<li id="deviceschedule" class="globalschedule"><?php echo MMENU_SCHED; ?></li>
+				<li id="notifications" class="notifications"><?php echo MMENU_NOTFICATIONS; ?></li>
 				<hr>
-				<li id="statistics" class="eventStatistics"><? echo MMENU_STATISTICS; ?></li>
-				<!--<li id="backup" class="backup"><? echo MMENU_BACKUP; ?></li>!-->
-				<li id="log" class="viewLog"><? echo MMENU_LOG; ?></li>
-				<li id="licensing" class="licensing"><? echo MMENU_LICENSING; ?></li>
+				<li id="statistics" class="eventStatistics"><?php echo MMENU_STATISTICS; ?></li>
+				<!--<li id="backup" class="backup"><?php echo MMENU_BACKUP; ?></li>!-->
+				<li id="log" class="viewLog"><?php echo MMENU_LOG; ?></li>
+				<li id="licensing" class="licensing"><?php echo MMENU_LICENSING; ?></li>
 			</ul>
 		</div>
 		<div id="sysMessages">
-			<div id="sr"><div id="message" class="OK"><? echo SERVER_RUNNING; ?></div></div>
-			<div id="snr"><div id="message" class="F"><? echo SERVER_NOT_RUNNING; ?></div></div>
-			<div id="ncn"><div id="message" class="F"><? echo NO_CONNECTION; ?></div></div>
-			<div id="ftw"><div id="message" class="F"><? echo WRITE_FAILED; ?><div id="writeFailTime"></div></div></div>
+			<div id="sr"><div id="message" class="OK"><?php echo SERVER_RUNNING; ?></div></div>
+			<div id="snr"><div id="message" class="F"><?php echo SERVER_NOT_RUNNING; ?></div></div>
+			<div id="ncn"><div id="message" class="F"><?php echo NO_CONNECTION; ?></div></div>
+			<div id="ftw"><div id="message" class="F"><?php echo WRITE_FAILED; ?><div id="writeFailTime"></div></div></div>
 			<?php
 				if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
 				if (!$version->version['up_to_date']){

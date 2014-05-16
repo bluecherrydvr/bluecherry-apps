@@ -28,7 +28,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 	<div id="advancedSettingsSwitch">[<?php echo AIP_ADVANCED_SETTINGS; ?>]</div>
 	<div class="bClear"></div>
 	<div id="advancedSettings">
-		<div><label id="addipLabel"><?php echo IPCAM_DEBUG_LEVEL; ?></label><input type='checkbox' name='debug_level' <? echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>></div>
+		<div><label id="addipLabel"><?php echo IPCAM_DEBUG_LEVEL; ?></label><input type='checkbox' name='debug_level' <?php echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>></div>
 		
 	</div>
 	<div class="bClear"></div>
