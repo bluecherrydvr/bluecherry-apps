@@ -2,10 +2,7 @@
 
 REFERENCE_DUMPFILE=/usr/share/bluecherry/schema_mysql.sql
 
-TMP=`mktemp`
-egrep '(dbname|user|password)' /etc/bluecherry.conf | sed 's/ = /=/' > $TMP
-source $TMP
-rm $TMP
+eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/' /etc/bluecherry.conf)
 
 DUMPFILE=`mktemp`
 

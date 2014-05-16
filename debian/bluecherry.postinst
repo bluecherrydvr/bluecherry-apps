@@ -124,10 +124,7 @@ case "$1" in
 		else
 			# Upgrade
 			# Parse config for DB credentials
-			TMP=`mktemp`
-			egrep '(dbname|user|password)' /etc/bluecherry.conf | sed 's/ = /=/' > $TMP
-			source $TMP
-			rm $TMP
+			eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/' /etc/bluecherry.conf)
 			export dbname user password
 
 			# Get DB version
