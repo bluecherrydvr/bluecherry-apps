@@ -1,3 +1,11 @@
+bluecherry (1:2.1.9-7) precise trusty wheezy; urgency=low
+
+  * DB maintenance improvements
+  * Packaging fixes
+  * Cut off unneeded units of ffmpeg libs
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 16 May 2014 08:29:59 -0500
+
 bluecherry (1:2.1.9-6) precise trusty wheezy; urgency=low
 
   * Packaging fix
