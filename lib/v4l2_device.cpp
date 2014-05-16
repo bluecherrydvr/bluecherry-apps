@@ -613,7 +613,7 @@ no_audio:
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-static uint16_t solo_value_map[] = {
+static const uint16_t solo_value_map[] = {
 	0xffff, 1152, 1024, 768, 512, 3842
 };
 
