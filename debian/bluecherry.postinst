@@ -58,14 +58,14 @@ case "$1" in
 		# Apache modules and sites
 		a2enmod ssl
 		a2enmod php5
+
+		# Remove a file prefiously tracked as conffile from old place
+		rm /etc/apache2/sites-{enabled,available}/bluecherry || true
+
 		a2ensite bluecherry.conf
 
 		# Remove php ini (tracked previously as conffile) from old place
 		rm /etc/php5/conf.d/bluecherry.ini || true
-
-		# Remove a file prefiously tracked as conffile from old place
-		a2dissite bluecherry || true
-		rm /etc/apache2/sites-available/bluecherry || true
 
 		if [ ! -z `which service` ]; then
 			service apache2 reload || true
