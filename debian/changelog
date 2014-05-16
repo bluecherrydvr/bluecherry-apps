@@ -1,3 +1,10 @@
+bluecherry (1:2.1.9-8) precise trusty wheezy; urgency=low
+
+  * Packaging enhancements
+  * Bugfix for web UI on Ubuntu 14
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 16 May 2014 12:50:44 -0500
+
 bluecherry (1:2.1.9-7) precise trusty wheezy; urgency=low
 
   * DB maintenance improvements
