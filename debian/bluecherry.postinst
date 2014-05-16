@@ -91,6 +91,14 @@ case "$1" in
 		then
 			# 0-bytes config - fresh installation
 			# Create DB
+
+			# Remove cached answers
+			db_fset bluecherry/mysql_admin_login    seen false
+			db_fset bluecherry/mysql_admin_password seen false
+			db_fset bluecherry/db_name              seen false
+			db_fset bluecherry/db_user              seen false
+			db_fset bluecherry/db_password          seen false
+
 			# Ask questions
 			db_input high bluecherry/mysql_admin_login
 			db_input high bluecherry/mysql_admin_password
