@@ -119,7 +119,7 @@ case "$1" in
 			export password="$RET"
 
 			# Actually create DB and tables
-			echo "CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
+			echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
 			echo "GRANT ALL ON ${dbname}.* to ${user}@'localhost' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
 
 			create_tables_write_version
