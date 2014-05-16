@@ -29,3 +29,7 @@ Type: note
 Description: Database access security consideration
  It is recommended to revoke access permissions for the credentials previously
  used for Bluecherry database, see /etc/bluecherry.conf
+
+Template: bluecherry/note_install_succeed
+Type: note
+Description: Installation succeed

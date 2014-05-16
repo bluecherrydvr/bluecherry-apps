@@ -218,6 +218,9 @@ case "$1" in
 
 		# End of DB management
 
+		db_fset bluecherry/note_install_succeed seen false
+		db_input high bluecherry/note_install_succeed || true
+		db_go || true
 		;;
 esac
 
