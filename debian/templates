@@ -23,3 +23,9 @@ Template: bluecherry/db_password
 Type: password
 Default: bluecherry
 Description: Please enter the database user's password for Bluecherry service
+
+Template: bluecherry/note_revoke_db_credentials
+Type: note
+Description: Database access security consideration
+ It is recommended to revoke access permissions for the credentials previously
+ used for Bluecherry database, see /etc/bluecherry.conf

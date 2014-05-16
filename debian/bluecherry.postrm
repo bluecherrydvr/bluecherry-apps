@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
 if [ -f /usr/share/debconf/confmodule ]; then
 	. /usr/share/debconf/confmodule
@@ -11,6 +11,11 @@ case "$1" in
 		# Reload some things
 		invoke-rc.d apache2 restart || true
 		invoke-rc.d rsyslog restart || true
+
+		db_fset bluecherry/note_revoke_db_credentials seen false
+		db_input high bluecherry/note_revoke_db_credentials || true
+		db_go || true
+
 	;;
 	purge)
 		CONFIGFILE=/etc/bluecherry.conf
