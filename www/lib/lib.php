@@ -555,7 +555,24 @@ class ipCamera{
 		return array($result, $message);
 	}
 	public static function remove($id){
-		return data::query("DELETE FROM Devices WHERE id='{$id}'", true);
+		$attempts = 10;
+		$device_delete_ret;
+		do {
+			data::query("DELETE FROM EventsCam WHERE device_id='{$id}'", true);
+			$media_files = data::query("SELECT id, filepath FROM Media WHERE device_id='{$id}' ORDER BY id DESC");
+			$highest_id = $media_files[0]['id'];
+			foreach ($media_files as $key => $media_file) {
+				if (file_exists($media_file['filepath']))
+					unlink($media_file['filepath']);
+			}
+			# Remove all traversed entries, not touching the possible to appear entries with higher id
+			data::query("DELETE FROM Media WHERE device_id='{$id}' AND id <= {$highest_id}", true);
+
+			data::query("DELETE FROM PTZPresets WHERE device_id='{$id}'", true);
+			$device_delete_ret = data::query("DELETE FROM Devices WHERE id='{$id}'", true);
+			$attempts--;
+		} while ((!$device_delete_ret) && ($attempts > 0));
+		return $device_delete_ret;
 	}
 	public function changeState(){
 		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
