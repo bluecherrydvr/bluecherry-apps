@@ -18,7 +18,7 @@ function create_tables_write_version() {
 function db_upgrade_err() {
 	trap - ERR # avoid recurrence
 	# Say something to user
-	echo "Some error happened during DB upgrade" >&2
+	echo "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: https://bluecherry.zendesk.com/anonymous_requests/new . Provide full  uncut output from console (the above text)." >&2
 	if [[ -e $DB_BACKUP_GZ_FILE ]]
 	then
 		echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
