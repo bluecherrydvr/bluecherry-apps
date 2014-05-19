@@ -87,6 +87,8 @@ int rtp_device::start()
 	av_dict_set(&avopt, "max_delay", tmp, 0);
 	av_dict_set(&avopt, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	av_dict_set(&avopt, "threads", "1", 0);
+	/* No input on socket, or no writability for thus many microseconds is treated as failure */
+	av_dict_set(&avopt, "stimeout", "10000000" /* 10 s */, 0);
 	if (rtp_prefer_tcp)
 		av_dict_set(&avopt, "rtsp_flags", "+prefer_tcp", 0);
 
