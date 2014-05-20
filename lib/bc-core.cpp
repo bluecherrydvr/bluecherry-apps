@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <math.h>
 #include <limits.h>
+#include <assert.h>
 #include <bsd/string.h>
 
 #include "libbluecherry.h"
@@ -40,7 +41,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 {
 	struct v4l2_buffer *vb;
 
-	if (bc->type == BC_DEVICE_RTP)
+	if (bc->type == BC_DEVICE_LAVF)
 		return lavf_device_frame_is_keyframe(&bc->rtp);
 
 	if (bc->type != BC_DEVICE_V4L2)
@@ -59,7 +60,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 
 int bc_buf_is_video_frame(struct bc_handle *bc)
 {
-	if (bc->type == BC_DEVICE_RTP)
+	if (bc->type == BC_DEVICE_LAVF)
 		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
 	return 1;
 }
@@ -70,7 +71,7 @@ int bc_buf_get(struct bc_handle *bc)
 {
 	int ret = EINVAL;
 
-	if (bc->type == BC_DEVICE_RTP) {
+	if (bc->type == BC_DEVICE_LAVF) {
 		ret = lavf_device_read(&bc->rtp);
 	} else if (bc->type == BC_DEVICE_V4L2) {
 		struct v4l2_buffer vb;
@@ -173,10 +174,11 @@ static int parse_dev_path(char *dst, size_t sz, const char *val,
 	return 0;
 }
 
-static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
+static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *val;
-	bc->type = BC_DEVICE_RTP;
+	assert(strlen(bc->driver));
+	bc->type = BC_DEVICE_LAVF;
 
 	/* FIXME bc_device_config is already parsed from DB and saved in void*
 	 * __data, but completely unused and unreachable (bc_record type belongs to
@@ -203,7 +205,9 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		char url[1024];
 
 		int r = parse_dev_path(url, sizeof(url), val, creds,
-				       "XXX", "554", "rtsp");
+				"XXX", /* host should be always present, this default doesn't matter */
+				"554", /* port should be always present, this default doesn't matter */
+				!strncmp(bc->driver, "RTSP-", 5) ? "rtsp" : "http");
 		if (r)
 			return -1;
 
@@ -259,8 +263,9 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc_ptz_check(bc, dbres);
 
-	if (!strncmp(driver, "RTSP-", 5))
-		ret = rtsp_handle_init(bc, dbres);
+	if (!strncmp(driver, "RTSP-", 5)
+			|| !strncmp(driver, "HTTP-", 5))
+		ret = lavf_handle_init(bc, dbres);
 	else {
 		bc->type = BC_DEVICE_V4L2;
 		bc->input = new v4l2_device(dbres);

@@ -230,7 +230,7 @@ no_audio:
 int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 {
 	struct bc_handle *bc = bc_rec->bc;
-	if (bc->type == BC_DEVICE_RTP)
+	if (bc->type == BC_DEVICE_LAVF)
 		return bc->input->setup_output(oc);
 	else if (bc->type == BC_DEVICE_V4L2 && (bc->cam_caps & BC_CAM_CAP_SOLO))
 		return setup_solo_output(bc_rec, oc);

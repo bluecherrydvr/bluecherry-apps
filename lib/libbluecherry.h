@@ -49,7 +49,7 @@ typedef void * BC_DB_RES;
 
 typedef enum {
 	BC_DEVICE_V4L2,
-	BC_DEVICE_RTP
+	BC_DEVICE_LAVF
 } bc_device_type_t;
 
 struct bc_handle {

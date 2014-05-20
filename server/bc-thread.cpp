@@ -150,9 +150,9 @@ void bc_record::run()
 				log.log(Error, "Stream started after failures");
 			}
 
-			if (bc->type == BC_DEVICE_RTP) {
+			if (bc->type == BC_DEVICE_LAVF) {
 				const char *info = reinterpret_cast<lavf_device*>(bc->input)->stream_info();
-				log.log(Info, "RTP stream started: %s", info);
+				log.log(Info, "Stream started: %s", info);
 			}
 
 			if (bc_streaming_setup(this))
@@ -211,9 +211,9 @@ void bc_record::run()
 		if (ret == EAGAIN) {
 			continue;
 		} else if (ret != 0) {
-			if (bc->type == BC_DEVICE_RTP) {
+			if (bc->type == BC_DEVICE_LAVF) {
 				const char *err = reinterpret_cast<lavf_device*>(bc->input)->get_error_message();
-				log.log(Error, "Read error from RTP stream: %s", *err ? err : "Unknown error");
+				log.log(Error, "Read error from stream: %s", *err ? err : "Unknown error");
 			}
 
 			stop_handle_properly(this);
