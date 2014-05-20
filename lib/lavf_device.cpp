@@ -34,7 +34,7 @@ lavf_device::lavf_device(const char *u, bool rtp_prefer_tcp)
 	frame.pts = AV_NOPTS_VALUE;
 
 	memset(&stream_data, 0, sizeof(stream_data));
-	for (int i = 0; i < RTP_NUM_STREAMS; ++i)
+	for (int i = 0; i < MAX_STREAMS; ++i)
 		stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
@@ -64,7 +64,7 @@ void lavf_device::stop()
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
 
-	for (unsigned int i = 0; i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < MAX_STREAMS; ++i) {
 		stream_data[i].pts_base = 0;
 		stream_data[i].last_pts = AV_NOPTS_VALUE;
 		stream_data[i].last_pts_diff = 0;
@@ -75,45 +75,39 @@ void lavf_device::stop()
 int lavf_device::start()
 {
 	int re;
-	AVDictionary *avopt = NULL;
-	char tmp[24];
+	AVDictionary *avopt_open_input = NULL;
+	AVDictionary *avopt_find_stream_info = NULL;
 
 	if (ctx)
 		return 0;
 
-	bc_log(Debug, "Opening RTSP session from URL: %s", url);
+	bc_log(Debug, "Opening session from URL: %s", url);
 
-	snprintf(tmp, sizeof(tmp), "%lld", (long long int)(0.7*AV_TIME_BASE));
-	av_dict_set(&avopt, "max_delay", tmp, 0);
-	av_dict_set(&avopt, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
-	av_dict_set(&avopt, "threads", "1", 0);
+	av_dict_set(&avopt_open_input, "max_delay", "700000", 0);
+	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	/* No input on socket, or no writability for thus many microseconds is treated as failure */
-	av_dict_set(&avopt, "stimeout", "10000000" /* 10 s */, 0);
-	if (rtp_prefer_tcp)
-		av_dict_set(&avopt, "rtsp_flags", "+prefer_tcp", 0);
+	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
+	if (rtp_prefer_tcp && !strncmp(url, "rtsp://", 7))
+		av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
+	/* For MJPEG streams, generate timestamps from system time */
+	if (!strncmp(url, "http://", 7))
+		av_dict_set(&avopt_open_input, "use_wallclock_as_timestamps", "1", 0);
 
-	AVDictionary *opt_copy = 0;
-	av_dict_copy(&opt_copy, avopt, 0);
-
-	if ((re = avformat_open_input(&ctx, url, NULL, &avopt)) != 0) {
+	re = avformat_open_input(&ctx, url, NULL, &avopt_open_input);
+	av_dict_free(&avopt_open_input);
+	if (re != 0) {
 		av_strerror(re, error_message, sizeof(error_message));
 		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
 		ctx = 0;
-		av_dict_free(&avopt);
-		av_dict_free(&opt_copy);
 		return -1;
 	}
 
-	if (av_dict_get(avopt, "", NULL, 0))
-		bc_log(Bug, "Unable to set format options for RTSP setup");
-
-	av_dict_free(&avopt);
-
+	av_dict_set(&avopt_find_stream_info, "threads", "1", 0);
 	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
 	AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
 	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		opt_si[i] = 0;
-		av_dict_copy(&opt_si[i], opt_copy, 0);
+		av_dict_copy(&opt_si[i], avopt_find_stream_info, 0);
 	}
 
 	re = avformat_find_stream_info(ctx, opt_si);
@@ -121,7 +115,7 @@ int lavf_device::start()
 	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
 		av_dict_free(&opt_si[i]);
 	delete[] opt_si;
-	av_dict_free(&opt_copy);
+	av_dict_free(&avopt_find_stream_info);
 
 	if (re < 0) {
 		stop();
@@ -130,12 +124,12 @@ int lavf_device::start()
 		return -1;
 	}
 
-	for (unsigned int i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
 		AVStream *stream = ctx->streams[i];
 
 		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (video_stream_index >= 0) {
-				bc_log(Warning, "RTSP session for %s has multiple video streams. Only the "
+				bc_log(Warning, "Session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
 			}
@@ -147,7 +141,7 @@ int lavf_device::start()
 			}
 		} else if (stream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (audio_stream_index >= 0) {
-				bc_log(Warning, "RTSP session for %s has multiple audio streams. Only the "
+				bc_log(Warning, "Session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
 				continue;
 			} else if (stream->codec->codec_id == AV_CODEC_ID_NONE) {
@@ -160,7 +154,7 @@ int lavf_device::start()
 
 	if (video_stream_index < 0) {
 		stop();
-		strcpy(error_message, "RTSP session contains no valid video stream");
+		strcpy(error_message, "Session contains no valid video stream");
 		return -1;
 	}
 
@@ -183,7 +177,7 @@ int lavf_device::read_packet()
 	int re;
 	struct rtp_stream_data *streamdata = 0;
 	if (!ctx) {
-		strcpy(error_message, "No active RTSP session");
+		strcpy(error_message, "No active session");
 		return -1;
 	}
 
@@ -194,7 +188,7 @@ int lavf_device::read_packet()
 		return -1;
 	}
 
-	if (frame.stream_index >= 0 && frame.stream_index < RTP_NUM_STREAMS)
+	if (frame.stream_index >= 0 && frame.stream_index < MAX_STREAMS)
 		streamdata = &stream_data[frame.stream_index];
 
 	/* ACTi B2 frames are badly specified; they are MPEG4 user data elements which
@@ -379,7 +373,7 @@ void lavf_device::set_current_pts(int64_t pts)
 
 	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
 	 * all other streams are adjusted accordingly. */
-	if (frame.stream_index < 0 || frame.stream_index >= RTP_NUM_STREAMS)
+	if (frame.stream_index < 0 || frame.stream_index >= MAX_STREAMS)
 		return;
 
 	if (frame.pts == (int64_t)AV_NOPTS_VALUE) {
@@ -392,7 +386,7 @@ void lavf_device::set_current_pts(int64_t pts)
 	bc_log(Debug, "Adjusted pts_base by %" PRId64 " to reset PTS on stream %d to %" PRId64,
 	       offset, frame.stream_index, pts);
 
-	for (unsigned int i = 0; i < ctx->nb_streams && i < RTP_NUM_STREAMS; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
 		stream_data[i].pts_base += av_rescale_q(offset, ctx->streams[frame.stream_index]->time_base, ctx->streams[i]->time_base);
 	}
 

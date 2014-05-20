@@ -14,7 +14,7 @@ extern "C" {
 
 #include "libbluecherry.h"
 
-#define RTP_NUM_STREAMS 3
+#define MAX_STREAMS 3
 
 struct rtp_stream_data {
 	int64_t pts_base, last_pts, last_pts_diff;
@@ -49,7 +49,7 @@ private:
 	AVPacket frame;
 	stream_packet current_packet;
 
-	struct rtp_stream_data stream_data[RTP_NUM_STREAMS];
+	struct rtp_stream_data stream_data[MAX_STREAMS];
 
 	void create_stream_packet(AVPacket *src);
 	void set_current_pts(int64_t pts);
