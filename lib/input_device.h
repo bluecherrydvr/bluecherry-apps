@@ -23,7 +23,7 @@ class stream_packet;
 class stream_properties;
 
 /* input_device provides an abstract interface implemented by device backends, such
- * as v4l2_device and rtp_device. Generally, each bc_handle has an input_device, which
+ * as v4l2_device and lavf_device. Generally, each bc_handle has an input_device, which
  * while running will be repeatedly polled with read_packet(), which should block until
  * a packet is available. */
 class input_device

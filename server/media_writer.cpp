@@ -18,7 +18,7 @@ extern "C" {
 }
 
 #include "bc-server.h"
-#include "rtp_device.h"
+#include "lavf_device.h"
 
 media_writer::media_writer()
 	: oc(0), video_st(0), audio_st(0), output_pts_base(AV_NOPTS_VALUE)

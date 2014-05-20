@@ -4,8 +4,8 @@
  * Confidential, all rights reserved. No distribution is permitted.
  */
 
-#ifndef __RTP_DEVICE_H
-#define __RTP_DEVICE_H
+#ifndef __LAVF_DEVICE_H
+#define __LAVF_DEVICE_H
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -21,11 +21,11 @@ struct rtp_stream_data {
 	int was_last_diff_skipped;
 };
 
-class rtp_device : public input_device
+class lavf_device : public input_device
 {
 public:
-	explicit rtp_device(const char *url, bool rtp_prefer_tcp);
-	virtual ~rtp_device();
+	explicit lavf_device(const char *url, bool rtp_prefer_tcp);
+	virtual ~lavf_device();
 
 	virtual int start();
 	virtual void stop();
@@ -57,4 +57,4 @@ private:
 	void update_properties();
 };
 
-#endif /* __RTP_DEVICE_H */
+#endif /* __LAVF_DEVICE_H */

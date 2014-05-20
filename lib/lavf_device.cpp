@@ -12,14 +12,14 @@
 #include <bsd/string.h>
 
 #include "libbluecherry.h"
-#include "rtp_device.h"
+#include "lavf_device.h"
 
 extern "C" {
 #include <libavutil/opt.h>
 #include <libavutil/mathematics.h>
 }
 
-rtp_device::rtp_device(const char *u, bool rtp_prefer_tcp)
+lavf_device::lavf_device(const char *u, bool rtp_prefer_tcp)
 	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
 		, rtp_prefer_tcp(rtp_prefer_tcp)
 {
@@ -38,12 +38,12 @@ rtp_device::rtp_device(const char *u, bool rtp_prefer_tcp)
 		stream_data[i].last_pts = AV_NOPTS_VALUE;
 }
 
-rtp_device::~rtp_device()
+lavf_device::~lavf_device()
 {
 	stop();
 }
 
-void rtp_device::stop()
+void lavf_device::stop()
 {
 	_started = false;
 
@@ -72,7 +72,7 @@ void rtp_device::stop()
 	}
 }
 
-int rtp_device::start()
+int lavf_device::start()
 {
 	int re;
 	AVDictionary *avopt = NULL;
@@ -178,7 +178,7 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 	av_destruct_packet(pkt);
 }
 
-int rtp_device::read_packet()
+int lavf_device::read_packet()
 {
 	int re;
 	struct rtp_stream_data *streamdata = 0;
@@ -317,7 +317,7 @@ int rtp_device::read_packet()
 	return 0;
 }
 
-void rtp_device::create_stream_packet(AVPacket *src)
+void lavf_device::create_stream_packet(AVPacket *src)
 {
 	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE];
 	/* XXX The padding is a hack to avoid overreads by optimized
@@ -341,7 +341,7 @@ void rtp_device::create_stream_packet(AVPacket *src)
 		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
 }
 
-void rtp_device::update_properties()
+void lavf_device::update_properties()
 {
 	stream_properties *p = new stream_properties;
 
@@ -373,7 +373,7 @@ void rtp_device::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-void rtp_device::set_current_pts(int64_t pts)
+void lavf_device::set_current_pts(int64_t pts)
 {
 	int64_t offset;
 
@@ -399,7 +399,7 @@ void rtp_device::set_current_pts(int64_t pts)
 	frame.pts = pts;
 }
 
-const char *rtp_device::stream_info()
+const char *lavf_device::stream_info()
 {
 	char *buf = error_message;
 	int size = sizeof(error_message);

@@ -13,7 +13,7 @@
 #include "bt.h"
 
 #include "bc-server.h"
-#include "rtp_device.h"
+#include "lavf_device.h"
 #include "v4l2_device.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
@@ -151,7 +151,7 @@ void bc_record::run()
 			}
 
 			if (bc->type == BC_DEVICE_RTP) {
-				const char *info = reinterpret_cast<rtp_device*>(bc->input)->stream_info();
+				const char *info = reinterpret_cast<lavf_device*>(bc->input)->stream_info();
 				log.log(Info, "RTP stream started: %s", info);
 			}
 
@@ -212,7 +212,7 @@ void bc_record::run()
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_RTP) {
-				const char *err = reinterpret_cast<rtp_device*>(bc->input)->get_error_message();
+				const char *err = reinterpret_cast<lavf_device*>(bc->input)->get_error_message();
 				log.log(Error, "Read error from RTP stream: %s", *err ? err : "Unknown error");
 			}
 

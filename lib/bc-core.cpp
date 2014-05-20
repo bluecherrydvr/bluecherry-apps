@@ -19,7 +19,7 @@
 #include <bsd/string.h>
 
 #include "libbluecherry.h"
-#include "rtp_device.h"
+#include "lavf_device.h"
 #include "v4l2_device.h"
 #include "stream_elements.h"
 
@@ -41,7 +41,7 @@ int bc_buf_key_frame(struct bc_handle *bc)
 	struct v4l2_buffer *vb;
 
 	if (bc->type == BC_DEVICE_RTP)
-		return rtp_device_frame_is_keyframe(&bc->rtp);
+		return lavf_device_frame_is_keyframe(&bc->rtp);
 
 	if (bc->type != BC_DEVICE_V4L2)
 		return 1;
@@ -71,7 +71,7 @@ int bc_buf_get(struct bc_handle *bc)
 	int ret = EINVAL;
 
 	if (bc->type == BC_DEVICE_RTP) {
-		ret = rtp_device_read(&bc->rtp);
+		ret = lavf_device_read(&bc->rtp);
 	} else if (bc->type == BC_DEVICE_V4L2) {
 		struct v4l2_buffer vb;
 		bc_buf_return(bc);
@@ -207,7 +207,7 @@ static int rtsp_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (r)
 			return -1;
 
-		bc->input = new rtp_device(url, rtsp_rtp_prefer_tcp);
+		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 	}
 
 	char *defhost = strdupa(val);
