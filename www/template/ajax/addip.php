@@ -49,8 +49,17 @@ if ($mode=='ops') {
 	<div><label id="addipLabel"><?php echo AIP_PASS; ?></label><input disabled="disabled" id="pass" type="Password" name="pass" /></div>
 	<div id="advancedSettingsSwitch">[<?php echo AIP_ADVANCED_SETTINGS; ?>]</div>
 	<div id="advancedSettings">
-		<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><input disabled="disabled" id="rtsppath" type="Text" name="rtsp" /></div>
-		<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><input disabled="disabled" id="port" type="Text" name="port" value="554" /></div>
+		<div><label id="addipLabel"><?php echo AIP_PROTOCOL; ?></label>
+			<select name="protocol" id="protocol">
+				<option value="IP-RTSP">RTSP</option>
+				<option value="IP-MJPEG">MJPEG</option>
+			</select>
+		</div>
+		<div id='rtsp-settings'>
+			<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><input disabled="disabled" id="rtsppath" type="Text" name="rtsp" /></div>
+			<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><input disabled="disabled" id="port" type="Text" name="port" value="554" /></div>
+			<div><label id="addipLabel"><?php echo IPCAM_TCPUDP_LEVEL; ?></label><select name="prefertcp"><option value="1">TCP</option><option value="0">UDP</option></select></div>
+		</div>
 		<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><input disabled="disabled" id="mjpeg" type="Text" name="mjpeg" /></div>
 		<div><label id="addipLabel"><?php echo AIP_PORT_MJPEG; ?></label><input disabled="disabled" id="portMjpeg" type="Text" name="portMjpeg" value="80" /></div>
 	</div>

@@ -312,6 +312,7 @@ define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_RTSP', 'Path to RTSP');
 define('AIP_ADD', 'Add camera');
 define('AIP_ALREADY_EXISTS', 'Camera with these settings already exists in the list of the devices.');
+define('AIP_NAME_ALREADY_EXISTS', 'Camera with this name already exists. Names must be unique.');
 define('AIP_NEEDIP', 'Please enter ip address of the camera');
 define('AIP_NEEDPORT', 'Please enter RTSP port number');
 define('AIP_NEEDMJPEGPORT', 'Please enter MJPEG port number');
@@ -319,6 +320,7 @@ define('AIP_NEEDMJPEG', 'Please enter path to MJPEG');
 define('AIP_NEEDRTSP', 'Please enter path to RTSP');
 define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
+define('AIP_PROTOCOL', 'Video stream source');
 
 #ip cam lib
 define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');
@@ -329,7 +331,7 @@ define('IPCAM_DEBUG_LEVEL', 'Turn camera debugging on:');
 define('DEVICE_EDIT_DETAILS', 'Properties');
 define('DELETE_CAM', 'Delete');
 define('PROPS_HEADER', 'IP Camera properties');
-define('IPCAM_WIKI_LINK', 'Is your IP camera not in the list?  We maintain a larger list of MJPEG and RTSP paths <a href="http://www.bluecherrydvr.com/2012/01/technical-information-list-of-mjpeg-and-rtsp-paths-for-network-cameras/">here</a>.  If you run into problems, please join us on IRC (www.bluecherrydvr.com/irc) and we\'ll see if we can add support for it.');
+define('IPCAM_WIKI_LINK', 'Is your IP camera not in the list?  We maintain a larger list of MJPEG and RTSP paths <a href="http://www.bluecherrydvr.com/2012/01/technical-information-list-of-mjpeg-and-rtsp-paths-for-network-cameras/">here</a>.  If you run into problems, please <a href="https://www.hipchat.com/gDERje4QK">join us on HipChat</a> (https://www.hipchat.com/gDERje4QK) and we\'ll see if we can add support for it.');
 define('SERVER_NOT_RUNNING', 'Server process stopped.');
 define('SERVER_RUNNING', 'Server process running');
 define('NOT_UP_TO_DATE', 'New version available.');
@@ -562,5 +564,5 @@ define('L_DISABLE', 'disable');
 define('BETA_LICENSE_WARNING', 'Please note that you are running a demo version of the Bluecherry software and it will be active for 30 days. Please visit <a href="http://store.bluecherry.net/bluecherry-dvr/software-licenses">our online store</a> to purchase a license. <br /><br /> Thank you for your continued support, <br /> Bluecherry.');
 
 #ip cam props
-define('IPCAM_TCPUDP_LEVEL', 'Protocol');
+define('IPCAM_TCPUDP_LEVEL', 'Transport');
 ?>

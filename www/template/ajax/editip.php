@@ -16,10 +16,18 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 	<input type="hidden" name="mode" value="editIp" />
 	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
 	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><input type="Text" id="ipAddr" name="ipAddr" value="<?php echo $ipCamera->info['ipAddr'];?>" /></div>
-	<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><input id="port" type="Text" name="port" value="<?php echo $ipCamera->info['port'];?>" /></div>
 	<div><label id="addipLabel"><?php echo AIP_USER; ?></label><input id="user" type="Text" name="user" value="<?php echo $ipCamera->info['rtsp_username'];?>" /></div>
 	<div><label id="addipLabel"><?php echo AIP_PASS; ?></label><input id="pass" type="Password" name="pass" value="<?php echo $ipCamera->info['rtsp_password'];?>" /></div>
-	<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><input id="rtsppath" type="Text" name="rtsp" value="<?php echo $ipCamera->info['rtsp'];?>" /></div>
+			<div><label id="addipLabel"><?php echo AIP_PROTOCOL; ?></label>
+			<select name="protocol" id="protocol">
+				<option value="IP-RTSP">RTSP</option>
+				<option value="IP-MJPEG" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? "selected" : "";  ?>>MJPEG</option>
+			</select>
+		</div>
+	<div  id='rtsp-settings' <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? 'style="display:none;"' : ""; ?>>
+		<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><input id="rtsppath" type="Text" name="rtsp" value="<?php echo $ipCamera->info['rtsp'];?>" /></div>
+		<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><input id="port" type="Text" name="port" value="<?php echo $ipCamera->info['port'];?>" /></div>
+	</div>
 	<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><input id="mjpeg" type="Text" name="mjpeg" value="<?php echo $ipCamera->info['mjpeg_path'];?>" /></div>
 	<div style="display:none;"><label id="addipLabel"><?php echo AIP_IP_ADDR_MJPEG; ?></label><input type="Text" id="ipAddrMjpeg" name="ipAddrMjpeg" value="<?php echo $ipCamera->info['ipAddrMjpeg'];?>" /></div>
 	<div><label id="addipLabel"><?php echo AIP_PORT_MJPEG; ?></label><input id="portMjpeg" type="Text" name="portMjpeg" value="<?php echo $ipCamera->info['portMjpeg'];?>" /></div>
@@ -36,3 +44,5 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 </div>
 </FORM>
 	
+	
+	<?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp']==0) ? "selected" : ""; ?>

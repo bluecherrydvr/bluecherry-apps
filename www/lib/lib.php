@@ -427,10 +427,11 @@ class camera {
 }
 
 class ipCamera{
-	public $info;
+	public	$info;
 	private $options;
-	public $ptzControl;
+	public	$ptzControl;
 	private $control;
+	
 	public function __construct($id = false, $options = false){
 		$this->options = $options;
 		if ($id) $this->getInfo(intval($id));
@@ -443,6 +444,7 @@ class ipCamera{
 		$this->info['ipAddr'] = $tmp[0];
 		$this->info['port'] = $tmp[1];
 		$this->info['rtsp'] = $tmp[2];
+		$this->info['device_name'] = empty($info[0]['device_name']) ? "Unnamed" : $info[0]['device_name'];
 		if (!empty($this->info['mjpeg_path'])) {
 			$tmp = explode('|', $info[0]['mjpeg_path']);
 			/* Older database has single path and no server/port */
@@ -484,21 +486,28 @@ class ipCamera{
 		if ($control) { $result = $control->auto_configure(); };
 		return $result;
 	}
-	private static function prepareData($rawData, $self_id){
+	private static function prepareData($rawData, $self_id = false){
 		#prepare device
 			if (empty($rawData['ipAddr']))	{ return array(false, AIP_NEEDIP); };
-			if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
-			if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
-				$rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
+			if ($rawData['protocol'] == 'IP-MJPEG'){
+				if (empty($rawData['mjpeg']))	{ return array(false, AIP_NEEDMJPEG); }
+				if (empty($rawData['portMjpeg'])) { return array(false, AIP_NEEDMJPEGPORT); }
+			} else{
+				if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
+				if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
+			}
+				empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
 				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
 				$duplicate_path = data::getObject('Devices', 'device', $data['device']);
 				$duplicate_path = ($duplicate_path[0]['id'] == $self_id) ? false : $duplicate_path; 
 			if (!empty($duplicate_path)) 	{ return array(false, AIP_ALREADY_EXISTS); }
+		#prepare device name
+			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
+			$duplicate_name = data::getObject('Devices', 'device_name', $data['device_name']);
+			if ($duplicate_name) { return array(false, AIP_NAME_ALREADY_EXISTS); }
 		#prepare mjpeg path
-			if (empty($rawData['mjpeg']))	{ return array(false, AIP_NEEDMJPEG); }
-			if (empty($rawData['portMjpeg'])) { return array(false, AIP_NEEDMJPEGPORT); }
 				$rawData['mjpeg'] = (substr($rawData['mjpeg'][0], 0, 1) != '/') ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
-				$data['mjpeg_path'] = "{$_POST['ipAddrMjpeg']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
+				$data['mjpeg_path'] = "{$_POST['ipAddr']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
 		#prepare audio check box, ignored for new devices
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
@@ -510,11 +519,10 @@ class ipCamera{
 			$data['model'] = (!empty($rawData['models'])) ? $rawData['models'] : false;
 		#prepare driver
 			$driver = data::query("SELECT driver FROM ipCameras WHERE model='{$rawData['models']}'");
-			$data['driver'] = $driver[0]['driver'];
-		#prepare device name
-			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
-			
+			$data['driver'] = $driver[0]['driver'];			
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
+			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
+			//var_dump_pre($data); exit();
 		return array(true, $data);
 	}
 	public function edit($data){
@@ -533,7 +541,7 @@ class ipCamera{
 		#if errors were detected -- return error
 		if (!$data[0]) { return $data; } else { $data = $data[1]; };
 		#if there were no errors, add the camera
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model) VALUES ('{$data['device_name']}', 'IP', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']})", true);
 		#try to automatically set the camera up
 		$message = ($result) ? AIP_CAMADDED : false;
 		if ($result)

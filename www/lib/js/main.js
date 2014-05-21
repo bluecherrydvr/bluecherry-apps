@@ -369,7 +369,19 @@ DVRPageScript = new Class({
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
 					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
+					if (this.value == 'Generic') expandAdvancedSettings();
 				});
+				/*protocol addition*/
+				$('protocol').addEvent('change', function(){
+					if (this.value == "IP-RTSP"){
+						$('rtsp-settings').setStyle('display', 'inline');
+					} else {
+						$('rtsp-settings').setStyle('display', 'none');
+					}
+				});
+				/*END protocol addition*/
+				
+				
 				buttonMorph($('saveButton'), '#8bb8');
 				$('settingsForm').set('send', {
 					onRequest: function(){
@@ -709,6 +721,16 @@ DVRPageScript = new Class({
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector', true);
 				});
+				/*protocol addition*/
+				$('protocol').addEvent('change', function(){
+					if (this.value == "IP-RTSP"){
+						$('rtsp-settings').setStyle('display', 'inline');
+					} else {
+						$('rtsp-settings').setStyle('display', 'none');
+					}
+				});
+				/*END protocol addition*/
+				
 			break;
 			case 'activeusers':
 				$$(".kick").addEvent('click', function(){
