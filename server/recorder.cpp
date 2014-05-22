@@ -32,6 +32,7 @@ void recorder::destroy()
 void recorder::run()
 {
 	std::shared_ptr<const stream_properties> saved_properties;
+	bool bool_ret;
 
 	bc_log_context_push(log);
 
@@ -82,7 +83,12 @@ void recorder::run()
 			}
 		}
 
-		writer->write_packet(packet);
+		bool_ret = writer->write_packet(packet);
+		if (!bool_ret) {
+			bc_log(Error, "Failure in recording writing");
+			recording_end();
+			goto end;
+		}
 
 		/* Snapshot(s) producing */
 
