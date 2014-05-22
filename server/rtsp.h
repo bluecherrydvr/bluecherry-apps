@@ -10,16 +10,15 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <queue>
+
 #include <pthread.h>
 #include <poll.h>
+#include <inttypes.h>
 
 #define FD_MAX 256
 
-enum WakeReason
-{
-	WAKE_REPOLL = 1 << 0, /* Restart the poll() call, probably due to setFdEvents */
-	WAKE_GC     = 1 << 1  /* Garbage collect, such as deleting dead streams and sessions */
-};
+class rtsp_connection;
 
 class rtsp_server
 {
@@ -32,27 +31,29 @@ public:
 	int setup(int port);
 	void run();
 
-	void wake(int reason);
+	void wake();
 
 	static void *runThread(void *p);
-
-private:
-	friend class rtsp_connection;
-
-	int serverfd;
-	int wakeupfd[2];
-	pthread_mutex_t poll_mutex;
-	struct pollfd fds[FD_MAX];
-	class rtsp_connection *connections[FD_MAX];
-	int n_fds;
-
-	void acceptConnection();
 
 	/* valid ONLY on the RTSP thread */
 	int addFd(rtsp_connection *instance, int fd, int events);
 	void removeFd(int fd);
 	/* Threadsafe (as long as you can guarantee fd is open) */
 	void setFdEvents(int fd, int events);
+
+private:
+
+	int serverfd;
+
+	int wakeupfd[2];
+	bool awakening;
+	pthread_mutex_t wake_lock;
+
+	struct pollfd fds[FD_MAX];
+	class rtsp_connection *connections[FD_MAX];
+	int n_fds;
+
+	void acceptConnection();
 };
 
 struct rtsp_message;
@@ -96,6 +97,14 @@ private:
 	int handlePause(rtsp_message &request);
 };
 
+struct rtsp_packet
+{
+	uint8_t *data;
+	int size;
+	bool is_key;
+	bool is_first_chunk;
+};
+
 class rtsp_stream
 {
 public:
@@ -110,24 +119,26 @@ public:
 
 	static rtsp_stream *findUri(std::string uri);
 
-	void addSession(rtsp_session *session);
-	void removeSession(rtsp_session *session);
-	void sessionActiveChanged(rtsp_session *session);
-
 	int activeSessionCount() { return _activeSessionCount; } 
 	void sendPackets(uint8_t *buf, unsigned int bufsz, int flags);
 
 	/* Invoked to delete dead streams on the RTSP thread after a (thread-safe) remove() */
 	static void collectGarbage();
+	static void allSendQueued();
+
+	void addSession(rtsp_session *session);
+	void removeSession(rtsp_session *session);
+	void sessionActiveChanged(rtsp_session *session);
 
 private:
-	friend class rtsp_connection;
 
 	static pthread_mutex_t streams_lock;
 	static std::map<std::string,rtsp_stream*> streams;
 
 	rtsp_stream();
 	~rtsp_stream();
+	void sendQueuedPackets();
+
 
 	/* Use with extreme caution; we cannot guarantee that it still exists
 	 * when running from the RTSP thread */
@@ -135,6 +146,8 @@ private:
 	pthread_mutex_t sessions_lock;
 	std::vector<rtsp_session*> sessions;
 	int _activeSessionCount;
+	pthread_mutex_t queue_lock;
+	std::queue<rtsp_packet*> queue;
 };
 
 class rtsp_session
