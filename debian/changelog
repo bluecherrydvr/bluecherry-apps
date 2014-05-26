@@ -1,3 +1,10 @@
+bluecherry (1:2.1.10-1) precise trusty lucid wheezy; urgency=low
+
+  * Fix device removal
+  * Support video streaming from HTTP MJPEG stream (for cameras without RTSP)
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 26 May 2014 12:05:38 -0500
+
 bluecherry (1:2.1.10) precise trusty lucid wheezy; urgency=low
 
   * Bugfixes
