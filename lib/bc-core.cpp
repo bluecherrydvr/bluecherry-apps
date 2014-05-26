@@ -184,36 +184,44 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	 * __data, but completely unused and unreachable (bc_record type belongs to
 	 * server and not to lib) */
 
-	const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
-	bool rtsp_rtp_prefer_tcp;
-
-	if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
-		rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw) ? true : false;
-	} else {
-		bc_log(Error, "rtsp_rtp_prefer_tcp field is absent in Devices table, "
-				"DB schema not updated. Using default field value, \"true\"");
-		rtsp_rtp_prefer_tcp = true;
-	}
-
-
 	char creds[64];
 	if (get_creds(dbres, creds, sizeof(creds)) < 0)
 		return -1;
 
-	val = bc_db_get_val(dbres, "device", NULL);
+	bool rtsp_rtp_prefer_tcp = true;
+	const char *protocol = bc_db_get_val(dbres, "protocol", NULL);
+	const char *uri_schema;
+	if (!strcmp(protocol, "IP-MJPEG")) {
+		uri_schema = "http";
+		val = bc_db_get_val(dbres, "mjpeg_path", NULL);
+	} else {
+		uri_schema = "rtsp";
+
+		const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
+		if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
+			rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw) ? true : false;
+		} else {
+			bc_log(Error, "rtsp_rtp_prefer_tcp field is absent in Devices table, "
+					"DB schema not updated. Using default field value, \"true\"");
+		}
+
+		val = bc_db_get_val(dbres, "device", NULL);
+	}
+
 	if (val && *val) {
 		char url[1024];
 
 		int r = parse_dev_path(url, sizeof(url), val, creds,
 				"XXX", /* host should be always present, this default doesn't matter */
 				"554", /* port should be always present, this default doesn't matter */
-				!strncmp(bc->driver, "RTSP-", 5) ? "rtsp" : "http");
+				uri_schema);
 		if (r)
 			return -1;
 
 		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 	}
 
+	/* This `defhost` is a workaround for empty host part in mjpeg_path */
 	char *defhost = strdupa(val);
 	{
 		char *p = strchr(defhost, '|');
