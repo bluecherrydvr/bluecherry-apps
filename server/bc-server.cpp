@@ -826,7 +826,7 @@ int main(int argc, char **argv)
 
 	bc_syslog_init();
 
-	umask(027);
+	umask(007);
 
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:")) != -1) {
 		switch (opt) {
