@@ -24,6 +24,7 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGILL:
 	case SIGFPE:
 		bt(sig_name[signum], info->si_addr);
+		_exit(1);
 	default:
 		/* SIGCHLD */
 		return;
