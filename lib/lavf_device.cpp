@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <bsd/string.h>
 
 #include "libbluecherry.h"
@@ -77,6 +78,7 @@ int lavf_device::start()
 	int re;
 	AVDictionary *avopt_open_input = NULL;
 	AVDictionary *avopt_find_stream_info = NULL;
+	AVInputFormat *input_fmt = NULL;
 
 	if (ctx)
 		return 0;
@@ -89,11 +91,18 @@ int lavf_device::start()
 	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
 	if (rtp_prefer_tcp && !strncmp(url, "rtsp://", 7))
 		av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
-	/* For MJPEG streams, generate timestamps from system time */
-	if (!strncmp(url, "http://", 7))
+	if (!strncmp(url, "http://", 7)) {
+		/* For MJPEG streams, generate timestamps from system time */
 		av_dict_set(&avopt_open_input, "use_wallclock_as_timestamps", "1", 0);
+		/* Declare format explicitly, as auto-recognition of MJPEG doesn't work on some models */
+		input_fmt = av_find_input_format("mjpeg");
+		if (!input_fmt) {
+			assert(0);
+			return -1;
+		}
+	}
 
-	re = avformat_open_input(&ctx, url, NULL, &avopt_open_input);
+	re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
 	av_dict_free(&avopt_open_input);
 	if (re != 0) {
 		av_strerror(re, error_message, sizeof(error_message));
