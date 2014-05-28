@@ -167,6 +167,9 @@ case "$1" in
 						invoke-rc.d apache2 reload || true
 					fi
 
+					# Delay to be sure that no Apache threads work with our web engine
+					sleep 3
+
 					# Rename all tables to ${table}_bkp
 					for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2`
 					do
