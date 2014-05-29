@@ -1,3 +1,9 @@
+bluecherry (1:2.2.0) precise trusty lucid wheezy; urgency=low
+
+  * bugfixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 29 May 2014 02:18:21 -0500
+
 bluecherry (1:2.1.10-2) precise trusty lucid wheezy; urgency=low
 
   * package upgrading process enhancements
