@@ -340,10 +340,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		return 0;
 	}
 
-	// XXX useless?
-	/* Throttle thread starting */
-	sleep(1);
-
 	return bc_rec;
 }
 
