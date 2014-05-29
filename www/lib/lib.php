@@ -300,7 +300,7 @@ class user{
 
 function device($id){ #wrapper for camera/ipCamera
 	$device = data::getObject('Devices', 'id', $id);
-	if ($device[0]['protocol'] == 'IP'){
+	if (substr($device[0]['protocol'], 0, 2) === 'IP'){
 		$device = new ipCamera($device[0]['id']);
 	} else {
 		$device = new camera($device[0]['device']);
@@ -712,12 +712,12 @@ class cameraPtz{
 	public $command; #debug
 	public function __construct($camera){
 		$this->camera = $camera;
-		if ($this->camera->info['protocol'] == 'IP'){ #load IP ptz command preset
+		if (substr($this->camera->info['protocol'], 0, 2) === 'IP'){ #load IP ptz command preset
 			$this->preset = $this->getIpCommandPreset($camera->info['ptz_control_path']);
 		}
 	}
 	public function move($command, $id=false){
-		if ($this->camera->info['protocol'] == 'IP'){ #prepare command URL
+		if (substr($this->camera->info['protocol'], 0, 2) === 'IP'){ #prepare command URL
 			$this->command = $this->getCmd($command);
 			$this->command = $this->prepareCmd($this->command);
 			$result = @get_headers($this->command);

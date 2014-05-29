@@ -169,7 +169,7 @@ $duration = intval($_GET['duration']);
 #ipPtz/will be merged
 $camera = device($id);
 
-if ($camera->info['protocol'] == 'IP'){
+if (substr($camera->info['protocol'], 0, 2) === 'IP'){
 	$command = ($_GET['command'] == 'stop') ? 
 		'stop' : array('pan' => $_GET['pan'], 'tilt' => $_GET['tilt'], 'zoom' => $_GET['zoom']);
 	$camera->ptzControl->move($command);

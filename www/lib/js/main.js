@@ -847,7 +847,7 @@ DVRPageScript = new Class({
 					}
 					ev.stopPropagation();
 				});
-				if ($('cameraType').value == 'IP'){
+				if ($('cameraType').value.indexOf('IP') == 0){ // check for starting with IP, for IP, IP-MJPEG, IP-RTSP
 					var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap', 32, 24);
 				} else {
 					var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');

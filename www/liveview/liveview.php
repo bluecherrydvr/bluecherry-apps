@@ -12,7 +12,7 @@ Class liveViewDevices{
 		$tmp = data::query("SELECT access_device_list FROM Users WHERE id='{$_SESSION['id']}'");
 		$this->layout_list = data::query("SELECT layout_name FROM userLayouts WHERE user_id='{$_SESSION['id']}'");
 		$this->access_list = explode(',', $tmp[0]['access_device_list']);
-		$this->devices = data::query("SELECT Devices.id, Devices.device_name, Devices.ptz_serial_values, Devices.ptz_control_path  FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.disabled='0' UNION SELECT Devices.id, Devices.device_name, Devices.ptz_serial_values, Devices.ptz_control_path  FROM Devices WHERE protocol='IP' AND disabled='0'");
+		$this->devices = data::query("SELECT Devices.id, Devices.device_name, Devices.ptz_serial_values, Devices.ptz_control_path  FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.disabled='0' UNION SELECT Devices.id, Devices.device_name, Devices.ptz_serial_values, Devices.ptz_control_path  FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP') AND disabled='0'");
 		foreach ($this->devices as $id => $device){
 			$this->devices[$id]['presets'] = data::query("SELECT * FROM PTZPresets WHERE device_id=".$id);
 		}
