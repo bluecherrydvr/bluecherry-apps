@@ -188,7 +188,7 @@ case "$1" in
 					echo "ALTER TABLE Devices_bkp MODIFY COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" | mysql -D"$dbname" -u"$user" -p"$password"
 
 					# 2.1.7-1 DB patch
-					echo "ALTER TABLE Storage DROP COLUMN record_time" | mysql -D"$dbname" -u"$user" -p"$password" || true
+					echo "ALTER TABLE Storage_bkp DROP COLUMN record_time" | mysql -D"$dbname" -u"$user" -p"$password" || true
 
 					# Now table contents copying should work
 
