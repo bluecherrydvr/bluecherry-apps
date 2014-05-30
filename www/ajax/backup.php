@@ -15,7 +15,30 @@ if (!empty($_GET['mode'])){
 	switch($_GET['mode']){
 		case 'prepare':
 			$_POST['noevents'] = (!empty($_POST['nodevices'])) ? 'on' : $_POST['noevents']; #make sure that events are not backed up if the devices are not
-			$ignore_tables = ((!empty($_POST['noevents'])) || (!empty($_POST['nodevices'])) || (!empty($_POST['nodevices']))) ? "--ignore-table=\"".((!empty($_POST['noevents'])) ? $database_parameters['db'].'.EventsCam' : '').' '.((!empty($_POST['nousers'])) ? $database_parameters['db'].'.Users' : '').' '.((!empty($_POST['nodevices'])) ? $database_parameters['db'].'.Devices' : '')."\"" : "";
+			#select tables to ignore
+			$ignore_tables = '';
+			if ((!empty($_POST['noevents'])) || (!empty($_POST['nodevices'])) || (!empty($_POST['nodevices']))) {
+				#we are not backing up events or any related data
+				if (!empty($_POST['noevents'])){
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventsCam";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventComments";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventTags";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.Media";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventsSystem";
+				}
+				#we are not backing up users or related data
+				if (!empty($_POST['nousers'])){
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.Users";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.ActiveUsers";
+				}
+				#we are not backing up devices or related data
+				if (!empty($_POST['nodevices'])){
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.Devices";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.PTZPresets";
+					$ignore_tables .= " --ignore-table={$database_parameters['db']}.AvailableSources";
+				}
+				
+			}
 			shell_exec("mysqldump -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");	
 			if (filesize("/tmp/bcbackup.sql")==0){
 				data::responseXml(false, BACKUP_FAILED);
