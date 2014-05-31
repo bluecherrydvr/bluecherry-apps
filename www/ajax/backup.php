@@ -39,7 +39,7 @@ if (!empty($_GET['mode'])){
 				}
 				
 			}
-			shell_exec("mysqldump -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");	
+			shell_exec("mysqldump --single-transaction -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
 			if (filesize("/tmp/bcbackup.sql")==0){
 				data::responseXml(false, BACKUP_FAILED);
 			} else {
