@@ -215,12 +215,6 @@ void rtsp_server::acceptConnection()
 	int fd = accept(serverfd, NULL, NULL);
 	if (fd < 0) {
 		bc_log(Error, "accept() failed: %s", strerror(errno));
-		switch (errno) {
-		case EMFILE:
-		case ENFILE:
-			bc_log(Bug, "out of fds! killing process to cause restart");
-			exit(1);
-		}
 		return;
 	}
 
