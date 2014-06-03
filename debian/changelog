@@ -1,3 +1,12 @@
+bluecherry (1:2.2.0-2) precise trusty lucid wheezy; urgency=low
+
+  * Enabled backup and restore function
+  * Drop deprecated "?tcp" and "?udp" postfixes from RTSP URLs
+  * Speedup service startup
+  * Other minor enhancements
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 03 Jun 2014 07:45:25 -0500
+
 bluecherry (1:2.2.0) precise trusty lucid wheezy; urgency=low
 
   * bugfixes
