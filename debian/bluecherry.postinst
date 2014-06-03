@@ -190,6 +190,9 @@ case "$1" in
 					# 2.1.7-1 DB patch
 					echo "ALTER TABLE Storage_bkp DROP COLUMN record_time" | mysql -D"$dbname" -u"$user" -p"$password" || true
 
+					# Drop "?tcp" and "?udp" postfixes from RTSP URLs in Devices
+					echo "UPDATE Devices_bkp SET device = SUBSTRING(device, 1, LENGTH(device) - 4) WHERE SUBSTRING(device, -4) = '?udp' OR SUBSTRING(device, -4) = '?tcp'" | mysql -D"$dbname" -u"$user" -p"$password"
+
 					# Now table contents copying should work
 
 					# All other tables columns modifications (besides of constraints) are from 2.0.0 days, those versions are not used as of present days (May 2014)
