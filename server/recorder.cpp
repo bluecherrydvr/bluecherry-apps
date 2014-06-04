@@ -163,7 +163,7 @@ static void event_trigger_notifications(bc_event_cam_t event)
 
 	char id[24] = { 0 };
 	snprintf(id, sizeof(id), "%lu", event->media.table_id);
-	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", id, NULL);
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", "motion_event", id, NULL);
 	exit(1);
 }
 

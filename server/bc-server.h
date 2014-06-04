@@ -89,6 +89,7 @@ private:
 	bc_record(int id);
 
 	void destroy_elements();
+	void notify_device_state(const char *state);
 };
 
 typedef enum {
