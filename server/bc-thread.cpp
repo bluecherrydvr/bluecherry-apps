@@ -114,6 +114,24 @@ void bc_rec_thread_cleanup(void *data)
 	bt("bc_record unexpectedly cancelled", RET_ADDR);
 }
 
+void bc_record::notify_device_state(const char *state)
+{
+	pid_t pid = fork();
+	if (pid < 0) {
+		bc_log(Bug, "cannot fork for event notification");
+		return;
+	}
+
+	/* Parent process */
+	if (pid)
+		return;
+
+	char id_str[20];
+	snprintf(id_str, sizeof(id_str), "%d", id);
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", "device_state", id_str, state, NULL);
+	exit(1);
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
@@ -147,8 +165,11 @@ void bc_record::run()
 
 		if (!bc->input->is_started()) {
 			if (bc->input->start() < 0) {
-				if (!start_failed)
+				if (!start_failed) {
 					log.log(Error, "Error starting device stream: %s", bc->input->get_error_message());
+					/* Notification hook to PHP: device is offline */
+					notify_device_state("OFFLINE");
+				}
 				start_failed++;
 				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				goto error;
@@ -230,8 +251,11 @@ void bc_record::run()
 		}
 
 		/* End any active error events, because we successfully read a packet */
-		if (event)
+		if (event) {
 			bc_event_cam_end(&event);
+			/* Notification hook to PHP: device is back online */
+			notify_device_state("BACK ONLINE");
+		}
 
 		packet = bc->input->packet();
 		bc->source->send(packet);

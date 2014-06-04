@@ -11,26 +11,100 @@
 
 include("/usr/share/bluecherry/www/lib/lib.php");  #common functions
 
-if (empty($argv[1])){
-	exit('E: No argument, argv[1] is expcted to contain event id');
+if (empty($argv[1]) || empty($argv[2])){
+	exit("E: Usage: ${argv[0]} <event class> <arg>...");
 }
+
+#PEAR::Mail mailer
+include_once('Mail.php');
+include_once('Mail/mime.php');
+
+$crlf = "\r\n";
+$mime = new Mail_mime($crlf);
+
+if ($argv[1] == "motion_event") {
+	$event = data::getObject('Media', 'id', $argv[2]);
+
+	$timestamp = $event[0]['start'];
+	$device_id = $event[0]['device_id'];
+	#get device details
+	$device = data::getObject('Devices', 'id', $device_id);
+
+	#get path to image
+	$path_to_image = str_replace('mkv', 'jpg', $event[0]['filepath']);
+
+	$image_name = data::getRandomString(8);
+	$subject = "Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
+	$html = "
+	<html>
+		<head>
+			<style>
+				table {
+					border-collapse:collapse;
+				}
+				td {
+					border:1px solid gray;	
+				}
+				td.desc {
+					width:120px;
+					text-align:right;
+				}
+				div.screenshot{
+					margin-top:30px;
+				}
+			</style>
+		</head>
+		<body>
+			<div>Source:
+				<table>
+					<tr><td class='desc'>Server:</td><td>{$global_settings->data['G_DVR_NAME']}</td></tr>
+					<tr><td class='desc'>Device:</td><td>{$device[0]['device_name']}</td></tr>
+					<tr><td class='desc'>Time:</td><td>".date('r', $event[0]['start'])."</td></tr>
+				</table>
+			</div>
+			<div class='screenshot'>
+				Event screenshot:<br />
+				<img height='240' src='{$image_name}.jpg'>
+			</div>
+			</body>
+	</html>";
+	$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name); 
+} else if ($argv[1] == "device_state") {
+	$timestamp = time();
+	$device_id = $argv[2];
+	$state = $argv[3];  // e.g. OFFLINE, BACK ONLINE
+	#get device details
+	$device = data::getObject('Devices', 'id', $device_id);
+
+	$subject = "Status notification for device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
+	$html = "
+	<html>
+		<body>
+Device {$device[0]['device_name']} got $state on server {$global_settings->data['G_DVR_NAME']}
+		</body>
+	</html>";
+} else {
+	exit('E: Unknown event type');
+}
+
+$headers = array("From"=>"donotreply@bluecherryserver", "Subject" => $subject);
+$mime->setHTMLBody($html);  
+$headers = $mime->headers($headers);
+$body = $mime->get();
+
+
 $dow = array('M', 'T', 'W', 'R', 'F', 'S', 'U');
 
-#get the event data
-$event = data::getObject('Media', 'id', $argv[1]);
-
 #parse start timestamp into dow/hour/minute
-$p['day'] = $dow[date('w', $event[0]['start'])-1];
-$p['hour'] = date('G', $event[0]['start']);
-$p['min'] = date('i', $event[0]['start']);
+$p['day'] = $dow[date('w', $timestamp)-1];
+$p['hour'] = date('G', $timestamp);
+$p['min'] = date('i', $timestamp);
 
-#get path to image
-$path_to_image = str_replace('mkv', 'jpg', $event[0]['filepath']);
 
 #form a query and select applicable rules
 $query = ("SELECT * FROM notificationSchedules 
 	WHERE 
-		cameras LIKE '%|{$event[0]['device_id']}|%' 
+		cameras LIKE '%|$device_id|%' 
 	AND 
 		day LIKE '%{$p['day']}%' 
 	AND 
@@ -85,56 +159,6 @@ foreach($users as $id => $user){
 }
 $emails = array_unique($emails);
 
-#get device details -- only name is currently used
-$device = data::getObject('Devices', 'id', $event[0]['device_id']);
-
-#PEAR::Mail mailer
-
-include_once('Mail.php');
-include_once('Mail/mime.php');
-
-$image_name = data::getRandomString(8);
-
-$html = "
-<html>
-	<head>
-		<style>
-			table {
-				border-collapse:collapse;
-			}
-			td {
-				border:1px solid gray;	
-			}
-			td.desc {
-				width:120px;
-				text-align:right;
-			}
-			div.screenshot{
-				margin-top:30px;
-			}
-		</style>
-	</head>
-	<body>
-		<div>Source:
-			<table>
-				<tr><td class='desc'>Server:</td><td>{$global_settings->data['G_DVR_NAME']}</td></tr>
-				<tr><td class='desc'>Device:</td><td>{$device[0]['device_name']}</td></tr>
-				<tr><td class='desc'>Time:</td><td>".date('r', $event[0]['start'])."</td></tr>
-			</table>
-		</div>
-		<div class='screenshot'>
-			Event screenshot:<br />
-			<img height='240' src='{$image_name}.jpg'>
-		</div>
-		</body>
-</html>"; 
-$crlf = "\r\n"; 
-$headers = array("From"=>"donotreply@bluecherryserver", "Subject"=>"Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}");
-$mime = new Mail_mime($crlf);  
-$mime->setHTMLBody($html);  
-$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name); 
-$headers = $mime->headers($headers);
-$body = $mime->get();
 switch($global_settings->data['G_SMTP_SERVICE']){
 	case 'default': #use MTA
 		$mail = Mail::factory('mail');
