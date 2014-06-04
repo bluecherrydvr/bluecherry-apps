@@ -1,3 +1,9 @@
+bluecherry (1:2.2.0-3) precise trusty lucid wheezy; urgency=low
+
+  * Disable backup function as not tested yet
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 04 Jun 2014 14:54:44 -0500
+
 bluecherry (1:2.2.0-2) precise trusty lucid wheezy; urgency=low
 
   * Enabled backup and restore function
