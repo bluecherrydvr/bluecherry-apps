@@ -51,6 +51,7 @@ libav/config.mak:
 		--enable-muxer=matroska \
 		--enable-muxer=mjpeg \
 		--enable-muxer=rtp \
+		--enable-muxer=mp4 \
 		\
 		--enable-demuxer=rtsp \
 		--enable-demuxer=matroska \
