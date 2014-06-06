@@ -28,6 +28,9 @@ LIBAV_INSTALL = $(call lpath, \
 		avcodec.so.55 \
 		avformat.so.55 \
 		avutil.so.52 \
+		avdevice.so.55 \
+		avfilter.so.4 \
+		swresample.so.0 \
 		swscale.so.2)
 
 install-libs += $(LIBAV_INSTALL)
@@ -80,7 +83,7 @@ build: $(install-libs) FORCE
 
 install: build FORCE
 	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
-	$(INSTALL_PROG) $(filter-out %.a,$(install-libs)) -t $(DESTDIR)$(libexec_dir)
+	$(INSTALL_PROG) $(filter-out %.a,$(install-libs)) $(STAGE)/bin/ffmpeg $(STAGE)/bin/ffprobe -t $(DESTDIR)$(libexec_dir)
 
 clean: $(foreach d,$(pkgs), $d-clean) FORCE
 	rm -rf $(STAGE)
