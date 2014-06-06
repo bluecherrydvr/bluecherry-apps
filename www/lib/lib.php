@@ -503,8 +503,10 @@ class ipCamera{
 			if (!empty($duplicate_path)) 	{ return array(false, AIP_ALREADY_EXISTS); }
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
-			$duplicate_name = data::getObject('Devices', 'device_name', $data['device_name']);
-			if ($duplicate_name) { return array(false, AIP_NAME_ALREADY_EXISTS); }
+			if ($self_id === false) { # check this only in case of creation, don't check on edit
+				$duplicate_name = data::getObject('Devices', 'device_name', $data['device_name']);
+				if ($duplicate_name) { return array(false, AIP_NAME_ALREADY_EXISTS); }
+			}
 		#prepare mjpeg path
 				$rawData['mjpeg'] = (substr($rawData['mjpeg'][0], 0, 1) != '/') ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
 				$data['mjpeg_path'] = "{$_POST['ipAddr']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
