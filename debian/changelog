@@ -1,3 +1,9 @@
+bluecherry (1:2.2.0-4) precise trusty lucid wheezy; urgency=low
+
+  * Fix device settings editing regression
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 06 Jun 2014 07:18:08 -0500
+
 bluecherry (1:2.2.0-3) precise trusty lucid wheezy; urgency=low
 
   * Disable backup function as not tested yet
