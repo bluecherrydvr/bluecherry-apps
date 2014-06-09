@@ -66,6 +66,7 @@ libav/config.mak:
 		--enable-parser=mjpeg \
 		\
 		--enable-encoder=mjpeg \
+		--enable-encoder=mpeg4 \
 		\
 
 
