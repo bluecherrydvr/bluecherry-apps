@@ -15,6 +15,8 @@ extern "C" {
 #include "g723-dec.h"
 }
 
+#include <pugixml.hpp>
+
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
@@ -85,6 +87,7 @@ public:
 
 	bool update_motion_thresholds();
 
+	void getStatusXml(pugi::xml_node &xmlnode);
 private:
 	bc_record(int id);
 

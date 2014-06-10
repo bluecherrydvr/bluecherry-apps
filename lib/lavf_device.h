@@ -38,6 +38,7 @@ public:
 	const char *get_error_message() const { return error_message; }
 	const char *stream_info();
 
+	virtual void getStatusXml(pugi::xml_node& xmlnode);
 private:
 	char url[1024];
 	bool rtp_prefer_tcp;

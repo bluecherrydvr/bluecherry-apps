@@ -221,6 +221,12 @@ void rtsp_server::acceptConnection()
 	new rtsp_connection(this, fd);
 }
 
+void rtsp_server::getStatusXml(pugi::xml_node &node)
+{
+       node.append_attribute("n_connections") = n_fds - 2;
+       // TODO Much more info. Requires extending rtsp_* classes to hold more info.
+}
+
 /* To survive low bandwidth connections, we need to be smart about
  * buffering; it's important to never drop RTSP commands, and we
  * shouldn't drop partially sent frames either. When a new keyframe

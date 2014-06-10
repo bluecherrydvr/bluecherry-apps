@@ -23,6 +23,7 @@ extern "C" {
 #include "rtsp.h"
 #include "bc-syslog.h"
 #include "version.h"
+#include "status_server.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -31,6 +32,7 @@ pthread_mutex_t mutex_snapshot_delay_ms;
 pthread_mutex_t mutex_max_record_time_sec;
 
 static std::vector<bc_record*> bc_rec_list;
+static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static int max_threads;
 static int cur_threads;
@@ -61,6 +63,7 @@ time_t last_known_running;
 #define TRIAL_MAX_DEVICES 32
 static std::vector<bc_license> licenses;
 
+static rtsp_server *rtsp = NULL;
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -377,6 +380,7 @@ static int bc_check_globals(void)
 
 static void bc_stop_threads(void)
 {
+	pthread_mutex_lock(&bc_rec_list_lock);
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++)
 		(*it)->thread_should_die = "Shutting down";
 
@@ -390,6 +394,7 @@ static void bc_stop_threads(void)
 	}
 
 	bc_rec_list.clear();
+	pthread_mutex_unlock(&bc_rec_list_lock);
 }
 
 /* Check for threads that have quit */
@@ -397,6 +402,7 @@ static void bc_check_threads(void)
 {
 	char *errmsg = 0;
 
+	pthread_mutex_lock(&bc_rec_list_lock);
 	for (unsigned int i = 0; i < bc_rec_list.size(); i++) {
 		bc_record *bc_rec = bc_rec_list[i];
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
@@ -409,18 +415,24 @@ static void bc_check_threads(void)
 		bc_rec_list.erase(bc_rec_list.begin()+i);
 		i--;
 	}
+	pthread_mutex_unlock(&bc_rec_list_lock);
 }
 
 static struct bc_record *bc_record_exists(const int id) __attribute__((pure));
 
 static struct bc_record *bc_record_exists(const int id)
 {
+	struct bc_record *ret = NULL;
+	pthread_mutex_lock(&bc_rec_list_lock);
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
-		if ((*it)->id == id)
-			return *it;
+		if ((*it)->id == id) {
+			ret = *it;
+			break;
+		}
 	}
+	pthread_mutex_unlock(&bc_rec_list_lock);
 
-	return NULL;
+	return ret;
 }
 
 /* TODO: use fixed point insead of float */
@@ -652,7 +664,9 @@ static int bc_check_db(void)
 		}
 
 		cur_threads++;
+		pthread_mutex_lock(&bc_rec_list_lock);
 		bc_rec_list.push_back(bc_rec);
+		pthread_mutex_unlock(&bc_rec_list_lock);
 	}
 
 	bc_db_free_table(dbres);
@@ -817,10 +831,66 @@ void db_cleanup(void)
 	bc_db_query("DELETE FROM Media WHERE filepath=''");
 }
 
+static void xml_general_status(pugi::xml_node& node)
+{
+	node.append_attribute("Revision") = GIT_REVISION;
+	node.append_attribute("PID") = getpid();
+}
+
+static void xml_solo6x10_status(pugi::xml_node& node)
+{
+	// TODO FIXME Volatile or mutex-guarded
+	node.append_attribute("solo_ready") = solo_ready;
+}
+
+static void xml_licenses_status(pugi::xml_node& node)
+{
+	// TODO FIXME Volatile or mutex-guarded
+	node.append_attribute("max_threads") = max_threads;
+	node.append_attribute("cur_threads") = cur_threads;
+}
+
+static void xml_devices_status(pugi::xml_node& node)
+{
+	pthread_mutex_lock(&bc_rec_list_lock);
+	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
+		pugi::xml_node device = node.append_child("Device");
+		(*it)->getStatusXml(device);
+	}
+	pthread_mutex_unlock(&bc_rec_list_lock);
+}
+
+static void xml_status_callback(pugi::xml_document& xmldoc)
+{
+	pugi::xml_node rootNode = xmldoc.append_child();
+	rootNode.set_name("Status");
+
+	// General state
+	pugi::xml_node subNode = rootNode.append_child("General");
+	xml_general_status(subNode);
+
+	// Devices status
+	subNode = rootNode.append_child("Devices");
+	xml_devices_status(subNode);
+
+	// RTSP server report
+	subNode = rootNode.append_child("RTSP");
+	rtsp->getStatusXml(subNode);
+
+	// solo6x10 cards status
+	subNode = rootNode.append_child("solo6x10");
+	xml_solo6x10_status(subNode);
+
+	// Licenses status
+	subNode = rootNode.append_child("Licenses");
+	xml_licenses_status(subNode);
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
 	int bg = 1;
+	int ret;
 	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
 
@@ -894,13 +964,20 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	status_server *status_serv = new status_server(xml_status_callback);
+	ret = status_serv->reconfigure("/tmp/bluecherry_status");
+	if (ret) {
+		bc_log(Error, "Failed to setup the status server");
+		return 1;
+	}
+
 	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
 	       __VERSION__ ") " GIT_REVISION );
 
 	/* Mutex */
 	bc_initialize_mutexes();
 
-	rtsp_server *rtsp = new rtsp_server;
+	rtsp = new rtsp_server;
 	if (rtsp->setup(7002)) {
 		bc_log(Error, "Failed to setup RTSP server");
 		return 1;

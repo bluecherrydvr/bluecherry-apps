@@ -694,3 +694,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 	return 0;
 
 }
+
+void v4l2_device::getStatusXml(pugi::xml_node& xmlnode)
+{
+}

@@ -60,6 +60,7 @@ public:
 
 	v4l2_buffer *buf_v4l2() __attribute__((pure));
 
+	virtual void getStatusXml(pugi::xml_node& xmlnode);
 private:
 	bool			started;
 	int			dev_fd;

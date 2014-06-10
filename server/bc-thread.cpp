@@ -442,6 +442,69 @@ bool bc_record::update_motion_thresholds()
 	return re;
 }
 
+void bc_record::getStatusXml(pugi::xml_node &xmlnode)
+{
+	xmlnode.append_attribute("id") = id;
+	// bc_handle
+	pugi::xml_node bc_hdl = xmlnode.append_child("bc_handle");
+	bc_hdl.append_attribute("device") = bc->device;
+	bc_hdl.append_attribute("driver") = bc->driver;
+	bc_hdl.append_attribute("mjpeg_url") = bc->mjpeg_url;
+	bc_hdl.append_attribute("ptz_path") = bc->ptz_path;
+
+	// bc_device_config
+	pugi::xml_node bc_dev_cfg = xmlnode.append_child("bc_device_config");
+	bc_dev_cfg.append_attribute("name") = cfg.name;
+	bc_dev_cfg.append_attribute("dev") = cfg.dev;
+	bc_dev_cfg.append_attribute("driver") = cfg.driver;
+	bc_dev_cfg.append_attribute("rtsp_username") = cfg.rtsp_username;
+	bc_dev_cfg.append_attribute("rtsp_password") = cfg.rtsp_password;
+	bc_dev_cfg.append_attribute("rtsp_rtp_prefer_tcp") = cfg.rtsp_rtp_prefer_tcp;
+	bc_dev_cfg.append_attribute("signal_type") = cfg.signal_type;
+	bc_dev_cfg.append_attribute("motion_map") = cfg.motion_map;
+	bc_dev_cfg.append_attribute("schedule") = cfg.schedule;
+	bc_dev_cfg.append_attribute("width") = cfg.width;
+	bc_dev_cfg.append_attribute("height") = cfg.height;
+	bc_dev_cfg.append_attribute("interval") = cfg.interval;
+	bc_dev_cfg.append_attribute("prerecord") = cfg.prerecord;
+	bc_dev_cfg.append_attribute("postrecord") = cfg.postrecord;
+	bc_dev_cfg.append_attribute("debug_level") = cfg.debug_level;
+	bc_dev_cfg.append_attribute("aud_disabled") = cfg.aud_disabled;
+	bc_dev_cfg.append_attribute("schedule_override_global") = cfg.schedule_override_global;
+	bc_dev_cfg.append_attribute("hue") = cfg.hue;
+	bc_dev_cfg.append_attribute("saturation") = cfg.saturation;
+	bc_dev_cfg.append_attribute("contrast") = cfg.contrast;
+	bc_dev_cfg.append_attribute("brightness") = cfg.brightness;
+
+	// input info
+	pugi::xml_node input = xmlnode.append_child("Input");
+	bc->input->getStatusXml(input);
+
+#if 0
+	// Current event
+	if (event) {
+		// TODO FIXME Unguarded access, may crash if managing thread releases it meanwhile
+		// Fixing this would take enormous time without making order in objects implementation
+		// TODO Implement sane C++ classes for all entities.
+		pugi::xml_node event_node = xmlnode.append_child("Event");
+		event_node.append_attribute("id") = event->id;
+		event_node.append_attribute("level") = (int)event->level;
+		event_node.append_attribute("type") = (int)event->type;
+		event_node.append_attribute("start_time") = (unsigned int)event->start_time;
+		event_node.append_attribute("end_time") = (unsigned int)event->end_time;
+		event_node.append_attribute("inserted") = (unsigned int)event->inserted;
+
+		event_node.append_attribute("media.table_id") = (unsigned int)event->media.table_id;
+		event_node.append_attribute("media.filepath") = event->media.filepath;
+		event_node.append_attribute("media.bytes") = (unsigned int)event->media.bytes;
+	}
+#endif
+
+	// Schedule
+	xmlnode.append_attribute("sched_cur") = sched_cur;
+	xmlnode.append_attribute("sched_last") = sched_last;
+}
+
 int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 {
 	struct bc_device_config cfg_tmp;

@@ -19,6 +19,8 @@
 #include <atomic>
 #endif
 
+#include <pugixml.hpp>
+
 class stream_packet;
 class stream_properties;
 
@@ -59,6 +61,7 @@ public:
 	 * stream_consumer. */
 	std::shared_ptr<const stream_properties> properties() const { return current_properties; }
 
+	virtual void getStatusXml(pugi::xml_node& xmlnode) = 0;
 protected:
 	bool _audio_enabled, _started;
 	std::string _error_message;

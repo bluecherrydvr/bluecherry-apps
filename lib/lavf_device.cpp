@@ -433,3 +433,57 @@ const char *lavf_device::stream_info()
 	return buf;
 }
 
+void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
+{
+	// AVFormatContext info
+	if (ctx && ctx->iformat && ctx->nb_streams) {
+		// TODO FIXME Unguarded access, may crash if managing thread releases it meanwhile
+		unsigned i;
+		pugi::xml_node av_ctx = xmlnode.append_child("AVFormatContext");
+		av_ctx.append_attribute("Format") = ctx->iformat->name;
+		pugi::xml_node es_list = av_ctx.append_child("ElementaryStreams");
+		for (i = 0; i < ctx->nb_streams; i++) {
+			AVStream *s = ctx->streams[i];
+			char codec_descr[100];
+			avcodec_string(codec_descr, sizeof(codec_descr), s->codec, 0);
+
+			pugi::xml_node es = es_list.append_child("ElementaryStream");
+			es.append_attribute("index") = i;
+			es.append_attribute("codec_type") = av_get_media_type_string(s->codec->codec_type);
+
+			es.append_attribute("codec") = avcodec_get_name(s->codec->codec_id);
+			es.append_attribute("description") = codec_descr;
+
+			switch (s->codec->codec_type) {
+				case AVMEDIA_TYPE_VIDEO: {
+					es.append_attribute("height") = s->codec->height;
+					es.append_attribute("width") = s->codec->width;
+					if (s->sample_aspect_ratio.num && s->sample_aspect_ratio.den) {
+						es.append_attribute("sample_aspect_ratio_num") = s->sample_aspect_ratio.num;
+						es.append_attribute("sample_aspect_ratio_den") = s->sample_aspect_ratio.den;
+						AVRational display_aspect_ratio;
+						av_reduce(&display_aspect_ratio.num, &display_aspect_ratio.den,
+								s->codec->width  * s->sample_aspect_ratio.num,
+								s->codec->height * s->sample_aspect_ratio.den,
+								1024 * 1024);
+						es.append_attribute("display_aspect_ratio_num") = display_aspect_ratio.num;
+						es.append_attribute("display_aspect_ratio_den") = display_aspect_ratio.den;
+					}
+					if (s->avg_frame_rate.den && s->avg_frame_rate.num)
+						es.append_attribute("avg_frame_rate") = av_q2d(s->avg_frame_rate);
+					break;
+				}
+				case AVMEDIA_TYPE_AUDIO: {
+					es.append_attribute("sample_rate") = s->codec->sample_rate;
+					es.append_attribute("channels") = s->codec->channels;
+					char channel_layout_descr[50];
+					av_get_channel_layout_string(channel_layout_descr, sizeof(channel_layout_descr),
+							s->codec->channels, s->codec->channel_layout);
+					es.append_attribute("channel_layout") = channel_layout_descr;
+					break;
+				}
+				default: break;
+			}
+		}
+	}
+}

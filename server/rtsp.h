@@ -16,6 +16,8 @@
 #include <poll.h>
 #include <inttypes.h>
 
+#include <pugixml.hpp>
+
 #define FD_MAX 256
 
 class rtsp_connection;
@@ -41,6 +43,7 @@ public:
 	/* Threadsafe (as long as you can guarantee fd is open) */
 	void setFdEvents(int fd, int events);
 
+	void getStatusXml(pugi::xml_node &node);
 private:
 
 	int serverfd;
