@@ -1,6 +1,6 @@
 CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
-		   -lavformat -lavcodec -lavutil -lswscale
+		   -lavformat -lavcodec -lavutil -lswscale -lpugixml
 
 # Required by our call-tracing implementation
 LDFLAGS		+= -ldl
