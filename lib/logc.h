@@ -1,5 +1,8 @@
 #ifndef BC_LOGC_H
 #define BC_LOGC_H
+
+#include <stdarg.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
