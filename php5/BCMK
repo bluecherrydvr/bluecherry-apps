@@ -12,6 +12,7 @@ all: modules/$(MODULE).so
 
 configure: config.m4
 	phpize
+	aclocal && libtoolize --force && autoreconf
 
 Makefile: configure
 	./configure --with-php-config=php-config CXX="$(CXX)" LDFLAGS="$(LDFLAGS)"
