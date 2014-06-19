@@ -145,9 +145,16 @@ void bc_record::run()
 
 	pthread_cleanup_push(bc_rec_thread_cleanup, NULL);
 
-	while (!thread_should_die) {
-		/* Set by bc_record_update_cfg */
-		if (cfg_dirty) {
+	while (1) {
+		const char *local_thread_should_die;
+		char local_cfg_dirty;
+		pthread_mutex_lock(&cfg_mutex);
+		local_thread_should_die = thread_should_die;
+		local_cfg_dirty = cfg_dirty;
+		pthread_mutex_unlock(&cfg_mutex);
+		if (local_thread_should_die)
+			break;
+		if (local_cfg_dirty) {
 			if (apply_device_cfg(this))
 				break;
 		}
@@ -432,7 +439,9 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	memset(&cfg_tmp, 0, sizeof(cfg_tmp));
 
 	if (bc_db_get_val_int(dbres, "disabled") > 0) {
+		pthread_mutex_lock(&bc_rec->cfg_mutex);
 		bc_rec->thread_should_die = "Disabled in config";
+		pthread_mutex_unlock(&bc_rec->cfg_mutex);
 		return 0;
 	}
 
