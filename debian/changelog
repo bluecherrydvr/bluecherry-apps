@@ -1,3 +1,9 @@
+bluecherry (1:2.2.1) precise trusty lucid wheezy; urgency=low
+
+  * Fix device configuration update signaling
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 19 Jun 2014 09:00:24 -0500
+
 bluecherry (1:2.2.0-6) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix
