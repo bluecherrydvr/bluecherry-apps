@@ -1,7 +1,7 @@
 INSERT INTO Users (`username`, `password`, `salt`, `name`, `email`, `phone`, `notes`, `access_setup`, `access_remote`, `access_web`, `access_backup`, `access_relay`) VALUES ('Admin', 'b22dec1d6cfa580962f3a3796a5dc6b3', '1234', 'Bluecherry Admin', NULL, NULL, NULL, 1, 1, 1, 1, 1);
 
 INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjpeg_port`) VALUES
-('RTSP-VAPIX-AUTO', '/mpeg4/media.amp?tcp', '/mjpg/video.mjpg', 554, 80),
+('RTSP-VAPIX-AUTO', '/mpeg4/media.amp', '/mjpg/video.mjpg', 554, 80),
 ('RTSP-ACTi', '/', '/cgi-bin/cmd/encoder?SNAPSHOT', 7070, 80),
 ('RTSP-Vivotek-V1', '/live.sdp', '/cgi-bin/video.jpg', 554, 80),
 ('RTSP-Vivotek-V2', '/live.sdp', '/video.mjpg', 554, 80),
@@ -14,7 +14,7 @@ INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjp
 ('RTSP-Grandstream', '/', '/snapshot/view0.jpg', 554, 80),
 ('RTSP-Panasonic-BL', '/nphMpeg4/g726-640x480', '/nphMotionJpeg?Resolution=640x480&Quality=Standard', 554, 80),
 ('RTSP-Panasonic-WV', '/MediaInput/h264', '/cgi-bin/camera', 554, 80),
-('RTSP-Trendnet-V1', '/mpeg4?tcp', '/cgi/jpg/image.cgi', 554, 80),
+('RTSP-Trendnet-V1', '/mpeg4', '/cgi/jpg/image.cgi', 554, 80),
 ('RTSP-Airlive-V1', '/h264/media.amp', '/video.cgi?resolution=vga', 554, 80),
 ('RTSP-Trendnet-V2', '/play1.sdp', '/video/mjpg.cgi', 554, 80),
 ('RTSP-ArecontVision', '/', '/mjpeg', 554, 80);
