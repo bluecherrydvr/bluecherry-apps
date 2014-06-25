@@ -2,6 +2,7 @@ INSERT INTO Users (`username`, `password`, `salt`, `name`, `email`, `phone`, `no
 
 INSERT INTO `ipCameraDriver` (`id`, `rtsp_path`, `mjpeg_path`, `rtsp_port`, `mjpeg_port`) VALUES
 ('RTSP-VAPIX-AUTO', '/mpeg4/media.amp', '/mjpg/video.mjpg', 554, 80),
+('RTSP-VAPIX-AUTO-2', '/axis-media/media.amp', '/mjpg/video.mjpg', 554, 80),
 ('RTSP-ACTi', '/', '/cgi-bin/cmd/encoder?SNAPSHOT', 7070, 80),
 ('RTSP-Vivotek-V1', '/live.sdp', '/cgi-bin/video.jpg', 554, 80),
 ('RTSP-Vivotek-V2', '/live.sdp', '/video.mjpg', 554, 80),
@@ -397,6 +398,7 @@ INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `
 (375, 'Camera', 'Panasonic', 'WV-SF346', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (376, 'Camera', 'Airlive', 'OD-325HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1'),
 (377, 'Camera', 'Airlive', 'OD-600HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1');
+(378, 'Camera', 'Axis', 'M1034-W', 'H264,MJPEG', '', 'RTSP-VAPIX-AUTO-2'),
 
 INSERT INTO GlobalSettings VALUES ('G_DVR_NAME', 'Bluecherry DVR v2');
 INSERT INTO GlobalSettings VALUES ('G_DVR_EMAIL', 'root@localhost');
