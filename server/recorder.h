@@ -33,10 +33,12 @@ private:
 	int snapshots_limit;  /* TODO Optionize */
 	int snapshots_done;
 	int snapshotting_delay_since_motion_start_ms;
+    bool event_notification_executed;
 
 	int recording_start(time_t start, const stream_packet &first_packet);
 	void recording_end();
 	void do_error_event(bc_event_level_t level, bc_event_cam_type_t type);
+    void event_trigger_notifications(bc_event_cam_t event);
 };
 
 #endif
