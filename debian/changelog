@@ -1,3 +1,12 @@
+bluecherry (1:2.2.2) precise trusty lucid wheezy; urgency=low
+
+  * Update settings templates for some IP cameras
+  * Add settings template for Axis M1034-W camera
+  * Fix packaging scripts to handle DB credentials containing $ sign
+  * Other minor enhancements
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 26 Jun 2014 08:03:14 -0500
+
 bluecherry (1:2.2.1) precise trusty lucid wheezy; urgency=low
 
   * Fix device configuration update signaling
