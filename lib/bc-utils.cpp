@@ -30,7 +30,7 @@ time_t bc_gettime_monotonic()
 {
 	struct timespec ts;
 	if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
-		bc_log(Bug, "clock_gettime failed: %m");
+		bc_log(Bug, "clock_gettime failed");
 		return 0;
 	}
 
