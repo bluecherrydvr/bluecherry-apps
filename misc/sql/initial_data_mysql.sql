@@ -397,8 +397,8 @@ INSERT INTO `ipCameras` (`id`, `type`, `manufacturer`, `model`, `compression`, `
 (374, 'Camera', 'Panasonic', 'WV-SW395', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (375, 'Camera', 'Panasonic', 'WV-SF346', 'MPEG4, H264', '', 'RTSP-Panasonic-WV'),
 (376, 'Camera', 'Airlive', 'OD-325HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1'),
-(377, 'Camera', 'Airlive', 'OD-600HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1');
-(378, 'Camera', 'Axis', 'M1034-W', 'H264,MJPEG', '', 'RTSP-VAPIX-AUTO-2'),
+(377, 'Camera', 'Airlive', 'OD-600HD', 'MPEG4, H264', '', 'RTSP-Airlive-V1'),
+(378, 'Camera', 'Axis', 'M1034-W', 'H264,MJPEG', '', 'RTSP-VAPIX-AUTO-2');
 
 INSERT INTO GlobalSettings VALUES ('G_DVR_NAME', 'Bluecherry DVR v2');
 INSERT INTO GlobalSettings VALUES ('G_DVR_EMAIL', 'root@localhost');
