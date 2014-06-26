@@ -276,7 +276,7 @@ static int load_storage_paths(void)
 		media_stor[i].min_thresh = min_thresh;
 
 		if (bc_mkdir_recursive(media_stor[i].path)) {
-			bc_status_component_error("Cannot create storage path %s: %m",
+			bc_status_component_error("Cannot create storage path %s",
 			                          media_stor[i].path);
 		} else
 			i++;
@@ -298,7 +298,7 @@ static int load_storage_paths(void)
 
 		}
 		if (bc_mkdir_recursive(media_stor[0].path)) {
-			bc_status_component_error("Cannot create storage path %s: %m",
+			bc_status_component_error("Cannot create storage path %s",
 			                          media_stor[i].path);
 		}
 		media_stor[0].max_thresh = 95.00;
@@ -890,7 +890,7 @@ int main(int argc, char **argv)
 	bc_ffmpeg_init();
 
 	if (bg && daemon(0, 0) == -1) {
-		bc_log(Fatal, "Fork failed: %m");
+		bc_log(Fatal, "Daemonization failed");
 		return 1;
 	}
 

@@ -48,7 +48,7 @@ static void try_formats(struct bc_record *bc_rec)
 	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 
 	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval)) {
-		bc_rec->log.log(Warning, "Error setting format: %m");
+		bc_rec->log.log(Warning, "Error setting format");
 	}
 }
 
@@ -340,8 +340,8 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc = bc_handle_get(dbres);
 	if (!bc) {
 		/* XXX should be an event */
-		bc_rec->log.log(Error, "Error opening device: %m");
-		bc_status_component_error("Error opening device %d: %m", id);
+		bc_rec->log.log(Error, "Error opening device");
+		bc_status_component_error("Error opening device %d", id);
 		delete bc_rec;
 		return 0;
 	}
@@ -366,7 +366,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
-		bc_status_component_error("Failed to start thread: %m");
+		bc_status_component_error("Failed to start thread");
 		delete bc_rec;
 		return 0;
 	}

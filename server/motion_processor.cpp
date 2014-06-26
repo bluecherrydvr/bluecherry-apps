@@ -218,7 +218,7 @@ int motion_processor::detect(AVFrame *rawFrame)
 		if (md->dumpfile)
 			bc_log(Warning, "Opened motion data file '%s'", filename);
 		else
-			bc_log(Error, "Failed to open motion data file '%s' (%m)", filename);
+			bc_log(Error, "Failed to open motion data file '%s'", filename);
 	}
 #endif
 
