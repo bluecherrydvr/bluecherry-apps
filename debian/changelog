@@ -1,4 +1,4 @@
-bluecherry (1:2.2.0) precise trusty lucid wheezy; urgency=low
+bluecherry (1:2.3.0) precise trusty lucid wheezy; urgency=low
 
   * Eliminate usage of %m in logged messages
   * Add settings template for camera Axis M1034-W
