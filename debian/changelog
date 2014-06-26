@@ -1,5 +1,27 @@
 bluecherry (1:2.2.0) precise trusty lucid wheezy; urgency=low
 
+  * Eliminate usage of %m in logged messages
+  * Add settings template for camera Axis M1034-W
+  * Drop '?tcp' postfix in RTSP URLs in ipCameraDriver table
+  * Fix bluecherry.conf parsing in shell scripts
+  * Enforce proper locking on bc_record to avoid using stale values
+  * Install ponvif and ponvif_ext stuff to /usr/share/bluecherry/
+  * MP4 streaming on-the-fly
+  * Device status notifications
+  * Fix message to "Installation succeeded!"
+  * Entirely stop Apache during DB migration
+  * Fix bug #216
+  * Ship remove_untracked_media_files.sh in usr/share/bluecherry/
+  * Drop "?tcp" and "?udp" postfixes from RTSP URLs
+  * Don't terminate daemon on accept() fail
+  * Use --signle-transaction flag for mysqldump for dump consistency
+  * fixed and enabled backup and restore function
+  * Remove delay from device creation procedure
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 26 Jun 2014 08:29:07 -0500
+
+bluecherry (1:2.2.0) precise trusty lucid wheezy; urgency=low
+
   * bugfixes
 
  -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 29 May 2014 02:18:21 -0500
