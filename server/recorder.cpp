@@ -5,8 +5,6 @@
 #include "bc-server.h"
 #include "media_writer.h"
 
-static void event_trigger_notifications(bc_event_cam_t event);
-
 recorder::recorder(const bc_record *bc_rec)
 	: stream_consumer("Recorder"), device_id(bc_rec->id), destroy_flag(false),
 	  recording_type(BC_EVENT_CAM_T_CONTINUOUS), writer(0), current_event(0)
@@ -149,8 +147,9 @@ end:
 	delete this;
 }
 
-static void event_trigger_notifications(bc_event_cam_t event)
+void recorder::event_trigger_notifications(bc_event_cam_t event)
 {
+    event_notification_executed = true;
 	pid_t pid = fork();
 	if (pid < 0) {
 		bc_log(Bug, "cannot fork for event notification");
@@ -222,6 +221,7 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	snapshots_limit = 1;  /* TODO Optionize */
 	snapshots_done = 0;
 	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
+    event_notification_executed = false;
 
 	char outfile[PATH_MAX];
 	int ret = media_file_path(outfile, sizeof(outfile), start_ts, device_id);
@@ -262,8 +262,12 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 void recorder::recording_end()
 {
 	/* Close the media entry in the db */
-	if (current_event && bc_event_has_media(current_event))
+	if (current_event && bc_event_has_media(current_event)) {
+        if (recording_type == BC_EVENT_CAM_T_MOTION
+                && !event_notification_executed)
+            event_trigger_notifications(current_event);
 		bc_event_cam_end(&current_event);
+    }
 
 	if (writer)
 		writer->close();
