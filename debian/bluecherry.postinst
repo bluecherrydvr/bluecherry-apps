@@ -6,15 +6,6 @@ set -x # trace
 
 DB_BACKUP_GZ_FILE=/tmp/bc_db.sql.gz
 
-function create_tables_write_version() {
-	# Env vars $dbname, $user, $password are exported from calling script
-	# Attention: always use them with quoted, to handle correctly spaces inside them.
-	mysql -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
-	# Save actual DB version
-	DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
-	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
-}
-
 function db_upgrade_err() {
 	trap - ERR # avoid recurrence
 	# Say something to user
@@ -41,6 +32,38 @@ function db_upgrade_err() {
 	fi
 
 	exit 1 # Indicate failure
+}
+
+function apply_db_patches() {
+	pushd /usr/share/bluecherry/mysql-upgrade
+	# Note that entries must be numeric, and they are traversed in numeric order, ascending
+	# Entries are directories, see below
+	for x in `ls | sort -n`
+	do
+		if [[ $x -gt $DB_VERSION ]]
+		then
+			pushd $x
+				# We execute each *.sh script, in lexicographical order
+				for y in *.sh
+				do
+					# Such shell scenraio can make some checks and execute some SQL statements.
+					# DB credentials are exported by env vars $dbname, $user, $password for them
+					./$y
+				done
+			popd
+		fi
+		DB_VERSION=$x # our DB_VERSION is updated
+	done
+	popd
+
+	# A check
+	if [[ "`cat /usr/share/bluecherry/installed_db_version`" != "$DB_VERSION" ]]
+	then
+		false # Fail the installation
+	fi
+
+	# Save new DB_VERSION
+	echo "UPDATE GlobalSettings SET value='$DB_VERSION' WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password"
 }
 
 case "$1" in
@@ -130,7 +153,11 @@ case "$1" in
 			echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
 			echo "GRANT ALL ON ${dbname}.* to ${user}@'localhost' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
 
-			create_tables_write_version
+			mysql -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
+			# Save actual DB version
+			DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
+			echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
+
 			# Put initial data into DB
 			mysql -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
 
@@ -139,12 +166,16 @@ case "$1" in
 
 		else
 			# Upgrade
+
+			# Any change to initial_data_mysql.sql won't take effect in this
+			# branch, so DB patching script must be added to mysql-upgrade dir
+
 			# Parse config for DB credentials
 			eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
 			export dbname user password
 
 			# Get DB version
-			DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+			export DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
 
 			if [[ "$DB_VERSION" != "`cat /usr/share/bluecherry/installed_db_version`" ]]
 			then
@@ -171,8 +202,9 @@ case "$1" in
 					do
 						echo "RENAME TABLE $x TO ${x}_bkp" | mysql -D"$dbname" -u"$user" -p"$password"
 					done
+
 					# Create tables from the reference DB schema
-					create_tables_write_version
+					mysql -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql_2020000.sql
 
 					# Migrate data from all tables
 					# Devices.rtsp_rtp_prefer_tcp, added in 2.1.7-7. Workaround for twofold incoherences:
@@ -203,6 +235,9 @@ case "$1" in
 						echo "SET FOREIGN_KEY_CHECKS=1" | mysql -D"$dbname" -u"$user" -p"$password" # Restore setting just in case
 					done
 
+					export DB_VERSION=2020000 # to assist apply_db_patches() logics
+					apply_db_patches
+
 					# Reenable our site in Apache
 					if [ ! -z `which service` ]; then
 						service apache2 start || true
@@ -212,35 +247,7 @@ case "$1" in
 
 				else
 					# If there is a DB version stored (2.2 and newer was installed):
-					pushd /usr/share/bluecherry/mysql-upgrade
-					# Note that entries must be numeric, and they are traversed in numeric order, ascending
-					# Entries are directories, see below
-					for x in `ls | sort -n`
-					do
-						if [[ $x -gt $DB_VERSION ]]
-						then
-							pushd $x
-								# We execute each *.sh script, in lexicographical order
-								for y in *.sh
-								do
-									# Such shell scenraio can make some checks and execute some SQL statements.
-									# DB credentials are exported by env vars $dbname, $user, $password for them
-									./$y
-								done
-							popd
-						fi
-						DB_VERSION=$x # our DB_VERSION is updated
-					done
-					popd
-
-					# A check
-					if [[ "`cat /usr/share/bluecherry/installed_db_version`" != "$DB_VERSION" ]]
-					then
-						false # Fail the installation
-					fi
-
-					# Save new DB_VERSION
-					echo "UPDATE GlobalSettings SET value='$DB_VERSION' WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password"
+					apply_db_patches  # uses $DB_VERSION value, exported
 				fi # Whether there was non-empty DB_VERSION
 			fi # Whether old and new DB version match
 		fi # Whether there was an upgrade or fresh install
