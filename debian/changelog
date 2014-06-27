@@ -1,3 +1,10 @@
+bluecherry (1:2.3.1) precise trusty lucid wheezy; urgency=low
+
+  * Complete the DB installing/upgrading mechanism, add first DB patches
+  * Create snapshot from recording file in case of motion being shorter than snapshotting delay
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 27 Jun 2014 12:10:34 +0300
+
 bluecherry (1:2.3.0) precise trusty lucid wheezy; urgency=low
 
   * Eliminate usage of %m in logged messages
