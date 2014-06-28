@@ -1,3 +1,9 @@
+bluecherry (1:2.3.2) precise trusty lucid wheezy; urgency=low
+
+  * Manage video quality on solo6x10 card ports
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 28 Jun 2014 20:06:01 +0300
+
 bluecherry (1:2.3.1) precise trusty lucid wheezy; urgency=low
 
   * Complete the DB installing/upgrading mechanism, add first DB patches
