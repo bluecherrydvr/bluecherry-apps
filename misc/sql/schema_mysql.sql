@@ -59,7 +59,7 @@ CREATE TABLE `Devices` (
   `brightness` smallint(6) DEFAULT '50',
   `hue` smallint(6) DEFAULT '50',
   `contrast` smallint(6) DEFAULT '50',
-  `video_quality` smallint(6) DEFAULT '2',
+  `video_quality` smallint(6) DEFAULT '100',
   `video_interval` smallint(6) DEFAULT NULL,
   `signal_type` varchar(6) DEFAULT NULL,
   `buffer_prerecording` smallint(6) DEFAULT '3',
