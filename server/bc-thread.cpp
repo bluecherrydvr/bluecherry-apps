@@ -311,6 +311,7 @@ bc_record::bc_record(int i)
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 {
+	int ret;
 	bc_record *bc_rec;
 	struct bc_handle *bc = NULL;
 
@@ -358,10 +359,18 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 	if (bc->type == BC_DEVICE_V4L2) {
 		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
-		v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
-		v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
-		v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
-		v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
+		ret  = v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
+		ret |= v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
+		ret |= v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
+		ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
+		if (ret) {
+			bc_status_component_error("Error setting controls on device %d", id);
+			delete bc_rec;
+			return NULL;
+		}
+		ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
+		if (ret)
+			bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
 	}
 
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
@@ -465,6 +474,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	struct bc_device_config *current = &bc_rec->cfg;
 	struct bc_device_config *update  = &bc_rec->cfg_update;
 	int motion_map_changed, format_changed;
+	int ret;
 
 	pthread_mutex_lock(&bc_rec->cfg_mutex);
 
@@ -486,7 +496,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	                  current->interval != update->interval);
 	bool control_changed = (current->hue != update->hue || current->contrast != update->contrast ||
 	                        current->saturation != update->saturation ||
-	                        current->brightness != update->brightness);
+	                        current->brightness != update->brightness
+							|| current->video_quality != update->video_quality);
 	bool mrecord_changed = (current->prerecord != update->prerecord || current->postrecord != update->postrecord);
 	bool debug_changed = (current->debug_level != update->debug_level);
 
@@ -506,10 +517,15 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	if (control_changed) {
 		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc_rec->bc->input);
-		v4l2->set_control(V4L2_CID_HUE, current->hue);
-		v4l2->set_control(V4L2_CID_CONTRAST, current->contrast);
-		v4l2->set_control(V4L2_CID_SATURATION, current->saturation);
-		v4l2->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
+		ret  = v4l2->set_control(V4L2_CID_HUE, current->hue);
+		ret |= v4l2->set_control(V4L2_CID_CONTRAST, current->contrast);
+		ret |= v4l2->set_control(V4L2_CID_SATURATION, current->saturation);
+		ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
+		if (ret)
+			return -1;
+		ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - current->video_quality);
+		if (ret)
+			bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
 	}
 
 	if (motion_map_changed)

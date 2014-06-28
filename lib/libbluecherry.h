@@ -93,6 +93,7 @@ struct bc_device_config {
 	_Bool   aud_disabled;
 	_Bool   schedule_override_global;
 	int     hue, saturation, contrast, brightness;
+	int     video_quality;
 };
 
 struct bc_license {

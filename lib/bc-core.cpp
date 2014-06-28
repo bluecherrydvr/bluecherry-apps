@@ -356,6 +356,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->contrast   = bc_db_get_val_int(dbres, "contrast");
 	cfg->brightness = bc_db_get_val_int(dbres, "brightness");
 	cfg->saturation = bc_db_get_val_int(dbres, "saturation");
+	cfg->video_quality = bc_db_get_val_int(dbres, "video_quality");
 
 	return 0;
 }
