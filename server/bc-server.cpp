@@ -901,7 +901,10 @@ int main(int argc, char **argv)
 	bc_initialize_mutexes();
 
 	rtsp_server *rtsp = new rtsp_server;
-	rtsp->setup(7002);
+	if (rtsp->setup(7002)) {
+		bc_log(Error, "Failed to setup RTSP server");
+		return 1;
+	}
 
 	if (open_db_loop(config_file))
 		return 1;
