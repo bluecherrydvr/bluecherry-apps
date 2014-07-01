@@ -41,6 +41,7 @@ libav/config.mak:
 		--enable-pic \
 		--disable-stripping \
 		--disable-doc \
+		--enable-libpulse \
 		\
 		--disable-everything \
 		\
@@ -53,14 +54,21 @@ libav/config.mak:
 		--enable-muxer=rtp \
 		--enable-muxer=mp4 \
 		--enable-muxer=image2 \
+		--enable-muxer=pcm_s16le \
+		--enable-muxer=rawvideo \
 		\
 		--enable-demuxer=rtsp \
 		--enable-demuxer=matroska \
 		--enable-demuxer=mjpeg \
+		--enable-demuxer=pcm_s16le \
+		--enable-demuxer=rawvideo \
 		\
 		--enable-decoder=h264 \
 		--enable-decoder=mpeg4 \
 		--enable-decoder=mjpeg \
+		--enable-decoder=pcm_s16le \
+		--enable-decoder=vorbis \
+		--enable-decoder=rawvideo \
 		\
 		--enable-parser=h264 \
 		--enable-parser=mpeg4video \
@@ -68,10 +76,18 @@ libav/config.mak:
 		\
 		--enable-encoder=mjpeg \
 		--enable-encoder=mpeg4 \
+		--enable-encoder=pcm_s16le \
+		--enable-encoder=vorbis \
+		--enable-encoder=rawvideo \
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
+		--enable-filter=aresample \
 		\
+		--enable-indev=pulse \
+		--enable-indev=alsa \
+		\
+
 
 
 
