@@ -342,6 +342,16 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->interval = bc_db_get_val_int(dbres, "video_interval");
 	cfg->prerecord = (int16_t)bc_db_get_val_int(dbres, "buffer_prerecording");
 	cfg->postrecord = (int16_t)bc_db_get_val_int(dbres, "buffer_postrecording");
+	cfg->motion_analysis_stw = (int64_t)bc_db_get_val_int(dbres, "motion_analysis_stw");
+	if (cfg->motion_analysis_stw == -1) {
+		bc_log(Error, "motion_analysis_stw field is likely absent, DB schema not updated. Using default value");
+		cfg->motion_analysis_stw = 200000;  // 0.2 second
+	}
+	cfg->motion_analysis_percentage = bc_db_get_val_int(dbres, "motion_analysis_percentage");
+	if (cfg->motion_analysis_percentage == -1) {
+		bc_log(Error, "motion_analysis_percentage field is likely absent, DB schema not updated. Using default value");
+		cfg->motion_analysis_percentage = 50;
+	}
 	cfg->debug_level = (int8_t)bc_db_get_val_int(dbres, "debug_level");
 	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;
 	cfg->schedule_override_global = bc_db_get_val_int(dbres, "schedule_override_global") != 0;
