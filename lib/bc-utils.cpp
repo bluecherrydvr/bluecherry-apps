@@ -37,7 +37,7 @@ time_t bc_gettime_monotonic()
 	return ts.tv_sec;
 }
 
-int bc_user_auth(const char *username, const char *password, int access_type, int device_id)
+int bc_user_auth(const char *username, const char *password, int access_type, int device_id, int *user_id)
 {
 	int re = 0;
 	char md5_pwd[16], s_password[256];
@@ -82,6 +82,7 @@ int bc_user_auth(const char *username, const char *password, int access_type, in
 	}
 
 	re = 1;
+	*user_id = bc_db_get_val_int(dbres, "id");
 end:
 	bc_db_free_table(dbres);
 	return re;

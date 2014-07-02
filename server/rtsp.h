@@ -15,6 +15,9 @@
 #include <pthread.h>
 #include <poll.h>
 #include <inttypes.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <pugixml.hpp>
 
@@ -66,7 +69,7 @@ class rtsp_write_buffer;
 class rtsp_connection
 {
 public:
-	rtsp_connection(rtsp_server *server, int fd);
+	rtsp_connection(rtsp_server *server, int fd, sockaddr_storage *addr, size_t addrlen);
 	~rtsp_connection();
 
 	int readable();
@@ -77,6 +80,10 @@ public:
 
 	int send(const char *buf, int size, int type = 0, int flags = 0);
 
+	bool checkKicked();
+	bool isKicked();
+	void updateActiveUsers();
+
 private:
 	rtsp_server * const server;
 	const int fd;
@@ -86,6 +93,11 @@ private:
 	rtsp_write_buffer *wrbuf, *wrbuf_tail;
 
 	std::map<int,rtsp_session*> sessions;
+	sockaddr_storage addr;
+	char addr_str[NI_MAXHOST];
+	int user_id;
+	std::string username;
+	int kicked;
 
 	ssize_t parse();
 	void sendResponse(const rtsp_message &response);

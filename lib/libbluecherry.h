@@ -196,7 +196,7 @@ enum bc_access_type
 	ACCESS_RELAY
 };
 
-int bc_user_auth(const char *username, const char *password, int access_type = 0, int device_id = -1);
+int bc_user_auth(const char *username, const char *password, int access_type = 0, int device_id = -1, int *user_id = NULL);
 
 /* Database functions */
 int bc_db_open(const char *bc_config)
