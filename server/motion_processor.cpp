@@ -84,6 +84,7 @@ void motion_processor::run()
 			continue;
 		}
 
+		bc_log(Info, "%s: %d %s", __FILE__, __LINE__, __PRETTY_FUNCTION__);
 		stream_packet pkt = buffer.front();
 		buffer.pop_front();
 
@@ -115,6 +116,7 @@ void motion_processor::run()
 
 		int have_picture = 0;
 		int re = avcodec_decode_video2(decode_ctx, frame, &have_picture, &avpkt);
+		bc_log(Info, "%s: %d %s", __FILE__, __LINE__, __PRETTY_FUNCTION__);
 		if (re < 0) {
 			bc_log(Info, "Decoding failed for motion processor");
 		} else if (have_picture) {
@@ -138,9 +140,13 @@ void motion_processor::run()
 			if (!skip) {
 				last_tested_pts = pkt.pts;
 				skip_count = 0;
+				bc_log(Info, "%s: %d %s", __FILE__, __LINE__, __PRETTY_FUNCTION__);
 				int re = detect(frame);
 				if (re == 1)
+				{
 					pkt.flags |= stream_packet::MotionFlag;
+					bc_log(Info, "%s: %d %s setting motion flag on pkt seq=%u", __FILE__, __LINE__, __PRETTY_FUNCTION__, pkt.seq);
+				}
 			}
 		}
 

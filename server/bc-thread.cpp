@@ -204,6 +204,9 @@ void bc_record::run()
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
+				// TODO Check cfg.motion_analysis_stw > 0
+				m_handler->set_motion_analysis_stw(cfg.motion_analysis_stw);
+				m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
 				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
 				rec = new recorder(this);
@@ -594,8 +597,11 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	if (motion_map_changed)
 		bc_rec->update_motion_thresholds();
 
-	if (mrecord_changed)
+	if (mrecord_changed) {
 		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
+		bc_rec->m_handler->set_motion_analysis_stw(bc_rec->cfg.motion_analysis_stw);
+		bc_rec->m_handler->set_motion_analysis_percentage(bc_rec->cfg.motion_analysis_percentage);
+	}
 
 	check_schedule(bc_rec);
 	return 0;
