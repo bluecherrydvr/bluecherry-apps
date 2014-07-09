@@ -22,6 +22,11 @@
 
 #define DEF_TH_LOG_LEVEL Warning
 
+/* For Ubuntu Lucid */
+#ifndef V4L2_CID_MPEG_VIDEO_H264_MIN_QP
+#define V4L2_CID_MPEG_VIDEO_H264_MIN_QP (V4L2_CID_MPEG_BASE+353)
+#endif
+
 static int apply_device_cfg(struct bc_record *bc_rec);
 
 static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
