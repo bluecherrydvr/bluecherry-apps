@@ -1,3 +1,12 @@
+bluecherry (1:2.3.3) precise trusty lucid wheezy; urgency=low
+
+  * Implement kicking of RTSP connections
+  * Add feature of backup by cron (disabled by default; no web UI controls)
+  * Implement status reporting server (no web UI for it)
+  * Forbid launch of two concurrent instances of daemon
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 09 Jul 2014 17:48:21 +0300
+
 bluecherry (1:2.3.2) precise trusty lucid wheezy; urgency=low
 
   * Manage video quality on solo6x10 card ports
