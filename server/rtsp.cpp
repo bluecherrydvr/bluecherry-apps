@@ -695,6 +695,23 @@ int rtsp_connection::writable()
 
 bool rtsp_connection::authenticate(rtsp_message &req, int device_id)
 {
+	if (req.uri.find("authtoken=") != std::string::npos) {
+		std::string token = req.uri.substr(req.uri.find("authtoken=") + 10);
+		token = token.substr(0, token.find('/'));  // Drop possible trailing '/streamid=0' etc.
+		BC_DB_RES dbres = bc_db_get_table("SELECT * FROM RtspAuthTokens JOIN Users ON RtspAuthTokens.user_id = Users.id WHERE RtspAuthTokens.token='%s'", token.c_str());
+		if (dbres) {
+			if (bc_db_fetch_row(dbres)) {
+				bc_db_free_table(dbres);
+			} else {
+				this->username = bc_db_get_val(dbres, "username", NULL);
+				this->user_id = bc_db_get_val_int(dbres, "user_id");
+				bc_db_free_table(dbres);
+				return true;
+			}
+		}
+		// Fallthrough to usual auth
+	}
+
 	std::string auth = req.header("authorization");
 	if (auth.size() > 6 && auth.substr(0, 6) == "Basic ") {
 		auth = auth.substr(6);
@@ -1056,6 +1073,8 @@ rtsp_stream *rtsp_stream::findUri(std::string uri)
 		if (p != std::string::npos)
 			uri.erase(p);
 	}
+
+	uri = uri.substr(0, uri.find("?"));
 
 	pthread_mutex_lock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(uri);

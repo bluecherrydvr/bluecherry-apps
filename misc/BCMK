@@ -53,14 +53,17 @@ libav/config.mak:
 		--enable-muxer=rtp \
 		--enable-muxer=mp4 \
 		--enable-muxer=image2 \
+		--enable-muxer=rawvideo \
 		\
 		--enable-demuxer=rtsp \
 		--enable-demuxer=matroska \
 		--enable-demuxer=mjpeg \
+		--enable-demuxer=rawvideo \
 		\
 		--enable-decoder=h264 \
 		--enable-decoder=mpeg4 \
 		--enable-decoder=mjpeg \
+		--enable-decoder=rawvideo \
 		\
 		--enable-parser=h264 \
 		--enable-parser=mpeg4video \
@@ -68,6 +71,7 @@ libav/config.mak:
 		\
 		--enable-encoder=mjpeg \
 		--enable-encoder=mpeg4 \
+		--enable-encoder=rawvideo \
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
