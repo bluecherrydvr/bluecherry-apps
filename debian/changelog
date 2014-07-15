@@ -1,3 +1,10 @@
+bluecherry (1:2.3.4) precise trusty lucid wheezy; urgency=low
+
+  * rtsp: Fix leak introduced with session kicking feature
+  * Publish HTTP MJPEG stream/snapshot from RTSP stream (fixes the feature for V4L2 cameras)
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 15 Jul 2014 20:45:55 +0300
+
 bluecherry (1:2.3.3) precise trusty lucid wheezy; urgency=low
 
   * Implement kicking of RTSP connections
