@@ -912,13 +912,13 @@ bool rtsp_connection::checkKicked()
 	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM ActiveUsers WHERE id = %d AND ip = '%s' AND time > unix_timestamp(now()) - 300", user_id, addr_str);
 	if (!dbres)
 		return false;
-	if (bc_db_fetch_row(dbres))
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
 		return false;
-	if (bc_db_get_val_int(dbres, "kick") == 1) {
-		kicked = true;
-		return true;
 	}
-	return false;
+	kicked = (bc_db_get_val_int(dbres, "kick") == 1);
+	bc_db_free_table(dbres);
+	return kicked;
 }
 
 bool rtsp_connection::isKicked()
