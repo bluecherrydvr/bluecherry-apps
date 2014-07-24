@@ -177,7 +177,6 @@ static int parse_dev_path(char *dst, size_t sz, const char *val,
 static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 {
 	const char *val;
-	assert(strlen(bc->driver));
 	bc->type = BC_DEVICE_LAVF;
 
 	/* FIXME bc_device_config is already parsed from DB and saved in void*
@@ -244,6 +243,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 {
 	const char *device, *driver;
+	const char *protocol;
 	struct bc_handle *bc;
 	int ret;
 
@@ -254,7 +254,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	device = bc_db_get_val(dbres, "device", NULL);
 	driver = bc_db_get_val(dbres, "driver", NULL);
-	if (!device || !driver) {
+	protocol = bc_db_get_val(dbres, "protocol", NULL);
+	if (!device || !protocol) {
 		errno = EINVAL;
 		return NULL;
 	}
@@ -271,8 +272,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc_ptz_check(bc, dbres);
 
-	if (!strncmp(driver, "RTSP-", 5)
-			|| !strncmp(driver, "HTTP-", 5))
+	if (!strncmp(protocol, "IP", 2))
 		ret = lavf_handle_init(bc, dbres);
 	else {
 		bc->type = BC_DEVICE_V4L2;
@@ -320,7 +320,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	const char *rtsp_password = bc_db_get_val(dbres, "rtsp_password", NULL);
 	const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
 
-	if (!dev || !name || !driver || !schedule || !motion_map)
+	if (!dev || !name || !schedule || !motion_map)
 		return -1;
 
 	if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
@@ -333,7 +333,8 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 
 	strlcpy(cfg->dev, dev, sizeof(cfg->dev));
 	strlcpy(cfg->name, name, sizeof(cfg->name));
-	strlcpy(cfg->driver, driver, sizeof(cfg->driver));
+	if (driver)
+		strlcpy(cfg->driver, driver, sizeof(cfg->driver));
 	strlcpy(cfg->schedule, schedule, sizeof(cfg->schedule));
 	strlcpy(cfg->motion_map, motion_map, sizeof(cfg->motion_map));
 
