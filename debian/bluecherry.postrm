@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+set -x # trace
+
 if [ -f /usr/share/debconf/confmodule ]; then
 	. /usr/share/debconf/confmodule
 fi
