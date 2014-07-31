@@ -1,3 +1,10 @@
+bluecherry (1:2.3.5) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fixes
+  * Fixed handling of camera settings templates
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 31 Jul 2014 13:45:45 -0500
+
 bluecherry (1:2.3.4) precise trusty lucid wheezy; urgency=low
 
   * rtsp: Fix leak introduced with session kicking feature
