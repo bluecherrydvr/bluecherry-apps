@@ -8,7 +8,7 @@ fi
 
 case "$1" in
 	remove)
-		a2dissite bluecherry.conf
+		a2dissite bluecherry.conf || true
 
 		# Reload some things
 		invoke-rc.d apache2 restart || true
@@ -23,7 +23,7 @@ case "$1" in
 		CONFIGFILE=/etc/bluecherry.conf
 
 		for ext in '~' '%' .bak .ucf-new .ucf-old .ucf-dist;  do
-			rm -f $CONFIGFILE$ext
+			rm -f $CONFIGFILE$ext || true
 		done
 
 		rm -f $CONFIGFILE
