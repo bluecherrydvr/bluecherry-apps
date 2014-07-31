@@ -1,3 +1,10 @@
+bluecherry (1:2.2.3) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fixes
+  * Fixed handling of camera settings templates
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 31 Jul 2014 13:56:04 -0500
+
 bluecherry (1:2.2.2-2) precise trusty lucid wheezy; urgency=low
 
   * Installation fix
