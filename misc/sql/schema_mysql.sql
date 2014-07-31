@@ -221,6 +221,16 @@ CREATE TABLE `PTZPresets` (
   CONSTRAINT `PTZPresets_ibfk_1` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `RtspAuthTokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `RtspAuthTokens` (
+  `user_id` int(11) NOT NULL,
+  `token` varchar(100) NOT NULL,
+  `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uniq_session` (`user_id`,`token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ServerStatus`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
@@ -366,16 +376,6 @@ CREATE TABLE `userLayouts` (
   `layout` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `RtspAuthTokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `RtspAuthTokens` (
-  `user_id` int(11) NOT NULL,
-  `token` varchar(100) NOT NULL,
-  `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uniq_session` (`user_id`,`token`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
