@@ -229,7 +229,7 @@ CREATE TABLE `RtspAuthTokens` (
   `token` varchar(100) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `uniq_session` (`user_id`,`token`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ServerStatus`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
