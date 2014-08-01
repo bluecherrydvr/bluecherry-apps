@@ -1,3 +1,10 @@
+bluecherry (1:2.2.3-4) precise trusty lucid wheezy; urgency=low
+
+  * Complete the DB installing/upgrading mechanism, add first DB patches
+  * Revert wrong updates of schema_mysql
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 01 Aug 2014 13:00:06 -0500
+
 bluecherry (1:2.2.3-3) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix
