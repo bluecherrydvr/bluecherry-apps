@@ -278,9 +278,11 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	}
 
 	/* Open output file */
-	if (avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE) < 0) {
-		bc_log(Error, "Cannot open media output file %s",
-			   file_path.c_str());
+	if ((ret = avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE)) < 0) {
+		char error[512];
+		av_strerror(ret, error, sizeof(error));
+		bc_log(Error, "Cannot open media output file %s: %s (%d)",
+			   path.c_str(), error, ret);
 		goto error;
 	}
 
