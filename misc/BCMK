@@ -89,7 +89,7 @@ $(LIBAV_INSTALL): libav/config.mak
 ### pugixml   ###
  ###############
 pkgs += pugixml
-pugixml-libs = $(call lpath, pugixml.so.1.4)
+pugixml-libs = $(call lpath, pugixml.so.1)
 install-libs += $(pugixml-libs)
 
 pugixml-clean: FORCE
