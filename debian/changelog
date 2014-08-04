@@ -1,3 +1,9 @@
+bluecherry (1:2.3.5-4) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fix
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 04 Aug 2014 13:12:36 -0500
+
 bluecherry (1:2.3.5-3) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix
