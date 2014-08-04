@@ -104,9 +104,12 @@ function print_image($id, $out_multipart, $current_user) {
 			while (true) {
 				while (true) {
 					if (connection_aborted()
-							|| ($chunk = fread($stream, 1024)) === false)
+							|| ($chunk = fread($stream, 1024)) === false
+							|| feof($stream))
 						break(2);
 					$buffer .= $chunk;
+					if (strlen($buffer) < $marker_len)
+						continue;
 					$frame_start = strpos($buffer, $start_marker, $marker_len);
 					if ($frame_start !== false)
 						break;
