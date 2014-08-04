@@ -1,3 +1,13 @@
+bluecherry (1:2.2.4) precise trusty lucid wheezy; urgency=low
+
+  * Create snapshot from recording file in case of motion being shorter than snapshotting delay
+  * Device status notifications
+  * Forbid startup of second instance of bc-server
+  * Complete the DB installing/upgrading mechanism, add first DB patches
+  * Revert wrong updates of schema_mysql in release/2.2
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 01 Aug 2014 13:13:17 -0500
+
 bluecherry (1:2.2.3-3) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix
