@@ -55,7 +55,6 @@ typedef enum {
 struct bc_handle {
 	char			device[512];
 	char			driver[512];
-	char			mjpeg_url[1024];
 
 	bc_device_type_t	type;
 
