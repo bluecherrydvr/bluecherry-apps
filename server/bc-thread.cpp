@@ -454,7 +454,6 @@ void bc_record::getStatusXml(pugi::xml_node &xmlnode)
 	pugi::xml_node bc_hdl = xmlnode.append_child("bc_handle");
 	bc_hdl.append_attribute("device") = bc->device;
 	bc_hdl.append_attribute("driver") = bc->driver;
-	bc_hdl.append_attribute("mjpeg_url") = bc->mjpeg_url;
 	bc_hdl.append_attribute("ptz_path") = bc->ptz_path;
 
 	// bc_device_config
