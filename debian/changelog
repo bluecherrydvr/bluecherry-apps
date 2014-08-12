@@ -1,3 +1,12 @@
+bluecherry (1:2.3.6) precise trusty lucid wheezy; urgency=low
+
+  * postinst: fix debconf questions/notifications handling for automated installing
+  * Don't parse mjpeg_path when it is not needed, fix related runtime bug
+  * Avoid poivif*/.git files in packages
+  * www/media/mjpeg.php: Improve mjpeg stream parsing
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 12 Aug 2014 06:42:16 -0500
+
 bluecherry (1:2.3.5-4) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix
