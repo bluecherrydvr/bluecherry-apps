@@ -123,31 +123,31 @@ case "$1" in
 			# 0-bytes config - fresh installation
 			# Create DB
 
+			# Ask questions
+			db_input high bluecherry/mysql_admin_login  || true
+			db_input high bluecherry/mysql_admin_password  || true
+			db_input high bluecherry/db_name  || true
+			db_input high bluecherry/db_user  || true
+			db_input high bluecherry/db_password  || true
+			db_go  || true
+
+			db_get bluecherry/mysql_admin_login  || true
+			export MYSQL_ADMIN_LOGIN="$RET"
+			db_get bluecherry/mysql_admin_password  || true
+			export MYSQL_ADMIN_PASSWORD="$RET"
+			db_get bluecherry/db_name  || true
+			export dbname="$RET"
+			db_get bluecherry/db_user  || true
+			export user="$RET"
+			db_get bluecherry/db_password  || true
+			export password="$RET"
+
 			# Remove cached answers
 			db_fset bluecherry/mysql_admin_login    seen false
 			db_fset bluecherry/mysql_admin_password seen false
 			db_fset bluecherry/db_name              seen false
 			db_fset bluecherry/db_user              seen false
 			db_fset bluecherry/db_password          seen false
-
-			# Ask questions
-			db_input high bluecherry/mysql_admin_login
-			db_input high bluecherry/mysql_admin_password
-			db_input high bluecherry/db_name
-			db_input high bluecherry/db_user
-			db_input high bluecherry/db_password
-			db_go
-
-			db_get bluecherry/mysql_admin_login
-			export MYSQL_ADMIN_LOGIN="$RET"
-			db_get bluecherry/mysql_admin_password
-			export MYSQL_ADMIN_PASSWORD="$RET"
-			db_get bluecherry/db_name
-			export dbname="$RET"
-			db_get bluecherry/db_user
-			export user="$RET"
-			db_get bluecherry/db_password
-			export password="$RET"
 
 			# Actually create DB and tables
 			echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
@@ -255,10 +255,6 @@ case "$1" in
 		trap - ERR
 
 		# End of DB management
-
-		db_fset bluecherry/note_install_succeed seen false
-		db_input high bluecherry/note_install_succeed || true
-		db_go || true
 		;;
 esac
 
