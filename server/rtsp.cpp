@@ -106,16 +106,10 @@ void rtsp_server::run()
 		}
 
 		for (int i = 0; i < n_fds; ++i) {
-			rtsp_connection *c = connections[i];
-
-			if (c && c->isKicked()) {
-				delete c;
-				--i;
-				continue;
-			}
-
 			if (!fds[i].revents)
 				continue;
+
+			rtsp_connection *c = connections[i];
 
 			int revents = fds[i].revents;
 			fds[i].revents = 0;
@@ -218,18 +212,13 @@ void rtsp_server::wake()
 
 void rtsp_server::acceptConnection()
 {
-	sockaddr_storage addr;
-	socklen_t salen = sizeof(addr);
-	int fd = accept(serverfd, (sockaddr *)&addr, &salen);
+	int fd = accept(serverfd, NULL, NULL);
 	if (fd < 0) {
 		bc_log(Error, "accept() failed: %s", strerror(errno));
 		return;
 	}
 
-	rtsp_connection *c = new rtsp_connection(this, fd, &addr, salen);
-	if (c->checkKicked())
-		delete c;
-
+	new rtsp_connection(this, fd);
 }
 
 void rtsp_server::getStatusXml(pugi::xml_node &node)
@@ -342,10 +331,9 @@ struct rtsp_write_buffer
 	}
 };
 
-rtsp_connection::rtsp_connection(rtsp_server *server, int fd, sockaddr_storage *addr, size_t addrlen)
-	: server(server), fd(fd), rdbuf_len(0), wrbuf(0), wrbuf_tail(0), kicked(false)
+rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
+	: server(server), fd(fd), rdbuf_len(0), wrbuf(0), wrbuf_tail(0)
 {
-	int ret;
 	pthread_mutex_init(&write_lock, 0);
 	server->addFd(this, fd, POLLIN);
 
@@ -353,10 +341,6 @@ rtsp_connection::rtsp_connection(rtsp_server *server, int fd, sockaddr_storage *
 	 * frame. This is more efficient, because it doesn't require waking the poll thread twice. */
 	int value = 128*1024;
 	setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value));
-	this->addr = *addr;
-	ret = getnameinfo((struct sockaddr *)addr, addrlen, addr_str, sizeof(addr_str), NULL, 0, NI_NUMERICHOST);
-	if (ret)
-		snprintf(addr_str, sizeof(addr_str), "unknown_host");
 }
 
 rtsp_connection::~rtsp_connection()
@@ -703,8 +687,6 @@ bool rtsp_connection::authenticate(rtsp_message &req, int device_id)
 			if (bc_db_fetch_row(dbres)) {
 				bc_db_free_table(dbres);
 			} else {
-				this->username = bc_db_get_val(dbres, "username", NULL);
-				this->user_id = bc_db_get_val_int(dbres, "user_id");
 				bc_db_free_table(dbres);
 				return true;
 			}
@@ -722,10 +704,9 @@ bool rtsp_connection::authenticate(rtsp_message &req, int device_id)
 			char *password = buf;
 			char *username = strsep(&password, ":");
 			if (username && password &&
-			    bc_user_auth(username, password, ACCESS_REMOTE, device_id, &this->user_id) == 1)
+			    bc_user_auth(username, password, ACCESS_REMOTE, device_id) == 1)
 			{
 				delete[] buf;
-				this->username = username;
 				return true;
 			}
 		}
@@ -902,51 +883,6 @@ int rtsp_connection::handlePause(rtsp_message &req)
 
 	sendResponse(rtsp_message(req, 200, "OK"));
 	return 0;
-}
-
-bool rtsp_connection::checkKicked()
-{
-	if (kicked)
-		return true;
-
-	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM ActiveUsers WHERE id = %d AND ip = '%s' AND time > unix_timestamp(now()) - 300", user_id, addr_str);
-	if (!dbres)
-		return false;
-	if (bc_db_fetch_row(dbres)) {
-		bc_db_free_table(dbres);
-		return false;
-	}
-	kicked = (bc_db_get_val_int(dbres, "kick") == 1);
-	bc_db_free_table(dbres);
-	return kicked;
-}
-
-bool rtsp_connection::isKicked()
-{
-	return kicked;
-}
-
-void rtsp_connection::updateActiveUsers()
-{
-	int ret;
-	ret = bc_db_start_trans();
-	if (ret)
-		return;
-	BC_DB_RES dbres = __bc_db_get_table("SELECT * FROM ActiveUsers WHERE id = %d AND ip = '%s'", user_id, addr_str);
-	if (!dbres)
-		goto rollback;
-	if (!bc_db_fetch_row(dbres)) {
-		ret = __bc_db_query("UPDATE ActiveUsers SET time = unix_timestamp(now()) WHERE id = %d AND ip = '%s'", user_id, addr_str);
-	} else {
-		ret = __bc_db_query("INSERT INTO ActiveUsers (id, ip, time) VALUES (%d, '%s', unix_timestamp(now()))", user_id, addr_str);
-	}
-	bc_db_free_table(dbres);
-	if (ret)
-		goto rollback;
-
-	if (bc_db_commit_trans())
-rollback:
-		bc_db_rollback_trans();
 }
 
 std::map<std::string,rtsp_stream*> rtsp_stream::streams;
@@ -1174,15 +1110,6 @@ void rtsp_stream::sendQueuedPackets()
 
 		pthread_mutex_lock(&sessions_lock);
 		for (std::vector<rtsp_session*>::iterator it = sessions.begin(); it != sessions.end(); ++it) {
-			// Check for `kick`
-			if ((*it)->connection->checkKicked()) {
-				(*it)->setActive(false);
-				continue;
-			}
-			// Update session's entry in ActiveUsers
-			(*it)->connection->updateActiveUsers();
-			// TODO Call these above two reasonably rarely and not at every rtsp_stream::sendQueuedPackets() for every rtsp_packet in queue.
-
 			if (!(*it)->isActive() || ((*it)->needKeyframe && !rtsp_packet->is_key))
 				continue;
 			AV_WB16(rtsp_packet->data + 6, (*it)->rtp_seq++);  // TODO Drop per-session seq counter?
