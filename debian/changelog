@@ -1,3 +1,9 @@
+bluecherry (1:2.2.4-2) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fix: Update G_DB_VERSION in case of upgrade from 2.2 and later
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 25 Aug 2014 02:37:01 -0500
+
 bluecherry (1:2.2.4) precise trusty lucid wheezy; urgency=low
 
   * Create snapshot from recording file in case of motion being shorter than snapshotting delay
