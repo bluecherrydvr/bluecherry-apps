@@ -1,3 +1,10 @@
+bluecherry (1:2.3.7) precise trusty lucid wheezy; urgency=low
+
+  * Update G_DB_VERSION in case of upgrade from 2.2 and later
+  * Revert "Implement kicking of RTSP connections" because of MySQL locks
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 25 Aug 2014 02:38:46 -0500
+
 bluecherry (1:2.3.6) precise trusty lucid wheezy; urgency=low
 
   * postinst: fix debconf questions/notifications handling for automated installing
