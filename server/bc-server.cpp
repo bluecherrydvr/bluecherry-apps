@@ -612,6 +612,11 @@ static int bc_check_db(void)
 	BC_DB_RES dbres;
 	int re = 0;
 
+	for (std::vector<bc_record*>::reverse_iterator rit = bc_rec_list.rend(); rit != bc_rec_list.rbegin(); rt++) {
+		bc_rec = *rit;
+		bc_rec->cfg_just_updated = false;
+	}
+
 	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
 				"AvailableSources USING (device)");
 
@@ -632,6 +637,7 @@ static int bc_check_db(void)
 					"device configuration");
 				re |= -1;
 			}
+			bc_rec->cfg_just_updated = true;
 			continue;
 		}
 
@@ -664,9 +670,19 @@ static int bc_check_db(void)
 		}
 
 		cur_threads++;
+		bc_rec->cfg_just_updated = true;
 		pthread_mutex_lock(&bc_rec_list_lock);
 		bc_rec_list.push_back(bc_rec);
 		pthread_mutex_unlock(&bc_rec_list_lock);
+	}
+
+	// Traverse bc_rec_list and remove entries not having "have just been updated" flag set
+	for (std::vector<bc_record*>::reverse_iterator rit = bc_rec_list.rend(); rit != bc_rec_list.rbegin(); rt++) {
+		bc_rec = *rit;
+		if (!bc_rec->cfg_just_updated) {
+			bc_rec->thread_should_die = "DB entry deleted";
+			bc_rec_list.erase(rit);
+		}
 	}
 
 	bc_db_free_table(dbres);
