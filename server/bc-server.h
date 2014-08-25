@@ -46,6 +46,7 @@ public:
 	struct bc_device_config cfg;
 	struct bc_device_config cfg_update;
 	char                    cfg_dirty;
+	bool cfg_just_updated;
 	pthread_mutex_t		    cfg_mutex;
 
 	const int id;

@@ -611,6 +611,12 @@ static int bc_check_db(void)
 	struct bc_record *bc_rec;
 	BC_DB_RES dbres;
 	int re = 0;
+	int i;
+
+	for (i = bc_rec_list.size() - 1; i >= 0; i--) {
+		bc_rec = bc_rec_list[i];
+		bc_rec->cfg_just_updated = false;
+	}
 
 	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
 				"AvailableSources USING (device)");
@@ -632,6 +638,7 @@ static int bc_check_db(void)
 					"device configuration");
 				re |= -1;
 			}
+			bc_rec->cfg_just_updated = true;
 			continue;
 		}
 
@@ -664,9 +671,19 @@ static int bc_check_db(void)
 		}
 
 		cur_threads++;
+		bc_rec->cfg_just_updated = true;
 		pthread_mutex_lock(&bc_rec_list_lock);
 		bc_rec_list.push_back(bc_rec);
 		pthread_mutex_unlock(&bc_rec_list_lock);
+	}
+
+	// Traverse bc_rec_list and remove entries not having "have just been updated" flag set
+	for (i = bc_rec_list.size() - 1; i >= 0; i--) {
+		bc_rec = bc_rec_list[i];
+		if (!bc_rec->cfg_just_updated) {
+			bc_rec->thread_should_die = "DB entry deleted";
+			bc_rec_list.erase(bc_rec_list.begin() + i);
+		}
 	}
 
 	bc_db_free_table(dbres);
