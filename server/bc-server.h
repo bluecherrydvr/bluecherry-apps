@@ -42,9 +42,7 @@ public:
 	 * cfg_update is accessed only when holding the mutex, as it is written
 	 * by the main thread (for updating device config from the database) and
 	 * used by the device thread to update the active configuration.
-	 *
-	 * The cfg_dirty flag may be read without acquiring the mutex first, but
-	 * must always be written while holding the mutex. */
+	 */
 	struct bc_device_config cfg;
 	struct bc_device_config cfg_update;
 	char                    cfg_dirty;
