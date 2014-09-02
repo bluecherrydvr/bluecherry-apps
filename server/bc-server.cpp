@@ -623,6 +623,11 @@ static int bc_check_db(void)
 		bc_rec->cfg_just_updated = false;
 	}
 
+	for (std::vector<bc_record*>::reverse_iterator rit = bc_rec_list.rend(); rit != bc_rec_list.rbegin(); rt++) {
+		bc_rec = *rit;
+		bc_rec->cfg_just_updated = false;
+	}
+
 	dbres = bc_db_get_table("SELECT * from Devices LEFT JOIN "
 				"AvailableSources USING (device)");
 
