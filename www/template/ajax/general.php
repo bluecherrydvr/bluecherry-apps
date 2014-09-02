@@ -16,6 +16,21 @@
 <div class='container-separator'>
 	<div class='title'><?php echo G_PERF_TITLE; ?></div>
 	<div><label><?php echo G_DISABLE_VERSION_CHECK; ?><span class='sub'><?php echo G_DISABLE_VERSION_CHECK_EX; ?></span></label><input type='checkbox' name='G_DISABLE_VERSION_CHECK' <?php echo (($global_settings->data['G_DISABLE_VERSION_CHECK']==0) ? 'checked' : ''); ?>></div>
+	<div>
+            <label style="display: block; heigth: 50px">
+                <?php echo G_DATA_SOURCE ?>
+            </label>
+            <div style="float: left; height: 50px; width: 450px">
+                <input type="radio" name="G_DATA_SOURCE" value="local" style="width: 30px;"
+                       <?php echo $global_settings->data['G_DATA_SOURCE'] != 'live' ? ' checked="checked"' : '' ?> /> 
+                    <?php echo G_DATA_SOURCE_LOCAL ?>
+                <br clear="all" />
+                <input type="radio" name="G_DATA_SOURCE" value="live"  style="width: 30px;"
+                       <?php echo $global_settings->data['G_DATA_SOURCE'] == 'live' ? ' checked="checked"' : '' ?> /> 
+                    <?php echo G_DATA_SOURCE_LIVE ?>
+            </div>
+        </div>
+        
 	<div><label><?php echo G_DISABLE_IP_C_CHECK; ?><span class='sub'><?php echo G_DISABLE_IP_C_CHECK_EX; ?></span></label><input type='checkbox' name='G_DISABLE_IP_C_CHECK' <?php echo (($global_settings->data['G_DISABLE_IP_C_CHECK']==1) ? 'checked' : ''); ?>></div>
 	<div><label><?php echo G_DISABLE_WEB_STATS; ?><span class='sub'><?php echo G_DISABLE_WEB_STATS_EX; ?></span></label><input type='checkbox' name='G_DISABLE_WEB_STATS' <?php echo (($global_settings->data['G_DISABLE_WEB_STATS']==1) ? 'checked' : ''); ?>></div>
 </div>

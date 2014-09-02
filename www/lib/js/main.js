@@ -1262,14 +1262,20 @@ getInfo = function(t, m, x, containerId, s){
 							if (containerId) { 
 								$(containerId).set('html', html)}
 							else {
+								var camName = (xml.getElementsByTagName("camName")[0].childNodes[0].nodeValue || '');
 								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
 								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
 								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
 								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
+								var user = (xml.getElementsByTagName("user")[0].childNodes[0].nodeValue || '');
+								var pass = (xml.getElementsByTagName("pass")[0].childNodes[0].nodeValue || '');
+								$('camName').set('value', camName);
 								$('mjpeg').set('value', mjpegPath);
 								$('rtsppath').set('value', rtspPath);
 								$('port').set('value', rtspPort);
 								$('portMjpeg').set('value', mjpegPort);
+								$('user').set('value', user);
+								$('pass').set('value', pass);
 								if (mjpegPath=='' || rtspPort=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
 									expandAdvancedSettings('open');
 								} else {
