@@ -1,3 +1,10 @@
+bluecherry (1:2.3.8) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fix: postinst: Avoid spare INSERT of G_DB_VERSION by doing previous DELETE
+  * Hangup device thread if it is removed from DB
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 02 Sep 2014 11:10:43 -0500
+
 bluecherry (1:2.3.7) precise trusty lucid wheezy; urgency=low
 
   * Update G_DB_VERSION in case of upgrade from 2.2 and later
