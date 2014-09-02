@@ -1,3 +1,9 @@
+bluecherry (1:2.2.4-3) precise trusty lucid wheezy; urgency=low
+
+  * Packaging fix: postinst: Avoid spare INSERT of G_DB_VERSION by doing previous DELETE
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 02 Sep 2014 11:07:21 -0500
+
 bluecherry (1:2.2.4-2) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix: Update G_DB_VERSION in case of upgrade from 2.2 and later
