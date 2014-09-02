@@ -19,11 +19,7 @@ if (!empty($_POST)){
 	$result = ipCamera::create($_POST);
 	data::responseXML($result[0], $result[1]);
 	exit;
-} 
-
-if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
-	$new_list_available = $version->checkIpTablesVersion();
-
+}
 	
 #template
 include_once('../template/ajax/addip.php');

@@ -75,6 +75,9 @@ define('G_DISABLE_IP_C_CHECK', 'Disable IP camera connectivity check');
 define('G_DISABLE_IP_C_CHECK_EX', 'May improve web UI performance');
 define('G_DISABLE_WEB_STATS', 'Disable Stats display in the web UI');
 define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
+define('G_DATA_SOURCE', 'List source');
+define('G_DATA_SOURCE_LOCAL', 'Local list');
+define('G_DATA_SOURCE_LIVE', 'Live (You need an active internet connection)');
 
 define('G_SMTP_TITLE', 'SMTP server configuration');
 define('G_PERF_TITLE', 'Performance/connectivity');
