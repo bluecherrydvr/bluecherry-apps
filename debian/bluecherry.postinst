@@ -255,6 +255,7 @@ case "$1" in
 					echo "DB_VERISON $DB_VERSION after applying DB patches is different from `cat /usr/share/bluecherry/installed_db_version` in /usr/share/bluecherry/installed_db_version" >&2
 					false
 				fi
+				echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -u"$user" -p"$password" -D"$dbname"
 				echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
 			fi # Whether old and new DB version match
 		fi # Whether there was an upgrade or fresh install
