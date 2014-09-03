@@ -8,7 +8,7 @@
 
 defined('INDVR') or exit();
 
-define('BLUECHERRY_PATH', realpath(dirname(__FILE__) . '/../../'));
+define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
 
 if (empty($nload)){
 	include("lang.php");
@@ -63,7 +63,7 @@ function getOs(){
 function getReadOnlyDb() {
     static $adapter;
     if(null === $adapter) {
-        $adapter = new PDO('sqlite:' . BLUECHERRY_PATH . '/sqlite/cameras.db');
+        $adapter = new PDO('sqlite:' . SQLITE_DB);
     }
     return $adapter;
 }
@@ -940,19 +940,22 @@ class Cameras
         } else {
             $adapter = getReadOnlyDb();
             $stmt = $adapter->prepare(
-                'SELECT * ' . 
-                'FROM cameras ' . 
+                'SELECT C.*, M.manufacturer AS manufacturer_id ' . 
+                'FROM cameras AS c ' . 
+                'JOIN manufacturers AS M ON c.manufacturer = M.id ' . 
                 'WHERE api_id = ? '
             );
             $stmt->execute(array($id));
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
         }
+        $data['rtsp_port'] = 
+            strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
         $data = "
                 <camName><![CDATA[{$data['model']}]]></camName>
                 <mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
                 <rtspPath><![CDATA[{$data['h264_url']}]]></rtspPath>
                 <mjpegPort><![CDATA[80]]></mjpegPort>
-                <rtspPort><![CDATA[554]]></rtspPort>
+                <rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
                 <resolutions><![CDATA[{$data['resolution']}]]></resolutions>
                 <user><![CDATA[{$data['default_username']}]]></user>
                 <pass><![CDATA[{$data['default_password']}]]></pass>
