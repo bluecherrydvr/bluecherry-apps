@@ -63,10 +63,10 @@ echo "
 
 HELP:
 
-    Usage: command path-to-file [--create-tables]
+    Usage: command path-to-file [--create-tables | -c]
 
     path-to-file must be writable
-    --create-tables is an optional argument, when provided table creation statement will be prepend to file
+    --create-tables | -c is an optional argument, when provided table creation statement will be prepend to file
 
 ";
 die;
@@ -195,9 +195,15 @@ if(!is_writeable($file) && !touch($file)) {
 die;
 }
 
-echo PHP_EOL . "Importing new data to " . realpath($file) . "." . PHP_EOL . PHP_EOL;
+echo PHP_EOL . "You are about to import Cambase data into a local dump file.";
+echo PHP_EOL . "NOTE: This is a long operation, it can take several minutes.";
+echo PHP_EOL . "Press [ENTER] key to start ... Press CTRL-C To exit.";
 
-if(in_array('--create-tables', $argv)){
+fgets(STDIN);
+
+echo PHP_EOL . "Importing new data to " . realpath($file) . "." . PHP_EOL;
+
+if(in_array('--create-tables', $argv) || in_array('-c', $argv)){
     file_put_contents($file, $tables);
 }
 
