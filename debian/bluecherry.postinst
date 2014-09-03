@@ -258,18 +258,16 @@ case "$1" in
 				echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
 			fi # Whether old and new DB version match
 		fi # Whether there was an upgrade or fresh install
-		
-		#Creating read-only SQLITE Database
+		/usr/share/bluecherry/compare.sh >&2
+		trap - ERR
+
+                #Creating read-only SQLITE Database
 		if [ ! -d "/usr/share/bluecherry/sqlite" ]; then
 			# Create directory if it doesn't exist
 			mkdir /usr/share/bluecherry/sqlite
 		fi
 		chown www-data /usr/share/bluecherry/sqlite
-		sqlite3 /usr/share/bluecherry/sqlite/cameras.db < /usr/share/bluecherry/camera_info_sqlite_cmd.sql
-
-
-		/usr/share/bluecherry/compare.sh >&2
-		trap - ERR
+		echo ".read /usr/share/bluecherry/camera_info_sqlite_data.sql" | sqlite3 /usr/share/bluecherry/sqlite/cameras.db
 
 		# End of DB management
 		;;
