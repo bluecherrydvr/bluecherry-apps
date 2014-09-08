@@ -950,6 +950,15 @@ class Cameras
         }
         $data['rtsp_port'] = 
             strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+        
+        if(!empty($data['mjpeg_url'])) {
+            $data['mjpeg_url'] = '/' . ltrim($data['mjpeg_url'], '/');
+        }
+        
+        if(!empty($data['h264_url'])) {
+            $data['h264_url'] = '/' . ltrim($data['h264_url'], '/');
+        }
+        
         $data = "
                 <camName><![CDATA[{$data['model']}]]></camName>
                 <mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
