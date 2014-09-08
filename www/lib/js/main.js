@@ -1287,6 +1287,13 @@ getInfo = function(t, m, x, containerId, s){
 								} else {
 									expandAdvancedSettings('close');
 								}
+
+						        if(rtspPath == '') {
+						            $('protocol').set('value', 'IP-MJPEG');
+						        } else {
+						            $('protocol').set('value', 'IP-RTSP');
+						        }
+						        $('protocol').fireEvent('change');
 							}
 							switch (containerId){
 								case 'modelSelector':
