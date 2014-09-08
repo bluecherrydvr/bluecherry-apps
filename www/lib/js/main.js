@@ -1272,7 +1272,10 @@ getInfo = function(t, m, x, containerId, s){
 								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
 								var user = (xml.getElementsByTagName("user")[0].childNodes[0].nodeValue || '');
 								var pass = (xml.getElementsByTagName("pass")[0].childNodes[0].nodeValue || '');
-								$('camName').set('value', camName);
+								if(null !== $('camName')) {
+						                    $('camName').set('value', camName);
+						                }
+
 								$('mjpeg').set('value', mjpegPath);
 								$('rtsppath').set('value', rtspPath);
 								$('port').set('value', rtspPort);
