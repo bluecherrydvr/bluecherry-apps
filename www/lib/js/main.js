@@ -368,7 +368,10 @@ DVRPageScript = new Class({
 				});
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
-					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
+					if (this.value == 'Please choose manufacturer') { 
+						$$('#aip input').set('disabled', true); //if reset
+						$('model_selector').setStyle('display', 'inline');
+					}
 					if (this.value == 'Generic') expandAdvancedSettings();
 				});
 				/*protocol addition*/
