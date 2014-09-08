@@ -659,7 +659,9 @@ function ipCameras($type, $parameter = false){
         $dbo = getReadOnlyDb();
 	switch($type){
             case 'manufacturers':
-                return $dbo->query('SELECT manufacturer FROM manufacturers')
+                return $dbo->query('SELECT manufacturer ' . 
+                                   'FROM manufacturers ' . 
+                                   'ORDER BY manufacturer ASC')
                            ->fetchAll(PDO::FETCH_ASSOC);
                 break;
             case 'models':
@@ -868,18 +870,16 @@ class Manufacturers
                 } 
                 $data = json_decode($data, true);
                 foreach($data['data']['manufacturers'] as $manufacturer) {
-                    $list[] = array(
-                        'manufacturer'  => $manufacturer['name'],
-                        'id'            => $manufacturer['id']
-                    );
+                    $list[$manufacturer['id']] = $manufacturer['name'];
                 }
                 $page++;
             } while($page <= $data['data']['paging']['number_of_pages']);
         } else {
             $adapter = getReadOnlyDb();
-            $list = $adapter->query('SELECT manufacturer, model_id AS id FROM manufacturers');
+            $list = $adapter->query('SELECT manufacturer FROM manufacturers');
             $list = $list->fetchAll(PDO::FETCH_ASSOC);
         }
+        asort($list);
         return $list;
     }
 }
