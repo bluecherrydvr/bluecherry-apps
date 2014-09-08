@@ -544,8 +544,7 @@ class ipCamera{
 		#prepare model name
 			$data['model'] = (!empty($rawData['models'])) ? $rawData['models'] : false;
 		#prepare driver
-			$driver = data::query("SELECT driver FROM ipCameras WHERE model='{$rawData['models']}'");
-			$data['driver'] = $driver[0]['driver'];			
+			$data['driver'] = '';
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			//var_dump_pre($data); exit();
