@@ -43,3 +43,19 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 	<div><label id="addipLabel"></label><input id="saveButton" type="Submit" value="<?php echo SAVE_CHANGES; ?>" /></div>
 </div>
 </FORM>
+<script type="text/javascript">
+    setTimeout(function(){
+        $('models').addEvent('change', function(){
+            if (this.value != 'Please choose model'){
+                $$('#aip input').set('disabled', false);
+                if (this.value == 'Generic'){
+                    expandAdvancedSettings('open');
+                } else {
+                    getInfo('ops', 'model', this.value, false);
+                }
+            } else {
+                $$('#aip input').set('disabled', true);
+            }
+        })
+    }, 800);
+</script>
