@@ -368,7 +368,10 @@ DVRPageScript = new Class({
 				});
 				$('manufacturers').addEvent('change', function(){
 					getInfo('model', 'manufacturer' , this.value, 'modelSelector');
-					if (this.value == 'Please choose manufacturer') $$('#aip input').set('disabled', true); //if reset
+					if (this.value == 'Please choose manufacturer') { 
+						$$('#aip input').set('disabled', true); //if reset
+						$('model_selector').setStyle('display', 'inline');
+					}
 					if (this.value == 'Generic') expandAdvancedSettings();
 				});
 				/*protocol addition*/
@@ -380,7 +383,38 @@ DVRPageScript = new Class({
 					}
 				});
 				/*END protocol addition*/
-				
+
+                                $('report-incorrect-data').addEvent('click', function(){
+                                    var z1ws6wwb1p41rs9;
+                                    (function(d, t) {
+                                        var s = d.createElement(t), options = {
+                                            'userName':'bluecherry',
+                                            'formHash':'z1ws6wwb1p41rs9',
+                                            'autoResize':true,
+                                            'height':'612',
+                                            'async':true,
+                                            'host':'wufoo.com',
+                                            'header':'show',
+                                            'ssl':true
+                                        };
+                                        s.src = ('https:' == d.location.protocol ? 'https://' : 'http://') 
+                                              + 'www.wufoo.com/scripts/embed/form.js';
+                                        s.onload = s.onreadystatechange = function() {
+                                            var rs = this.readyState; 
+                                            if (rs) 
+                                                if (rs != 'complete') 
+                                                    if (rs != 'loaded') return;
+                                            try { 
+                                                z1ws6wwb1p41rs9 = new WufooForm();
+                                                z1ws6wwb1p41rs9.initialize(options);
+                                                z1ws6wwb1p41rs9.display(); 
+                                                $('wufoo-z1ws6wwb1p41rs9').setStyle('display', 'inline');
+                                            } catch (e) {}
+                                        };
+                                        var scr = d.getElementsByTagName(t)[0], par = scr.parentNode; 
+                                        par.insertBefore(s, scr);
+                                    })(document, 'script');
+                                });
 				
 				buttonMorph($('saveButton'), '#8bb8');
 				$('settingsForm').set('send', {
@@ -1262,19 +1296,35 @@ getInfo = function(t, m, x, containerId, s){
 							if (containerId) { 
 								$(containerId).set('html', html)}
 							else {
+								var camName = (xml.getElementsByTagName("camName")[0].childNodes[0].nodeValue || '');
 								var mjpegPath = (xml.getElementsByTagName("mjpegPath")[0].childNodes[0].nodeValue || '');
 								var rtspPath = (xml.getElementsByTagName("rtspPath")[0].childNodes[0].nodeValue || '');
 								var mjpegPort = (xml.getElementsByTagName("mjpegPort")[0].childNodes[0].nodeValue || '');
 								var rtspPort = (xml.getElementsByTagName("rtspPort")[0].childNodes[0].nodeValue || '');
+								var user = (xml.getElementsByTagName("user")[0].childNodes[0].nodeValue || '');
+								var pass = (xml.getElementsByTagName("pass")[0].childNodes[0].nodeValue || '');
+								if(null !== $('camName')) {
+						                    $('camName').set('value', camName);
+						                }
+
 								$('mjpeg').set('value', mjpegPath);
 								$('rtsppath').set('value', rtspPath);
 								$('port').set('value', rtspPort);
 								$('portMjpeg').set('value', mjpegPort);
+								$('user').set('value', user);
+								$('pass').set('value', pass);
 								if (mjpegPath=='' || rtspPort=='' || rtspPath == '' || mjpegPort== ''){ //in case paths are not in driver DB or empty
 									expandAdvancedSettings('open');
 								} else {
 									expandAdvancedSettings('close');
 								}
+
+						        if(rtspPath == '') {
+						            $('protocol').set('value', 'IP-MJPEG');
+						        } else {
+						            $('protocol').set('value', 'IP-RTSP');
+						        }
+						        $('protocol').fireEvent('change');
 							}
 							switch (containerId){
 								case 'modelSelector':

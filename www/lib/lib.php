@@ -8,6 +8,8 @@
 
 defined('INDVR') or exit();
 
+define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
+
 if (empty($nload)){
 	include("lang.php");
 	include("var.php");
@@ -49,6 +51,21 @@ function is_assoc($array){
 
 function getOs(){
 	$it = $_SERVER['HTTP_USER_AGENT'];
+}
+
+/**
+ * Returns SQLite Database connection
+ * 
+ * @staticvar PDO $adapter
+ * @return \PDO
+ */
+
+function getReadOnlyDb() {
+    static $adapter;
+    if(null === $adapter) {
+        $adapter = new PDO('sqlite:' . SQLITE_DB);
+    }
+    return $adapter;
 }
 
 
@@ -458,8 +475,15 @@ class ipCamera{
 			}
 		}
 		#get manufacturer and model information
-		$tmp = data::query("SELECT * FROM ipCameras WHERE model='{$this->info['model']}'");
-		if (!empty($tmp)) { $this->info['manufacturer'] = $tmp[0]['manufacturer']; };
+                $stmt = getReadOnlyDb()->prepare(
+                    'SELECT m.manufacturer ' . 
+                    'FROM cameras AS c ' . 
+                    'JOIN manufacturers AS m ON c.manufacturer = m.id ' . 
+                    'WHERE api_id = ?'
+                );
+                $stmt->execute(array($this->info['model']));
+		$tmp = $stmt->fetch(PDO::FETCH_ASSOC);
+		if (!empty($tmp)) { $this->info['manufacturer'] = $tmp['manufacturer']; };
 		
 		if ($this->info['ptz_control_protocol']){ #if protocol is set get the preset
 			$this->ptzControl = new cameraPtz($this);
@@ -520,8 +544,7 @@ class ipCamera{
 		#prepare model name
 			$data['model'] = (!empty($rawData['models'])) ? $rawData['models'] : false;
 		#prepare driver
-			$driver = data::query("SELECT driver FROM ipCameras WHERE model='{$rawData['models']}'");
-			$data['driver'] = $driver[0]['driver'];			
+			$data['driver'] = '';
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			//var_dump_pre($data); exit();
@@ -632,17 +655,33 @@ class card {
 
 function ipCameras($type, $parameter = false){
 	$parameter = ($parameter) ? database::escapeString($parameter) : false;
+        $dbo = getReadOnlyDb();
 	switch($type){
-		case 'manufacturers':
-			return data::query("SELECT manufacturer FROM ipCameras GROUP by manufacturer");
+            case 'manufacturers':
+                return $dbo->query('SELECT manufacturer ' . 
+                                   'FROM manufacturers ' . 
+                                   'ORDER BY manufacturer ASC')
+                           ->fetchAll(PDO::FETCH_ASSOC);
+                break;
+            case 'models':
+                $stmt = $dbo->prepare(
+                    'SELECT api_id, model ' . 
+                    'FROM cameras AS C ' . 
+                    'JOIN manufacturers AS M ON C.manufacturer = M.id ' . 
+                    'WHERE M.manufacturer = ?'
+                );
+                $stmt->execute(array($parameter));
+                return $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 		break;
-		case 'models':
-			return data::query("SELECT model FROM ipCameras WHERE manufacturer='{$parameter}' ORDER BY model ASC");
-		break;
-		case 'options':
-			$data = data::query("SELECT * FROM ipCameras WHERE model='{$parameter}'");
-			$driver = data::query("SELECT * FROM ipCameraDriver WHERE id='{$data[0]['driver']}'");
-			return (is_array($driver[0])) ? array_merge($data[0], $driver[0]) : $data[0];
+            case 'options':
+                $stmt = $dbo->prepare(
+                    'SELECT * ' . 
+                    'FROM cameras AS C ' . 
+                    'WHERE C.model = ? ' . 
+                    'OR C.api_id = ?'
+                );
+                $stmt->execute(array($parameter, $parameter));
+                return $stmt->fetch(PDO::FETCH_ASSOC);
 		break;
 	}
 }
@@ -797,6 +836,10 @@ class globalSettings{
 			data::query("INSERT INTO GlobalSettings VALUES('G_MAX_RECORD_TIME', '900')", true);
 			$this->data['G_MAX_RECORD_TIME'] = 900;
 		}
+                if (empty($this->data['G_DATA_SOURCE'])) {
+			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'local')", true);
+			$this->data['G_DATA_SOURCE'] = 'local';
+		}
 	}
 	public static function getParameter($parameter){
 		$tmp = data::getObject('GlobalSettings', 'parameter', $parameter);
@@ -805,6 +848,153 @@ class globalSettings{
 	private function getGlobalInfo(){
 		return data::getObject('GlobalSettings');
 	}
+}
+
+class Manufacturers
+{
+    
+    const API_URL = 'http://www.cambase.io:80/api/v1/manufacturers.json?page=%d';
+    
+    public static function getList()
+    {
+        global $global_settings;
+        $list = array();
+        if($global_settings->data['G_DATA_SOURCE'] == 'live') {
+            $page = 1;
+            do {
+                $url = sprintf(self::API_URL, $page);
+                $data = @file_get_contents($url);
+                if(!$data) {
+                    break;
+                } 
+                $data = json_decode($data, true);
+                foreach($data['data']['manufacturers'] as $manufacturer) {
+                    $list[$manufacturer['id']] = $manufacturer['name'];
+                }
+                $page++;
+            } while($page <= $data['data']['paging']['number_of_pages']);
+        } else {
+            $adapter = getReadOnlyDb();
+            $list = $adapter->query('SELECT manufacturer FROM manufacturers');
+            $list = $list->fetchAll(PDO::FETCH_ASSOC);
+        }
+        asort($list);
+        return $list;
+    }
+}
+
+class Cameras
+{
+    
+    const API_SEARCH_URL = 
+        'http://www.cambase.io/api/v1/cameras/search.json?page=%d&q%%5Bmanufacturer_name_cont%%5D=%s';
+    
+    const API_DETAILS_URL = 'http://www.cambase.io:80/api/v1/cameras/%s.json';
+    
+    public static function getList($manufacturer)
+    {
+        global $global_settings;
+        $list = array();
+        if($global_settings->data['G_DATA_SOURCE'] == 'live') {
+            $page = 1;
+            do {
+                $url = sprintf(self::API_SEARCH_URL, $page, urlencode($manufacturer));
+                $data = @file_get_contents($url);
+                if(!$data) {
+                    break;
+                } 
+                $data = json_decode($data, true);
+                foreach($data['data']['cameras'] as $camera) {
+                    $list[] = array('model' => $camera['id']);
+                }
+                $page++;
+            } while($page <= $data['data']['paging']['number_of_pages']);
+        } else {
+            $adapter = getReadOnlyDb();
+            $list = $adapter->prepare(
+                'SELECT api_id, model ' . 
+                'FROM cameras AS C ' . 
+                'JOIN manufacturers AS M ON C.manufacturer = M.id ' . 
+                'WHERE M.manufacturer = ? ' . 
+                'ORDER BY model ASC'
+            );
+            $list->execute(array($manufacturer));
+            $list = $list->fetchAll(PDO::FETCH_KEY_PAIR);
+        }
+        return $list;
+    }
+    
+    public static function getCamDetails($id)
+    {
+        global $global_settings;
+        if($global_settings->data['G_DATA_SOURCE'] == 'live') {
+            $url = sprintf(self::API_DETAILS_URL, urlencode($id));
+            $data = @file_get_contents($url);
+            if(!$data) {
+                return '';
+            } 
+            $data = json_decode($data, true);
+            array_walk($data['cameras'], array('Cameras', 'sanitize'));
+            $data = $data['cameras'];
+        } else {
+            $adapter = getReadOnlyDb();
+            $stmt = $adapter->prepare(
+                'SELECT C.*, M.manufacturer AS manufacturer_id ' . 
+                'FROM cameras AS c ' . 
+                'JOIN manufacturers AS M ON c.manufacturer = M.id ' . 
+                'WHERE api_id = ? '
+            );
+            $stmt->execute(array($id));
+            $data = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+        $data['rtsp_port'] = 
+            strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+        
+        if(!empty($data['mjpeg_url'])) {
+            $data['mjpeg_url'] = '/' . ltrim($data['mjpeg_url'], '/');
+        }
+        
+        if(!empty($data['h264_url'])) {
+            $data['h264_url'] = '/' . ltrim($data['h264_url'], '/');
+        }
+        
+        $data = "
+                <camName><![CDATA[{$data['model']}]]></camName>
+                <mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
+                <rtspPath><![CDATA[{$data['h264_url']}]]></rtspPath>
+                <mjpegPort><![CDATA[80]]></mjpegPort>
+                <rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
+                <resolutions><![CDATA[{$data['resolution']}]]></resolutions>
+                <user><![CDATA[{$data['default_username']}]]></user>
+                <pass><![CDATA[{$data['default_password']}]]></pass>
+        ";
+        data::responseXml(true, true, $data);
+    }
+    
+    /**
+     * Function to be used as array_walk callback for preparing data
+     * 
+     * 
+     * @param mixed $value The array element value
+     * @param mixed $key   The array element key
+     * 
+     */
+    
+    public static function sanitize(&$value, $key)
+    {
+        if(in_array(
+            $key, 
+            array('jpeg_url', 'h264_url', 'mjpeg_url', 
+                  'default_username', 'default_password')
+        )) {
+            $value = str_replace(
+                array('Unknown', 'unknown', '<blank>', 'blank', 'none', 'None', 
+                      'n/a', 'User defined', 'user defined'), 
+                '', 
+                $value
+            );
+        }
+    }
 }
 
 $global_settings = new globalSettings;

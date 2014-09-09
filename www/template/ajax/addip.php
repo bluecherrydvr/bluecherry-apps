@@ -8,22 +8,13 @@ if ($mode=='model'){
 		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
 		exit();
 	}
-	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), ipCameras('models', $_GET['manufacturer'])), '', 'models');
+	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), Cameras::getList($_GET['manufacturer'])), '', 'models');
 	exit;
 };
 if ($mode=='ops') {
-	$data = ipCameras('options', $_GET['model']);
-	$data = "
-		<mjpegPath><![CDATA[{$data['mjpeg_path']}]]></mjpegPath>
-		<rtspPath><![CDATA[{$data['rtsp_path']}]]></rtspPath>
-		<mjpegPort><![CDATA[{$data['mjpeg_port']}]]></mjpegPort>
-		<rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
-		<resolutions><![CDATA[{$data['resolutions']}]]></resolutions>
-	";
-	data::responseXml(true, true, $data);
-	exit;
+    Cameras::getCamDetails($_GET['model']);
+    exit;
 };
-
 
 ?>
 	
@@ -31,16 +22,14 @@ if ($mode=='ops') {
 <hr />
 <p><?php echo AIP_SUBHEADER; ?></p>
 
-<div id="message" class="INFO"><?php echo IPCAM_WIKI_LINK; 
-	if (!empty($new_list_available)) {
-		echo '<div id="updatelistContainer"><hr>'.AIP_NEW_LIST_AVAILABLE." <div id='updatelist'>".CLICK_HERE_TO_UPDATE."</div>.</div>";
-	};
-?></div>
+<div id="message" class="INFO">
+    <?php echo IPCAM_WIKI_LINK ?>
+</div>
 <FORM id="settingsForm" action="/ajax/addip.php" method="post">
 <div id="aip">
 	<input type="hidden" name="mode" value="addip" />
-	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(array_merge(array(AIP_CHOOSE_MANUF), ipCameras('manufacturers')), '', 'manufacturers'); ?></div>
-	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(array(AIP_CH_MAN_FIRST), AIP_CH_MAN_FIRST, 'models', '', true); ?></span></div>
+        <div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(array_merge(array(AIP_CHOOSE_MANUF), Manufacturers::getList()), '', 'manufacturers'); ?></div>
+	<div id=model_selector" style="display: none"><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(array(AIP_CH_MAN_FIRST), AIP_CH_MAN_FIRST, 'models', '', true); ?></span></div>
 	<!--<div><label id="addipLabel"><?php echo AIP_CHOOSE_FPSRES; ?>:</label><span id="fpsresSelector"><?php echo arrayToSelect(array(AIP_CH_MOD_FIRST), AIP_CH_MOD_FIRST, 'fpsres', '', true); ?></span></div>!-->
 	<div><label id="addipLabel"><?php echo AIP_CAMERA_NAME; ?></label><input type="Text" disabled="disabled" id="camName" name="camName" /></div>
 	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><input type="Text" disabled="disabled" id="ipAddr" name="ipAddr" /></div>
@@ -68,3 +57,11 @@ if ($mode=='ops') {
 	
 </div>
 </FORM>
+
+<a id="report-incorrect-data" href="javascript:;">
+    Report incorrect information
+</a>
+
+<div id="wufoo-z1ws6wwb1p41rs9" style="display: none">
+    Fill out my <a href="https://bluecherry.wufoo.com/forms/z1ws6wwb1p41rs9">online form</a>.
+</div>
