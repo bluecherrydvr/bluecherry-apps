@@ -57,3 +57,11 @@ if ($mode=='ops') {
 	
 </div>
 </FORM>
+
+<a id="report-incorrect-data" href="javascript:;">
+    Report incorrect information
+</a>
+
+<div id="wufoo-z1ws6wwb1p41rs9" style="display: none">
+    Fill out my <a href="https://bluecherry.wufoo.com/forms/z1ws6wwb1p41rs9">online form</a>.
+</div>
