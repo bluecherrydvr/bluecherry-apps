@@ -284,33 +284,6 @@ CREATE TABLE `Users` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `ipCameraDriver`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `ipCameraDriver` (
-  `id` varchar(32) NOT NULL,
-  `rtsp_path` varchar(255) DEFAULT NULL,
-  `mjpeg_path` varchar(255) DEFAULT NULL,
-  `rtsp_port` int(8) DEFAULT NULL,
-  `mjpeg_port` int(8) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `ipCameras`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `ipCameras` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `type` varchar(30) DEFAULT NULL,
-  `manufacturer` varchar(30) DEFAULT NULL,
-  `model` varchar(30) DEFAULT NULL,
-  `compression` varchar(30) DEFAULT NULL,
-  `resolutions` varchar(250) DEFAULT NULL,
-  `driver` varchar(32) NOT NULL DEFAULT 'RTSP-GENERIC',
-  PRIMARY KEY (`id`),
-  KEY `driver` (`driver`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ipPtzCommandPresets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
