@@ -255,8 +255,7 @@ case "$1" in
 
 		mkdir -p /usr/share/bluecherry/sqlite
 		chown www-data /usr/share/bluecherry/sqlite  # to allow creation of lock file for sqlite db
-		rm /usr/share/bluecherry/sqlite/cameras.db || true
-		echo ".read /usr/share/bluecherry/camera_info_sqlite_data.sql" | sqlite3 /usr/share/bluecherry/sqlite/cameras.db
+		cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db
 
 		# End of DB management
 
