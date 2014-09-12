@@ -99,11 +99,17 @@ case "$1" in
 		rm /etc/php5/conf.d/bluecherry.ini || true
 
 		if [ ! -z `which service` ]; then
-			service apache2 reload || true
 			service rsyslog restart || true
 		else
-			invoke-rc.d apache2 reload || true
 			invoke-rc.d rsyslog restart || true
+		fi
+
+		# Stopping our site in Apache to avoid sudden DB modification or locking by our PHP scripts
+		# It turns out that disabling of site and reload don't help, so we just stop the whole Apache
+		if [ ! -z `which service` ]; then
+			service apache2 stop || true
+		else
+			invoke-rc.d apache2 stop || true
 		fi
 
 		if [ ! -e /var/lib/.bcins ]; then
@@ -189,14 +195,6 @@ case "$1" in
 				then
 					# If no version stored (pre-2.2 was installed):
 
-					# Stopping our site in Apache to avoid sudden DB modification by our PHP scripts
-					# It turns out that reload doesn't help sometimes, so we just stop the whole Apache
-					if [ ! -z `which service` ]; then
-						service apache2 stop || true
-					else
-						invoke-rc.d apache2 stop || true
-					fi
-
 					# Rename all tables to ${table}_bkp
 					for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2`
 					do
@@ -238,13 +236,6 @@ case "$1" in
 					export DB_VERSION=2020000 # to assist apply_db_patches() logics
 					apply_db_patches
 
-					# Reenable our site in Apache
-					if [ ! -z `which service` ]; then
-						service apache2 start || true
-					else
-						invoke-rc.d apache2 start || true
-					fi
-
 				else
 					# If there is a DB version stored (2.2 and newer was installed):
 					apply_db_patches  # uses $DB_VERSION value, exported
@@ -271,6 +262,14 @@ case "$1" in
 		echo ".read /usr/share/bluecherry/camera_info_sqlite_data.sql" | sqlite3 /usr/share/bluecherry/sqlite/cameras.db
 
 		# End of DB management
+
+		# Reenable our site in Apache
+		if [ ! -z `which service` ]; then
+			service apache2 start || true
+		else
+			invoke-rc.d apache2 start || true
+		fi
+
 		;;
 esac
 
