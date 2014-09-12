@@ -1,3 +1,12 @@
+bluecherry (1:2.3.9-2) precise trusty lucid wheezy; urgency=low
+
+  * Ship cameras.db blob
+  * rm sqlite db before filling in; simplify its dir creation
+  * stop apache for all the time of execution of postinst
+  * Add package dependency on sqlite3
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 12 Sep 2014 11:57:53 -0500
+
 bluecherry (1:2.3.9) precise trusty lucid wheezy; urgency=low
 
   * Use Cambase.io for IP cameras presets
