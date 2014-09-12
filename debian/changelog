@@ -1,3 +1,9 @@
+bluecherry (1:2.3.9) precise trusty lucid wheezy; urgency=low
+
+  * Use Cambase.io for IP cameras presets
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 12 Sep 2014 09:13:58 -0500
+
 bluecherry (1:2.3.8) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix: postinst: Avoid spare INSERT of G_DB_VERSION by doing previous DELETE
