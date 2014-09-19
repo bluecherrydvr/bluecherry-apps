@@ -527,6 +527,8 @@ end:
 }
 
 void media_writer::snapshot_decoder_cleanup(void) {
+	av_freep(&snapshot_decoder->extradata);
+	snapshot_decoder->extradata_size = 0;
 	avcodec_close(snapshot_decoder);
 	av_freep(&snapshot_decoder);
 }
