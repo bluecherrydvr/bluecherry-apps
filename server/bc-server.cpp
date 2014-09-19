@@ -518,6 +518,63 @@ int bc_get_media_loc(char *dest, size_t size)
 	return ret;
 }
 
+static bool is_media_max_age_exceeded()
+{
+	BC_DB_RES dbres;
+	long start;
+	int max_age;
+	long now;
+	bool exceeds_max_age;
+
+	/* There's no binary search key at timestamp fields, I see no possibility
+	 * for smart single no-overhead SQL query to determine the requested fact
+	 */
+
+	// Get max allowed recording age
+	dbres = bc_db_get_table("SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_AGE' LIMIT 1");
+	if (!dbres)
+		return false;
+
+	// No setting, unlimited age allowed
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		return false;
+	}
+
+	max_age = bc_db_get_val_int(dbres, "value");
+	bc_db_free_table(dbres);
+
+	if (max_age <= 0) {
+		bc_log(Error, "is_media_max_age_exceeded(): max_age <= 0, %d, illegal value, aborting further checks", max_age);
+		return false;
+	}
+
+	// Get oldest recording date
+	dbres = bc_db_get_table("SELECT start FROM Media WHERE ORDER BY id ASC LIMIT 1");
+	if (!dbres)
+		return false;
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_db_free_table(dbres);
+		return false;
+	}
+
+	start = bc_db_get_val_int(dbres, "start");
+	bc_db_free_table(dbres);
+
+	if (start <= 0) {
+		bc_log(Error, "is_media_max_age_exceeded(): start <= 0, %ld, illegal value, aborting further checks", start);
+		return false;
+	}
+
+	now = time(NULL);
+
+	exceeds_max_age = start < now - max_age;
+	bc_log(Info, "Oldest recording is dated with timestamp %ld, now %ld, max_age %d. Too old? %s", start, now, max_age, exceeds_max_age ? "YES" : "NO");
+
+	return exceeds_max_age;
+}
+
 static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
@@ -563,17 +620,18 @@ static int bc_cleanup_media()
 			bc_status_component_error("Database error during Media cleanup");
 		}
 
-		/* Every four files removed check if enough space has been
-		 * freed.
-		 */
-		if ((removed & 3) == 0) {
-			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-				float used = path_used_percent(media_stor[i].path);
-				if (used >= 0 && used <= media_stor[i].min_thresh)
-					goto done;
+		/* Check if the conditions changed */
+		bool enough_space_available = false;
+		for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+			float used = path_used_percent(media_stor[i].path);
+			if (used >= 0 && used <= media_stor[i].min_thresh) {
+				enough_space_available = true;
+				break;
 			}
 		}
-        }
+		if (enough_space_available && !is_media_max_age_exceeded())
+			goto done;
+	}
 
 done:
 	bc_db_free_table(dbres);
@@ -591,16 +649,19 @@ static int bc_check_media(void)
 	pthread_mutex_lock(&media_lock);
 
 	int ret = 0;
+	bool storage_overloaded = true;
 
 	/* If there's some space left, skip cleanup */
 	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (!is_storage_full(&media_stor[i]))
-			goto out;
+		if (!is_storage_full(&media_stor[i])) {
+			storage_overloaded = false;
+			break;
+		}
 	}
 
-	ret = bc_cleanup_media();
+	if (storage_overloaded || is_media_max_age_exceeded())
+		ret = bc_cleanup_media();
 
- out:
 	pthread_mutex_unlock(&media_lock);
 
 	return ret;
