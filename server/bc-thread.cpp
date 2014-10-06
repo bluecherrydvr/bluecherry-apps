@@ -319,24 +319,24 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	int ret;
 	bc_record *bc_rec;
 	struct bc_handle *bc = NULL;
+	const char *state = "CONFIGURATION ERROR";
 
 	if (bc_db_get_val_bool(dbres, "disabled"))
 		return 0;
+
+	bc_rec = new bc_record(id);
 
 	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 	const char *video_type = bc_db_get_val(dbres, "video_type", NULL);
 	if (signal_type && video_type && strcasecmp(signal_type, video_type)) {
 		bc_status_component_error("Video type mismatch for device %d "
 			"(driver is %s, device is %s)", id, video_type, signal_type);
-		return 0;
+		goto fail;
 	}
-
-	bc_rec = new bc_record(id);
 
 	if (bc_device_config_init(&bc_rec->cfg, dbres)) {
 		bc_status_component_error("Database error while initializing device %d", id);
-		delete bc_rec;
-		return 0;
+		goto fail;
 	}
 	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
 
@@ -348,8 +348,8 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		/* XXX should be an event */
 		bc_rec->log.log(Error, "Error opening device");
 		bc_status_component_error("Error opening device %d", id);
-		delete bc_rec;
-		return 0;
+		state = "OPENING ERROR";
+		goto fail;
 	}
 
 	bc->__data = bc_rec;
@@ -370,8 +370,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
 		if (ret) {
 			bc_status_component_error("Error setting controls on device %d", id);
-			delete bc_rec;
-			return NULL;
+			goto fail;
 		}
 		ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
 		if (ret)
@@ -381,11 +380,16 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_status_component_error("Failed to start thread");
-		delete bc_rec;
-		return 0;
+		state = "INTERNAL ERROR";
+		goto fail;
 	}
 
 	return bc_rec;
+
+fail:
+	bc_rec->notify_device_state(state);
+	delete bc_rec;
+	return NULL;
 }
 
 // XXX Many other members of bc_record are ignored here.

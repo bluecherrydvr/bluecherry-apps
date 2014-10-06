@@ -87,11 +87,11 @@ public:
 	bool update_motion_thresholds();
 
 	void getStatusXml(pugi::xml_node &xmlnode);
+	void notify_device_state(const char *state);
 private:
 	bc_record(int id);
 
 	void destroy_elements();
-	void notify_device_state(const char *state);
 };
 
 typedef enum {
