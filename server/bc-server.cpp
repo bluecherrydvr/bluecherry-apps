@@ -43,7 +43,7 @@ char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
 int max_record_time_sec;
 
-static pthread_mutex_t media_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 struct bc_storage {
 	char path[PATH_MAX];
@@ -257,7 +257,7 @@ static int load_storage_paths(void)
 		return -1;
 	}
 
-	pthread_mutex_lock(&media_lock);
+	pthread_rwlock_wrlock(&media_lock);
 
 	memset(media_stor, 0, sizeof(media_stor));
 
@@ -308,7 +308,7 @@ static int load_storage_paths(void)
 		media_stor[0].min_thresh = 90.00;
 	}
 
-	pthread_mutex_unlock(&media_lock);
+	pthread_rwlock_unlock(&media_lock);
 
 	bc_db_free_table(dbres);
 	return ret;
@@ -506,7 +506,7 @@ int bc_get_media_loc(char *dest, size_t size)
 {
 	int ret = 0;
 
-	pthread_mutex_lock(&media_lock);
+	pthread_rwlock_rdlock(&media_lock);
 
 	const char *sel = select_best_path();
 	if (!sel)
@@ -514,7 +514,7 @@ int bc_get_media_loc(char *dest, size_t size)
 	else
 		strlcpy(dest, sel, size);
 
-	pthread_mutex_unlock(&media_lock);
+	pthread_rwlock_unlock(&media_lock);
 	return ret;
 }
 
@@ -646,7 +646,7 @@ done:
 
 static int bc_check_media(void)
 {
-	pthread_mutex_lock(&media_lock);
+	pthread_rwlock_rdlock(&media_lock);
 
 	int ret = 0;
 	bool storage_overloaded = true;
@@ -662,7 +662,7 @@ static int bc_check_media(void)
 	if (storage_overloaded || is_media_max_age_exceeded())
 		ret = bc_cleanup_media();
 
-	pthread_mutex_unlock(&media_lock);
+	pthread_rwlock_unlock(&media_lock);
 
 	return ret;
 }
