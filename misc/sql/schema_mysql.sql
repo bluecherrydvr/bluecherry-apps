@@ -311,6 +311,7 @@ CREATE TABLE `ipPtzCommandPresets` (
   `http_auth` tinyint(1) NOT NULL DEFAULT '1',
   `custom` tinyint(1) NOT NULL DEFAULT '0',
   `port` varchar(5) NOT NULL DEFAULT '80',
+  `protocol` varchar(10) DEFAULT 'http',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
