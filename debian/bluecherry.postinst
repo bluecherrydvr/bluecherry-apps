@@ -51,8 +51,8 @@ function apply_db_patches() {
 					./$y
 				done
 			popd
+			DB_VERSION=$x # our DB_VERSION is updated
 		fi
-		DB_VERSION=$x # our DB_VERSION is updated
 	done
 	popd
 
