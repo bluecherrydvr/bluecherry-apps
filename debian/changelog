@@ -1,3 +1,13 @@
+bluecherry (1:2.3.10) precise trusty lucid wheezy; urgency=low
+
+  * Support HTTPS for PTZ requests
+  * Change media_lock type from mutex to rwlock
+  * Fix "Strictly limit max age of stored recordings #45"
+  * Fix minor leak (issue #43)
+  * Packaging fix
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 15 Oct 2014 17:22:09 -0500
+
 bluecherry (1:2.3.9-2) precise trusty lucid wheezy; urgency=low
 
   * Ship cameras.db blob
