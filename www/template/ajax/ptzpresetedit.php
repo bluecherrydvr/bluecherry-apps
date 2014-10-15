@@ -23,6 +23,7 @@ echo "<div><label>".IPP_PRESET_PRESET_GO."<span class='sub'></span></label><inpu
 echo "<div><label>".IPP_PRESET_STOP."<span class='sub'>".IPP_PRESET_STOP_EX."</span></label><input type='text' name='stop' value='".((empty($preset->preset['stop'])) ? "" : $preset->preset['stop'])."' /></div>";
 echo "<div><label>".IPP_PRESET_NEEDS_STOP."<span class='sub'>".IPP_PRESET_NEEDS_STOP_EX."</span></label><input type='checkbox' name='needs_stop' ".((empty($preset->preset['needs_stop'])) ? '' : 'checked')."></div>";
 echo "<div><label>".IPP_PRESET_HTTP_AUTH."<span class='sub'>".IPP_PRESET_HTTP_AUTH_EX."</span></label><input type='checkbox' name='http_auth' ".((empty($preset->preset['http_auth'])) ? '' : 'checked')." /></div>";
+echo "<div><label>".IPP_PRESET_PROTOCOL."<span class='sub'></span></label><select name='protocol'><option value=\"http\" ".($preset->preset['protocol'] == "http" ? "selected" : "").">http</option><option value=\"https\" ".($preset->preset['protocol'] == "https" ? "selected" : "").">https</option></select></div>";
 echo "<div><label>".IPP_PRESET_PORT."<span class='sub'>".IPP_PRESET_PORT_EX."</span></label><input type='text' name='port' value='".((empty($preset->preset['port'])) ? "" : $preset->preset['port'])."' /></div>";
 ?>
 </form>
