@@ -447,7 +447,7 @@ define('IPP_PRESET_HTTP_AUTH', 'Use http auth');
 define('IPP_PRESET_HTTP_AUTH_EX', 'use http auth or GET parameters');
 define('IPP_PRESET_PROTOCOL', 'Protocol');
 define('IPP_PRESET_PORT', 'Control port');
-define('IPP_PRESET_PORT_EX', 'if camera uses port!=80');
+define('IPP_PRESET_PORT_EX', 'Specify port, if non-standard port is used');
 define('IPP_DISABLE_PTZ', 'Disable PTZ for this camera');
 
 #statistics
