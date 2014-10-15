@@ -761,7 +761,17 @@ class cameraPtz{
 		if (substr($this->camera->info['protocol'], 0, 2) === 'IP'){ #prepare command URL
 			$this->command = $this->getCmd($command);
 			$this->command = $this->prepareCmd($this->command);
-			$result = @get_headers($this->command);
+
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $this->command);
+			curl_setopt($ch, CURLOPT_USERPWD, $this->camera->info['rtsp_username'].":".$this->camera->info['rtsp_password']);
+			// Set so curl_exec returns the result instead of outputting it.
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+			// Get the response and close the channel.
+			$response = curl_exec($ch);
+			curl_close($ch);
 		}
 	}
 	private function getIpCommandPreset($id){
@@ -771,9 +781,9 @@ class cameraPtz{
 		$command = ($command[0]=='/') ? $command : '/'.$command;
 		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
 			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);
-			$command = "http://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
+			$command = $this->preset[0]['protocol']."://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
 		} else {
-			$command = "http://{$this->camera->info['rtsp_username']}:{$this->camera->info['rtsp_password']}@".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
+			$command = $this->preset[0]['protocol']."://{$this->camera->info['rtsp_username']}:{$this->camera->info['rtsp_password']}@".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
 		}
 		return $command;
 	}
