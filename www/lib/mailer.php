@@ -22,6 +22,8 @@ include_once('Mail/mime.php');
 $crlf = "\r\n";
 $mime = new Mail_mime($crlf);
 
+$timestamp = time();
+
 if ($argv[1] == "motion_event") {
 	$event = data::getObject('Media', 'id', $argv[2]);
 
@@ -85,7 +87,6 @@ if ($argv[1] == "motion_event") {
 	</html>";
 	$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name); 
 } else if ($argv[1] == "device_state") {
-	$timestamp = time();
 	$device_id = $argv[2];
 	$state = $argv[3];  // e.g. OFFLINE, BACK ONLINE
 	#get device details
@@ -96,6 +97,15 @@ if ($argv[1] == "motion_event") {
 	<html>
 		<body>
 Device {$device[0]['device_name']} got $state on server {$global_settings->data['G_DVR_NAME']}
+		</body>
+	</html>";
+} else if ($argv[1] == "solo") {
+	$state = $argv[2];
+	$subject = "Status notification for Bluecherry SOLO card(s) on server {$global_settings->data['G_DVR_NAME']}";
+	$html = "
+	<html>
+		<body>
+SOLO card(s) got $state on server {$global_settings->data['G_DVR_NAME']}
 		</body>
 	</html>";
 } else {
@@ -117,10 +127,13 @@ $p['min'] = date('i', $timestamp);
 
 
 #form a query and select applicable rules
-$query = ("SELECT * FROM notificationSchedules 
-	WHERE 
+$query = "SELECT * FROM notificationSchedules 
+	WHERE ";
+if (isset($device_id))
+$query .= "
 		cameras LIKE '%|$device_id|%' 
-	AND 
+	AND ";
+$query .= "
 		day LIKE '%{$p['day']}%' 
 	AND 
 	(
@@ -132,7 +145,7 @@ $query = ("SELECT * FROM notificationSchedules
 	)
 	AND
 		disabled = 0
-");
+";
 $rules = data::query($query);
 if (!$rules){
 	exit('I: No matching rules');

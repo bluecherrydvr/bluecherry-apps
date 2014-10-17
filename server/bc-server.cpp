@@ -975,6 +975,7 @@ int main(int argc, char **argv)
 	int ret;
 	const char *config_file = BC_CONFIG_DEFAULT;
 	const char *user = 0, *group = 0;
+	int solo_down_reported = 0;
 
 	bc_syslog_init();
 
@@ -1091,15 +1092,33 @@ int main(int argc, char **argv)
 			bc_status_component_begin(STATUS_SOLO_DETECT);
 			int ret = bc_check_avail();
 			solo_ready = (ret == 0);
-			if (ret == -EAGAIN && !loops) {
-				/* Only warn if it's not ready at startup; don't trigger an error. */
-				bc_log(Warning, "Solo6x10 devices are not initialized yet");
-			} else if (ret) {
-				/* If it's still not ready after 15sec, error */
+			if (ret != 0 && !solo_down_reported) {
+				solo_down_reported = 1;
+
+				bc_log(Error, "Solo6x10 devices are not initialized yet");
+
 				bc_status_component_error(
 					"Solo6x10 devices are not initialized: %s",
 					(ret == -EAGAIN) ?
 					"Driver not ready" : strerror(-ret));
+
+				int system_ret = system("php /usr/share/bluecherry/www/lib/mailer.php 'solo' 'DOWN'");
+				/* Below is recommended by system(3) man page */
+				if (WIFSIGNALED(system_ret) && (WTERMSIG(system_ret) == SIGINT || WTERMSIG(system_ret) == SIGQUIT))
+					break;
+				if (system_ret)
+					bc_log(Error, "Failed to run mailer.php for notification");
+			} else if (ret == 0 && solo_down_reported) {
+				solo_down_reported = 0;
+
+				bc_log(Error, "Solo6x10 devices got initialized after being down");
+
+				int system_ret = system("php /usr/share/bluecherry/www/lib/mailer.php 'solo' 'RECOVERED'");
+				/* Below is recommended by system(3) man page */
+				if (WIFSIGNALED(system_ret) && (WTERMSIG(system_ret) == SIGINT || WTERMSIG(system_ret) == SIGQUIT))
+					break;
+				if (system_ret)
+					bc_log(Error, "Failed to run mailer.php for notification");
 			}
 			bc_status_component_end(STATUS_SOLO_DETECT, ret == 0);
 		}
