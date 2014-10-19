@@ -1,3 +1,9 @@
+bluecherry (1:2.2.5) precise trusty lucid wheezy; urgency=low
+
+  * Fix device init failure due to unneeded parsing
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sun, 19 Oct 2014 11:53:17 -0500
+
 bluecherry (1:2.2.4-3) precise trusty lucid wheezy; urgency=low
 
   * Packaging fix: postinst: Avoid spare INSERT of G_DB_VERSION by doing previous DELETE
