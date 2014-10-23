@@ -217,7 +217,6 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (r)
 			return -1;
 
-		strlcpy(bc->device, url, sizeof(bc->device));
 		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 	}
 
