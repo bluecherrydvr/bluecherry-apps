@@ -93,6 +93,10 @@ class update{
 			$_POST['G_DISABLE_IP_C_CHECK'] = (!empty($_POST['G_DISABLE_IP_C_CHECK'])) ? 1 : 0;
 			$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
 		};
+
+		if (!empty($_POST['G_MAX_RECORD_AGE']))  # this catches all except "" and "0"
+			$_POST['G_MAX_RECORD_AGE'] *= 60 * 60 * 24;  # convert days to seconds
+
 		foreach ($_POST as $parameter => $value){
 			$status = (data::query("UPDATE GlobalSettings SET value='{$value}' WHERE parameter='{$parameter}'", true)) ? $status : false;
 		}

@@ -11,6 +11,9 @@
 	<div><label><?php echo G_MAX_RECORD_TIME; ?><span class='sub'><?php echo G_MAX_RECORD_TIME_EX; ?></span></label>
 		<?php echo arrayToSelect($GLOBALS['cts_record_durations'], $global_settings->data['G_MAX_RECORD_TIME'], 'G_MAX_RECORD_TIME'); ?>
 	</div>
+	<div><?php echo G_MAX_RECORD_AGE; ?><span class='sub'><?php echo G_MAX_RECORD_AGE_EX; ?></span></label>
+		<input type='text' name='G_MAX_RECORD_AGE' value='<?php if (isset($global_settings->data['G_MAX_RECORD_AGE'])) { echo $global_settings->data['G_MAX_RECORD_AGE'] / (60 * 60 * 24); } ?>' /> days
+	</div>
 </div>
 
 <div class='container-separator'>
