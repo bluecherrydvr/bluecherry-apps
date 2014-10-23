@@ -157,10 +157,8 @@ static int parse_dev_path(char *dst, size_t sz, const char *val,
 	 * Should be removed at some point. */
 	const char *host = *spec ? spec : defhost;
 
-	if (!path) {
-		/* Broken spec. */
-		return -1;
-	}
+	if (!path)
+		path = "/";
 
 	if (!port)
 		port = defport;
