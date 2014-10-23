@@ -1,3 +1,10 @@
+bluecherry (1:2.2.6) precise trusty lucid wheezy; urgency=low
+
+  * Don't fail device init if path field is empty, assume '/' instead
+  * Revert previous solution to this issue, which introduced a bug
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 23 Oct 2014 14:59:16 -0500
+
 bluecherry (1:2.2.5) precise trusty lucid wheezy; urgency=low
 
   * Fix device init failure due to unneeded parsing
