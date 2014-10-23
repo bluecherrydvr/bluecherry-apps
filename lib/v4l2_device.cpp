@@ -160,7 +160,14 @@ int v4l2_device::start()
 	av_dict_set(&open_opts, "input_format", fmtname, 0);
 	av_dict_set(&open_opts, "format_whitelist", "v4l2", 0);
 
-	ret = avformat_open_input(&demuxer, dev_file, NULL, &open_opts);
+	AVInputFormat *input_fmt = av_find_input_format("v4l2");
+	if (!input_fmt) {
+		bc_log(Error, "v4l2 input format not found");
+		return -1;
+	}
+
+	bc_log(Debug, "Opening %s", dev_file);
+	ret = avformat_open_input(&demuxer, dev_file, input_fmt, &open_opts);
 	av_dict_free(&open_opts);
 	if (ret) {
 		av_strerror(ret, err, sizeof(err));
@@ -227,7 +234,7 @@ int v4l2_device::read_packet()
 
 	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
 	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
-	bc_log(Info, "DELME    DQEVENT ret %d, errno %d\n", ret, errno);
+	bc_log(Debug, "DQEVENT ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
 	if (!ret)
 		current_packet.flags |= stream_packet::MotionFlag;
 	fcntl(dev_fd, F_SETFL, fcntl_flags);  // restore flags, exit non-blocking mode
@@ -456,6 +463,8 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 	struct v4l2_ext_control vc = {0, };
 	struct v4l2_ext_controls vcs = {0, };
 
+	memset(buf, 0xff, sizeof(buf));
+
 	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
 	vc.p_u16 = buf;
 	vc.size = 2 * 45 * 45;
@@ -481,10 +490,10 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 			/* Set motion threshold on a 2x2 sector. Our input map
 			 * has half the resolution the devices work with, in
 			 * both directions. */
-			buf[(y  ) * 45 + x  ] = solo_value_map[val];
-			buf[(y+1) * 45 + x  ] = solo_value_map[val];
-			buf[(y  ) * 45 + x+1] = solo_value_map[val];
-			buf[(y+1) * 45 + x+1] = solo_value_map[val];
+			buf[(2*y  ) * 45 + 2*x  ] = solo_value_map[val];
+			buf[(2*y+1) * 45 + 2*x  ] = solo_value_map[val];
+			buf[(2*y  ) * 45 + 2*x+1] = solo_value_map[val];
+			buf[(2*y+1) * 45 + 2*x+1] = solo_value_map[val];
 		}
 	}
 
