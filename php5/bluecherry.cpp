@@ -438,6 +438,18 @@ PHP_FUNCTION(bc_set_mjpeg)
 	RETURN_TRUE;
 }
 
+PHP_FUNCTION(bc_get_mjpeg_url)
+{
+	struct bc_handle *bch;
+
+	BCH_GET_RES("bc_get_mjpeg_url");
+
+	if (!*bch->mjpeg_url)
+		RETURN_FALSE;
+
+	RETURN_STRING(bch->mjpeg_url, 1);
+}
+
 PHP_FUNCTION(bc_license_machine_id)
 {
 	char buf[64];
@@ -508,6 +520,7 @@ static zend_function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_data, NULL)
 	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
+	PHP_FE(bc_get_mjpeg_url, NULL)
 	PHP_FE(bc_ptz_cmd, NULL)
 	/* Licensing */
 	PHP_FE(bc_license_machine_id, NULL)
