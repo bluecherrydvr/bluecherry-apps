@@ -1,3 +1,9 @@
+bluecherry (1:2.3.12) precise trusty lucid wheezy; urgency=low
+
+  * Update FFmpeg to current git master HEAD + more patches for better open/read status codes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 23 Oct 2014 15:41:06 -0500
+
 bluecherry (1:2.3.11) precise trusty lucid wheezy; urgency=low
 
   * Notify by email when solo card(s) don't get up, or get recovered
