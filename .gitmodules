@@ -1,6 +1,6 @@
 [submodule "misc/libav"]
 	path = misc/libav
-	url = git://source.ffmpeg.org/ffmpeg.git
+	url = https://github.com/bluecherrydvr/ffmpeg.git
 [submodule "misc/ponvif"]
 	path = misc/ponvif
 	url = https://github.com/ltoscano/ponvif
