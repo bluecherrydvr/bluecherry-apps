@@ -85,6 +85,9 @@ define('G_PERF_TITLE', 'Performance/connectivity');
 define('G_MAX_RECORD_TIME', 'Record length');
 define('G_MAX_RECORD_TIME_EX', 'Split videos into segments of');
 
+define('G_MAX_RECORD_AGE', 'Max record storage age');
+define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given number of days (optional)');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_USERNAME', 'Username');

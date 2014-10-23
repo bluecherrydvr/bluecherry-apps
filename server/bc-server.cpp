@@ -544,8 +544,13 @@ static bool is_media_max_age_exceeded()
 	max_age = bc_db_get_val_int(dbres, "value");
 	bc_db_free_table(dbres);
 
-	if (max_age <= 0) {
-		bc_log(Error, "is_media_max_age_exceeded(): max_age <= 0, %d, illegal value, aborting further checks", max_age);
+	if (max_age < 0) {
+		bc_log(Error, "is_media_max_age_exceeded(): max_age < 0, %d, illegal value, aborting further checks", max_age);
+		return false;
+	}
+
+	if (max_age == 0) {
+		bc_log(Debug, "is_media_max_age_exceeded(): max_age == 0, assuming no age limit");
 		return false;
 	}
 
