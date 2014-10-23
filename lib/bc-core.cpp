@@ -228,6 +228,15 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 			*p = 0;
 	}
 
+	val = bc_db_get_val(dbres, "mjpeg_path", NULL);
+	if (val && *val) {
+		int r = parse_dev_path(bc->mjpeg_url, sizeof(bc->mjpeg_url),
+				       val, creds, defhost, "80", "http");
+
+		if (r)
+			return -1;
+	}
+
 	return 0;
 }
 
