@@ -216,6 +216,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 {
 	int ret;
 	AVCodec *codec;
+	AVDictionary *muxer_opts = NULL;
 
 	if (oc)
 		return 0;
@@ -261,7 +262,10 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	this->file_path = path;
 
-	ret = avformat_write_header(oc, NULL);
+	av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
+
+	ret = avformat_write_header(oc, &muxer_opts);
+	av_dict_free(&muxer_opts);
 	if (ret) {
 		char error[512];
 		av_strerror(ret, error, sizeof(error));
