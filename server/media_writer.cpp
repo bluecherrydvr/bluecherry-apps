@@ -21,7 +21,7 @@ extern "C" {
 #include "lavf_device.h"
 
 media_writer::media_writer()
-	: oc(0), video_st(0), audio_st(0), output_pts_base(AV_NOPTS_VALUE)
+	: oc(0), video_st(0), audio_st(0)
 {
 }
 
@@ -46,39 +46,13 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = pkt.pts;
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = s->index;
 
-	if (opkt.pts == (int64_t)AV_NOPTS_VALUE) {
-		if (s->codec->coded_frame && s->codec->coded_frame->pts != (int64_t)AV_NOPTS_VALUE)
-			opkt.pts = av_rescale_q(s->codec->coded_frame->pts, s->codec->time_base,
-			                        s->time_base); 
-	} else {
-		if (output_pts_base == (int64_t)AV_NOPTS_VALUE) {
-			output_pts_base = opkt.pts;
-			bc_log(Debug, "Setting writer pts base for stream to %" PRId64, output_pts_base);
-		}
-
-		/* Subtract output_pts_base, both in the universal AV_TIME_BASE
-		 * and synchronized across all related streams. */
-		opkt.pts -= output_pts_base;
-		/* Convert to output time_base */
-		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q, s->time_base);
-	}
-
-	/* Cutoff points can result in a few negative PTS frames, because often
-	 * the video will be cut before the audio for that time has been
-	 * written.  We can drop these; they won't be played back, other than a
-	 * very trivial amount of time at the beginning of a recording. */
-	if (opkt.pts != (int64_t)AV_NOPTS_VALUE && opkt.pts < 0) {
-		bc_log(Debug, "Dropping frame with negative pts %" PRId64 ", "
-		       "probably caused by recent PTS reset", opkt.pts);
-		return true;
-	}
-
-	re = av_write_frame(oc, &opkt);
+	re = av_interleaved_write_frame(oc, &opkt);
 	if (re < 0) {
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
@@ -92,7 +66,6 @@ bool media_writer::write_packet(const stream_packet &pkt)
 void media_writer::close()
 {
 	video_st = audio_st = NULL;
-	output_pts_base = AV_NOPTS_VALUE;
 
 	if (oc) {
 		if (oc->pb)

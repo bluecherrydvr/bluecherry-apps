@@ -32,11 +32,7 @@ lavf_device::lavf_device(const char *u, bool rtp_prefer_tcp)
 	 * is undefined in the php module. We don't really need it,
 	 * anyway. */
 	memset(&frame, 0, sizeof(frame));
-	frame.pts = AV_NOPTS_VALUE;
-
-	memset(&stream_data, 0, sizeof(stream_data));
-	for (int i = 0; i < MAX_STREAMS; ++i)
-		stream_data[i].last_pts = AV_NOPTS_VALUE;
+	frame.data = NULL;
 }
 
 lavf_device::~lavf_device()
@@ -64,13 +60,6 @@ void lavf_device::stop()
 	avformat_close_input(&ctx);
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
-
-	for (unsigned int i = 0; i < MAX_STREAMS; ++i) {
-		stream_data[i].pts_base = 0;
-		stream_data[i].last_pts = AV_NOPTS_VALUE;
-		stream_data[i].last_pts_diff = 0;
-		stream_data[i].was_last_diff_skipped = 0;
-	}
 }
 
 int lavf_device::start()
@@ -85,7 +74,6 @@ int lavf_device::start()
 
 	bc_log(Debug, "Opening session from URL: %s", url);
 
-	av_dict_set(&avopt_open_input, "max_delay", "700000", 0);
 	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	/* No input on socket, or no writability for thus many microseconds is treated as failure */
 	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
@@ -184,7 +172,6 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 int lavf_device::read_packet()
 {
 	int re;
-	struct rtp_stream_data *streamdata = 0;
 	if (!ctx) {
 		strcpy(error_message, "No active session");
 		return -1;
@@ -196,124 +183,6 @@ int lavf_device::read_packet()
 		av_strerror(re, error_message, sizeof(error_message));
 		return -1;
 	}
-
-	if (frame.stream_index >= 0 && frame.stream_index < MAX_STREAMS)
-		streamdata = &stream_data[frame.stream_index];
-
-	/* ACTi B2 frames are badly specified; they are MPEG4 user data elements which
-	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
-	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
-	 * everything. */
-	if (ctx->streams[frame.stream_index]->codec->codec_id == AV_CODEC_ID_MPEG4) {
-		const uint8_t b2_header[] = { 0x00, 0x00, 0x01, 0xb2 };
-		if (frame.size >= 47 && frame.stream_index == video_stream_index
-		    && memcmp(frame.data, b2_header, sizeof(b2_header)) == 0
-		    && memcmp(frame.data+44, b2_header, 3) == 0)
-		{
-			void *tmp = av_malloc(frame.size); /* Let the extra 44 be buffer padding */
-			int size = frame.size - 44;
-			memcpy(tmp, frame.data+44, size);
-			av_free_packet(&frame);
-			frame.data = (uint8_t*)tmp;
-			frame.size = size;
-			frame.destruct = wrap_av_destruct_packet;
-		}
-	}
-
-	/* Don't run offset logic against frames with no PTS */
-	if (!streamdata || frame.pts == (int64_t)AV_NOPTS_VALUE) {
-		create_stream_packet(&frame);
-		return 0;
-	}
-
-	/* Correct the stream's PTS to provide an even, monotonic set of frames for
-	 * recording, regardless of network factors. Notably, this often comes into
-	 * effect after receiving RTCP packets, which may alter the PTS to adjust
-	 * inter-stream synchronization.
-	 *
-	 * We assume that the difference between the PTS of the last two frames,
-	 * lastptsdiff, is an accurate guess about the difference between this frame
-	 * and the previous, and adjust the base PTS accordingly. Calculation is
-	 * done against the raw, unadjusted PTS to prevent some feedback loops. pts_base
-	 * may be altered externally (but only by delta), because the recording logic wants
-	 * to start with the first frame of each recording as PTS 0.
-	 *
-	 * If the difference between the PTS of the last frame and the current is more
-	 * than 4x the difference of the previous two frames, we assume a forward jump
-	 * and correct in the same manner as with negative differences. I believe this
-	 * threshold is reasonable, but it may prove to cause false positives for real-world
-	 * cases and require adjustment. If the threshold is too high, we're risking a
-	 * relatively small gap in playback (and possibly accompanying audio
-	 * desynchronization).
-	 *
-	 * If the PTS of any two otherwise valid frames is less than 1/4th (i.e. the above
-	 * threshold) of the normal rate, we may never recover, and would adjust all future
-	 * frames to match that too-fast rate. To help prevent that, especially in regards
-	 * to audio streams (where intervals are less even), we don't update the interval
-	 * when it is below 1/4th of the current unless it happens twice consecutively.
-	 * A reverse of this logic may also be desirable, to bypass forward jump detection
-	 * if we're seeing consecutive, consistently larger gaps than we expect.
-	 *
-	 * If it is valid under any codec to have two frames with equal PTS, that will fail.
-	 * Variable framerates could be catastrophic.
-	 *
-	 * This logic isn't used for single video only streams, because libav uses the
-	 * reliable RTP timestamp in that situation (#983).
-	 *
-	 * Test hardware is an AirLive OD-325HD, MPEG4 over TCP; and ACTi ACM-4200 over UDP.
-	 */
-	if (streamdata->last_pts != (int64_t)AV_NOPTS_VALUE && ctx->nb_streams > 1) {
-		if (frame.pts <= streamdata->last_pts || (streamdata->last_pts_diff &&
-		    (frame.pts - streamdata->last_pts) >= (streamdata->last_pts_diff*4)))
-		{
-			bc_log(Debug, "Inconsistent PTS on stream %d (type %d), "
-			       "delta %lld. Adjusting based on last interval of %lld.",
-			       frame.stream_index,
-			       ctx->streams[frame.stream_index]->codec->codec_type,
-			       (long long int) frame.pts - streamdata->last_pts,
-			       (long long int) streamdata->last_pts_diff);
-			streamdata->pts_base -= (streamdata->last_pts - frame.pts)
-			                        + streamdata->last_pts_diff;
-		} else {
-			int64_t newptsdiff = frame.pts - streamdata->last_pts;
-			/* Don't update last_pts_diff when this interval is 1/4th or less of the
-			 * last interval, corrosponding to the forward jump detection above.
-			 *
-			 * If we apply intervals this low, normal and valid frames after will be
-			 * seen as forward jumps, and we can never recover. Singular drops in the
-			 * interval are not uncommon, especially in audio streams, but consecutive
-			 * low intervals have not been observed as occuring normally. So, we will
-			 * update last_pts_diff, but only if two frames in a row have less than
-			 * 1/4th of the last interval. */
-			if (newptsdiff < streamdata->last_pts_diff &&
-			    (streamdata->last_pts_diff/newptsdiff) >= 4)
-			{
-				if (!streamdata->was_last_diff_skipped) {
-					bc_log(Debug, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld); ignoring interval change unless repeated",
-					       frame.stream_index,
-					       ctx->streams[frame.stream_index]->codec->codec_type,
-					       (long long int)newptsdiff, (long long int)(newptsdiff - streamdata->last_pts_diff));
-					streamdata->was_last_diff_skipped = 1;
-				} else {
-					bc_log(Debug, "PTS interval on stream %d (type %d) dropped "
-					       "to %lld (delta %lld) twice; accepting new interval. Could cause "
-					       "framerate or desynchronization issues.", frame.stream_index,
-					       ctx->streams[frame.stream_index]->codec->codec_type,
-					       (long long int)newptsdiff,
-					       (long long int)(newptsdiff - streamdata->last_pts_diff));
-					streamdata->was_last_diff_skipped = 0;
-					streamdata->last_pts_diff = newptsdiff;
-				}
-			} else {
-				streamdata->was_last_diff_skipped = 0;
-				streamdata->last_pts_diff = newptsdiff;
-			}
-		}
-	}
-
-	streamdata->last_pts = frame.pts;
-	frame.pts -= streamdata->pts_base;
 
 	create_stream_packet(&frame);
 
@@ -331,7 +200,12 @@ void lavf_device::create_stream_packet(AVPacket *src)
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
-	current_packet.pts      = av_rescale_q(src->pts, ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q);
+	current_packet.pts      = av_rescale_q_rnd(src->pts,
+			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	current_packet.dts      = av_rescale_q_rnd(src->dts,
+			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	if (src->flags & AV_PKT_FLAG_KEY)
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
@@ -374,32 +248,6 @@ void lavf_device::update_properties()
 	}
 
 	current_properties = std::shared_ptr<stream_properties>(p);
-}
-
-void lavf_device::set_current_pts(int64_t pts)
-{
-	int64_t offset;
-
-	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
-	 * all other streams are adjusted accordingly. */
-	if (frame.stream_index < 0 || frame.stream_index >= MAX_STREAMS)
-		return;
-
-	if (frame.pts == (int64_t)AV_NOPTS_VALUE) {
-		bc_log(Debug, "Current frame has no PTS, so PTS reset to %" PRId64 " cannot occur", pts);
-		return;
-	}
-
-	offset = frame.pts - pts;
-
-	bc_log(Debug, "Adjusted pts_base by %" PRId64 " to reset PTS on stream %d to %" PRId64,
-	       offset, frame.stream_index, pts);
-
-	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
-		stream_data[i].pts_base += av_rescale_q(offset, ctx->streams[frame.stream_index]->time_base, ctx->streams[i]->time_base);
-	}
-
-	frame.pts = pts;
 }
 
 const char *lavf_device::stream_info()

@@ -179,15 +179,18 @@ public:
 	unsigned size;
 	/* Flags, as a bitmask of values from Flags */
 	unsigned flags;
-	/* Presentation timestamp of this packet, which is normalized during creation
-	 * of the packet to AV_TIME_BASE_Q, and synchronized across related media streams.
-	 * Should increase monotonically, excluding overflow, but should not be assumed
-	 * to be consistent after a change to stream_properties. */
+	/* Presentation timestamp of this packet, which is normalized during
+	 * creation of the packet to AV_TIME_BASE_Q, and synchronized across
+	 * related media streams. */
 	int64_t  pts;
+	/* Decoding timestamp in AV_TIME_BASE_Q. Increases monotonically, except
+	 * for AV_NOPTS_VALUE and wrapping. */
+	int64_t  dts;
 	/* AVMEDIA_TYPE_VIDEO or AVMEDIA_TYPE_AUDIO */
 	int      type;
 	/* Wallclock time at packet capture. Do not compare this value between packets;
 	 * the wall clock is not reliable. Used for event recording times. */
+	// TODO Use int64_t and av_gettime_relative() (but check av_gettime_relative_is_monotonic()) or drop
 	time_t   ts_clock;
 	/* Monotonic clock time at packet capture. This is a reliable value for comparison
 	 * between capture of packets, but does not represent actual playback timing.
@@ -195,6 +198,7 @@ public:
 	 * Avoid use. Currently used in place of PTS for buffer management to avoid problems
 	 * with unreliable PTS values, but capture time does not in any way represent packet
 	 * time. */
+	// TODO Use int64_t and av_gettime_relative() (but check av_gettime_relative_is_monotonic()) or drop
 	time_t   ts_monotonic;
 	/* Sequence number of this packet, unique to the input that created
 	 * it. Should not be reset unless the handle is stopped and started
