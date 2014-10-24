@@ -32,11 +32,7 @@ lavf_device::lavf_device(const char *u, bool rtp_prefer_tcp)
 	 * is undefined in the php module. We don't really need it,
 	 * anyway. */
 	memset(&frame, 0, sizeof(frame));
-	frame.pts = AV_NOPTS_VALUE;
-
-	memset(&stream_data, 0, sizeof(stream_data));
-	for (int i = 0; i < MAX_STREAMS; ++i)
-		stream_data[i].last_pts = AV_NOPTS_VALUE;
+	frame.data = NULL;
 }
 
 lavf_device::~lavf_device()
@@ -65,12 +61,14 @@ void lavf_device::stop()
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
 
+#if 0
 	for (unsigned int i = 0; i < MAX_STREAMS; ++i) {
 		stream_data[i].pts_base = 0;
 		stream_data[i].last_pts = AV_NOPTS_VALUE;
 		stream_data[i].last_pts_diff = 0;
 		stream_data[i].was_last_diff_skipped = 0;
 	}
+#endif
 }
 
 int lavf_device::start()
@@ -85,7 +83,6 @@ int lavf_device::start()
 
 	bc_log(Debug, "Opening session from URL: %s", url);
 
-	av_dict_set(&avopt_open_input, "max_delay", "700000", 0);
 	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	/* No input on socket, or no writability for thus many microseconds is treated as failure */
 	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
@@ -184,7 +181,9 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 int lavf_device::read_packet()
 {
 	int re;
+#if 0
 	struct rtp_stream_data *streamdata = 0;
+#endif
 	if (!ctx) {
 		strcpy(error_message, "No active session");
 		return -1;
@@ -197,9 +196,14 @@ int lavf_device::read_packet()
 		return -1;
 	}
 
+#if 0
 	if (frame.stream_index >= 0 && frame.stream_index < MAX_STREAMS)
 		streamdata = &stream_data[frame.stream_index];
+#endif
+	// TODO stream_data a map or drop
 
+#if 0
+	// TODO Drop this hack in a separate commit
 	/* ACTi B2 frames are badly specified; they are MPEG4 user data elements which
 	 * almost always contain a sequence of 23 0 bits, which is misinterpreted by
 	 * generic MPEG4 parsers. Detect these frames and strip them off to avoid breaking
@@ -219,7 +223,9 @@ int lavf_device::read_packet()
 			frame.destruct = wrap_av_destruct_packet;
 		}
 	}
+#endif
 
+#if 0
 	/* Don't run offset logic against frames with no PTS */
 	if (!streamdata || frame.pts == (int64_t)AV_NOPTS_VALUE) {
 		create_stream_packet(&frame);
@@ -314,7 +320,7 @@ int lavf_device::read_packet()
 
 	streamdata->last_pts = frame.pts;
 	frame.pts -= streamdata->pts_base;
-
+#endif
 	create_stream_packet(&frame);
 
 	return 0;
@@ -331,7 +337,12 @@ void lavf_device::create_stream_packet(AVPacket *src)
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
-	current_packet.pts      = av_rescale_q(src->pts, ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q);
+	current_packet.pts      = av_rescale_q_rnd(src->pts,
+			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	current_packet.dts      = av_rescale_q_rnd(src->dts,
+			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	if (src->flags & AV_PKT_FLAG_KEY)
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
@@ -374,32 +385,6 @@ void lavf_device::update_properties()
 	}
 
 	current_properties = std::shared_ptr<stream_properties>(p);
-}
-
-void lavf_device::set_current_pts(int64_t pts)
-{
-	int64_t offset;
-
-	/* Adjust PTS offsets so that the current frame has a PTS of 'pts', and
-	 * all other streams are adjusted accordingly. */
-	if (frame.stream_index < 0 || frame.stream_index >= MAX_STREAMS)
-		return;
-
-	if (frame.pts == (int64_t)AV_NOPTS_VALUE) {
-		bc_log(Debug, "Current frame has no PTS, so PTS reset to %" PRId64 " cannot occur", pts);
-		return;
-	}
-
-	offset = frame.pts - pts;
-
-	bc_log(Debug, "Adjusted pts_base by %" PRId64 " to reset PTS on stream %d to %" PRId64,
-	       offset, frame.stream_index, pts);
-
-	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
-		stream_data[i].pts_base += av_rescale_q(offset, ctx->streams[frame.stream_index]->time_base, ctx->streams[i]->time_base);
-	}
-
-	frame.pts = pts;
 }
 
 const char *lavf_device::stream_info()

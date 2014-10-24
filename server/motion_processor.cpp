@@ -108,6 +108,7 @@ void motion_processor::run()
 		av_init_packet(&avpkt);
 		avpkt.flags = pkt.flags;
 		avpkt.pts   = pkt.pts;
+		avpkt.dts   = pkt.dts;
 		avpkt.data  = const_cast<uint8_t*>(pkt.data());
 		avpkt.size  = pkt.size;
 
@@ -125,7 +126,7 @@ void motion_processor::run()
 			 * happen (other than a >60fps stream). */
 			bool skip = false;
 			if (refFrame && last_tested_pts != (int64_t)AV_NOPTS_VALUE) {
-				int64_t diff = (pkt.pts - last_tested_pts) / (AV_TIME_BASE / 1000);
+				int64_t diff = (frame->pts - last_tested_pts) / (AV_TIME_BASE / 1000);
 				if (diff > 0 && diff < 200) {
 					if (++skip_count > 15) {
 						bc_log(Debug, "Motion detection skipped too many consecutive frames "
@@ -136,7 +137,7 @@ void motion_processor::run()
 			}
 
 			if (!skip) {
-				last_tested_pts = pkt.pts;
+				last_tested_pts = frame->pts;
 				skip_count = 0;
 				int re = detect(frame);
 				if (re == 1)

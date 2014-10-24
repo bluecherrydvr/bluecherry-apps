@@ -150,12 +150,8 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = pkt.pts;
-	if (opkt.pts != (int64_t)AV_NOPTS_VALUE) {
-		opkt.pts = av_rescale_q(opkt.pts, AV_TIME_BASE_Q,
-				bc_rec->stream_ctx->streams[0]->time_base);
-	}
-	opkt.dts          = opkt.pts;  /* Not safe, but stream_packet doesn't hold dts */
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;

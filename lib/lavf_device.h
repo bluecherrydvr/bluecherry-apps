@@ -7,6 +7,8 @@
 #ifndef __LAVF_DEVICE_H
 #define __LAVF_DEVICE_H
 
+#include <map>
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -16,10 +18,12 @@ extern "C" {
 
 #define MAX_STREAMS 3
 
+#if 0
 struct rtp_stream_data {
 	int64_t pts_base, last_pts, last_pts_diff;
 	int was_last_diff_skipped;
 };
+#endif
 
 class lavf_device : public input_device
 {
@@ -50,10 +54,11 @@ private:
 	AVPacket frame;
 	stream_packet current_packet;
 
-	struct rtp_stream_data stream_data[MAX_STREAMS];
+#if 0
+	std::map<int, struct rtp_stream_data> stream_data;
+#endif
 
 	void create_stream_packet(AVPacket *src);
-	void set_current_pts(int64_t pts);
 
 	void update_properties();
 };

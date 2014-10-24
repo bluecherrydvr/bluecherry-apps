@@ -15,19 +15,19 @@ void input_device::set_audio_enabled(bool v)
 }
 
 stream_packet::stream_packet()
-	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
+	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
 {
 }
 
 stream_packet::stream_packet(const uint8_t *data, const std::shared_ptr<stream_properties> &properties)
-	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
+	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(new stream_packet_data(data, properties))
 {
 }
 
 stream_packet::stream_packet(const stream_packet &o)
-	: size(o.size), flags(o.flags), pts(o.pts), type(o.type), ts_clock(o.ts_clock),
+	: size(o.size), flags(o.flags), pts(o.pts), dts(o.dts), type(o.type), ts_clock(o.ts_clock),
 	  ts_monotonic(o.ts_monotonic), seq(o.seq), d(o.d)
 {
 	if (d)
@@ -39,6 +39,7 @@ stream_packet &stream_packet::operator=(const stream_packet &o)
 	size = o.size;
 	flags = o.flags;
 	pts = o.pts;
+	dts = o.dts;
 	type = o.type;
 	ts_clock = o.ts_clock;
 	ts_monotonic = o.ts_monotonic;
