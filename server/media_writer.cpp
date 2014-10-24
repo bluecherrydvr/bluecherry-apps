@@ -237,12 +237,14 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	if (!video_st)
 		goto error;
 	properties.video.apply(video_st->codec);
+	video_st->codec->time_base = (AVRational){0, 0};
 
 	if (properties.has_audio()) {
 		audio_st = avformat_new_stream(oc, NULL);
 		if (!audio_st)
 			goto error;
 		properties.audio.apply(audio_st->codec);
+		audio_st->codec->time_base = (AVRational){0, 0};
 	}
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
