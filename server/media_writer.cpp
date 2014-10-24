@@ -52,6 +52,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	opkt.size         = pkt.size;
 	opkt.stream_index = s->index;
 
+	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
 	re = av_interleaved_write_frame(oc, &opkt);
 	if (re < 0) {
 		char err[512] = { 0 };
