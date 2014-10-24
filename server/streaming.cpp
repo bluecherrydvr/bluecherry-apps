@@ -31,6 +31,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	AVDictionary *muxer_opts = NULL;
 	int ret = -1;
 	uint8_t *bufptr;
+	AVRational bkp_ts;
 
 	if (bc_rec->stream_ctx) {
 		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
@@ -55,8 +56,9 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 		goto error;
 	}
 
+	bkp_ts = video_st->codec->time_base;
 	bc_rec->bc->input->properties()->video.apply(video_st->codec);
-	video_st->codec->time_base = (AVRational){0, 0};
+	video_st->codec->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "time_base: %d/%d", video_st->codec->time_base.num, video_st->codec->time_base.den);
 
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
