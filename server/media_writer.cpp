@@ -217,6 +217,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	int ret;
 	AVCodec *codec;
 	AVDictionary *muxer_opts = NULL;
+	AVRational bkp_ts;
 
 	if (oc)
 		return 0;
@@ -236,13 +237,17 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	video_st = avformat_new_stream(oc, NULL);
 	if (!video_st)
 		goto error;
+	bkp_ts = video_st->codec->time_base;
 	properties.video.apply(video_st->codec);
+	video_st->codec->time_base = bkp_ts;
 
 	if (properties.has_audio()) {
 		audio_st = avformat_new_stream(oc, NULL);
 		if (!audio_st)
 			goto error;
+		bkp_ts = audio_st->codec->time_base;
 		properties.audio.apply(audio_st->codec);
+		audio_st->codec->time_base = bkp_ts;
 	}
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
