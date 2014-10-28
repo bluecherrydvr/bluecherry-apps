@@ -365,10 +365,15 @@ int v4l2_device::read_packet()
 	reset_vbuf(&vb);
 
 	int ret = ioctl(dev_fd, VIDIOC_DQBUF, &vb);
-	local_bufs++;
 	/* XXX better error handling here */
-	if (ret)
-		return EAGAIN;
+	if (ret) {
+        char err[100];
+        strerror_r(ret, err, sizeof(err));
+		bc_log(Error, "VIDIOC_DQBUF ret %d (%s)", ret, err);
+		return ret;
+
+	}
+	local_bufs++;
 
 	/* Update and store this buffer */
 	buf_idx = vb.index;
