@@ -8,17 +8,21 @@
                 \
                 --disable-everything \
                 \
+                --enable-indev=v4l2 \
+                \
                 --enable-protocol=file \
                 --enable-protocol=pipe \
                 --enable-protocol=http \
                 \
                 --enable-muxer=matroska \
                 --enable-muxer=mjpeg \
+                --enable-muxer=rawvideo \
                 --enable-muxer=rtp \
                 \
                 --enable-demuxer=rtsp \
                 --enable-demuxer=matroska \
                 --enable-demuxer=mjpeg \
+                --enable-demuxer=rawvideo \
                 \
                 --enable-decoder=h264 \
                 --enable-decoder=mpeg4 \
@@ -29,6 +33,7 @@
                 --enable-parser=mjpeg \
                 \
                 --enable-encoder=mjpeg \
+                --enable-encoder=rawvideo \
                 \
 
 
