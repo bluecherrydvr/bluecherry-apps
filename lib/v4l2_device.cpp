@@ -163,6 +163,8 @@ v4l2_buffer *v4l2_device::buf_v4l2()
 
 void v4l2_device::v4l2_local_bufs()
 {
+	;
+#if 0
 	unsigned int c;
 
 	for (unsigned int i = c = 0; i < buffers; i++) {
@@ -180,6 +182,7 @@ void v4l2_device::v4l2_local_bufs()
 	}
 
 	local_bufs = c;
+#endif
 }
 
 int v4l2_device::is_key_frame()
@@ -245,6 +248,8 @@ int v4l2_device::v4l2_bufs_prepare()
 int v4l2_device::start()
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	int ret;
+	char err[100];
 
 	/* For mpeg, we get the max, and for mjpeg the min */
 	switch (vfmt.fmt.pix.pixelformat) {
@@ -260,7 +265,9 @@ int v4l2_device::start()
 	if (v4l2_bufs_prepare())
 		return -1;
 
-	if (ioctl(dev_fd, VIDIOC_STREAMON, &type) < 0) {
+	if ((ret = ioctl(dev_fd, VIDIOC_STREAMON, &type)) < 0) {
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "STREAMON failed, ret = %d (%s)", errno, err);
 		set_error_message("STREAMON failed");
 		return -1;
 	}
@@ -277,8 +284,10 @@ int v4l2_device::start()
 			return -1;
 		}
 
+#if 0
 		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
 			continue;
+#endif
 
 		if (ioctl(dev_fd, VIDIOC_QBUF, &vb) < 0) {
 			set_error_message("QBUF failed");
@@ -297,6 +306,7 @@ int v4l2_device::start()
 void v4l2_device::stop()
 {
 	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	int ret;
 
 	if (dev_fd < 0)
 		return;
@@ -307,14 +317,20 @@ void v4l2_device::stop()
 		reset_vbuf(&vb);
 		vb.index = i;
 
-		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
+		if ((ret = ioctl(dev_fd, VIDIOC_QUERYBUF, &vb)) < 0) {
+			bc_log(Error, "QUERYBUF failed, ret %d", ret);
+			break;
+		}
 
+#if 0
 		if (!(vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)))
 			continue;
+#endif
 
-		if (ioctl(dev_fd, VIDIOC_DQBUF, &vb) <0)
-			continue;
+		if ((ret = ioctl(dev_fd, VIDIOC_DQBUF, &vb)) <0) {
+			bc_log(Error, "DQBUF failed, ret %d", ret);
+			break;
+		}
 	}
 
 	/* Stop the stream */
@@ -333,6 +349,8 @@ void v4l2_device::stop()
 
 void v4l2_device::buf_return()
 {
+	;
+#if 0
 	unsigned int local = (buffers / 2) - 1;
 	unsigned int thresh = ((buffers - local) / 2) + local;
 
@@ -350,40 +368,44 @@ void v4l2_device::buf_return()
 
 		if (ioctl(dev_fd, VIDIOC_QBUF, &vb) < 0)
 			continue;
-
 		local_bufs--;
 	}
-
 	if (local_bufs == buffers)
 		bc_log(Error, "V4L2 device cannot queue any buffers");
+#endif
 }
 
 int v4l2_device::read_packet()
 {
 	struct v4l2_buffer vb;
+#if 0
 	buf_return();
+#endif
 	reset_vbuf(&vb);
 
 	int ret = ioctl(dev_fd, VIDIOC_DQBUF, &vb);
-	/* XXX better error handling here */
 	if (ret) {
-        char err[100];
-        strerror_r(ret, err, sizeof(err));
+		char err[100];
+		strerror_r(ret, err, sizeof(err));
 		bc_log(Error, "VIDIOC_DQBUF ret %d (%s)", ret, err);
 		return ret;
 
 	}
+#if 0
 	local_bufs++;
+#endif
 
 	/* Update and store this buffer */
 	buf_idx = vb.index;
 	p_buf[buf_idx].vb = vb;
 
+#if 0
 	if (!got_vop) {
 		if (!is_key_frame())
 			return EAGAIN;
 		got_vop = 1;
 	}
+#endif
 
 	uint8_t *dbuf = new uint8_t[p_buf[buf_idx].vb.bytesused];
 	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
@@ -405,6 +427,14 @@ int v4l2_device::read_packet()
 	AVRational tb = { vparm.parm.capture.timeperframe.numerator, vparm.parm.capture.timeperframe.denominator };
 	current_packet.pts = av_rescale_q(current_packet.seq, tb, AV_TIME_BASE_Q);
 
+	ret = ioctl(dev_fd, VIDIOC_QBUF, &vb);
+	if (ret) {
+		char err[100];
+		strerror_r(ret, err, sizeof(err));
+		bc_log(Error, "VIDIOC_QBUF ret %d (%s)", ret, err);
+		return ret;
+
+	}
 	return 0;
 }
 
