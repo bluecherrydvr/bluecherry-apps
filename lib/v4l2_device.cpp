@@ -625,8 +625,8 @@ int v4l2_device::set_motion(bool on)
 	}
 
 	struct v4l2_control vc;
-	vc.id = V4L2_CID_MOTION_ENABLE;
-	vc.value = on ? 1 : 0;
+	vc.id = V4L2_CID_DETECT_MD_MODE;
+	vc.value = on ? V4L2_DETECT_MD_MODE_THRESHOLD_GRID : V4L2_DETECT_MD_MODE_DISABLED;
 	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 }
 
@@ -635,7 +635,7 @@ int v4l2_device::set_motion_thresh_global(char value)
 	int val = clamp(value, '0', '5') - '0';
 	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
-		vc.id = V4L2_CID_MOTION_THRESHOLD;
+		vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
 		/* Upper 16 bits are 0 for the global threshold */
 		vc.value = solo_value_map[val];
 		return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
@@ -650,7 +650,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -ENOSYS;
 
 	struct v4l2_control vc;
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
+	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 	if (size < 22 * vh) {
