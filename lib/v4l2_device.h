@@ -8,9 +8,42 @@
 #define BC_BUFFERS_JPEG		8
 
 /* Some things that are driver specific */
+
+
+/*
+Copying defines from recent kernel headers
+
+commit a77b4fc0bc328b0989f83220aba1c268e087107f
+Author: Hans Verkuil <hans.verkuil@cisco.com>
+Date:   Fri Mar 28 13:00:08 2014 -0300
+
+    [media] v4l2-ctrls/v4l2-controls.h: add MD controls
+*/
+
+#define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
+
+/*  Detection-class control IDs defined by V4L2 */
+#define V4L2_CID_DETECT_CLASS_BASE             (V4L2_CTRL_CLASS_DETECT | 0x900)
+#define V4L2_CID_DETECT_CLASS                  (V4L2_CTRL_CLASS_DETECT | 1)
+
+#define V4L2_CID_DETECT_MD_MODE                        (V4L2_CID_DETECT_CLASS_BASE + 1)
+enum v4l2_detect_md_mode {
+       V4L2_DETECT_MD_MODE_DISABLED            = 0,
+       V4L2_DETECT_MD_MODE_GLOBAL              = 1,
+       V4L2_DETECT_MD_MODE_THRESHOLD_GRID      = 2,
+       V4L2_DETECT_MD_MODE_REGION_GRID         = 3,
+};
+#define V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD    (V4L2_CID_DETECT_CLASS_BASE + 2)
+#define V4L2_CID_DETECT_MD_THRESHOLD_GRID      (V4L2_CID_DETECT_CLASS_BASE + 3)
+#define V4L2_CID_DETECT_MD_REGION_GRID         (V4L2_CID_DETECT_CLASS_BASE + 4)
+
+
+/* End of "Copying defines from recent kernel headers" */
+
+
 #ifndef V4L2_BUF_FLAG_MOTION_ON
-#define V4L2_BUF_FLAG_MOTION_ON		0x0400
-#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
+#define V4L2_BUF_FLAG_MOTION_ON		0x10000
+#define V4L2_BUF_FLAG_MOTION_DETECTED	0x20000
 #endif
 
 #ifndef V4L2_CID_MOTION_ENABLE

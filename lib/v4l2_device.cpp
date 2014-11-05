@@ -654,6 +654,7 @@ static const uint16_t solo_value_map[] = {
 
 int v4l2_device::set_motion(bool on)
 {
+	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
 		bc_log(Error, "Motion detection is not implemented for non-solo V4L2 devices.");
 		return -ENOSYS;
@@ -662,7 +663,13 @@ int v4l2_device::set_motion(bool on)
 	struct v4l2_control vc;
 	vc.id = V4L2_CID_DETECT_MD_MODE;
 	vc.value = on ? V4L2_DETECT_MD_MODE_THRESHOLD_GRID : V4L2_DETECT_MD_MODE_DISABLED;
-	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
+	ret = ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
+	if (ret) {
+		char err[100] = "";
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "Failed to switch motion detection %s (%d): %s", on ? "to threshold grid mode" : "off", errno, err);
+	}
+	return ret;
 }
 
 int v4l2_device::set_motion_thresh_global(char value)
@@ -681,11 +688,21 @@ int v4l2_device::set_motion_thresh_global(char value)
 
 int v4l2_device::set_motion_thresh(const char *map, size_t size)
 {
+	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
 		return -ENOSYS;
 
-	struct v4l2_control vc;
+	uint16_t buf[45 * 45];
+	struct v4l2_ext_control vc = {0, };
+	struct v4l2_ext_controls vcs = {0, };
+
 	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
+	vc.p_u16 = buf;
+	vc.size = 2 * 45 * 45;
+
+	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
+	vcs.count = 1;
+	vcs.controls = &vc;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 	if (size < 22 * vh) {
@@ -693,39 +710,33 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -1;
 	}
 
-	/* NOTE: Zero sets the global threshold, so x starts at 1 */
-	for (unsigned y = 0, pos = 0; y < (vh << 23); y += (1 << 23)) {
-		for (unsigned x = (1 << 16); x <= (22 << 17); x += (1 << 17)) {
+	ret = set_motion(true);
+	if (ret)
+		return ret;
+
+	for (unsigned y = 0, pos = 0; y < vh; y++) {
+		for (unsigned x = 0; x < 22; x++) {
 			int val = clamp(map[pos++], '0', '5') - '0';
-			vc.value = y | x | solo_value_map[val];
 
 			/* Set motion threshold on a 2x2 sector. Our input map
 			 * has half the resolution the devices work with, in
 			 * both directions. */
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-				goto error;
-
-			vc.value += 1 << 16;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-			        goto error;
-
-			vc.value += 1 << 23;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-			        goto error;
-
-			vc.value -= 1 << 16;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-				goto error;
-
-			continue;
-
-		error:
-			bc_log(Error, "Error setting motion threshold (%x): %s",
-			       vc.value, strerror(errno));
-			return -1;
+			buf[(y  ) * 45 + x  ] = solo_value_map[val];
+			buf[(y+1) * 45 + x  ] = solo_value_map[val];
+			buf[(y  ) * 45 + x+1] = solo_value_map[val];
+			buf[(y+1) * 45 + x+1] = solo_value_map[val];
 		}
 	}
 
-	return 0;
+	ret = ioctl(dev_fd, VIDIOC_S_EXT_CTRLS, &vcs);
+	if (ret) {
+		char err[100] = "";
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "Error setting motion threshold (%x): %s",
+				errno, err);
+	} else {
+		bc_log(Debug, "Setting motion threshold succeeded");
+	}
 
+	return ret;
 }
