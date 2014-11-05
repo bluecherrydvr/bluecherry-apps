@@ -52,6 +52,10 @@ enum v4l2_detect_md_mode {
 #define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
 #endif
 
+#ifndef V4L2_EVENT_MOTION_DET
+#define V4L2_EVENT_MOTION_DET 6
+#endif
+
 /* Camera capability flags */
 #define BC_CAM_CAP_V4L2_MOTION 0x00000002
 #define BC_CAM_CAP_OSD         0x00000004
@@ -96,33 +100,21 @@ public:
 private:
 	bool			started;
 	int			dev_fd;
+	AVFormatContext         *demuxer;
 	int			cam_caps;
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
 	struct v4l2_streamparm	vparm;
-	enum   AVCodecID	codec_id;
+	int fmt;
+	char dev_file[PATH_MAX];
 	/* Userspace buffer accounting */
-	struct {
-		void			*data;
-		size_t			size;
-		struct v4l2_buffer	vb;
-	}			p_buf[BC_BUFFERS];
-	unsigned int		local_bufs;
-	int			buf_idx;
-	int			gop;
-	unsigned int		buffers;
 	int			card_id;
 	int			dev_id;
 	int			got_vop;
 	stream_packet           current_packet;
 
-	int is_key_frame() __attribute__((pure));
-
-	void v4l2_local_bufs();
-	int v4l2_bufs_prepare();
-	void buf_return();
-
 	void update_properties();
+	void create_stream_packet(AVPacket *src);
 };
 
 #endif

@@ -41,6 +41,8 @@ libav/config.mak:
 		\
 		--disable-everything \
 		\
+		--enable-indev=v4l2 \
+		\
 		--enable-protocol=file \
 		--enable-protocol=pipe \
 		--enable-protocol=http \
