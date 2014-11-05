@@ -234,10 +234,13 @@ int v4l2_device::read_packet()
 
 	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
 	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
-	bc_log(Debug, "DQEVENT ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
-	if (!ret)
-		current_packet.flags |= stream_packet::MotionFlag;
 	fcntl(dev_fd, F_SETFL, fcntl_flags);  // restore flags, exit non-blocking mode
+	if (!ret && ev.type == V4L2_EVENT_MOTION_DET)
+		current_packet.flags |= stream_packet::MotionFlag;
+	else if (ret == -1 && errno == ENOENT)
+		;  // No motion, OK
+	else
+		bc_log(Warning, "Unexpected result of DQEVENT request: ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
 
 	return 0;
 }
