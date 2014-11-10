@@ -614,7 +614,7 @@ no_audio:
 }
 
 static const uint16_t solo_value_map[] = {
-	0xffff, 1152, 1024, 768, 512, 3842
+	0xffff, 1152, 1024, 768, 512, 384
 };
 
 int v4l2_device::set_motion(bool on)
