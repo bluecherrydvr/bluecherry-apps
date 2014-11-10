@@ -41,11 +41,6 @@ enum v4l2_detect_md_mode {
 /* End of "Copying defines from recent kernel headers" */
 
 
-#ifndef V4L2_BUF_FLAG_MOTION_ON
-#define V4L2_BUF_FLAG_MOTION_ON		0x10000
-#define V4L2_BUF_FLAG_MOTION_DETECTED	0x20000
-#endif
-
 #ifndef V4L2_CID_MOTION_ENABLE
 #define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
 #define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
