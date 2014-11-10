@@ -4,11 +4,60 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+
+#include <linux/version.h>
+
 #include "v4l2_device.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
 }
+
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0)
+
+#define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
+
+/*  Detection-class control IDs defined by V4L2 */
+#define V4L2_CID_DETECT_CLASS_BASE             (V4L2_CTRL_CLASS_DETECT | 0x900)
+#define V4L2_CID_DETECT_CLASS                  (V4L2_CTRL_CLASS_DETECT | 1)
+
+#define V4L2_CID_DETECT_MD_MODE                        (V4L2_CID_DETECT_CLASS_BASE + 1)
+enum v4l2_detect_md_mode {
+       V4L2_DETECT_MD_MODE_DISABLED            = 0,
+       V4L2_DETECT_MD_MODE_GLOBAL              = 1,
+       V4L2_DETECT_MD_MODE_THRESHOLD_GRID      = 2,
+       V4L2_DETECT_MD_MODE_REGION_GRID         = 3,
+};
+#define V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD    (V4L2_CID_DETECT_CLASS_BASE + 2)
+#define V4L2_CID_DETECT_MD_THRESHOLD_GRID      (V4L2_CID_DETECT_CLASS_BASE + 3)
+#define V4L2_CID_DETECT_MD_REGION_GRID         (V4L2_CID_DETECT_CLASS_BASE + 4)
+
+#define V4L2_EVENT_MOTION_DET 6
+
+
+/* Redefining v4l2_ext_control to take over old kernel headers installed */
+struct my_v4l2_ext_control {
+	__u32 id;
+	__u32 size;
+	__u32 reserved2[1];
+	union {
+		__s32 value;
+		__s64 value64;
+		char *string;
+		__u8 *p_u8;
+		__u16 *p_u16;
+		__u32 *p_u32;
+		void *ptr;
+	};
+} __attribute__ ((packed));
+
+#else
+
+#define my_v4l2_ext_control v4l2_ext_control
+
+#endif
+
 
 /**
  * Select the best between two formats.
@@ -18,6 +67,8 @@ static uint32_t best_pixfmt(uint32_t old, uint32_t cur)
 	const uint32_t pref[] = {
 		V4L2_PIX_FMT_H264,
 		V4L2_PIX_FMT_MPEG4,
+		V4L2_PIX_FMT_MJPEG,
+		V4L2_PIX_FMT_JPEG,
 		0
 	};
 
@@ -48,18 +99,15 @@ static uint32_t get_best_pixfmt(int fd)
 }
 
 v4l2_device::v4l2_device(BC_DB_RES dbres)
-	: dev_fd(-1), cam_caps(0), codec_id(AV_CODEC_ID_NONE), local_bufs(0), buf_idx(0), gop(0),
-	  buffers(0), dev_id(0), got_vop(0)
+	: dev_fd(-1), cam_caps(0), dev_id(0), demuxer(NULL)
 {
-	memset(&p_buf, 0, sizeof(p_buf));
-
 	const char *p = bc_db_get_val(dbres, "device", NULL);
-	char dev_file[PATH_MAX];
 	int id = -1;
 	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 
 	card_id = bc_db_get_val_int(dbres, "card_id");
 
+	// TODO Support "/dev/video%d" pattern, and not just "BCPCI|0000:07:05.0|7", in "device" field
 	while (p[0] != '\0' && p[0] != '|')
 		p++;
 	if (p[0] == '\0')
@@ -99,19 +147,7 @@ v4l2_device::v4l2_device(BC_DB_RES dbres)
 	}
 
 	/* Select the CODEC */
-	uint32_t fmt;
 	fmt = get_best_pixfmt(dev_fd);
-	switch (fmt) {
-	case V4L2_PIX_FMT_MPEG4:
-		codec_id = AV_CODEC_ID_MPEG4;
-		break;
-	case V4L2_PIX_FMT_H264:
-		codec_id = AV_CODEC_ID_H264;
-		break;
-	default:
-		bc_log(Error, "Unknown '%c%c%c%c' pixel format",
-			fmt, fmt >> 8, fmt >> 16, fmt >> 24);
-	}
 
 	/* Get the parameters */
 	memset(&vparm, 0, sizeof(vparm));
@@ -141,267 +177,143 @@ v4l2_device::~v4l2_device()
 	}
 }
 
-#define reset_vbuf(__vb) do {				\
-	memset((__vb), 0, sizeof(*(__vb)));		\
-	(__vb)->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;	\
-	(__vb)->memory = V4L2_MEMORY_MMAP;		\
-} while(0)
-
-#define RETERR(__msg) ({		\
-	if (err_msg)			\
-		*err_msg = __msg;	\
-	return -1;			\
-})
-
-v4l2_buffer *v4l2_device::buf_v4l2()
-{
-	if (buf_idx < 0)
-		return NULL;
-
-	return &p_buf[buf_idx].vb;
-}
-
-void v4l2_device::v4l2_local_bufs()
-{
-	unsigned int c;
-
-	for (unsigned int i = c = 0; i < buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
-		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
-			continue;
-
-		c++;
-	}
-
-	local_bufs = c;
-}
-
-int v4l2_device::is_key_frame()
-{
-	struct v4l2_buffer *vb = buf_v4l2();
-
-	/* For everything other than mpeg, every frame is a keyframe */
-	switch (vfmt.fmt.pix.pixelformat) {
-	case V4L2_PIX_FMT_H264:
-	case V4L2_PIX_FMT_MPEG4:
-		break;
-	default:
-		return 1;
-	}
-
-	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	return 0;
-}
-
-int v4l2_device::v4l2_bufs_prepare()
-{
-	struct v4l2_requestbuffers req;
-
-	reset_vbuf(&req);
-	req.count = buffers;
-
-	if (ioctl(dev_fd, VIDIOC_REQBUFS, &req) < 0) {
-		set_error_message("REQBUFS failed");
-		return -1;
-	}
-
-	if (req.count != buffers) {
-		set_error_message("REQBUFS returned wrong buffer count");
-		return -1;
-	}
-
-	for (unsigned int i = 0; i < buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0) {
-			set_error_message("QUERYBUF failed");
-			return -1;
-		}
-
-		p_buf[i].size = vb.length;
-		p_buf[i].data = mmap(NULL, vb.length,
-				PROT_WRITE | PROT_READ, MAP_SHARED,
-				dev_fd, vb.m.offset);
-		if (p_buf[i].data == MAP_FAILED) {
-			set_error_message("mmap failed");
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 int v4l2_device::start()
 {
-	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	int ret;
+	char *fmtname = "";
+	char err[100] = "";
+	struct v4l2_event_subscription sub = {0, };
 
-	/* For mpeg, we get the max, and for mjpeg the min */
-	switch (vfmt.fmt.pix.pixelformat) {
+	if (dev_fd == -1) {
+		bc_log(Error, "V4L2 device %s requested to start, but it failed to initialize", dev_file);
+		return -1;
+	}
+
+	switch (fmt) {
 	case V4L2_PIX_FMT_H264:
+		fmtname = "h264";
+		break;
 	case V4L2_PIX_FMT_MPEG4:
-		buffers = BC_BUFFERS;
+		fmtname = "mpeg4";
 		break;
+	case V4L2_PIX_FMT_MJPEG:
+	case V4L2_PIX_FMT_JPEG:
+		fmtname = "mjpeg";
 	default:
-		buffers = BC_BUFFERS_JPEG;
-		break;
-	}
-
-	if (v4l2_bufs_prepare())
-		return -1;
-
-	if (ioctl(dev_fd, VIDIOC_STREAMON, &type) < 0) {
-		set_error_message("STREAMON failed");
+		bc_log(Error, "Unsupported stream format");
 		return -1;
 	}
 
-	/* Queue all buffers */
-	for (unsigned int i = 0; i < buffers; i++) {
-		struct v4l2_buffer vb;
 
-		reset_vbuf(&vb);
-		vb.index = i;
+	AVDictionary *open_opts = NULL;
+	av_dict_set(&open_opts, "input_format", fmtname, 0);
+	av_dict_set(&open_opts, "format_whitelist", "v4l2", 0);
 
-		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0) {
-			set_error_message("QUERYBUF failed");
-			return -1;
-		}
-
-		if (vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE))
-			continue;
-
-		if (ioctl(dev_fd, VIDIOC_QBUF, &vb) < 0) {
-			set_error_message("QBUF failed");
-			return -1;
-		}
+	AVInputFormat *input_fmt = av_find_input_format("v4l2");
+	if (!input_fmt) {
+		bc_log(Error, "v4l2 input format not found");
+		return -1;
 	}
 
-	local_bufs = 0;
-	buf_idx = -1;
+	bc_log(Debug, "Opening %s", dev_file);
+	ret = avformat_open_input(&demuxer, dev_file, input_fmt, &open_opts);
+	av_dict_free(&open_opts);
+	if (ret) {
+		av_strerror(ret, err, sizeof(err));
+		bc_log(Error, "Failed to open %s: %d (%s)", dev_file, ret, err);
+		goto fail;
+	}
+
+	ret = avformat_find_stream_info(demuxer, NULL);
+	if (ret < 0) {
+		av_strerror(ret, err, sizeof(err));
+		bc_log(Error, "Failed to analyze stream from %s: %d (%s)", dev_file, ret, err);
+		goto fail;
+	}
+
+	// Subscribe for motion events
+	sub.type = V4L2_EVENT_MOTION_DET;
+
+	ret = ioctl(dev_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+	if (ret) {
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "Failed to subscribe to V4L2 motion events from %s: %d (%s)", dev_file, ret, err);
+		goto fail;
+	}
 
 	_started = true;
 	update_properties();
 	return 0;
+
+fail:
+	avformat_close_input(&demuxer);
+	return ret;
 }
 
 void v4l2_device::stop()
 {
-	enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-	if (dev_fd < 0)
-		return;
-
-	for (unsigned int i = 0; i < buffers; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(dev_fd, VIDIOC_QUERYBUF, &vb) < 0)
-			continue;
-
-		if (!(vb.flags & (V4L2_BUF_FLAG_QUEUED | V4L2_BUF_FLAG_DONE)))
-			continue;
-
-		if (ioctl(dev_fd, VIDIOC_DQBUF, &vb) <0)
-			continue;
+	if (dev_fd != -1) {
+		close(dev_fd);
+		dev_fd = -1;
 	}
 
-	/* Stop the stream */
-	ioctl(dev_fd, VIDIOC_STREAMOFF, &type);
-
-	/* Unmap all buffers */
-	for (unsigned int i = 0; i < buffers; i++)
-		munmap(p_buf[i].data, p_buf[i].size);
-
-	local_bufs = buffers;
-	buf_idx = -1;
+	avformat_close_input(&demuxer);
 
 	current_properties.reset();
 	_started = false;
 }
 
-void v4l2_device::buf_return()
-{
-	unsigned int local = (buffers / 2) - 1;
-	unsigned int thresh = ((buffers - local) / 2) + local;
-
-	/* Maintain a balance of queued and dequeued buffers */
-	if (local_bufs < thresh)
-		return;
-
-	v4l2_local_bufs();
-
-	for (unsigned int i = 0; i < buffers && local_bufs > local; i++) {
-		struct v4l2_buffer vb;
-
-		reset_vbuf(&vb);
-		vb.index = i;
-
-		if (ioctl(dev_fd, VIDIOC_QBUF, &vb) < 0)
-			continue;
-
-		local_bufs--;
-	}
-
-	if (local_bufs == buffers)
-		bc_log(Error, "V4L2 device cannot queue any buffers");
-}
-
 int v4l2_device::read_packet()
 {
-	struct v4l2_buffer vb;
-	buf_return();
-	reset_vbuf(&vb);
+	int ret;
+	AVPacket pkt = {0, };
+	char err[100] = "";
+	struct v4l2_event ev = {0, };
+	int fcntl_flags = fcntl(dev_fd, F_GETFL);
 
-	int ret = ioctl(dev_fd, VIDIOC_DQBUF, &vb);
-	local_bufs++;
-	/* XXX better error handling here */
-	if (ret)
-		return EAGAIN;
-
-	/* Update and store this buffer */
-	buf_idx = vb.index;
-	p_buf[buf_idx].vb = vb;
-
-	if (!got_vop) {
-		if (!is_key_frame())
-			return EAGAIN;
-		got_vop = 1;
+	ret = av_read_frame(demuxer, &pkt);
+	if (ret) {
+		av_strerror(ret, err, sizeof(err));
+		bc_log(Error, "Reading packet from %s ret %d (%s)", dev_file, ret, err);
+		return ret;
 	}
 
-	uint8_t *dbuf = new uint8_t[p_buf[buf_idx].vb.bytesused];
-	memcpy(dbuf, p_buf[buf_idx].data, p_buf[buf_idx].vb.bytesused);
+	create_stream_packet(&pkt);
+	av_free_packet(&pkt);
 
-	current_packet = stream_packet(dbuf, current_properties);
-	current_packet.seq      = next_packet_seq++;
-	current_packet.size     = p_buf[buf_idx].vb.bytesused;
-	current_packet.ts_clock = time(NULL);
-	current_packet.type     = AVMEDIA_TYPE_VIDEO;
-	current_packet.ts_monotonic = bc_gettime_monotonic();
-
-	if (is_key_frame())
-		current_packet.flags |= stream_packet::KeyframeFlag;
-	if (vb.flags & V4L2_BUF_FLAG_MOTION_DETECTED)
+	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
+	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
+	fcntl(dev_fd, F_SETFL, fcntl_flags);  // restore flags, exit non-blocking mode
+	if (!ret && ev.type == V4L2_EVENT_MOTION_DET)
 		current_packet.flags |= stream_packet::MotionFlag;
-
-	/* PTS calculated assuming that no packet is lost in driver and all frames have perfect timing.
-	 * Real timestamps from driver would be ideal. Hopefully OK during timeperframe changes. */
-	AVRational tb = { vparm.parm.capture.timeperframe.numerator, vparm.parm.capture.timeperframe.denominator };
-	current_packet.pts = av_rescale_q(current_packet.seq, tb, AV_TIME_BASE_Q);
+	else if (ret == -1 && errno == ENOENT)
+		;  // No motion, OK
+	else
+		bc_log(Warning, "Unexpected result of DQEVENT request: ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
 
 	return 0;
 }
+
+// TODO Deduplicate with lavf_device
+void v4l2_device::create_stream_packet(AVPacket *src)
+{
+	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE];
+	/* XXX The padding is a hack to avoid overreads by optimized
+	 * functions. */
+	memcpy(buf, src->data, src->size);
+
+	current_packet = stream_packet(buf, current_properties);
+	current_packet.seq      = next_packet_seq++;
+	current_packet.size     = src->size;
+	current_packet.ts_clock = time(NULL);
+	current_packet.pts      = av_rescale_q(src->pts, demuxer->streams[src->stream_index]->time_base, AV_TIME_BASE_Q);
+	if (src->flags & AV_PKT_FLAG_KEY)
+		current_packet.flags |= stream_packet::KeyframeFlag;
+	current_packet.ts_monotonic = bc_gettime_monotonic();
+
+	current_packet.type = AVMEDIA_TYPE_VIDEO;
+}
+
 
 int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 		uint8_t interval)
@@ -427,7 +339,7 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 			re = -1;
 		else {
 			/* Reset GOP */
-			gop = lround(vparm.parm.capture.timeperframe.denominator / vparm.parm.capture.timeperframe.numerator);
+			int gop = lround(vparm.parm.capture.timeperframe.denominator / vparm.parm.capture.timeperframe.numerator);
 			if (!gop)
 				gop = 1;
 			struct v4l2_control vc;
@@ -442,19 +354,6 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	// which could cause other changes to fail...
 	if (fmt_changed) {
 		enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-		uint32_t fmt;
-		switch (codec_id) {
-		case AV_CODEC_ID_MPEG4:
-			fmt = V4L2_PIX_FMT_MPEG4;
-			break;
-		case AV_CODEC_ID_H264:
-			fmt = V4L2_PIX_FMT_H264;
-			break;
-		default:
-			this->set_error_message("unsupported codec_id");
-			return -1;
-		}
 
 		vfmt.fmt.pix.pixelformat = fmt;
 		if (width)
@@ -559,56 +458,10 @@ void v4l2_device::update_properties()
 {
 	stream_properties *p = new stream_properties;
 
-	p->video.codec_id = codec_id;
-	p->video.pix_fmt = AV_PIX_FMT_YUV420P;
-	p->video.width = vfmt.fmt.pix.width;
-	p->video.height = vfmt.fmt.pix.height;
-	p->video.time_base.num = vparm.parm.capture.timeperframe.numerator;
-	p->video.time_base.den = vparm.parm.capture.timeperframe.denominator;
-
-	if (p->video.codec_id == AV_CODEC_ID_NONE) {
-		bc_log(Warning, "Invalid Video Format, assuming H.264");
-		p->video.codec_id = AV_CODEC_ID_H264;
-	}
-
-#if 0
-	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-	st = NULL;
-
-	/* We don't fail when this happens. Video with no sound is
-	 * better than no video at all. */
-	if (audio_enabled() && bc_alsa_open(bc_rec))
-		bc_alsa_close(bc_rec);
-
-	/* Setup new audio stream */
-	if (has_audio(bc_rec)) {
-		enum AVCodecID codec_id = AV_CODEC_ID_PCM_S16LE;
-
-		/* If we can't find an encoder, just skip it */
-		if (avcodec_find_encoder(codec_id) == NULL) {
-			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
-				    "so not recording", codec_id);
-			goto no_audio;
-		}
-
-		if ((st = avformat_new_stream(oc, NULL)) == NULL)
-			goto no_audio;
-		st->codec->codec_id = codec_id;
-		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-
-		st->codec->sample_rate = 8000;
-		st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
-		st->codec->channels = 1;
-		st->codec->time_base = (AVRational){1, 8000};
-
-		if (oc->oformat->flags & AVFMT_GLOBALHEADER)
-			st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-no_audio:
-		st = NULL;
-	}
-#endif
+	p->video.codec_id = demuxer->streams[0]->codec->codec_id;
+	p->video.width = demuxer->streams[0]->codec->width;
+	p->video.height = demuxer->streams[0]->codec->height;
+	p->video.time_base = demuxer->streams[0]->time_base;
 
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
@@ -619,15 +472,22 @@ static const uint16_t solo_value_map[] = {
 
 int v4l2_device::set_motion(bool on)
 {
+	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
 		bc_log(Error, "Motion detection is not implemented for non-solo V4L2 devices.");
 		return -ENOSYS;
 	}
 
 	struct v4l2_control vc;
-	vc.id = V4L2_CID_MOTION_ENABLE;
-	vc.value = on ? 1 : 0;
-	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
+	vc.id = V4L2_CID_DETECT_MD_MODE;
+	vc.value = on ? V4L2_DETECT_MD_MODE_THRESHOLD_GRID : V4L2_DETECT_MD_MODE_DISABLED;
+	ret = ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
+	if (ret) {
+		char err[100] = "";
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "Failed to switch motion detection %s (%d): %s", on ? "to threshold grid mode" : "off", errno, err);
+	}
+	return ret;
 }
 
 int v4l2_device::set_motion_thresh_global(char value)
@@ -635,7 +495,7 @@ int v4l2_device::set_motion_thresh_global(char value)
 	int val = clamp(value, '0', '5') - '0';
 	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
 		struct v4l2_control vc;
-		vc.id = V4L2_CID_MOTION_THRESHOLD;
+		vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
 		/* Upper 16 bits are 0 for the global threshold */
 		vc.value = solo_value_map[val];
 		return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
@@ -646,11 +506,23 @@ int v4l2_device::set_motion_thresh_global(char value)
 
 int v4l2_device::set_motion_thresh(const char *map, size_t size)
 {
+	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
 		return -ENOSYS;
 
-	struct v4l2_control vc;
-	vc.id = V4L2_CID_MOTION_THRESHOLD;
+	uint16_t buf[45 * 45];
+	struct my_v4l2_ext_control vc = {0, };
+	struct v4l2_ext_controls vcs = {0, };
+
+	memset(buf, 0xff, sizeof(buf));
+
+	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
+	vc.p_u16 = buf;
+	vc.size = 2 * 45 * 45;
+
+	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
+	vcs.count = 1;
+	vcs.controls = (struct v4l2_ext_control *)&vc;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 	if (size < 22 * vh) {
@@ -658,41 +530,35 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -1;
 	}
 
-	/* NOTE: Zero sets the global threshold, so x starts at 1 */
-	for (unsigned y = 0, pos = 0; y < (vh << 23); y += (1 << 23)) {
-		for (unsigned x = (1 << 16); x <= (22 << 17); x += (1 << 17)) {
+	ret = set_motion(true);
+	if (ret)
+		return ret;
+
+	for (unsigned y = 0, pos = 0; y < vh; y++) {
+		for (unsigned x = 0; x < 22; x++) {
 			int val = clamp(map[pos++], '0', '5') - '0';
-			vc.value = y | x | solo_value_map[val];
 
 			/* Set motion threshold on a 2x2 sector. Our input map
 			 * has half the resolution the devices work with, in
 			 * both directions. */
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-				goto error;
-
-			vc.value += 1 << 16;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-			        goto error;
-
-			vc.value += 1 << 23;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-			        goto error;
-
-			vc.value -= 1 << 16;
-			if (ioctl(dev_fd, VIDIOC_S_CTRL, &vc))
-				goto error;
-
-			continue;
-
-		error:
-			bc_log(Error, "Error setting motion threshold (%x): %s",
-			       vc.value, strerror(errno));
-			return -1;
+			buf[(2*y  ) * 45 + 2*x  ] = solo_value_map[val];
+			buf[(2*y+1) * 45 + 2*x  ] = solo_value_map[val];
+			buf[(2*y  ) * 45 + 2*x+1] = solo_value_map[val];
+			buf[(2*y+1) * 45 + 2*x+1] = solo_value_map[val];
 		}
 	}
 
-	return 0;
+	ret = ioctl(dev_fd, VIDIOC_S_EXT_CTRLS, &vcs);
+	if (ret) {
+		char err[100] = "";
+		strerror_r(errno, err, sizeof(err));
+		bc_log(Error, "Error setting motion threshold (%x): %s",
+				errno, err);
+	} else {
+		bc_log(Debug, "Setting motion threshold succeeded");
+	}
 
+	return ret;
 }
 
 void v4l2_device::getStatusXml(pugi::xml_node& xmlnode)
