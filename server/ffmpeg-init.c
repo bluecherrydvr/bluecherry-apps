@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <bsd/string.h>
 #include <libavformat/avformat.h>
+#include <libavdevice/avdevice.h>
 #include "logc.h"
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
@@ -113,6 +114,7 @@ void bc_ffmpeg_init()
 	avcodec_register(&fake_h264_encoder);
 	av_register_all();
 	avformat_network_init();
+	avdevice_register_all();
 
 	av_log_set_callback(av_log_cb);
 }
