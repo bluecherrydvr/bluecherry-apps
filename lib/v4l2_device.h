@@ -8,10 +8,6 @@
 #define BC_BUFFERS_JPEG		8
 
 /* Some things that are driver specific */
-#ifndef V4L2_BUF_FLAG_MOTION_ON
-#define V4L2_BUF_FLAG_MOTION_ON		0x0400
-#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
-#endif
 
 #ifndef V4L2_CID_MOTION_ENABLE
 #define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
@@ -64,33 +60,21 @@ public:
 private:
 	bool			started;
 	int			dev_fd;
+	AVFormatContext         *demuxer;
 	int			cam_caps;
 	struct v4l2_format	vfmt;
 	struct v4l2_capability	vcap;
 	struct v4l2_streamparm	vparm;
-	enum   AVCodecID	codec_id;
+	int fmt;
+	char dev_file[PATH_MAX];
 	/* Userspace buffer accounting */
-	struct {
-		void			*data;
-		size_t			size;
-		struct v4l2_buffer	vb;
-	}			p_buf[BC_BUFFERS];
-	unsigned int		local_bufs;
-	int			buf_idx;
-	int			gop;
-	unsigned int		buffers;
 	int			card_id;
 	int			dev_id;
 	int			got_vop;
 	stream_packet           current_packet;
 
-	int is_key_frame() __attribute__((pure));
-
-	void v4l2_local_bufs();
-	int v4l2_bufs_prepare();
-	void buf_return();
-
 	void update_properties();
+	void create_stream_packet(AVPacket *src);
 };
 
 #endif
