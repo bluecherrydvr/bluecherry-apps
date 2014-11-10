@@ -4,11 +4,60 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+
+#include <linux/version.h>
+
 #include "v4l2_device.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
 }
+
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0)
+
+#define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
+
+/*  Detection-class control IDs defined by V4L2 */
+#define V4L2_CID_DETECT_CLASS_BASE             (V4L2_CTRL_CLASS_DETECT | 0x900)
+#define V4L2_CID_DETECT_CLASS                  (V4L2_CTRL_CLASS_DETECT | 1)
+
+#define V4L2_CID_DETECT_MD_MODE                        (V4L2_CID_DETECT_CLASS_BASE + 1)
+enum v4l2_detect_md_mode {
+       V4L2_DETECT_MD_MODE_DISABLED            = 0,
+       V4L2_DETECT_MD_MODE_GLOBAL              = 1,
+       V4L2_DETECT_MD_MODE_THRESHOLD_GRID      = 2,
+       V4L2_DETECT_MD_MODE_REGION_GRID         = 3,
+};
+#define V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD    (V4L2_CID_DETECT_CLASS_BASE + 2)
+#define V4L2_CID_DETECT_MD_THRESHOLD_GRID      (V4L2_CID_DETECT_CLASS_BASE + 3)
+#define V4L2_CID_DETECT_MD_REGION_GRID         (V4L2_CID_DETECT_CLASS_BASE + 4)
+
+#define V4L2_EVENT_MOTION_DET 6
+
+
+/* Redefining v4l2_ext_control to take over old kernel headers installed */
+struct my_v4l2_ext_control {
+	__u32 id;
+	__u32 size;
+	__u32 reserved2[1];
+	union {
+		__s32 value;
+		__s64 value64;
+		char *string;
+		__u8 *p_u8;
+		__u16 *p_u16;
+		__u32 *p_u32;
+		void *ptr;
+	};
+} __attribute__ ((packed));
+
+#else
+
+#define my_v4l2_ext_control v4l2_ext_control
+
+#endif
+
 
 /**
  * Select the best between two formats.
@@ -463,7 +512,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 		return -ENOSYS;
 
 	uint16_t buf[45 * 45];
-	struct v4l2_ext_control vc = {0, };
+	struct my_v4l2_ext_control vc = {0, };
 	struct v4l2_ext_controls vcs = {0, };
 
 	memset(buf, 0xff, sizeof(buf));
@@ -474,7 +523,7 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 
 	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
 	vcs.count = 1;
-	vcs.controls = &vc;
+	vcs.controls = (struct v4l2_ext_control *)&vc;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 	if (size < 22 * vh) {
