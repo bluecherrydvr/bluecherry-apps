@@ -329,14 +329,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 	bc_rec = new bc_record(id);
 
-	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
-	const char *video_type = bc_db_get_val(dbres, "video_type", NULL);
-	if (signal_type && video_type && strcasecmp(signal_type, video_type)) {
-		bc_status_component_error("Video type mismatch for device %d "
-			"(driver is %s, device is %s)", id, video_type, signal_type);
-		goto fail;
-	}
-
 	if (bc_device_config_init(&bc_rec->cfg, dbres)) {
 		bc_status_component_error("Database error while initializing device %d", id);
 		goto fail;
