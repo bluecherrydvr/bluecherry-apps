@@ -24,6 +24,8 @@ if (isset($_GET['endDate']))
 	$query .= "EventsCam.time <= ".((int)$_GET['endDate'])." AND ";
 if (isset($_GET['beforeId']))
 	$query .= "EventsCam.id < ".((int)$_GET['beforeId'])." AND ";
+if (isset($_GET['afterId']))
+        $query .= "EventsCam.id > ".((int)$_GET['afterId'])." AND ";
 if (isset($_GET['id']))
 	$query .= "EventsCam.id = ".((int)$_GET['id'])." AND ";
 if (empty($current_user->data[0]['access_device_list'])){
