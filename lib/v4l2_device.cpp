@@ -103,7 +103,8 @@ v4l2_device::v4l2_device(BC_DB_RES dbres)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
 	int id = -1;
-	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+	const char *needed_signal_type = bc_db_get_val(dbres, "signal_type", NULL);
+	int ret;
 
 	card_id = bc_db_get_val_int(dbres, "card_id");
 
@@ -137,8 +138,29 @@ v4l2_device::v4l2_device(BC_DB_RES dbres)
 		goto error;
 	}
 
-	if (signal_type && strcasecmp(signal_type, "PAL") == 0)
-		cam_caps |= BC_CAM_CAP_V4L2_PAL;
+	if (needed_signal_type) {
+		v4l2_std_id current_std, needed_std;
+
+		if (strcasecmp(needed_signal_type, "PAL") == 0)
+			needed_std = V4L2_STD_PAL_B;
+		else
+			needed_std = V4L2_STD_NTSC_M;
+
+		ret = ioctl(dev_fd, VIDIOC_G_STD, &current_std);
+		if (ret) {
+			bc_log(Error, "Querying %s current video standard failed", dev_file);
+			goto error;
+		}
+
+		if (!(current_std & needed_std)) {
+			ret = ioctl(dev_fd, VIDIOC_S_STD, &needed_std);
+			/* EBUSY means some channel is already streaming, and has been already set with new std */
+			if (ret && errno != EBUSY) {
+				bc_log(Error, "Setting %s needed video standard failed, errno %d", dev_file, errno);
+				goto error;
+			}
+		}
+	}
 
 	/* SOLO, XXX: there should be some way to detect these caps thru V4L2 */
 	if (!strncmp(bc_db_get_val(dbres, "driver", NULL), "solo6", 5)) {
