@@ -8,8 +8,6 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['dev
 
 <FORM id="settingsForm" action="/ajax/editip.php" method="post">
 <div id="aip" class="container-separator">
-	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MANUF; ?>:</label><?php echo arrayToSelect(ipCameras('manufacturers'), $ipCamera->info['manufacturer'], 'manufacturers'); ?></div>
-	<div><label id="addipLabel"><?php echo AIP_CHOOSE_MODEL; ?>:</label><span id="modelSelector"><?php echo arrayToSelect(ipCameras('models', $ipCamera->info['manufacturer']), $ipCamera->info['model'], 'models', true); ?></span></div>
 	<div><label id="addipLabel"><?php echo VA_AUDIO_ENABLE; ?></label><input id='audio_enabled' type='Checkbox' name="audio_enabled"  <?php echo !($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''; ?>/>
 		<div id='message' class='INFO'>Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
 	</div>
