@@ -614,8 +614,12 @@ int rtsp_connection::send(const char *buf, int size, int type, int flag)
 
 	wr = write(fd, buf, size);
 	if (wr < 0) {
-		re = -1;
-		goto end;
+		if (EAGAIN == errno || EWOULDBLOCK == errno) {
+			wr = 0;
+		} else {
+			re = -1;
+			goto end;
+		}
 	}
 
 	if (wr < size) {
