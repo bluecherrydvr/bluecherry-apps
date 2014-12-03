@@ -657,8 +657,12 @@ int rtsp_connection::writable()
 		int wr = write(fd, wrbuf->data + wrbuf->pos,
 			       wrbuf->size - wrbuf->pos);
 		if (wr < 0) {
-			re = -1;
-			break;
+			if (EAGAIN == errno || EWOULDBLOCK == errno) {
+				wr = 0;
+			} else {
+				re = -1;
+				break;
+			}
 		}
 		wrbuf->pos += wr;
 		if (wrbuf->pos >= wrbuf->size) {
