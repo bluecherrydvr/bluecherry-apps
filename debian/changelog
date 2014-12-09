@@ -1,3 +1,11 @@
+bluecherry (1:2.3.13) precise trusty lucid wheezy; urgency=low
+
+  * Allow configuration of "generic" IP camera (issue #57)
+  * Fix unnecessary disconnections of RTSP clients
+  * Fix solo motion sensitivity levels
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 09 Dec 2014 09:56:33 -0600
+
 bluecherry (1:2.3.12) precise trusty lucid wheezy; urgency=low
 
   * Update FFmpeg to current git master HEAD + more patches for better open/read status codes
