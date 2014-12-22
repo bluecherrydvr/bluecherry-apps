@@ -13,6 +13,7 @@
                 --enable-protocol=file \
                 --enable-protocol=pipe \
                 --enable-protocol=http \
+                --enable-protocol=https \
                 \
                 --enable-muxer=matroska \
                 --enable-muxer=mjpeg \
