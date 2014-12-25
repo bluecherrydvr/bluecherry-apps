@@ -94,7 +94,7 @@ class update{
 			$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
 		};
 		foreach ($_POST as $parameter => $value){
-			$status = (data::query("UPDATE GlobalSettings SET value='{$value}' WHERE parameter='{$parameter}'", true)) ? $status : false;
+			$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('{$parameter}', '{$value}') ON DUPLICATE KEY UPDATE GlobalSettings SET value='{$value}'", true)) ? $status : false;
 		}
 		data::responseXml($status);
 	}
