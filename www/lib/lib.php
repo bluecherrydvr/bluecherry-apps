@@ -522,9 +522,7 @@ class ipCamera{
 			}
 				empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
 				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
-				$duplicate_path = data::getObject('Devices', 'device', $data['device']);
-				$duplicate_path = ($duplicate_path[0]['id'] == $self_id) ? false : $duplicate_path; 
-			if (!empty($duplicate_path)) 	{ return array(false, AIP_ALREADY_EXISTS); }
+				
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
 			if ($self_id === false) { # check this only in case of creation, don't check on edit
@@ -548,6 +546,12 @@ class ipCamera{
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			//var_dump_pre($data); exit();
+			
+		$duplicate_path = data::getObject('Devices', 'device', $data['device']);
+		$duplicate_path = ($duplicate_path[0]['id'] == $self_id) ? false : $duplicate_path; 
+		if (!empty($duplicate_path) && ($duplicate_path[0]['mjpeg_path'] == $data['mjpeg_path'])) {
+			return array(false, AIP_ALREADY_EXISTS);
+		}
 		return array(true, $data);
 	}
 	public function edit($data){
