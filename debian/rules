@@ -45,5 +45,6 @@ override_dh_auto_install:
 	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/version
 
 override_dh_installdeb:
+	sed "s/%%CURRENT_VERSION%%/${VERSION}/" debian/bluecherry.preinst.template > debian/bluecherry.preinst
 	dh_installdeb
 	-rm ${CURDIR}/debian/bluecherry/DEBIAN/conffiles

@@ -6,6 +6,12 @@ if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.3"; then
 	exit 1
 fi
 
+if [ "$1" = upgrade ] && dpkg --compare-versions "$2" gt "%%CURRENT_VERSION%%"; then
+	echo "DOWNGRADE IS NOT SUPPORTED"
+	echo "Please 'dpkg -P bluecherry' before installing this package"
+	exit 1
+fi
+
 # Fixing https://github.com/bluecherrydvr/bluecherry-apps/issues/191
 if [[ "$1" == upgrade ]] && dpkg --compare-versions "$2" lt "1:2.2"; then
 	# Parse config for DB credentials
