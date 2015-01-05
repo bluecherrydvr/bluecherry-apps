@@ -1,3 +1,16 @@
+bluecherry (1:2.3.14) precise trusty lucid wheezy; urgency=low
+
+  * Fix device uniqueness check
+  * Optimize events fetching interaction with client app
+  * Refuse to downgrade
+  * Rework timestamping, supposed to fix issue of unplayable recordings
+  * Motion analysis basing on sliding time window (lacks web UI support)
+  * Introduce setting of max recording storage age from web UI
+  * Fix infinite growth of /var/lib/bluecherry/www-*.log
+  * Fix Apache warning about deprecated NameVirtualHost directive
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 05 Jan 2015 20:35:55 +0200
+
 bluecherry (1:2.3.13) precise trusty lucid wheezy; urgency=low
 
   * Allow configuration of "generic" IP camera (issue #57)
