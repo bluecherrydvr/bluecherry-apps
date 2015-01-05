@@ -72,7 +72,7 @@ CREATE TABLE `Devices` (
   `debug_level` tinyint(4) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
-  UNIQUE KEY `device` (`device`,`channel`)
+  UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `EventComments`;
