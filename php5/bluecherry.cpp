@@ -124,7 +124,11 @@ PHP_FUNCTION(bc_db_query)
 				  &sql, &sql_len) == FAILURE)
 		RETURN_FALSE;
 
-	if (bc_db_query("%s", sql))
+	int ret = bc_db_query("%s", sql);
+	char buf[4*1024];
+	snprintf(buf, sizeof(buf), "echo '%s' ret %d >> /tmp/debug\n", sql, ret)
+	system(buf);
+	if (ret)
 		RETURN_FALSE;
 
 	RETURN_TRUE;
