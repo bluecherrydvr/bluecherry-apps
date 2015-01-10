@@ -98,6 +98,8 @@ class update{
 			$_POST['G_MAX_RECORD_AGE'] *= 60 * 60 * 24;  # convert days to seconds
 
 		foreach ($_POST as $parameter => $value){
+			if (!preg_match("G_.+", $parameter))
+				continue;
 			$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('{$parameter}', '{$value}') ON DUPLICATE KEY UPDATE value='{$value}'", true)) ? $status : false;
 		}
 		data::responseXml($status);
