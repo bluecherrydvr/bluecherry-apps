@@ -149,6 +149,7 @@ CREATE TABLE `EventsCam` (
   KEY `level_id` (`level_id`),
   KEY `device_id` (`device_id`),
   KEY `type_id` (`type_id`),
+  KEY `time_index` (`time`) USING BTREE,
   CONSTRAINT `EventsCam_ibfk_1` FOREIGN KEY (`media_id`) REFERENCES `Media` (`id`) ON DELETE CASCADE,
   CONSTRAINT `EventsCam_ibfk_2` FOREIGN KEY (`level_id`) REFERENCES `EventLevels` (`id`),
   CONSTRAINT `EventsCam_ibfk_3` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`),
