@@ -1,3 +1,11 @@
+bluecherry (1:2.3.15) precise trusty lucid wheezy; urgency=low
+
+  * Improve events fetching performance by adding index on DB table EventsCam,
+  on field `time`
+  * Fix a bug of settings updating introduced in 2.3.14.
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sun, 11 Jan 2015 22:09:40 +0200
+
 bluecherry (1:2.3.14) precise trusty lucid wheezy; urgency=low
 
   * Fix device uniqueness check
