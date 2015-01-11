@@ -1,3 +1,9 @@
+bluecherry (1:2.3.15-2) precise trusty lucid wheezy; urgency=low
+
+  * Hotfix
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sun, 11 Jan 2015 23:42:24 +0200
+
 bluecherry (1:2.3.15) precise trusty lucid wheezy; urgency=low
 
   * Improve events fetching performance by adding index on DB table EventsCam,
