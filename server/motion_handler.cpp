@@ -92,7 +92,7 @@ void motion_handler::run()
 			// If N% of frames in the past X seconds contain motion, trigger
 			// Push info on packet into sliding time window checker (STWC)
 			// Drop from STWC the packets which don't fit to the specified window (done internally with push())
-			bc_log(Info, "pkt: motion: %s, pts: %" PRId64 " seq: %u", (it->flags & stream_packet::MotionFlag) ? "YES" : "NO ", it->pts, it->seq);
+			bc_log(Debug, "pkt: motion: %s, pts: %" PRId64 " seq: %u", (it->flags & stream_packet::MotionFlag) ? "YES" : "NO ", it->pts, it->seq);
 			// TODO Use DTS instead of PTS for STWC for sure monotonity?
 			stw_motion_analysis.push(/* timestamp */ it->pts, /* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
 			// Check the "sum" (count) of motion-flagged packets in STWC
