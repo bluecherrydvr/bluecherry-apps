@@ -100,8 +100,11 @@ void motion_handler::run()
 					stw_motion_analysis.sum(), stw_motion_analysis.count(),
 					100 * stw_motion_analysis.sum() / stw_motion_analysis.count(),
 					motion_threshold_percentage);
-			if (100 * stw_motion_analysis.sum() / stw_motion_analysis.count() < motion_threshold_percentage)
+#define STW_MIN_FRAMES 4
+			if ((stw_motion_analysis.count() < STW_MIN_FRAMES)
+					|| (100 * stw_motion_analysis.sum() / stw_motion_analysis.count() < motion_threshold_percentage))
 				continue;
+#undef STW_MIN_FRAMES
 			// Note: STW analysis is reset on pause and stop.
 
 			triggered = true;
