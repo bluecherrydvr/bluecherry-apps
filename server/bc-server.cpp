@@ -555,7 +555,7 @@ static bool is_media_max_age_exceeded()
 	}
 
 	// Get oldest recording date
-	dbres = bc_db_get_table("SELECT start FROM Media WHERE ORDER BY id ASC LIMIT 1");
+	dbres = bc_db_get_table("SELECT start FROM Media ORDER BY id ASC LIMIT 1");
 	if (!dbres)
 		return false;
 
