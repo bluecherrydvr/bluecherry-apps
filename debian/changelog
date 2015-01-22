@@ -1,3 +1,12 @@
+bluecherry (1:2.3.16) precise trusty lucid wheezy; urgency=low
+
+  * Workaround for motion detection breakage
+  * Fix SQL query syntax error at recordings max age check
+  * sliding time window based motion event detection: introduce minimal count of processed frames (hardcoded to 4)
+  * Decrease log level of debugging message
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 22 Jan 2015 16:30:07 -0600
+
 bluecherry (1:2.3.15-2) precise trusty lucid wheezy; urgency=low
 
   * Hotfix
