@@ -85,6 +85,16 @@ void motion_handler::run()
 
 		bool triggered = false;
 		for (auto it = buffer.begin(); it != buffer.end(); it++) {
+
+			/*
+			   Madness party
+			   There's race condition between motion_processor setting MotionFlag and motion_handler checking it. It is a legacy DESIGN.
+			   This was noted in https://github.com/bluecherrydvr/bluecherry-apps-issues/issues/42
+			   The introduction of Sliding Time Window analysis for smoother motion triggering has broken that.
+			   Clear resolution requires major refactoring. TODO FIXME
+			   As a quick HACK, reverting old design.
+			 */
+#if 0
 			if ((int)it->seq <= last_pkt_seq)
 				continue;
 			last_pkt_seq = it->seq;
@@ -106,6 +116,11 @@ void motion_handler::run()
 				continue;
 #undef STW_MIN_FRAMES
 			// Note: STW analysis is reset on pause and stop.
+#endif
+			/* This is the repetitive traversal of the same frames many times. At some point some get flagged */
+			if (!(it->flags & stream_packet::MotionFlag))
+				continue;
+			/* End of it */
 
 			triggered = true;
 			break;
