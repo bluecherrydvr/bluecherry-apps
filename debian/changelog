@@ -1,3 +1,9 @@
+bluecherry (1:2.3.16-2) precise trusty lucid wheezy; urgency=low
+
+  * Effectively silence messages about lacking motion_analysis_{stw,percentage} DB fields
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 22 Jan 2015 17:11:55 -0600
+
 bluecherry (1:2.3.16) precise trusty lucid wheezy; urgency=low
 
   * Workaround for motion detection breakage
