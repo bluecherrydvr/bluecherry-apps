@@ -136,8 +136,6 @@ if ($out_multipart) {
 	set_time_limit(0);
 	@apache_setenv('no-gzip', 1);
 	@ini_set('zlib.output_compression', 0);
-	while (ob_get_level())
-		ob_end_flush();
 }
 
 print_image($id, $out_multipart, $current_user);
