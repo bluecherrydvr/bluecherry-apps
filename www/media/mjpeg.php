@@ -87,6 +87,7 @@ function print_image($id, $out_multipart, $current_user) {
 
 		$cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg "
 			. " -rtsp_transport tcp -i rtsp://127.0.0.1:7002/live/$id?authtoken=$token "
+			. " -aspect 1/1 " # forces JFIF marker which is used for longer marker
 			. " -an -vcodec " . $codec . $frames ." -f rawvideo - ";
 
 		// Parse out individual frames and insert the boundary
