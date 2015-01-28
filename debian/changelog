@@ -1,3 +1,11 @@
+bluecherry (1:2.3.17) precise trusty lucid wheezy; urgency=low
+
+  * Fix infinite loop in mjpeg.php
+  * Fix Live View
+  * Update ffmpeg libs to v2.5.3 release
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 27 Jan 2015 18:46:49 -0600
+
 bluecherry (1:2.3.16-2) precise trusty lucid wheezy; urgency=low
 
   * Effectively silence messages about lacking motion_analysis_{stw,percentage} DB fields
