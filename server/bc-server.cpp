@@ -545,7 +545,7 @@ static bool is_media_max_age_exceeded()
 	bc_db_free_table(dbres);
 
 	if (max_age < 0) {
-		bc_log(Error, "is_media_max_age_exceeded(): max_age < 0, %d, illegal value, aborting further checks", max_age);
+		bc_log(Debug, "is_media_max_age_exceeded(): max_age < 0, %d, illegal value, aborting further checks", max_age);
 		return false;
 	}
 
@@ -568,7 +568,7 @@ static bool is_media_max_age_exceeded()
 	bc_db_free_table(dbres);
 
 	if (start <= 0) {
-		bc_log(Error, "is_media_max_age_exceeded(): start <= 0, %ld, illegal value, aborting further checks", start);
+		bc_log(Debug, "is_media_max_age_exceeded(): start <= 0, %ld, illegal value, aborting further checks", start);
 		return false;
 	}
 
