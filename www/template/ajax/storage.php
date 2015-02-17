@@ -7,7 +7,7 @@ require('../template/template.lib.php');
 <div id='saveButton'><?php echo SAVE; ?></div>
 <div class='bClear'></div>
 <div style="display:none;" id='tableEntry'>
-<?php		print "<div>".LOCATION."<INPUT name='path[]' type='text' id='path' class='path' value='' style='width:270px;margin-left:5px;' /> Max:<INPUT style='width:40px;margin-left:5px;' type='text' name='max[]' id='max[]' value='95' />% <div id='button' class='deleteShort'>".L_DELETE."</div></div>"; ?>
+<?php		print "<div>".LOCATION."<INPUT name='path[]' type='text' id='path' class='path' value='' style='width:270px;margin-left:5px;' /> Max:<INPUT style='width:40px;margin-left:5px;' type='text' name='max[]' id='max[]' value='94' />% <div id='button' class='deleteShort'>".L_DELETE."</div></div>"; ?>
 </div>
 <form id='storageForm' method="post" action="/ajax/storage.php">
 <?php
