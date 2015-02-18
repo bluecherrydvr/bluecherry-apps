@@ -453,11 +453,6 @@ static uint64_t path_freespace(const char *path)
 	if (statvfs(path, &st))
 		return 0;
 
-	if (!st.f_favail) {
-		bc_log(Info, "No available inodes on %s", path);
-		return 0;
-	}
-
 	return (uint64_t)st.f_bavail * (uint64_t)st.f_bsize;
 }
 
