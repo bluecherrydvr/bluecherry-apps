@@ -5,7 +5,6 @@ class raw_input_consumer : public stream_consumer
 {
 public:
 	friend class motion_handler;
-	friend class motion_flag_consumer;
 
 	raw_input_consumer()
 		: stream_consumer("Motion Handling (Input)")
@@ -14,7 +13,7 @@ public:
 };
 
 motion_handler::motion_handler()
-	: stream_source("Motion Handling"), flag_stream(0), destroy_flag(false), prerecord_time(0), postrecord_time(0)
+	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0)
 {
 	raw_stream = new raw_input_consumer;
 }
@@ -22,7 +21,6 @@ motion_handler::motion_handler()
 motion_handler::~motion_handler()
 {
 	delete raw_stream;
-	delete flag_stream;
 }
 
 void motion_handler::destroy()
@@ -34,8 +32,6 @@ void motion_handler::destroy()
 void motion_handler::disconnect()
 {
 	raw_stream->disconnect();
-	if (flag_stream)
-		flag_stream->disconnect();
 }
 
 stream_consumer *motion_handler::input_consumer()
@@ -199,54 +195,3 @@ static inline bool packet_seq_compare(const stream_packet &p1, const stream_pack
 {
 	return p1.seq < p2.seq;
 }
-
-class motion_flag_consumer : public stream_consumer
-{
-public: 
-	motion_flag_consumer(raw_input_consumer *target)
-		: stream_consumer("Motion Handling (Flags)"), target(target)
-	{
-	}
-
-	virtual void receive(const stream_packet &packet)
-	{
-		if (!target) {
-			bc_log(Warning, "motion_flag_consumer ignoring packet due to missing target");
-			return;
-		}
-
-		std::lock_guard<std::mutex> l(target->lock);
-		auto it = std::lower_bound(target->buffer.begin(), target->buffer.end(),
-		                           packet, packet_seq_compare);
-
-		if (it == target->buffer.end()) {
-			/* This case would mean that the entire motion process happened before
-			 * the raw input was able to receive the packet; that's weird. To avoid
-			 * double packets or the expense of having to check for raw stream inserts,
-			 * this condition isn't supported. */
-			bc_log(Bug, "motion_flag_consumer has a newer packet than target buffer");
-			return;
-		}
-
-		if (it->seq == packet.seq) {
-			it->flags = (it->flags & ~stream_packet::MotionFlag) | packet.flags;
-		} else {
-			bc_log(Debug, "motion_flag_consumer: missing packet %u in input (next is %u)", packet.seq, it->seq);
-			// XXX trigger a recording anyway, starting as early as we can?
-		}
-
-		target->buffer_wait.notify_one();
-	}
-
-private:
-	raw_input_consumer *target;
-};
-
-stream_consumer *motion_handler::create_flag_consumer()
-{
-	std::lock_guard<std::mutex> l(lock);
-	if (!flag_stream)
-		flag_stream = new motion_flag_consumer(raw_stream);
-	return flag_stream;
-}
-

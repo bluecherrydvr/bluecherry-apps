@@ -212,7 +212,6 @@ void bc_record::run()
 				// TODO Check cfg.motion_analysis_stw > 0
 				m_handler->set_motion_analysis_stw(cfg.motion_analysis_stw);
 				m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
-				bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 
 				rec = new recorder(this);
 				rec->set_logging_context(log);
@@ -226,13 +225,13 @@ void bc_record::run()
 
 				if (bc->type == BC_DEVICE_V4L2) {
 					static_cast<v4l2_device*>(bc->input)->set_motion(true);
+					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 				} else {
 					m_processor = new motion_processor;
 					m_processor->set_logging_context(log);
 					update_motion_thresholds();
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
-					m_processor->output()->connect(m_handler->create_flag_consumer());
-
+					m_processor->output()->connect(m_handler->input_consumer());
 					m_processor->start_thread();
 				}
 

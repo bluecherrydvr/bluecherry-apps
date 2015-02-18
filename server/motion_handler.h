@@ -52,13 +52,6 @@ public:
 	 * packets to be flagged with motion. */
 	stream_consumer *input_consumer() __attribute__((pure));
 
-	/* Optionally, this stream can be connected to another element which provides a
-	 * subset of the input stream with motion flags added. This allows asynchronous
-	 * and low-framerate motion processing without affecting the recording itself.
-	 * These flags are correlated with the buffer from input_consumer to make recording
-	 * decisions. */
-	stream_consumer *create_flag_consumer();
-
 	void disconnect();
 	void destroy();
 	void run();
