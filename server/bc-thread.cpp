@@ -17,6 +17,7 @@
 #include "v4l2_device.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
+#include "trigger_processor.h"
 #include "motion_handler.h"
 #include "recorder.h"
 
@@ -237,6 +238,31 @@ void bc_record::run()
 
 				std::thread th(&motion_handler::run, m_handler);
 				th.detach();
+			} else if (sched_cur == 'T') {
+				/*
+				 * source ==> trigger_processor (data passthru, flag setting) ==> motion_handler_m ==> recorder
+				 */
+				m_handler = new motion_handler;
+				m_handler->set_logging_context(log);
+				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
+
+				rec = new recorder(this);
+				rec->set_logging_context(log);
+				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
+
+				rec->set_buffer_time(cfg.prerecord);
+
+				m_handler->connect(rec);
+				std::thread rec_th(&recorder::run, rec);
+				rec_th.detach();
+
+				t_processor = new trigger_processor;
+				((stream_consumer*)t_processor)->set_logging_context(log);
+				bc->source->connect(t_processor, stream_source::StartFromLastKeyframe);
+				t_processor->output()->connect(m_handler->input_consumer());
+
+				std::thread th(&motion_handler::run, m_handler);
+				th.detach();
 			}
 
 			sched_last = 0;
@@ -312,6 +338,7 @@ bc_record::bc_record(int i)
 	file_started = 0;
 
 	m_processor = 0;
+	t_processor = 0;
 	m_handler = 0;
 	rec = 0;
 }
@@ -419,6 +446,12 @@ void bc_record::destroy_elements()
 		m_processor->disconnect();
 		m_processor->destroy();
 		m_processor = 0;
+	}
+
+	if (t_processor) {
+		((stream_consumer*)t_processor)->disconnect();
+		t_processor->destroy();
+		t_processor = 0;
 	}
 
 	if (m_handler) {

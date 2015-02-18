@@ -75,6 +75,7 @@ public:
 
 	/* Motion detection & recording */
 	class motion_processor *m_processor;
+	class trigger_processor *t_processor;
 	class motion_handler *m_handler;
 	class recorder *rec;
 
