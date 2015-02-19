@@ -24,6 +24,7 @@ extern "C" {
 #include "bc-syslog.h"
 #include "version.h"
 #include "status_server.h"
+#include "trigger_server.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -1051,6 +1052,12 @@ int main(int argc, char **argv)
 	ret = status_serv->reconfigure("/tmp/bluecherry_status");
 	if (ret) {
 		bc_log(Error, "Failed to setup the status server");
+		return 1;
+	}
+
+	ret = trigger_server::Instance().reconfigure("/tmp/bluecherry_trigger");
+	if (ret) {
+		bc_log(Error, "Failed to setup the trigger server");
 		return 1;
 	}
 

@@ -79,7 +79,7 @@ bool status_server::socketWaitReadable(int fd, int timeout_ms) {
 	return p.revents & p.events;
 }
 
-void *servingLoopWrapper(void *arg) {
+static void *servingLoopWrapper(void *arg) {
 	status_server *self = reinterpret_cast<status_server*>(arg);
 	self->servingLoop();
 	return NULL;

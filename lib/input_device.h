@@ -168,7 +168,8 @@ public:
 	enum Flags {
 		NoFlags = 0,
 		KeyframeFlag = 0x1,
-		MotionFlag = 0x2
+		MotionFlag = 0x2,
+		TriggerFlag = 0x4,
 	};
 
 	/* These fields are not shared between stream_packet instances, and
@@ -178,7 +179,7 @@ public:
 	/* Size in bytes of the data field */
 	unsigned size;
 	/* Flags, as a bitmask of values from Flags */
-	unsigned flags;
+	mutable unsigned flags;
 	/* Presentation timestamp of this packet, which is normalized during
 	 * creation of the packet to AV_TIME_BASE_Q, and synchronized across
 	 * related media streams. */

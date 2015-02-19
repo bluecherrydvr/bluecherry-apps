@@ -256,8 +256,8 @@ void bc_record::run()
 				std::thread rec_th(&recorder::run, rec);
 				rec_th.detach();
 
-				t_processor = new trigger_processor;
-				((stream_consumer*)t_processor)->set_logging_context(log);
+				t_processor = new trigger_processor(id);
+				t_processor->set_logging_context(log);
 				bc->source->connect(t_processor, stream_source::StartFromLastKeyframe);
 				t_processor->output()->connect(m_handler->input_consumer());
 
@@ -449,7 +449,7 @@ void bc_record::destroy_elements()
 	}
 
 	if (t_processor) {
-		((stream_consumer*)t_processor)->disconnect();
+		t_processor->disconnect();
 		t_processor->destroy();
 		t_processor = 0;
 	}

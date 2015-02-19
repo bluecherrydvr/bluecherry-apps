@@ -81,6 +81,7 @@ void motion_handler::run()
 
 		bool triggered = false;
 		for (auto it = buffer.begin(); it != buffer.end(); it++) {
+			bc_log(Debug, "pkt: flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u", it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
 
 			/*
 			   Madness party
@@ -114,7 +115,7 @@ void motion_handler::run()
 			// Note: STW analysis is reset on pause and stop.
 #endif
 			/* This is the repetitive traversal of the same frames many times. At some point some get flagged */
-			if (!(it->flags & stream_packet::MotionFlag))
+			if (!(it->flags & (stream_packet::MotionFlag | stream_packet::TriggerFlag)))
 				continue;
 			/* End of it */
 

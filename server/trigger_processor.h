@@ -20,19 +20,25 @@ struct AVCodecContext;
  * motion_handler, which also handles the decisions on what to record in
  * response to motion flags.
  */
-class trigger_processor : public stream_consumer, public stream_source
+class trigger_processor : public stream_consumer
 {
 public:
-	trigger_processor();
+	trigger_processor(int camera_id);
 	virtual ~trigger_processor();
 
 	void destroy();
 	void run();
 
-	virtual void receive(const stream_packet &packet);
+	virtual void receive(const stream_packet &packet) override;
+
+	void trigger(const char *description);
 
 private:
 	bool destroy_flag;
+	int camera_id;
+
+	pthread_mutex_t trigger_flag_lock;
+	bool trigger_flag;
 };
 
 #endif
