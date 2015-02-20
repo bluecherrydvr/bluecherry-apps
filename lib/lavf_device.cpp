@@ -128,6 +128,7 @@ int lavf_device::start()
 			if (video_stream_index >= 0) {
 				bc_log(Warning, "Session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", url);
+				stream->discard = AVDISCARD_ALL;
 				continue;
 			}
 			video_stream_index = i;
@@ -140,12 +141,16 @@ int lavf_device::start()
 			if (audio_stream_index >= 0) {
 				bc_log(Warning, "Session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
+				stream->discard = AVDISCARD_ALL;
 				continue;
 			} else if (stream->codec->codec_id == AV_CODEC_ID_NONE) {
 				bc_log(Error, "No matching audio codec for stream; ignoring audio");
+				stream->discard = AVDISCARD_ALL;
 				continue;
 			}
 			audio_stream_index = i;
+		} else {
+				stream->discard = AVDISCARD_ALL;
 		}
 	}
 

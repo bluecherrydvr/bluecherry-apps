@@ -40,9 +40,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		s = audio_st;
 	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
 		s = video_st;
+	else
+		bc_log(Debug, "write_packet: unexpected packet (to be ignored): pkt.type %d, dts %" PRId64 ", pts %" PRId64 ", size %d", pkt.type, pkt.dts, pkt.pts, pkt.size);
 
 	if (!s)
-		return false;
+		return true;
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
