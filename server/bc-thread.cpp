@@ -194,8 +194,18 @@ void bc_record::run()
 		}
 
 		if (sched_last) {
-			log.log(Info, "Switching to new recording schedule '%s'",
-				sched_cur == 'M' ? "motion" : (sched_cur == 'N' ? "stopped" : "continuous"));
+			char *sched_str;
+			switch (sched_cur) {
+				case 'C': sched_str = "continuous"; break;
+				case 'M': sched_str = "motion"; break;
+				case 'N': sched_str = "stopped"; break;
+				case 'T': sched_str = "triggered"; break;
+				default:
+					log.log(Error, "Invalid schedule type '%c'", sched_cur);
+					goto error;
+			}
+
+			log.log(Info, "Switching to new recording schedule '%s'", sched_str);
 
 			destroy_elements();
 
