@@ -81,17 +81,7 @@ void motion_handler::run()
 
 		bool triggered = false;
 		for (auto it = buffer.begin(); it != buffer.end(); it++) {
-			bc_log(Debug, "pkt: flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u", it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
-
-			/*
-			   Madness party
-			   There's race condition between motion_processor setting MotionFlag and motion_handler checking it. It is a legacy DESIGN.
-			   This was noted in https://github.com/bluecherrydvr/bluecherry-apps-issues/issues/42
-			   The introduction of Sliding Time Window analysis for smoother motion triggering has broken that.
-			   Clear resolution requires major refactoring. TODO FIXME
-			   As a quick HACK, reverting old design.
-			 */
-#if 0
+			// TODO Avoid repetitive traversal loop! Repetitive processing is already eliminated by last_pkt_seq check.
 			if ((int)it->seq <= last_pkt_seq)
 				continue;
 			last_pkt_seq = it->seq;
@@ -107,6 +97,8 @@ void motion_handler::run()
 					stw_motion_analysis.sum(), stw_motion_analysis.count(),
 					100 * stw_motion_analysis.sum() / stw_motion_analysis.count(),
 					motion_threshold_percentage);
+			// NOTE actual usage of STW is still not enabled, to avoid unexpected behaviour change.
+#if 0
 #define STW_MIN_FRAMES 4
 			if ((stw_motion_analysis.count() < STW_MIN_FRAMES)
 					|| (100 * stw_motion_analysis.sum() / stw_motion_analysis.count() < motion_threshold_percentage))
@@ -114,10 +106,8 @@ void motion_handler::run()
 #undef STW_MIN_FRAMES
 			// Note: STW analysis is reset on pause and stop.
 #endif
-			/* This is the repetitive traversal of the same frames many times. At some point some get flagged */
 			if (!(it->flags & (stream_packet::MotionFlag | stream_packet::TriggerFlag)))
 				continue;
-			/* End of it */
 
 			triggered = true;
 			break;
