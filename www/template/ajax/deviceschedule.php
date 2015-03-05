@@ -17,6 +17,7 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".(($global) ? '<b>'.
 		<!-- do not show until GPIO is supported
 			<li id="liS"><?php echo SCHED_SENSOR; ?></li>
 		!-->
+		<li id="liT"><?php echo SCHED_TRIGGER; ?></li>
 	</ul>
 	<ul class='all'>
 		<li id="fillAll"><?php echo  SCHED_FILLALL; ?></li>
