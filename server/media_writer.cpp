@@ -277,6 +277,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		av_strerror(ret, error, sizeof(error));
 		bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
 				file_path.c_str(), error, ret);
+		avio_closep(&oc->pb);
 		goto error;
 	}
 
