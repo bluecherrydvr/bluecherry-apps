@@ -1099,7 +1099,7 @@ var localMotionGrid = new Class({
 			var self = this;
 			switch(type){
 				case 'mmap':
-					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
+					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image //fx
 					$(el).addEvent('load', function(){
 						self.drawGrid($(el), $(value).get('value'), nc, nr);
 						tempOverlay.removeoverlay();

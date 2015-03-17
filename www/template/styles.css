@@ -358,13 +358,14 @@ second
 	text-align:center;
 	border:1px dotted black;
 }
-#gridTable .gridCol0 			{ background-color: transparent;   }
-#gridTable .gridCol1, .gridColM { background-color: green;  }
-#gridTable .gridCol2 			{ background-color: blue;   }
-#gridTable .gridCol3, .gridColS { background-color: yellow; }
-#gridTable .gridCol4 			{ background-color: orange; }
-#gridTable .gridCol5, .gridColC { background-color: red;    }
-#gridTable .gridColN 			{ background-color: black;  }
+#gridTable .gridCol0 			{ background-color: transparent;}
+#gridTable .gridCol1, .gridColM { background-color: green;  	}
+#gridTable .gridCol2 			{ background-color: blue;   	}
+#gridTable .gridCol3, .gridColS { background-color: yellow; 	}
+#gridTable .gridCol4 			{ background-color: orange; 	}
+#gridTable .gridCol5, .gridColC { background-color: red;    	}
+#gridTable .gridColN 			{ background-color: black;  	}
+#gridTable .gridColT			{ background-color: orange; 	}
 
 .container-separator {
 	background-color:#fafafa !important; 
@@ -475,6 +476,7 @@ second
 #lvlSelect ul #li3, #liS 		{ background-color: yellow; }
 #lvlSelect ul #li4  			{ background-color: orange; }
 #lvlSelect ul #li5, #liC 		{ background-color: red; color:#fff; }
+#lvlSelect ul #liT				{ background-color: orange; }
 #lvlSelect ul #liN 				{ background-color:#000; color:#fff; }
 
 /*videoadj*/
