@@ -1,3 +1,14 @@
+bluecherry (1:2.3.18) precise trusty lucid wheezy; urgency=low
+
+  * Trigger Mode support to recording schedule
+  * Ignore unexpected elementary streams, correctly
+  * Close AVIOContext immediately after muxer open failure
+  * Drop check for available inodes on storage filesystem (fails on Windows share)
+  * Change default Storage.max_thresh from 95 to 94
+  * Silence the scary log messages from is_media_max_age_exceeded()
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 17 Mar 2015 16:55:00 +0200
+
 bluecherry (1:2.3.17) precise trusty lucid wheezy; urgency=low
 
   * Fix infinite loop in mjpeg.php
