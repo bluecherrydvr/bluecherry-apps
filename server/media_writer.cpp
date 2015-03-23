@@ -60,6 +60,10 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
 		bc_log(Error, "Error writing frame to recording: %s", err);
+		if (re == AVERROR(EINVAL)) {
+			bc_log(Error, "Muxing error EINVAL. Considering not fatal. Problematic packet properties: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
+			return true;
+		}
 		return false;
 	}
 
