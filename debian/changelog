@@ -1,3 +1,9 @@
+bluecherry (1:2.3.19) precise trusty lucid wheezy; urgency=low
+
+  * Fix live view for odd-sized MJPEG streams (fixed in libavformat)
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 11 Apr 2015 15:58:10 -0500
+
 bluecherry (1:2.3.18) precise trusty lucid wheezy; urgency=low
 
   * Trigger Mode support to recording schedule
