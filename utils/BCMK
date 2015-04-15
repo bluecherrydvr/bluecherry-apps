@@ -10,7 +10,7 @@ getaudio: %:%.o $(TOPDIR)/server/g723-dec.o
 	$(LD) -o $@ $^ $(LDFLAGS) -lasound
 
 bc-license: %:%.o
-	$(CXX) -o $@ $^
+	$(CXX) -o $@ $^ -lbsd
 
 $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 	$(BCMK) -C "$(@D)" $(@F)

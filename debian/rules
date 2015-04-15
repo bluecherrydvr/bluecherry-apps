@@ -27,6 +27,7 @@ override_dh_auto_install:
 	cp -a misc/sql/* debian/bluecherry/usr/share/bluecherry/
 	cp misc/remove_untracked_media_files.sh debian/bluecherry/usr/share/bluecherry/
 	cp misc/backup_db.sh debian/bluecherry/usr/share/bluecherry/
+	cp misc/list_ether.sh debian/bluecherry/usr/share/bluecherry/
 	cp -a misc/ponvif* debian/bluecherry/usr/share/bluecherry/
 	rm -rf debian/bluecherry/usr/share/bluecherry/ponvif*/.git
 	mkdir debian/bluecherry/DEBIAN

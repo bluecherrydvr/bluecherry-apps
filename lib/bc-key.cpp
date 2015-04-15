@@ -18,11 +18,23 @@
 #include <bsd/string.h>
 #include <limits.h>
 
+#include <vector>
+
 #ifndef BC_KEY_STANDALONE
 #include "libbluecherry.h"
 #endif
 
-int bc_license_machine_id(char *out, size_t out_sz);
+#define MACHINE_ID_LEN 10
+
+typedef struct MachineId {
+	char ifname[IFNAMSIZ];
+	char address[MAX_ADDR_LEN];  // MAC address (permanent) aka "ether"
+	char machine_id[MACHINE_ID_LEN];  // base32-encoded last 5 bytes of `address`
+} MachineId;
+
+typedef std::vector<MachineId> MachineIdSet;
+
+int bc_license_machine_id_set(MachineIdSet &m_id_set);
 
 static const uint16_t crc16_table[256] = {
 	0x0000, 0xC0C1, 0xC181, 0x0140, 0xC301, 0x03C0, 0x0280, 0xC241,
@@ -244,85 +256,119 @@ int bc_license_generate_auth(char *dest, int dest_sz, const char *key, const cha
 
 int bc_license_check_auth(const char *key, const char *auth)
 {
-	char calc[10], machine[10], raw_u[5], raw_c[5];
+	// ATTENTION! Uncommon retcode policy: 0 = fail, 1 = success
+
+	char calc[10], raw_u[5], raw_c[5];
+	MachineIdSet machine_id_set;
 
 	if (!base32_decode(raw_u, 5, auth, strlen(auth)))
 		return 0;
 
-	if (bc_license_machine_id(machine, sizeof(machine)) < 9)
-		return -1;
-	if (bc_license_generate_auth(calc, sizeof(calc), key, machine) < 9)
+	if (bc_license_machine_id_set(machine_id_set)) {
+#ifndef BC_KEY_STANDALONE
+		bc_log(Error, "Failed to get machine identification codes");
+#endif
 		return 0;
-	if (!base32_decode(raw_c, 5, calc, strlen(calc)))
-		return 0;
+	}
+	for (unsigned int i = 0; i < machine_id_set.size(); i++) {
+		char *machine = machine_id_set[i].machine_id;
 
-	if (memcmp(raw_u, raw_c, 5) != 0)
-		return 0;
-	return 1;
+		if (bc_license_generate_auth(calc, sizeof(calc), key, machine) < 9)
+			continue;
+		if (!base32_decode(raw_c, 5, calc, strlen(calc)))
+			continue;
+		if (memcmp(raw_u, raw_c, 5) != 0)
+			continue;
+		return 1;
+	}
+	return 0;
 }
 
-int bc_license_machine_id(char *out, size_t out_sz)
-{
-	const char ifs[] = "\3eth" "\3eno" "\4wlan" "\3wlo";
-	char buf[1024];
-	char id_buf[6];
-	struct ifconf ifc;
-	struct ifreq *ifr;
+int bc_license_machine_id_by_devname(MachineId &m_id, char *devname);
+int bc_license_machine_id_set(MachineIdSet &m_id_set) {
+	int ret;
+	// Getting a list of network interfaces having ethernet address (MAC)
+	// ip -o link | grep link/ether | awk -F : '{ print $2 }' | tr -d ' '
+	// Above way was not accepted to avoid introducing new dependency on iproute|iproute2 package
+	// The below bash script gives nearly the same result
+	FILE *devlist = popen("/usr/share/bluecherry/list_ether.sh", "r");
+	if (!devlist) {
+#ifndef BC_KEY_STANDALONE
+		bc_log(Error, "Failed to get network interfaces list");
+#endif
+		return -1;
+	}
+	while (!feof(devlist) && !ferror(devlist)) {
+		MachineId m_id = {0, };
+		if (!fgets(m_id.ifname, sizeof(m_id.ifname), devlist))
+			break;
+
+		// Trim trailing newline symbol
+		if (m_id.ifname[strlen(m_id.ifname) - 1] == '\n')
+			m_id.ifname[strlen(m_id.ifname) - 1] = '\0';
+
+#ifndef BC_KEY_STANDALONE
+		bc_log(Debug, "Got devname %s", m_id.ifname);
+#endif
+
+		ret = bc_license_machine_id_by_devname(m_id, m_id.ifname);
+		if (!ret)
+			m_id_set.push_back(m_id);
+	}
+	pclose(devlist);
+	return 0;
+}
+
+int bc_license_machine_id_by_devname(MachineId &m_id, char *devname) {
+	int err;
 	int fd;
-	int re = -1;
-	unsigned if_count;
-	unsigned nic = UINT_MAX;
-
-	if (out_sz < 10)
-		return -ENOBUFS;
-
-	memset(id_buf, 0, sizeof(id_buf));
+	struct ifreq ifr;
+	struct ethtool_perm_addr {
+		__u32   cmd;
+		__u32   size;
+		__u8    data[MAX_ADDR_LEN];
+	};
+#ifndef SIOCETHTOOL
+#define SIOCETHTOOL 0x8946
+#endif
+#define ETHTOOL_GPERMADDR 0x00000020 /* Get permanent hardware address */
+	struct ethtool_perm_addr epaddr = {0, };
 
 	fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (fd < 0)
 		return -errno;
 
-	memset(&ifc, 0, sizeof(ifc));
-	ifc.ifc_len = sizeof(buf);
-	ifc.ifc_buf = buf;
+	epaddr.cmd = ETHTOOL_GPERMADDR;
+	epaddr.size = MAX_ADDR_LEN;
 
-	if (ioctl(fd, SIOCGIFCONF, &ifc) < 0) {
-		re = -errno;
-		goto end;
-	} else if (ifc.ifc_len == sizeof(buf)) {
-		/* XXX buf too small, should we retry with bigger buf? */
-	}
+	memset(&ifr, 0, sizeof(ifr));
+	strcpy(ifr.ifr_name, devname);
+	ifr.ifr_data = (char *)&epaddr;
 
-	ifr = ifc.ifc_req;
-	if_count = ifc.ifc_len / sizeof(struct ifreq);
-
-	for (unsigned i = 0; i < if_count; i++) {
-		if (ioctl(fd, SIOCGIFHWADDR, &ifr[i]) < 0) {
-			re = -errno;
-			continue;
-		}
-
-		for (const char *p = ifs; *p; p += *p + 1) {
-			const char *n = ifr[i].ifr_name;
-			if (strncmp(n, p + 1, *p) != 0)
-				continue;
-
-			unsigned tmp = (n[0] << 8) |
-				strtoul(n + *p, NULL, 10);
-			if (tmp < nic) {
-				nic = tmp;
-				memcpy(id_buf, ifr[i].ifr_hwaddr.sa_data, 6);
-			}
-			break;
-		}
-	}
-
-	base32_encode(out, 10, id_buf+1, 5);
-	re = 9;
-
-end:
+	errno = 0;
+	err = ioctl(fd, SIOCETHTOOL, &ifr);
 	close(fd);
-	return re;
+	if (err) {
+#ifndef BC_KEY_STANDALONE
+		bc_log(Error, "Cannot read permanent address of %s, errno %d", devname, errno);
+#endif
+	} else {
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+		memcpy(m_id.address, epaddr.data, MIN(sizeof(m_id.address), epaddr.size));
+	}
+
+	base32_encode(m_id.machine_id, sizeof(m_id.machine_id), m_id.address + 1, 5);
+
+	return err;
+}
+
+// This function is used from php5/bluecherry.cpp
+int bc_license_machine_id(char *out, size_t out_sz) {
+	MachineIdSet machine_id_set;
+
+	if (bc_license_machine_id_set(machine_id_set) || machine_id_set.size() == 0)
+		return 0;
+	return strlcpy(out, machine_id_set[0].machine_id, out_sz);
 }
 
 #ifndef BC_KEY_STANDALONE
