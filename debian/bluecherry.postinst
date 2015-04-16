@@ -70,12 +70,6 @@ case "$1" in
 	configure|reconfigure)
 		ucfr bluecherry /etc/bluecherry.conf
 
-		# Fixup some permissions
-		chown -R bluecherry:bluecherry /var/lib/bluecherry
-		chmod -R 770 /var/lib/bluecherry
-		chown -R bluecherry:bluecherry /var/run/bluecherry
-		chmod -R 750 /var/run/bluecherry
-
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
 
