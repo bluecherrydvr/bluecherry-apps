@@ -6,7 +6,7 @@ MAINTAINER = Andrey Utkin <andrey.utkin@corp.bluecherry.net>
 DIST = precise trusty lucid
 
 # Debian
-DIST +=	wheezy
+DIST +=	wheezy jessie
 
 ARCH = i386 amd64
 
