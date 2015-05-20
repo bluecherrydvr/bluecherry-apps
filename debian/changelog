@@ -1,3 +1,11 @@
+bluecherry (1:2.3.20) precise trusty lucid wheezy jessie; urgency=low
+
+  * Emit warning on incorrectly low min_thresh, and don't silently discard that Storage path
+  * Drop chmod over recordings
+  * Introduce license check against a set of machine ids (for each ethernet device)
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 20 May 2015 13:41:09 -0500
+
 bluecherry (1:2.3.19) precise trusty lucid wheezy; urgency=low
 
   * Fix live view for odd-sized MJPEG streams (fixed in libavformat)
