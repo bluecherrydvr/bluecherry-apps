@@ -268,13 +268,17 @@ static int load_storage_paths(void)
 		float max_thresh = bc_db_get_val_float(dbres, "max_thresh");
 		float min_thresh = bc_db_get_val_float(dbres, "min_thresh");
 
-		if (!path || !*path || max_thresh <= 0 || min_thresh <= 0)
+		if (!path || !*path || max_thresh < 0 || min_thresh < 0)
 			continue;
+
+		if (min_thresh < max_thresh / 2)
+			bc_log(Warning, "Suspiciously low min_thresh for %s", path);
 
 		if (canonicalize_path(path, media_stor[i].path, sizeof(media_stor[i].path))) {
 			bc_log(Warning, "Failed to canonicalize storage path %s", path);
 			continue;
 		}
+		bc_log(Info, "Loaded storage path: '%s' => '%s'", path, media_stor[i].path);
 
 		media_stor[i].max_thresh = max_thresh;
 		media_stor[i].min_thresh = min_thresh;
