@@ -278,7 +278,7 @@ static int load_storage_paths(void)
 			bc_log(Warning, "Failed to canonicalize storage path %s", path);
 			continue;
 		}
-		bc_log(Info, "Loaded storage path: '%s' => '%s'", path, media_stor[i].path);
+		bc_log(Debug, "Loaded storage path: '%s' => '%s'", path, media_stor[i].path);
 
 		media_stor[i].max_thresh = max_thresh;
 		media_stor[i].min_thresh = min_thresh;
