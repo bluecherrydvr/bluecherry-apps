@@ -1,3 +1,9 @@
+bluecherry (1:2.3.21) precise trusty lucid wheezy jessie; urgency=low
+
+  * Fix solo6x10 text overlaying for cameras with long names
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 04 Jun 2015 18:29:39 +0300
+
 bluecherry (1:2.3.20) precise trusty lucid wheezy jessie; urgency=low
 
   * Emit warning on incorrectly low min_thresh, and don't silently discard that Storage path
