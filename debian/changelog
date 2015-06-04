@@ -1,3 +1,10 @@
+bluecherry (1:2.2.7) precise trusty lucid wheezy; urgency=low
+
+  * Fix solo6x10 text overlaying for cameras with long names
+  * Fix solo motion highest sensitivity level
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 04 Jun 2015 10:23:30 -0500
+
 bluecherry (1:2.2.6) precise trusty lucid wheezy; urgency=low
 
   * Don't fail device init if path field is empty, assume '/' instead
