@@ -54,12 +54,16 @@ static void try_formats(struct bc_record *bc_rec)
 
 static void update_osd(struct bc_record *bc_rec)
 {
+#define OSD_TEXT_MAX 44
+#define DATE_LEN 19
+#define OSD_NAME_MAX_LEN (OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
 	if (bc_rec->bc->type != BC_DEVICE_V4L2)
 		return;
 
 	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
 	time_t t = time(NULL);
-	char buf[20];
+	char buf[DATE_LEN + 1 /* for null-termination */];
+	char name_buf[OSD_NAME_MAX_LEN + 1 /* for null-termination */];
 	struct tm tm;
 
 	if (!(d->caps() & BC_CAM_CAP_OSD))
@@ -72,8 +76,10 @@ static void update_osd(struct bc_record *bc_rec)
 
 	tzset();
 
-	strftime(buf, 20, "%F %T", localtime_r(&t, &tm));
-	d->set_osd("%s %s", bc_rec->cfg.name, buf);
+	strftime(buf, sizeof(buf), "%F %T", localtime_r(&t, &tm));
+	/* Will trunkate if longer than OSD_NAME_MAX_LEN */
+	snprintf(name_buf, sizeof(name_buf), "%s", bc_rec->cfg.name);
+	d->set_osd("%s %s", name_buf, buf);
 }
 
 static void check_schedule(struct bc_record *bc_rec)
