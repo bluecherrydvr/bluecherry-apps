@@ -1,3 +1,9 @@
+bluecherry (1:2.5.0) precise trusty lucid wheezy jessie; urgency=low
+
+  * No changes from 2.3.21, just minor version increment
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 17 Jun 2015 00:44:52 +0300
+
 bluecherry (1:2.3.21) precise trusty lucid wheezy jessie; urgency=low
 
   * Fix solo6x10 text overlaying for cameras with long names
