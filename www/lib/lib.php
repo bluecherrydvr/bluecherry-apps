@@ -867,7 +867,7 @@ class globalSettings{
 class Manufacturers
 {
     
-    const API_URL = 'http://www.cambase.io:80/api/v1/manufacturers.json?page=%d';
+    const API_URL = 'http://www.cambase.io:80/api/v1/vendors.json?page=%d';
     
     public static function getList()
     {
@@ -882,7 +882,7 @@ class Manufacturers
                     break;
                 } 
                 $data = json_decode($data, true);
-                foreach($data['data']['manufacturers'] as $manufacturer) {
+                foreach($data['data']['vendors'] as $manufacturer) {
                     $list[$manufacturer['id']] = $manufacturer['name'];
                 }
                 $page++;
