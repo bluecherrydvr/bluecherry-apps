@@ -1,3 +1,10 @@
+bluecherry (1:2.4.1) precise trusty lucid wheezy jessie; urgency=low
+
+  * Fix structure of Storage entries on the page, so that delete handler works again
+  * Fix live manufacturers fetching from cambase.io
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 14 Jul 2015 23:24:48 +0300
+
 bluecherry (1:2.4.0) precise trusty lucid wheezy jessie; urgency=low
 
   * No changes from 2.3.21, just minor version increment
