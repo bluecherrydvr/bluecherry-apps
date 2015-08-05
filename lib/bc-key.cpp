@@ -315,6 +315,12 @@ int bc_license_machine_id_set(MachineIdSet &m_id_set) {
 		if (!ret)
 			m_id_set.push_back(m_id);
 	}
+	if (m_id_set.size() == 0) {
+		// Add "lo" simulation id with all-zeros MAC if list is empty
+		MachineId m_id = {0, };
+		base32_encode(m_id.machine_id, sizeof(m_id.machine_id), m_id.address + 1, 5);
+		m_id_set.push_back(m_id);
+	}
 	pclose(devlist);
 	return 0;
 }
