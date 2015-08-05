@@ -1,8 +1,9 @@
 bluecherry (1:2.4.2) precise trusty lucid wheezy jessie; urgency=low
 
   * Fix license check for virtual machines with no ether net ifaces
+  * Reverted back setting permissions on recordings directory
 
- -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 05 Aug 2015 06:42:17 +0300
+ -- Anton <anton@corp.bluecherry.net>  Wed, 05 Aug 2015 13:25:00 +0400
 
 bluecherry (1:2.4.1) precise trusty lucid wheezy jessie; urgency=low
 
