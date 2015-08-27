@@ -1,0 +1,17 @@
+
+.general-error {
+    padding-top: 30px;
+}
+
+.general-error .alert {
+    margin-bottom: 0px;
+}
+
+.page-container-loading {
+    background:url("/img/loading.gif") no-repeat; 
+    background-position:right 10px;
+    opacity:0.6; 
+    filter:alpha(opacity=60); 
+    background-color:#fff; 
+    border-radius: 5px; 
+}
