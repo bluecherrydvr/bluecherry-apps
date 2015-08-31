@@ -151,9 +151,17 @@ class data{
 		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
 		if (is_bool($status)) {
             $status = ($status) ? 6 : 7; #in compliance with interface
+        } else {
+            if ($status == 'INFO') {
+                $status = 6;
+            } else if ($status == 'OK') {
+                $status = 6;
+            } else if ($status == 'F') {
+                $status = 7;
+            }
         }
 
-        Reply::ajaxDie($status, $message);
+        Reply::ajaxDie($status, $message, $data);
 	}
 
 

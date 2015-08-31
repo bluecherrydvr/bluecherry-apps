@@ -4,7 +4,7 @@ $(function() {
 
     // todo: delete after you do "link page" fuature
     var ajax_req = new ajaxReq();
-    ajax_req.ajaxContent($('<a href="/ajax/news.php">a></a>'));
+    ajax_req.ajaxContent('/ajax/news.php');
 
 
     commons();
@@ -98,6 +98,10 @@ updateStatBar = function(barId, val, y, r){
     el.find('span').html(val+'%');
 }
 
+function delTr(form) {
+    form.closest('tr').remove();
+}
+
 
 var ajaxReq = function () {
     var self = this;
@@ -115,6 +119,7 @@ var ajaxReq = function () {
     var type_req = "POST";
     var type_data = "JSON";
     var callback_func = null;
+    var func_after = null;
 
 
     var send = function () {
@@ -229,6 +234,7 @@ var ajaxReq = function () {
             window.location.href = msg.msg.url;
         } else if (msg.status == 6) {
             $.notify({
+                icon: 'fa fa-warning fa-fw',
                 message: msg.msg
             },{
                 type: 'success',
@@ -239,6 +245,7 @@ var ajaxReq = function () {
             });
         } else if (msg.status == 7) {
             $.notify({
+                icon: 'fa fa-times-circle fa-fw',
                 message: msg.msg
             },{
                 type: 'danger',
@@ -264,6 +271,10 @@ var ajaxReq = function () {
                         
             });  
             form.find('*').popover('show');
+        }
+
+        if (func_after) {
+            window[func_after](form, msg);
         }
     };
 
@@ -301,9 +312,15 @@ var ajaxReq = function () {
             data_send = null;
 
             send_but = el;
-            form = el.closest('form');
+            
+            var form_id = el.data('form-id');
+            if (form_id) form = $('#'+form_id);
+            else form = el.closest('form');
+            
             form_act = form.attr('action');
             alert_bl = form.find('.alert');
+
+            func_after = el.data('func-after') || null;
 
             hideProperErr();
 
@@ -325,13 +342,21 @@ var ajaxReq = function () {
     };
 
     self.ajaxContent = function (el) {
-        type_req = "POST";
+        type_req = "GET";
         type_data = "HTML";
         process_data = undefined;
         content_type = undefined;
         form_data = { type : 'ajax_content' };
         //form_data = 'type=ajax_content';
-        form_act = el.attr('href');
+        
+        
+        if (el.jquery) {
+            
+            form_act = el.data('url') || el.attr('href');
+        } else {
+            form_act = el;
+        }
+
         send_but = $('#page-container');
         ajax_content = true;
         mch_ajsend(send_but);
@@ -349,7 +374,20 @@ var ajaxReq = function () {
         form_act = data.form_act || null;
         type_req = data.type_req || type_req;
         type_data = data.type_data || type_data;
-        callback_func = data.callback_func;
+        form_data = data.form_data || form_data;
+
+        if ((data.process_data == true) || (data.process_data == undefined)) {
+            process_data = data.process_data;
+        } else process_data = process_data;
+
+        if ((data.content_type == true) || (data.content_type == undefined)) {
+            content_type = data.content_type;
+        } else content_type = content_type;
+
+        callback_func = data.callback_func || null;
+        //if ((data.callback_func !== null) && (typeof(data.callback_func === 'function'))) {
+            //callback_func = data.callback_func;
+        //};
         send();
     };
 
