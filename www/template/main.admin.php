@@ -32,6 +32,7 @@
     <!-- Custom Fonts -->
     <link href="/template/bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 
+    <link href="/template/bower_components/animate.css" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link href="/template/dist/css/main.css?v=<?php echo time(); ?>" rel="stylesheet">
@@ -248,6 +249,9 @@
     <!-- Morris Charts JavaScript -->
     <script src="/template/bower_components/raphael/raphael-min.js"></script>
     <script src="/template/bower_components/morrisjs/morris.min.js"></script>
+
+    <!-- Notify -->
+    <script src="/template/bower_components/bootstrap-notify.min.js"></script>
 
     <!-- Custom Theme JavaScript -->
     <script src="/template/dist/js/sb-admin-2.js"></script>
