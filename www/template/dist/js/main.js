@@ -228,17 +228,25 @@ var ajaxReq = function () {
             alert_bl.show();
             window.location.href = msg.msg.url;
         } else if (msg.status == 6) {
-            delAlertClass();
-            alert_bl.addClass('alert-success');
-            alert_bl.html(msg.msg);
-            alert_bl.show();
-            //alert_bl.delay(4000).fadeOut('hide');
+            $.notify({
+                message: msg.msg
+            },{
+                type: 'success',
+                delay: 4000,
+                animate: {
+                    exit: 'animated fadeOut'
+                }
+            });
         } else if (msg.status == 7) {
-            delAlertClass();
-            alert_bl.addClass('alert-danger');
-            alert_bl.html(msg.msg);
-            alert_bl.show();
-            //alert_bl.delay(4000).fadeOut('hide');
+            $.notify({
+                message: msg.msg
+            },{
+                type: 'danger',
+                delay: 4000,
+                animate: {
+                    exit: 'animated fadeOut'
+                }
+            });
         } else {
             if (form.find('.form-group-m').length) {
                 var form_cl = 'form-group-m';
