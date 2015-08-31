@@ -48,7 +48,7 @@ class update{
 	}
 	private function newUser(){
 		$result = user::update($_POST, true);
-		data::responseXml($result[0], $result[1], $result[2]);
+		data::responseJSON($result[0], $result[1], $result[2]);
 	}
 	private function updateUser(){
 		$result = user::update($_POST);
@@ -82,7 +82,7 @@ class update{
 			$result = false;
 			$msg = DELETE_USER_SELF;
 		}
-		data::responseXml($result, $msg);
+		data::responseJSON($result, $msg);
 	}
 	private function deleteIp(){
 		$id = intval($_POST['id']);

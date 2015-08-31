@@ -259,5 +259,8 @@
     <!-- Custom Theme JavaScript -->
 	<script type="text/javascript" src="/lib/js/var.php"></script>
     <script src="/template/dist/js/main.js?v=<?php echo time(); ?>"></script>
+
+    <script src="/template/dist/js/storage.js"></script>
+    <script src="/template/dist/js/users.js"></script>
 </body>
 </html>

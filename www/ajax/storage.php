@@ -22,7 +22,7 @@ if (empty($_POST)){
 		$min = $max - 10;
 		$status = (data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES ({$key}, '{$path}', {$max}, {$min})", true)) ? $status : false;
 	}
-	data::responseXml($status);
+	data::responseJSON($status);
 	exit;
 }
 
