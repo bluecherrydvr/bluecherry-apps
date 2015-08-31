@@ -14,11 +14,9 @@
 
 <form action="/ajax/update.php" method="post" class="form-horizontal">
 
-<div class="alert alert-ajax"></div>
-
 <div class="form-group">
     <div class="col-lg-12">
-        <button class="btn btn-success pull-right send-req-form" type="submit"><?php echo SAVE_CHANGES; ?></button>
+        <button class="btn btn-success pull-right send-req-form" type="submit"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
         <div class="clearfix"></div>
     </div>
 </div>

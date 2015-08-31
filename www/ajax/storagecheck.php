@@ -22,6 +22,6 @@ function directory_staus($path, $type){ #path -- path to storage dir, type -- ne
 
 $check_dir = directory_staus($_GET['path'], 'new');
 
-data::responseXml($check_dir[0], $check_dir[1]);
+data::responseJSON($check_dir[0], $check_dir[1]);
 
 ?>

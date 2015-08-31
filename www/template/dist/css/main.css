@@ -1,4 +1,17 @@
 
+h1 .breadcrumb {
+    background-color: transparent;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+h1 .breadcrumb li {
+    font-size: 14px;
+}
+
+
 .general-error {
     padding-top: 30px;
 }
@@ -29,4 +42,34 @@
 .alert-ajax {
     display: none;
     text-align: center;
+}
+
+.table-storage tbody>tr>td {
+    vertical-align: middle;
+}
+
+.table tbody>tr>td.align-right {
+    text-align: right;
+}
+
+.table tbody>tr>td.vert-align,
+.table-vert-align tbody>tr>td
+{
+    vertical-align: middle;
+}
+
+.users-add-email-bl {
+    margin-bottom: 0px;
+}
+
+.users-add-email-bl .users-add-email-inp {
+    margin-bottom: 15px;
+}
+
+#users-list-bl .users-list-bl-item {
+    cursor: pointer;
+}
+
+#users-list-bl.table-hover tbody tr:hover td {
+    background-color: #FCF8E3;
 }
