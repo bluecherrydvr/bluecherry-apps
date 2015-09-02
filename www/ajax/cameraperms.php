@@ -22,7 +22,7 @@ class userCameraPermissions{
 	public function __construct(){
 		$id = intval($_GET['id']);
 		$this->user = new user('id', $id);
-		$type = ($_GET['t'] == 'PTZ') ? 'access_ptz_list' : 'access_device_list';
+		$type = (Inp::get('t') == 'PTZ') ? 'access_ptz_list' : 'access_device_list';
 		$this->camera_list = $this->matchCams($this->user->info[$type]);
 		
 	}

@@ -25,7 +25,8 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <table class="table table-striped table-hover table-vert-align" id="users-list-bl">
+        <div class="table-responsive">
+        <table class="table table-striped table-condensed table-hover table-vert-align" id="users-list-bl">
             <thead>
                 <tr>
                     <th><?php echo USERS_TABLE_HEADER_NAME; ?></th>
@@ -61,6 +62,7 @@
             <?php  $f = !$f; } ?>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
     <?php } else { //single user ?>
