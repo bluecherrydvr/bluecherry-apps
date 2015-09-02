@@ -791,6 +791,7 @@ DVRPageScript = new Class({
 								case 'saturation': ajaxUpdateField('update_control', 'Devices', { 'saturation' : this.step }, $('device_id').get('value'), 'none'); break;
 								case 'audio_volume': ajaxUpdateField('update', 'Devices', { 'audio_volume' : this.step }, $('device_id').get('value'), 'none'); break;
 								case 'contrast': ajaxUpdateField('update_control', 'Devices', { 'contrast' : this.step }, $('device_id').get('value'), 'none'); break;
+								case 'video_quality': ajaxUpdateField('update_control', 'Devices', { 'video_quality' : this.step }, $('device_id').get('value'), 'none'); break;
 							}
 							$(id+'_value').set('value', this.step)
 						}
@@ -802,6 +803,7 @@ DVRPageScript = new Class({
 					slider['brightness'].set(50); 
 					slider['audio_volume'].set(50); 
 					slider['contrast'].set(50); 
+					slider['video_quality'].set(100); 
 				});
 				$('liveViewImg').addEvent('load', function(){
 					renewImg = function(){

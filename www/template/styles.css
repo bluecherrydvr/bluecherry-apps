@@ -484,7 +484,7 @@ second
 #videoAdjSliders						{ display: block; width:370px; }
 #videoAdjSliders .control				{ float:left; height:1em; padding:5px 0 5px 0; display:block; margin:5px 0 5px 0; display: block; }
 #videoAdjSliders .control input 		{ width:30px; display:inline; margin:0px 5px 0 10px; text-align:center;}
-#videoAdjSliders label					{ float: left; text-align:right; display:block; width:130px; margin:5px 5px 5px 0; font-size:1em; }
+#videoAdjSliders label					{ float: left; text-align:right; display:block; width:140px; margin:5px 5px 5px 0; font-size:1em; }
 #videoAdjSliders .slider				{ float: left; width:200px; background: url("/img/icons/ln.png") 0 center repeat-x; height:1em; margin:10px; }
 #videoAdjSliders .slider .knob			{ height:1em; width:1em;  background: url("/img/icons/knob.png") no-repeat center center; }
 #videoAdjSliders #audio_volume.control	{ margin-bottom:30px; }
