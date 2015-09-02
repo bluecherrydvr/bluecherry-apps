@@ -215,6 +215,7 @@ define('VA_AUDIO', 'Audio gain');
 define('VA_AUDIO_ENABLE', 'Enable audio');
 define('VA_SATURATION', 'Saturation');
 define('VA_CONTRAST', 'Contrast');
+define('VA_VIDEO_QUALITY', 'Video Quality');
 define('VA_SETDEFAULT', 'Reset values to default');
 
 define('DEVICE_ENCODING_UPDATED', '<![CDATA[Video standard setting changed. <hr /> <b>For the change to take effect you need to restart the server.</b><br> If you are changing from NTSC to PAL please follow the instructions on <a href="http://help.bluecherrydvr.com/spaces/manuals/manuals/version2/lessons/22732-Enabling-video-ports">this page</a>]]>');

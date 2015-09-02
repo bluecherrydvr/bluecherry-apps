@@ -63,6 +63,8 @@ class update{
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
 		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
+		if (isset($_POST['video_quality'])) { bc_set_control($bch, BC_CID_VIDEO_QUALITY, intval($_POST['video_quality'])); };
+
 		bc_handle_free($bch);
 		$this->update();
 	}
