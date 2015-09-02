@@ -120,6 +120,7 @@ var ajaxReq = function () {
     var type_data = "JSON";
     var callback_func = null;
     var func_after = null;
+    var redirect_after = null;
 
 
     var send = function () {
@@ -276,6 +277,11 @@ var ajaxReq = function () {
         if (func_after) {
             window[func_after](form, msg);
         }
+
+        if (redirect_after) {
+            var ajax_req = new ajaxReq();
+            ajax_req.ajaxContent(redirect_after);
+        }
     };
 
     var delAlertClass = function() {
@@ -321,6 +327,8 @@ var ajaxReq = function () {
             alert_bl = form.find('.alert');
 
             func_after = el.data('func-after') || null;
+
+            redirect_after = el.data('redirect') || null;
 
             hideProperErr();
 
