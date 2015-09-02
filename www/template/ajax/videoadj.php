@@ -17,6 +17,8 @@ echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > ".VIDEO_ADJ." <b>".((
 		<div class="control"><label><?php echo VA_HUE; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['hue']; ?>" type="text" id="hue_value" /></label><div id="hue" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_SATURATION; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['saturation']; ?>" type="text" id="saturation_value" /></label><div id="saturation" class="slider"><div class="knob"></div></div></div>
 		<div class="control"><label><?php echo VA_CONTRAST; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['contrast']; ?>" type="text" id="contrast_value" /></label><div id="contrast" class="slider"><div class="knob"></div></div></div>
+		<div class="control"><label><?php echo VA_VIDEO_QUALITY; ?>:<INPUT disabled="disabled" value="<?php echo $device_data[0]['video_quality']; ?>" type="text" id="video_quality_value" /></label><div id="video_quality" class="slider"><div class="knob"></div></div></div> 
+
 	</div>
 			<a id="setToDefault"><?php echo VA_SETDEFAULT; ?></a>
 </div>
