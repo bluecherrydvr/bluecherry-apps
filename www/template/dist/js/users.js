@@ -36,7 +36,7 @@ var cameraPrems = function (el) {
         delClass();
 
         els.cams.addClass('btn-success');
-        els.cams_inp.prop('checked', true);
+        els.cams_inp.prop('checked', false);
         els.cams_icon.addClass('fa-check');
         
     };
@@ -45,7 +45,7 @@ var cameraPrems = function (el) {
         delClass();
 
         els.cams.addClass('btn-danger');
-        els.cams_inp.prop('checked', false);
+        els.cams_inp.prop('checked', true);
         els.cams_icon.addClass('fa-times');
     };
 
