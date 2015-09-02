@@ -11,6 +11,7 @@ defined('INDVR') or exit();
 define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
 
 require_once('Reply.php');
+require_once('Inp.php');
 
 if (empty($nload)){
 	include("lang.php");
@@ -111,6 +112,7 @@ class data{
 		return ($data) ? $data : false;
 	}
 	public static function getRandomString($length = 4) {
+        $string = '';
 		$s = '0123456789abcdefghijklmnopqrstuvwxyz';
 		for ($p = 0; $p < $length; $p++)
 			$string .= $s[mt_rand(0, strlen($s))];
@@ -282,10 +284,10 @@ class user{
 	public static function update($data, $new = false){
 		$check = false;
 		$tmp = -1;
-		$data['access_web'] = ($_POST['access_web'] == 'on') ? 1 : 0;
-		$data['access_remote'] = ($_POST['access_remote'] == 'on') ? 1 : 0;
-		$data['access_backup'] = ($_POST['access_backup'] == 'on') ? 1 : 0;
-		$data['access_setup'] = ($_POST['access_setup'] == 'on') ? 1 : 0;
+		$data['access_web'] = (Inp::post('access_web') == 'on') ? 1 : 0;
+		$data['access_remote'] = (Inp::post('access_remote') == 'on') ? 1 : 0;
+		$data['access_backup'] = (Inp::post('access_backup') == 'on') ? 1 : 0;
+		$data['access_setup'] = (Inp::post('access_setup') == 'on') ? 1 : 0;
 		$response = self::checkUserData($data, $new);
 		if ($response === true){
 			$tmp = '';
