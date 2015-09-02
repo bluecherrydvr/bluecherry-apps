@@ -90,12 +90,14 @@ define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given
 
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
+define('G_SMTP_EMAIL_FROM', 'SMTP From value');
 define('G_SMTP_USERNAME', 'Username');
 define('G_SMTP_PASSWORD', 'Password');
 define('G_SMTP_HOST', 'SMTP host');
 define('G_SMTP_PORT', 'SMTP port');
 define('G_SMTP_SSL', 'SSL');
 define('G_SMTP_SERVICE_EX', '');
+define('G_SMTP_EMAIL_FROM_EX', 'When Bluecherry service sends email, this value is used as sender address ("From")');
 define('G_SMTP_USERNAME_EX', '');
 define('G_SMTP_PASSWORD_EX', '');
 define('G_SMTP_HOST_EX', 'e.g smtp.googlemail.com');
