@@ -52,7 +52,7 @@ class update{
 	}
 	private function updateUser(){
 		$result = user::update($_POST);
-		data::responseXml($result[0], $result[1], $result[2]);
+		data::responseJSON($result[0], $result[1], $result[2]);
 	}
 	private	function update_control(){
 		$id = intval($_POST['id']);
@@ -75,6 +75,7 @@ class update{
 		data::responseXml(data::query($query, true));
 	}
 	private function deleteUser(){
+        $msg = '';
 		$id = intval($_POST['id']);
 		if ($id!=$_SESSION['id']){
 			$result = user::remove($id);

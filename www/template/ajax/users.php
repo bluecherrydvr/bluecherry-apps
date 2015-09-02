@@ -59,7 +59,7 @@
                         </form>
                     </td>
                 </tr>
-            <?php  $f = !$f; } ?>
+            <?php } ?>
             </tbody>
         </table>
         </div>
@@ -76,14 +76,14 @@
             <form action="/ajax/update.php" method="POST" class="pull-left">
                 <input type="hidden" name="mode" value="deleteUser">
                 <input type="hidden" name="id" value="<?php echo $dvr_users->data[0]['id']; ?>">
-                <button type="submit" class="btn btn-danger send-req-form" data-confirm="Delete this user (ID: <?php echo $dvr_users->data[0]['id'];?>)?"><i class="fa fa-times fa-fw"></i><?php echo DELETE_USER; ?></button>
+                <button type="submit" class="btn btn-danger send-req-form" data-redirect="/ajax/users.php" data-confirm="Delete this user (ID: <?php echo $dvr_users->data[0]['id'];?>)?"><i class="fa fa-times fa-fw"></i><?php echo DELETE_USER; ?></button>
             </form>
 
-            <a href="javascript:void(0);" class="btn btn-primary pull-left"><i class="fa fa-video-camera fa-fw"></i> Edit access list</a>
+            <a href="/ajax/cameraperms.php?id=<?php echo $dvr_users->data[0]['id'];?> " class="btn btn-primary pull-left ajax-content"><i class="fa fa-video-camera fa-fw"></i> Edit access list</a>
 
         <?php } ?>
 
-        <button class="btn btn-success pull-right send-req-form" type="submit" data-form-id="users-form-save" data-func-after="usersAfterAdd"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
+        <button class="btn btn-success pull-right send-req-form" type="submit" data-form-id="users-form-save" <?php echo (!empty($dvr_users->data['new'])) ? 'data-func-after="usersAfterAdd"' : ''; ?> ><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
         <div class="clearfix"></div>
     </div>
     </div>
@@ -142,7 +142,7 @@
 
                             <?php foreach($dvr_users->data[0]['emails'] as $key => $email){ ?>
                             <div class=" <?php echo (($key == 0) ? '' : 'input-group'); ?> users-add-email-inp">
-                                <input class="form-control" type="text" class="email" name="email[]" value="<?php echo $email['addrs']; ?>" />
+                                <input class="form-control" type="text" class="email" name="email[]" value="<?php echo ((isset($email['addrs'])) ? $email['addrs'] : ''); ?>" />
                                 <span class="input-group-btn" <?php echo (($key == 0) ? 'style="display: none;"' : ''); ?> >
                                     <a href="javascript:void(0);" class="btn btn-danger users-del-email"><i class="fa fa-times fa-fw"></i></a>
                                 </span>
