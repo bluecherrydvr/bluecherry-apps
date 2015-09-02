@@ -115,9 +115,18 @@ class update{
 		}
 		data::responseXml($status, $result);
 	}
-	private function editAccessList(){
-		$status = data::query("UPDATE Users SET access_device_list='".trim($_POST['value'], ",")."' WHERE id='{$_POST['id']}'", true);
-		data::responseXml($status);
+    private function editAccessList(){
+        $cams = Inp::gp_arr('cams');
+        $cam_ids = Array();
+        if (!empty($cams)) {
+            foreach ($cams as $key => $val) {
+                $cam_ids[] = $key;
+            }
+        }
+        $cam_ids = implode(',', $cam_ids);
+        
+		$status = data::query("UPDATE Users SET access_device_list='".$cam_ids."' WHERE id='{$_POST['id']}'", true);
+		data::responseJSON($status);
 	}
 	function changeFpsRes($type){
 		$camera = new camera($_POST['id']);
