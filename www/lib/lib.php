@@ -892,9 +892,15 @@ class globalSettings{
 			data::query("INSERT INTO GlobalSettings VALUES('G_MAX_RECORD_TIME', '900')", true);
 			$this->data['G_MAX_RECORD_TIME'] = 900;
 		}
-                if (empty($this->data['G_DATA_SOURCE'])) {
+
+		if (empty($this->data['G_DATA_SOURCE'])) {
 			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'local')", true);
 			$this->data['G_DATA_SOURCE'] = 'local';
+		}
+
+		if (empty($this->data['G_SMTP_EMAIL_FROM'])) {
+			data::query("INSERT INTO GlobalSettings VALUES('G_SMTP_EMAIL_FROM', 'donotreply@bluecherryserver')", true);
+			$this->data['G_SMTP_EMAIL_FROM'] = 'donotreply@bluecherryserver';
 		}
 	}
 	public static function getParameter($parameter){

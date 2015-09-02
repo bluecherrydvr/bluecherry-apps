@@ -112,7 +112,7 @@ SOLO card(s) got $state on server {$global_settings->data['G_DVR_NAME']}
 	exit('E: Unknown event type');
 }
 
-$headers = array("From"=>"donotreply@bluecherryserver", "Subject" => $subject);
+$headers = array("From"=>$global_settings->data['G_SMTP_EMAIL_FROM'], "Subject" => $subject);
 $mime->setHTMLBody($html);  
 $headers = $mime->headers($headers);
 $body = $mime->get();
