@@ -11,6 +11,20 @@ h1 .breadcrumb li {
     font-size: 14px;
 }
 
+.text-status-OK {
+    color: #3C763D;
+}
+
+.btn-grey {
+    /*color: #FFF;*/
+    /*background-color: #F5F5F5;*/
+    border-color: #DDD;    
+}
+
+.text-status-disabled {
+    color: #A94442;
+}
+
 
 .general-error {
     padding-top: 30px;
@@ -73,3 +87,37 @@ h1 .breadcrumb li {
 #users-list-bl.table-hover tbody tr:hover td {
     background-color: #FCF8E3;
 }
+
+.grid-bl {
+    position: relative;
+}
+
+.grid-bl img {
+    position: absolute;
+}
+
+.table-grid {
+    top: 0px;
+    left: 0px;
+    border-collapse: collapse;
+}
+
+.table-grid td {
+    opacity: 0.4;
+    border: 1px solid #808080;
+    cursor: pointer;
+}
+
+.col-margin-bottom {
+    margin-bottom: 5px;
+}
+
+.motion-sens-bl .btn.disabled,
+.motion-sens-bl .btn[disabled] 
+{
+    pointer-events: auto;
+    cursor: pointer;
+
+}
+
+

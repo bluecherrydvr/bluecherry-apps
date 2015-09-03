@@ -51,8 +51,8 @@ require('../template/template.lib.php');
                 </div>
                 <div class="panel-body">
                     <?php foreach($p->camera_list as $key => $camera) { ?>
-                    <div class="col-lg-4">
-                        <a href="javascript:void(0);" class="btn cameraperms-cams <?php echo (($camera['allowed']) ? 'btn-success' : 'btn-danger'); ?>" data-id="<?php echo $camera['id']; ?>">
+                    <div class="col-lg-4 col-md-4 col-margin-bottom">
+                        <a href="javascript:void(0);" class="btn btn-block cameraperms-cams <?php echo (($camera['allowed']) ? 'btn-success' : 'btn-danger'); ?>" data-id="<?php echo $camera['id']; ?>">
                             <i class="fa <?php echo (($camera['allowed']) ? 'fa-check' : ' fa-times'); ?> fa-fw"></i><?php echo $camera['device_name']; ?>
                         </a>
                         <input type="checkbox" name="cams[<?php echo $camera['id']; ?>]" <?php echo (($camera['allowed']) ? '' : 'checked'); ?> style="display: none;">

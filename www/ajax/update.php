@@ -85,7 +85,7 @@ class update{
 	}
 	private function deleteIp(){
 		$id = intval($_POST['id']);
-		data::responseXml(ipCamera::remove($id));
+		data::responseJSON(ipCamera::remove($id));
 	}
 	private function updateGlobal(){
 		$status = true;
@@ -143,8 +143,10 @@ class update{
 			$camera = device($id);
 		}
 		
-		$result = $camera->changeState();
-		data::responseXml($result[0], $result[1]);
+        $result = $camera->changeState();
+        if (!isset($result[1])) $result[1] = '';
+
+		data::responseJSON($result[0], $result[1]);
 	}
 	
 	private function changeEncoding(){
