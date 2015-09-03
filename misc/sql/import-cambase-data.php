@@ -73,7 +73,7 @@ die;
 }
 
 function processManufacturers($file){
-    $base_url = 'http://www.cambase.io/api/v1/manufacturers.json?page=%d';
+    $base_url = 'http://www.cambase.io/api/v1/vendors.json?page=%d';
     $page = 1;
     $manufacturers = array();
     $i = 1;
@@ -85,7 +85,7 @@ function processManufacturers($file){
             break;
         } 
         $data = json_decode($data, true);
-        foreach($data['data']['manufacturers'] as $manufacturer) {
+        foreach($data['data']['vendors'] as $manufacturer) {
             $manufacturers[$manufacturer['id']] = $i;
             $sql = sprintf("INSERT INTO \"manufacturers\" VALUES ('%d', '%s', '%s');", $i, $manufacturer['name'], $manufacturer['id']);
             file_put_contents($file, $sql . PHP_EOL, FILE_APPEND);
@@ -97,8 +97,8 @@ function processManufacturers($file){
 }
 
 function processCams($file, $manufacturers){
-    $base_url = 'http://www.cambase.io/api/v1/cameras.json?page=%d';
-    $base_cam_url  = 'http://www.cambase.io/api/v1/cameras/%s.json';
+    $base_url = 'http://www.cambase.io/api/v1/models.json?page=%d';
+    $base_cam_url  = 'http://www.cambase.io/api/v1/models/%s.json';
     $page = 1;
     $i = $duplicated = $failed = 0;
     file_put_contents($file, PHP_EOL . '-- CAMERAS --' . PHP_EOL, FILE_APPEND);
@@ -122,7 +122,7 @@ function processCams($file, $manufacturers){
             echo PHP_EOL;
         } 
         
-        foreach($data['data']['cameras'] as $camera) {
+        foreach($data['data']['models'] as $camera) {
             $i++;
             $cam_url = sprintf($base_cam_url, urlencode($camera['id']));
             $camData = @file_get_contents($cam_url);
@@ -137,7 +137,7 @@ function processCams($file, $manufacturers){
                 continue;
             }
             $camData = json_decode($camData, true);
-            $cam = $camData['cameras'];
+            $cam = $camData['models'];
             if(in_array($cam['id'], $ids)) {
                 file_put_contents(
                     './log.txt', 
@@ -153,7 +153,7 @@ function processCams($file, $manufacturers){
 INSERT INTO "cameras" 
 VALUES (NULL, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, '%s', '%s');
 SQL;
-            $sql = sprintf($sql, $cam['id'], $cam['model'], $manufacturers[$cam['manufacturer_id']], $cam['jpeg_url'], $cam['mjpeg_url'], 
+            $sql = sprintf($sql, $cam['id'], $cam['model'], $manufacturers[$cam['vendor_id']], $cam['jpeg_url'], $cam['mjpeg_url'], 
                            $cam['h264_url'], $cam['resolution'], $cam['shape'], $cam['default_username'], $cam['default_password'], 
                            empty($cam['psia']) ? '' : $cam['psia'], $cam['onvif'], $cam['ptz'], $cam['infrared'], $cam['varifocal'], 
                            $cam['sd_card'], $cam['upnp'], $cam['poe'], $cam['audio_in'], $cam['audio_out'], $cam['discontinued'], 

@@ -901,9 +901,9 @@ class Cameras
 {
     
     const API_SEARCH_URL = 
-        'http://www.cambase.io/api/v1/cameras/search.json?page=%d&q%%5Bmanufacturer_name_cont%%5D=%s';
+        'http://www.cambase.io/api/v1/vendors/%s.json?page=%d';
     
-    const API_DETAILS_URL = 'http://www.cambase.io:80/api/v1/cameras/%s.json';
+    const API_DETAILS_URL = 'http://www.cambase.io/api/v1/models/%s.json';
     
     public static function getList($manufacturer)
     {
@@ -911,18 +911,25 @@ class Cameras
         $list = array();
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
             $page = 1;
+            
+            $socketTimeout = ini_get('default_socket_timeout');
+            ini_set('default_socket_timeout', 30);
+            
             do {
-                $url = sprintf(self::API_SEARCH_URL, $page, urlencode($manufacturer));
-                $data = @file_get_contents($url);
+                $url = sprintf(self::API_SEARCH_URL, urlencode($manufacturer), $page);
+                $data = file_get_contents($url);
                 if(!$data) {
                     break;
                 } 
                 $data = json_decode($data, true);
-                foreach($data['data']['cameras'] as $camera) {
-                    $list[] = array('model' => $camera['id']);
+                foreach($data['data']['models'] as $camera) {
+                    $list[$camera['id']] = $camera['model'];
                 }
                 $page++;
             } while($page <= $data['data']['paging']['number_of_pages']);
+            
+            ini_set('default_socket_timeout', $socketTimeout);
+            
         } else {
             $adapter = getReadOnlyDb();
             $list = $adapter->prepare(
@@ -944,12 +951,19 @@ class Cameras
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
             $url = sprintf(self::API_DETAILS_URL, urlencode($id));
             $data = @file_get_contents($url);
+            
             if(!$data) {
                 return '';
             } 
+            
             $data = json_decode($data, true);
-            array_walk($data['cameras'], array('Cameras', 'sanitize'));
-            $data = $data['cameras'];
+            array_walk($data['models'], array('Cameras', 'sanitize'));
+            $data = $data['models'];
+            
+            if(!isset($data['manufacturer_id']) && isset($data['vendor_id'])) {
+                $data['manufacturer_id'] = $data['vendor_id'];
+                unset($data['vendor_id']);
+            }
         } else {
             $adapter = getReadOnlyDb();
             $stmt = $adapter->prepare(
