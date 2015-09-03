@@ -116,7 +116,7 @@ class update{
 		} else {
 			$status = false;
 		}
-		data::responseXml($status, $result);
+		data::responseJSON($status, $result);
 	}
     private function editAccessList(){
         $cams = Inp::gp_arr('cams');
