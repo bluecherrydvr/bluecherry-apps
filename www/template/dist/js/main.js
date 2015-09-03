@@ -102,7 +102,6 @@ function delTr(form) {
     form.closest('tr').remove();
 }
 
-
 var ajaxReq = function () {
     var self = this;
     var send_but = null;
@@ -320,8 +319,10 @@ var ajaxReq = function () {
             send_but = el;
             
             var form_id = el.data('form-id');
-            if (form_id) form = $('#'+form_id);
-            else form = el.closest('form');
+            if (form_id) {
+                if (form_id == 'prev') form = el.prev('form');
+                else form = $('#'+form_id);
+            } else form = el.closest('form');
             
             form_act = form.attr('action');
             alert_bl = form.find('.alert');
@@ -414,8 +415,44 @@ function ajaxEvent() {
         var ajax_req = new ajaxReq();
         ajax_req.ajaxContent($(this));
     }); 
-}
 
+    $('body').on("click", ".click-event", function(e){
+        e.preventDefault();
+        var el = $(this);
+
+        var func = $(this).data('function');
+        if (func) {
+            window[func](el);
+        } else {
+            var class_c = $(this).data('class');
+            class_c = class_c.split('.');
+            var class_tmp = '';
+
+            $.each(class_c, function(i, val){
+                if (i == 0) {
+                    class_tmp = new window[val](el);
+                } else {
+                    var start_pos = val.indexOf('(') + 1;
+                    var end_pos = val.indexOf(')',start_pos);
+                    var args = val.substring(start_pos,end_pos);
+
+                    val = val.substring(0, start_pos - 1);
+
+                    if (args) {
+                        args = args.split(',');
+                        if (args.length == 1) {
+                            class_tmp[val](args[0]);
+                        } else {
+                            class_tmp[val](args);
+                        }
+                    } else {
+                        class_tmp[val]();
+                    }
+                }
+            });
+        }
+    }); 
+}
 
 function mch_ajsend(el) {
 
@@ -431,7 +468,11 @@ function mch_ajsend(el) {
             el.button('loading');
         });
         el.on("finish.search", function() {
-            el.button('reset');
+            if (el.data('complete-text')) {
+                el.button('complete');
+            } else {
+                el.button('reset');
+            }
         });
     }
 }

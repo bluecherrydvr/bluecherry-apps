@@ -565,8 +565,8 @@ class ipCamera{
 				if ($duplicate_name) { return array(false, AIP_NAME_ALREADY_EXISTS); }
 			}
 		#prepare mjpeg path
-				$rawData['mjpeg'] = (substr($rawData['mjpeg'][0], 0, 1) != '/') ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
-				$data['mjpeg_path'] = "{$_POST['ipAddr']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
+            $rawData['mjpeg'] = (!empty($rawData['mjpeg']) && (substr($rawData['mjpeg'][0], 0, 1) != '/')) ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
+			$data['mjpeg_path'] = "{$_POST['ipAddr']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
 		#prepare audio check box, ignored for new devices
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
@@ -624,13 +624,15 @@ class ipCamera{
 		do {
 			data::query("DELETE FROM EventsCam WHERE device_id='{$id}'", true);
 			$media_files = data::query("SELECT id, filepath FROM Media WHERE device_id='{$id}' ORDER BY id DESC");
-			$highest_id = $media_files[0]['id'];
-			foreach ($media_files as $key => $media_file) {
-				if (file_exists($media_file['filepath']))
-					unlink($media_file['filepath']);
-			}
-			# Remove all traversed entries, not touching the possible to appear entries with higher id
-			data::query("DELETE FROM Media WHERE device_id='{$id}' AND id <= {$highest_id}", true);
+            if (!empty($media_files)) {
+			    $highest_id = $media_files[0]['id'];
+    			foreach ($media_files as $key => $media_file) {
+    				if (file_exists($media_file['filepath']))
+    					unlink($media_file['filepath']);
+                }
+    			# Remove all traversed entries, not touching the possible to appear entries with higher id
+    			data::query("DELETE FROM Media WHERE device_id='{$id}' AND id <= {$highest_id}", true);
+            }
 
 			data::query("DELETE FROM PTZPresets WHERE device_id='{$id}'", true);
 			$device_delete_ret = data::query("DELETE FROM Devices WHERE id='{$id}'", true);
