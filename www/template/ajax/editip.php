@@ -2,58 +2,160 @@
 #template common functions
 require('../template/template.lib.php');
 
-echo "<div id='header'>".PROPS_HEADER."</div>";
-echo "<p><a href='#' id='backToList'>".ALL_DEVICES."</a> > {$ipCamera->info['device_name']} </p>"; 	
 ?>
 
-<FORM id="settingsForm" action="/ajax/editip.php" method="post">
-<div id="aip" class="container-separator">
-	<div><label id="addipLabel"><?php echo VA_AUDIO_ENABLE; ?></label><input id='audio_enabled' type='Checkbox' name="audio_enabled"  <?php echo !($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''; ?>/>
-		<div id='message' class='INFO'>Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
-	</div>
-	<input type="hidden" name="mode" value="editIp" />
-	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
-	<div><label id="addipLabel"><?php echo AIP_IP_ADDR; ?></label><input type="Text" id="ipAddr" name="ipAddr" value="<?php echo $ipCamera->info['ipAddr'];?>" /></div>
-	<div><label id="addipLabel"><?php echo AIP_USER; ?></label><input id="user" type="Text" name="user" value="<?php echo $ipCamera->info['rtsp_username'];?>" /></div>
-	<div><label id="addipLabel"><?php echo AIP_PASS; ?></label><input id="pass" type="Password" name="pass" value="<?php echo $ipCamera->info['rtsp_password'];?>" /></div>
-			<div><label id="addipLabel"><?php echo AIP_PROTOCOL; ?></label>
-			<select name="protocol" id="protocol">
-				<option value="IP-RTSP">RTSP</option>
-				<option value="IP-MJPEG" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? "selected" : "";  ?>>MJPEG</option>
-			</select>
-		</div>
-	<div  id='rtsp-settings' <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? 'style="display:none;"' : ""; ?>>
-		<div><label id="addipLabel"><?php echo AIP_RTSP; ?></label><input id="rtsppath" type="Text" name="rtsp" value="<?php echo $ipCamera->info['rtsp'];?>" /></div>
-		<div><label id="addipLabel"><?php echo AIP_PORT; ?></label><input id="port" type="Text" name="port" value="<?php echo $ipCamera->info['port'];?>" /></div>
-		<div><label id="addipLabel"><?php echo IPCAM_TCPUDP_LEVEL; ?></label><select name="prefertcp"><option value="1">TCP</option><option value="0" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp']==0) ? "selected" : ""; ?>>UDP</option></select></div>
-	</div>
-	<div><label id="addipLabel"><?php echo AIP_MJPATH; ?></label><input id="mjpeg" type="Text" name="mjpeg" value="<?php echo $ipCamera->info['mjpeg_path'];?>" /></div>
-	<div style="display:none;"><label id="addipLabel"><?php echo AIP_IP_ADDR_MJPEG; ?></label><input type="Text" id="ipAddrMjpeg" name="ipAddrMjpeg" value="<?php echo $ipCamera->info['ipAddrMjpeg'];?>" /></div>
-	<div><label id="addipLabel"><?php echo AIP_PORT_MJPEG; ?></label><input id="portMjpeg" type="Text" name="portMjpeg" value="<?php echo $ipCamera->info['portMjpeg'];?>" /></div>
-	<div class="bClear"></div>
-	<div id="advancedSettingsSwitch">[<?php echo AIP_ADVANCED_SETTINGS; ?>]</div>
-	<div class="bClear"></div>
-	<div id="advancedSettings">
-		<div><label id="addipLabel"><?php echo IPCAM_DEBUG_LEVEL; ?></label><input type='checkbox' name='debug_level' <?php echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>></div>
-		
-	</div>
-	<div class="bClear"></div>
-	<div><label id="addipLabel"></label><input id="saveButton" type="Submit" value="<?php echo SAVE_CHANGES; ?>" /></div>
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header"><?php echo PROPS_HEADER; ?>
+    
+        <ol class="breadcrumb">
+            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li class="active"><?php echo $ipCamera->info['device_name']; ?></li>
+        </ol>
+        </h1>
+    </div>
 </div>
-</FORM>
-<script type="text/javascript">
-    setTimeout(function(){
-        $('models').addEvent('change', function(){
-            if (this.value != 'Please choose model'){
-                $$('#aip input').set('disabled', false);
-                if (this.value == 'Generic'){
-                    expandAdvancedSettings('open');
-                } else {
-                    getInfo('ops', 'model', this.value, false);
-                }
-            } else {
-                $$('#aip input').set('disabled', true);
-            }
-        })
-    }, 800);
-</script>
+
+
+<div class="row">
+    <div class="col-lg-12">
+        <form action="/ajax/editip.php" method="POST" class="form-horizontal">
+	        <input type="hidden" name="mode" value="editIp" />
+        	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
+
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo VA_AUDIO_ENABLE; ?></label>
+
+                        <div class="col-lg-6 form-control-static">
+                            <input class="" type="checkbox" name="audio_enabled" <?php echo (!($ipCamera->info['audio_disabled']) ? ' checked="checked"' : ''); ?>  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="col-lg-12">
+                            <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_IP_ADDR; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="ipAddr" value="<?php echo $ipCamera->info['ipAddr']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_USER; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="user" value="<?php echo $ipCamera->info['rtsp_username']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_PASS; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="password" name="pass" value="<?php echo $ipCamera->info['rtsp_password']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_PROTOCOL; ?></label>
+
+                        <div class="col-lg-6">
+			                <select name="protocol" class="form-control">
+                				<option value="IP-RTSP">RTSP</option>
+                				<option value="IP-MJPEG" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? "selected" : "";  ?>>MJPEG</option>
+                			</select>
+                        </div>
+                    </div>
+                    
+                    <div class="edittip-rtsp-setting" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? 'style="display:none;"' : ""; ?>>
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_RTSP; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="rtsp" value="<?php echo $ipCamera->info['rtsp']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_PORT; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="port" value="<?php echo $ipCamera->info['port']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo IPCAM_TCPUDP_LEVEL; ?></label>
+
+                        <div class="col-lg-6">
+                            <select name="prefertcp" class="form-control">
+                                <option value="1">TCP</option>
+                                <option value="0" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp']==0) ? "selected" : ""; ?>>UDP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_MJPATH; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="mjpeg" value="<?php echo $ipCamera->info['mjpeg_path']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="display:none;">
+                        <label class="col-lg-4 control-label"><?php echo AIP_IP_ADDR_MJPEG; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="ipAddrMjpeg" value="<?php echo $ipCamera->info['ipAddrMjpeg']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_PORT_MJPEG; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="portMjpeg" value="<?php echo $ipCamera->info['portMjpeg']; ?>"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-lg-4 control-label">
+                            <a href="javascript:void(0);" class="btn btn-default" id="edittip-advanced-settings"><?php echo AIP_ADVANCED_SETTINGS; ?></a>
+                        </div>
+                        <div class="col-lg-6">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="edittip-advanced-settings-block" style="display: none;">
+                        <label class="col-lg-4 control-label"><?php echo IPCAM_DEBUG_LEVEL; ?></label>
+
+                        <div class="col-lg-6 form-control-static">
+                            <input type="checkbox" name="debug_level" <?php echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="col-lg-6 col-lg-offset-4">
+                            <button class="btn btn-success send-req-form" type="submit"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        
+        </form>
+    </div>
+</div>
+

@@ -12,7 +12,7 @@ if (!empty($_POST)){
 	$id = intval($_POST['id']);
 	$camera = new ipCamera($id);
 	$result = $camera->edit($_POST);
-	data::responseXml($result[0], $result[1]);
+	data::responseJSON($result[0], $result[1]);
 	exit();
 }
 
