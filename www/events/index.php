@@ -11,9 +11,11 @@ $current_user = new user('id', $current_user_id);
 $current_user->checkAccessPermissions('backup');
 #/auth check
 
-$number_of_recs =  data::query("SELECT COUNT(*) as n From EventsCam");
-$memory_limit = intval(max($number_of_recs[0]['n']/20000,1)*256).'M';
-ini_set('memory_limit', $memory_limit);
+//$number_of_recs =  data::query("SELECT COUNT(*) as n From EventsCam");
+//$memory_limit = intval(max($number_of_recs[0]['n']/20000,1)*256).'M';
+//ini_set('memory_limit', $memory_limit);
+
+$events_portion = 5000;
 
 $query = "SELECT EventsCam.*, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
          "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
@@ -33,13 +35,14 @@ if (empty($current_user->data[0]['access_device_list'])){
 }
 $query .= "EventsCam.device_id NOT IN ({$current_user->data[0]['access_device_list']}) ";
 $query .= "ORDER BY EventsCam.id DESC ";
-$limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : 100);
-if ($limit < 1)
-	$limit = 15000; // #1015 - have a strict maximum to keep the server from running out of memory
-if ($limit > 0)
-	$query .= "LIMIT ".$limit;
 
-$events = data::query($query);
+$requested_limit = (isset($_GET['limit']) ? (int)$_GET['limit'] : -1);
+// if ($requested_limit < 1)
+// 	$requested_limit = 15000; // #1015 - have a strict maximum to keep the server from running out of memory
+// if ($requested_limit > 0)
+// 	$query .= "LIMIT ".$requested_limit;
+
+
 
 
 # Output header for this feed
@@ -66,41 +69,58 @@ print "  <generator uri=\"http://www.bluecherrydvr.com/atom.html\" version=\"1.0
 print "    BluecherryDVR Events Atom Generator\n";
 print "  </generator>\n";
 
-# Output one item for each event
-foreach ($events as $item) {
-	if (!$current_user->camPermission($item['device_id']))
-		continue;
+# Output one events portion per query with limit/offset
+//for ($portions = 0; $portions < $portions_num; $portions++) {
+$offset = 0;
+while (true) {
 
-	print "  <entry>\n";
-	print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
-	print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
-		" event on device " . $item['device_id'] . "</title>\n";
-	print "    <published>" . date(DATE_ATOM, $item['time']) .
-		"</published>\n";
+	$limit = min($requested_limit, $events_portion);
 
-	/* If updated exists and is empty, the event is on-going */
-	if (!empty($item['length'])) {
-		print "    <updated>";
-		if ($item['length'] > 0) {
-			print date(DATE_ATOM, $item['time'] +
-				   $item['length']);
+	if ($limit < 0)
+		$limit = $events_portion;
+
+	$events = data::query($query." LIMIT ".$limit." OFFSET ".$offset);
+
+	# Output one item for each event
+	foreach ($events as $item) {
+		if (!$current_user->camPermission($item['device_id']))
+			continue;
+
+		print "  <entry>\n";
+		print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
+		print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
+			" event on device " . $item['device_id'] . "</title>\n";
+		print "    <published>" . date(DATE_ATOM, $item['time']) .
+			"</published>\n";
+
+		/* If updated exists and is empty, the event is on-going */
+		if (!empty($item['length'])) {
+			print "    <updated>";
+			if ($item['length'] > 0) {
+				print date(DATE_ATOM, $item['time'] +
+					$item['length']);
+			}
+			print "</updated>\n";
 		}
-		print "</updated>\n";
+
+		print "    <category scheme=\"http://www.bluecherrydvr.com/atom.html\" " .
+			"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
+			$item['type_id'] . "\"/>\n";
+
+		if (!empty($item['media_id']) && $item['media_available']) {
+			print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
+			print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
+			print "</content>\n";
+		}
+
+		print "  </entry>\n";
 	}
 
-	print "    <category scheme=\"http://www.bluecherrydvr.com/atom.html\" " .
-		"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
-		$item['type_id'] . "\"/>\n";
+	if (count($events) < $events_portion)
+		break;
 
-	if (!empty($item['media_id']) && $item['media_available']) {
-		print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
-		print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
-		print "</content>\n";
-	}
-
-	print "  </entry>\n";
+	$offset += $events_portion;
 }
-
 # Close it out
 print "</feed>\n";
 
