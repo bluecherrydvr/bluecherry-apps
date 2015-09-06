@@ -14,6 +14,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <signal.h>
+#include <limits.h>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -61,7 +62,7 @@ time_t last_known_running;
 /* Prerelease */
 #define DONT_ENFORCE_LICENSING 0
 #define TRIAL_DAYS 30
-#define TRIAL_MAX_DEVICES 32
+#define TRIAL_MAX_DEVICES INT_MAX
 static std::vector<bc_license> licenses;
 
 static rtsp_server *rtsp = NULL;
