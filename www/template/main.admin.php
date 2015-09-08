@@ -263,5 +263,6 @@
     <script src="/template/dist/js/storage.js"></script>
     <script src="/template/dist/js/users.js"></script>
     <script src="/template/dist/js/devices.js"></script>
+    <script src="/template/dist/js/addip.js"></script>
 </body>
 </html>

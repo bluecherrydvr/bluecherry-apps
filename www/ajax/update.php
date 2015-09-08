@@ -70,7 +70,7 @@ class update{
 		$table = $_POST['type']; unset($_POST['type']);
 		$id = $_POST['id']; unset($_POST['id']);
 		$query = data::formQueryFromArray('update', $table, $_POST, 'id', $id);
-		data::responseXml(data::query($query, true));
+		data::responseJSON(data::query($query, true));
 	}
 	private function deleteUser(){
         $msg = '';
