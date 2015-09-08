@@ -1015,17 +1015,27 @@ class Cameras
             $data['h264_url'] = '/' . ltrim($data['h264_url'], '/');
         }
         
-        $data = "
-                <camName><![CDATA[{$data['model']}]]></camName>
-                <mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
-                <rtspPath><![CDATA[{$data['h264_url']}]]></rtspPath>
-                <mjpegPort><![CDATA[80]]></mjpegPort>
-                <rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
-                <resolutions><![CDATA[{$data['resolution']}]]></resolutions>
-                <user><![CDATA[{$data['default_username']}]]></user>
-                <pass><![CDATA[{$data['default_password']}]]></pass>
-        ";
-        data::responseXml(true, true, $data);
+        //$data = "
+                //<camName><![CDATA[{$data['model']}]]></camName>
+                //<mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
+                //<rtspPath><![CDATA[{$data['h264_url']}]]></rtspPath>
+                //<mjpegPort><![CDATA[80]]></mjpegPort>
+                //<rtspPort><![CDATA[{$data['rtsp_port']}]]></rtspPort>
+                //<resolutions><![CDATA[{$data['resolution']}]]></resolutions>
+                //<user><![CDATA[{$data['default_username']}]]></user>
+                //<pass><![CDATA[{$data['default_password']}]]></pass>
+        //";
+        $data_r = Array(
+            'camName' => $data['model'],
+            'mjpegPath' => $data['mjpeg_url'],
+            'rtspPath' => $data['h264_url'],
+            'mjpegPort' => 80,
+            'rtspPort' => $data['rtsp_port'],
+            'resolutions' => $data['resolution'],
+            'user' => $data['default_username'],
+            'pass' => $data['default_password'],
+        );
+        data::responseJSON(true, true, $data_r);
     }
     
     /**

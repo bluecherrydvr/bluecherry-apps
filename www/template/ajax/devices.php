@@ -28,6 +28,14 @@ require('../template/template.lib.php');
 
 <div class="row">
     <div class="col-lg-12">
+        <a href="/ajax/addip.php" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i> <?php echo AIP_HEADER; ?></a>
+        <div class="clearfix"></div>
+    </div>
+</div>
+<br>
+
+<div class="row">
+    <div class="col-lg-12">
         <div class="panel-group" id="devices-bl" role="tablist" aria-multiselectable="true">
 
             <div class="panel panel-default">
