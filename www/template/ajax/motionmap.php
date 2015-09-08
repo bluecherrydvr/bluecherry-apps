@@ -15,24 +15,19 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-lg-12">
+        <div class="col-lg-12">
+            <button class="btn btn-success pull-right send-req-form" type="submit" data-form-id="motion-submit" data-func="getMotionMap"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
+            <div class="clearfix"></div>
+        </div>
+    </div>
+</div>
+<br>
 
 <div class="row">
     <div class="col-lg-12">
-
-    <form action="/ajax/update.php" method="post" class="form-horizontal">
-
-        <input type="hidden" name="id" value="<?php echo $camera->info['id']; ?>" />
-        <input type="hidden" name="camera_type" value="<?php echo $camera->info['protocol']; ?>" />
-        <input type="hidden" name="motion_map" value="<?php echo $camera->info['motion_map']; ?>" />
-        <input type="hidden" name="type" value="Devices" />
-
-        <div class="form-group">
-            <div class="col-lg-12">
-                <button class="btn btn-success pull-right send-req-form" type="submit"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
-                <div class="clearfix"></div>
-            </div>
-        </div>
-
+        
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo BUFFER_TITLE; ?></div>
                 <div class="panel-body">
@@ -41,19 +36,39 @@
                         <label class="col-lg-3 control-label"><?php echo PRE_REC_BUFFER; ?></label>
 
                         <div class="col-lg-3">
-                            <?php echo arrayToSelect($GLOBALS['buffer']['pre'], $camera->info['buffer_prerecording'], 'buffer_prerecording'); ?>
+                            <form action="/ajax/update.php" method="post">
+                                <input type="hidden" name="id" value="<?php echo $camera->info['id']; ?>" />
+                                <input type="hidden" name="type" value="Devices" />
+                                <input type="hidden" name="mode" value="update" />
+
+                                <?php echo arrayToSelect($GLOBALS['buffer']['pre'], $camera->info['buffer_prerecording'], 'buffer_prerecording', 'send-req-form-select'); ?>
+                            </form>
                         </div>
 
-                        <label class="col-lg-2 control-label"><?php echo POST_REC_BUFFER; ?></label>
+                        <label class="col-lg-3 control-label"><?php echo POST_REC_BUFFER; ?></label>
 
                         <div class="col-lg-3">
-                            <?php echo arrayToSelect($GLOBALS['buffer']['post'], $camera->info['buffer_postrecording'], 'buffer_postrecording'); ?>
+                            <form action="/ajax/update.php" method="post">
+                                <input type="hidden" name="id" value="<?php echo $camera->info['id']; ?>" />
+                                <input type="hidden" name="type" value="Devices" />
+                                <input type="hidden" name="mode" value="update" />
+
+                                <?php echo arrayToSelect($GLOBALS['buffer']['post'], $camera->info['buffer_postrecording'], 'buffer_postrecording', 'send-req-form-select'); ?>
+                            </form>
                         </div>
                     </div>
 
                 </div>
         </div>
 
+
+    <form action="/ajax/update.php" method="post" class="form-horizontal" id="motion-submit">
+
+        <input type="hidden" name="id" value="<?php echo $camera->info['id']; ?>" />
+        <input type="hidden" name="camera_type" value="<?php echo $camera->info['protocol']; ?>" />
+        <input type="hidden" name="motion_map" id="motion-map" value="<?php echo $camera->info['motion_map']; ?>" />
+        <input type="hidden" name="type" value="Devices" />
+        <input type="hidden" name="mode" value="update" />
 
 
         <div class="panel panel-default">

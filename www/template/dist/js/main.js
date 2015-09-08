@@ -316,7 +316,9 @@ var ajaxReq = function () {
         if (act_sub) {
             data_send = null;
 
-            send_but = el;
+            if (!el.is('select')) {
+                send_but = el;
+            }
             
             var form_id = el.data('form-id');
             if (form_id) {
@@ -410,6 +412,11 @@ function ajaxEvent() {
         return ajax_req.setData($(this)); 
     }); 
 
+    $('body').on("change", ".send-req-form-select", function(e){
+        var ajax_req = new ajaxReq();
+        return ajax_req.setData($(this)); 
+    }); 
+
     $('body').on("click", ".ajax-content", function(e){
         e.preventDefault();
         var ajax_req = new ajaxReq();
@@ -418,40 +425,47 @@ function ajaxEvent() {
 
     $('body').on("click", ".click-event", function(e){
         e.preventDefault();
-        var el = $(this);
-
-        var func = $(this).data('function');
-        if (func) {
-            window[func](el);
-        } else {
-            var class_c = $(this).data('class');
-            class_c = class_c.split('.');
-            var class_tmp = '';
-
-            $.each(class_c, function(i, val){
-                if (i == 0) {
-                    class_tmp = new window[val](el);
-                } else {
-                    var start_pos = val.indexOf('(') + 1;
-                    var end_pos = val.indexOf(')',start_pos);
-                    var args = val.substring(start_pos,end_pos);
-
-                    val = val.substring(0, start_pos - 1);
-
-                    if (args) {
-                        args = args.split(',');
-                        if (args.length == 1) {
-                            class_tmp[val](args[0]);
-                        } else {
-                            class_tmp[val](args);
-                        }
-                    } else {
-                        class_tmp[val]();
-                    }
-                }
-            });
-        }
+        procEvent($(this));
     }); 
+
+    $('body').on("change", ".change-event", function(e){
+        e.preventDefault();
+        procEvent($(this));
+    }); 
+}
+
+function procEvent(el) {
+    var func = el.data('function');
+    if (func) {
+        window[func](el);
+    } else {
+        var class_c = el.data('class');
+        class_c = class_c.split('.');
+        var class_tmp = '';
+
+        $.each(class_c, function(i, val){
+            if (i == 0) {
+                class_tmp = new window[val](el);
+            } else {
+                var start_pos = val.indexOf('(') + 1;
+                var end_pos = val.indexOf(')',start_pos);
+                var args = val.substring(start_pos,end_pos);
+
+                val = val.substring(0, start_pos - 1);
+
+                if (args) {
+                    args = args.split(',');
+                    if (args.length == 1) {
+                        class_tmp[val](args[0]);
+                    } else {
+                        class_tmp[val](args);
+                    }
+                } else {
+                    class_tmp[val]();
+                }
+            }
+        });
+    }
 }
 
 function mch_ajsend(el) {

@@ -94,9 +94,11 @@ h1 .breadcrumb li {
 
 .grid-bl img {
     position: absolute;
+    min-height: 240px;
 }
 
 .table-grid {
+    position: relative;
     top: 0px;
     left: 0px;
     border-collapse: collapse;
@@ -106,6 +108,30 @@ h1 .breadcrumb li {
     opacity: 0.4;
     border: 1px solid #808080;
     cursor: pointer;
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -webkit-user-select: none;
+    -o-user-select: none;
+    user-select: none;    
+}
+
+.table-grid td.bg-default {
+    background-color: #FFF;
+}
+.table-grid td.bg-success {
+    background-color: #5CB85C;
+}
+.table-grid td.bg-info {
+    background-color: #5BC0DE;
+}
+.table-grid td.bg-primary {
+    background-color: #337AB7;
+}
+.table-grid td.bg-warning {
+    background-color: #F0AD4E;
+}
+.table-grid td.bg-danger {
+    background-color: #D9534F;
 }
 
 .col-margin-bottom {
@@ -117,7 +143,7 @@ h1 .breadcrumb li {
 {
     pointer-events: auto;
     cursor: pointer;
-
+    opacity: 0.35;
 }
 
 

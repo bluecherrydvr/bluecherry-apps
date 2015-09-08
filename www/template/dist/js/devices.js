@@ -7,41 +7,62 @@ $(function() {
         else el.show();
     });
 
-    $('body').on("mousedown", ".table-grid td", function(e){
-        $('body').on("mousemove", ".table-grid td", function(e){
-            $(this).css('background-color', 'white');
-        }).on('mouseup', function(e) {
-            $('body').off("mousemove", ".table-grid td");
-        });
+});
+
+function getMotionMap(form) {
+    var tds = form.find('.table-grid td');
+    var map = '';
+    $.each(tds, function(i, val){
+        var type = $(this).attr('data-type');
+        map += type;
     });
 
-    $('body').on("click", ".table-grid td", function(e){
-        $(this).css('background-color', 'white');
-    });
-    
-});
+    if (map) {
+        $('#motion-map').val(map);
+    }
+        //$('#motion-map').val('map');
+}
 
 var motionGrid = function(el) {
     var self = this;
     var grid_bl = null;
     var table_grid = null;
+    var table_grid_tds = null;
     var grid_color = null;
+    var color_array = { 'bg-default' : 0 , 'bg-success' : 1, 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 4, 'bg-danger' : 5};
 
-    var gridChanges = function () {
-        table_grid.removeClass('bg-danger');
-        table_grid.removeClass('bg-warning');
-        table_grid.removeClass('bg-primary');
-        table_grid.removeClass('bg-info');
-        table_grid.removeClass('bg-success');
-        table_grid.removeClass('bg-default');
+    var gridChanges = function (el_tmp) {
+        el_tmp = el_tmp || table_grid_tds;
 
-        table_grid.addClass(grid_color);
+        el_tmp.removeClass('bg-danger');
+        el_tmp.removeClass('bg-warning');
+        el_tmp.removeClass('bg-primary');
+        el_tmp.removeClass('bg-info');
+        el_tmp.removeClass('bg-success');
+        el_tmp.removeClass('bg-default');
+
+        el_tmp.addClass(grid_color);
+
+        el_tmp.attr('data-type', color_array[grid_color]);
     };
 
     var btnChanges = function () {
         var btns = $('.motion-btn-sens');
         btns.addClass('disabled');
         el.removeClass('disabled');
+    }
+
+    var getGridColor = function () {
+        var btn = $('.motion-sens-bl').find('button:not(.disabled)');
+        grid_color = 'bg-'+btn.data('active');
+    }
+
+    self.getGridColorP = function () {
+        getGridColor();
+    };
+
+    self.gridChangesP = function (el_tmp) {
+        gridChanges(el_tmp);
     }
 
     self.off = function () {
@@ -92,8 +113,7 @@ var motionGrid = function(el) {
     };
     
     self.fillAll = function () {
-        var btn = $('.motion-sens-bl').find('button:not(.disabled)');
-        grid_color = 'bg-'+btn.data('active');
+        getGridColor();
         gridChanges();
     };
 
@@ -105,24 +125,46 @@ var motionGrid = function(el) {
     	var numcols = width/16;
         var numrows = height/16;
 
-        var grid_table = '<table class="table-grid bg-primary" border="1" style="width: '+width+'px; height: '+height+'px;">';
+        var grid_table = '<table class="table-grid" border="1" style="width: '+width+'px; height: '+height+'px;">';
 
     	for (row = 1; row<=numrows; row++) {
             grid_table += '<tr>';
             for(col = 1; col<=numcols; col++) {
-                grid_table += '<td data-type="3">';
+                grid_table += '<td class="bg-primary">';
                 grid_table += '</td>';
             }
             grid_table += '</tr>';
         };
 
         grid_table += '<table>';
+
         grid_bl.append(grid_table);
+        grid_bl.find('table td').attr('data-type', 3);
+
+
+        $('body').on("mousedown", ".table-grid td", function(e){
+            var mg = new motionGrid(null);
+            mg.getGridColorP();
+
+            $('body').on("mousemove", ".table-grid td", function(e){
+                mg.gridChangesP($(this));
+
+            }).on('mouseup', function(e) {
+                $('body').off("mousemove", ".table-grid td");
+            });
+        });
+
+        $('body').on("click", ".table-grid td", function(e){
+            var mg = new motionGrid(null);
+            mg.getGridColorP();
+            mg.gridChangesP($(this));
+        });
     };
 
     var constructor = function () {
         grid_bl = $('.grid-bl');
         table_grid = $('.table-grid');
+        table_grid_tds = $('.table-grid td');
     };
     constructor();
 }

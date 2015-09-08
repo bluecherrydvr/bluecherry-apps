@@ -132,7 +132,7 @@ require('../template/template.lib.php');
                     <div class="form-group">
                         <label class="col-lg-4 control-label">
                             <a href="javascript:void(0);" class="btn btn-default" id="edittip-advanced-settings"><?php echo AIP_ADVANCED_SETTINGS; ?></a>
-                        </div>
+                        </label>
                         <div class="col-lg-6">
                         </div>
                     </div>

@@ -1,8 +1,8 @@
 <?php
 
 //makes an options dropdown
-function arrayToSelect($options, $selected='', $id='', $class='', $disabled=false){
-	$tmp = "<select id='{$id}' class='{$class} form-control' name='{$id}'".(($disabled) ? ' disabled="disabled"' : '').">";
+function arrayToSelect($options, $selected='', $id='', $class='', $disabled=false, $data_attr = ''){
+	$tmp = "<select id='{$id}' class='{$class} form-control' {$data_attr} name='{$id}'".(($disabled) ? ' disabled="disabled"' : '').">";
 	$assoc = is_assoc($options);
 	foreach($options as $i => $value){
 		if (is_array($value))$value = current($value);
