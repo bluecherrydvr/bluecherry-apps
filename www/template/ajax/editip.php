@@ -41,6 +41,14 @@ require('../template/template.lib.php');
                     </div>
                     
                     <div class="form-group">
+                        <label class="col-lg-4 control-label"><?php echo AIP_CAMERA_NAME; ?></label>
+
+                        <div class="col-lg-6">
+                            <input class="form-control" type="text" name="camName" value="<?php echo $ipCamera->info['device_name']; ?>"  />
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
                         <label class="col-lg-4 control-label"><?php echo AIP_IP_ADDR; ?></label>
 
                         <div class="col-lg-6">
@@ -68,14 +76,14 @@ require('../template/template.lib.php');
                         <label class="col-lg-4 control-label"><?php echo AIP_PROTOCOL; ?></label>
 
                         <div class="col-lg-6">
-			                <select name="protocol" class="form-control">
+			                <select name="protocol" class="form-control change-event" data-function="protocolBlocks">
                 				<option value="IP-RTSP">RTSP</option>
                 				<option value="IP-MJPEG" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? "selected" : "";  ?>>MJPEG</option>
                 			</select>
                         </div>
                     </div>
                     
-                    <div class="edittip-rtsp-setting" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? 'style="display:none;"' : ""; ?>>
+                    <div class="devices-rtsp-setting" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? 'style="display:none;"' : ""; ?>>
                     <div class="form-group">
                         <label class="col-lg-4 control-label"><?php echo AIP_RTSP; ?></label>
 
@@ -104,7 +112,8 @@ require('../template/template.lib.php');
                     </div>
 
                     </div>
-                    
+
+                    <div class="devices-mjpeg-setting" <?php echo ($ipCamera->info['protocol']) == 'IP-MJPEG' ? '' : 'style="display:none;"'; ?>>
                     <div class="form-group">
                         <label class="col-lg-4 control-label"><?php echo AIP_MJPATH; ?></label>
 
@@ -127,6 +136,7 @@ require('../template/template.lib.php');
                         <div class="col-lg-6">
                             <input class="form-control" type="text" name="portMjpeg" value="<?php echo $ipCamera->info['portMjpeg']; ?>"  />
                         </div>
+                    </div>
                     </div>
 
                     <div class="form-group">

@@ -9,13 +9,19 @@ $current_user = new user('id', $id);
 $current_user->checkAccessPermissions('devices');
 #/auth check
 
-class devices{
+class devices extends Controller {
 	public $info;
 	public $cards;
-	public $ipCameras;
-	public function __construct(){
+    public $ipCameras;
+
+    public function __construct(){
+        $this->ipCameras = new StdClass();
+        $this->ipCameras->ok = Array();
+        $this->ipCameras->disabled = Array();
+
 		$this->getCards();
-		$this->getIpCameras();
+        $this->getIpCameras();
+
 	}
 	private function getCards(){
 		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
@@ -31,11 +37,20 @@ class devices{
 	}
 	private function getIpCameras(){
 		$info = data::query("SELECT * FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
+
+        $this->setView('devices.camera');
+
 		foreach ($info as $key => $device) {
 			$options = (!empty($_GET['XML'])) ? array('no_c_check' => true) : false;
-			$this->ipCameras[$key] = new ipCamera($device['id'], $options);
+            $item = new ipCamera($device['id'], $options);
+
+            $this->view->device = $item;
+
+            $status = strtolower($item->info['status']);
+            array_push($this->ipCameras->$status, $this->renderView());
 		}
-		$this->info['total_devices'] += count($this->ipCameras);
+		$this->info['total_devices'] += count($this->ipCameras->ok);
+		$this->info['total_devices'] += count($this->ipCameras->disabled);
 	}
 	public function MakeXML(){
 		$this_user = new user('id', $_SESSION['id']);
