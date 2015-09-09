@@ -197,15 +197,16 @@ void motion_processor::decode_destroy()
 int motion_processor::detect(AVFrame *rawFrame)
 {
 	int ret = 0;
+	double downscaleFactor = 0.5;
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
-		fix_pix_fmt(rawFrame->format), rawFrame->width, rawFrame->height,
+		fix_pix_fmt(rawFrame->format), rawFrame->width * downscaleFactor, rawFrame->height * downscaleFactor,
 		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
 	AVFrame *frame = av_frame_alloc();
 	frame->format = AV_PIX_FMT_GRAY8;
-	frame->width = rawFrame->width;
-	frame->height = rawFrame->height;
+	frame->width = rawFrame->width * downscaleFactor;
+	frame->height = rawFrame->height * downscaleFactor;
 	avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
@@ -223,14 +224,14 @@ int motion_processor::detect(AVFrame *rawFrame)
 	}
 #endif
 
-	if (refFrame && refFrame->height == rawFrame->height && refFrame->width == rawFrame->width)
+	if (refFrame && refFrame->height == frame->height && refFrame->width == frame->width)
 	{
 		uint8_t *ref = refFrame->data[0];
 		uint8_t *cur = frame->data[0];
 		uint8_t *val = 0;
 		uint8_t cv = 0; /* current value, for val[0] */
 		uint8_t lv = 0;
-		int w = frame->linesize[0], h = rawFrame->height;
+		int w = frame->linesize[0], h = frame->height;
 		int total = w * h;
 		int x = 0, y = 0;
 		int threshold_cell_w = ceil(w/32.0);
