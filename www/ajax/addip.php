@@ -17,7 +17,7 @@ $current_user->checkAccessPermissions('admin');
 #/auth check
 if (!empty($_POST)){
 	$result = ipCamera::create($_POST);
-	data::responseXML($result[0], $result[1]);
+	data::responseJSON($result[0], $result[1]);
 	exit;
 }
 	

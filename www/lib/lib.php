@@ -8,10 +8,16 @@
 
 defined('INDVR') or exit();
 
+define ('DIRSEP', DIRECTORY_SEPARATOR); 
+$site_path = __DIR__ . DIRSEP;
+define ('SITE_PATH', str_replace('lib'.DIRSEP, '', $site_path));
+
 define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
 
 require_once('Reply.php');
 require_once('Inp.php');
+require_once('View.php');
+require_once('Controller.php');
 
 if (empty($nload)){
 	include("lang.php");
@@ -537,6 +543,7 @@ class ipCamera{
 	private static function prepareData($rawData, $self_id = false){
 		#prepare device
 			if (empty($rawData['ipAddr']))	{ return array(false, AIP_NEEDIP); };
+			if (empty($rawData['camName']))	{ return array(false, AIP_NEEDIP); };
 			if ($rawData['protocol'] == 'IP-MJPEG'){
 				if (empty($rawData['mjpeg']))	{ return array(false, AIP_NEEDMJPEG); }
 				if (empty($rawData['portMjpeg'])) { return array(false, AIP_NEEDMJPEGPORT); }
@@ -581,7 +588,11 @@ class ipCamera{
 	public function edit($data){
 		$data = self::prepareData($data, $this->info['id']);
 		#if errors were detected -- return error
-		if (!$data[0]) { return $data; } else { unset($data[1]['device_name']); }
+        if (!$data[0]) { 
+            return $data; 
+        } else { 
+            //unset($data[1]['device_name']); 
+        }
 		#if there were no errors, edit the camera
 		$query = data::formQueryFromArray('update', 'Devices', $data[1], 'id', $this->info['id']);
 		$result = data::query($query, true);
