@@ -25,6 +25,19 @@ function commons() {
     });
 }
 
+function protocolBlocks (el) {
+    var rtsp = $('.devices-rtsp-setting');
+    var mjpeg = $('.devices-mjpeg-setting');
+
+    if (el.find('option:selected').val() == 'IP-RTSP') {
+        rtsp.show();
+        mjpeg.hide();
+    } else {
+        rtsp.hide();
+        mjpeg.show();
+    }
+}
+
 function updateStatData() {
     
         var ajax_req = new ajaxReq();
@@ -120,6 +133,7 @@ var ajaxReq = function () {
     var callback_func = null;
     var func_after = null;
     var redirect_after = null;
+    var redirect_after_success = null;
 
 
     var send = function () {
@@ -243,6 +257,11 @@ var ajaxReq = function () {
                     exit: 'animated fadeOut'
                 }
             });
+
+            if (redirect_after_success) {
+                var ajax_req = new ajaxReq();
+                ajax_req.ajaxContent(redirect_after_success);
+            }
         } else if (msg.status == 7) {
             $.notify({
                 icon: 'fa fa-times-circle fa-fw',
@@ -332,6 +351,7 @@ var ajaxReq = function () {
             func_after = el.data('func-after') || null;
 
             redirect_after = el.data('redirect') || null;
+            redirect_after_success = el.data('redirect-success') || null;
 
             hideProperErr();
 

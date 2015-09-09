@@ -177,18 +177,30 @@ function deviceSwith(form, msg) {
     // okay
     if (msg.status == 6) {
         var par = form.closest('.well');
+        var par_col = par.parent();
         var icon = par.find('.devices-device-name i');
         var submit = par.find('button.devices-onoff-form');
+        var disabled_bl = $('#devices-ip-disabled');
+        var ok_bl = $('#devices-ip-ok');
 
         if (icon.hasClass('text-status-OK')) {
             icon.removeClass('text-status-OK');
             icon.addClass('text-status-disabled');
             submit.data('complete-text', $('#devices-text-status-disabled').text());
+
+            par_col.detach().appendTo(disabled_bl);
+
+            disabled_bl.show();
         } else {
             icon.removeClass('text-status-disabled');
             icon.addClass('text-status-OK');
             submit.data('complete-text', $('#devices-text-status-OK').text());
+
+            par_col.detach().appendTo(ok_bl);
+
+            if (disabled_bl.find('div').length < 1) disabled_bl.hide();
         }
+
     } else {
         // error
 
