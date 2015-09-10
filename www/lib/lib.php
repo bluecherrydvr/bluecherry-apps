@@ -189,8 +189,8 @@ class user{
 		$info = data::getObject('Users', $parameter, $value);
 		$this->info = $info[0];
 		$this->info['default_password'] = ($this->info['password']==md5('bluecherry'.$this->info['salt']) && $this->info['username']=='Admin') ? true : false;
-		$this->info['access_ptz_list'] = explode(',', $this->info['access_ptz_list']);
-		$this->info['access_device_list'] = explode(',', $this->info['access_device_list']);
+		$this->info['access_ptz_list'] = (isset($this->info['access_ptz_list']) ? explode(',', $this->info['access_ptz_list']) : Array());
+		$this->info['access_device_list'] = (isset($this->info['access_device_list']) ? explode(',', $this->info['access_device_list']) : Array());
 	}
 	private function checkUserData($data, $new=false){
 		if (empty($data['username']))	{ return NO_USERNAME;	};
@@ -201,7 +201,9 @@ class user{
 		return true;
 	}
 	private function checkPassword($password){
-		return (md5($password.$this->info['salt'])===$this->info['password']) ? true : false;
+        if (isset($this->info['salt']) && isset($this->info['password'])) {
+            return (md5($password.$this->info['salt'])===$this->info['password']) ? true : false;
+        } else return false;
 	}
 	private function updateActiveUsers(){ #updates user record and returns kick value
 		if (!empty($this->info['id'])){
@@ -268,8 +270,8 @@ class user{
 	}
 	public function doLogin($password, $from_client = false){
 		if (!$this->info) { return LOGIN_WRONG; };
-		if (!$this->info['access_setup']){ #if user is not admin check for permissions to use web/client
-			if (!$this->info['access_web'] && !$from_client)	{ return NA_WEB; };
+		if (isset($this->info['access_setup']) && !$this->info['access_setup']){ #if user is not admin check for permissions to use web/client
+			if ((isset($this->info['access_setup']) && !$this->info['access_web']) && !$from_client)	{ return NA_WEB; };
 			if (!$this->info['access_remote'] && $from_client)	{ return NA_CLIENT; };
 		}
 		if ($this->checkPassword($password)) { 
