@@ -1,5 +1,45 @@
 $(function() {
 
+    $('body').on("click", "#report-incorrect-data", function(e){
+        e.preventDefault();
+        var self = $(this);
+        mch_ajsend(self);
+
+        var z1ws6wwb1p41rs9;
+        var src = ('https:' == location.protocol) ? 'https://' : 'http://';
+        src += 'www.wufoo.com/scripts/embed/form.js';
+
+        var options = {
+            'userName':'bluecherry',
+            'formHash':'z1ws6wwb1p41rs9',
+            'autoResize':true,
+            'height':'612',
+            'async':true,
+            'host':'wufoo.com',
+            'header':'show',
+            'ssl':true
+        };
+        
+        self.trigger("start.search");
+        $.getScript(src).done(function( script, textStatus, jqxhr ) {
+
+            if (jqxhr.status == 200) {
+                try { 
+                    z1ws6wwb1p41rs9 = new WufooForm();
+                    z1ws6wwb1p41rs9.initialize(options);
+                    z1ws6wwb1p41rs9.display(); 
+                    $('#wufoo-z1ws6wwb1p41rs9').show();
+                } catch (e) {}
+
+            }
+
+            self.trigger("finish.search");
+            
+        }).fail(function( jqxhr, settings, exception ) {
+            self.trigger("finish.search");
+        });        
+    });
+    
 });
 
 var cameraProc = function (form) {
@@ -96,6 +136,7 @@ function cameraChooseModel(el) {
     ajax_req.manReq({
         form_act : '/ajax/addip.php?m=ops&model='+el.find('option:selected').val(),
         type_data : 'JSON',
+        ajax_indic: el,
         callback_func: function (msg, done) {
             if (done) {
                 var cp = new cameraProc(el.closest('form'));
@@ -117,6 +158,7 @@ function cameraChooseManuf(el) {
     ajax_req.manReq({
         form_act : '/ajax/addip.php?m=model&manufacturer='+sel_val,
         type_data : 'HTML',
+        ajax_indic: el,
         callback_func: function (msg, done) {
             if (done) {
                 sel_bl.html(msg);
