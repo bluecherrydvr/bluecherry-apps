@@ -146,4 +146,8 @@ h1 .breadcrumb li {
     opacity: 0.35;
 }
 
-
+.select-ajax {
+    background: url("/img/loading.gif") no-repeat left center;
+    opacity:0.6; 
+    filter:alpha(opacity=60); 
+}

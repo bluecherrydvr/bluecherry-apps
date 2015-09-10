@@ -1,15 +1,5 @@
 $(function() {
-
-
-
-    // todo: delete after you do "link page" fuature
-    var ajax_req = new ajaxReq();
-    ajax_req.ajaxContent('/ajax/news.php');
-
-
-    commons();
     ajaxEvent();
-    updateStatData();
 });
 
 function commons() {
@@ -335,9 +325,7 @@ var ajaxReq = function () {
         if (act_sub) {
             data_send = null;
 
-            if (!el.is('select')) {
-                send_but = el;
-            }
+            send_but = el;
             
             var form_id = el.data('form-id');
             if (form_id) {
@@ -406,6 +394,12 @@ var ajaxReq = function () {
         type_req = data.type_req || type_req;
         type_data = data.type_data || type_data;
         form_data = data.form_data || form_data;
+        ajax_indicator = data.ajax_indic || null;
+
+        if (ajax_indicator) {
+            send_but = ajax_indicator
+            mch_ajsend(send_but);
+        }
 
         if ((data.process_data == true) || (data.process_data == undefined)) {
             process_data = data.process_data;
@@ -499,13 +493,21 @@ function mch_ajsend(el) {
         });
     } else {
         el.on("start.search", function() {
-            el.button('loading');
+            if (el.is('select')) {
+                el.addClass('select-ajax');
+            } else {
+                el.button('loading');
+            }
         });
         el.on("finish.search", function() {
-            if (el.data('complete-text')) {
-                el.button('complete');
+            if (el.is('select')) {
+                el.removeClass('select-ajax');
             } else {
-                el.button('reset');
+                if (el.data('complete-text')) {
+                    el.button('complete');
+                } else {
+                    el.button('reset');
+                }
             }
         });
     }
