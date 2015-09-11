@@ -2,6 +2,22 @@
 #template common functions
 require('../template/template.lib.php');
 ?>
+
+
+<div class="row">
+    <div class="col-lg-12">
+        <h1 class="page-header"><?php echo PTZ_SET_SUBHEADER; ?>
+    
+        <ol class="breadcrumb">
+            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li class="active"> <?php echo PTZ_SET_HEADER . $this_camera->info['device_name']; ?></li>
+        </ol>
+        </h1>
+    </div>
+</div>
+
+
+
 <h1 class="header" id="header"><?php echo PTZ_SET_SUBHEADER; ?></h1>
 <p><?php echo "<a href='#' id='backToList'>".ALL_DEVICES."</a> &gt; ".PTZ_SET_HEADER." {$this_camera->info['device_name']}"; ?></p>
 <FORM method='Post' action='/ajax/ptzsettings.php' id='settingsForm'>

@@ -26,7 +26,7 @@ if (!empty($_POST)){
 	$_POST['custom'] = ($id == 'new' || $id >=9000) ? 1 : 0;
 	$query = data::formQueryFromArray($type, 'ipPtzCommandPresets', $_POST, 'id', $id);
 	$result = data::query($query, true);
-	data::responseXml($result);
+	data::responseJSON($result);
 	exit();
 } else {
 	#template
