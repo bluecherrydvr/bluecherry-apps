@@ -785,7 +785,7 @@ class ipPtzPreset{
 	}
 	public static function remove($id){
 		$result = data::query("DELETE FROM ipPtzCommandPresets WHERE id='{$id}'", true);
-		data::responseXml($result);
+		data::responseJSON($result);
 	}
 	
 }

@@ -9,6 +9,30 @@ $(function() {
 
 });
 
+function scheduleOverrideGlobal(el) {
+    var par = el.closest('div');
+    var icon = par.find('i');
+    var el_val = par.find('input[name="schedule_override_global"]');
+
+    if (el.prop('checked')) {
+        par.addClass('alert-success');
+        par.removeClass('alert-warning');
+        
+        icon.addClass('fa-check-circle');
+        icon.removeClass('fa-warning');
+
+        el_val.val('1');
+    } else {
+        par.removeClass('alert-success');
+        par.addClass('alert-warning');
+        
+        icon.removeClass('fa-check-circle');
+        icon.addClass('fa-warning');
+
+        el_val.val('0');
+    }
+}
+
 function getMotionMap(form) {
     var tds = form.find('.table-grid td');
     var map = '';
@@ -29,7 +53,19 @@ var motionGrid = function(el) {
     var table_grid = null;
     var table_grid_tds = null;
     var grid_color = null;
+    var motion_map = null;
     var color_array = { 'bg-default' : 0 , 'bg-success' : 1, 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 4, 'bg-danger' : 5};
+    var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 'T', 'bg-danger' : 'C'};
+    var week_days = new Array('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
+
+    var getColorClass = function (symb) {
+        var res = 'bg-default';
+        $.each(color_array, function(i, val){
+            if (symb == val) res = i;
+        });
+
+        return res;
+    };
 
     var gridChanges = function (el_tmp) {
         el_tmp = el_tmp || table_grid_tds;
@@ -55,6 +91,85 @@ var motionGrid = function(el) {
     var getGridColor = function () {
         var btn = $('.motion-sens-bl').find('button:not(.disabled)');
         grid_color = 'bg-'+btn.data('active');
+    }
+
+    var drawGrid = function (img, numcols, numrows) {
+        var style = '';
+        var el_class = '';
+        if (img) {
+            var width = img.width();
+            var height = img.height();
+            style = 'style="width: '+width+'px; height: '+height+'px;"';
+            el_class = 'table-grid-opacity';
+        } else {
+            el_class = 'table table-condensed table-bordered table-schedule table-vert-align';
+        }
+    	var numcols = numcols || width/16;
+        var numrows = numrows || height/16;
+
+        var map_arr = motion_map.val();
+        var map_arr = (""+map_arr).split("");
+
+        var grid_table = '<table class="'+el_class+' table-grid" border="1" '+style+'>';
+
+        if (!img) {
+            grid_table += '<tr><thead>';
+            grid_table += '<th></th>';
+            for(col = 1; col<=numcols; col++) {
+                grid_table += '<th>'+(col - 1)+'</th>';
+            }
+            grid_table += '</thead></tr>';
+        }
+
+        var cc = 0;
+    	for (row = 1; row<=numrows; row++) {
+            grid_table += '<tr>';
+            if (!img) {
+                grid_table += '<th>'+week_days[row]+'</th>';
+            }
+
+            for(col = 1; col<=numcols; col++) {
+                var td_tmp = '<td class="'+getColorClass(map_arr[cc])+'" data-type="'+map_arr[cc]+'"></td>';
+                grid_table += td_tmp;
+
+                cc++;
+            }
+
+            grid_table += '</tr>';
+        };
+
+        grid_table += '<table>';
+
+        grid_bl.append(grid_table);
+
+
+        $('body').on("mousedown", ".table-grid td", function(e){
+            var mg = new motionGrid(null);
+            if (!img) mg.setSchedule();
+            mg.getGridColorP();
+
+            $('body').on("mousemove", ".table-grid td", function(e){
+                mg.gridChangesP($(this));
+
+            }).on('mouseup', function(e) {
+                $('body').off("mousemove", ".table-grid td");
+            });
+        });
+
+        $('body').on("click", ".table-grid td", function(e){
+            var mg = new motionGrid(null);
+            if (!img) mg.setSchedule();
+            mg.getGridColorP();
+            mg.gridChangesP($(this));
+        });
+    }
+
+    self.sheduleDrawGrid = function () {
+        drawGrid(null, 24, 7);
+    }
+
+    self.setSchedule = function () {
+        color_array = color_array_schedule;
     }
 
     self.getGridColorP = function () {
@@ -117,54 +232,28 @@ var motionGrid = function(el) {
         gridChanges();
     };
 
-    self.drawGrid = function () {
+    self.initDrawGrid = function () {
         var img = grid_bl.find('img');
+        var refresh_bl = grid_bl.find('.glyphicon-refresh');
 
-        var width = img.width();
-        var height = img.height();
-    	var numcols = width/16;
-        var numrows = height/16;
+        img.on('load', function() { 
+                img.addClass('img-active');
+                refresh_bl.hide();
 
-        var grid_table = '<table class="table-grid" border="1" style="width: '+width+'px; height: '+height+'px;">';
+                drawGrid(img);
+            }).on('error', function() { 
+                img.addClass('img-active');
+                refresh_bl.hide();
 
-    	for (row = 1; row<=numrows; row++) {
-            grid_table += '<tr>';
-            for(col = 1; col<=numcols; col++) {
-                grid_table += '<td class="bg-primary">';
-                grid_table += '</td>';
-            }
-            grid_table += '</tr>';
-        };
-
-        grid_table += '<table>';
-
-        grid_bl.append(grid_table);
-        grid_bl.find('table td').attr('data-type', 3);
-
-
-        $('body').on("mousedown", ".table-grid td", function(e){
-            var mg = new motionGrid(null);
-            mg.getGridColorP();
-
-            $('body').on("mousemove", ".table-grid td", function(e){
-                mg.gridChangesP($(this));
-
-            }).on('mouseup', function(e) {
-                $('body').off("mousemove", ".table-grid td");
-            });
-        });
-
-        $('body').on("click", ".table-grid td", function(e){
-            var mg = new motionGrid(null);
-            mg.getGridColorP();
-            mg.gridChangesP($(this));
-        });
+                drawGrid(img);
+            }).attr("src", img.attr("src"));
     };
 
     var constructor = function () {
         grid_bl = $('.grid-bl');
         table_grid = $('.table-grid');
         table_grid_tds = $('.table-grid td');
+        motion_map = $('#motion-map');
     };
     constructor();
 }
