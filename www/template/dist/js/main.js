@@ -334,7 +334,7 @@ var ajaxReq = function () {
             } else form = el.closest('form');
             
             form_act = form.attr('action');
-            alert_bl = form.find('.alert');
+            alert_bl = form.find('.alert-ajax');
 
             func_after = el.data('func-after') || null;
 
@@ -438,7 +438,7 @@ function ajaxEvent() {
     }); 
 
     $('body').on("click", ".click-event", function(e){
-        e.preventDefault();
+        if ($(this).is('a'))e.preventDefault();
         procEvent($(this));
     }); 
 
@@ -495,6 +495,11 @@ function mch_ajsend(el) {
         el.on("start.search", function() {
             if (el.is('select')) {
                 el.addClass('select-ajax');
+            } else if (el.is('tr')) {
+                var el_tmp = el.find('.glyphicon-refresh');
+                if (!el_tmp.length) {
+                    el.find('td:first').append('<span class="glyphicon glyphicon-refresh spinning"></span>');
+                } else el_tmp.show();
             } else {
                 el.button('loading');
             }
@@ -502,6 +507,9 @@ function mch_ajsend(el) {
         el.on("finish.search", function() {
             if (el.is('select')) {
                 el.removeClass('select-ajax');
+            } else if (el.is('tr')) {
+                el.find('.glyphicon-refresh').hide();
+
             } else {
                 if (el.data('complete-text')) {
                     el.button('complete');
