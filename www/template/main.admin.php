@@ -266,5 +266,6 @@
     <script src="/template/dist/js/devices.js"></script>
     <script src="/template/dist/js/addip.js"></script>
     <script src="/template/dist/js/ptzpresetlist.js"></script>
+    <script src="/template/dist/js/notifications.js"></script>
 </body>
 </html>
