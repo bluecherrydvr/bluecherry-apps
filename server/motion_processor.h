@@ -23,6 +23,12 @@ struct AVCodecContext;
 class motion_processor : public stream_consumer
 {
 public:
+	enum detection_algorithm
+	{
+		BC_DEFAULT;
+		OPENCV;
+	}
+
 	motion_processor();
 	virtual ~motion_processor();
 
@@ -47,6 +53,10 @@ private:
 	bool decode_create(const stream_properties &prop);
 	void decode_destroy();
 	int detect(AVFrame *frame);
+
+	int detect_bc_original(AVFrame *frame);
+	int detect_opencv(AVFrame *frame);
+	detection_algorithm m_alg;
 
 	pthread_t m_thread;
 
