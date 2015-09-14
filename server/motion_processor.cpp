@@ -12,9 +12,11 @@ extern "C" {
 #include <libavutil/dict.h>
 }
 
+#include "opencv2/opencv.hpp"
+
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -195,6 +197,46 @@ void motion_processor::decode_destroy()
 }
 
 int motion_processor::detect(AVFrame *rawFrame)
+{
+	switch (m_alg)
+	{
+		case BC_DEFAULT:
+		return detect_bc_original(rawFrame);
+
+		case OPENCV:
+		return detect_opencv(rawFrame);
+	}
+
+	return 0;
+}
+
+int motion_processor::detect_opencv(AVFrame *frame)
+{
+	int ret = 0;
+	double downscaleFactor = 0.5;
+
+	Mat m;
+	m = cv::Mat(h, w, CV_8UC1);
+
+	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
+		fix_pix_fmt(rawFrame->format), rawFrame->width * downscaleFactor, rawFrame->height * downscaleFactor,
+		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
+
+	AVFrame *frame = av_frame_alloc();
+	frame->format = AV_PIX_FMT_GRAY8;
+	frame->width = rawFrame->width * downscaleFactor;
+	frame->height = rawFrame->height * downscaleFactor;
+	avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
+
+	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
+		  rawFrame->height, frame->data, frame->linesize);
+
+	//OpenCV stuff goes here...
+
+	return 0;
+}
+
+int motion_processor::detect_bc_original(AVFrame *frame)
 {
 	int ret = 0;
 	double downscaleFactor = 0.5;
