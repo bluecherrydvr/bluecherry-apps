@@ -38,9 +38,9 @@ if (!empty($_POST)){
 				$query = "UPDATE notificationSchedules SET day='{$daysoftheweek}', s_hr='{$_POST['s_hr']}', s_min='{$_POST['s_min']}', e_hr='{$_POST['e_hr']}', e_min='{$_POST['e_min']}', cameras='{$cameras}', users='{$users}', nlimit='{$limit}' WHERE id=".intval($_GET['id']);
 			}
 		$result = data::query($query, true);
-		data::responseXml($result);
+		data::responseJSON($result);
 	} else {
-		data::responseXml($result[0], $result[1]);
+		data::responseJSON($result[0], $result[1]);
 	}
 	exit();
 }
@@ -60,24 +60,53 @@ if (!empty($_GET) && ($m == 'delete' || $m == 'changeStatus')){
 		}
 		$result = data::query($query, true);
 	};
-	data::responseXml($result);
+	data::responseJSON($result);
 	exit();
 }
 
+$form_rule = new View('notifications.form_rule');
+$notification = Array();
+$notification['id'] = 0;
+$notification['nlimit'] = 0;
+$notification['day'] = Array();
+$notification['users'] = Array();
+$notification['cameras'] = Array();
+$form_rule->notification = $notification;
+
 $tmp = data::getObject('notificationSchedules');
+
+$notifications = Array();
 if ($tmp)
 foreach($tmp as $id => $notification){
 	$notifications[$notification['id']] = $notification;
 }
+$form_rule->notifications = $notifications;
+
 
 $tmp = data::getObject('Users');
 foreach($tmp as $key => $user){
 	$users[$user['id']] = $user;
 }
+$form_rule->users = $users;
 
 $tmp = data::getObject('Devices');
 foreach($tmp as $key => $camera){
 	$cameras[$camera['id']] = $camera;
+}
+$form_rule->cameras = $cameras;
+
+if ($m == 'getedit'){
+	$notification = $notifications[$_GET['id']];
+	$notification['day'] = str_split($notification['day']);
+	$notification['users'] = trim($notification['users'], '|');
+	$notification['users'] = explode('|', $notification['users']);
+	$notification['cameras'] = trim($notification['cameras'], '|');
+    $notification['cameras'] = explode('|', $notification['cameras']);
+
+    $form_rule->notification = $notification;
+
+    echo $form_rule->render();
+    die();
 }
 
 include_once('../template/ajax/notifications.php');
