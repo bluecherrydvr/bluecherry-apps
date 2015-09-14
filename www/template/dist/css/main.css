@@ -73,6 +73,11 @@ h1 .breadcrumb li {
     vertical-align: middle;
 }
 
+.table-disabled {
+    opacity: 0.3;
+    filter:alpha(opacity=30); 
+}
+
 .users-add-email-bl {
     margin-bottom: 0px;
 }
