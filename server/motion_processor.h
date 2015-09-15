@@ -25,9 +25,9 @@ class motion_processor : public stream_consumer
 public:
 	enum detection_algorithm
 	{
-		BC_DEFAULT;
-		OPENCV;
-	}
+		BC_DEFAULT,
+		OPENCV
+	};
 
 	motion_processor();
 	virtual ~motion_processor();
