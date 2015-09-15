@@ -210,13 +210,13 @@ int motion_processor::detect(AVFrame *rawFrame)
 	return 0;
 }
 
-int motion_processor::detect_opencv(AVFrame *frame)
+int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
 	int ret = 0;
 	double downscaleFactor = 0.5;
 
-	Mat m;
-	m = cv::Mat(h, w, CV_8UC1);
+	cv::Mat m;
+	m = cv::Mat(rawFrame->height * downscaleFactor, rawFrame->width * downscaleFactor, CV_8UC1);
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), rawFrame->width * downscaleFactor, rawFrame->height * downscaleFactor,
@@ -236,7 +236,7 @@ int motion_processor::detect_opencv(AVFrame *frame)
 	return 0;
 }
 
-int motion_processor::detect_bc_original(AVFrame *frame)
+int motion_processor::detect_bc_original(AVFrame *rawFrame)
 {
 	int ret = 0;
 	double downscaleFactor = 0.5;
