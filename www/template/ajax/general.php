@@ -52,6 +52,8 @@
 	<div><label><?php echo G_SMTP_HOST; ?><span class='sub'><?php echo G_SMTP_HOST_EX; ?></span></label><input type='text' name='G_SMTP_HOST' value='<?php echo  $global_settings->data['G_SMTP_HOST']; ?>' /></div>
 	<div><label><?php echo G_SMTP_PORT; ?><span class='sub'><?php echo G_SMTP_PORT_EX; ?></span></label><input type='text' name='G_SMTP_PORT' value='<?php echo  $global_settings->data['G_SMTP_PORT']; ?>' /></div>
 	<div><label><?php echo G_SMTP_SSL; ?><span class='sub'><?php echo G_SMTP_SSL_EX; ?></span></label><select name='G_SMTP_SSL'><option value='none' <?php echo ($global_settings->data['G_SMTP_SSL']=='none') ? 'selected': '';?>><?php echo L_NONE; ?></option><option value='tls' <?php echo ($global_settings->data['G_SMTP_SSL']=='tls') ? 'selected': '';?>>TLS/SSL</option></select></div>
+	<div><label><?php echo G_SEND_TEST_EMAIL_TO; ?><span class="sub"></span></label><input type='text' name='test_email_value' id="test-email-value" value='' style='width: 210px;' /> <input style="width: 100px;" class="sendButton" id="sendTestEmail" value="<?php echo G_SEND_TEST_EMAIL; ?>" type="button" /></div>
+	<div class="F message" id="text-email-message" style="visibility: hidden;"></div>
 </div>
 <input type="Hidden" name="mode" value="global" />
 </form>

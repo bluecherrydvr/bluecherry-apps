@@ -107,6 +107,10 @@ define('G_SMTP_FAILED', 'Unable to send mail with this configuration.');
 
 define('G_SMTP_DEF_MTA', 'System default MTA');
 define('G_SMTP_SMTP', 'User configured SMTP');
+define('G_SEND_TEST_EMAIL_TO', 'Send test email to');
+define('G_SEND_TEST_EMAIL', 'Send');
+define('G_TEST_EMAIL_SUBJECT', 'Test email');
+define('G_TEST_EMAIL_BODY', 'Test email');
 
 
 #users page
