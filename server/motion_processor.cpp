@@ -213,27 +213,36 @@ int motion_processor::detect(AVFrame *rawFrame)
 int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
 	int ret = 0;
+	int dst_h, dst_w;
 	double downscaleFactor = 0.5;
 
+	dst_h = rawFrame->height * downscaleFactor;
+	dst_w = rawFrame->height * downscaleFactor;
+
 	cv::Mat m;
-	m = cv::Mat(rawFrame->height * downscaleFactor, rawFrame->width * downscaleFactor, CV_8UC1);
+	m = cv::Mat(dst_h, dst_w, CV_8UC1);
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
-		fix_pix_fmt(rawFrame->format), rawFrame->width * downscaleFactor, rawFrame->height * downscaleFactor,
+		fix_pix_fmt(rawFrame->format), dst_w, dst_h,
 		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
 
 	AVFrame *frame = av_frame_alloc();
 	frame->format = AV_PIX_FMT_GRAY8;
-	frame->width = rawFrame->width * downscaleFactor;
-	frame->height = rawFrame->height * downscaleFactor;
-	avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
+	frame->width = dst_w;
+	frame->height = dst_h;
+	//avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
+
+	frame->data[0] = (uint8_t *)m.data;
+        avpicture_fill( (AVPicture *)frame, frame->data[0], AV_PIX_FMT_GRAY8, dst_w, dst_h);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
 		  rawFrame->height, frame->data, frame->linesize);
 
 	//OpenCV stuff goes here...
+	cv::GaussianBlur(m, m, cv::Size(21,21), 0);
 
-	return 0;
+	av_frame_free(&frame);
+	return ret;
 }
 
 int motion_processor::detect_bc_original(AVFrame *rawFrame)
