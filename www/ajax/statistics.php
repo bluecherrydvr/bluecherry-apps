@@ -35,10 +35,10 @@ class stats{
 	}
 	public function getFirstLast($date_format){ #default values for date fields are first and last events in db
 		$result = data::query("SELECT id, time FROM EventsCam ORDER BY id ASC LIMIT 1");
-		
-		$this->result['first_event'] = $result[0]['time'];
+
+		$this->result['first_event'] = date('Y-m-d H:i:s' ,$result[0]['time']);
 		$result = data::query("SELECT id, time FROM EventsCam ORDER BY id DESC LIMIT 1");
-		$this->result['last_event'] = $result[0]['time']; 
+		$this->result['last_event'] = date('Y-m-d H:i:s' ,$result[0]['time']); 
 	}
 	
 }
