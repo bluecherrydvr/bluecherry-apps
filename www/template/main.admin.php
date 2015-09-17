@@ -274,5 +274,6 @@
     <script src="/template/dist/js/ptzpresetlist.js"></script>
     <script src="/template/dist/js/notifications.js"></script>
     <script src="/template/dist/js/statistics.js"></script>
+    <script src="/template/dist/js/backup.js"></script>
 </body>
 </html>
