@@ -39,9 +39,18 @@ class logs{
 }
 
 #run class/get data
-$type = (!empty($_GET['type'])) ? $_GET['type'] : false;
-$lines = (!empty($_GET['lines'])) ? $_GET['lines'] : false;
+$type = (isset($_POST['type'])) ? $_POST['type'] : false;
+$lines = (isset($_POST['lines'])) ? $_POST['lines'] : false;
 $log = new logs($type, $lines);
+
+$log_html = '';
+foreach($log->log as $value){
+    $log_html .= '<tr><td>'.$value.'</td></tr>';
+}
+
+if (!empty($_POST)) {
+    die($log_html);
+}
 
 #require template to show data
 require('../template/ajax/log.php');
