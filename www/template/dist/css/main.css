@@ -197,3 +197,8 @@ h1 .breadcrumb li {
 #ptzprelist tbody tr {
     cursor: pointer;
 }
+
+#log-info-bl {
+    height: 500px;
+    overflow: auto;
+}
