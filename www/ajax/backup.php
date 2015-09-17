@@ -41,7 +41,7 @@ if (!empty($_GET['mode'])){
 			}
 			shell_exec("mysqldump --single-transaction -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
 			if (filesize("/tmp/bcbackup.sql")==0){
-				data::responseXml(false, BACKUP_FAILED);
+				data::responseJSON(false, BACKUP_FAILED);
 			} else {
 				$current_time = time();
 				$backup_info = time().'|'.((!empty($_POST['noevents'])) ? '0' : '1').'|'.((!empty($_POST['nodevices'])) ? '0' : '1').'|'.((!empty($_POST['nousers'])) ? '0' : '1');
@@ -51,7 +51,7 @@ if (!empty($_GET['mode'])){
 				#clean up
 				unlink('/tmp/bcbackupinfo');
 				unlink('/tmp/bcbackup.sql');
-				data::responseXml(true, true);
+				data::responseJSON(true, true);
 			}
 		break;
 		case 'download':
@@ -63,13 +63,13 @@ if (!empty($_GET['mode'])){
 		break;
 		case 'restore':
 			if ($_FILES['restoreDataFile']['type']!= 'application/x-compressed-tar'){ #uploaded file is not a compressed tar archive
-				data::responseXml(false, BACKUP_R_WRONG_FILETYPE);
+				data::responseJSON(false, BACKUP_R_WRONG_FILETYPE);
 			} else {
 				move_uploaded_file($_FILES['restoreDataFile']['tmp_name'], "/tmp/bcrestore.sql.gz");
 				shell_exec("tar zxvf /tmp/bcrestore.sql.gz -C /tmp/");
 				$info_file = fopen('/tmp/bcbackupinfo', 'r');
 				if (!$info_file){ #no info file was in archive
-					data::responseXml('INFO', BACKUP_R_NOINFO);
+					data::responseJSON('INFO', BACKUP_R_NOINFO);
 				} else {
 					$backup_info = fread($info_file, '1025');
 					$backup_info = explode('|', $backup_info);
@@ -78,7 +78,7 @@ if (!empty($_GET['mode'])){
 					$backup_info[2] = ($backup_info[2]) ? U_INCLUDED : U_NOTINCLUDED;
 					$backup_info[3] = ($backup_info[3]) ? U_INCLUDED : U_NOTINCLUDED;
 					$backup_info = str_replace(array('%DATE%', '%E%', '%D%', '%U%'), array($backup_info[0], $backup_info[1], $backup_info[2], $backup_info[3]), BACKUP_R_INFO);
-					data::responseXml(true, $backup_info);
+					data::responseJSON(true, $backup_info);
 					#clean up infofile
 					unlink('/tmp/bcbackupinfo');
 				};
@@ -87,9 +87,9 @@ if (!empty($_GET['mode'])){
 		case 'confirmRestore': #run restore
 			$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
 			if (!empty($response)){
-				data::responseXml(false, BACKUP_R_FAILED.$response);
+				data::responseJSON(false, BACKUP_R_FAILED.$response);
 			} else {
-				data::responseXml(true, BACKUP_R_SUCCESS);
+				data::responseJSON(true, BACKUP_R_SUCCESS);
 			}
 		break;
 	}
