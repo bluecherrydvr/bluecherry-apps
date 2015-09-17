@@ -219,6 +219,7 @@ var ajaxReq = function () {
         redir = false;
 
 
+        if (type_data == 'JSON') {
         if(parseInt(msg.status)==1) {
             redir = true;
             window.location.href = msg.msg;
@@ -281,6 +282,7 @@ var ajaxReq = function () {
             });  
             form.find('*').popover('show');
         }
+        }
 
         if (func_after) {
             window[func_after](form, msg);
@@ -326,6 +328,8 @@ var ajaxReq = function () {
             data_send = null;
 
             send_but = el;
+
+            type_data = el.data('type-data') || type_data;
             
             var form_id = el.data('form-id');
             if (form_id) {
