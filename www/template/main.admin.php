@@ -276,5 +276,6 @@
     <script src="/template/dist/js/statistics.js"></script>
     <script src="/template/dist/js/backup.js"></script>
     <script src="/template/dist/js/log.js"></script>
+    <script src="/template/dist/js/licensing.js"></script>
 </body>
 </html>
