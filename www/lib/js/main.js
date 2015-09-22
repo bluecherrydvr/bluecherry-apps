@@ -888,6 +888,18 @@ DVRPageScript = new Class({
 				} else {
 					var grid = new localMotionGrid('cameraOutput', 'valueString', 'mmap');
 				}
+
+				var slider = new Array();
+				$$('.slider').each(function(el){
+					var id = el.get('id').toString();		
+					slider[id] = new Slider(el, el.getElement('.knob'), {
+						steps: 100,
+						wheel: true,
+						onChange: function(){
+							$(id+'_value').set('value', this.step);
+						}
+					}).set($(id+'_value').get('value'));			
+						});
 				
 			break; //end motionmap
 			case 'general':
@@ -1216,7 +1228,14 @@ var localMotionGrid = new Class({
 		
 		saveSetting: function(output, type){
 			switch(type){
-				case 'mmap': ajaxUpdateField('update', 'Devices', {'motion_map' : output}, $('cameraID').get('value'), false); break;
+				case 'mmap': 
+                    ajaxUpdateField('update', 'Devices', {
+                        'motion_map' : output, 
+                        'default_motion_algorithm' : $$('input[name=default_motion_algorithm]:checked').get('value'),
+                        'frame_downscale_factor' : $('frame_downscale_factor').get('value'),
+                        'min_motion_area' : $('min_motion_area_value').get('value')
+                    }, $('cameraID').get('value'), false); 
+                    break;
 				case 'deviceSchedule':
 					if ($('cameraID').get('value')!='global'){
 						if ($('overrideGlobal')) { var v = $('overrideGlobal').get('checked') ? 1 : 0; ajaxUpdateField('update', 'Devices', {'schedule' : output, 'schedule_override_global' : v}, $('cameraID').get('value'), 'button'); }
