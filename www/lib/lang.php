@@ -228,6 +228,10 @@ define('MMAP_SELECTOR_TITLE', 'Use these selectors to choose sensitivity level t
 define('BUFFER_TITLE', 'Choose how many second to record before and after motion events');
 define('PRE_REC_BUFFER', 'Pre-event buffer');
 define('POST_REC_BUFFER', 'Post-event buffer');
+define('MOTION_ALGORITHM_TITLE', 'Motion detection algorithm');
+define('MOTION_ALGORITHM', 'Algorithm');
+define('MOTION_DEFAULT', 'Default');
+define('MOTION_EXPERIMENTAL', 'Experimental');
 
 define('SCHED_HEADER','Device recording schedule');
 define('SCHED_SELECTOR_TITLE', 'Use these selectors to fill in the schedule below');

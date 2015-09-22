@@ -13,6 +13,47 @@
 	<div class='title'><?php echo BUFFER_TITLE; ?></div>
 	<?php echo '<span>'.PRE_REC_BUFFER.':'.arrayToSelect($GLOBALS['buffer']['pre'], $camera->info['buffer_prerecording'], 'buffer_prerecording').'</span> | <span>'.POST_REC_BUFFER.':'.arrayToSelect($GLOBALS['buffer']['post'], $camera->info['buffer_postrecording'], 'buffer_postrecording').'</span>'; ?>
 </div>
+
+<div class='container-separator container-separator-form'>
+	<div class='title'><?php echo MOTION_ALGORITHM_TITLE; ?></div>
+
+	<div>
+		<label style="display: block; width: 150px; heigth: 50px">
+			<?php echo MOTION_ALGORITHM; ?>
+		</label>
+		<div style="float: left; height: 50px; width: 410px">
+			<input type="radio" name="default_motion_algorithm" value="1" style="width: 30px;"
+				<?php echo $camera->info['default_motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> /> 
+				<?php echo MOTION_DEFAULT; ?>
+			<br clear="all" />
+			<input type="radio" name="default_motion_algorithm" value="0" style="width: 30px;"
+				<?php echo $camera->info['default_motion_algorithm'] == 0 ? ' checked="checked"' : '' ?> /> 
+				<?php echo MOTION_EXPERIMENTAL; ?>
+		</div>
+	</div>
+
+	<div>
+		<label style="display: block; width: 150px; heigth: 50px">
+			<?php echo 'frame factor'; ?>
+		</label>
+		<div style="float: left; width: 410px">
+			<?php echo arrayToSelect(Array('0.1' => '0.1', '0.2' => '0.2', '0.3' => '0.3', '0.4' => '0.4', '0.5' => '0.5', '0.6' => '0.6', '0.7' => '0.7', '0.8' => '0.8', '0.9' => '0.9', '1.0' => '1.0'), $camera->info['frame_downscale_factor'], 'frame_downscale_factor'); ?>
+		</div>
+	</div>
+
+	<div class='bClear'></div>
+	<div id="videoAdjSliders">
+		<div class="control">
+			<label style="width: 160px;"><?php echo 'min_motion_area'; ?>:<input disabled="disabled" value="<?php echo $camera->info['min_motion_area']; ?>" id="min_motion_area_value" type="text"></label>
+			<div id="min_motion_area" class="slider" style="width: 180px;">
+				<div class="knob"></div>
+			</div>
+		</div>
+
+		<div class='bClear'></div>
+	</div>
+</div>
+
 <div id="lvlSelect" class='container-separator'>
 	<div class='title'><?php echo MMAP_SELECTOR_TITLE; ?></div>
 	<ul>

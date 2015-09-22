@@ -144,8 +144,9 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #settingsForm #editAccessList		{ width:230px; padding:5px 5px 5px 35px; margin-left:10px; display:block; float:left; width:100px; line-height:20px; background:url("/img/icons/device.png") no-repeat; background-position:5px; border:1px solid #559; background-color: #eef; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #settingsForm #deleteButton			{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
 #deleteButton						{ float:left; margin-bottom:10px; display:block; margin-left:10px; width:100px; padding-left:30px; line-height:20px; background:url("/img/icons/cross.png") no-repeat; background-position:3px; border:1px solid #955; background-color: #fee; -moz-border-radius: 5px; -webkit-border-radius: 5px; }
-#settingsForm label					{ display:block; font-weight:bold; text-align:right; width:140px; float:left; }
-#settingsForm label.second			{ width:50px; }
+#settingsForm label { display:block; font-weight:bold; text-align:right; width:140px; float:left; }
+.container-separator-form label { display:block; text-align:right; width:140px; float:left; }
+#settingsForm label.second, .container-separator-form label.second			{ width:50px; }
 #settingsForm .sub					{ color:#666; display:block; font-size:0.8em; text-align:right; width:140px; }
 #settingsForm input 				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; margin:2px 20px 10px; }
 
@@ -153,6 +154,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #settingsForm input:focus 			{ border:solid 1px #e3452b; }
 #settingsForm input[readonly]		{ background:#ccc; color:#333; }
 #settingsForm select				{ float:left; font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; margin-left:20px; }
+.container-separator-form select	{ float:left; margin-left:13px; }
 #settingsForm textarea				{ font-size:1em; padding:4px 2px; border:solid 1px #aacfe4; width:350px; height:200px; margin:2px 20px 10px; }
 #emails .bClear 					{ border:none; }
 
