@@ -5,6 +5,9 @@ LDFLAGS		+= -lbluecherry -lbsd -ludev \
 # Required by our call-tracing implementation
 LDFLAGS		+= -ldl
 
+# OpenCV libraries
+LDFLAGS		+= -lopencv_core -lopencv_imgproc
+
 BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*//;s/).*//;q' $(TOPDIR)/debian/changelog)
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 
