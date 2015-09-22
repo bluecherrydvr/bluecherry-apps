@@ -17,7 +17,7 @@ extern "C" {
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -211,13 +211,35 @@ int motion_processor::detect(AVFrame *rawFrame)
 	return 0;
 }
 
+void motion_processor::set_motion_algorithm(enum detection_algorithm algo)
+{
+	m_alg = algo;
+}
+
+int motion_processor::set_frame_downscale_factor(double f)
+{
+	if (f > 1.0 || f < 0.1)
+		return 0;
+
+	m_downscaleFactor = f;
+	return 1;
+}
+
+int motion_processor::set_min_motion_area_percent(int p)
+{
+	if (p > 100 || p < 0)
+		return 0;
+
+	m_minMotionAreaPercent = p;
+	return 1;
+}
+
 int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
 	int ret = 0;
 	int dst_h, dst_w;
-	double downscaleFactor = 0.5;
-	double minMotionAreaPercent = 5.0;
-	double minMotionArea = rawFrame->height * downscaleFactor * rawFrame->width * downscaleFactor / 100 * minMotionAreaPercent;
+	double downscaleFactor = m_downscaleFactor;
+	double minMotionArea = rawFrame->height * downscaleFactor * rawFrame->width * downscaleFactor / 100 * m_minMotionAreaPercent;
 
 	dst_h = rawFrame->height * downscaleFactor;
 	dst_w = rawFrame->width * downscaleFactor;
@@ -278,7 +300,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 int motion_processor::detect_bc_original(AVFrame *rawFrame)
 {
 	int ret = 0;
-	double downscaleFactor = 0.5;
+	double downscaleFactor = m_downscaleFactor;
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), rawFrame->width * downscaleFactor, rawFrame->height * downscaleFactor,
