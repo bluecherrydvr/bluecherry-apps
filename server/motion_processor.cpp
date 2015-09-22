@@ -13,6 +13,7 @@ extern "C" {
 }
 
 #include "opencv2/opencv.hpp"
+#include <vector>
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
@@ -215,11 +216,13 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	int ret = 0;
 	int dst_h, dst_w;
 	double downscaleFactor = 0.5;
+	double minMotionAreaPercent = 5.0;
+	double minMotionArea = rawFrame->height * downscaleFactor * rawFrame->width * downscaleFactor / 100 * minMotionAreaPercent;
 
 	dst_h = rawFrame->height * downscaleFactor;
-	dst_w = rawFrame->height * downscaleFactor;
+	dst_w = rawFrame->width * downscaleFactor;
 
-	cv::Mat m;
+	cv::Mat m, deltaFrame;
 	m = cv::Mat(dst_h, dst_w, CV_8UC1);
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
@@ -240,6 +243,33 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 
 	//OpenCV stuff goes here...
 	cv::GaussianBlur(m, m, cv::Size(21,21), 0);
+
+	if (!m_refFrame.empty() && m_refFrame.rows == frame->height && m_refFrame.cols == frame->width)
+	{
+		cv::absdiff(m_refFrame, m, deltaFrame);
+		cv::threshold(deltaFrame, deltaFrame, 50, 255, cv::THRESH_BINARY);
+
+		int iterations = 2;
+		cv::dilate(deltaFrame, deltaFrame, cv::Mat(), cv::Point(-1,-1), iterations);
+
+		std::vector<std::vector<cv::Point>> contours;
+
+		cv::findContours(deltaFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0,0));
+
+		for( int i = 0; i < contours.size(); i++)
+		{
+			if (cv::contourArea(contours[i]) >= minMotionArea)
+			{
+				ret = 1;
+				break;
+				//motion is detected
+			}
+		}
+	}
+	else
+	{
+		m_refFrame = m;
+	}
 
 	av_frame_free(&frame);
 	return ret;
