@@ -2,6 +2,7 @@
 #define MOTION_PROCESSOR_H
 
 #include "stream_elements.h"
+#include "opencv2/opencv.hpp"
 
 struct AVCodecContext;
 
@@ -59,6 +60,7 @@ private:
 	detection_algorithm m_alg;
 
 	pthread_t m_thread;
+	cv::Mat m_refFrame;
 
 	static void thread_cleanup(void *data);
 };
