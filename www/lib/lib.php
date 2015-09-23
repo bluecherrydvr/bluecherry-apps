@@ -393,9 +393,9 @@ class camera {
 			$ptz_config['baud'] = $config[1];
 			$ptz_config['bit'] = $config[2];
 			switch($config[3]){
-				case 'n': $ptz_config['pairity'] = 'None'; break;
-				case 'e': $ptz_config['pairity'] = 'Even'; break;
-				case 'o': $ptz_config['pairity'] = 'Odd';  break;
+				case 'n': $ptz_config['parity'] = 'None'; break;
+				case 'e': $ptz_config['parity'] = 'Even'; break;
+				case 'o': $ptz_config['parity'] = 'Odd';  break;
 			}
 			$ptz_config['stop_bit'] = $config[4];
 			$this->info['ptz_config'] = $ptz_config;
@@ -408,7 +408,7 @@ class camera {
 				case 'Odd':  $pairty = 'o'; break;
 		};
 		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
-		data::responseXml($status);
+		data::responseJSON($status);
 	}
 	public function changeResFps($type, $value){
 		$data = false;
