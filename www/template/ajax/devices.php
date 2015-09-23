@@ -137,7 +137,7 @@ require('../template/template.lib.php');
                                                     <li><a href="/ajax/videoadj.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
                                                     <li><a href="/ajax/motionmap.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_MMAP;?></a></li>
                                                     <li><a href="/ajax/deviceschedule.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_SCHED;?></a></li>
-                                                    <li><a href="/ajax/ptzsettings.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ;?></a></li>
+                                                    <li><a href="/ajax/ptzsettings.php?id=<?php echo $device->info['driver']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ;?></a></li>
                                                 </ul>
                                             </div>
                                         </div>
