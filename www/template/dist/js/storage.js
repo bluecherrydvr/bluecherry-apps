@@ -25,7 +25,7 @@ function storageManageDelete() {
 }
 
 function storageCheckPath() {
-    $('body').on("keyup", ".storage-path", function(e) {
+    $('body').on("focusout", ".storage-path", function(e) {
         var ajax_req = new ajaxReq();
         ajax_req.manReq({
             type_req: 'GET',

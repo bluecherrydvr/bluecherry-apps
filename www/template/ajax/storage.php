@@ -12,8 +12,10 @@ require('../template/template.lib.php');
 
 <div class="row">
     <div class="col-lg-12">
-        <a href="javascript:void(0);" class="btn btn-success pull-right" id="store-add-but"><i class="fa fa-plus fa-fw"></i>  <?php echo ADD_LOCATION; ?></a>
-        <a href="javascript:void(0);" class="btn btn-success pull-right send-req-form" data-form-id="storage-form"><i class="fa fa-check fa-fw"></i>  <?php echo SAVE_CHANGES; ?></a>
+        <div class="btn-group pull-right">
+            <a href="javascript:void(0);" class="btn btn-success" id="store-add-but"><i class="fa fa-plus fa-fw"></i>  <?php echo ADD_LOCATION; ?></a>
+            <a href="javascript:void(0);" class="btn btn-success send-req-form" data-form-id="storage-form"><i class="fa fa-check fa-fw"></i>  <?php echo SAVE_CHANGES; ?></a>
+        </div>
         <div class="clearfix"></div>
     </div>
 </div>
@@ -33,22 +35,22 @@ require('../template/template.lib.php');
                 	$minutues = floor(($recordTime % 3600) / 60);
             ?>
             <tr class="table-storage-tr-data">
-                <td class="col-lg-1">
+                <td class="col-lg-1 col-md-1 col-sm-1 col-xs-1">
                     <label class="control-label"><?php echo LOCATION; ?></label>
                 </td>
-                <td class="col-lg-6">
+                <td class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
                     <input class="form-control storage-path" name="path[]" type="text" value="<?php echo $location['path']; ?>" />
                 </td>
-                <td class="col-lg-1 align-right">
+                <td class="col-lg-1 col-md-1 col-sm-1 col-xs-1 align-right">
                     <label class="control-label">Max:</label>
                 </td>
-                <td class="col-lg-2">
+                <td class="col-lg-3 col-md-3 col-sm-3 col-xs-3">
                     <div class="input-group">
                         <input class="form-control" type="text" name="max[]" value='<?php echo intval($location['max_thresh']); ?>' /><span class="input-group-addon">%</span>
                     </div>
                 </td>
-                <td class="col-lg-2 align-right">
-                    <a href="javascript:void(0);" class="btn btn-warning store-add-del"><?php echo L_DELETE; ?></a>
+                <td class="col-lg-1 col-md-1 col-sm-1 col-xs-1 align-right">
+                    <a href="javascript:void(0);" class="btn btn-warning store-add-del"><i class="fa fa-times fa-fw"></i></a>
                 </td>
             </tr>
             <tr class="table-storage-tr-info">
