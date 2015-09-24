@@ -219,3 +219,25 @@ h1 .breadcrumb li {
     padding-top: 7px;
     padding-left: 20px;
 }
+
+input.input-group-unstyled,
+span.input-group-unstyled {
+    -webkit-border-top-right-radius: 4px !important;
+       -moz-border-top-right-radius: 4px !important;
+            border-top-right-radius: 4px !important;
+
+    -webkit-border-bottom-right-radius: 4px !important;
+       -moz-border-bottom-right-radius: 4px !important;
+            border-bottom-right-radius: 4px !important;
+}
+
+span.input-group-unstyled {
+    border-left: 0px none;
+
+}
+
+.input-group-addon-help {
+    border-radius: 4px;
+    border: 0px;
+    background-color: transparent;
+}
