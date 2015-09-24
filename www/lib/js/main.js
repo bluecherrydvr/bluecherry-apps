@@ -1231,7 +1231,7 @@ var localMotionGrid = new Class({
 				case 'mmap': 
                     ajaxUpdateField('update', 'Devices', {
                         'motion_map' : output, 
-                        'default_motion_algorithm' : $$('input[name=default_motion_algorithm]:checked').get('value'),
+                        'motion_algorithm' : $$('input[name=motion_algorithm]:checked').get('value'),
                         'frame_downscale_factor' : $('frame_downscale_factor').get('value'),
                         'min_motion_area' : $('min_motion_area_value').get('value')
                     }, $('cameraID').get('value'), false); 
