@@ -1,7 +1,7 @@
 <?php defined('INDVR') or exit(); ?>
 
 <div class="row">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
         <h1 class="page-header"><?php (empty($dvr_users->data['new'])) or $dvr_users->data[0]['name']='Create new user'; echo ($dvr_users->all) ? USERS_ALL_TABLE_HEADER : USERS_DETAIL_TABLE_HEADER.$dvr_users->data[0]['name']; ?>
 
         <ol class="breadcrumb">
@@ -16,7 +16,7 @@
 	#if all => show table with users
     if ($dvr_users->all) { ?>
 <div class="row">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
         <a href="/ajax/users.php?id=new" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i>  <?php echo USERS_NEW; ?></a>
         <div class="clearfix"></div>
     </div>
@@ -24,7 +24,7 @@
 <br>
 
 <div class="row">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
         <div class="table-responsive">
         <table class="table table-striped table-condensed table-hover table-vert-align" id="users-list-bl">
             <thead>
@@ -69,7 +69,7 @@
 
 
 <div class="row">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
     <div class="btn-toolbar">
         <?php if (empty($dvr_users->data['new'])) { ?>
 
@@ -92,7 +92,7 @@
 
 
 <div class="row">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
         <form action="/ajax/update.php" method="POST" id="users-form-save" class="form-horizontal">
 
             <input type="hidden" name="id" value="<?php echo ((!empty($dvr_users->data[0]['id'])) ? $dvr_users->data[0]['id'] : ''); ?>" />
@@ -102,33 +102,33 @@
                 <div class="panel-body">
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_NAME; ?><p class='help-block'><small><?php echo USERS_NAME_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_NAME; ?><p class='help-block'><small><?php echo USERS_NAME_EX; ?></small></p></label>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 col-md-6">
                             <input class="form-control" type='text' name='name' value='<?php echo $dvr_users->data[0]['name']; ?>'  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_LOGIN; ?><p class='help-block'><small><?php echo USERS_LOGIN_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_LOGIN; ?><p class='help-block'><small><?php echo USERS_LOGIN_EX; ?></small></p></label>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 col-md-6">
                             <input class="form-control" type='text' name='username' value="<?php echo ((!empty($dvr_users->data['new'])) ? '' : $dvr_users->data[0]['username']); ?>"  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_PASSWORD; ?><p class='help-block'><small><?php echo USERS_PASSWORD_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_PASSWORD; ?><p class='help-block'><small><?php echo USERS_PASSWORD_EX; ?></small></p></label>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 col-md-6">
                             <input class="form-control" type='password' name='password' value="<?php echo ((!empty($dvr_users->data['new'])) ? '' : '__default__'); ?>"  />
                         </div>
                     </div>
                     
                     <div class="form-group users-add-email-bl">
-                        <label class="col-lg-4 control-label"><?php echo USERS_EMAIL; ?><p class='help-block'><small><?php echo USERS_EMAIL_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_EMAIL; ?><p class='help-block'><small><?php echo USERS_EMAIL_EX; ?></small></p></label>
 
-                        <div class="col-lg-6" id="users-add-email-inp-bl">
+                        <div class="col-lg-6 col-md-6" id="users-add-email-inp-bl">
 
 
                             <?php if (empty($dvr_users->data[0]['emails'])) { ?>
@@ -154,56 +154,56 @@
                     </div>
                     
                     <div class="form-group">
-                        <div class="col-lg-6 col-lg-offset-4">
+                        <div class="col-lg-6 col-lg-offset-4 col-md-6 col-md-offset-4">
                             <a href="javascript:void(0);" class="btn btn-success pull-right users-add-email">Add email</a>
                             <div class="clearfix"></div>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_PHONE; ?><p class='help-block'><small><?php echo USERS_PHONE_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_PHONE; ?><p class='help-block'><small><?php echo USERS_PHONE_EX; ?></small></p></label>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 col-md-6">
                             <input class="form-control" type='text' name='phone' value="<?php echo ((!empty($dvr_users->data[0]['phone'])) ? $dvr_users->data[0]['phone'] : ''); ?>"  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_ACCESS_SETUP; ?><p class='help-block'><small><?php echo USERS_ACCESS_SETUP_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_ACCESS_SETUP; ?><p class='help-block'><small><?php echo USERS_ACCESS_SETUP_EX; ?></small></p></label>
 
-                        <div class="col-lg-6 form-control-static">
+                        <div class="col-lg-6 col-md-6 form-control-static">
                             <input type="checkbox" name="access_setup" <?php echo ((!empty($dvr_users->data[0]['access_setup'])) ? 'checked' : ''); ?>  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_ACCESS_WEB; ?><p class='help-block'><small><?php echo USERS_ACCESS_WEB_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_ACCESS_WEB; ?><p class='help-block'><small><?php echo USERS_ACCESS_WEB_EX; ?></small></p></label>
 
-                        <div class="col-lg-6 form-control-static">
+                        <div class="col-lg-6 col-md-6 form-control-static">
                             <input type="checkbox" name="access_web" <?php echo ((!empty($dvr_users->data[0]['access_web'])) ? 'checked' : ''); ?>  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_ACCESS_REMOTE; ?><p class='help-block'><small><?php echo USERS_ACCESS_REMOTE_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_ACCESS_REMOTE; ?><p class='help-block'><small><?php echo USERS_ACCESS_REMOTE_EX; ?></small></p></label>
 
-                        <div class="col-lg-6 form-control-static">
+                        <div class="col-lg-6 col-md-6 form-control-static">
                             <input type="checkbox" name="access_remote" <?php echo ((!empty($dvr_users->data[0]['access_remote'])) ? 'checked' : ''); ?>  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_ACCESS_BACKUP; ?><p class='help-block'><small><?php echo USERS_ACCESS_BACKUP_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_ACCESS_BACKUP; ?><p class='help-block'><small><?php echo USERS_ACCESS_BACKUP_EX; ?></small></p></label>
 
-                        <div class="col-lg-6 form-control-static">
+                        <div class="col-lg-6 col-md-6 form-control-static">
                             <input type="checkbox" name="access_backup" <?php echo ((!empty($dvr_users->data[0]['access_backup'])) ? 'checked' : ''); ?>  />
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 control-label"><?php echo USERS_NOTES; ?><p class='help-block'><small><?php echo USERS_NOTES_EX; ?></small></p></label>
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_NOTES; ?><p class='help-block'><small><?php echo USERS_NOTES_EX; ?></small></p></label>
 
-                        <div class="col-lg-6">
+                        <div class="col-lg-6 col-md-6">
                             <textarea class="form-control" name="notes" class="notes"><?php echo ((!empty($dvr_users->data[0]['notes'])) ? $dvr_users->data[0]['notes'] : ''); ?></textarea>
                         </div>
                     </div>
