@@ -138,7 +138,7 @@ var motionGrid = function(el) {
             grid_table += '</tr>';
         };
 
-        grid_table += '<table>';
+        grid_table += '</table>';
 
         grid_bl.append(grid_table);
 

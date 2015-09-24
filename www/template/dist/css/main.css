@@ -159,12 +159,31 @@ h1 .breadcrumb li {
     opacity: 0.35;
 }
 
+.table-schedule {
+    /*table-layout: fixed;*/
+    /*word-wrap: break-word;*/
+}
+
+.table-schedule > tbody > tr > td div,
+.table-schedule > thead > tr > th {
+    width: 15px;
+    overflow: hidden;
+}
+
+.table-schedule > tbody > tr > th {
+    /*width: 8%;*/
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+
+
 .table-schedule > tbody > tr > td,
 .table-schedule > tbody > tr > th,
 .table-schedule > thead > tr > th
 {
+    font-size: 11px;
     text-align: center;
-    padding: 1px;
+    padding: 0px;
     font-weight: normal;
 }
 
