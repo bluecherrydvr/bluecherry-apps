@@ -2,6 +2,26 @@ $(function() {
     ajaxEvent();
 });
 
+function tooltip() {
+    $("[data-toggle=popover]").popover({
+        html: true,
+        trigger: 'hover',
+        placement: function (tip, element) {
+            var my_left = $(element).offset().left;
+            if (my_left < 500) return 'left';
+            return 'right';
+        }
+    });
+}
+
+function whereToPlace() {
+    var my_left = $(this).offset.right;
+    //alert(my_left);
+    if (my_left > 500) return 'right';
+    return 'left';
+}
+
+
 function commons() {
 
     $('body').on("click", ".downloadClient", function(e){
@@ -211,6 +231,8 @@ var ajaxReq = function () {
             send_but.html(msg);
 
             if ((callback_func !== null) && (typeof(callback_func === 'function'))) callback_func(msg, true);
+
+            tooltip();
             return false;
         }
 
