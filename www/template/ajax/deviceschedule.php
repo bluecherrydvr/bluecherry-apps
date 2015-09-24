@@ -103,8 +103,9 @@ $og = (!isset($device_schedule->schedule_data[0]['schedule_override_global'])) ?
 
 <script type="text/javascript">
 $(function() {
-    var mg = new motionGrid(null);
+    var mg = new motionGrid($('.motion-sens-bl').find('.btn-success'));
     mg.setSchedule();
+    mg.minimal();
     mg.sheduleDrawGrid();
 });
 </script>
