@@ -15,7 +15,7 @@
 <form action="/ajax/update.php" method="post" class="form-horizontal">
 
 <div class="form-group">
-    <div class="col-lg-12">
+    <div class="col-lg-12 col-md-12">
         <button class="btn btn-success pull-right send-req-form" type="submit"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
         <div class="clearfix"></div>
     </div>
@@ -28,33 +28,33 @@
     <div class="panel-body">
 
         <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_DVR_NAME; ?><p class='help-block'><small><?php echo G_DVR_NAME_EX; ?></small></p></label>
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_DVR_NAME; ?><p class='help-block'><small><?php echo G_DVR_NAME_EX; ?></small></p></label>
 
-            <div class="col-lg-6">
+            <div class="col-lg-6 col-md-6">
                 <input class="form-control input-group-unstyled" type='text' name='G_DVR_NAME' value='<?php echo $global_settings->data['G_DVR_NAME']; ?>' />
             </div>
         </div>
 
         <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_DEV_NOTES; ?><p class='help-block'><small><?php echo G_DEV_NOTES_EX; ?></small></p></label>
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_DEV_NOTES; ?><p class='help-block'><small><?php echo G_DEV_NOTES_EX; ?></small></p></label>
 
-            <div class="col-lg-6">
+            <div class="col-lg-6 col-md-6">
                 <textarea class="form-control" name='G_DEV_NOTES'><?php echo $global_settings->data['G_DEV_NOTES']; ?></textarea>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_MAX_RECORD_TIME; ?><p class='help-block'><small><?php echo G_MAX_RECORD_TIME_EX; ?></small></p></label>
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_MAX_RECORD_TIME; ?><p class='help-block'><small><?php echo G_MAX_RECORD_TIME_EX; ?></small></p></label>
 
-            <div class="col-lg-6">
+            <div class="col-lg-6 col-md-6">
     		    <?php echo arrayToSelect($GLOBALS['cts_record_durations'], $global_settings->data['G_MAX_RECORD_TIME'], 'G_MAX_RECORD_TIME'); ?>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_MAX_RECORD_AGE; ?><p class='help-block'><small><?php echo G_MAX_RECORD_AGE_EX; ?></small></p></label>
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_MAX_RECORD_AGE; ?><p class='help-block'><small><?php echo G_MAX_RECORD_AGE_EX; ?></small></p></label>
         
-            <div class="col-lg-6">
+            <div class="col-lg-6 col-md-6">
                 <div class="input-group">
 
                     <input class="form-control" type='text' name='G_MAX_RECORD_AGE' value='<?php if (isset($global_settings->data['G_MAX_RECORD_AGE'])) { echo $global_settings->data['G_MAX_RECORD_AGE'] / (60 * 60 * 24); } ?>' />
