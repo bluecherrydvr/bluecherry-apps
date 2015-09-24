@@ -31,7 +31,7 @@
             <label class="col-lg-4 control-label"><?php echo G_DVR_NAME; ?><p class='help-block'><small><?php echo G_DVR_NAME_EX; ?></small></p></label>
 
             <div class="col-lg-6">
-                <input class="form-control" type='text' name='G_DVR_NAME' value='<?php echo $global_settings->data['G_DVR_NAME']; ?>' />
+                <input class="form-control input-group-unstyled" type='text' name='G_DVR_NAME' value='<?php echo $global_settings->data['G_DVR_NAME']; ?>' />
             </div>
         </div>
 
