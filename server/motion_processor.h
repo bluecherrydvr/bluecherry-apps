@@ -36,7 +36,7 @@ public:
 	int set_motion_thresh(const char *map, size_t size);
 	int set_motion_thresh_global(char value);
 
-	void set_motion_algorithm(enum detection_algorithm algo);
+	void set_motion_algorithm(int algo);
 	int set_frame_downscale_factor(double f);
 	int set_min_motion_area_percent(int p);
 

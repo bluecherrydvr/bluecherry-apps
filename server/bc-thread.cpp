@@ -247,6 +247,11 @@ void bc_record::run()
 					m_processor = new motion_processor;
 					m_processor->set_logging_context(log);
 					update_motion_thresholds();
+
+					m_processor->set_motion_algorithm(cfg.motion_algorithm);
+					m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
+					m_processor->set_min_motion_area_percent(cfg.min_motion_area);
+
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->input_consumer());
 					m_processor->start_thread();
@@ -625,6 +630,10 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 			|| current->motion_analysis_percentage != update->motion_analysis_percentage);
 	bool debug_changed = (current->debug_level != update->debug_level);
 
+	bool motion_config_changed = (current->motion_algorithm != update->motion_algorithm
+			|| abs(current->motion_frame_downscale_factor - update->motion_frame_downscale_factor) > 0.0625
+			|| current->min_motion_area != update->min_motion_area);
+
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
 	pthread_mutex_unlock(&bc_rec->cfg_mutex);
@@ -654,6 +663,12 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	if (motion_map_changed)
 		bc_rec->update_motion_thresholds();
+
+	if (motion_config_changed && bc_rec->m_processor) {
+		bc_rec->m_processor->set_motion_algorithm(bc_rec->cfg.motion_algorithm);
+		bc_rec->m_processor->set_frame_downscale_factor(bc_rec->cfg.motion_frame_downscale_factor);
+		bc_rec->m_processor->set_min_motion_area_percent(bc_rec->cfg.min_motion_area);
+	}
 
 	if (mrecord_changed) {
 		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);

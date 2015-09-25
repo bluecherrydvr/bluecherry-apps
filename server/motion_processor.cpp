@@ -211,9 +211,11 @@ int motion_processor::detect(AVFrame *rawFrame)
 	return 0;
 }
 
-void motion_processor::set_motion_algorithm(enum detection_algorithm algo)
+void motion_processor::set_motion_algorithm(int algo)
 {
-	m_alg = algo;
+	m_alg = (enum detection_algorithm)algo;
+
+	bc_log(Debug, "motion algorithm is set to %i", algo);
 }
 
 int motion_processor::set_frame_downscale_factor(double f)
@@ -222,6 +224,9 @@ int motion_processor::set_frame_downscale_factor(double f)
 		return 0;
 
 	m_downscaleFactor = f;
+
+	bc_log(Debug, "frame downscale factor is set to %f", f);
+
 	return 1;
 }
 
@@ -231,6 +236,9 @@ int motion_processor::set_min_motion_area_percent(int p)
 		return 0;
 
 	m_minMotionAreaPercent = p;
+
+	bc_log(Debug, "min_motion_area_percent is set to %i", p);
+
 	return 1;
 }
 
@@ -291,6 +299,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	else
 	{
 		m_refFrame = m;
+		bc_log(Debug, "opencv motion detection - setting reference frame");
 	}
 
 	av_frame_free(&frame);
