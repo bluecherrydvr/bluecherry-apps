@@ -223,6 +223,13 @@ void bc_record::run()
 				std::thread th(&recorder::run, rec);
 				th.detach();
 			} else if (sched_cur == 'M') {
+				/*
+				 * USUAL MODE:
+				 * source => motion_processor (decodes media, passes it undecoded, sets flag) => motion_handler => recorder
+				 *
+				 * NEW MODE: reencoding & filtering
+				 * source => decoder & filters & encoder (pass both raw & reencoded media) => motion_processor (processes decoded media, sets flag) => motion_handler => recorder (gets reencoded stream)
+				 */
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
