@@ -84,6 +84,9 @@ struct bc_device_config {
 	bool rtsp_rtp_prefer_tcp;
 	char signal_type[16];
 	char motion_map[769];
+	int8_t motion_algorithm;
+	double motion_frame_downscale_factor;
+	int min_motion_area;
 	char schedule[7 * 24 + 1];
 	int     width, height;
 	int     interval;
