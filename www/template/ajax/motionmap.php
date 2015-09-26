@@ -22,12 +22,12 @@
 			<?php echo MOTION_ALGORITHM; ?>
 		</label>
 		<div style="float: left; height: 50px; width: 410px">
-			<input type="radio" name="motion_algorithm" value="1" style="width: 30px;"
-				<?php echo $camera->info['motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> /> 
-				<?php echo MOTION_DEFAULT; ?>
-			<br clear="all" />
 			<input type="radio" name="motion_algorithm" value="0" style="width: 30px;"
 				<?php echo $camera->info['motion_algorithm'] == 0 ? ' checked="checked"' : '' ?> /> 
+				<?php echo MOTION_DEFAULT; ?>
+			<br clear="all" />
+			<input type="radio" name="motion_algorithm" value="1" style="width: 30px;"
+				<?php echo $camera->info['motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> />
 				<?php echo MOTION_EXPERIMENTAL; ?>
 		</div>
 	</div>
