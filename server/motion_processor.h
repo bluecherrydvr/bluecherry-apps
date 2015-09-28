@@ -65,6 +65,7 @@ private:
 
 	pthread_t m_thread;
 	cv::Mat m_refFrame;
+	int m_refFrameUpdateCnt;
 	double m_downscaleFactor;
 	int m_minMotionAreaPercent;
 

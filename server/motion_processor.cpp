@@ -17,7 +17,7 @@ extern "C" {
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCnt(0), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -244,6 +244,7 @@ int motion_processor::set_min_motion_area_percent(int p)
 
 int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
+	int refFrameUpdateInterval = 50;
 	int ret = 0;
 	int dst_h, dst_w;
 	double downscaleFactor = m_downscaleFactor;
@@ -274,7 +275,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	//OpenCV stuff goes here...
 	cv::GaussianBlur(m, m, cv::Size(21,21), 0);
 
-	if (!m_refFrame.empty() && m_refFrame.rows == frame->height && m_refFrame.cols == frame->width)
+	if (!m_refFrame.empty() && m_refFrame.rows == frame->height && m_refFrame.cols == frame->width && m_refFrameUpdateCnt != 0)
 	{
 		cv::absdiff(m_refFrame, m, deltaFrame);
 		cv::threshold(deltaFrame, deltaFrame, 50, 255, cv::THRESH_BINARY);
@@ -295,11 +296,17 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 				//motion is detected
 			}
 		}
+
+		m_refFrameUpdateCnt++;
+
+		if (m_refFrameUpdateCnt % refFrameUpdateInterval == 0)
+			m_refFrameUpdateCnt = 0;
 	}
 	else
 	{
 		m_refFrame = m;
 		bc_log(Debug, "opencv motion detection - setting reference frame");
+		m_refFrameUpdateCnt = 1;
 	}
 
 	av_frame_free(&frame);
