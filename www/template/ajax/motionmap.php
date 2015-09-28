@@ -34,7 +34,7 @@
 
 	<div>
 		<label style="display: block; width: 150px; heigth: 50px">
-			<?php echo 'frame factor'; ?>
+			<?php echo 'Frame downscale factor'; ?>
 		</label>
 		<div style="float: left; width: 410px">
 			<?php echo arrayToSelect(Array('0.1' => '0.1', '0.2' => '0.2', '0.3' => '0.3', '0.4' => '0.4', '0.5' => '0.5', '0.6' => '0.6', '0.7' => '0.7', '0.8' => '0.8', '0.9' => '0.9', '1.0' => '1.0'), $camera->info['frame_downscale_factor'], 'frame_downscale_factor'); ?>
@@ -44,7 +44,7 @@
 	<div class='bClear'></div>
 	<div id="videoAdjSliders">
 		<div class="control">
-			<label style="width: 160px;"><?php echo 'min_motion_area'; ?>:<input disabled="disabled" value="<?php echo $camera->info['min_motion_area']; ?>" id="min_motion_area_value" type="text"></label>
+			<label style="width: 160px;"><?php echo 'Min. motion area %'; ?>:<input disabled="disabled" value="<?php echo $camera->info['min_motion_area']; ?>" id="min_motion_area_value" type="text"></label>
 			<div id="min_motion_area" class="slider" style="width: 180px;">
 				<div class="knob"></div>
 			</div>
