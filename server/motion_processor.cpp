@@ -258,7 +258,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), dst_w, dst_h,
-		AV_PIX_FMT_GRAY8, SWS_BICUBIC, NULL, NULL, NULL);
+		AV_PIX_FMT_GRAY8, SWS_FAST_BILINEAR, NULL, NULL, NULL);
 
 	AVFrame *frame = av_frame_alloc();
 	frame->format = AV_PIX_FMT_GRAY8;
