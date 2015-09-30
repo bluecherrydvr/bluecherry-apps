@@ -278,7 +278,16 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	if (!m_refFrame.empty() && m_refFrame.rows == frame->height && m_refFrame.cols == frame->width && m_refFrameUpdateCnt != 0)
 	{
 		cv::absdiff(m_refFrame, m, deltaFrame);
-		cv::threshold(deltaFrame, deltaFrame, 50, 255, cv::THRESH_BINARY);
+		//cv::threshold(deltaFrame, deltaFrame, 50, 255, cv::THRESH_BINARY);
+		for (int i = 0; i < 32; i++)
+			for (int j = 0; j < 24; j++)
+			{
+				int threshmap_cell = i + j *32;
+
+				cv::Mat cell(deltaFrame, cv::Range(dst_h/24 * j, dst_h/24 * (j + 1)), cv::Range(dst_w/32 * i, dst_w/32 * (i + 1)));
+				//according to OpenCV docs, changes to "cell" subarrays are reflected in deltaFrame, no copy-on-write is performed
+				cv::threshold(cell, cell, thresholds[threshmap_cell], 255, cv::THRESH_BINARY);
+			}
 
 		int iterations = 2;
 		cv::dilate(deltaFrame, deltaFrame, cv::Mat(), cv::Point(-1,-1), iterations);
