@@ -52,7 +52,7 @@ void motion_processor::destroy()
  * including h264. Because they're deprecated, swscale doesn't recognize
  * that they are effectively identical to non-J variants, so the grayscale
  * conversion is much slower than it should be. */
-static enum PixelFormat fix_pix_fmt(int fmt)
+static enum AVPixelFormat fix_pix_fmt(int fmt)
 {
 	switch (fmt) {
 	case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
