@@ -1,5 +1,15 @@
 bluecherry (1:2.5.2) precise trusty lucid wheezy jessie; urgency=low
 
+  * motion detection rework
+  * removed trial limitation of 32 cameras, fixes issue 94@bluecherry-apps-issues
+  * Enabled sending unlimited number of events by splitting request to multiple SQL queries with limit and offset, 5000 events per each query. Fixes issue 88 in bluecherry-apps-issues
+  * Allow user to change default form address on emails bluecherry-apps-issues/issues/102
+  * solo6x10 video quality, issue 99
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 08 Oct 2015 13:11:29 +0300
+
+bluecherry (1:2.5.2) precise trusty lucid wheezy jessie; urgency=low
+
   * Fix license check for virtual machines with no ether net ifaces
   * Reverted back setting permissions on recordings directory
 
