@@ -260,7 +260,6 @@ int v4l2_device::start()
 	if (ret) {
 		strerror_r(errno, err, sizeof(err));
 		bc_log(Error, "Failed to subscribe to V4L2 motion events from %s: %d (%s)", dev_file, ret, err);
-		goto fail;
 	}
 
 	_started = true;
