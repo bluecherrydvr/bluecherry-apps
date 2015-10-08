@@ -483,6 +483,7 @@ void v4l2_device::update_properties()
 	p->video.width = demuxer->streams[0]->codec->width;
 	p->video.height = demuxer->streams[0]->codec->height;
 	p->video.time_base = demuxer->streams[0]->time_base;
+	p->video.pix_fmt = AV_PIX_FMT_YUV420P;
 
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
