@@ -447,7 +447,7 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 
 	if (rawFrame->format != AV_PIX_FMT_YUVJ420P) {
 		SwsContext *sws = 0;
-		sws = sws_getCachedContext(0, rawFrame->width, rawFrame->height, (PixelFormat)rawFrame->format,
+		sws = sws_getCachedContext(0, rawFrame->width, rawFrame->height, (AVPixelFormat)rawFrame->format,
 		                           rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P,
 		                           SWS_BICUBIC, NULL, NULL, NULL);
 		if (!sws) {

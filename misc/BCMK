@@ -25,13 +25,13 @@ $(libconfig-libs): libconfig/Makefile
  ###############
 pkgs += libav
 LIBAV_INSTALL = $(call lpath, \
-		avcodec.so.56 \
-		avformat.so.56 \
-		avutil.so.54 \
-		avdevice.so.56 \
-		avfilter.so.5 \
-		swresample.so.1 \
-		swscale.so.3)
+		avcodec.so.57 \
+		avformat.so.57 \
+		avutil.so.55 \
+		avdevice.so.57 \
+		avfilter.so.6 \
+		swresample.so.2 \
+		swscale.so.4)
 
 install-libs += $(LIBAV_INSTALL)
 
