@@ -117,6 +117,7 @@ void bc_ffmpeg_init()
 	avdevice_register_all();
 
 	av_log_set_callback(av_log_cb);
+	av_log_set_level(AV_LOG_DEBUG);
 }
 
 void bc_ffmpeg_teardown()
