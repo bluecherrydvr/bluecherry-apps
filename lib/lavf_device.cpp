@@ -171,7 +171,7 @@ int lavf_device::start()
  * not know of libav). Ugly. */
 static void wrap_av_destruct_packet(AVPacket *pkt)
 {
-	av_destruct_packet(pkt);
+	av_free_packet(pkt);
 }
 
 int lavf_device::read_packet()
