@@ -58,7 +58,7 @@ static enum AVPixelFormat fix_pix_fmt(int fmt)
 	case AV_PIX_FMT_YUVJ420P: return AV_PIX_FMT_YUV420P;
 	case AV_PIX_FMT_YUVJ422P: return AV_PIX_FMT_YUV422P;
 	case AV_PIX_FMT_YUVJ444P: return AV_PIX_FMT_YUV444P;
-	default: return (enum PixelFormat)fmt;
+	default: return (enum AVPixelFormat)fmt;
 	}
 }
 
