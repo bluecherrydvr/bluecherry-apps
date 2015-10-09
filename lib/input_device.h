@@ -93,7 +93,7 @@ class stream_properties
 public:
 	struct video_properties {
 		enum AVCodecID codec_id;
-		enum PixelFormat pix_fmt;
+		enum AVPixelFormat pix_fmt;
 		int width;
 		int height;
 		/* Note that this is codec time_base; you should NOT use it other than
