@@ -47,7 +47,7 @@ static AVCodec fake_h264_encoder = {
 	.init = fake_h264_init,
 	.encode2 = fake_h264_frame,
 	.close = fake_h264_close,
-	.pix_fmts = (const enum PixelFormat[]) {
+	.pix_fmts = (const enum AVPixelFormat[]) {
 		AV_PIX_FMT_YUV420P,
 		AV_PIX_FMT_YUVJ420P,
 		AV_PIX_FMT_NONE
