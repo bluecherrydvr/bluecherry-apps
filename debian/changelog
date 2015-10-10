@@ -1,3 +1,9 @@
+bluecherry (1:2.5.3-2) precise trusty lucid wheezy jessie; urgency=low
+
+  * Update ffmpeg libraries
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 10 Oct 2015 10:14:19 -0500
+
 bluecherry (1:2.5.3) precise trusty lucid wheezy jessie; urgency=low
 
   * motion detection rework
