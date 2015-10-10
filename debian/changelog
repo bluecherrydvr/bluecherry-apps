@@ -1,4 +1,4 @@
-bluecherry (1:2.5.2) precise trusty lucid wheezy jessie; urgency=low
+bluecherry (1:2.5.3) precise trusty lucid wheezy jessie; urgency=low
 
   * motion detection rework
   * removed trial limitation of 32 cameras, fixes issue 94@bluecherry-apps-issues
