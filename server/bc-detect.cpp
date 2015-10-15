@@ -30,7 +30,7 @@ struct card_list {
 	int card_id;
 	int n_ports;
 	const char *uid_type;
-	char name[37];
+	char name[256];
 	char driver[64];
 	char video_type[8];
 };
@@ -153,7 +153,7 @@ static int tw5864_add(struct udev_device *device, struct card_list *cards)
 	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!cards[i].valid) {
 			cards[i].card_id  = 0;  /* Not used */
-			cards[i].n_ports  = 1;  /* Let web interface merge entries with matching PCI addresses */
+			cards[i].n_ports  = 4;  /* Let web interface merge entries with matching PCI addresses */
 			cards[i].uid_type = "TW5864";
 			strcpy(cards[i].driver, "tw5864");
 			strcpy(cards[i].name, syspath);
