@@ -39,7 +39,7 @@ static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
-static int solo_ready = 1;
+static int solo_ready = 0;
 
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
@@ -718,14 +718,13 @@ static int bc_check_db(void)
 		if (bc_db_get_val_bool(dbres, "disabled"))
 			continue;
 
-#if 0
 		/* If this is a V4L2 device, it needs to be detected */
 		if (!strcasecmp(proto, "V4L2")) {
 			int card_id = bc_db_get_val_int(dbres, "card_id");
 			if (!solo_ready || card_id < 0)
 				continue;
 		}
-#endif
+
 		/* Maximum threads, used for licensing control */
 		if (!DONT_ENFORCE_LICENSING && max_threads >= 0 && cur_threads >= max_threads) {
 			bc_status_component_error("Device %d disabled due to licensing "
