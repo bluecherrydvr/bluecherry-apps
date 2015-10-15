@@ -30,7 +30,7 @@ struct card_list {
 	int card_id;
 	int n_ports;
 	const char *uid_type;
-	char name[37];
+	char name[256];
 	char driver[64];
 	char video_type[8];
 };
@@ -143,6 +143,30 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	return 0;
 }
 
+static int tw5864_add(struct udev_device *device, struct card_list *cards)
+{
+	const char *syspath = udev_device_get_syspath(device);
+	const char *devpath = udev_device_get_devnode(device);
+
+	bc_log(Debug, "Checking driver on devnode %s, syspath %s", devpath, syspath);
+
+	for (int i = 0; i < MAX_CARDS; i++) {
+		if (!cards[i].valid) {
+			cards[i].card_id  = 0;  /* Not used */
+			cards[i].n_ports  = 4;  /* Let web interface merge entries with matching PCI addresses */
+			cards[i].uid_type = "TW5864";
+			strcpy(cards[i].driver, "tw5864");
+			strcpy(cards[i].name, syspath);
+
+			cards[i].valid = 1;
+			cards[i].dirty = 0;
+			break;
+		}
+	}
+
+	return 0;
+}
+
 /* To detect devices prior to driver initialization, we
  * have to search by PCI IDs rather than the driver module.
  * This is used to make sure that all solo cards are initialized
@@ -220,6 +244,35 @@ static int __bc_check_avail(struct card_list *cards)
 		if (ret)
 			break;
 	}
+
+	{  /* Add TW5864-based cards */
+		enumerate = udev_enumerate_new(udev_instance);
+		udev_enumerate_add_match_sysattr(enumerate, "vendor", "0x1797" /* Techwell */);
+		udev_enumerate_scan_devices(enumerate);
+		devices = udev_enumerate_get_list_entry(enumerate);
+		udev_list_entry_foreach(dev_list_entry, devices) {
+			const char *path = udev_list_entry_get_name(dev_list_entry);
+			struct udev_device *dev = udev_device_new_from_syspath(udev_instance, path);
+			const char *device_id  = udev_device_get_sysattr_value(dev, "device");
+			if (device_id) {
+				bc_log(Debug, "Scanning device %s (%s)", device_id, path);
+				if (!strcmp(device_id, "0x5864")) {
+					bc_log(Debug, "Found TW5864 card");
+					/* If there is no driver, this device isn't initialized yet */
+					if (udev_device_get_driver(dev))
+						ret = tw5864_add(dev, cards);
+					else
+						ret = -EAGAIN;
+				}
+			}
+			udev_device_unref(dev);
+			if (ret)
+				break;
+		}
+
+		udev_enumerate_unref(enumerate);
+	}
+	/* TODO Add generic V4L2 devices, filter them by udev_enumerate_add_nomatch_sysattr(), or design this whole routine */
 
 	return ret;
 }
