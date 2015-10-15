@@ -47,6 +47,8 @@ $GLOBALS['buffer'] = array(
 
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
 $GLOBALS['capacity'] = array(
+	'tw5864'   => 9999999,
+	'generic'  => 9999999,
 	'solo6010' => 480,
 	'solo6110' => 600,
 	'solo6x10' => 480 #backward compatibility
