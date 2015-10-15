@@ -145,20 +145,8 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 
 static int tw5864_add(struct udev_device *device, struct card_list *cards)
 {
-	char path[PATH_MAX];
-	char card_name[32];
-	char bcuid[37];
-	const char *uid_type;
-	char eeprom[128], driver[64], video_type[8];
-	int id, ports;
-	const char *syspath;
-	const char *devpath;
-	DIR *dir;
-	struct dirent *de;
-
-	*card_name = 0;
-	syspath = udev_device_get_syspath(device);
-	devpath = udev_device_get_devnode(device);
+	const char *syspath = udev_device_get_syspath(device);
+	const char *devpath = udev_device_get_devnode(device);
 
 	bc_log(Debug, "Checking driver on devnode %s, syspath %s", devpath, syspath);
 
@@ -269,7 +257,7 @@ static int __bc_check_avail(struct card_list *cards)
 			if (device_id) {
 				bc_log(Debug, "Scanning device %s (%s)", device_id, path);
 				if (!strcmp(device_id, "0x5864")) {
-					bc_log(Debug, "Found card from vendor %s, checking driver...", vendors[i]);
+					bc_log(Debug, "Found TW5864 card");
 					/* If there is no driver, this device isn't initialized yet */
 					if (udev_device_get_driver(dev))
 						ret = tw5864_add(dev, cards);
