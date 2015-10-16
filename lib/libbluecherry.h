@@ -49,7 +49,8 @@ typedef void * BC_DB_RES;
 
 typedef enum {
 	BC_DEVICE_V4L2,
-	BC_DEVICE_V4L2_SOLO = BC_DEVICE_V4L2,
+	BC_DEVICE_V4L2_SOLO6010_DKMS = BC_DEVICE_V4L2,  /* standalone distribution out of sync with kernel upstream */
+	BC_DEVICE_V4L2_SOLO6X10,  /* upstream driver */
 	BC_DEVICE_V4L2_TW5864,
 	BC_DEVICE_V4L2_GENERIC,
 	BC_DEVICE_LAVF
