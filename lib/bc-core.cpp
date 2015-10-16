@@ -22,6 +22,7 @@
 #include "libbluecherry.h"
 #include "lavf_device.h"
 #include "v4l2_device.h"
+#include "v4l2_device_tw5864.h"
 #include "stream_elements.h"
 
 #define reset_vbuf(__vb) do {				\
@@ -264,9 +265,15 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc_ptz_check(bc, dbres);
 
-	if (!strncmp(protocol, "IP", 2))
+	if (!strncmp(protocol, "IP", 2)) {
 		ret = lavf_handle_init(bc, dbres);
-	else {
+	} else if (!strncmp(device, "TW5864", 6)) {
+		bc->type = BC_DEVICE_V4L2_TW5864;
+		bc->input = new v4l2_device_tw5864(dbres);
+		ret = reinterpret_cast<v4l2_device_tw5864*>(bc->input)->has_error();
+
+		/* TODO Add variant for GENERIC */
+	} else {
 		bc->type = BC_DEVICE_V4L2;
 		bc->input = new v4l2_device(dbres);
 		ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
