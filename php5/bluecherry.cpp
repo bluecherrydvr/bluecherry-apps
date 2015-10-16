@@ -12,7 +12,7 @@
 
 #define LOGGING_H // XXX
 #include "libbluecherry.h"
-#include "v4l2_device.h"
+#include "v4l2_device_solo6010-dkms.h"
 extern "C" {
 #include "php.h"
 #include "ext/standard/php_standard.h"

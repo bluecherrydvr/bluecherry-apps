@@ -21,7 +21,8 @@
 
 #include "libbluecherry.h"
 #include "lavf_device.h"
-#include "v4l2_device.h"
+#include "v4l2_device_solo6x10.h"
+#include "v4l2_device_solo6010-dkms.h"
 #include "v4l2_device_tw5864.h"
 #include "stream_elements.h"
 
@@ -36,6 +37,15 @@
 		*err_msg = __msg;	\
 	return -1;			\
 })
+
+int get_solo_driver_name(char *buf, size_t bufsize)
+{
+	FILE *fd = popen("lsmod | grep solo | tr -d '\\n'", "r");
+	if (!fd)
+		return -1;
+	fgets(buf, bufsize, fd);
+	return 0;
+}
 
 #if 0
 int bc_buf_key_frame(struct bc_handle *bc)
@@ -274,9 +284,17 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 		/* TODO Add variant for GENERIC */
 	} else {
-		bc->type = BC_DEVICE_V4L2;
-		bc->input = new v4l2_device(dbres);
-		ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
+		char solo_driver_name[32] = "";
+		get_solo_driver_name(solo_driver_name, sizeof(solo_driver_name));
+		if (!strcmp(solo_driver_name, "solo6x10-dkms")) {
+			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;  /* == BC_DEVICE_V4L2! Beware! */
+			bc->input = new v4l2_device_solo6010_dkms(dbres);
+			ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
+		} else {
+			bc->type = BC_DEVICE_V4L2_SOLO6X10;
+			bc->input = new v4l2_device(dbres);
+			ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
+		}
 	}
 
 	bc->source = new stream_source("Input Source");
