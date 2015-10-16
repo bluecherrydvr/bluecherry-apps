@@ -49,6 +49,9 @@ typedef void * BC_DB_RES;
 
 typedef enum {
 	BC_DEVICE_V4L2,
+	BC_DEVICE_V4L2_SOLO = BC_DEVICE_V4L2,
+	BC_DEVICE_V4L2_TW5864,
+	BC_DEVICE_V4L2_GENERIC,
 	BC_DEVICE_LAVF
 } bc_device_type_t;
 
