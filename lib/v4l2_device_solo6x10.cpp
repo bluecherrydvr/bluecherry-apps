@@ -7,7 +7,7 @@
 
 #include <linux/version.h>
 
-#include "v4l2_device.h"
+#include "v4l2_device_solo6x10.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
@@ -98,7 +98,7 @@ static uint32_t get_best_pixfmt(int fd)
 	return sel;
 }
 
-v4l2_device::v4l2_device(BC_DB_RES dbres)
+v4l2_device_solo6x10::v4l2_device_solo6x10(BC_DB_RES dbres)
 	: dev_fd(-1), cam_caps(0), dev_id(0), demuxer(NULL)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
@@ -191,7 +191,7 @@ error:
 	}
 }
 
-v4l2_device::~v4l2_device()
+v4l2_device_solo6x10::~v4l2_device_solo6x10()
 {
 	if (dev_fd >= 0) {
 		close(dev_fd);
@@ -199,7 +199,7 @@ v4l2_device::~v4l2_device()
 	}
 }
 
-int v4l2_device::start()
+int v4l2_device_solo6x10::start()
 {
 	int ret;
 	char *fmtname = "";
@@ -271,7 +271,7 @@ fail:
 	return ret;
 }
 
-void v4l2_device::stop()
+void v4l2_device_solo6x10::stop()
 {
 	if (dev_fd != -1) {
 		close(dev_fd);
@@ -284,7 +284,7 @@ void v4l2_device::stop()
 	_started = false;
 }
 
-int v4l2_device::read_packet()
+int v4l2_device_solo6x10::read_packet()
 {
 	int ret;
 	AVPacket pkt = {0, };
@@ -316,7 +316,7 @@ int v4l2_device::read_packet()
 }
 
 // TODO Deduplicate with lavf_device
-void v4l2_device::create_stream_packet(AVPacket *src)
+void v4l2_device_solo6x10::create_stream_packet(AVPacket *src)
 {
 	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE];
 	/* XXX The padding is a hack to avoid overreads by optimized
@@ -336,7 +336,7 @@ void v4l2_device::create_stream_packet(AVPacket *src)
 }
 
 
-int v4l2_device::set_resolution(uint16_t width, uint16_t height,
+int v4l2_device_solo6x10::set_resolution(uint16_t width, uint16_t height,
 		uint8_t interval)
 {
 	int re = 0;
@@ -399,7 +399,7 @@ int v4l2_device::set_resolution(uint16_t width, uint16_t height,
 	return re;
 }
 
-int v4l2_device::set_mjpeg()
+int v4l2_device_solo6x10::set_mjpeg()
 {
 	vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
 	if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
@@ -409,7 +409,7 @@ int v4l2_device::set_mjpeg()
 }
 
 /* Check range and convert our 0-100 to valid ranges in the hardware */
-int v4l2_device::set_control(unsigned int ctrl, int val)
+int v4l2_device_solo6x10::set_control(unsigned int ctrl, int val)
 {
 	struct v4l2_queryctrl qctrl;
 	struct v4l2_control vc;
@@ -430,7 +430,7 @@ int v4l2_device::set_control(unsigned int ctrl, int val)
 }
 
 #if 0
-void *v4l2_device::buf_data()
+void *v4l2_device_solo6x10::buf_data()
 {
 	if (buf_idx < 0)
 		return NULL;
@@ -438,7 +438,7 @@ void *v4l2_device::buf_data()
 	return p_buf[buf_idx].data;
 }
 
-unsigned int v4l2_device::buf_size()
+unsigned int v4l2_device_solo6x10::buf_size()
 {
 	if (buf_idx < 0)
 		return 0;
@@ -447,7 +447,7 @@ unsigned int v4l2_device::buf_size()
 }
 #endif
 
-int v4l2_device::set_osd(const char *fmt, ...)
+int v4l2_device_solo6x10::set_osd(const char *fmt, ...)
 {
 	char buf[256];
 	va_list ap;
@@ -475,7 +475,7 @@ int v4l2_device::set_osd(const char *fmt, ...)
 	return 0;
 }
 
-void v4l2_device::update_properties()
+void v4l2_device_solo6x10::update_properties()
 {
 	stream_properties *p = new stream_properties;
 
@@ -495,7 +495,7 @@ static const uint16_t solo_value_map[] = {
 	0xffff, 1152, 1024, 768, 512, 384
 };
 
-int v4l2_device::set_motion(bool on)
+int v4l2_device_solo6x10::set_motion(bool on)
 {
 	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
@@ -515,7 +515,7 @@ int v4l2_device::set_motion(bool on)
 	return ret;
 }
 
-int v4l2_device::set_motion_thresh_global(char value)
+int v4l2_device_solo6x10::set_motion_thresh_global(char value)
 {
 	int val = clamp(value, '0', '5') - '0';
 	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
@@ -529,7 +529,7 @@ int v4l2_device::set_motion_thresh_global(char value)
 	return 0;
 }
 
-int v4l2_device::set_motion_thresh(const char *map, size_t size)
+int v4l2_device_solo6x10::set_motion_thresh(const char *map, size_t size)
 {
 	int ret;
 	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
@@ -586,6 +586,6 @@ int v4l2_device::set_motion_thresh(const char *map, size_t size)
 	return ret;
 }
 
-void v4l2_device::getStatusXml(pugi::xml_node& xmlnode)
+void v4l2_device_solo6x10::getStatusXml(pugi::xml_node& xmlnode)
 {
 }

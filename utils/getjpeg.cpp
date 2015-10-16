@@ -17,7 +17,7 @@
 #include <errno.h>
 
 #include "libbluecherry.h"
-#include "v4l2_device.h"
+#include "v4l2_device_solo6010-dkms.h"
 #include "utils.h"
 
 static void print_error(const char *msg, ...)

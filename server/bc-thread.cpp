@@ -14,7 +14,9 @@
 
 #include "bc-server.h"
 #include "lavf_device.h"
-#include "v4l2_device.h"
+#include "v4l2_device_solo6x10.h"
+#include "v4l2_device_solo6010-dkms.h"
+#include "v4l2_device_tw5864.h"
 #include "stream_elements.h"
 #include "motion_processor.h"
 #include "trigger_processor.h"
