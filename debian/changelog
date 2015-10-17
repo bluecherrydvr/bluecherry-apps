@@ -1,3 +1,9 @@
+bluecherry (1:2.5.4) precise trusty lucid wheezy jessie; urgency=low
+
+  * Add initial support of TW5864 boards
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 17 Oct 2015 17:14:23 +0300
+
 bluecherry (1:2.5.3-2) precise trusty lucid wheezy jessie; urgency=low
 
   * Update ffmpeg libraries
