@@ -14,7 +14,7 @@ extern "C" {
 }
 
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 16, 0)
+#ifndef V4L2_CTRL_CLASS_DETECT
 
 #define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
 
