@@ -151,7 +151,14 @@ static int tw5864_add(struct udev_device *device, struct card_list *cards)
 	bc_log(Debug, "Checking driver on devnode %s, syspath %s", devpath, syspath);
 
 	for (int i = 0; i < MAX_CARDS; i++) {
-		if (!cards[i].valid) {
+		/* Check to see if we've scanned this one before */
+		if (cards[i].valid) {
+			/* Already scanned? */
+			if (!strcmp(cards[i].name, syspath)) {
+				cards[i].dirty = 0;
+				break;
+			}
+		} else {
 			cards[i].card_id  = 0;  /* Not used */
 			cards[i].n_ports  = 4;  /* Let web interface merge entries with matching PCI addresses */
 			cards[i].uid_type = "TW5864";
