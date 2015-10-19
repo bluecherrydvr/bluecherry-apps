@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 # TODO Implement parallel building outside of sources tree
 for DIST in trusty precise wheezy jessie

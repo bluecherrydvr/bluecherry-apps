@@ -1,16 +1,12 @@
 #!/bin/bash
 # Suppress services launching
+set -e
+set -x
 
-. /etc/os-release
-. /etc/lsb-release
-
-for x in /sbin/initctl /usr/sbin/invoke-rc.d /sbin/restart /sbin/start /sbin/stop /sbin/start-stop-daemon /usr/bin/service /usr/sbin/service
-do
-	ln -snfv /bin/true $x
-done
+. /etc/*-release
 
 # Ubuntu 12 Precise lacks /etc/os-release, thus its ID is empty
-if ! [[ -e /etc/os-release ]] && [[ $ID == "" ]] && [[ $DISTRIB_ID == "Ubuntu" ]]
+if [[ $ID == "" ]] && [[ $DISTRIB_ID == "Ubuntu" ]]
 then
 	ID="ubuntu"
 fi
@@ -29,7 +25,23 @@ case $ID in
 esac
 
 export DEBIAN_FRONTEND=noninteractive
+
+function fake() {
+	for x in /sbin/initctl /usr/sbin/invoke-rc.d /sbin/restart /sbin/start /sbin/stop /sbin/start-stop-daemon /usr/bin/service /usr/sbin/service
+	do
+		ln -snfv /bin/true $x
+	done
+}
+
 apt-get update
-apt-get install -y -V git build-essential gcc g++ debhelper php5-dev ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo
-apt-get install -y -V $ADDITIONAL_PKGS
+if dpkg -l upstart | grep ^ii >/dev/null
+then
+	# Upgrade separately
+	fake
+	apt-get install -y -V upstart
+	fake
+fi
 apt-get upgrade -y -V
+fake
+
+apt-get install -y -V git build-essential gcc g++ debhelper php5-dev ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo $ADDITIONAL_PKGS

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 if [[ -z $ARCH ]] || [[ -z $DIST ]]
 then
@@ -9,7 +10,7 @@ fi
 
 if [[ -z "$CHROOT_BASE_LOC" ]]
 then
-	CHROOT_BASE_LOC=..
+	CHROOT_BASE_LOC=../chroots/
 fi
 
 WORKCOPY_LOC=.
@@ -17,12 +18,15 @@ LOCATION="$CHROOT_BASE_LOC/${DIST}_${ARCH}"
 MOUNT_LOC="build"
 BUILD_LOC="$LOCATION/$MOUNT_LOC"
 
-if ! [[ -e "$LOCATION" ]]
+if ! [[ -e "${LOCATION}.setup" ]]
 then
+	mkdir -p $CHROOT_BASE_LOC
 	"$WORKCOPY_LOC/scripts/build_chroot.sh" $DIST $ARCH "$LOCATION"
+	touch "${LOCATION}.setup"
 fi
 
 function cleanup {
+	set +e
 	for x in dev proc sys
 	do
 		sudo umount -l $LOCATION/$x
@@ -36,6 +40,7 @@ mkdir -p "$BUILD_LOC"
 sudo mount --rbind "$WORKCOPY_LOC" "$BUILD_LOC"
 for x in dev proc sys
 do
+	mkdir -p $LOCATION/$x
 	sudo mount --rbind {/,$LOCATION/}$x
 done
 
