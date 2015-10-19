@@ -1,3 +1,9 @@
+bluecherry (1:2.5.5) precise trusty lucid wheezy jessie; urgency=low
+
+  * Packaging rework for better support of TW5864 stuff
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 19 Oct 2015 13:04:44 +0300
+
 bluecherry (1:2.5.4) precise trusty lucid wheezy jessie; urgency=low
 
   * Add initial support of TW5864 boards
