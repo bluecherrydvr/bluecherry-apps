@@ -1,13 +1,26 @@
 #!/bin/bash
 set -e
+set -x
 
 DIST=$1
 ARCH=$2
 
 LOCATION="$3"
+if mount | grep `readlink -f $LOCATION`
+then
+	echo "Requested to build chroot, but something is mounted over LOCATION=$LOCATION" >&2
+	exit 1
+fi
+rm -rf $LOCATION || true
 
 sudo apt-get install debootstrap
-debootstrap --arch $ARCH --variant minbase $DIST "$LOCATION"
+case $DIST in
+	precise|trusty)
+		ADDITIONAL_ARGS="--include=upstart,apt-utils"
+		;;
+esac
+
+debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION"
 
 case $DIST in
 	precise|trusty)
@@ -34,4 +47,23 @@ EOF
 		;;
 esac
 
-cat `dirname $0`/install_prereqs.sh | sudo chroot "$LOCATION" /bin/bash -e
+mkdir -p $LOCATION/build
+mount --rbind `dirname $0`/../ $LOCATION/build
+for x in dev proc sys
+do
+	mkdir -p $LOCATION/$x
+	sudo mount --rbind {/,$LOCATION/}$x
+done
+
+function cleanup() {
+	for x in dev proc sys
+	do
+		sudo umount -l $LOCATION/$x
+	done
+	umount -l $LOCATION/build
+}
+trap cleanup INT TERM QUIT
+
+sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
+
+cleanup
