@@ -1,3 +1,9 @@
+bluecherry (1:2.5.5-2) precise trusty lucid wheezy jessie; urgency=low
+
+  * Fix table filling on tw5864 detection
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 20 Oct 2015 02:57:54 +0300
+
 bluecherry (1:2.5.5) precise trusty lucid wheezy jessie; urgency=low
 
   * Packaging rework for better support of TW5864 stuff
