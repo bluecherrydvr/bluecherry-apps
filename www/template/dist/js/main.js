@@ -1,7 +1,15 @@
 $(function() {
 
+
+
+    // todo: delete after you do "link page" fuature
+    var ajax_req = new ajaxReq();
+    ajax_req.ajaxContent($('<a href="/ajax/news.php">a></a>'));
+
+
     commons();
     ajaxEvent();
+    updateStatData();
 });
 
 function commons() {
@@ -15,6 +23,79 @@ function commons() {
         e.preventDefault();
         window.location.href = '/?l=true';
     });
+}
+
+function updateStatData() {
+    
+        var ajax_req = new ajaxReq();
+        ajax_req.manReq({
+            form_act : '/ajax/stats.php',
+            type_data : 'HTML',
+            callback_func: function (msg, done) {
+
+                var sr  = $('#sr');
+    			var snr = $('#snr');
+    			var ncn = $('#ncn');
+    			var ftw = $('#ftw');
+
+                if (done) {
+                    msg = $.parseXML(msg);
+                    $msg = $(msg);
+
+                    var cpuUsage = ($msg.find('cpu-usage').text() || 0);
+                    var memInUse = ($msg.find('memory-inuse').text() || 0);
+                    var memTotal = ($msg.find('memory-total').text() || 0);
+                    var memPertg = ($msg.find('memory-used-percentage').text() || 0);
+                    var serverUp = ($msg.find('server-uptime').text() || 0);
+                    var serverRn = ($msg.find('bc-server-running').text() || 0);
+
+                    if (serverRn != 'up'){
+                        sr.hide();
+                        snr.show();
+                    } else {
+                        snr.hide();
+                        sr.show();
+                    }
+                    ncn.hide();
+                    $('#server-stats').show();
+                    updateStatBar('stat-cpu', cpuUsage);
+                    updateStatBar('stat-mem', memPertg);
+                    $('#stat-meminfo').html(Math.round(memInUse/1024) + "MB / " + Math.round(memTotal/1024)+ "MB");
+                    $('#server-uptime').html(serverUp);
+
+                } else {
+                    ncn.show();
+                    sr.hide();
+                    snr.hide();
+                }
+            }
+        }); 
+        setTimeout("updateStatData();", 2000);
+}
+
+updateStatBar = function(barId, val, y, r){
+	var yb = (y || 50);
+	var rb = (r || 80);
+	var el = $('#'+barId);
+    var progress_bar = el.find('.progress-bar');
+
+    //alert(val_calc);
+    
+	progress_bar.css('width', val+'%');
+    progress_bar.attr('aria-valuenow', val);
+
+    var pBarColor = 'progress-bar-success';
+    if (val >= yb && val < rb){ pBarColor = 'progress-bar-warning'; }
+    else if (val >= rb) { pBarColor = 'progress-bar-danger'; }
+
+    progress_bar.removeClass('progress-bar-success');
+    progress_bar.removeClass('progress-bar-warning');
+    progress_bar.removeClass('progress-bar-danger');
+
+    progress_bar.addClass(pBarColor);
+    //el.css('background-image', 'url("/img/pbar-'+pBarColor+'.png")');
+
+    el.find('span').html(val+'%');
 }
 
 
@@ -32,10 +113,16 @@ var ajaxReq = function () {
     var redir = false;
     var ajax_content = false;
     var type_req = "POST";
-    var type_data = "JSON"
+    var type_data = "JSON";
+    var callback_func = null;
+
 
     var send = function () {
         if (form !== null) form_data =  new FormData(form[0]);
+
+        if (alert_bl !== null) {
+            alert_bl.hide();
+        }
         
         //$.ajax({
             //type: "POST",
@@ -83,7 +170,10 @@ var ajaxReq = function () {
                     }
                 },            
                 beforeSend: function() {
-                    send_but.trigger("start.search");
+                    if (send_but !== null) {
+                        if (ajax_content) send_but.trigger("start_content.search");
+                        else send_but.trigger("start.search");
+                    }
                 }
             })
             .done(function(msg) {
@@ -91,21 +181,33 @@ var ajaxReq = function () {
             })
             .fail(function(msg) {
                 if (error_ajax) alert('err ajax');
+
+                if ((callback_func !== null) && (typeof(callback_func === 'function'))) {
+                    callback_func(msg, false);
+                }
             }).always(function() {
-                if (!redir) send_but.trigger("finish.search");
+                if (!redir && (send_but !== null)) {
+                    if (ajax_content) send_but.trigger("finish_content.search");
+                    else send_but.trigger("finish.search");
+                }
             });
     };
 
     var respProc = function (msg) {
 
         if (ajax_content) {
+            // todo: uncomment after you do "link page" fuature
             //window.history.pushState({},'', form_act);
             send_but.html(msg);
             return false;
         }
 
+        if ((callback_func !== null) && (typeof(callback_func === 'function'))) {
+            callback_func(msg, true);
+            return false;
+        }
+
         redir = false;
-        alert_bl.hide();
 
 
         if(parseInt(msg.status)==1) {
@@ -126,12 +228,17 @@ var ajaxReq = function () {
             alert_bl.show();
             window.location.href = msg.msg.url;
         } else if (msg.status == 6) {
+            delAlertClass();
+            alert_bl.addClass('alert-success');
             alert_bl.html(msg.msg);
             alert_bl.show();
+            //alert_bl.delay(4000).fadeOut('hide');
         } else if (msg.status == 7) {
+            delAlertClass();
+            alert_bl.addClass('alert-danger');
             alert_bl.html(msg.msg);
             alert_bl.show();
-            form.find('input').not('input[name="_token"]').val('');
+            //alert_bl.delay(4000).fadeOut('hide');
         } else {
             if (form.find('.form-group-m').length) {
                 var form_cl = 'form-group-m';
@@ -150,6 +257,12 @@ var ajaxReq = function () {
             });  
             form.find('*').popover('show');
         }
+    };
+
+    var delAlertClass = function() {
+        alert_bl.removeClass();
+        alert_bl.addClass('alert');
+        alert_bl.addClass('alert-ajax');
     };
 
     var showPopover = function () {
@@ -224,6 +337,14 @@ var ajaxReq = function () {
         return false;
     };
 
+    self.manReq = function (data) {
+        form_act = data.form_act || null;
+        type_req = data.type_req || type_req;
+        type_data = data.type_data || type_data;
+        callback_func = data.callback_func;
+        send();
+    };
+
     var constructor = function () {
     };
     constructor();
@@ -243,18 +364,20 @@ function ajaxEvent() {
 
 
 function mch_ajsend(el) {
-    el.on("start.search", function() {
-        if (el.is('div')) {
+
+    if (el.is('div')) {
+        el.on("start_content.search", function() {
             el.addClass('page-container-loading');
-        } else {
-            el.button('loading');
-        }
-    });
-    el.on("finish.search", function() {
-        if (el.is('div')) {
+        });
+        el.on("finish_content.search", function() {
             el.removeClass('page-container-loading');
-        } else {
+        });
+    } else {
+        el.on("start.search", function() {
+            el.button('loading');
+        });
+        el.on("finish.search", function() {
             el.button('reset');
-        }
-    });
+        });
+    }
 }

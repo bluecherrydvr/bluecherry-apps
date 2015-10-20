@@ -10,6 +10,8 @@ defined('INDVR') or exit();
 
 define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
 
+require_once('Reply.php');
+
 if (empty($nload)){
 	include("lang.php");
 	include("var.php");
@@ -144,6 +146,18 @@ class data{
 				</response>";
 				
 	}
+    
+    public static function responseJSON($status, $message = false, $data = ''){
+		if (!$message || empty($message)) { $message = ($status) ? CHANGES_OK : CHANGES_FAIL; };
+		if (is_bool($status)) {
+            $status = ($status) ? 6 : 7; #in compliance with interface
+        }
+
+        Reply::ajaxDie($status, $message);
+	}
+
+
+
 	public static function last_id(){ #wrapper instead of mysql_insert_id
 		return bc_db_last_insert_rowid();
 	}

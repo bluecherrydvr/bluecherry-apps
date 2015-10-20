@@ -14,4 +14,19 @@
     filter:alpha(opacity=60); 
     background-color:#fff; 
     border-radius: 5px; 
+    min-height: 30px
+}
+
+.news-bl h4 {
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+.server-stat {
+    display: none;
+}
+
+.alert-ajax {
+    display: none;
+    text-align: center;
 }
