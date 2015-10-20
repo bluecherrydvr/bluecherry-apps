@@ -104,7 +104,8 @@ class update{
 				continue;
 			$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('{$parameter}', '{$value}') ON DUPLICATE KEY UPDATE value='{$value}'", true)) ? $status : false;
 		}
-		data::responseXml($status);
+
+        data::responseJSON($status);
 	}
 	private function kickUser(){
 		$result = user::kick($_POST['id']); 
