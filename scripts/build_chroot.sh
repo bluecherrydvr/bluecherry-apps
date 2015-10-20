@@ -14,7 +14,7 @@ fi
 rm -rf $LOCATION || true
 
 case $DIST in
-	precise|trusty)
+	precise|trusty|wily)
 		DISTRO=ubuntu
 		APT_SOURCES_URL="http://archive.ubuntu.com/ubuntu/"
 		MIRROR_URL="http://mirrors.kernel.org/ubuntu/"
@@ -32,6 +32,13 @@ EOF
 deb http://ftp.us.debian.org/debian $DIST main
 deb http://ftp.debian.org/debian/ ${DIST}-updates main
 deb http://security.debian.org/ ${DIST}/updates main
+EOF
+		;;
+	sid)
+		DISTRO=debian
+		MIRROR_URL="http://mirrors.kernel.org/debian/"
+		cat <<EOF > "./sources.list"
+deb http://ftp.us.debian.org/debian $DIST main
 EOF
 		;;
 	*)

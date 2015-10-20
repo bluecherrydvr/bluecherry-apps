@@ -3,7 +3,7 @@ set -e
 set -x
 
 # TODO Implement parallel building outside of sources tree
-for DIST in trusty precise wheezy jessie
+for DIST in precise trusty wily wheezy jessie sid
 do
 	export DIST
 	for ARCH in amd64 i386
