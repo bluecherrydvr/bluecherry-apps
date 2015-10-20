@@ -13,13 +13,6 @@ then
 fi
 rm -rf $LOCATION || true
 
-sudo apt-get install debootstrap
-case $DIST in
-	precise|trusty)
-		ADDITIONAL_ARGS="--include=upstart,apt-utils"
-		;;
-esac
-
 debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION"
 
 case $DIST in
@@ -60,7 +53,7 @@ function cleanup() {
 	do
 		sudo umount -l $LOCATION/$x
 	done
-	umount -l $LOCATION/build
+	sudo umount -l $LOCATION/build
 }
 trap cleanup INT TERM QUIT
 
