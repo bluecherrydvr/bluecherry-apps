@@ -66,22 +66,62 @@ require('../template/template.lib.php');
                 <br>
                 <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo NO_CARDS; ?></div>
             <?php } else { ?>
+            
+            <?php 
+                $counter = 0;
+                $counter++;
+                foreach($devices->cards as $key => $card){ 
+            ?>
 
             <div class="panel panel-default">
-                <div class="panel-heading" role="tab" id="devices-bl-cards-head">
+                <div class="panel-heading" role="tab" id="devices-bl-cards-head<?php echo $counter; ?>">
                     <h4 class="panel-title">
-                        <a href="#devices-bl-cards" role="button" data-toggle="collapse" data-parent="#devices-bl"><i class="fa fa-ellipsis-h fa-fw"></i>cards</a>
+                        <a href="#devices-bl-cards<?php echo $counter; ?>" role="button" data-toggle="collapse" data-parent="#devices-bl<?php echo $counter; ?>"><i class="fa fa-ellipsis-h fa-fw"></i>
+                        #<?php echo $counter ." ".CARD_HEADER." ".$card->info['ports']." ".PORT; ?>
+                        </a>
                     </h4>
                 </div>
-                <div id="devices-bl-cards" class="panel-collapse collapse" role="tabpanel" aria-labelledby="devices-bl-cards">
+                <div id="devices-bl-cards<?php echo $counter; ?>" class="panel-collapse collapse" role="tabpanel" aria-labelledby="devices-bl-cards<?php echo $counter; ?>">
                     <div class="panel-body">
 
 
+                        <div class="panel panel-default">
+                            <div class="panel-body">
+                                <div class="row">
+                                    <div class="col-lg-6 col-md-6">
+                                        Encoding: <?php echo (($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | <a  href='javascript:void(0);' id='{$card->info['id']}'>".ENABLE_ALL_PORTS."</a>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
+                                    </div>
+                                    <div class="col-lg-6 col-md-6">
+                                        Unused capacity: <a href='javascript:void(0);' style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row"><div class="col-lg-12">&nbsp;</div></div>
+                        <div class="row">
+                        <?php
+                            foreach ($card->cameras as $key =>$device){
+                            	if (empty($device->info['id'])) { $device->info['id']=''; };
+                                if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
+                        ?>
 
+                            <div class="col-lg-4 col-md-4">
+                                <div class="well well-sm">
+                                    <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
+                                    <?php if ($device->info['status'] != 'notconfigured') { ?> 
+                                        <p>id: <?php echo $device->info['id']; ?></p>
+                                    <?php } ?>
+                                    <p>
+                                    </p>
+                                </div>
+                            </div>
+                        <?php } ?>
+                        </div>
 
                     </div>
                 </div>
             </div>
+            <?php } ?>
             <?php } ?>
 
 
@@ -95,21 +135,6 @@ require('../template/template.lib.php');
 
 
 <?php
-echo "<div id='header'>".TOTAL_DEVICES.": <b>{$devices->info['total_devices']}</b></div><div id='addIPCamera'>".AIP_HEADER."</div><div class='bClear'></div><div id='devicesGroup'>";
-
-if ($devices->ipCameras){
-	echo "<div id='dvrCard'><div class='cardHeader'>IP Cameras</div><div class='cardContent'>";
-		foreach($devices->ipCameras as $key => $device){
-			echo "<div id='ipDevice' class='{$device->info['id']}'>
-				<div>
-				<div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>
-				</div>
-				<div class='model'>{$device->info['manufacturer']} ".(($device->info['manufacturer']==$device->info['model']) ? '' : $device->info['model'])." | id: {$device->info['id']}</div>
-				<div id='{$device->info['id']}' cliss='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])." <a href='#' class='change_state' id='{$device->info['id']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a> | <a class='ipSettingsOpen' href='#' id='{$device->info['id']}'"." name='{$device->info['id']}'>[".SETTINGS."]</a></div>";
-			echo "</div>";
-		}
-	echo "<div class='bClear'></div></div></div>"; #end ip cameras
-}
 
 if (!$devices->cards){
 	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
@@ -125,7 +150,9 @@ foreach ($card->cameras as $key =>$device){
 	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
 	echo "<div id='localDevice' class='{$device->info['id']}'>";
 	echo "<div><div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>";
-	if ($device->info['status'] != 'notconfigured') echo "<div class='portId'>id: {$device->info['id']}</div>";
+    
+    if ($device->info['status'] != 'notconfigured') echo "<div class='portId'>id: {$device->info['id']}</div>";
+
 	echo "</div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])."";
 	echo "&nbsp;<a href='#' class='change_state' id='"."{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a>";
 	if ($device->info['status'] != 'notconfigured') {
