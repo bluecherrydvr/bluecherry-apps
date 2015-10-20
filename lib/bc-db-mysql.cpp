@@ -117,7 +117,7 @@ static int bc_db_mysql_open(struct config_t *cfg)
 	return 0;
 }
 
-static _Bool is_con_lost(MYSQL *con)
+static bool is_con_lost(MYSQL *con)
 {
 	int err = mysql_errno(con);
 	switch (err) {

@@ -98,8 +98,8 @@ struct bc_device_config {
 	int64_t motion_analysis_stw;
 	int     motion_analysis_percentage;
 	int8_t  debug_level;
-	_Bool   aud_disabled;
-	_Bool   schedule_override_global;
+	bool   aud_disabled;
+	bool   schedule_override_global;
 	int     hue, saturation, contrast, brightness;
 	int     video_quality;
 };
