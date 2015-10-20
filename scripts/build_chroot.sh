@@ -13,13 +13,12 @@ then
 fi
 rm -rf $LOCATION || true
 
-debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION"
-
 case $DIST in
 	precise|trusty)
 		DISTRO=ubuntu
 		APT_SOURCES_URL="http://archive.ubuntu.com/ubuntu/"
-		cat <<EOF >> "$LOCATION/etc/apt/sources.list"
+		MIRROR_URL="http://mirrors.kernel.org/ubuntu/"
+		cat <<EOF > "./sources.list"
 deb $APT_SOURCES_URL ${DIST} main restricted universe multiverse
 deb $APT_SOURCES_URL ${DIST}-security main restricted universe multiverse
 deb $APT_SOURCES_URL ${DIST}-updates main restricted universe multiverse
@@ -28,7 +27,8 @@ EOF
 		;;
 	wheezy|jessie)
 		DISTRO=debian
-		cat <<EOF >> "$LOCATION/etc/apt/sources.list"
+		MIRROR_URL="http://mirrors.kernel.org/debian/"
+		cat <<EOF > "./sources.list"
 deb http://ftp.us.debian.org/debian $DIST main
 deb http://ftp.debian.org/debian/ ${DIST}-updates main
 deb http://security.debian.org/ ${DIST}/updates main
@@ -39,6 +39,10 @@ EOF
 		exit 1
 		;;
 esac
+
+debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
+
+cp ./sources.list $LOCATION/etc/apt/sources.list
 
 mkdir -p $LOCATION/build
 mount --rbind `dirname $0`/../ $LOCATION/build
