@@ -83,10 +83,10 @@
 
 
                         <li>
-                            <a href="javascript:void(0);" class='liveView'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_LIVEVIEW; ?></a>
+                            <a href="javascript:void(0);" class='liveView'><i class="fa fa-image fa-fw"></i> <?php echo MMENU_LIVEVIEW; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='downloadClient'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_CLIENT_DOWNLOAD; ?></a>
+                            <a href="javascript:void(0);" class='downloadClient'><i class="fa fa-download fa-fw"></i> <?php echo MMENU_CLIENT_DOWNLOAD; ?></a>
                         </li>
 
                         <li class="divider"></li>
@@ -100,63 +100,63 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="javascript:void(0);" class='settingsGeneral'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_GS; ?></a>
+                            <a href="/ajax/general.php" class="ajax-content"><i class="fa fa-cog fa-fw"></i> <?php echo MMENU_GS; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='settingsStorage'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_STORAGE; ?></a>
+                            <a href="/ajax/storage.php" class="ajax-content"><i class="fa fa-hdd-o fa-fw"></i> <?php echo MMENU_STORAGE; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='settingsUsers'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_USERS; ?></a>
+                            <a href="/ajax/users.php" class="ajax-content"><i class="fa fa-users fa-fw"></i> <?php echo MMENU_USERS; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='activeUsers'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_ACTIVE_USERS; ?></a>
-                        </li>
-
-                        <li class="divider"></li>
-                        <li class="divider"></li>
-
-                        <li>
-                            <a href="javascript:void(0);" class='devices'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_DEVICES; ?></a>
-                        </li>
-                        <li>
-                            <a href="javascript:void(0);" class='globalschedule'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
-                        </li>
-                        <li>
-                            <a href="javascript:void(0);" class='notifications'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
+                            <a href="/ajax/activeusers.php" class="ajax-content"><i class="fa fa-user-md fa-fw"></i> <?php echo MMENU_ACTIVE_USERS; ?></a>
                         </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
 
+                        <li>
+                            <a href="/ajax/devices.php" class="ajax-content"><i class="fa fa-video-camera fa-fw"></i> <?php echo MMENU_DEVICES; ?></a>
+                        </li>
+                        <li>
+                            <a href="/ajax/deviceschedule.php" class="ajax-content"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
+                        </li>
+                        <li>
+                            <a href="/ajax/notifications.php" class="ajax-content"><i class="fa fa-envelope fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
+                        </li>
+
+                        <li class="divider"></li>
+                        <li class="divider"></li>
+
 
                         <li>
-                            <a href="javascript:void(0);" class='eventStatistics'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_STATISTICS; ?></a>
+                            <a href="/ajax/statistics.php" class="ajax-content"><i class="fa fa-bar-chart-o fa-fw"></i> <?php echo MMENU_STATISTICS; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='backup'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_BACKUP; ?></a>
+                            <a href="/ajax/backup.php" class="ajax-content"><i class="fa fa-database fa-fw"></i> <?php echo MMENU_BACKUP; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='viewLog'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_LOG; ?></a>
+                            <a href="/ajax/log.php" class="ajax-content"><i class="fa fa-file-o fa-fw"></i> <?php echo MMENU_LOG; ?></a>
                         </li>
                         <li>
-                            <a href="javascript:void(0);" class='licensing'><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
+                            <a href="/ajax/licensing.php" class="ajax-content"><i class="fa fa-lock fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
                         </li>
                     </ul>
 
                     <div class="panel-body">
-                        <div class="alert alert-success">
+                        <div id="sr" class="alert alert-success server-stat">
                             <?php echo SERVER_RUNNING; ?>
                         </div>
 
-                        <div class="alert alert-danger">
+                        <div id="snr" class="alert alert-danger server-stat">
                             <?php echo SERVER_NOT_RUNNING; ?>
                         </div>
 
-                        <div class="alert alert-danger">
+                        <div id="ncn" class="alert alert-danger">
                             <?php echo NO_CONNECTION; ?>
                         </div>
 
-                        <div class="alert alert-danger">
+                        <div id="ftw" class="alert alert-danger server-stat">
                             <?php echo WRITE_FAILED; ?>
                         </div>
 
@@ -173,42 +173,41 @@
                     </div>
 
 
-                    <div class="panel panel-default">
+                    <div id="server-stats" class="panel panel-default server-stat">
                         <div class="panel-heading">
                             <i class="fa fa-bar-chart-o fa-fw"></i> <?php echo STATS_HEARDER; ?>
                         </div>
                         <div class="panel-body">
-                            <div>
+                            <div id="stat-cpu">
                                 <p>
                                     <strong><?php echo STATS_CPU; ?></strong>
-                                    <span class="pull-right text-muted">40%</span>
+                                    <span class="pull-right text-muted">0%</span>
                                 </p>
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 40%">
-                                        <span class="sr-only">40%</span>
+                                    <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                        <span class="sr-only">0%</span>
                                     </div>
                                 </div>
                             </div>
 
 
-                            <div>
+                            <div id="stat-mem">
                                 <p>
                                     <strong><?php echo STATS_MEM; ?></strong>
-                                    <span class="pull-right text-muted">80%</span>
+                                    <span class="pull-right text-muted">0%</span>
                                 </p>
                                 <div class="progress">
-                                    <div class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100" style="width: 80%">
-                                        <span class="sr-only">80%</span>
+                                    <div class="progress-bar progress-bar-danger" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                        <span class="sr-only">0%</span>
                                     </div>
                                 </div>
                             </div>
+                            <div class="text-center"><p id="stat-meminfo">123</p></div>
 
                             <div>
                                 <strong><?php echo STATS_UPT ?></strong>
                             </div>
-                            <div>
-                                6 day(s), 18:20:52
-                            </div>
+                            <div id="server-uptime"></div>
 
                         </div>
                     </div>
@@ -230,18 +229,8 @@
             </div>
 		<?php } ?>
 
-        <div id="page-container">
-            <div class="row">
-                <div class="col-lg-12">
-                    <h1 class="page-header">Title</h1>
-                </div>
-
-                <form method="POST" action="/ajax/news.php">
-                    <input type="hidden" name="type" value="123">
-                    <a href="" class="send-req-form">asd</a>
-                <form>
+            <div id="page-container">
             </div>
-        </div>
 
         </div>
 
