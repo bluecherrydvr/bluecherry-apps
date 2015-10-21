@@ -44,7 +44,7 @@ class update{
 				$result = $card->enableAllPorts();
 			} 
 		};
-		data::responseXml($result);
+		data::responseJSON($result);
 	}
 	private function newUser(){
 		$result = user::update($_POST, true);
@@ -58,7 +58,7 @@ class update{
 		$id = intval($_POST['id']);
 		$this_device = data::query("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
 		$bch = bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
-		if (!$bch) { data::responseXml(false); return; }
+		if (!$bch) { data::responseJSON(false); return; }
 		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
 		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
 		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
@@ -134,7 +134,7 @@ class update{
 	function changeFpsRes($type){
 		$camera = new camera($_POST['id']);
 		$result = $camera->changeResFps($type, $_POST['value']);
-		data::responseXml($result[0], $result[1], $result[2]);
+		data::responseJSON($result[0], $result[1], $result[2]);
 	}
 	
 	private function changeState(){
