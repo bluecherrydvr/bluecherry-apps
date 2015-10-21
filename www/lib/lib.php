@@ -453,6 +453,7 @@ class camera {
 				$disabled = ($container_card->info['available_capacity']>=2) ? 0 : 1;
 				#use standard name for new devices
 				$tmp = explode('|', $this->info['device']);
+                if (!isset($tmp[2])) $tmp[2] = 0;
 				$new_name = PORT." ".($tmp[2] + 1).ON_CARD.$container_card->info['order'];
 				if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
 					$res['y']='240';
@@ -673,8 +674,8 @@ class card {
 				$this->info['order'] = $id+1;
 		};
 		$this->info['ports'] = $port;
-		$this->info['driver'] = $this->cameras[0]->info['driver'];
-		$this->info['capacity'] = $GLOBALS['capacity'][$this->info['driver']];
+		$this->info['driver'] = (isset($this->cameras[0]->info['driver']) ? $this->cameras[0]->info['driver'] : '');
+		$this->info['capacity'] = (isset($GLOBALS['capacity'][$this->info['driver']]) ? $GLOBALS['capacity'][$this->info['driver']] : '');
 		$this->info['available_capacity'] = $this->info['capacity']-$used_capacity;
 	}
 	public function changeEncoding(){
@@ -689,9 +690,11 @@ class card {
 		return array(true, DEVICE_ENCODING_UPDATED);
 	}
 	public function enableAllPorts(){
-		foreach ($this->cameras as $key => $camera){
-			$camera->changeState();
-		}
+        if (!empty($this->cameras)) {
+    		foreach ($this->cameras as $key => $camera){
+    			$camera->changeState();
+            }
+        }
 		return true;
 	}
 }

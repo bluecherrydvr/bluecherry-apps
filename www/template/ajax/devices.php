@@ -3,18 +3,6 @@
 require('../template/template.lib.php');
 ?>
 
-
-<!--
-<ul id="settingsMenu">
-		<li><a href="#videoadj" class="videoadj"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
-		<li><a href="#editmap" class="editmap"><?php echo DEVICE_EDIT_MMAP;?></a></li>
-		<li><a href="#deviceschedule" class="deviceschedule"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
-		<li><a href="#ptzsettings" class="ptzsettings"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
-</ul>
--->
-
-
-
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"><?php echo MMENU_DEVICES; ?>
@@ -89,10 +77,17 @@ require('../template/template.lib.php');
                             <div class="panel-body">
                                 <div class="row">
                                     <div class="col-lg-6 col-md-6">
-                                        Encoding: <?php echo (($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | <a  href='javascript:void(0);' id='{$card->info['id']}'>".ENABLE_ALL_PORTS."</a>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
+                                        Encoding: <?php echo (($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | 
+                                            <form action='/ajax/update.php' method='POST' style='display: inline-block'>
+                                                <input type='hidden' name='mode' value='enableAll'>
+                                                <input type='hidden' name='type' value='Devices'>
+                                                <input type='hidden' name='id' value='null'>
+                                                <input type='hidden' name='card_id' value='null'>
+                                                <a  href='javascript:void(0);' class='send-req-form' id='{$card->info['id']}' data-func-after='devicesReloadPage'>".ENABLE_ALL_PORTS."</a>
+                                            </form>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
                                     </div>
                                     <div class="col-lg-6 col-md-6">
-                                        Unused capacity: <a href='javascript:void(0);' style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
+                                        Unused capacity: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
                                     </div>
                                 </div>
                             </div>
@@ -107,12 +102,76 @@ require('../template/template.lib.php');
 
                             <div class="col-lg-4 col-md-4">
                                 <div class="well well-sm">
+                                    <div class="row">
+                                    <div class="col-lg-12 col-md-12">
                                     <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
-                                    <?php if ($device->info['status'] != 'notconfigured') { ?> 
-                                        <p>id: <?php echo $device->info['id']; ?></p>
-                                    <?php } ?>
+
+                                    <div>
+                                        <div class="pull-left divices-cards-port">
+                                            <h4><?php echo $device->info['port']; ?></h4>
+                                        </div>
+                                        <?php if ($device->info['status'] != 'notconfigured') { ?> 
+                                            <div  class="pull-left divices-cards-id-name">id: <?php echo $device->info['id']; ?></div>
+                                        <?php } ?>
+                                        <div class="clearfix"></div>
+                                    </div>
+
+
                                     <p>
+                                        <form action="/ajax/update.php" method="POST" id="devices-onoff-form-<?php echo $device->info['device']; ?>">
+                                            <input type="hidden" name="mode" value="changeState">
+                                            <input type="hidden" name="type" value="Devices">
+                                            <input type="hidden" name="do" value="true">
+                                            <input type="hidden" name="id" value="<?php echo  $device->info['device']; ?>">
+                                        </form>
+
+
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-default devices-onoff-form send-req-form" data-form-id="devices-onoff-form-<?php echo $device->info['device']; ?>" data-func-after="devicesReloadPage"><?php echo constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status']); ?></button>
+                                            <div class="btn-group" role="group">
+
+                                                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                    <?php echo SETTINGS; ?> <span class="caret"></span>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a href="/ajax/videoadj.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
+                                                    <li><a href="/ajax/motionmap.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_MMAP;?></a></li>
+                                                    <li><a href="/ajax/deviceschedule.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_SCHED;?></a></li>
+                                                    <li><a href="/ajax/ptzsettings.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ;?></a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
                                     </p>
+                                    </div>
+                                    </div>
+                                    <?php if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) { ?>
+                                    <div>
+                                        <div class="row">
+                                            <div class="col-lg-6 col-md-6">
+                                            <form action="/ajax/update.php" method="POST">
+                                                <input type="hidden" name="mode" value="RES">
+                                                <input type="hidden" name="id" value="<?php echo  $device->info['device']; ?>">
+                                                <div class="form-group">
+                                                    <label><small>Resolution:</small></label>
+                                                    <?php echo arrayToSelect($GLOBALS['resolutions'][$card->info['encoding']], $device->info['resolutionX'].'x'.$device->info['resolutionY'],  'value', 'RES input-sm send-req-form-select', false, 'data-class-after="devicesCards.setCapacity()"'); ?>
+                                                </div>
+                                            </form>
+                                            </div>
+                                        
+                                            <div class="col-lg-6 col-md-6">
+                                            <form action="/ajax/update.php" method="POST">
+                                                <input type="hidden" name="mode" value="FPS">
+                                                <input type="hidden" name="id" value="<?php echo  $device->info['device']; ?>">
+                                                <div class="form-group">
+                                                    <label><small>FPS:</small></label>
+                                                    <?php echo arrayToSelect($GLOBALS['local_device_fps'], 30/$device->info['video_interval'], 'value','FPS input-sm send-req-form-select', false, 'data-class-after="devicesCards.setCapacity()"'); ?>
+                                                </div>
+                                            </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php } ?>
+
                                 </div>
                             </div>
                         <?php } ?>
@@ -131,50 +190,3 @@ require('../template/template.lib.php');
     </div>
 </div>
 
-
-
-
-<?php
-
-if (!$devices->cards){
-	echo '<div id="ajaxMessage" class="INFO">'.NO_CARDS.'</div>';
-} else {
-	$counter = 0;
-	foreach($devices->cards as $key => $card){
-		$counter++;
-		echo "<div id='dvrCard' class='{$card->info['id']}'><div class='cardHeader'>#{$counter} ".CARD_HEADER." ({$card->info['ports']} ".PORT.")</div>";
-		echo"<div class='cardContent'>"; #begin card/header
-		echo "<div id='cardInfo'>Encoding: ".(($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | <div class='enableAll' id='{$card->info['id']}'>".ENABLE_ALL_PORTS."</div>" : "<a href='#'><div class='cardEncoding' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</div></a>")." | Unused capacity: <div id='unusedCapacity' class='uc{$card->info['id']}'><a>{$card->info['available_capacity']}</a></div></div>";
-foreach ($card->cameras as $key =>$device){
-	if (empty($device->info['id'])) { $device->info['id']=''; };
-	if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
-	echo "<div id='localDevice' class='{$device->info['id']}'>";
-	echo "<div><div class='name'><a id='{$device->info['id']}' class='editName'>{$device->info['device_name']}</a></div>";
-    
-    if ($device->info['status'] != 'notconfigured') echo "<div class='portId'>id: {$device->info['id']}</div>";
-
-	echo "</div><div id='{$device->info['id']}' class='{$device->info['status']}'>".constant('DEVICE_VIDEO_STATUS_'.$device->info['status'])."";
-	echo "&nbsp;<a href='#' class='change_state' id='"."{$device->info['device']}'>[".constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status'])."]</a>";
-	if ($device->info['status'] != 'notconfigured') {
-		echo "&nbsp;<a class='settingsOpen' href='#' id='{$device->info['id']}'".
-			" name='{$device->info['device']}'>[".SETTINGS."]</a>";
-	}
-	echo "</div><div id='port'>{$device->info['port']}</div>";
-	if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) {
-		echo "<div class='background-color:#efefef;' id='cameraSettings'>
-				<hr />
-				<div id='resolutionFps'>
-					<div id='RES'>Resolution:".arrayToSelect($GLOBALS['resolutions'][$card->info['encoding']], $device->info['resolutionX'].'x'.$device->info['resolutionY'], $device->info['device'] ,'RES')."</div>
-					<div id='FPS'>FPS:".arrayToSelect($GLOBALS['local_device_fps'], 30/$device->info['video_interval'], $device->info['device'],'FPS')."</div>
-				</div>
-			 </div>";
-	}
-	
-	echo	"</div>";
-}
-	echo "<div class='bClear'></div></div></div>"; #end card
-}
-
-echo '</div>';
-};
-?>

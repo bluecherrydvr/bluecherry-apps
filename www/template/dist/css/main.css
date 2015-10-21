@@ -21,7 +21,8 @@ h1 .breadcrumb li {
     border-color: #DDD;    
 }
 
-.text-status-disabled {
+.text-status-disabled,
+.text-status-notconfigured {
     color: #A94442;
 }
 
@@ -201,4 +202,20 @@ h1 .breadcrumb li {
 #log-info-bl {
     height: 500px;
     overflow: auto;
+}
+
+.divices-cards-port h4{
+    text-align: center;
+    color: #AFAFAF;
+    display: block;
+    width: 36px;
+    height: 36px;
+    background: transparent url("/img/icons/port.png") no-repeat scroll center top;
+    padding: 10px 0px 0px 0px;
+    margin: 0px;
+}
+
+.divices-cards-id-name {
+    padding-top: 7px;
+    padding-left: 20px;
 }

@@ -295,3 +295,41 @@ function deviceSwith(form, msg) {
 
     }
 }
+
+function devicesReloadPage(form, msg) {
+    var par = form.closest('.panel-collapse');
+    var par = par.attr('id');
+
+    var ajax_req = new ajaxReq();
+    ajax_req.ajaxContent('/ajax/devices.php', {
+            callback_func: function (msg, done) {
+                if (done) {
+                    par = $('#'+par);
+                    par.collapse({toggle: false });
+                    par.collapse('show');
+                }
+            }
+    });
+}
+
+
+var devicesCards = function(el) {
+    var self = this;
+    var els = {};
+    var msg = null;
+
+    self.setCapacity = function () {
+        els.par_panel.find('.devices-cards-capacity').html(msg.data);
+    };
+
+    self.setData = function (data) {
+        msg = data;
+    };
+
+    var constructor = function (el) {
+        els.par_well = el.closest('.well');
+        els.par_panel = el.closest('.panel-collapse');
+    };
+    constructor(el);
+}
+
