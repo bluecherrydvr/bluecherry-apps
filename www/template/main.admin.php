@@ -20,6 +20,8 @@
     <!-- datetimepicker -->
     <link href="/template/bower_components/datetimepicker/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
 
+    <link href="/template/bower_components/bootstrapformhelpers/dist/css/bootstrap-formhelpers.min.css" rel="stylesheet">
+
     <!-- MetisMenu CSS -->
     <link href="/template/bower_components/metisMenu/dist/metisMenu.min.css" rel="stylesheet">
 
@@ -249,6 +251,8 @@
     <!-- datetimepicker -->
     <script src="/template/bower_components/datetimepicker/js/bootstrap-datetimepicker.js"></script>
 
+    <script src="/template/bower_components/bootstrapformhelpers/js/bootstrap-formhelpers-slider.js"></script>
+
     <!-- Metis Menu Plugin JavaScript -->
     <script src="/template/bower_components/metisMenu/dist/metisMenu.min.js"></script>
 
@@ -277,5 +281,6 @@
     <script src="/template/dist/js/backup.js"></script>
     <script src="/template/dist/js/log.js"></script>
     <script src="/template/dist/js/licensing.js"></script>
+    <script src="/template/dist/js/videoadj.js"></script>
 </body>
 </html>

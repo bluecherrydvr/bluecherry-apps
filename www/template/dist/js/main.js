@@ -122,6 +122,7 @@ var ajaxReq = function () {
     var type_data = "JSON";
     var callback_func = null;
     var func_after = null;
+    var class_after = null;
     var redirect_after = null;
     var redirect_after_success = null;
 
@@ -208,6 +209,8 @@ var ajaxReq = function () {
             // todo: uncomment after you do "link page" fuature
             //window.history.pushState({},'', form_act);
             send_but.html(msg);
+
+            if ((callback_func !== null) && (typeof(callback_func === 'function'))) callback_func(msg, true);
             return false;
         }
 
@@ -288,6 +291,10 @@ var ajaxReq = function () {
             window[func_after](form, msg);
         }
 
+        if (class_after) {
+            procEventClass(class_after, form, msg);
+        }
+
         if (redirect_after) {
             var ajax_req = new ajaxReq();
             ajax_req.ajaxContent(redirect_after);
@@ -341,6 +348,7 @@ var ajaxReq = function () {
             alert_bl = form.find('.alert-ajax');
 
             func_after = el.data('func-after') || null;
+            class_after = el.data('class-after') || null;
 
             redirect_after = el.data('redirect') || null;
             redirect_after_success = el.data('redirect-success') || null;
@@ -353,6 +361,9 @@ var ajaxReq = function () {
             var func_call = el.data('func');
             if (func_call) window[func_call](form);
 
+            var class_call = el.data('class');
+            if (class_call) procEventClass(class_call, form);
+
             var error = el.data('error');
             if (error == 0) error_ajax = 0;
             else error_ajax = 1;
@@ -364,7 +375,10 @@ var ajaxReq = function () {
         return false;
     };
 
-    self.ajaxContent = function (el) {
+    self.ajaxContent = function (el, data) {
+        var data = data || {};
+        callback_func = data.callback_func || null;
+
         type_req = "GET";
         type_data = "HTML";
         process_data = undefined;
@@ -458,32 +472,39 @@ function procEvent(el) {
         window[func](el);
     } else {
         var class_c = el.data('class');
-        class_c = class_c.split('.');
-        var class_tmp = '';
-
-        $.each(class_c, function(i, val){
-            if (i == 0) {
-                class_tmp = new window[val](el);
-            } else {
-                var start_pos = val.indexOf('(') + 1;
-                var end_pos = val.indexOf(')',start_pos);
-                var args = val.substring(start_pos,end_pos);
-
-                val = val.substring(0, start_pos - 1);
-
-                if (args) {
-                    args = args.split(',');
-                    if (args.length == 1) {
-                        class_tmp[val](args[0]);
-                    } else {
-                        class_tmp[val](args);
-                    }
-                } else {
-                    class_tmp[val]();
-                }
-            }
-        });
+        procEventClass(class_c, el);
     }
+}
+
+function procEventClass(class_c, el, datas) {
+    var el = el || null;
+    var datas = datas || null;
+    var class_tmp = '';
+    class_c = class_c.split('.');
+
+    $.each(class_c, function(i, val){
+        if (i == 0) {
+            class_tmp = new window[val](el);
+            if (datas) class_tmp.setData(datas);
+        } else {
+            var start_pos = val.indexOf('(') + 1;
+            var end_pos = val.indexOf(')',start_pos);
+            var args = val.substring(start_pos,end_pos);
+
+            val = val.substring(0, start_pos - 1);
+
+            if (args) {
+                args = args.split(',');
+                if (args.length == 1) {
+                    class_tmp[val](args[0]);
+                } else {
+                    class_tmp[val](args);
+                }
+            } else {
+                class_tmp[val]();
+            }
+        }
+    });
 }
 
 function mch_ajsend(el) {
