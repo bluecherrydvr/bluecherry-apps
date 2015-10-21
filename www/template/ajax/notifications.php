@@ -65,7 +65,7 @@ require('../template/template.lib.php');
         			$notification['cameras'] = explode('|', $notification['cameras']);
         			$tmp = '';
         			foreach($notification['cameras'] as $id){
-        				$tmp .= $cameras[$id]['device_name'].'<br />';
+        				$tmp .= (isset($cameras[$id]['device_name']) ? $cameras[$id]['device_name'] : 'deleted').'<br />';
         			}
         			$notification['cameras'] = $tmp;
 			
