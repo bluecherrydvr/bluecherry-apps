@@ -1,0 +1,16 @@
+#!/bin/bash
+
+mkdir -p /etc/modules-load.d
+cat << EOF > /etc/modules-load.d/tw5864.conf
+tw5864
+EOF
+
+cat << EOF > /etc/modules-load.d/solo6x10.conf
+solo6x10
+EOF
+
+mkdir -p /etc/modprobe.d
+cat << EOF > /etc/modprobe.d/blacklist-solo6x10_edge.conf
+# from solo6010-dkms package
+blacklist solo6x10_edge
+EOF
