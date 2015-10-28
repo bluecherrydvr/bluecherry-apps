@@ -28,7 +28,7 @@ git clean -dxf
 git submodule foreach --recursive "git clean -dxf"
 GIT_VERSION=`git describe --dirty --always --long`
 CFG_FILE=`ls -t /boot/config* | head -n1`
-cat $CFG_FILE <(echo "CONFIG_VIDEO_TW5864=m") > .config
+cat $CFG_FILE <(echo -e "CONFIG_VIDEO_TW5864=m\nCONFIG_VIDEO_SOLO6X10=m") > .config
 make olddefconfig
 export DEBEMAIL="maintainers@bluecherrydvr.com"
 export DEBFULLNAME="Bluecherry Maintainers"
