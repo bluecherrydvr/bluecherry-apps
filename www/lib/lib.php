@@ -451,10 +451,20 @@ class camera {
 			case 'notconfigured':
 				$required_capacity = 2; #2FPS min
 				$disabled = ($container_card->info['available_capacity']>=2) ? 0 : 1;
-				#use standard name for new devices
-				$tmp = explode('|', $this->info['device']);
-                if (!isset($tmp[2])) $tmp[2] = 0;
-				$new_name = PORT." ".($tmp[2] + 1).ON_CARD.$container_card->info['order'];
+
+				if ($container_card->info['driver'] == 'tw5864') {
+				    foreach ($container_card->cameras as $key => $val) {
+				        if ($val->info['device'] == $this->info['device']) {
+				            $port_numb = $val->info['port'];
+				       }
+				    }
+				} else {
+				    #use standard name for new devices
+				    $tmp = explode('|', $this->info['device']);
+				    $port_numb = $tmp[2] + 1;
+				}
+				$new_name = PORT." ".$port_numb.ON_CARD.$container_card->info['order'];
+
 				if ($container_card->info['encoding'] == 'notconfigured' || $container_card->info['encoding'] == 'NTSC'){
 					$res['y']='240';
 					$signal_type = 'NTSC';
