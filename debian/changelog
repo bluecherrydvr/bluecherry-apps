@@ -1,3 +1,9 @@
+bluecherry (1:2.5.6) precise trusty lucid wheezy jessie; urgency=low
+
+  * tw5864 enable all ports
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 29 Oct 2015 15:08:25 +0200
+
 bluecherry (1:2.5.5-2) precise trusty lucid wheezy jessie; urgency=low
 
   * Fix table filling on tw5864 detection
