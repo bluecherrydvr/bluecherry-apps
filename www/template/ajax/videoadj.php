@@ -78,6 +78,14 @@
         </div>
 
         <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo VA_VIDEO_QUALITY; ?></label>
+
+            <div class="col-lg-8">
+                <div class="bfh-slider" data-id="<?php echo $device_data[0]['id']; ?>" data-name="contrast" data-value="<?php echo $device_data[0]['video_quality']; ?>"></div>
+            </div>
+        </div>
+
+        <div class="form-group">
             <div class="col-lg-8 col-lg-offset-4 col-md-8 col-md-offset-4">
                 <button type="button" class="btn btn-success click-event" data-function="videoadjReset"><?php echo VA_SETDEFAULT; ?></button>
             </div>

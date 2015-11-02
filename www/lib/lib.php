@@ -461,6 +461,7 @@ class camera {
 				} else {
 				    #use standard name for new devices
 				    $tmp = explode('|', $this->info['device']);
+                    if (!isset($tmp[2])) $tmp[2] = 0;
 				    $port_numb = $tmp[2] + 1;
 				}
 				$new_name = PORT." ".$port_numb.ON_CARD.$container_card->info['order'];
