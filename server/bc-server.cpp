@@ -576,7 +576,7 @@ static bool is_media_max_age_exceeded()
 	now = time(NULL);
 
 	exceeds_max_age = start < now - max_age;
-	bc_log(Info, "Oldest recording is dated with timestamp %ld, now %ld, max_age %d. Too old? %s", start, now, max_age, exceeds_max_age ? "YES" : "NO");
+	bc_log(Debug, "Oldest recording is dated with timestamp %ld, now %ld, max_age %d. Too old? %s", start, now, max_age, exceeds_max_age ? "YES" : "NO");
 
 	return exceeds_max_age;
 }
