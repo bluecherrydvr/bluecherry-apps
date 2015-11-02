@@ -9,16 +9,9 @@ then
 fi
 
 . /etc/*-release
-if [[ -e /etc/lsb-release ]]
-then
-	# Ubuntu
-	DISTRO=$DISTRIB_CODENAME
-else
-	# Debian
-	DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
-fi
 DEBARCH=`dpkg --print-architecture`
 SCRIPTS_DIR=`dirname $0`
+DISTRO=`$SCRIPTS_DIR/get_distro_release_name.sh`
 BASE_DIR=`readlink -f $SCRIPTS_DIR/..`
 
 `dirname $0`/install_prereqs.sh

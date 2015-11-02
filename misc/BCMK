@@ -1,4 +1,4 @@
-all: build FORCE
+all: install FORCE
 
 configure = cd $(dir $@) && CC="ccache gcc" CXX="ccache g++" \
 	    ./configure --prefix=$(STAGE) --disable-static --enable-shared
@@ -7,8 +7,9 @@ configure = cd $(dir $@) && CC="ccache gcc" CXX="ccache g++" \
 ### libconfig ###
  ###############
 pkgs += libconfig
-libconfig-libs = $(call lpath, config.so.9)
-install-libs += $(libconfig-libs)
+libconfig-gitrev = $(shell GIT_DIR=$(TOPDIR)/misc/libconfig/.git git describe)
+libconfig-contrib-dir = $(CONTRIB_DIR)/libconfig/$(libconfig-gitrev)
+secondaries += libconfig/Makefile $(STAGE)/lib/libconfig.so
 
 libconfig-clean: FORCE
 	-$(MAKE) -C libconfig clean
@@ -18,23 +19,28 @@ libconfig/Makefile:
 	cd $(dir $@) && autoreconf -if
 	$(configure) --disable-examples -disable-cxx
 
-$(libconfig-libs): libconfig/Makefile
+$(STAGE)/lib/libconfig.so: libconfig/Makefile
 	$(MAKE) $(MAKEARGS) -C libconfig install
+
+$(libconfig-contrib-dir)/libconfig.so: $(STAGE)/lib/libconfig.so
+	mkdir -p $(libconfig-contrib-dir)
+	cp -a $(STAGE)/lib/libconfig.so* $(STAGE)/include/libconfig.h $(libconfig-contrib-dir)
+
+libconfig-install: $(libconfig-contrib-dir)/libconfig.so
+	test -e $(STAGE)/lib/libconfig.so \
+		|| mkdir -p $(STAGE)/lib $(STAGE)/include \
+			&& cp -a $(libconfig-contrib-dir)/libconfig.so* $(STAGE)/lib/ \
+			&& cp $(libconfig-contrib-dir)/libconfig.h $(STAGE)/include/
 
  ###############
 ###   libav   ###
  ###############
 pkgs += libav
-LIBAV_INSTALL = $(call lpath, \
-		avcodec.so.57 \
-		avformat.so.57 \
-		avutil.so.55 \
-		avdevice.so.57 \
-		avfilter.so.6 \
-		swresample.so.2 \
-		swscale.so.4)
 
-install-libs += $(LIBAV_INSTALL)
+libav-gitrev = $(shell GIT_DIR=$(TOPDIR)/misc/libav/.git git describe)
+libav-contrib-dir = $(CONTRIB_DIR)/libav/$(libav-gitrev)
+
+secondaries += libav/config.mak $(STAGE)/bin/ffmpeg
 
 libav/config.mak:
 	$(configure) \
@@ -86,15 +92,30 @@ libav/config.mak:
 libav-clean: FORCE
 	-$(MAKE) -C libav distclean
 
-$(LIBAV_INSTALL): libav/config.mak
+$(STAGE)/bin/ffmpeg: libav/config.mak
 	$(MAKE) $(MAKEARGS) V=1 -C libav -j $(NCPU) install
+
+$(libav-contrib-dir)/bin/ffmpeg: $(STAGE)/bin/ffmpeg
+	mkdir -p $(libav-contrib-dir)/lib
+	mkdir -p $(libav-contrib-dir)/bin
+	mkdir -p $(libav-contrib-dir)/include
+	cp -a $(STAGE)/lib/libav*.so* $(STAGE)/lib/libsw*.so* $(libav-contrib-dir)/lib
+	cp $(STAGE)/bin/ff* $(libav-contrib-dir)/bin
+	cp -r $(STAGE)/include/libav* $(STAGE)/include/libsw* $(libav-contrib-dir)/include
+
+libav-install: $(libav-contrib-dir)/bin/ffmpeg
+	test -e $(STAGE)/bin/ffmpeg \
+		|| cp -r $(libav-contrib-dir)/* $(STAGE)/
 
  ###############
 ### pugixml   ###
  ###############
 pkgs += pugixml
-pugixml-libs = $(call lpath, pugixml.so.1)
-install-libs += $(pugixml-libs)
+
+pugixml-gitrev = $(shell GIT_DIR=$(TOPDIR)/misc/pugixml/.git git describe --long --tags )
+pugixml-contrib-dir = $(CONTRIB_DIR)/pugixml/$(pugixml-gitrev)
+
+secondaries += pugixml/Makefile $(STAGE)/lib/libpugixml.so
 
 pugixml-clean: FORCE
 	-$(MAKE) -C pugixml clean
@@ -103,21 +124,30 @@ pugixml-clean: FORCE
 pugixml/Makefile:
 	cd pugixml && CC="ccache gcc" CXX="ccache g++" cmake -DCMAKE_INSTALL_PREFIX=$(STAGE) -DBUILD_SHARED_LIBS=1 scripts/
 
-$(pugixml-libs): pugixml/Makefile
+$(STAGE)/lib/libpugixml.so: pugixml/Makefile
 	$(MAKE) $(MAKEARGS) -C pugixml install
+
+$(pugixml-contrib-dir)/libpugixml.so: $(STAGE)/lib/libpugixml.so
+	mkdir -p $(pugixml-contrib-dir)
+	cp -a $(STAGE)/lib/libpugixml.so* $(STAGE)/include/*.hpp $(pugixml-contrib-dir)
+
+pugixml-install: $(pugixml-contrib-dir)/libpugixml.so
+	test -e $(pugixml-libs) \
+		|| mkdir -p $(STAGE)/lib $(STAGE)/include \
+			&& cp $(pugixml-contrib-dir)/*.so* $(STAGE)/lib/ \
+			&& cp $(pugixml-contrib-dir)/*.hpp $(STAGE)/include/
 
  ####################
 ### Common targets ###
  ####################
 
-build: $(install-libs) FORCE
-
-install: build FORCE
+install: $(foreach d,$(pkgs), $d-install) FORCE
 	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
-	$(INSTALL_PROG) $(filter-out %.a,$(install-libs)) $(STAGE)/bin/ffmpeg $(STAGE)/bin/ffprobe -t $(DESTDIR)$(libexec_dir)
+	$(INSTALL_PROG) $(STAGE)/lib/*.so* $(STAGE)/bin/* -t $(DESTDIR)$(libexec_dir)
 
 clean: $(foreach d,$(pkgs), $d-clean) FORCE
 	rm -rf $(STAGE)
 
+.SECONDARY: $(secondaries)
 
 FORCE:

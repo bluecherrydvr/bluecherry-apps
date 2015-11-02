@@ -1,8 +1,9 @@
 TOPDIR := $(CURDIR)
 STAGE  := $(CURDIR)/stage
+CONTRIB_BASE_DIR := $(TOPDIR)/misc/contrib
 BCMK   = $(MAKE) -f "$(TOPDIR)"/BCMK.conf -f BCMK
 
-export TOPDIR STAGE BCMK
+export TOPDIR STAGE BCMK CONTRIB_BASE_DIR
 
 SUBDIRS = misc lib server utils php5
 
