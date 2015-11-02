@@ -1,3 +1,9 @@
+bluecherry (1:2.5.6-2) precise trusty lucid wheezy jessie; urgency=low
+
+  * Hide is_media_max_age_exceeded() debug message to Debug loglevel
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 02 Nov 2015 20:18:18 +0200
+
 bluecherry (1:2.5.6) precise trusty lucid wheezy jessie; urgency=low
 
   * tw5864 enable all ports
