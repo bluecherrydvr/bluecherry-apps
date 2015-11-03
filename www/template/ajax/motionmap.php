@@ -65,10 +65,52 @@
     <form action="/ajax/update.php" method="post" class="form-horizontal" id="motion-submit">
 
         <input type="hidden" name="id" value="<?php echo $camera->info['id']; ?>" />
-        <input type="hidden" name="camera_type" value="<?php echo $camera->info['protocol']; ?>" />
         <input type="hidden" name="motion_map" id="motion-map" value="<?php echo $camera->info['motion_map']; ?>" />
         <input type="hidden" name="type" value="Devices" />
         <input type="hidden" name="mode" value="update" />
+
+        <div class="panel panel-default">
+            <div class="panel-heading"><?php echo MOTION_ALGORITHM_TITLE; ?></div>
+            <div class="panel-body">
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo MOTION_ALGORITHM; ?></label>
+
+                    <div class="col-lg-8 col-md-6">
+                        <div class="btn-group" data-toggle="buttons">
+                            <label class="btn btn-default <?php echo $camera->info['default_motion_algorithm'] == 1 ? 'active' : '' ?> ">
+                        		<input type="radio" name="default_motion_algorithm" value="1" style="width: 30px;"
+                                <?php echo $camera->info['default_motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> />
+                        		<?php echo MOTION_DEFAULT; ?>
+                            </label>
+
+                            <label class="btn btn-default <?php echo $camera->info['default_motion_algorithm'] == '0' ? 'active' : '' ?> ">
+                        		<input type="radio" name="default_motion_algorithm" value="0" style="width: 30px;"
+                                <?php echo $camera->info['default_motion_algorithm'] == 0 ? ' checked="checked"' : '' ?> />
+                                <?php echo MOTION_EXPERIMENTAL ?>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Frame downscale factor'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <?php echo arrayToSelect(Array('0.1' => '0.1', '0.2' => '0.2', '0.3' => '0.3', '0.4' => '0.4', '0.5' => '0.5', '0.6' => '0.6', '0.7' => '0.7', '0.8' => '0.8', '0.9' => '0.9', '1.0' => '1.0'), $camera->info['frame_downscale_factor'], 'frame_downscale_factor'); ?>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Min. motion area %:'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <div class="bfh-slider" data-name="min_motion_area" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
 
 
         <div class="panel panel-default">
@@ -140,5 +182,12 @@
 $(function() {
     var mg = new motionGrid(null);
     mg.initDrawGrid();
+
+    $('div.bfh-slider').each(function () {
+        var $slider;
+        $slider = $(this);
+        $slider.bfhslider($slider.data());
+    });
 });
 </script>
+
