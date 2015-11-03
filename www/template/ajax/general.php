@@ -191,6 +191,21 @@
             </div>
         </div>
 
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_SEND_TEST_EMAIL_TO; ?></label>
+
+            <div class="col-lg-6">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="test_email" value="" id="general-test-email">
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default send-req-form" data-func="generalTestEmail" data-form-id="general-test-email-form"><?php echo G_SEND_TEST_EMAIL; ?></button>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+
     </div>
 </div>
 <input type="hidden" name="mode" value="global" />
@@ -207,4 +222,9 @@
 
     </div>
 </div>
+
+<form action="/ajax/general.php" method="post" class="form-horizontal hidden" id="general-test-email-form">
+    <input type="hidden" name="mode" value="testemail">
+    <input type="hidden" name="email" value="">
+</form>
 

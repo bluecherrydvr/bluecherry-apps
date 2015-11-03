@@ -282,5 +282,6 @@
     <script src="/template/dist/js/log.js"></script>
     <script src="/template/dist/js/licensing.js"></script>
     <script src="/template/dist/js/videoadj.js"></script>
+    <script src="/template/dist/js/general.js"></script>
 </body>
 </html>
