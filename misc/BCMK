@@ -15,6 +15,7 @@ libconfig-clean: FORCE
 	-rm libconfig/Makefile
 
 libconfig/Makefile:
+	cd $(dir $@) && autoreconf -if
 	$(configure) --disable-examples -disable-cxx
 
 $(libconfig-libs): libconfig/Makefile
