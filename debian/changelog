@@ -1,3 +1,10 @@
+bluecherry (1:2.5.8) precise trusty wily wheezy jessie sid; urgency=low
+
+  * Major rework of web interface with Bootstrap
+  * Packaging enhancements - libs caching
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 03 Nov 2015 15:24:18 +0200
+
 bluecherry (1:2.5.7) precise trusty wily wheezy jessie sid; urgency=low
 
   * rtsp: Fallback to IPv4 only socket if IPv6 disabled
