@@ -53,7 +53,16 @@ rtsp_server::~rtsp_server()
 
 int rtsp_server::setup(int port)
 {
-	serverfd = socket(AF_INET6, SOCK_STREAM, 0);
+	int domain = AF_INET6;
+	struct sockaddr_storage addr_stor = {0, };
+	const struct sockaddr *addr_ptr = (const sockaddr *) &addr_stor;
+	size_t addr_len = sizeof(addr_stor);
+
+	serverfd = socket(domain, SOCK_STREAM, 0);
+	if (serverfd < 0) {
+		domain = AF_INET;
+		serverfd = socket(domain, SOCK_STREAM, 0);
+	}
 	if (serverfd < 0)
 		return -1;
 
@@ -61,16 +70,21 @@ int rtsp_server::setup(int port)
 	if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
 		goto error;
 
+	if (domain == AF_INET6) {
+		if (setsockopt(serverfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) < 0)
+			goto error;
 
-	if (setsockopt(serverfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) < 0)
-		goto error;
-
-	struct sockaddr_in6 addr;
-	memset(&addr, 0, sizeof(addr));
-	addr.sin6_port   = htons(port);
-	addr.sin6_family = AF_INET6;
-	addr.sin6_addr   = in6addr_any;
-	if (bind(serverfd, (sockaddr*)&addr, sizeof(addr)) < 0)
+		struct sockaddr_in6 *addr = (sockaddr_in6 *) &addr_stor;
+		addr->sin6_port   = htons(port);
+		addr->sin6_family = AF_INET6;
+		addr->sin6_addr   = in6addr_any;
+	} else {
+		struct sockaddr_in *addr = (sockaddr_in *) &addr_stor;
+		addr->sin_port   = htons(port);
+		addr->sin_family = AF_INET;
+		addr->sin_addr.s_addr = htonl(INADDR_ANY);
+	}
+	if (bind(serverfd, addr_ptr, addr_len) < 0)
 		goto error;
 
 	if (listen(serverfd, 10) < 0)
