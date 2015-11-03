@@ -165,6 +165,14 @@
         </div>
 
         <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_SMTP_EMAIL_FROM; ?><p class='help-block'><small><?php echo G_SMTP_EMAIL_FROM_EX; ?></small></p></label>
+
+            <div class="col-lg-6">
+                <input class="form-control" type='text' name='G_SMTP_EMAIL_FROM' value='<?php echo $global_settings->data['G_SMTP_EMAIL_FROM']; ?>' />
+            </div>
+        </div>
+
+        <div class="form-group">
             <label class="col-lg-4 control-label"><?php echo G_SMTP_HOST; ?><p class='help-block'><small><?php echo G_SMTP_HOST_EX; ?></small></p></label>
             
             <div class="col-lg-6">
