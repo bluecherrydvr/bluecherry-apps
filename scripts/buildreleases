@@ -3,10 +3,10 @@ PACKAGE = bluecherry
 MAINTAINER = Andrey Utkin <andrey.utkin@corp.bluecherry.net>
 
 # Ubuntu
-DIST = precise trusty lucid
+DIST = precise trusty wily
 
 # Debian
-DIST +=	wheezy jessie
+DIST +=	wheezy jessie sid
 
 ARCH = i386 amd64
 
