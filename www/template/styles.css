@@ -21,7 +21,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 #leftColumn #logo { background: url("/img/logo.png") no-repeat center center; height:90px; }
 
 /*messages*/
-#ajaxMessage, #message			  	{ 
+#ajaxMessage, #message, .message			  	{ 
 	width:90% !important; 
 	padding:5px; 
 	font-size:1em; 
@@ -33,7 +33,7 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 }
 #ajaxMessage.INFO, #message.INFO 	{ padding-left:35px; width:90%; border:1px dashed #990; background-image:url("/img/icons/excl.png"); background-position:5px center; background-color:#ffc; background-repeat: no-repeat; }
 #message.ipCamInfo					{ z-index:10; position:absolute; right:0px; top:30px; display:none; width:75%; border:1px dashed #990; background-image:url("/img/icons/excl.png"); background-position:5px center; background-color:#ffc; background-repeat: no-repeat; }
-#ajaxMessage.F, #message.F   		{ padding-left:35px; border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
+#ajaxMessage.F, #message.F, .message.F{ padding-left:35px !important; border:1px dashed #933; background-image:url("/img/icons/cross.png"); background-position:5px center; background-color:#fee; background-repeat: no-repeat; }
 #ajaxMessage.OK, #message.OK	 	{ padding-left:35px; border:1px dashed #393; background-image:url("/img/icons/check.png"); background-position:5px center;  background-color:#efe; background-repeat: no-repeat; }
 
 #sysMessages #message			{ padding-left:35px; width:150px !important; margin:10px 5px 0 5px !important; }
@@ -56,7 +56,8 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	padding:5px 0 5px 0; 
 }
 #settingsForm div.container-separator		{ padding:10px; }
-#settingsForm #saveButton, #saveButton { 
+#settingsForm #saveButton, #saveButton,
+.sendButton { 
 	padding:5px; 
 	margin-bottom:10px; 
 	display:block; 
@@ -69,6 +70,12 @@ h1.header, h1#header  	{ font-size:1.2em; color:#333; margin:3px 3px 0px 3px; fo
 	border:1px solid #595; border-radius:5px;
 	background-color: #efe;
 }
+
+.sendButton:hover { 
+    cursor: pointer;
+    background-color:#8b8; 
+}
+
 #button								{ 
 	margin-bottom:10px; 
 	display:block; 

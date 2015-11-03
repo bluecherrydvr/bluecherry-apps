@@ -904,6 +904,38 @@ DVRPageScript = new Class({
 			break; //end motionmap
 			case 'general':
 				var generalForm  = new DVRSettingsForm('settingsForm'); 
+				$('sendTestEmail').addEvent('click', function(){
+					var devDiv = this.getParent('#localDevice');
+					var msg_el = $('text-email-message');
+					if (msg_el.getStyle('visibility') == 'visible') msg_el.fade('out');
+
+					var request = new Request({
+						url: 'ajax/general.php',
+						data: 'mode=testemail&email='+$('test-email-value').get('value'),
+						method: 'post',
+						onRequest: function(){
+							$('sendTestEmail').setStyle('background-image', 'url("/img/loading.gif")');
+						},
+						onComplete: function(){
+							$('sendTestEmail').setStyle('background-image', '');
+						},
+						onSuccess: function(text, xml){
+    
+							var msg = xml.getElementsByTagName("msg")[0].childNodes[0].nodeValue;
+							var status = xml.getElementsByTagName("status")[0].childNodes[0].nodeValue;
+							var data = xml.getElementsByTagName("data")[0].childNodes[0].nodeValue;
+							if (status != 'OK') {
+								var msg_el = $('text-email-message');
+								msg_el.set('html', msg);
+								msg_el.fade('in');
+							}
+						},
+						onFailure: function(){
+							var message = new DVRMessage('F', 'Could not communicate with the server at this time. Please make sure the server is running and you have an active connection.');
+							devDiv.setStyle('background', 'url("/img/icons/cross.png") no-repeat right top');
+						}
+					}).send();
+				});                    
 			break;//end general
 		}//end switch
 	}
