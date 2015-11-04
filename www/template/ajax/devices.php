@@ -57,8 +57,8 @@ require('../template/template.lib.php');
             
             <?php 
                 $counter = 0;
-                $counter++;
                 foreach($devices->cards as $key => $card){ 
+                $counter++;
             ?>
 
             <div class="panel panel-default">
@@ -82,7 +82,7 @@ require('../template/template.lib.php');
                                                 <input type='hidden' name='mode' value='enableAll'>
                                                 <input type='hidden' name='type' value='Devices'>
                                                 <input type='hidden' name='id' value='null'>
-                                                <input type='hidden' name='card_id' value='null'>
+                                                <input type='hidden' name='card_id' value='{$card->info['id']}'>
                                                 <a  href='javascript:void(0);' class='send-req-form' id='{$card->info['id']}' data-func-after='devicesReloadPage'>".ENABLE_ALL_PORTS."</a>
                                             </form>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
                                     </div>
@@ -101,7 +101,7 @@ require('../template/template.lib.php');
                         ?>
 
                             <div class="col-lg-4 col-md-4">
-                                <div class="well well-sm">
+                                <div class="well well-sm" style="min-height: 219px;">
                                     <div class="row">
                                     <div class="col-lg-12 col-md-12">
                                     <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
@@ -118,7 +118,7 @@ require('../template/template.lib.php');
 
 
                                     <p>
-                                        <form action="/ajax/update.php" method="POST" id="devices-onoff-form-<?php echo $device->info['device']; ?>">
+                                        <form action="/ajax/update.php" method="POST" id="devices-onoff-form-<?php echo $counter; ?>-<?php echo $device->info['port']; ?>">
                                             <input type="hidden" name="mode" value="changeState">
                                             <input type="hidden" name="type" value="Devices">
                                             <input type="hidden" name="do" value="true">
@@ -127,7 +127,7 @@ require('../template/template.lib.php');
 
 
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-default devices-onoff-form send-req-form" data-form-id="devices-onoff-form-<?php echo $device->info['device']; ?>" data-func-after="devicesReloadPage"><?php echo constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status']); ?></button>
+                                            <button type="button" class="btn btn-default devices-onoff-form send-req-form" data-form-id="devices-onoff-form-<?php echo $counter; ?>-<?php echo $device->info['port']; ?>" data-func-after="devicesReloadPage"><?php echo constant('DEVICE_VIDEO_STATUS_CHANGE_'.$device->info['status']); ?></button>
                                             <div class="btn-group" role="group">
 
                                                 <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
