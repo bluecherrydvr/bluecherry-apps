@@ -1,6 +1,3 @@
-<?php defined('INDVR') or exit();
-?>
-
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"><?php echo VA_HEADER; ?>
@@ -97,17 +94,19 @@
 </div>
 <br><br>
 
-<script type="text/javascript">
+<?php 
+addJs("
 $(function() {
     $('div.bfh-slider').each(function () {
-        var $slider;
-        $slider = $(this);
-        $slider.bfhslider($slider.data());
+        var \$slider;
+        \$slider = $(this);
+        \$slider.bfhslider(\$slider.data());
     });
 
-    $('body').on("change.bfhslider", ".bfh-slider", function(e){
+    $('body').on('change.bfhslider', '.bfh-slider', function(e){
         videoadjSendVal($(this));
     });
 });
-</script>
+");
+?>
 

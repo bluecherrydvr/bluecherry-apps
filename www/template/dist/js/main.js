@@ -31,7 +31,7 @@ function commons() {
     
     $('body').on("click", ".liveView", function(e){
         e.preventDefault();
-        window.location.href = '/?l=true';
+        window.location.href = '/liveview';
     });
 }
 
@@ -127,6 +127,7 @@ function delTr(form) {
 
 var ajaxReq = function () {
     var self = this;
+    var el_clicked = null;
     var send_but = null;
     var form = null;
     var form_act = null;
@@ -226,11 +227,15 @@ var ajaxReq = function () {
     var respProc = function (msg) {
 
         if (ajax_content) {
-            // todo: uncomment after you do "link page" fuature
-            //window.history.pushState({},'', form_act);
+            window.history.pushState({},'', form_act);
             send_but.html(msg);
 
             if ((callback_func !== null) && (typeof(callback_func === 'function'))) callback_func(msg, true);
+
+            if ((el_clicked !== null) && (el_clicked.data('left-menu'))) {
+                $('#side-menu li a').removeClass('active');
+                el_clicked.addClass('active');
+            }
 
             tooltip();
             return false;
@@ -410,6 +415,7 @@ var ajaxReq = function () {
         
         
         if (el.jquery) {
+            el_clicked = el;
             
             form_act = el.data('url') || el.attr('href');
         } else {

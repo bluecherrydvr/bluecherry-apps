@@ -1,17 +1,22 @@
-<?php DEFINE('INDVR', true);
-#lib
+<?php 
 
-include("../lib/lib.php");  #common functions
+class ipcamerasetup extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
+    public function getData()
+    {
+        //$this->setView('ajax.ipcamerasetup');
 
-$id = intval($_GET['id']);
+        $id = intval(Inp::get('id'));
+        $camera = new ipCamera($id);
+    }
 
-$camera = new ipCamera($id);
+    public function postData()
+    {
+    }
+}
 
-include_once('../template/ajax/ipcamerasetup.php');
-
-php?>

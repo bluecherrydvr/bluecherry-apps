@@ -1,15 +1,20 @@
-<?php DEFINE('INDVR', true);
+<?php 
 
+class redirect extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('basic');
+    }
 
-#lib
-include("../lib/lib.php");  #common functions
+    public function getData()
+    {
+        $camera = new ipCamera(intval($_GET['id']));
 
+        header('Location: http://'.$camera->info['ipAddr']);
+    }
 
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('basic');
-
-$camera = new ipCamera(intval($_GET['id']));
-
-header('Location: http://'.$camera->info['ipAddr']);
-
-?>
+    public function postData()
+    {
+    }
+}

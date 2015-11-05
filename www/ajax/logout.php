@@ -1,16 +1,18 @@
-<?php DEFINE('INDVR', true);
-#lib
+<?php 
 
-include("../lib/lib.php");  #common functions
+class logout extends Controller {
 
-if (isset($_SESSION['id'])) {
-    $current_user = new user('id', $_SESSION['id']);
-    $current_user->checkAccessPermissions('viewer');
+    public function getData() {
+        if (isset($_SESSION['id'])) {
+            $current_user = new user('id', $_SESSION['id']);
+            $current_user->checkAccessPermissions('viewer');
 
-    $current_user->doLogout();
+            $current_user->doLogout();
+        }
+        $_COOKIE['currentPage'] = '';
+
+        header("Location: /login");
+		exit;
+    }
 }
-$_COOKIE['currentPage'] = '';
 
-
-?>
-<script>window.location = '/';</script>

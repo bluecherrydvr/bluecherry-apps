@@ -14,6 +14,9 @@ define ('SITE_PATH', str_replace('lib'.DIRSEP, '', $site_path));
 
 define('SQLITE_DB', '/usr/share/bluecherry/sqlite/cameras.db');
 
+require_once('Helpers.php');
+require_once('Session.php');
+require_once('VarPub.php');
 require_once('Reply.php');
 require_once('Inp.php');
 require_once('View.php');
@@ -250,7 +253,14 @@ class user{
 	}
 	public function checkAccessPermissions($type){
 		if (!$this->userStatus($type)){
-			echo JS_RELOAD;
+            if (!empty($this->info['id'])) {
+                if (($this->info['access_setup'] == 0) && ($this->info['access_web'] == 1)) {
+                    header("Location: /liveview");
+        			exit;
+                }
+            }
+
+            header("Location: /login");
 			exit;
 		}
 	}
@@ -1081,9 +1091,13 @@ class Cameras
 }
 
 $global_settings = new globalSettings;
+$varpub = VarPub::get();
+$varpub->global_settings = $global_settings;
+
 
 if (empty($global_settings->data['G_DISABLE_VERSION_CHECK']) || $global_settings->data['G_DISABLE_VERSION_CHECK']==0){
 	$version = new softwareVersion;
+    $varpub->version = $version;
 }
 
 ?>

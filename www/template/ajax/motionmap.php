@@ -1,8 +1,3 @@
-<?php defined('INDVR') or exit(); 
-	require('../template/template.lib.php');
-	  
-?>
-
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"><?php echo MMAP_HEADER; ?>
@@ -177,17 +172,19 @@
 
     </div>
 </div>
+<?php 
 
-<script type="text/javascript">
-$(function() {
-    var mg = new motionGrid(null);
-    mg.initDrawGrid();
+addJs("
+    $(function() {
+        var mg = new motionGrid(null);
+        mg.initDrawGrid();
 
-    $('div.bfh-slider').each(function () {
-        var $slider;
-        $slider = $(this);
-        $slider.bfhslider($slider.data());
+        $('div.bfh-slider').each(function () {
+            var \$slider;
+            \$slider = $(this);
+            \$slider.bfhslider(\$slider.data());
+        });
     });
-});
-</script>
+");
 
+?>

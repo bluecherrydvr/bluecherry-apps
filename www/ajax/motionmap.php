@@ -1,18 +1,22 @@
-<?php DEFINE('INDVR', true);
+<?php 
 
-#lib
-include("../lib/lib.php");  #common functions
+class motionmap extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
+    public function getData()
+    {
+        $this->setView('ajax.motionmap');
 
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
+        $this->view->camera = device(intval($_GET['id']));
+    }
 
-$camera = device(intval($_GET['id']));
+    public function postData()
+    {
 
+    }
+}
 
-#require template to show data
-include_once('../template/ajax/motionmap.php');
-
-?>

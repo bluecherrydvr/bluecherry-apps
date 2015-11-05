@@ -1,7 +1,3 @@
-<?php defined('INDVR') or exit();
-#template common functions
-require('../template/template.lib.php');
-?>
 
 <?php if ($statistics->type == 'html') { ?>
 
@@ -16,7 +12,7 @@ require('../template/template.lib.php');
                         <th><?php echo STS_NUM_EVENTS; ?></th>
                         <th><?php echo STS_PERCENTAGE_OF_TOTAL; ?></th>
                     </tr>
-                <thead>
+                </thead>
                 <tbody>
                 <?php
         			foreach($statistics->results as $key => $result){
@@ -48,7 +44,6 @@ require('../template/template.lib.php');
 
 
 <?php 
-    die(); 
     } else { 
 ?>
 <div class="row">
@@ -124,7 +119,6 @@ require('../template/template.lib.php');
 
         </form>
         </div>
-        </div>
     </div>
     </div>
 </div>
@@ -135,48 +129,18 @@ require('../template/template.lib.php');
 </div>
 
 
-<script type="text/javascript">
+<?php
+
+addJs('
 $(function() {
     $(".form-datetime").datetimepicker({
         format: "yyyy-mm-dd hh:ii:ss",
         autoclose: true
     });
 });
-</script>
+');
+?>
+
+
 <?php } ?>
     
-
-<?php
-switch ($statistics->type) {
-	case 'html':
-		echo "<div id='statisticsResult'>";
-			echo "<div class='container-separator'>
-					<div class='title'>".str_replace('%TYPE%', $statistics->event_type, STS_TOTAL_EVENTS)." <b>{$statistics->total_records}</b></div>
-					<table id='statisticsTable'><tr><th>{$data['primary_grouping']}</td>".(($data['primary_grouping'] != $data['secondary_grouping']) ?  "<th>{$data['secondary_grouping']}</th>" : "")."<th>".STS_NUM_EVENTS."</th><th>".STS_PERCENTAGE_OF_TOTAL."</th></tr>";
-			foreach($statistics->results as $key => $result){
-				$primary_grouping_value = '';
-				if ($key!=0 && $result[$data['primary_grouping']]!= $statistics->results[$key-1][$data['primary_grouping']]){ #change in primary grouping
-					$primary_grouping_td = 'primarySeparator';
-					$secondary_grouping_td = 'primarySeparator';
-					$primary_grouping_value = $result[$data['primary_grouping']];
-				} elseif ($key == 0){
-					$primary_grouping_value = $result[$data['primary_grouping']];
-					$primary_grouping_td = 'nonSeparated';
-				} else {
-					$primary_grouping_td = 'nonSeparated';
-					$secondary_grouping_td = '';
-				}
-				echo "<tr><td class='{$primary_grouping_td}'>{$primary_grouping_value}</td>".(($data['primary_grouping'] != $data['secondary_grouping']) ? "<td class='{$secondary_grouping_td}'>{$result[$data['secondary_grouping']]}</td>" : "")."<td class='{$secondary_grouping_td}'>{$result['counter']}</td><td class='{$secondary_grouping_td}'>".round($result['counter']/$statistics->total_records*100, 2)."%</td></tr>";
-			}
-			echo "</table></div>";
-		echo "</div>";
-	break;
-	case 'JSON':
-	break;
-	default:
-		echo "
-		";	
-	break;
-}
-
-?>

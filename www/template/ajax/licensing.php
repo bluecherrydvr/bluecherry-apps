@@ -1,6 +1,4 @@
-<?php defined('INDVR') or exit(); 
-#template common functions
-require('../template/template.lib.php');
+<?php 
 
 $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
 ?>

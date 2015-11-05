@@ -1,8 +1,3 @@
-<?php defined('INDVR') or exit(); 
-#template common functions
-require('../template/template.lib.php');
-
-?>
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"></h1>
@@ -42,7 +37,7 @@ require('../template/template.lib.php');
             <option value="100">100</option>
             <option value="500">500</option>
             <option value="1000">1000</option>
-            <option value="all"><?php echo LOG_ALL.": {$log->log_size}".(is_int($log->log_size) ? 'kb' : ''); ?></option>
+            <option value="all"><?php echo LOG_ALL.": {$log_size}".(is_int($log_size) ? 'kb' : ''); ?></option>
         </select>
     </div>
     <div class="col-lg-4 col-md-4 form-group">
@@ -54,10 +49,13 @@ require('../template/template.lib.php');
     </form>
 </div>
 
-<script type="text/javascript">
-$(function() {
-    var lc = new logControl();
-    lc.scrollBottom();
-});
-</script>
+<?php
 
+addJs('
+    $(function() {
+        var lc = new logControl();
+        lc.scrollBottom();
+    });
+');
+
+?>

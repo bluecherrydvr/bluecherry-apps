@@ -1,30 +1,30 @@
-<?php DEFINE('INDVR', true);
-#lib
-include("../lib/lib.php");  #common functions
+<?php 
 
-#auth check
-$current_user = new DVRUser();
-$current_user->CheckStatus();
-$current_user->StatusAction('admin');
-#/auth check
-
-
-class DVREvents{
-	public $events;
-	public function __construct($limit = false){
-		$this->GetEvents($limit);
-	}
+class events extends Controller {
 	
-	private function GetEvents($limit){
-		$this->events = data::query("SELECT * FROM EventsCam ".((!$limit) ? "" : "LIMIT $limit"));
-	}
-	
-	public function MakeXML(){
-		
-	}
+    public function __construct()
+    {
+        parent::__construct();
+    }
+
+    public function getAjax()
+    {
+        return $this->ctl('events.eventsEvents')->getData();
+    }
+
+    public function postAjax()
+    {
+        return $this->ctl('events.eventsEvents')->postData();
+    }
+
+    public function getData()
+    {
+        return $this->ctl('events.eventsIndex')->getData();
+    }
+
+    public function postData()
+    {
+        return $this->ctl('events.eventsIndex')->postData();
+    }
 }
 
-$limit = intval($_GET['limit']);
-$new = new DVREvents($limit);
-var_dump($new->events);
-?>

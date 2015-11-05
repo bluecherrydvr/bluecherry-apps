@@ -1,16 +1,22 @@
-<?php DEFINE('INDVR', true);
-#lib
+<?php 
 
-include("../lib/lib.php");  #common functions
+class videoadj extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
+    public function getData()
+    {
+        $this->setView('ajax.videoadj');
 
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
+        $this->view->device_data = data::getObject('Devices', 'id', intval($_GET['id']));
+    }
 
+    public function postData()
+    {
 
-$device_data = data::getObject('Devices', 'id', intval($_GET['id']));
+    }
+}
 
-include_once('../template/ajax/videoadj.php') 
-?>

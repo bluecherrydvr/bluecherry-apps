@@ -1,13 +1,4 @@
-<?php DEFINE('INDVR', true);
-#lib
-
-include("../lib/lib.php");  #common functions
-
-#auth check
-$id = (!empty($_SESSION['id'])) ? $_SESSION['id'] : false;
-$current_user = new user('id', $id);
-$current_user->checkAccessPermissions('devices');
-#/auth check
+<?php 
 
 class devices extends Controller {
 	public $info;
@@ -15,6 +6,13 @@ class devices extends Controller {
     public $ipCameras;
 
     public function __construct(){
+        parent::__construct();
+		$this->chAccess('devices');
+    }
+
+    public function getData()
+    {
+
         $this->ipCameras = new StdClass();
         $this->ipCameras->arr = array();
         $this->ipCameras->ok = Array();
@@ -23,8 +21,23 @@ class devices extends Controller {
 		$this->getCards();
         $this->getIpCameras();
 
-	}
-	private function getCards(){
+        $this->setView('ajax.devices');
+        $devices = new StdClass();
+
+        $devices->info = $this->info;
+        $devices->cards = $this->cards;
+        $devices->ipCameras = $this->ipCameras;
+
+        $this->view->devices = $devices;
+
+        if ($this->reqXML()) {
+	        $this->MakeXML();
+            die();
+        }
+    }
+
+    private function getCards()
+    {
 		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
 		$this->info['total_devices'] = 0;
 		if (!$cards) { return false; } 
@@ -46,7 +59,7 @@ class devices extends Controller {
             $item = new ipCamera($device['id'], $options);
 
             $this->view->device = $item;
-		$this->ipCameras->arr[$key] = $item;
+            $this->ipCameras->arr[$key] = $item;
 
             $status = strtolower($item->info['status']);
             array_push($this->ipCameras->$status, $this->renderView());
@@ -98,12 +111,4 @@ class devices extends Controller {
 		
 }
 
-$devices = new devices;
-
-if (isset($_GET['XML']))
-	$devices->MakeXML();
-else
-	include_once('../template/ajax/devices.php');
-
-?>
 

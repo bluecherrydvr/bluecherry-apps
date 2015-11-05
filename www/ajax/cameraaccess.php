@@ -6,15 +6,23 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
 
-DEFINE('INDVR', true);
-#lib
-include("../lib/lib.php");  #common functions
-
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
+class cameraaccess extends Controller {
 	
-$user_data = new DVRUser('id', intval($_GET['id']));
+    public function __construct()
+    {
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
-?>
+    public function getData()
+    {
+        $user_data = new DVRUser('id', intval($_GET['id']));
+    }
+
+    public function postData()
+    {
+        $user_data = new DVRUser('id', intval($_GET['id']));
+    }
+}
+	
+

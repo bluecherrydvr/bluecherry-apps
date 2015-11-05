@@ -6,20 +6,27 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
 
-DEFINE('INDVR', true);
-#lib
 
-include("../lib/lib.php");  #common functions
+class ptzpresetlist extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
+    public function getData()
+    {
+        $this->setView('ajax.ptzpresetlist');
 
-$presets = data::getObject('ipPtzCommandPresets');
+        $this->view->presets = data::getObject('ipPtzCommandPresets');
 
-$camera_id = (!empty($_GET['id'])) ? intval($_GET['id']) : false;
+        $camera_id = (!empty($_GET['id'])) ? intval($_GET['id']) : false;
+        $this->view->camera = new ipCamera($camera_id);
+    }
 
-$camera = new ipCamera($camera_id);
+    public function postData()
+    {
 
-#template
-include_once('../template/ajax/ptzpresetlist.php');
-?>
+    }
+}
+

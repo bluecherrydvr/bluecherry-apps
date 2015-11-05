@@ -1,8 +1,3 @@
-<?php defined('INDVR') or exit();
-#template common functions
-require('../template/template.lib.php');
-
-?>
 
 <div class="row">
     <div class="col-lg-12 col-md-12">

@@ -1,16 +1,18 @@
-<?php DEFINE('INDVR', true);
+<?php 
 
-#libs
-include("../lib/lib.php");  #common functions
-
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-class update{
+class update extends Controller {
 	public $message;
 	public $status;
 	public $data;
-	private $result;
+    private $result;
+
 	function __construct(){
+        parent::__construct();
+        $this->chAccess('admin');
+	}
+
+    public function postData()
+    {
 		$this->message = CHANGES_FAIL;
 		$mode = $_POST['mode']; unset($_POST['mode']);
 		$result = '';
@@ -35,7 +37,9 @@ class update{
 		if (!empty($this->result)){
 			data::responseXml($this->result[0], $this->result[1]);
 		}
-	}
+    }
+
+
 	private function enableAll(){
 		if (empty($_POST['card_id']) && $_POST['card_id']!=0) { $result = false; } else {
 			$card_id = $_POST['card_id'];
@@ -160,5 +164,3 @@ class update{
 
 }
 
-$update = new update;
-?>

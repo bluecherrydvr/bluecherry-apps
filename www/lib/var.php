@@ -39,13 +39,19 @@ define('VAR_IPCAMLIST_UPDATE_TOKEN', 'Hiuhg3TnbJl1676T');
 define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 
 define('VAR_LICENSE_AUTH', 'http://keycheck.bluecherrydvr.com');
+
+$varpub = VarPub::get();
+$varpub_globals = Array();
 #local card props
 $GLOBALS['buffer'] = array(
 	'post' => array(0,1,2,3,4,5,10,15,20),
 	'pre' => array(0,1,2,3,4,6,8,10)
 );
+$varpub_globals['buffer'] = $GLOBALS['buffer'];
+
 
 $GLOBALS['local_device_fps'] = array(30, 15, 10, 7.5, 5, 3, 2);
+$varpub_globals['local_device_fps'] = $GLOBALS['local_device_fps'];
 $GLOBALS['capacity'] = array(
 	'tw5864'   => 9999999,
 	'generic'  => 9999999,
@@ -53,11 +59,13 @@ $GLOBALS['capacity'] = array(
 	'solo6110' => 600,
 	'solo6x10' => 480 #backward compatibility
 );
+$varpub_globals['capacity'] = $GLOBALS['capacity'];
 
 $GLOBALS['resolutions'] = array(
 	'NTSC' => array('704x480', '352x240'),
 	'PAL'  => array('704x576', '352x288')
 );
+$varpub_globals['resolutions'] = $GLOBALS['resolutions'];
 
 #anaglog ptz properties
 $GLOBALS['ptz'] = array(
@@ -68,6 +76,7 @@ $GLOBALS['ptz'] = array(
 	'STOP_BIT' => array(1, 2),
 	'PARITY' => array('None', 'Even', 'Odd')
 );
+$varpub_globals['ptz'] = $GLOBALS['ptz'];
 
 $GLOBALS['cts_record_durations'] = array(
 	'900' => '15 minutes' , 
@@ -78,4 +87,6 @@ $GLOBALS['cts_record_durations'] = array(
 	'14400' => '4 hours',
 	'21600' => '6 hours'
 );
-?>
+$varpub_globals['cts_record_durations'] = $GLOBALS['cts_record_durations'];
+
+$varpub->globals = $varpub_globals;

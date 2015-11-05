@@ -1,22 +1,30 @@
-<?php DEFINE('INDVR', true);
-#lib
-include("../lib/lib.php");  #common functions
-
-
-#auth check
-$user_id = (!empty($_SESSION['id'])) ? $_SESSION['id'] : false;
-$current_user = new user('id', $user_id);
-$current_user->checkAccessPermissions('admin');
-#/auth check
-
-session_write_close();
+<?php 
 
 #server stats: CPU/memusage
 
-class ServerStats{
+class stats extends Controller {
 	public function __construct() {
-		$this->makeXML();
+        parent::__construct();
+
+		$this->chAccess('admin');
+
 	}
+
+    public function getData()
+    {
+        $this->makeXML();
+
+        die();
+    }
+
+    public function postData()
+    {
+        $this->makeXML();
+
+        die();
+    }
+
+
 	function getCPUUsage() {
 		$p = @popen("/usr/bin/mpstat", "r");
 		if (!$p)
@@ -92,6 +100,3 @@ class ServerStats{
 	}
 }
 
-$stats = new ServerStats;
-
-?>

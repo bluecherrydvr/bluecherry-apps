@@ -1,22 +1,3 @@
-<?php defined('INDVR') or exit(); 
-require('../template/template.lib.php');
-
-$mode = (!empty($_GET['m'])) ? $_GET['m'] : false;
-
-if ($mode=='model'){
-	if ($_GET['manufacturer'] == 'Generic'){
-		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
-		exit();
-	}
-	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), Cameras::getList($_GET['manufacturer'])), '', 'models', 'change-event', false, 'data-function="cameraChooseModel"');
-	exit;
-};
-if ($mode=='ops') {
-    Cameras::getCamDetails($_GET['model']);
-    exit;
-};
-
-?>
 <div class="row">
     <div class="col-lg-12 col-md-12">
         <h1 class="page-header"><?php echo AIP_HEADER; ?>
