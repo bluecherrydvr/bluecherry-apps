@@ -1,38 +1,59 @@
 <?php
 
-DEFINE('INDVR', true);
-#lib
-
-include("../lib/lib.php");  #common functions
-
-#auth check
-
-
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('backup');
-session_write_close();
-#/auth check
-
-
-#screenshot API
-if (!empty($_GET['mode']) && $_GET['mode']=='screenshot'){
+class mediaRequest extends Controller {
 	
-	$device_id = (!empty($_GET['device_id'])) ? intval($_GET['device_id']) : false;
-	$event_id = (!empty($_GET['id'])) ? intval($_GET['id']) : false;
-	(!empty($device_id) || !empty($event_id)) or die('E: Event ID or camera ID is required to get a screenshot.');
+    public function __construct()
+    {
+        parent::__construct();
+		$this->chAccess('basic');
+    }
+
+    public function getData()
+    {
+        session_write_close();
+
+        #screenshot API
+        if (!empty($_GET['mode']) && $_GET['mode']=='screenshot'){
 	
-	$event = (empty($event_id)) ? data::query("SELECT id, filepath FROM Media WHERE device_id='{$device_id}' AND filepath IS NOT NULL ORDER BY id DESC LIMIT 1") : data::getObject('Media', 'id', $event_id);
-	!empty($event) or die('E: Requested event does not exist');
+        	$device_id = (!empty($_GET['device_id'])) ? intval($_GET['device_id']) : false;
+        	$event_id = (!empty($_GET['id'])) ? intval($_GET['id']) : false;
+        	(!empty($device_id) || !empty($event_id)) or die('E: Event ID or camera ID is required to get a screenshot.');
 	
-	$event = $event[0];
-	!empty($event['filepath']) or die('E: No media is associated with this event.');
+        	$event = (empty($event_id)) ? data::query("SELECT id, filepath FROM Media WHERE device_id='{$device_id}' AND filepath IS NOT NULL ORDER BY id DESC LIMIT 1") : data::getObject('Media', 'id', $event_id);
+        	!empty($event) or die('E: Requested event does not exist');
 	
-	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
-	file_exists($path_to_image) or die('E: Screenshot for this event was not found');
+        	$event = $event[0];
+        	!empty($event['filepath']) or die('E: No media is associated with this event.');
 	
-	header('content-type:image/jpeg');
-	readfile($path_to_image);
-	exit();
+        	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
+        	file_exists($path_to_image) or die('E: Screenshot for this event was not found');
+	
+        	header('content-type:image/jpeg');
+        	readfile($path_to_image);
+        	exit();
+        }
+
+        if (empty($_GET['id']))
+        	requestError('No ID sent');
+
+        $id = intval($_GET['id']);
+
+        mb_http_output("pass");
+
+        if (!bc_db_open())
+        	requestError('Could not open database');
+
+        $events = bc_db_get_table("SELECT * FROM Media WHERE id=" . intval($id));
+        if (empty($events))
+        	requestError('Could not retrieve media for '.$id);
+
+        $item = $events[0];
+
+        bc_db_close();
+
+        dl_file_resumable($item['filepath']);
+
+    }
 }
 
 
@@ -62,9 +83,9 @@ function dl_file_resumable($file)
 			list($range, $extra_ranges) =
 				explode(',', $range_orig, 2);
 		else
-			$range = '';
+			$range = '-';
 	} else {
-		$range = '';
+		$range = '-';
 	}
 
 	// Figure out download piece from range (if set)
@@ -107,24 +128,3 @@ function dl_file_resumable($file)
 	exit;
 }
 
-if (empty($_GET['id']))
-	requestError('No ID sent');
-
-$id = intval($_GET['id']);
-
-mb_http_output("pass");
-
-if (!bc_db_open())
-	requestError('Could not open database');
-
-$events = bc_db_get_table("SELECT * FROM Media WHERE id=" . intval($id));
-if (empty($events))
-	requestError('Could not retrieve media for '.$id);
-
-$item = $events[0];
-
-bc_db_close();
-
-dl_file_resumable($item['filepath']);
-
-?>

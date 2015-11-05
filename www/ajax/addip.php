@@ -6,23 +6,41 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
 
-DEFINE('INDVR', true);
-#lib
-
-include("../lib/lib.php");  #common functions
-
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
-if (!empty($_POST)){
-	$result = ipCamera::create($_POST);
-	data::responseJSON($result[0], $result[1]);
-	exit;
-}
+class addip extends Controller {
 	
-#template
-include_once('../template/ajax/addip.php');
-?>
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
+    public function getData()
+    {
+        $this->setView('ajax.addip');
+
+
+    }
+
+    public function postData()
+    {
+        $mode = (!empty($_GET['m'])) ? $_GET['m'] : false;
+        if ($mode=='model'){
+        	if ($_GET['manufacturer'] == 'Generic'){
+        		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
+        		exit();
+        	}
+        	echo arrayToSelect(array_merge(array(AIP_CHOOSE_MODEL), Cameras::getList($_GET['manufacturer'])), '', 'models', 'change-event', false, 'data-function="cameraChooseModel"');
+        	exit;
+        };
+
+        if ($mode=='ops') {
+            Cameras::getCamDetails($_GET['model']);
+            exit;
+        };
+
+
+	    $result = ipCamera::create($_POST);
+    	data::responseJSON($result[0], $result[1]);
+    	exit;
+    }
+}
 

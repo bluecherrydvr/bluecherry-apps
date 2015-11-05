@@ -99,53 +99,53 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/ajax/news.php" class="ajax-content"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?></a>
+                            <a href="/ajax/news.php" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?></a>
                         </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/ajax/general.php" class="ajax-content"><i class="fa fa-cog fa-fw"></i> <?php echo MMENU_GS; ?></a>
+                            <a href="/ajax/general.php" class="ajax-content" data-left-menu="true"><i class="fa fa-cog fa-fw"></i> <?php echo MMENU_GS; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/storage.php" class="ajax-content"><i class="fa fa-hdd-o fa-fw"></i> <?php echo MMENU_STORAGE; ?></a>
+                            <a href="/ajax/storage.php" class="ajax-content" data-left-menu="true"><i class="fa fa-hdd-o fa-fw"></i> <?php echo MMENU_STORAGE; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/users.php" class="ajax-content"><i class="fa fa-users fa-fw"></i> <?php echo MMENU_USERS; ?></a>
+                            <a href="/ajax/users.php" class="ajax-content" data-left-menu="true"><i class="fa fa-users fa-fw"></i> <?php echo MMENU_USERS; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/activeusers.php" class="ajax-content"><i class="fa fa-user-md fa-fw"></i> <?php echo MMENU_ACTIVE_USERS; ?></a>
-                        </li>
-
-                        <li class="divider"></li>
-                        <li class="divider"></li>
-
-                        <li>
-                            <a href="/ajax/devices.php" class="ajax-content"><i class="fa fa-video-camera fa-fw"></i> <?php echo MMENU_DEVICES; ?></a>
-                        </li>
-                        <li>
-                            <a href="/ajax/deviceschedule.php" class="ajax-content"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
-                        </li>
-                        <li>
-                            <a href="/ajax/notifications.php" class="ajax-content"><i class="fa fa-envelope fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
+                            <a href="/ajax/activeusers.php" class="ajax-content" data-left-menu="true"><i class="fa fa-user-md fa-fw"></i> <?php echo MMENU_ACTIVE_USERS; ?></a>
                         </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
 
+                        <li>
+                            <a href="/ajax/devices.php" class="ajax-content" data-left-menu="true"><i class="fa fa-video-camera fa-fw"></i> <?php echo MMENU_DEVICES; ?></a>
+                        </li>
+                        <li>
+                            <a href="/ajax/deviceschedule.php" class="ajax-content" data-left-menu="true"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
+                        </li>
+                        <li>
+                            <a href="/ajax/notifications.php" class="ajax-content" data-left-menu="true"><i class="fa fa-envelope fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
+                        </li>
+
+                        <li class="divider"></li>
+                        <li class="divider"></li>
+
 
                         <li>
-                            <a href="/ajax/statistics.php" class="ajax-content"><i class="fa fa-bar-chart-o fa-fw"></i> <?php echo MMENU_STATISTICS; ?></a>
+                            <a href="/ajax/statistics.php" class="ajax-content" data-left-menu="true"><i class="fa fa-bar-chart-o fa-fw"></i> <?php echo MMENU_STATISTICS; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/backup.php" class="ajax-content"><i class="fa fa-database fa-fw"></i> <?php echo MMENU_BACKUP; ?></a>
+                            <a href="/ajax/backup.php" class="ajax-content" data-left-menu="true"><i class="fa fa-database fa-fw"></i> <?php echo MMENU_BACKUP; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/log.php" class="ajax-content"><i class="fa fa-file-o fa-fw"></i> <?php echo MMENU_LOG; ?></a>
+                            <a href="/ajax/log.php" class="ajax-content" data-left-menu="true"><i class="fa fa-file-o fa-fw"></i> <?php echo MMENU_LOG; ?></a>
                         </li>
                         <li>
-                            <a href="/ajax/licensing.php" class="ajax-content"><i class="fa fa-lock fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
+                            <a href="/ajax/licensing.php" class="ajax-content" data-left-menu="true"><i class="fa fa-lock fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
                         </li>
                     </ul>
 
@@ -236,6 +236,7 @@
 		<?php } ?>
 
             <div id="page-container">
+                <?php echo ((isset($page_container) ? $page_container : 'empty')); ?>
             </div>
 
         </div>
@@ -267,7 +268,7 @@
     <script src="/template/dist/js/sb-admin-2.js"></script>
 
     <!-- Custom Theme JavaScript -->
-	<script type="text/javascript" src="/lib/js/var.php"></script>
+	<script type="text/javascript" src="/vars"></script>
     <script src="/template/dist/js/main.js?v=<?php echo time(); ?>"></script>
     <script src="/template/dist/js/main_load.js?"></script>
 
@@ -283,5 +284,7 @@
     <script src="/template/dist/js/licensing.js"></script>
     <script src="/template/dist/js/videoadj.js"></script>
     <script src="/template/dist/js/general.js"></script>
+
+    <?php echo getJs(); ?>
 </body>
 </html>

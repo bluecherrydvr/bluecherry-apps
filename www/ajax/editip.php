@@ -1,23 +1,28 @@
-<?php DEFINE('INDVR', true);
-#lib
+<?php 
 
-include("../lib/lib.php");  #common functions
+class editip extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
 
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
+    public function getData()
+    {
+        $this->setView('ajax.editip');
 
-if (!empty($_POST)){
-	$id = intval($_POST['id']);
-	$camera = new ipCamera($id);
-	$result = $camera->edit($_POST);
-	data::responseJSON($result[0], $result[1]);
-	exit();
+        $id = (isset($_GET['id'])) ? intval($_GET['id']) : false;
+        $this->view->ipCamera = new ipCamera($id);
+    }
+
+    public function postData()
+    {
+	    $id = intval($_POST['id']);
+    	$camera = new ipCamera($id);
+    	$result = $camera->edit($_POST);
+    	data::responseJSON($result[0], $result[1]);
+    	exit();
+    }
 }
 
-$id = (isset($_GET['id'])) ? intval($_GET['id']) : false;
-$ipCamera = new ipCamera($id);
 
-include_once('../template/ajax/editip.php');
-?>

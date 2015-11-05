@@ -1,17 +1,76 @@
-<?php DEFINE('INDVR', true);
+<?php 
+
+class mediaPtz extends Controller {
+	
+    public function __construct()
+    {
+        parent::__construct();
+		$this->chAccess('basic');
+    }
+
+    public function getData()
+    {
+        $current_user = $this->user;
+
+        $_GET['pan'] = (!empty($_GET['pan'])) ? $_GET['pan'] : false;
+        $_GET['tilt'] = (!empty($_GET['tilt'])) ? $_GET['tilt'] : false;
+        $_GET['zoom'] = (!empty($_GET['zoom'])) ? $_GET['zoom'] : false;
+        $_GET['duration'] = (!empty($_GET['duration'])) ? $_GET['duration'] : false;
 
 
-#lib
-include("../lib/lib.php");  #common functions
+        print "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n";
+
+        if (!isset($_GET['id'])) 
+        	print_err("Need to supply valid device ID");
+        $id = intval($_GET['id']);
+
+        if (!$current_user->camPermission($id)) {
+        	header("HTTP/1.0 403 Forbidden");
+        	exit;
+        }
+
+        #init vars
+        $duration = intval($_GET['duration']);
+
+        #ipPtz/will be merged
+        $camera = device($id);
+
+        if (substr($camera->info['protocol'], 0, 2) === 'IP'){
+        	$command = ($_GET['command'] == 'stop') ? 
+        		'stop' : array('pan' => $_GET['pan'], 'tilt' => $_GET['tilt'], 'zoom' => $_GET['zoom']);
+        	$camera->ptzControl->move($command);
+        	if (!empty($duration) && $duration>0){
+        		usleep(intval($_GET['duration'])*1000); #sleep for $duration/1000 of a second and stop
+        		$camera->ptzControl->move('stop');
+        	}
+	
+        	exit;
+        }
+
+        if (empty($_GET['command']))
+        	print_err("No command given");
+
+        switch ($_GET['command']) {
+        case "query": print_query($id); break;
+
+        case "stop" :
+        case "move" : print_move($id); break;
+
+        case "save"  :
+        case "go"    :
+        case "map"   :
+        case "rename":
+        case "update":
+        case "sync"  :
+        case "clear" : print_preset($id, $_GET['command']); break;
+
+        default: print_err("Invalid command: " . $_GET['command']); break;
+        }
+    }
+
+}
 
 
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('basic');
-
-$_GET['pan'] = (!empty($_GET['pan'])) ? $_GET['pan'] : false;
-$_GET['tilt'] = (!empty($_GET['tilt'])) ? $_GET['tilt'] : false;
-$_GET['zoom'] = (!empty($_GET['zoom'])) ? $_GET['zoom'] : false;
-$_GET['duration'] = (!empty($_GET['duration'])) ? $_GET['duration'] : false;
 
 function print_err($msg, $extra = "")
 {
@@ -151,55 +210,4 @@ function print_preset($id, $cmd)
 	print "  <preset id=\"$preset\">$name</preset>\n";
 	print "</response>\n";
 }
-
-print "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n";
-
-if (!isset($_GET['id'])) 
-	print_err("Need to supply valid device ID");
-$id = intval($_GET['id']);
-
-if (!$current_user->camPermission($id)) {
-	header("HTTP/1.0 403 Forbidden");
-	exit;
-}
-
-#init vars
-$duration = intval($_GET['duration']);
-
-#ipPtz/will be merged
-$camera = device($id);
-
-if (substr($camera->info['protocol'], 0, 2) === 'IP'){
-	$command = ($_GET['command'] == 'stop') ? 
-		'stop' : array('pan' => $_GET['pan'], 'tilt' => $_GET['tilt'], 'zoom' => $_GET['zoom']);
-	$camera->ptzControl->move($command);
-	if (!empty($duration) && $duration>0){
-		usleep(intval($_GET['duration'])*1000); #sleep for $duration/1000 of a second and stop
-		$camera->ptzControl->move('stop');
-	}
-	
-	exit;
-}
-
-if (empty($_GET['command']))
-	print_err("No command given");
-
-switch ($_GET['command']) {
-case "query": print_query($id); break;
-
-case "stop" :
-case "move" : print_move($id); break;
-
-case "save"  :
-case "go"    :
-case "map"   :
-case "rename":
-case "update":
-case "sync"  :
-case "clear" : print_preset($id, $_GET['command']); break;
-
-default: print_err("Invalid command: " . $_GET['command']); break;
-}
-
-?>
 

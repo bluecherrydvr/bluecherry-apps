@@ -1,14 +1,22 @@
-<?php  DEFINE('INDVR', true);
-#lib
-
-include("../lib/lib.php");  #common functions
-
-#auth check
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
-#/auth check
-
-include_once('../template/ajax/newversion.php');
+<?php  
 
 
-?>
+class newversion extends Controller {
+	
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
+
+    public function getData()
+    {
+        $this->setView('ajax.newversion', false);
+    }
+
+    public function postData()
+    {
+        $view = new View('ajax.newversion');
+        echo $view->render();
+    }
+}
+

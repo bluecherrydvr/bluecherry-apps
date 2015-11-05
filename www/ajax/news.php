@@ -1,17 +1,23 @@
-<?php DEFINE('INDVR', true);
-#lib
-include("../lib/lib.php");  #common functions
-
-$current_user = new user('id', $_SESSION['id']);
-$current_user->checkAccessPermissions('admin');
+<?php 
 
 #reads news from rss/xml feed
-class News{
+class news extends Controller {
 	public $news;
 	
-	function __construct(){
-		$this->GetNews(VAR_NEWS_XML);
-	}
+    public function __construct(){
+        parent::__construct();
+		$this->chAccess('admin');
+    }
+
+    public function getData()
+    {
+        $this->setView('ajax.news');
+
+        $this->GetNews(VAR_NEWS_XML);
+        $this->view->news = $this->news;
+    }
+
+
 	private function GetNews($path_to_xml){
 		$xml = @simplexml_load_file($path_to_xml);
 		$cnt = 0;
@@ -25,9 +31,3 @@ class News{
 	}
 }
 
-$news = new News;
-	
-#require template to show data
-require('../template/ajax/news.php');
-
-?>

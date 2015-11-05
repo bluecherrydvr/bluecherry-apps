@@ -1,4 +1,3 @@
-<?php defined('INDVR') or exit(); ?>
 
 <div class="row">
     <div class="col-lg-12">
@@ -8,10 +7,10 @@
 <div class="row news-bl">
     <div class="col-lg-12">
 <?php
-if (!$news->news) {
+if (!$news) {
 	echo NO_NEWS;
 } else {
-    foreach($news->news as $entry){
+    foreach($news as $entry){
 ?>
 
     <div class="panel panel-default">

@@ -1,8 +1,3 @@
-<?php defined('INDVR') or exit();
-#template common functions
-require('../template/template.lib.php');
-
-?>
 <span id="notif-status-enabled" style="display: none;"><i class="fa fa-warning fa-fw"></i> <?php echo L_ENABLE; ?></span>
 <span id="notif-status-disabled" style="display: none;"><i class="fa fa-warning fa-fw"></i> <?php echo L_DISABLE; ?></span>
 

@@ -26,7 +26,7 @@
             <tbody>
             <?php 
     	    	$f = false;
-        		foreach($this->users as $k => $user) {
+        		foreach($this_users as $k => $user) {
             ?>
                 <tr>
                     <td><?php echo $user->info['name']; ?></td>        

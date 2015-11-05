@@ -1,4 +1,3 @@
-<?php defined('INDVR') or exit(); include("../template/template.lib.php"); ?>
 
 <div class="row">
     <div class="col-lg-12">

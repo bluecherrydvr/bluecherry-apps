@@ -1,9 +1,3 @@
-<?php defined('INDVR') or exit();
-$global = ($device_schedule->device_data[0]['id']=='global') ? true : false;
-$og = (!isset($device_schedule->schedule_data[0]['schedule_override_global'])) ? false : $device_schedule->schedule_data[0]['schedule_override_global'];
-
-?>
-
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"><?php echo SCHED_HEADER; ?>
@@ -101,12 +95,15 @@ $og = (!isset($device_schedule->schedule_data[0]['schedule_override_global'])) ?
     </div>
 </div>
 
-<script type="text/javascript">
+<?php 
+
+addJs("
 $(function() {
     var mg = new motionGrid($('.motion-sens-bl').find('.btn-success'));
     mg.setSchedule();
     mg.minimal();
     mg.sheduleDrawGrid();
 });
-</script>
+");
+?>
 
