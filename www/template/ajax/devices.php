@@ -101,7 +101,7 @@ require('../template/template.lib.php');
                         ?>
 
                             <div class="col-lg-4 col-md-4">
-                                <div class="well well-sm" style="min-height: 219px;">
+                                <div class="well well-sm" style="min-height: 220px;">
                                     <div class="row">
                                     <div class="col-lg-12 col-md-12">
                                     <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
