@@ -86,9 +86,11 @@ require('../template/template.lib.php');
                                                 <a  href='javascript:void(0);' class='send-req-form' id='{$card->info['id']}' data-func-after='devicesReloadPage'>".ENABLE_ALL_PORTS."</a>
                                             </form>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
                                     </div>
+                                    <?php if ($card->info['driver'] != 'tw5864') { ?>
                                     <div class="col-lg-6 col-md-6">
                                         Unused capacity: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
                                     </div>
+                                    <?php } ?>
                                 </div>
                             </div>
                         </div>
