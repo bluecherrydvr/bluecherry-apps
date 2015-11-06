@@ -40,7 +40,7 @@ class ServerStats{
 		fclose($f);
 
 		$total = $stat[0];
-		$used = $total - ($stat[1] + $stat[2] + $stat[3]);
+		$used = $total - $stat[1];
 		$percent = round($used / $total * 100, 2);
 
 		return array($total, $used, $percent);
