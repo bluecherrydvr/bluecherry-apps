@@ -15,6 +15,15 @@ require('../template/template.lib.php');
     </div>
 </div>
 
+<?php if (file_exists(VAR_MYSQLDUMP_TMP_LOCATION)) { ?>
+<div class="row">
+    <div class="col-lg-12">
+        <a href="/ajax/backup.php?mode=download" class="btn btn-success"> <?php echo BACKUP_DOWNLOAD; ?></a>
+    </div>
+</div>
+<br>
+<?php } ?>
+
 <div class="row">
     <div class="col-lg-12">
         <div class="panel panel-default">
@@ -47,7 +56,7 @@ require('../template/template.lib.php');
                         </div>
                     </div>
                     <div class="form-group">
-                        <button class="btn btn-success send-req-form" type="submit"> <?php echo U_BACKUP; ?></button>
+                        <button class="btn btn-success send-req-form" type="submit" data-redirect-success="/ajax/backup.php"> <?php echo U_BACKUP; ?></button>
                     </div>
                 </form>
             </div>
