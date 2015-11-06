@@ -546,6 +546,7 @@ define('U_INCLUDED', 'Included');
 define('U_NOTINCLUDED', 'Not included');
 define('BACKUP_R_WARN', 'Please note that all tables in the backup will be irreversibly overwritten once restore is complete. Please enter the database password to continue.');
 define('BACKUP_DOWNLOAD', 'Download backup file');
+define('BACKUP_B_SUCCESS', 'Created');
 
 #licensing
 define('L_ADDCODE', 'Add a license code');
