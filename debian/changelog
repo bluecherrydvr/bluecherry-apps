@@ -1,3 +1,13 @@
+bluecherry (1:2.5.9) precise trusty wily wheezy jessie sid; urgency=low
+
+  * Fix DB upgrade
+  * negative memory usage indication fix
+  * DB backup fix
+  * deleted 'Unused capacity' for tw5864
+  * Web UI fixes regarding analog cards
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sun, 08 Nov 2015 02:37:30 +0200
+
 bluecherry (1:2.5.8) precise trusty wily wheezy jessie sid; urgency=low
 
   * Major rework of web interface with Bootstrap
