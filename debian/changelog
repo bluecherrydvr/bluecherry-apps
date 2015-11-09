@@ -1,3 +1,11 @@
+bluecherry (1:2.5.10) precise trusty wily wheezy jessie sid; urgency=low
+
+  * bluecherry-client login fix
+  * motion detection web UI fix
+  * Fix ipCameras array forming and traversing
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 09 Nov 2015 12:07:54 +0200
+
 bluecherry (1:2.5.9) precise trusty wily wheezy jessie sid; urgency=low
 
   * Fix DB upgrade
