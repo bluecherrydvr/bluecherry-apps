@@ -16,6 +16,7 @@ class devices extends Controller {
 
     public function __construct(){
         $this->ipCameras = new StdClass();
+        $this->ipCameras->arr = array();
         $this->ipCameras->ok = Array();
         $this->ipCameras->disabled = Array();
 
@@ -45,6 +46,7 @@ class devices extends Controller {
             $item = new ipCamera($device['id'], $options);
 
             $this->view->device = $item;
+		$this->ipCameras->arr[$key] = $item;
 
             $status = strtolower($item->info['status']);
             array_push($this->ipCameras->$status, $this->renderView());
@@ -62,8 +64,8 @@ class devices extends Controller {
 				$devices = array_merge($devices, $card->cameras);
 			}
 		}
-		if (!empty($this->ipCameras))
-			$devices = array_merge($devices, $this->ipCameras);
+		if (!empty($this->ipCameras->arr))
+			$devices = array_merge($devices, $this->ipCameras->arr);
 
 		$short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
 		$block_props = array('rtsp_password', 'rtsp_username');
