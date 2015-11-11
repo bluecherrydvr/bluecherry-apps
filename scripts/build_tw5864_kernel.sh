@@ -32,7 +32,7 @@ make -j `getconf _NPROCESSORS_ONLN` deb-pkg LOCALVERSION="-bc-tw5864-$DISTRO-$DE
 
 # Rebuild linux-image package properly, with our postinst
 PKG_GUTS_DIR="`pwd`/debian/tmp"
-cp $BASE_DIR/misc/kernel_pkg/inst_scripts/* $PKG_GUTS_DIR/DEBIAN/
+cp -r $BASE_DIR/misc/kernel_pkg/* $PKG_GUTS_DIR/ # TODO Make up some version-defined prefix to avoid packages collision?
 dpkg --build "$PKG_GUTS_DIR" ..
 
 DST_DIR=$BASE_DIR/kernel_releases/"$GIT_VERSION"/$DISTRO/$DEBARCH/
