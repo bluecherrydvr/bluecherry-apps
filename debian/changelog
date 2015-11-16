@@ -1,3 +1,9 @@
+bluecherry (1:2.5.11) precise trusty wily wheezy jessie sid; urgency=low
+
+  * Drop broken check on backup rollback
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 16 Nov 2015 20:22:13 +0200
+
 bluecherry (1:2.5.10) precise trusty wily wheezy jessie sid; urgency=low
 
   * bluecherry-client login fix
