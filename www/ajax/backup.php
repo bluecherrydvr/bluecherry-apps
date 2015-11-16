@@ -62,9 +62,6 @@ if (!empty($_GET['mode'])){
 			readfile(VAR_MYSQLDUMP_TMP_LOCATION);
 		break;
 		case 'restore':
-			if ($_FILES['restoreDataFile']['type']!= 'application/x-compressed-tar'){ #uploaded file is not a compressed tar archive
-				data::responseJSON(false, BACKUP_R_WRONG_FILETYPE);
-			} else {
 				move_uploaded_file($_FILES['restoreDataFile']['tmp_name'], "/tmp/bcrestore.sql.gz");
 				shell_exec("tar zxvf /tmp/bcrestore.sql.gz -C /tmp/");
 				$info_file = fopen('/tmp/bcbackupinfo', 'r');
@@ -82,7 +79,6 @@ if (!empty($_GET['mode'])){
 					#clean up infofile
 					unlink('/tmp/bcbackupinfo');
 				};
-			};
 		break;
 		case 'confirmRestore': #run restore
 			$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
