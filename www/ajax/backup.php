@@ -62,23 +62,23 @@ if (!empty($_GET['mode'])){
 			readfile(VAR_MYSQLDUMP_TMP_LOCATION);
 		break;
 		case 'restore':
-				move_uploaded_file($_FILES['restoreDataFile']['tmp_name'], "/tmp/bcrestore.sql.gz");
-				shell_exec("tar zxvf /tmp/bcrestore.sql.gz -C /tmp/");
-				$info_file = fopen('/tmp/bcbackupinfo', 'r');
-				if (!$info_file){ #no info file was in archive
-					data::responseJSON('INFO', BACKUP_R_NOINFO);
-				} else {
-					$backup_info = fread($info_file, '1025');
-					$backup_info = explode('|', $backup_info);
-					$backup_info[0] = date('r', $backup_info[0]);
-					$backup_info[1] = ($backup_info[1]) ? U_INCLUDED : U_NOTINCLUDED;
-					$backup_info[2] = ($backup_info[2]) ? U_INCLUDED : U_NOTINCLUDED;
-					$backup_info[3] = ($backup_info[3]) ? U_INCLUDED : U_NOTINCLUDED;
-					$backup_info = str_replace(array('%DATE%', '%E%', '%D%', '%U%'), array($backup_info[0], $backup_info[1], $backup_info[2], $backup_info[3]), BACKUP_R_INFO);
-					data::responseJSON(true, $backup_info);
-					#clean up infofile
-					unlink('/tmp/bcbackupinfo');
-				};
+			move_uploaded_file($_FILES['restoreDataFile']['tmp_name'], "/tmp/bcrestore.sql.gz");
+			shell_exec("tar zxvf /tmp/bcrestore.sql.gz -C /tmp/");
+			$info_file = fopen('/tmp/bcbackupinfo', 'r');
+			if (!$info_file){ #no info file was in archive
+				data::responseJSON('INFO', BACKUP_R_NOINFO);
+			} else {
+				$backup_info = fread($info_file, '1025');
+				$backup_info = explode('|', $backup_info);
+				$backup_info[0] = date('r', $backup_info[0]);
+				$backup_info[1] = ($backup_info[1]) ? U_INCLUDED : U_NOTINCLUDED;
+				$backup_info[2] = ($backup_info[2]) ? U_INCLUDED : U_NOTINCLUDED;
+				$backup_info[3] = ($backup_info[3]) ? U_INCLUDED : U_NOTINCLUDED;
+				$backup_info = str_replace(array('%DATE%', '%E%', '%D%', '%U%'), array($backup_info[0], $backup_info[1], $backup_info[2], $backup_info[3]), BACKUP_R_INFO);
+				data::responseJSON(true, $backup_info);
+				#clean up infofile
+				unlink('/tmp/bcbackupinfo');
+			};
 		break;
 		case 'confirmRestore': #run restore
 			$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
