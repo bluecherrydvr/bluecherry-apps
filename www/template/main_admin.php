@@ -224,12 +224,12 @@
 
         <div id="page-wrapper">
 
-        <?php  if (!empty($_GLOBALS['general_error'])){ ?>
+        <?php  if (!empty($general_error)){ ?>
             <div class="row general-error">
                 <div class="col-lg-12">
-                    <div class="alert alert-warning <?php echo $_GLOBALS['general_error']['type']; ?>">
+                    <div class="alert alert-warning <?php echo $general_error['type']; ?>">
                         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-                        <?php echo $_GLOBALS['general_error']['text']; ?>
+                        <?php echo $general_error['text']; ?>
                     </div>
                 </div>
             </div>
