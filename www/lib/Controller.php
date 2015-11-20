@@ -58,25 +58,28 @@ class Controller {
         if ($this->main_template) {
             $main_page = new View('main_admin');
 
-            #check for general errors
-            $default_password_warning_dismiss = (!empty($_COOKIE['default_password_warning_dismiss'])) ? $_COOKIE['default_password_warning_dismiss'] : false;
-            if ($this->user->info['default_password'] && !empty($_COOKIE['default_password_warning_dismiss'])) {
-                $_GLOBALS['general_error'] = array('type' => 'INFO', 'text' => WARN_DEFAULT_PASSWORD);
-            }
-            if (bc_license_devices_allowed() == 0){
-                $_GLOBALS['general_error'] = array('type' => 'INFO', 'text' => BETA_LICENSE_WARNING);
-            }
-            $status = data::getObject('ServerStatus');
-            if (!empty($status[0]['message'])) {
-                $m = preg_split( '/\r\n|\r|\n/', $status[0]['message']);
-                $_GLOBALS['general_error'] = array('type' => 'F', 'text' => $m[0]);
-            }
-
             $main_page->page_container = $page_container;
             
             foreach ($this->varpub->getVars() as $key => $val) {
                 $main_page->$key = $val;
             }
+
+            // check for general errors
+            $main_page->general_error = '';
+    		$default_password_warning_dismiss = (!empty($_COOKIE['default_password_warning_dismiss'])) ? $_COOKIE['default_password_warning_dismiss'] : false;
+    		if ($this->user->info['default_password'] && !empty($_COOKIE['default_password_warning_dismiss'])) {
+    			$main_page->general_error = array('type' => 'INFO', 'text' => WARN_DEFAULT_PASSWORD);
+    		}
+    		if (bc_license_devices_allowed() == 0){
+    			$main_page->general_error = array('type' => 'INFO', 'text' => BETA_LICENSE_WARNING);
+    		}
+    		$status = data::getObject('ServerStatus');
+    		if (!empty($status[0]['message'])) {
+    			$m = preg_split( '/\r\n|\r|\n/', $status[0]['message']);
+    			$main_page->general_error = array('type' => 'F', 'text' => $m[0]);
+    		}
+
+
             $res = $main_page->render();
 
         } else {
