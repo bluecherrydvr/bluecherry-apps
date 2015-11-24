@@ -60,7 +60,7 @@ int sliding_time_window::push(int64_t timestamp, int64_t value)
 	sum_value += value;
 
 	while (!queue.empty()) {
-		const struct entry &oldest_entry = queue.front();
+		const struct entry oldest_entry = queue.front();
 		if (isTooOld(oldest_entry.timestamp, timestamp)) {
 			queue.pop();
 			sum_value -= oldest_entry.value;
