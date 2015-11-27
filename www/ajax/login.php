@@ -18,14 +18,18 @@ class login extends Controller {
         $from_client = (empty($_POST['from_client'])) ? false : true;
         $result = $user_to_login->doLogin($_POST['password'], $from_client);
 
-        if ($result == 'OK') {
-            if ($user_to_login->info['access_setup'] == 1) {
-                Reply::ajaxDie('1', '/');
-            } else {
-                Reply::ajaxDie('1', '/liveview');
-            }
+        if (Inp::post('from_client')) {
+            echo $result;
         } else {
-            Reply::ajaxDie('2', $result);
+            if ($result == 'OK') {
+                if ($user_to_login->info['access_setup'] == 1) {
+                    Reply::ajaxDie('1', '/');
+                } else {
+                    Reply::ajaxDie('1', '/liveview');
+                }
+            } else {
+                Reply::ajaxDie('2', $result);
+            }
         }
 
     }
