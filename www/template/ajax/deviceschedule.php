@@ -60,13 +60,13 @@ $og = (!isset($device_schedule->schedule_data[0]['schedule_override_global'])) ?
                                     <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()">Off</button>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
-                                    <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Very High</button>
+                                    <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Continuous</button>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
-                                    <button type="button" class="btn btn-success btn-block motion-btn-sens click-event" data-class="motionGrid.minimal()">Minimal</button>
+                                    <button type="button" class="btn btn-success btn-block motion-btn-sens click-event" data-class="motionGrid.minimal()">Motion</button>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
-                                    <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">High</button>
+                                    <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">Trigger</button>
                                 </div>
                             </div>
 
