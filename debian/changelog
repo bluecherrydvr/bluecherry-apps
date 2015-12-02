@@ -1,3 +1,9 @@
+bluecherry (1:2.5.13) precise trusty wily wheezy jessie sid; urgency=low
+
+  * schedule page - fixed the labels
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 02 Dec 2015 15:27:48 +0200
+
 bluecherry (1:2.5.12) precise trusty wily wheezy jessie sid; urgency=low
 
   * Fixed bug of accessing recordings from bluecherry-client
