@@ -1,3 +1,9 @@
+bluecherry (1:2.5.14) precise trusty wily wheezy jessie sid; urgency=low
+
+  * Fix solo driver distinguishing
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 03 Dec 2015 22:02:12 +0200
+
 bluecherry (1:2.5.13) precise trusty wily wheezy jessie sid; urgency=low
 
   * schedule page - fixed the labels
