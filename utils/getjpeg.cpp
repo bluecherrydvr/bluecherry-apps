@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	bc_db_close();
 
 	/* Setup for MJPEG, leave everything else as default */
-	v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
+	v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bc->input);
 	if (v4l2->set_mjpeg() < 0)
 		print_error("Error setting mjpeg: %m");
 

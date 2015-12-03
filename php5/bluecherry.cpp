@@ -358,7 +358,7 @@ PHP_FUNCTION(bc_set_control)
 	if (bch->type != BC_DEVICE_V4L2)
 		RETURN_FALSE;
 
-	v4l2_device *v4l2 = static_cast<v4l2_device*>(bch->input);
+	v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bch->input);
 	if (v4l2->set_control(ctrl, val))
 		RETURN_FALSE;
 
@@ -431,7 +431,7 @@ PHP_FUNCTION(bc_set_mjpeg)
 	if (bch->type != BC_DEVICE_V4L2)
 		RETURN_FALSE;
 
-	v4l2_device *v4l2 = static_cast<v4l2_device*>(bch->input);
+	v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bch->input);
 	if (v4l2->set_mjpeg())
 		RETURN_FALSE;
 

@@ -28,9 +28,6 @@
  * in PAL. NTSC is assumed if unset. */
 #define BC_CAM_CAP_V4L2_PAL    0x00000020
 
-/* ATTENTION! */
-#define v4l2_device v4l2_device_solo6010_dkms
-
 struct v4l2_buffer;
 
 class v4l2_device_solo6010_dkms : public input_device

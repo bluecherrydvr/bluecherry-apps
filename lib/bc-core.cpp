@@ -40,7 +40,7 @@
 
 int get_solo_driver_name(char *buf, size_t bufsize)
 {
-	FILE *fd = popen("lsmod | grep solo | tr -d '\\n'", "r");
+	FILE *fd = popen("lsmod | grep ^solo6 | cut -d ' ' -f1 | tr -d '\\n'", "r");
 	if (!fd)
 		return -1;
 	fgets(buf, bufsize, fd);
@@ -286,14 +286,14 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	} else {
 		char solo_driver_name[32] = "";
 		get_solo_driver_name(solo_driver_name, sizeof(solo_driver_name));
-		if (!strcmp(solo_driver_name, "solo6x10-dkms")) {
+		if (!strcmp(solo_driver_name, "solo6x10_edge")) {
 			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;  /* == BC_DEVICE_V4L2! Beware! */
 			bc->input = new v4l2_device_solo6010_dkms(dbres);
-			ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
+			ret = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->has_error();
 		} else {
 			bc->type = BC_DEVICE_V4L2_SOLO6X10;
-			bc->input = new v4l2_device(dbres);
-			ret = reinterpret_cast<v4l2_device*>(bc->input)->has_error();
+			bc->input = new v4l2_device_solo6x10(dbres);
+			ret = reinterpret_cast<v4l2_device_solo6x10*>(bc->input)->has_error();
 		}
 	}
 

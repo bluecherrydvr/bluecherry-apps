@@ -53,7 +53,7 @@ static void try_formats(struct bc_record *bc_rec)
 	if (bc_rec->bc->type != BC_DEVICE_V4L2)
 		return;
 
-	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
+	v4l2_device_solo6010_dkms *d = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
 
 	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval)) {
 		bc_rec->log.log(Warning, "Error setting format");
@@ -68,7 +68,7 @@ static void update_osd(struct bc_record *bc_rec)
 	if (bc_rec->bc->type != BC_DEVICE_V4L2)
 		return;
 
-	v4l2_device *d = reinterpret_cast<v4l2_device*>(bc_rec->bc->input);
+	v4l2_device_solo6010_dkms *d = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
 	time_t t = time(NULL);
 	char buf[DATE_LEN + 1 /* for null-termination */];
 	char name_buf[OSD_NAME_MAX_LEN + 1 /* for null-termination */];
@@ -243,7 +243,7 @@ void bc_record::run()
 				rec_th.detach();
 
 				if (bc->type == BC_DEVICE_V4L2) {
-					static_cast<v4l2_device*>(bc->input)->set_motion(true);
+					static_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_motion(true);
 					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 				} else {
 					m_processor = new motion_processor;
@@ -333,7 +333,7 @@ error:
 	bc_event_cam_end(&event);
 
 	if (bc->type == BC_DEVICE_V4L2)
-		reinterpret_cast<v4l2_device*>(bc->input)->set_osd(" ");
+		reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_osd(" ");
 }
 
 
@@ -407,7 +407,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	check_schedule(bc_rec);
 
 	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc->input);
+		v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bc->input);
 		ret  = v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
 		ret |= v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
 		ret |= v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
@@ -476,7 +476,7 @@ void bc_record::destroy_elements()
 	}
 
 	if (bc && bc->type == BC_DEVICE_V4L2)
-		static_cast<v4l2_device*>(bc->input)->set_motion(false);
+		static_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_motion(false);
 }
 
 bool bc_record::update_motion_thresholds()
@@ -491,7 +491,7 @@ bool bc_record::update_motion_thresholds()
 	}
 
 	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_device *v = static_cast<v4l2_device*>(bc->input);
+		v4l2_device_solo6010_dkms *v = static_cast<v4l2_device_solo6010_dkms*>(bc->input);
 		if (v->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
 			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
@@ -643,7 +643,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	}
 
 	if (control_changed) {
-		v4l2_device *v4l2 = static_cast<v4l2_device*>(bc_rec->bc->input);
+		v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
 		ret  = v4l2->set_control(V4L2_CID_HUE, current->hue);
 		ret |= v4l2->set_control(V4L2_CID_CONTRAST, current->contrast);
 		ret |= v4l2->set_control(V4L2_CID_SATURATION, current->saturation);
