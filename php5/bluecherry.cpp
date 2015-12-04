@@ -355,11 +355,7 @@ PHP_FUNCTION(bc_set_control)
 		RETURN_FALSE;
 	}
 
-	if (bch->type != BC_DEVICE_V4L2)
-		RETURN_FALSE;
-
-	v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bch->input);
-	if (v4l2->set_control(ctrl, val))
+	if (bch->input->set_control(ctrl, val))
 		RETURN_FALSE;
 
 	RETURN_TRUE;
@@ -420,22 +416,6 @@ PHP_FUNCTION(bc_buf_data)
 		RETURN_FALSE;
 
 	RETURN_STRINGL(reinterpret_cast<const char*>(packet.data()), packet.size, 1);
-}
-
-PHP_FUNCTION(bc_set_mjpeg)
-{
-	struct bc_handle *bch;
-
-	BCH_GET_RES("bc_set_mjpeg");
-
-	if (bch->type != BC_DEVICE_V4L2)
-		RETURN_FALSE;
-
-	v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bch->input);
-	if (v4l2->set_mjpeg())
-		RETURN_FALSE;
-
-	RETURN_TRUE;
 }
 
 PHP_FUNCTION(bc_license_machine_id)
@@ -506,7 +486,6 @@ static zend_function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_get, NULL)
 	PHP_FE(bc_buf_size, NULL)
 	PHP_FE(bc_buf_data, NULL)
-	PHP_FE(bc_set_mjpeg, NULL)
 	PHP_FE(bc_set_control, NULL)
 	PHP_FE(bc_ptz_cmd, NULL)
 	/* Licensing */

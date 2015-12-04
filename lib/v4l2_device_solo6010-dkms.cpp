@@ -153,14 +153,6 @@ v4l2_device_solo6010_dkms::~v4l2_device_solo6010_dkms()
 	return -1;			\
 })
 
-v4l2_buffer *v4l2_device_solo6010_dkms::buf_v4l2()
-{
-	if (buf_idx < 0)
-		return NULL;
-
-	return &p_buf[buf_idx].vb;
-}
-
 void v4l2_device_solo6010_dkms::v4l2_local_bufs()
 {
 	unsigned int c;
@@ -184,7 +176,7 @@ void v4l2_device_solo6010_dkms::v4l2_local_bufs()
 
 int v4l2_device_solo6010_dkms::is_key_frame()
 {
-	struct v4l2_buffer *vb = buf_v4l2();
+	struct v4l2_buffer *vb = (buf_idx < 0) ? NULL : &p_buf[buf_idx].vb;
 
 	/* For everything other than mpeg, every frame is a keyframe */
 	switch (vfmt.fmt.pix.pixelformat) {

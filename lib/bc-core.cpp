@@ -47,71 +47,6 @@ int get_solo_driver_name(char *buf, size_t bufsize)
 	return 0;
 }
 
-#if 0
-int bc_buf_key_frame(struct bc_handle *bc)
-{
-	struct v4l2_buffer *vb;
-
-	if (bc->type == BC_DEVICE_LAVF)
-		return lavf_device_frame_is_keyframe(&bc->rtp);
-
-	if (bc->type != BC_DEVICE_V4L2)
-		return 1;
-
-	vb = bc_buf_v4l2(bc);
-
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG)
-		return 1;
-
-	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	return 0;
-}
-
-int bc_buf_is_video_frame(struct bc_handle *bc)
-{
-	if (bc->type == BC_DEVICE_LAVF)
-		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
-	return 1;
-}
-#endif
-
-#if 0
-int bc_buf_get(struct bc_handle *bc)
-{
-	int ret = EINVAL;
-
-	if (bc->type == BC_DEVICE_LAVF) {
-		ret = lavf_device_read(&bc->rtp);
-	} else if (bc->type == BC_DEVICE_V4L2) {
-		struct v4l2_buffer vb;
-		bc_buf_return(bc);
-		reset_vbuf(&vb);
-
-		ret = ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb);
-		bc->v4l2.local_bufs++;
-		/* XXX better error handling here */
-		if (ret)
-			return EAGAIN;
-
-		/* Update and store this buffer */
-		bc->v4l2.buf_idx = vb.index;
-		bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
-
-		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc))
-				return EAGAIN;
-			bc->got_vop = 1;
-		}
-
-		ret = 0;
-	}
-
-	return ret;
-}
-#endif
-
 static inline char *split(char *s, char delim)
 {
 	s = strchr(s, delim);
@@ -280,21 +215,20 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	} else if (!strncmp(device, "TW5864", 6)) {
 		bc->type = BC_DEVICE_V4L2_TW5864;
 		bc->input = new v4l2_device_tw5864(dbres);
-		ret = reinterpret_cast<v4l2_device_tw5864*>(bc->input)->has_error();
+		ret = bc->input->has_error();
 
 		/* TODO Add variant for GENERIC */
 	} else {
 		char solo_driver_name[32] = "";
 		get_solo_driver_name(solo_driver_name, sizeof(solo_driver_name));
 		if (!strcmp(solo_driver_name, "solo6x10_edge")) {
-			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;  /* == BC_DEVICE_V4L2! Beware! */
+			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;
 			bc->input = new v4l2_device_solo6010_dkms(dbres);
-			ret = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->has_error();
 		} else {
 			bc->type = BC_DEVICE_V4L2_SOLO6X10;
 			bc->input = new v4l2_device_solo6x10(dbres);
-			ret = reinterpret_cast<v4l2_device_solo6x10*>(bc->input)->has_error();
 		}
+		ret = bc->input->has_error();
 	}
 
 	bc->source = new stream_source("Input Source");
@@ -367,15 +301,20 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->interval = bc_db_get_val_int(dbres, "video_interval");
 	cfg->prerecord = (int16_t)bc_db_get_val_int(dbres, "buffer_prerecording");
 	cfg->postrecord = (int16_t)bc_db_get_val_int(dbres, "buffer_postrecording");
-	cfg->motion_analysis_stw = (int64_t)bc_db_get_val_int(dbres, "motion_analysis_stw");
-	if (cfg->motion_analysis_stw == -1) {
-		bc_log(Debug, "motion_analysis_stw field is likely absent, DB schema not updated. Using default value");
-		cfg->motion_analysis_stw = 200000;  // 0.2 second
+	cfg->motion_analysis_sqw_length = (int64_t)bc_db_get_val_int(dbres, "motion_analysis_sqw_length");
+	if (cfg->motion_analysis_sqw_length == -1) {
+		bc_log(Debug, "motion_analysis_sqw_length field is likely absent, DB schema not updated. Using default value");
+		cfg->motion_analysis_sqw_length = 1;  // 1 frame, considering no false positives by default
+		if (!strcmp(driver, "tw5864"))
+			cfg->motion_analysis_sqw_length = 10;  // 10 frames, considering high false-positives rate
+
 	}
 	cfg->motion_analysis_percentage = bc_db_get_val_int(dbres, "motion_analysis_percentage");
 	if (cfg->motion_analysis_percentage == -1) {
 		bc_log(Debug, "motion_analysis_percentage field is likely absent, DB schema not updated. Using default value");
-		cfg->motion_analysis_percentage = 50;
+		cfg->motion_analysis_percentage = 1;  // 1%, considering no false positives by default
+		if (!strcmp(driver, "tw5864"))
+			cfg->motion_analysis_percentage = 25;  // 25% (I-frames are not flagged), considering high false-positives rate
 	}
 	cfg->debug_level = (int8_t)bc_db_get_val_int(dbres, "debug_level");
 	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;

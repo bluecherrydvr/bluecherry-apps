@@ -3,7 +3,7 @@
 
 #include "libbluecherry.h"
 #include "stream_elements.h"
-#include "sliding_time_window.h"
+#include "sliding_seq_window.h"
 
 /* Motion_handler buffers input packets and uses motion detection results to
  * decide what to forward downstream for recording. This does not perform motion
@@ -44,7 +44,7 @@ public:
 	 * continuation helps avoid excessive recordings.
 	 */
 	void set_buffer_time(int prerecord, int postrecord);
-	void set_motion_analysis_stw(int64_t interval_mcs);
+	void set_motion_analysis_sqw_length(int length);
 	void set_motion_analysis_percentage(int percentage);
 
 	/* This stream should be connected to the raw input stream, and is used to buffer
@@ -63,7 +63,7 @@ private:
 	int prerecord_time;
 	int postrecord_time;
 
-	sliding_time_window stw_motion_analysis;
+	sliding_seq_window sqw_motion_analysis;
 	int motion_threshold_percentage;
 };
 

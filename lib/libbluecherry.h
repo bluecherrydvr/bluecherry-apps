@@ -48,8 +48,7 @@ typedef void * BC_DB_RES;
 #include "input_device.h"
 
 typedef enum {
-	BC_DEVICE_V4L2,
-	BC_DEVICE_V4L2_SOLO6010_DKMS = BC_DEVICE_V4L2,  /* standalone distribution out of sync with kernel upstream */
+	BC_DEVICE_V4L2_SOLO6010_DKMS,  /* standalone distribution out of sync with kernel upstream */
 	BC_DEVICE_V4L2_SOLO6X10,  /* upstream driver */
 	BC_DEVICE_V4L2_TW5864,
 	BC_DEVICE_V4L2_GENERIC,
@@ -95,7 +94,7 @@ struct bc_device_config {
 	int     width, height;
 	int     interval;
 	int16_t prerecord, postrecord;
-	int64_t motion_analysis_stw;
+	int     motion_analysis_sqw_length;
 	int     motion_analysis_percentage;
 	int8_t  debug_level;
 	bool   aud_disabled;
@@ -190,9 +189,6 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres);
 /* Misc. Utilities */
 time_t bc_gettime_monotonic();
 int hex_encode(char *out, int out_sz, const char *in, int in_sz);
-
-/* Format and parameter settings */
-int bc_set_mjpeg(struct bc_handle *bc);
 
 enum bc_access_type
 {

@@ -16,6 +16,50 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
+#ifndef V4L2_CTRL_CLASS_DETECT
+
+#define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
+
+/*  Detection-class control IDs defined by V4L2 */
+#define V4L2_CID_DETECT_CLASS_BASE             (V4L2_CTRL_CLASS_DETECT | 0x900)
+#define V4L2_CID_DETECT_CLASS                  (V4L2_CTRL_CLASS_DETECT | 1)
+
+#define V4L2_CID_DETECT_MD_MODE                        (V4L2_CID_DETECT_CLASS_BASE + 1)
+enum v4l2_detect_md_mode {
+       V4L2_DETECT_MD_MODE_DISABLED            = 0,
+       V4L2_DETECT_MD_MODE_GLOBAL              = 1,
+       V4L2_DETECT_MD_MODE_THRESHOLD_GRID      = 2,
+       V4L2_DETECT_MD_MODE_REGION_GRID         = 3,
+};
+#define V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD    (V4L2_CID_DETECT_CLASS_BASE + 2)
+#define V4L2_CID_DETECT_MD_THRESHOLD_GRID      (V4L2_CID_DETECT_CLASS_BASE + 3)
+#define V4L2_CID_DETECT_MD_REGION_GRID         (V4L2_CID_DETECT_CLASS_BASE + 4)
+
+#define V4L2_EVENT_MOTION_DET 6
+
+
+/* Redefining v4l2_ext_control to take over old kernel headers installed */
+struct my_v4l2_ext_control {
+	__u32 id;
+	__u32 size;
+	__u32 reserved2[1];
+	union {
+		__s32 value;
+		__s64 value64;
+		char *string;
+		__u8 *p_u8;
+		__u16 *p_u16;
+		__u32 *p_u32;
+		void *ptr;
+	};
+} __attribute__ ((packed));
+
+#else
+
+#define my_v4l2_ext_control v4l2_ext_control
+
+#endif
+
 
 /**
  * Select the best between two formats.
@@ -54,7 +98,7 @@ static uint32_t get_best_pixfmt(int fd)
 }
 
 v4l2_device_tw5864::v4l2_device_tw5864(BC_DB_RES dbres)
-	: dev_fd(-1), cam_caps(0), dev_id(0), demuxer(NULL)
+	: dev_fd(-1), cam_caps(BC_CAM_CAP_V4L2_MOTION), dev_id(0), demuxer(NULL)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
 	int input_number;
@@ -217,7 +261,7 @@ int v4l2_device_tw5864::start()
 		bc_log(Error, "Failed to analyze stream from %s: %d (%s)", dev_file, ret, err);
 		goto fail;
 	}
-#if 0
+
 	// Subscribe for motion events
 	sub.type = V4L2_EVENT_MOTION_DET;
 
@@ -226,7 +270,7 @@ int v4l2_device_tw5864::start()
 		strerror_r(errno, err, sizeof(err));
 		bc_log(Error, "Failed to subscribe to V4L2 motion events from %s: %d (%s)", dev_file, ret, err);
 	}
-#endif
+
 	_started = true;
 	update_properties();
 	return 0;
@@ -266,7 +310,7 @@ int v4l2_device_tw5864::read_packet()
 
 	create_stream_packet(&pkt);
 	av_free_packet(&pkt);
-#if 0
+
 	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
 	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
 	fcntl(dev_fd, F_SETFL, fcntl_flags);  // restore flags, exit non-blocking mode
@@ -276,7 +320,7 @@ int v4l2_device_tw5864::read_packet()
 		;  // No motion, OK
 	else
 		bc_log(Warning, "Unexpected result of DQEVENT request: ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
-#endif
+
 	return 0;
 }
 
@@ -367,15 +411,6 @@ int v4l2_device_tw5864::set_resolution(uint16_t width, uint16_t height,
 	return 0;
 }
 
-int v4l2_device_tw5864::set_mjpeg()
-{
-	vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-	if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
-		return -1;
-
-	return 0;
-}
-
 /* Check range and convert our 0-100 to valid ranges in the hardware */
 int v4l2_device_tw5864::set_control(unsigned int ctrl, int val)
 {
@@ -441,19 +476,17 @@ void v4l2_device_tw5864::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-#if 0
-static const uint16_t solo_value_map[] = {
-	0xffff, 1152, 1024, 768, 512, 384
+/* mv_x + mv_y heuristic (Dec 16 2015):
+ * In theory, upper limit is 0x7fe.
+ * In practice, highest seen value for 1 FPS is 1800+
+ */
+static const uint16_t tw5864_md_value_map[] = {
+	0xffff, 16, 15, 14, 13, 12
 };
 
 int v4l2_device_tw5864::set_motion(bool on)
 {
 	int ret;
-	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
-		bc_log(Error, "Motion detection is not implemented for non-solo V4L2 devices.");
-		return -ENOSYS;
-	}
-
 	struct v4l2_control vc;
 	vc.id = V4L2_CID_DETECT_MD_MODE;
 	vc.value = on ? V4L2_DETECT_MD_MODE_THRESHOLD_GRID : V4L2_DETECT_MD_MODE_DISABLED;
@@ -469,13 +502,11 @@ int v4l2_device_tw5864::set_motion(bool on)
 int v4l2_device_tw5864::set_motion_thresh_global(char value)
 {
 	int val = clamp(value, '0', '5') - '0';
-	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_control vc;
-		vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
-		/* Upper 16 bits are 0 for the global threshold */
-		vc.value = solo_value_map[val];
-		return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
-	}
+	struct v4l2_control vc;
+	vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
+	/* Upper 16 bits are 0 for the global threshold */
+	vc.value = tw5864_md_value_map[val];
+	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 
 	return 0;
 }
@@ -483,10 +514,10 @@ int v4l2_device_tw5864::set_motion_thresh_global(char value)
 int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 {
 	int ret;
-	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
-		return -ENOSYS;
 
-	uint16_t buf[45 * 45];
+#define MD_CELLS_HOR 16
+#define MD_CELLS_VERT 12
+	uint16_t buf[MD_CELLS_HOR * MD_CELLS_VERT];
 	struct my_v4l2_ext_control vc = {0, };
 	struct v4l2_ext_controls vcs = {0, };
 
@@ -494,34 +525,19 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
 	vc.p_u16 = buf;
-	vc.size = 2 * 45 * 45;
+	vc.size = 2 * MD_CELLS_HOR * MD_CELLS_VERT;
 
 	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
 	vcs.count = 1;
 	vcs.controls = (struct v4l2_ext_control *)&vc;
 
-	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
-	if (size < 22 * vh) {
-		bc_log(Debug, "Received motion threshold map of wrong size");
-		return -1;
-	}
-
 	ret = set_motion(true);
 	if (ret)
 		return ret;
 
-	for (unsigned y = 0, pos = 0; y < vh; y++) {
-		for (unsigned x = 0; x < 22; x++) {
-			int val = clamp(map[pos++], '0', '5') - '0';
-
-			/* Set motion threshold on a 2x2 sector. Our input map
-			 * has half the resolution the devices work with, in
-			 * both directions. */
-			buf[(2*y  ) * 45 + 2*x  ] = solo_value_map[val];
-			buf[(2*y+1) * 45 + 2*x  ] = solo_value_map[val];
-			buf[(2*y  ) * 45 + 2*x+1] = solo_value_map[val];
-			buf[(2*y+1) * 45 + 2*x+1] = solo_value_map[val];
-		}
+	for (unsigned int i = 0; i < MD_CELLS_HOR * MD_CELLS_VERT; i++) {
+		int val = clamp(map[i], '0', '5') - '0';
+		buf[i] = tw5864_md_value_map[val];
 	}
 
 	ret = ioctl(dev_fd, VIDIOC_S_EXT_CTRLS, &vcs);
@@ -536,7 +552,6 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 	return ret;
 }
-#endif
 
 void v4l2_device_tw5864::getStatusXml(pugi::xml_node& xmlnode)
 {
