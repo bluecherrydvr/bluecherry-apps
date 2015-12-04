@@ -3,8 +3,8 @@
         <h1 class="page-header"><?php echo CAMERA_PERMISSIONS_SUB; ?>
 
         <ol class="breadcrumb">
-            <li><a href="/ajax/users.php" class="ajax-content"><?php echo USERS_LIST; ?></a></li> 
-            <li><a href="/ajax/users.php?id=<?php echo $p->user->info['id'];?>" class="ajax-content"><?php echo $p->user->info['name']; ?></a></li> 
+            <li><a href="/users" class="ajax-content"><?php echo USERS_LIST; ?></a></li> 
+            <li><a href="/users?id=<?php echo $p->user->info['id'];?>" class="ajax-content"><?php echo $p->user->info['name']; ?></a></li> 
             <li class="active"><?php echo CAMERA_PERMISSIONS_SUB; ?></li>
         </ol>
         </h1>

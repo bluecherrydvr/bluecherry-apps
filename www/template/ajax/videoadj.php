@@ -3,7 +3,7 @@
         <h1 class="page-header"><?php echo VA_HEADER; ?>
     
         <ol class="breadcrumb">
-            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li><a href="/devices" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
            <li class="active"><?php echo VIDEO_ADJ; ?>: <b><?php echo (($device_data[0]['device_name']) ? $device_data[0]['device_name'] : $device_data[0]['id']); ?></b></li>
         </ol>
         </h1>

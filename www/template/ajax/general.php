@@ -230,7 +230,7 @@
     </div>
 </div>
 
-<form action="/ajax/general.php" method="post" class="form-horizontal hidden" id="general-test-email-form">
+<form action="/general" method="post" class="form-horizontal hidden" id="general-test-email-form">
     <input type="hidden" name="mode" value="testemail">
     <input type="hidden" name="email" value="">
 </form>

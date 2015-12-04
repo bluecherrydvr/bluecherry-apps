@@ -5,8 +5,8 @@
         <h1 class="page-header">
     
         <ol class="breadcrumb">
-            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
-            <li><a href="/ajax/ptzpresetlist.php?id=<?php echo $camera->info['id']; ?>" class="ajax-content"><?php echo IPP_HEADER; ?> <b><?php echo $camera->info['device_name']; ?></b></a></li>
+            <li><a href="/devices" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li><a href="/ptzpresetlist?id=<?php echo $camera->info['id']; ?>" class="ajax-content"><?php echo IPP_HEADER; ?> <b><?php echo $camera->info['device_name']; ?></b></a></li>
             <li class="active"> <?php echo IPP_EDIT; ?> <b><?php echo $preset->preset['name']; ?></b></li>
         </ol>
         </h1>
@@ -16,7 +16,7 @@
 
 <div class="row">
     <div class="col-lg-12 col-md-12">
-        <form action="/ajax/ptzpresetedit.php?id=<?php echo ((!empty($preset->preset['id'])) ? $preset->preset['id'] : 'new'); ?>&ref=<?php echo $camera->info['id']; ?>" method="POST" class="form-horizontal">
+        <form action="/ptzpresetedit?id=<?php echo ((!empty($preset->preset['id'])) ? $preset->preset['id'] : 'new'); ?>&ref=<?php echo $camera->info['id']; ?>" method="POST" class="form-horizontal">
         	<input type="hidden" name="ref" value="<?php echo $camera->info['id']; ?>" />
         	<input type="hidden" name="presetId" value="<?php echo ((!empty($preset->preset['id'])) ? $preset->preset['id'] : 'new'); ?>" />
 
@@ -34,7 +34,7 @@
 
                     <div class="form-group">
                         <div class="col-lg-12 col-md-12">
-                            <button class="btn btn-success pull-right send-req-form" type="submit" data-redirect-success="/ajax/ptzpresetlist.php?id=<?php echo $camera->info['id']; ?>"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
+                            <button class="btn btn-success pull-right send-req-form" type="submit" data-redirect-success="/ptzpresetlist?id=<?php echo $camera->info['id']; ?>"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
                         </div>
                         <div class="clearfix"></div>
                     </div>

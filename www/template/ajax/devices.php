@@ -11,7 +11,7 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <a href="/ajax/addip.php" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i> <?php echo AIP_HEADER; ?></a>
+        <a href="/addip" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i> <?php echo AIP_HEADER; ?></a>
         <div class="clearfix"></div>
     </div>
 </div>
@@ -131,10 +131,10 @@
                                                     <?php echo SETTINGS; ?> <span class="caret"></span>
                                                 </button>
                                                 <ul class="dropdown-menu">
-                                                    <li><a href="/ajax/videoadj.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
-                                                    <li><a href="/ajax/motionmap.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_MMAP;?></a></li>
-                                                    <li><a href="/ajax/deviceschedule.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_SCHED;?></a></li>
-                                                    <li><a href="/ajax/ptzsettings.php?id=<?php echo $device->info['driver']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ;?></a></li>
+                                                    <li><a href="/videoadj?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_VIDADJ;?></a></li>
+                                                    <li><a href="/motionmap?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_MMAP;?></a></li>
+                                                    <li><a href="/deviceschedule?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_SCHED;?></a></li>
+                                                    <li><a href="/ptzsettings?id=<?php echo $device->info['driver']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ;?></a></li>
                                                 </ul>
                                             </div>
                                         </div>

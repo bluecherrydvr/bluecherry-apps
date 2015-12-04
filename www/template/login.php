@@ -49,7 +49,7 @@
                     <div class="panel-heading">Please Sign In
                     </div>
                     <div class="panel-body">
-                        <form role="form" method="post" action="/ajax/login.php">
+                        <form role="form" method="post" action="/login">
                             <fieldset>
                                 <div class="form-group">
                                     <input class="form-control" placeholder="Username" name="login" autofocus>

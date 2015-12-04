@@ -6,7 +6,7 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <a href="/ajax/downloadlogs.php" class="btn btn-success pull-right"><?php echo LOG_DOWNLOAD; ?></a>
+        <a href="/downloadlogs" class="btn btn-success pull-right"><?php echo LOG_DOWNLOAD; ?></a>
         <div class="clearfix"></div>
     </div>
 </div>
@@ -26,7 +26,7 @@
 
 <div class="row">
     
-    <form action="/ajax/log.php" method="post">
+    <form action="/log" method="post">
     <div class="col-lg-4 col-md-4 form-group">
 	    <?php echo arrayToSelect(array('bc' => 'Bluecherry Server Log', 'www' => 'Bluecherry WWW Log'), $type, 'type', 'send-req-form-select', false, 'data-type-data="HTML" data-func-after="logDispData"'); ?>
     </div>

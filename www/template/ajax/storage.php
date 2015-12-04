@@ -18,7 +18,7 @@
 
 <br>
 
-<form id="storage-form" action="/ajax/storage.php" method="POST">
+<form id="storage-form" action="/storage" method="POST">
 <div class="row">
     <div class="col-lg-12">
         <table class="table table-striped table-storage">
