@@ -63,7 +63,7 @@
         <div class="panel-heading"><?php echo STS_PICKER_HEADER; ?></div>
         <div class="panel-body">
 
-        <form action="/ajax/statistics.php" method="POST">
+        <form action="/statistics" method="POST">
         <div class="row">
             <div class="col-lg-6 col-md-6">
                 <div class="form-group" style="position: relative;">

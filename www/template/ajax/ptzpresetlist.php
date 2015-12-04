@@ -3,7 +3,7 @@
         <h1 class="page-header">
     
         <ol class="breadcrumb">
-            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li><a href="/devices" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
             <li class="active"> <?php echo IPP_HEADER . $camera->info['device_name']; ?></li>
         </ol>
         </h1>
@@ -12,7 +12,7 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <a href="/ajax/ptzpresetedit.php?id=new&ref=<?php echo $camera->info['id'];?>" class="btn btn-success pull-right ajax-content" type="submit"><i class="fa fa-plus fa-fw"></i> <?php echo IPP_NEW; ?></a>
+        <a href="/ptzpresetedit?id=new&ref=<?php echo $camera->info['id'];?>" class="btn btn-success pull-right ajax-content" type="submit"><i class="fa fa-plus fa-fw"></i> <?php echo IPP_NEW; ?></a>
         <div class="clearfix"></div>
     </div>
 </div>
@@ -35,7 +35,7 @@
                         <?php echo $preset['name']; ?>
                     </td>
                     <td class="col-lg-2 col-md-2 text-right">
-                        <a href="/ajax/ptzpresetedit.php?id=<?php echo $preset['id'];?>&ref=<?php echo $camera->info['id'];?>" type="submit" class="btn btn-success ajax-content"><i class="fa fa-edit fa-fw"></i></a>
+                        <a href="/ptzpresetedit?id=<?php echo $preset['id'];?>&ref=<?php echo $camera->info['id'];?>" type="submit" class="btn btn-success ajax-content"><i class="fa fa-edit fa-fw"></i></a>
 
                         <form action="/ajax/update.php" method="POST" style="display: inline-block;">
                             <input name="mode" value="deleteIpPtzPreset" type="hidden">

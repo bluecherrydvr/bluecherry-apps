@@ -3,7 +3,7 @@
         <h1 class="page-header"><?php echo MMAP_HEADER; ?>
     
         <ol class="breadcrumb">
-            <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
+            <li><a href="/devices" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
             <li class="active"><?php echo EDITING_MMAP; ?> <b><?php echo (empty($camera->info['device_name']) ? $camera->info['id'] : $camera->info['device_name']); ?></b></li>
         </ol>
         </h1>

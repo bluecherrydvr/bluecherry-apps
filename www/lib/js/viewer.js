@@ -40,7 +40,7 @@ window.addEvent('load', function(){
 				var id = item.get('id');
 				var elParent = el.getParent();
 				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
-				el.set('src', '/media/mjpeg.php?multipart=true&id='+id);
+				el.set('src', '/media/mjpeg?multipart=true&id='+id);
 				if (item.get('class')){
 					addPtz(el, id);
 				};
@@ -57,7 +57,7 @@ window.addEvent('load', function(){
 	$$('.l9').addEvent('click', function(){ setLayout(9);	});
 	$$('.l16').addEvent('click', function(){ setLayout(16); });
 	$('logout').addEvent('click', function(){
-		document.location = '/ajax/logout.php';
+		document.location = '/logout';
 	});
 	$('backToAdmin').addEvent('click', function(){
 		document.location = '/';
@@ -102,7 +102,7 @@ presetRequest = function(command, presetId, cameraId, name){
 		data += '&preset='+presetId;
 	}
 	var request = new Request.HTML({
-		url: 'media/ptz.php',
+		url: 'media/ptz',
 		data: data,
 		method: 'get',
 		onRequest: function(){
@@ -145,7 +145,7 @@ addPtz = function(el, id){
 
 layoutsUpdate = function(mode, layout){
 	var request = new Request({
-		url: 'liveview/layouts.php',
+		url: 'liveview/layouts',
 		data: 'mode='+mode+'&layout='+layout,
 		method: 'post',
 		onRequest: function(){
@@ -172,7 +172,7 @@ makeGrid = function(){
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
 			var imgClass = 'noImg'; //(imgSrcId!='none') ? 'lvImg' :
 			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
-			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg.php?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
+			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
 			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId});
 			lvImg.inject(thisCol);
 			
@@ -245,7 +245,7 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 		}
 	}
 	var request = new Request.HTML({
-		url: 'media/ptz.php',
+		url: 'media/ptz',
 		data: data,
 		method: 'get',
 		onRequest: function(){

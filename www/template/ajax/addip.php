@@ -22,7 +22,7 @@
 
 <div class="row">
     <div class="col-lg-12 col-md-12">
-        <form action="/ajax/addip.php" method="POST" class="form-horizontal">
+        <form action="/addip" method="POST" class="form-horizontal">
 	        <input type="hidden" name="mode" value="addip" />
 
             <div class="panel panel-default">
@@ -156,7 +156,7 @@
                     
                     <div class="form-group">
                         <div class="col-lg-6 col-lg-offset-4 col-md-6 col-md-offset-4">
-                            <button class="btn btn-success send-req-form" type="submit" data-redirect-success="/ajax/devices.php"><i class="fa fa-check fa-fw"></i> <?php echo AIP_ADD; ?></button>
+                            <button class="btn btn-success send-req-form" type="submit" data-redirect-success="/devices"><i class="fa fa-check fa-fw"></i> <?php echo AIP_ADD; ?></button>
                         </div>
                     </div>
 

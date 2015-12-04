@@ -14,7 +14,7 @@
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo BACKUP_B_TITLE; ?></div>
             <div class="panel-body">
-                <form action="/ajax/backup.php?mode=prepare" method="post" id="backup-form">
+                <form action="/backup?mode=prepare" method="post" id="backup-form">
                     <div class="form-group">
                         <label class=""><?php echo str_replace(array('%USERS%', '%DBNAME%'), array('root', $database_parameters['db']), BACKUP_PWD); ?></label>
                         <input class="form-control" type="password" name="pwd"  />
@@ -54,7 +54,7 @@
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo BACKUP_R_TITLE; ?></div>
             <div class="panel-body">
-                <form action="/ajax/backup.php?mode=restore" method="post">
+                <form action="/backup?mode=restore" method="post">
                     <div class="form-group" style="display: none;">
                         <input class="form-control" type="password" name="pwd"  />
                     </div>

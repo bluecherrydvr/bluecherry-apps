@@ -5,7 +5,7 @@
         <h1 class="page-header"><?php (empty($dvr_users->data['new'])) or $dvr_users->data[0]['name']='Create new user'; echo ($dvr_users->all) ? USERS_ALL_TABLE_HEADER : USERS_DETAIL_TABLE_HEADER.$dvr_users->data[0]['name']; ?>
 
         <ol class="breadcrumb">
-            <?php  echo ($dvr_users->all) ? '<li class="active">'.USERS_ALL_TABLE_SUBHEADER.'</li>' : '<li><a href="/ajax/users.php" class="ajax-content">'.USERS_LIST.'</a></li> <li class="active">'.$dvr_users->data[0]['name'].'</li>'; ?>
+            <?php  echo ($dvr_users->all) ? '<li class="active">'.USERS_ALL_TABLE_SUBHEADER.'</li>' : '<li><a href="/users" class="ajax-content">'.USERS_LIST.'</a></li> <li class="active">'.$dvr_users->data[0]['name'].'</li>'; ?>
         </ol>
         </h1>
     </div>
@@ -17,7 +17,7 @@
     if ($dvr_users->all) { ?>
 <div class="row">
     <div class="col-lg-12 col-md-12">
-        <a href="/ajax/users.php?id=new" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i>  <?php echo USERS_NEW; ?></a>
+        <a href="/users?id=new" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i>  <?php echo USERS_NEW; ?></a>
         <div class="clearfix"></div>
     </div>
 </div>
@@ -47,7 +47,7 @@
         			}
                     $email_list = implode(', ', $tmp);
             ?>
-                <tr class="users-list-bl-item ajax-content" data-url="/ajax/users.php?id=<?php echo $info['id']; ?>">
+                <tr class="users-list-bl-item ajax-content" data-url="/users?id=<?php echo $info['id']; ?>">
                     <td><?php echo $info['name']; ?></td><td><?php echo $info['username']; ?></td>
                     <td><?php echo $email_list; ?></td>
                     <td><?php echo (($info['access_setup'])  ? USERS_STATUS_SETUP : USERS_STATUS_VIEWER); ?></td>
@@ -76,10 +76,10 @@
             <form action="/ajax/update.php" method="POST" class="pull-left">
                 <input type="hidden" name="mode" value="deleteUser">
                 <input type="hidden" name="id" value="<?php echo $dvr_users->data[0]['id']; ?>">
-                <button type="submit" class="btn btn-danger send-req-form" data-redirect="/ajax/users.php" data-confirm="Delete this user (ID: <?php echo $dvr_users->data[0]['id'];?>)?"><i class="fa fa-times fa-fw"></i><?php echo DELETE_USER; ?></button>
+                <button type="submit" class="btn btn-danger send-req-form" data-redirect="/users" data-confirm="Delete this user (ID: <?php echo $dvr_users->data[0]['id'];?>)?"><i class="fa fa-times fa-fw"></i><?php echo DELETE_USER; ?></button>
             </form>
 
-            <a href="/ajax/cameraperms.php?id=<?php echo $dvr_users->data[0]['id'];?> " class="btn btn-primary pull-left ajax-content"><i class="fa fa-video-camera fa-fw"></i> Edit access list</a>
+            <a href="/cameraperms?id=<?php echo $dvr_users->data[0]['id'];?> " class="btn btn-primary pull-left ajax-content"><i class="fa fa-video-camera fa-fw"></i> Edit access list</a>
 
         <?php } ?>
 
