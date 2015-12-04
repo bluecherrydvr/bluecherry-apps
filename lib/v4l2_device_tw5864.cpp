@@ -16,6 +16,50 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
+#ifndef V4L2_CTRL_CLASS_DETECT
+
+#define V4L2_CTRL_CLASS_DETECT         0x00a30000      /* Detection controls */
+
+/*  Detection-class control IDs defined by V4L2 */
+#define V4L2_CID_DETECT_CLASS_BASE             (V4L2_CTRL_CLASS_DETECT | 0x900)
+#define V4L2_CID_DETECT_CLASS                  (V4L2_CTRL_CLASS_DETECT | 1)
+
+#define V4L2_CID_DETECT_MD_MODE                        (V4L2_CID_DETECT_CLASS_BASE + 1)
+enum v4l2_detect_md_mode {
+       V4L2_DETECT_MD_MODE_DISABLED            = 0,
+       V4L2_DETECT_MD_MODE_GLOBAL              = 1,
+       V4L2_DETECT_MD_MODE_THRESHOLD_GRID      = 2,
+       V4L2_DETECT_MD_MODE_REGION_GRID         = 3,
+};
+#define V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD    (V4L2_CID_DETECT_CLASS_BASE + 2)
+#define V4L2_CID_DETECT_MD_THRESHOLD_GRID      (V4L2_CID_DETECT_CLASS_BASE + 3)
+#define V4L2_CID_DETECT_MD_REGION_GRID         (V4L2_CID_DETECT_CLASS_BASE + 4)
+
+#define V4L2_EVENT_MOTION_DET 6
+
+
+/* Redefining v4l2_ext_control to take over old kernel headers installed */
+struct my_v4l2_ext_control {
+	__u32 id;
+	__u32 size;
+	__u32 reserved2[1];
+	union {
+		__s32 value;
+		__s64 value64;
+		char *string;
+		__u8 *p_u8;
+		__u16 *p_u16;
+		__u32 *p_u32;
+		void *ptr;
+	};
+} __attribute__ ((packed));
+
+#else
+
+#define my_v4l2_ext_control v4l2_ext_control
+
+#endif
+
 
 /**
  * Select the best between two formats.
@@ -441,8 +485,7 @@ void v4l2_device_tw5864::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-#if 0
-static const uint16_t solo_value_map[] = {
+static const uint16_t tw5864_value_map[] = {
 	0xffff, 1152, 1024, 768, 512, 384
 };
 
@@ -473,7 +516,7 @@ int v4l2_device_tw5864::set_motion_thresh_global(char value)
 		struct v4l2_control vc;
 		vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
 		/* Upper 16 bits are 0 for the global threshold */
-		vc.value = solo_value_map[val];
+		vc.value = tw5864_value_map[val];
 		return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 	}
 
@@ -494,33 +537,23 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
 	vc.p_u16 = buf;
-	vc.size = 2 * 45 * 45;
+	vc.size = 2 * 12 * 16;  /* HARDCODE*/  //45 * 45;
 
 	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
 	vcs.count = 1;
 	vcs.controls = (struct v4l2_ext_control *)&vc;
 
-	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
-	if (size < 22 * vh) {
-		bc_log(Debug, "Received motion threshold map of wrong size");
-		return -1;
-	}
+	const unsigned vh = 12;  /* TODO FIX HARDCODE */  //(caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
 
 	ret = set_motion(true);
 	if (ret)
 		return ret;
 
 	for (unsigned y = 0, pos = 0; y < vh; y++) {
-		for (unsigned x = 0; x < 22; x++) {
+		for (unsigned x = 0; x < 16; x++) {
 			int val = clamp(map[pos++], '0', '5') - '0';
 
-			/* Set motion threshold on a 2x2 sector. Our input map
-			 * has half the resolution the devices work with, in
-			 * both directions. */
-			buf[(2*y  ) * 45 + 2*x  ] = solo_value_map[val];
-			buf[(2*y+1) * 45 + 2*x  ] = solo_value_map[val];
-			buf[(2*y  ) * 45 + 2*x+1] = solo_value_map[val];
-			buf[(2*y+1) * 45 + 2*x+1] = solo_value_map[val];
+			buf[ y * 16 + x] = solo_value_map[val];  /* TODO TEST ARRAY FILLING */
 		}
 	}
 
@@ -536,7 +569,6 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 	return ret;
 }
-#endif
 
 void v4l2_device_tw5864::getStatusXml(pugi::xml_node& xmlnode)
 {
