@@ -1,6 +1,6 @@
 <?php 
 
-class licensing extends Controller {
+class licenses extends Controller {
 	
     public function __construct()
     {
@@ -10,7 +10,7 @@ class licensing extends Controller {
 
     public function getData()
     {
-        $this->setView('ajax.licensing');
+        $this->setView('ajax.licenses');
 
         $this->view->licenses = data::getObject('Licenses');
     }
