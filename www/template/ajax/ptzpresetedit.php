@@ -187,8 +187,8 @@
 
                         <div class="col-lg-6 col-md-6">
                             <select class="form-control" name="protocol">
-                                <option value="http" <?php echo ($preset->preset['protocol'] == "http" ? "selected" : ""); ?>>http</option>
-                                <option value="https" <?php echo ($preset->preset['protocol'] == "https" ? "selected" : ""); ?>>https</option>
+                                <option value="http" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "http")) ? "selected" : ""); ?>>http</option>
+                                <option value="https" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "https")) ? "selected" : ""); ?>>https</option>
                             </select>
                         </div>
                     </div>
