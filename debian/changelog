@@ -1,3 +1,13 @@
+bluecherry (1:2.5.15) precise trusty wily wheezy jessie sid; urgency=low
+
+  * custom ptz - resolved protocol problem
+  * issue #116
+  * changed AllowOverride in apache.conf for .htaccess file
+  * client programm login fix
+  * direct links
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 08 Dec 2015 13:47:13 +0200
+
 bluecherry (1:2.5.14) precise trusty wily wheezy jessie sid; urgency=low
 
   * Fix solo driver distinguishing
