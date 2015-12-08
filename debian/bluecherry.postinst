@@ -89,6 +89,7 @@ case "$1" in
 		# Apache modules and sites
 		a2enmod ssl
 		a2enmod php5
+		a2enmod rewrite
 
 		# Remove a file prefiously tracked as conffile from old place
 		rm /etc/apache2/sites-{enabled,available}/bluecherry || true
