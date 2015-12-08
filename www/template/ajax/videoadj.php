@@ -78,7 +78,7 @@
             <label class="col-lg-4 control-label"><?php echo VA_VIDEO_QUALITY; ?></label>
 
             <div class="col-lg-8">
-                <div class="bfh-slider" data-id="<?php echo $device_data[0]['id']; ?>" data-name="contrast" data-value="<?php echo $device_data[0]['video_quality']; ?>"></div>
+                <div class="bfh-slider" data-id="<?php echo $device_data[0]['id']; ?>" data-name="video_quality" data-value="<?php echo $device_data[0]['video_quality']; ?>"></div>
             </div>
         </div>
 
