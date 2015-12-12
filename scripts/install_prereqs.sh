@@ -24,6 +24,12 @@ case $ID in
 		;;
 esac
 
+case "`uname --hardware-platform`" in
+	arm*)
+		ADDITIONAL_PKGS=
+		;;
+esac
+
 export DEBIAN_FRONTEND=noninteractive
 
 function fake() {
