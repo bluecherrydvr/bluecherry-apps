@@ -49,6 +49,10 @@ libav/config.mak:
 		--disable-stripping \
 		--disable-doc \
 		\
+		--disable-libxcb \
+		--disable-xlib \
+		--disable-sdl \
+		\
 		--disable-everything \
 		\
 		--enable-indev=v4l2 \
