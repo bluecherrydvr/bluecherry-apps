@@ -47,9 +47,29 @@ EOF
 		;;
 esac
 
-debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
+case $ARCH in
+	arm*)
+		mkdir -p "$LOCATION/"{,p1,p2}
+		wget -O - http://odroid.in/ubuntu_14.04lts/ubuntu-14.04lts-server-odroid-xu3-20150725.img.xz \
+			| xzdec > $LOCATION/img
+		LOOPDEV=`losetup -P --show -f $LOCATION/img`
+		mount ${LOOPDEV}p1 $LOCATION/p1
+		mount ${LOOPDEV}p2 $LOCATION/p2
+		cp -a $LOCATION/p2 $LOCATION
+		cp -a $LOCATION/p1 $LOCATION/boot
+		umount -l ${LOOPDEV}p1
+		umount -l ${LOOPDEV}p2
+		losetup -d $LOOPDEV
+		sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-tools/update-initramfs.conf
+		echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head
+		echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
+		;;
+	*)
+		debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
+		cp ./sources.list $LOCATION/etc/apt/sources.list
+		;;
+esac
 
-cp ./sources.list $LOCATION/etc/apt/sources.list
 
 mkdir -p $LOCATION/build
 mount --rbind `dirname $0`/../ $LOCATION/build
@@ -68,6 +88,13 @@ function cleanup() {
 }
 trap cleanup INT TERM QUIT
 
-sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
+case $ARCH in
+	arm*)
+		sudo chroot "$LOCATION" qemu-arm-static /bin/bash -e /build/scripts/install_prereqs.sh
+		;;
+	*)
+		sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
+		;;
+esac
 
 cleanup

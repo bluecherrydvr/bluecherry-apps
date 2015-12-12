@@ -44,6 +44,13 @@ do
 	sudo mount --rbind {/,$LOCATION/}$x
 done
 
-sudo chroot "$LOCATION" /bin/bash -e -c "cd /$MOUNT_LOC && $COMMAND"
+case $ARCH in
+	arm*)
+		sudo chroot "$LOCATION" qemu-arm-static /bin/bash -e -c "cd /$MOUNT_LOC && $COMMAND"
+		;;
+	*)
+		sudo chroot "$LOCATION" /bin/bash -e -c "cd /$MOUNT_LOC && $COMMAND"
+		;;
+esac
 
 cleanup
