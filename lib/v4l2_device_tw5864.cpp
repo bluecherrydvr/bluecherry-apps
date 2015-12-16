@@ -485,18 +485,17 @@ void v4l2_device_tw5864::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
-static const uint16_t tw5864_value_map[] = {
-	0xffff, 1152, 1024, 768, 512, 384
+/* mv_x + mv_y heuristic (Dec 16 2015):
+ * In theory, upper limit is 0x7fe.
+ * In practice, highest seen value for 1 FPS is 1800+
+ */
+static const uint16_t tw5864_md_value_map[] = {
+	0xffff, 1200, 600, 300, 150, 75
 };
 
 int v4l2_device_tw5864::set_motion(bool on)
 {
 	int ret;
-	if (!(caps() & BC_CAM_CAP_V4L2_MOTION)) {
-		bc_log(Error, "Motion detection is not implemented for non-solo V4L2 devices.");
-		return -ENOSYS;
-	}
-
 	struct v4l2_control vc;
 	vc.id = V4L2_CID_DETECT_MD_MODE;
 	vc.value = on ? V4L2_DETECT_MD_MODE_THRESHOLD_GRID : V4L2_DETECT_MD_MODE_DISABLED;
@@ -512,13 +511,11 @@ int v4l2_device_tw5864::set_motion(bool on)
 int v4l2_device_tw5864::set_motion_thresh_global(char value)
 {
 	int val = clamp(value, '0', '5') - '0';
-	if (caps() & BC_CAM_CAP_V4L2_MOTION) {
-		struct v4l2_control vc;
-		vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
-		/* Upper 16 bits are 0 for the global threshold */
-		vc.value = tw5864_value_map[val];
-		return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
-	}
+	struct v4l2_control vc;
+	vc.id = V4L2_CID_DETECT_MD_GLOBAL_THRESHOLD;
+	/* Upper 16 bits are 0 for the global threshold */
+	vc.value = tw5864_md_value_map[val];
+	return ioctl(dev_fd, VIDIOC_S_CTRL, &vc);
 
 	return 0;
 }
@@ -526,10 +523,10 @@ int v4l2_device_tw5864::set_motion_thresh_global(char value)
 int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 {
 	int ret;
-	if (!(caps() & BC_CAM_CAP_V4L2_MOTION))
-		return -ENOSYS;
 
-	uint16_t buf[45 * 45];
+#define MD_CELLS_HOR 16
+#define MD_CELLS_VERT 12
+	uint16_t buf[MD_CELLS_HOR * MD_CELLS_VERT];
 	struct my_v4l2_ext_control vc = {0, };
 	struct v4l2_ext_controls vcs = {0, };
 
@@ -537,24 +534,19 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 	vc.id = V4L2_CID_DETECT_MD_THRESHOLD_GRID;
 	vc.p_u16 = buf;
-	vc.size = 2 * 12 * 16;  /* HARDCODE*/  //45 * 45;
+	vc.size = 2 * MD_CELLS_HOR * MD_CELLS_VERT;
 
 	vcs.ctrl_class = V4L2_CTRL_ID2CLASS(vc.id);
 	vcs.count = 1;
 	vcs.controls = (struct v4l2_ext_control *)&vc;
 
-	const unsigned vh = 12;  /* TODO FIX HARDCODE */  //(caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
-
 	ret = set_motion(true);
 	if (ret)
 		return ret;
 
-	for (unsigned y = 0, pos = 0; y < vh; y++) {
-		for (unsigned x = 0; x < 16; x++) {
-			int val = clamp(map[pos++], '0', '5') - '0';
-
-			buf[ y * 16 + x] = solo_value_map[val];  /* TODO TEST ARRAY FILLING */
-		}
+	for (unsigned int i = 0; i < MD_CELLS_HOR * MD_CELLS_VERT; i++) {
+		int val = clamp(map[i], '0', '5') - '0';
+		buf[i] = tw5864_md_value_map[val];
 	}
 
 	ret = ioctl(dev_fd, VIDIOC_S_EXT_CTRLS, &vcs);
