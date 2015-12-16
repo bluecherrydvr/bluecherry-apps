@@ -936,7 +936,7 @@ class globalSettings{
 class Manufacturers
 {
     
-    const API_URL = 'http://www.cambase.io:80/api/v1/vendors.json?page=%d';
+    const API_URL = 'http://api.cambase.io:80/api/v1/vendors.json?page=%d';
     
     public static function getList()
     {
@@ -970,9 +970,9 @@ class Cameras
 {
     
     const API_SEARCH_URL = 
-        'http://www.cambase.io/api/v1/cameras/search.json?page=%d&q%%5Bmanufacturer_name_cont%%5D=%s';
+        'http://api.cambase.io:80/api/v1/models/search.json?page=%d&q%%5Bmanufacturer_name_cont%%5D=%s';
     
-    const API_DETAILS_URL = 'http://www.cambase.io:80/api/v1/cameras/%s.json';
+    const API_DETAILS_URL = 'http://api.cambase.io:80/api/v1/models/%s.json';
     
     public static function getList($manufacturer)
     {
@@ -987,7 +987,7 @@ class Cameras
                     break;
                 } 
                 $data = json_decode($data, true);
-                foreach($data['data']['cameras'] as $camera) {
+                foreach($data['data']['models'] as $camera) {
                     $list[] = array('model' => $camera['id']);
                 }
                 $page++;
@@ -1017,8 +1017,8 @@ class Cameras
                 return '';
             } 
             $data = json_decode($data, true);
-            array_walk($data['cameras'], array('Cameras', 'sanitize'));
-            $data = $data['cameras'];
+            array_walk($data['models'], array('Cameras', 'sanitize'));
+            $data = $data['models'];
         } else {
             $adapter = getReadOnlyDb();
             $stmt = $adapter->prepare(
@@ -1030,8 +1030,12 @@ class Cameras
             $stmt->execute(array($id));
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
         }
-        $data['rtsp_port'] = 
-            strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+
+        if (isset($data['vendor_id'])) {
+            $data['rtsp_port'] = strcasecmp('acti', $data['vendor_id']) === 0 ? 7070 : 554;
+        } else {
+            $data['rtsp_port'] = strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+        }
         
         if(!empty($data['mjpeg_url'])) {
             $data['mjpeg_url'] = '/' . ltrim($data['mjpeg_url'], '/');
