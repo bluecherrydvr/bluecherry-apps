@@ -87,7 +87,7 @@ function processManufacturers($file){
         $data = json_decode($data, true);
         foreach($data['data']['vendors'] as $manufacturer) {
             $manufacturers[$manufacturer['id']] = $i;
-            $sql = sprintf("INSERT INTO \"vendors\" VALUES ('%d', '%s', '%s');", $i, $manufacturer['name'], $manufacturer['id']);
+            $sql = sprintf("INSERT INTO \"manufacturers\" VALUES ('%d', '%s', '%s');", $i, $manufacturer['name'], $manufacturer['id']);
             file_put_contents($file, $sql . PHP_EOL, FILE_APPEND);
             $i++;
         }
