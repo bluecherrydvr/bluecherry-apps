@@ -55,8 +55,8 @@ case $ARCH in
 		LOOPDEV=`losetup -P --show -f $LOCATION/img`
 		mount ${LOOPDEV}p1 $LOCATION/p1
 		mount ${LOOPDEV}p2 $LOCATION/p2
-		cp -a $LOCATION/p2 $LOCATION
-		cp -a $LOCATION/p1 $LOCATION/boot
+		cp -a $LOCATION/p2/* $LOCATION
+		cp -a $LOCATION/p1/* $LOCATION/boot
 		umount -l ${LOOPDEV}p1
 		umount -l ${LOOPDEV}p2
 		losetup -d $LOOPDEV
