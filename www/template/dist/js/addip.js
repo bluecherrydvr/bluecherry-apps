@@ -90,7 +90,7 @@ var cameraProc = function (form) {
 
     self.setData = function (data) {
         getEl('mjpeg', true, true, data.mjpegPath);
-        getEl('rtsppath', true, true, data.rtspPath);
+        getEl('rtsp', true, true, data.rtspPath);
         getEl('port', true, true, data.rtspPort);
         getEl('portMjpeg', true, true, data.mjpegPort);
         getEl('user', true, true, data.user);
