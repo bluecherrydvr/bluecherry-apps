@@ -75,6 +75,7 @@ void motion_handler::run()
 	time_t last_motion = 0;
 	unsigned last_recorded_seq = 0;
 	bool destroy_flag_local;
+	int motion_threshold_percentage_local;
 
 	bc_log_context_push(log);
 
@@ -83,6 +84,7 @@ void motion_handler::run()
 	{
 		lock.lock();
 		destroy_flag_local = destroy_flag;
+		motion_threshold_percentage_local = motion_threshold_percentage;
 		lock.unlock();
 		if (destroy_flag_local)
 			break;
@@ -109,13 +111,14 @@ void motion_handler::run()
 			// Check the "sum" (count) of motion-flagged packets in STWC
 			bc_log(Debug, "stw_motion_analysis.sum() = %" PRId64 "; stw_motion_analysis.count() = %" PRId64 "; percentage = %d; motion_threshold_percentage %d",
 					stw_motion_analysis.sum(), stw_motion_analysis.count(),
-					100 * stw_motion_analysis.sum() / stw_motion_analysis.count(),
-					motion_threshold_percentage);
+					(int)(100 * stw_motion_analysis.sum() / stw_motion_analysis.count()),
+					motion_threshold_percentage_local);
+			bc_log(Debug, "motion_threshold_percentage %d (local %d)", motion_threshold_percentage, motion_threshold_percentage_local);
 			// NOTE actual usage of STW is still not enabled, to avoid unexpected behaviour change.
-#if 0
-#define STW_MIN_FRAMES 4
+#if 1
+#define STW_MIN_FRAMES 10
 			if ((stw_motion_analysis.count() < STW_MIN_FRAMES)
-					|| (100 * stw_motion_analysis.sum() / stw_motion_analysis.count() < motion_threshold_percentage))
+					|| (100 * stw_motion_analysis.sum() / stw_motion_analysis.count() < motion_threshold_percentage_local))
 				continue;
 #undef STW_MIN_FRAMES
 			// Note: STW analysis is reset on pause and stop.
