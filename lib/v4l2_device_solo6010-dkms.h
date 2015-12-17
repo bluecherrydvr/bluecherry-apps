@@ -12,7 +12,7 @@ public:
 	v4l2_device_solo6010_dkms(BC_DB_RES dbres);
 	virtual ~v4l2_device_solo6010_dkms();
 
-	bool has_error() const { return dev_fd < 0; }
+	virtual bool has_error() const { return dev_fd < 0; }
 
 	virtual int start();
 	virtual void stop();
@@ -22,16 +22,16 @@ public:
 
 	virtual bool has_audio() const { return 0; }
 
-	int caps() const { return cam_caps; }
+	virtual int caps() const { return cam_caps; }
 
-	int set_resolution(uint16_t width, uint16_t height, uint8_t interval);
-	int set_osd(const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
-	int set_mjpeg();
-	int set_control(unsigned int ctrl, int val);
+	virtual int set_resolution(uint16_t width, uint16_t height, uint8_t interval);
+	virtual int set_osd(const char *fmt, ...) __attribute__ ((format (printf, 2, 3)));
+	virtual int set_mjpeg();
+	virtual int set_control(unsigned int ctrl, int val);
 
-	int set_motion(bool on);
-	int set_motion_thresh(const char *map, size_t size);
-	int set_motion_thresh_global(char value);
+	virtual int set_motion(bool on);
+	virtual int set_motion_thresh(const char *map, size_t size);
+	virtual int set_motion_thresh_global(char value);
 
 	virtual void getStatusXml(pugi::xml_node& xmlnode);
 private:

@@ -215,7 +215,6 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	} else if (!strncmp(device, "TW5864", 6)) {
 		bc->type = BC_DEVICE_V4L2_TW5864;
 		bc->input = new v4l2_device_tw5864(dbres);
-		ret = reinterpret_cast<v4l2_device_tw5864*>(bc->input)->has_error();
 
 		/* TODO Add variant for GENERIC */
 	} else {
@@ -224,12 +223,11 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		if (!strcmp(solo_driver_name, "solo6x10_edge")) {
 			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;
 			bc->input = new v4l2_device_solo6010_dkms(dbres);
-			ret = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->has_error();
 		} else {
 			bc->type = BC_DEVICE_V4L2_SOLO6X10;
 			bc->input = new v4l2_device_solo6x10(dbres);
-			ret = reinterpret_cast<v4l2_device_solo6x10*>(bc->input)->has_error();
 		}
+		ret = bc->input->has_error();
 	}
 
 	bc->source = new stream_source("Input Source");

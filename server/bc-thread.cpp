@@ -393,16 +393,15 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 
 	/* The following operations are effective only for some V4L2 devices */
-	input_device *v4l2 = bc->input;
-	ret  = v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
-	ret |= v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
-	ret |= v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
-	ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
+	ret  = bc->input->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
+	ret |= bc->input->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
+	ret |= bc->input->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
+	ret |= bc->input->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
 	if (ret) {
 		bc_status_component_error("Error setting controls on device %d", id);
 		goto fail;
 	}
-	ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
+	ret |= bc->input->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
 	if (ret)
 		bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
 
@@ -628,14 +627,13 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	}
 
 	if (control_changed) {
-		v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
-		ret  = v4l2->set_control(V4L2_CID_HUE, current->hue);
-		ret |= v4l2->set_control(V4L2_CID_CONTRAST, current->contrast);
-		ret |= v4l2->set_control(V4L2_CID_SATURATION, current->saturation);
-		ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
+		ret  = bc_rec->bc->input->set_control(V4L2_CID_HUE, current->hue);
+		ret |= bc_rec->bc->input->set_control(V4L2_CID_CONTRAST, current->contrast);
+		ret |= bc_rec->bc->input->set_control(V4L2_CID_SATURATION, current->saturation);
+		ret |= bc_rec->bc->input->set_control(V4L2_CID_BRIGHTNESS, current->brightness);
 		if (ret)
 			return -1;
-		ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - current->video_quality);
+		ret |= bc_rec->bc->input->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - current->video_quality);
 		if (ret)
 			bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
 	}

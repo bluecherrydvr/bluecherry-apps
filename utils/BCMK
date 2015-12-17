@@ -1,7 +1,7 @@
 CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
-TARGETS		= getjpeg pelcocmd ptzcmd \
+TARGETS		= pelcocmd ptzcmd \
 		  bc-license
 
 all: $(TARGETS)

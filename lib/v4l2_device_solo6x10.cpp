@@ -399,15 +399,6 @@ int v4l2_device_solo6x10::set_resolution(uint16_t width, uint16_t height,
 	return re;
 }
 
-int v4l2_device_solo6x10::set_mjpeg()
-{
-	vfmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
-	if (ioctl(dev_fd, VIDIOC_S_FMT, &vfmt) < 0)
-		return -1;
-
-	return 0;
-}
-
 /* Check range and convert our 0-100 to valid ranges in the hardware */
 int v4l2_device_solo6x10::set_control(unsigned int ctrl, int val)
 {

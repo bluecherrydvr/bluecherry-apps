@@ -88,6 +88,7 @@ public:
 	virtual void getStatusXml(pugi::xml_node& xmlnode) = 0;
 
 	virtual int caps() const { return 0; }
+	virtual bool has_error() const { return false; }
 
 	virtual int set_resolution(uint16_t width, uint16_t height, uint8_t interval) { return 0; }
 	virtual int set_osd(const char *fmt, ...) __attribute__ ((format (printf, 2, 3))) { return 0; }
