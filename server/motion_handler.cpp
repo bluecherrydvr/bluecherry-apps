@@ -13,7 +13,7 @@ public:
 };
 
 motion_handler::motion_handler()
-	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0)
+	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0), motion_threshold_percentage(66)
 {
 	raw_stream = new raw_input_consumer;
 }
