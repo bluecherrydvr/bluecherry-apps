@@ -25,7 +25,9 @@ motion_handler::~motion_handler()
 
 void motion_handler::destroy()
 {
+	lock.lock();
 	destroy_flag = true;
+	lock.unlock();
 	raw_stream->buffer_wait.notify_all();
 }
 
@@ -45,19 +47,24 @@ void motion_handler::set_buffer_time(int pre, int post)
 	if (pre == prerecord_time && post == postrecord_time)
 		return;
 
+	lock.lock();
 	prerecord_time = pre;
 	postrecord_time = post;
+	lock.unlock();
 
 	raw_stream->buffer.set_duration(prerecord_time);
 }
 
 void motion_handler::set_motion_analysis_stw(int64_t interval_mcs)
 {
+	std::lock_guard<std::mutex> l(lock);
 	stw_motion_analysis.setTimeWindow(interval_mcs);
 }
 
 void motion_handler::set_motion_analysis_percentage(int percentage)
 {
+	std::lock_guard<std::mutex> l(lock);
+	bc_log(Debug, "motion_threshold_percentage set to %d (was: %d)", percentage, motion_threshold_percentage);
 	motion_threshold_percentage = percentage;
 }
 
@@ -67,12 +74,19 @@ void motion_handler::run()
 	bool recording = false;
 	time_t last_motion = 0;
 	unsigned last_recorded_seq = 0;
+	bool destroy_flag_local;
 
 	bc_log_context_push(log);
 
 	int last_pkt_seq = -1;
-	while (!destroy_flag)
+	while (true)
 	{
+		lock.lock();
+		destroy_flag_local = destroy_flag;
+		lock.unlock();
+		if (destroy_flag_local)
+			break;
+
 		raw_stream->buffer_wait.wait(l);
 		if (raw_stream->buffer.empty())
 			continue;
