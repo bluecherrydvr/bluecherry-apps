@@ -21,6 +21,30 @@
 
 #include <pugixml.hpp>
 
+#define BC_BUFFERS		16
+#define BC_BUFFERS_JPEG		8
+
+/* Some things that are driver specific */
+#ifndef V4L2_BUF_FLAG_MOTION_ON
+#define V4L2_BUF_FLAG_MOTION_ON		0x0400
+#define V4L2_BUF_FLAG_MOTION_DETECTED	0x0800
+#endif
+
+#ifndef V4L2_CID_MOTION_ENABLE
+#define V4L2_CID_MOTION_ENABLE		(V4L2_CID_PRIVATE_BASE+0)
+#define V4L2_CID_MOTION_THRESHOLD	(V4L2_CID_PRIVATE_BASE+1)
+#define V4L2_CID_MOTION_TRACE		(V4L2_CID_PRIVATE_BASE+2)
+#endif
+
+/* Camera capability flags */
+#define BC_CAM_CAP_V4L2_MOTION 0x00000002
+#define BC_CAM_CAP_OSD         0x00000004
+#define BC_CAM_CAP_SOLO        0x00000008
+#define BC_CAM_CAP_MJPEG_URL   0x00000010
+/* Set for all BC_DEVICE_V4L2 handles operating
+ * in PAL. NTSC is assumed if unset. */
+#define BC_CAM_CAP_V4L2_PAL    0x00000020
+
 class stream_packet;
 class stream_properties;
 
@@ -62,6 +86,18 @@ public:
 	std::shared_ptr<const stream_properties> properties() const { return current_properties; }
 
 	virtual void getStatusXml(pugi::xml_node& xmlnode) = 0;
+
+	virtual int caps() const { return 0; }
+
+	virtual int set_resolution(uint16_t width, uint16_t height, uint8_t interval) { return 0; }
+	virtual int set_osd(const char *fmt, ...) __attribute__ ((format (printf, 2, 3))) { return 0; }
+	virtual int set_mjpeg() { return 0; }
+	virtual int set_control(unsigned int ctrl, int val) { return 0; }
+
+	virtual int set_motion(bool on) { return 0; }
+	virtual int set_motion_thresh(const char *map, size_t size) { return 0; }
+	virtual int set_motion_thresh_global(char value) { return 0; }
+
 protected:
 	bool _audio_enabled, _started;
 	std::string _error_message;

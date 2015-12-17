@@ -48,27 +48,12 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	bc_rec->bc->input->stop();
 }
 
-static void try_formats(struct bc_record *bc_rec)
-{
-	if (bc_rec->bc->type != BC_DEVICE_V4L2)
-		return;
-
-	v4l2_device_solo6010_dkms *d = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
-
-	if (d->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval)) {
-		bc_rec->log.log(Warning, "Error setting format");
-	}
-}
-
 static void update_osd(struct bc_record *bc_rec)
 {
 #define OSD_TEXT_MAX 44
 #define DATE_LEN 19
 #define OSD_NAME_MAX_LEN (OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
-	if (bc_rec->bc->type != BC_DEVICE_V4L2)
-		return;
-
-	v4l2_device_solo6010_dkms *d = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc_rec->bc->input);
+	input_device *d = bc_rec->bc->input;
 	time_t t = time(NULL);
 	char buf[DATE_LEN + 1 /* for null-termination */];
 	char name_buf[OSD_NAME_MAX_LEN + 1 /* for null-termination */];
@@ -242,8 +227,8 @@ void bc_record::run()
 				std::thread rec_th(&recorder::run, rec);
 				rec_th.detach();
 
-				if (bc->type == BC_DEVICE_V4L2) {
-					static_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_motion(true);
+				if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
+					bc->input->set_motion(true);
 					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 				} else {
 					m_processor = new motion_processor;
@@ -332,8 +317,7 @@ error:
 	stop_handle_properly(this);
 	bc_event_cam_end(&event);
 
-	if (bc->type == BC_DEVICE_V4L2)
-		reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_osd(" ");
+	bc->input->set_osd(" ");
 }
 
 
@@ -402,25 +386,28 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc->input->set_audio_enabled(!bc_rec->cfg.aud_disabled);
 
 	/* Initialize device state */
-	try_formats(bc_rec);
+	if (bc_rec->bc->input->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval))
+		bc_rec->log.log(Warning, "Error setting format");
 	bc_rec->update_motion_thresholds();
 	check_schedule(bc_rec);
 
-	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_device_solo6010_dkms *v4l2 = static_cast<v4l2_device_solo6010_dkms*>(bc->input);
-		ret  = v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
-		ret |= v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
-		ret |= v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
-		ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
-		if (ret) {
-			bc_status_component_error("Error setting controls on device %d", id);
-			goto fail;
-		}
-		ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
-		if (ret)
-			bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
-	}
 
+	/* The following operations are effective only for some V4L2 devices */
+	input_device *v4l2 = bc->input;
+	ret  = v4l2->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
+	ret |= v4l2->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
+	ret |= v4l2->set_control(V4L2_CID_SATURATION, bc_rec->cfg.saturation);
+	ret |= v4l2->set_control(V4L2_CID_BRIGHTNESS, bc_rec->cfg.brightness);
+	if (ret) {
+		bc_status_component_error("Error setting controls on device %d", id);
+		goto fail;
+	}
+	ret |= v4l2->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
+	if (ret)
+		bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
+
+
+	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {
 		bc_status_component_error("Failed to start thread");
@@ -475,8 +462,8 @@ void bc_record::destroy_elements()
 		m_handler = 0;
 	}
 
-	if (bc && bc->type == BC_DEVICE_V4L2)
-		static_cast<v4l2_device_solo6010_dkms*>(bc->input)->set_motion(false);
+	if (bc)
+		bc->input->set_motion(false);
 }
 
 bool bc_record::update_motion_thresholds()
@@ -488,11 +475,8 @@ bool bc_record::update_motion_thresholds()
 			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;
-	}
-
-	if (bc->type == BC_DEVICE_V4L2) {
-		v4l2_device_solo6010_dkms *v = static_cast<v4l2_device_solo6010_dkms*>(bc->input);
-		if (v->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
+	} else {
+		if (bc->input->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
 			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;
@@ -639,7 +623,8 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	if (format_changed) {
 		stop_handle_properly(bc_rec);
-		try_formats(bc_rec);
+		if (bc_rec->bc->input->set_resolution(bc_rec->cfg.width, bc_rec->cfg.height, bc_rec->cfg.interval))
+			bc_rec->log.log(Warning, "Error setting format");
 	}
 
 	if (control_changed) {

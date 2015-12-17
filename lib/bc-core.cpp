@@ -47,71 +47,6 @@ int get_solo_driver_name(char *buf, size_t bufsize)
 	return 0;
 }
 
-#if 0
-int bc_buf_key_frame(struct bc_handle *bc)
-{
-	struct v4l2_buffer *vb;
-
-	if (bc->type == BC_DEVICE_LAVF)
-		return lavf_device_frame_is_keyframe(&bc->rtp);
-
-	if (bc->type != BC_DEVICE_V4L2)
-		return 1;
-
-	vb = bc_buf_v4l2(bc);
-
-	if (bc->v4l2.vfmt.fmt.pix.pixelformat == V4L2_PIX_FMT_MJPEG)
-		return 1;
-
-	if (vb && vb->flags & V4L2_BUF_FLAG_KEYFRAME)
-		return 1;
-
-	return 0;
-}
-
-int bc_buf_is_video_frame(struct bc_handle *bc)
-{
-	if (bc->type == BC_DEVICE_LAVF)
-		return bc->rtp.frame.stream_index == bc->rtp.video_stream_index;
-	return 1;
-}
-#endif
-
-#if 0
-int bc_buf_get(struct bc_handle *bc)
-{
-	int ret = EINVAL;
-
-	if (bc->type == BC_DEVICE_LAVF) {
-		ret = lavf_device_read(&bc->rtp);
-	} else if (bc->type == BC_DEVICE_V4L2) {
-		struct v4l2_buffer vb;
-		bc_buf_return(bc);
-		reset_vbuf(&vb);
-
-		ret = ioctl(bc->v4l2.dev_fd, VIDIOC_DQBUF, &vb);
-		bc->v4l2.local_bufs++;
-		/* XXX better error handling here */
-		if (ret)
-			return EAGAIN;
-
-		/* Update and store this buffer */
-		bc->v4l2.buf_idx = vb.index;
-		bc->v4l2.p_buf[bc->v4l2.buf_idx].vb = vb;
-
-		if (!bc->got_vop) {
-			if (!bc_buf_key_frame(bc))
-				return EAGAIN;
-			bc->got_vop = 1;
-		}
-
-		ret = 0;
-	}
-
-	return ret;
-}
-#endif
-
 static inline char *split(char *s, char delim)
 {
 	s = strchr(s, delim);
@@ -287,7 +222,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		char solo_driver_name[32] = "";
 		get_solo_driver_name(solo_driver_name, sizeof(solo_driver_name));
 		if (!strcmp(solo_driver_name, "solo6x10_edge")) {
-			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;  /* == BC_DEVICE_V4L2! Beware! */
+			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;
 			bc->input = new v4l2_device_solo6010_dkms(dbres);
 			ret = reinterpret_cast<v4l2_device_solo6010_dkms*>(bc->input)->has_error();
 		} else {
