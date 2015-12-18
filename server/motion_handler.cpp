@@ -105,7 +105,7 @@ void motion_handler::run()
 					it->pts, it->seq);
 
 			/* Triggered mode skips percentage checks */
-			if (stream_packet::TriggerFlag) {
+			if (it->flags & stream_packet::TriggerFlag) {
 				triggered = true;
 				break;  // for...
 			}

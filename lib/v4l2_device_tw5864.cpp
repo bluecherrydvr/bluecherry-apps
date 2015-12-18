@@ -98,7 +98,7 @@ static uint32_t get_best_pixfmt(int fd)
 }
 
 v4l2_device_tw5864::v4l2_device_tw5864(BC_DB_RES dbres)
-	: dev_fd(-1), cam_caps(0), dev_id(0), demuxer(NULL)
+	: dev_fd(-1), cam_caps(BC_CAM_CAP_V4L2_MOTION), dev_id(0), demuxer(NULL)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
 	int input_number;
