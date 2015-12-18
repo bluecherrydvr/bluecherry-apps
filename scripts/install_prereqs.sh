@@ -47,7 +47,16 @@ then
 	apt-get install -y -V upstart
 	fake
 fi
+
+sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-tools/update-initramfs.conf || true
+echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
+echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
+
 apt-get upgrade -y -V
 fake
+
+sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-tools/update-initramfs.conf || true
+echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
+echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
 
 apt-get install -y -V git build-essential gcc g++ debhelper php5-dev ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo $ADDITIONAL_PKGS

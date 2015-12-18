@@ -12,10 +12,8 @@ sudo mount --bind $KERNEL_LOCATION $CHROOT_LOCATION/$KERNEL_LOCATION_IN_CHROOT
 function cleanup {
 	sudo umount -l $CHROOT_LOCATION/$KERNEL_LOCATION_IN_CHROOT
 }
-trap cleanup INT TERM QUIT
+trap cleanup INT TERM QUIT EXIT
 
 export COMMAND="export DIST=$DIST ARCH=$ARCH KERN_SRC=$KERNEL_LOCATION_IN_CHROOT && ./scripts/build_tw5864_kernel.sh"
 export DIST ARCH
 `dirname $0`/exec_dist_arch.sh
-
-cleanup

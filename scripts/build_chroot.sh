@@ -60,9 +60,7 @@ case $ARCH in
 		umount -l ${LOOPDEV}p1
 		umount -l ${LOOPDEV}p2
 		losetup -d $LOOPDEV
-		sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-tools/update-initramfs.conf
-		echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head
-		echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
+		echo '91.189.88.151 ports.ubuntu.com' >> $LOCATION/etc/hosts
 		;;
 	*)
 		debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
@@ -86,7 +84,7 @@ function cleanup() {
 	done
 	sudo umount -l $LOCATION/build
 }
-trap cleanup INT TERM QUIT
+trap cleanup INT TERM QUIT EXIT
 
 case $ARCH in
 	arm*)
@@ -96,5 +94,3 @@ case $ARCH in
 		sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
 		;;
 esac
-
-cleanup

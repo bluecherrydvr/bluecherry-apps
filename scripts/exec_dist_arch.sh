@@ -34,7 +34,7 @@ function cleanup {
 	sudo umount -l "$BUILD_LOC"
 }
 
-trap cleanup INT TERM QUIT
+trap cleanup INT TERM QUIT EXIT
 
 mkdir -p "$BUILD_LOC"
 sudo mount --rbind "$WORKCOPY_LOC" "$BUILD_LOC"
@@ -52,5 +52,3 @@ case $ARCH in
 		sudo chroot "$LOCATION" /bin/bash -e -c "cd /$MOUNT_LOC && $COMMAND"
 		;;
 esac
-
-cleanup
