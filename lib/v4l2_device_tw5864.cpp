@@ -481,7 +481,7 @@ void v4l2_device_tw5864::update_properties()
  * In practice, highest seen value for 1 FPS is 1800+
  */
 static const uint16_t tw5864_md_value_map[] = {
-	0xffff, 1200, 600, 300, 150, 75
+	0xffff, 16, 15, 14, 13, 12
 };
 
 int v4l2_device_tw5864::set_motion(bool on)

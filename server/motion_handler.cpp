@@ -78,12 +78,9 @@ void motion_handler::run()
 
 	int last_pkt_seq = -1;
 
-	lock.lock();
 	while (!destroy_flag)
 	{
-		lock.unlock();
 		raw_stream->buffer_wait.wait(l);
-		lock.lock();
 		if (raw_stream->buffer.empty())
 			continue;
 
@@ -114,15 +111,14 @@ void motion_handler::run()
 			sqw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
 			// Check the "sum" (count) of motion-flagged packets in SQWC
 			int percentage = 100 * sqw_motion_analysis.sum() / sqw_motion_analysis.count();
-			bc_log(Debug, "percentage = %d; motion_threshold_percentage %d",
-					percentage, motion_threshold_percentage);
+			bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
+					sqw_motion_analysis.count(), percentage, motion_threshold_percentage);
 
 			if ((sqw_motion_analysis.count() == sqw_motion_analysis.getSeqWindow())
 					&& (percentage >= motion_threshold_percentage)) {
 				triggered = true;
 				break;  // for...
 			}
-			// Note: STW analysis is reset on pause and stop.
 		}
 
 		int send_from = -1;
@@ -149,7 +145,6 @@ void motion_handler::run()
 		if (!triggered && recording && buffer.back().ts_monotonic - last_motion > postrecord_time - prerecord_time) {
 			bc_log(Debug, "motion: pause recording");
 			recording = false;
-			sqw_motion_analysis.reset();  // Drains STW but preserves interval value
 		}
 
 		if (!recording && last_recorded_seq && buffer.front().seq > last_recorded_seq) {
@@ -157,7 +152,6 @@ void motion_handler::run()
 			last_recorded_seq = 0;
 			// Send null packet to end recording
 			send(stream_packet());
-			sqw_motion_analysis.reset();  // Drains STW but preserves interval value
 			continue;
 		}
 
@@ -188,7 +182,6 @@ void motion_handler::run()
 
 		// note lock is held
 	}
-	lock.unlock();
 
 	bc_log(Debug, "motion_handler destroying");
 	l.unlock();
