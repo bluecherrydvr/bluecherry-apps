@@ -301,15 +301,20 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->interval = bc_db_get_val_int(dbres, "video_interval");
 	cfg->prerecord = (int16_t)bc_db_get_val_int(dbres, "buffer_prerecording");
 	cfg->postrecord = (int16_t)bc_db_get_val_int(dbres, "buffer_postrecording");
-	cfg->motion_analysis_stw = (int64_t)bc_db_get_val_int(dbres, "motion_analysis_stw");
-	if (cfg->motion_analysis_stw == -1) {
-		bc_log(Debug, "motion_analysis_stw field is likely absent, DB schema not updated. Using default value");
-		cfg->motion_analysis_stw = 200000;  // 0.2 second
+	cfg->motion_analysis_sqw_length = (int64_t)bc_db_get_val_int(dbres, "motion_analysis_sqw_length");
+	if (cfg->motion_analysis_sqw_length == -1) {
+		bc_log(Debug, "motion_analysis_sqw_length field is likely absent, DB schema not updated. Using default value");
+		cfg->motion_analysis_sqw_length = 1;  // 1 frame, considering no false positives by default
+		if (!strncmp(dev, "TW5864", 6))
+			cfg->motion_analysis_sqw_length = 10;  // 10 frames, considering high false-positives rate
+
 	}
 	cfg->motion_analysis_percentage = bc_db_get_val_int(dbres, "motion_analysis_percentage");
 	if (cfg->motion_analysis_percentage == -1) {
 		bc_log(Debug, "motion_analysis_percentage field is likely absent, DB schema not updated. Using default value");
-		cfg->motion_analysis_percentage = 50;
+		cfg->motion_analysis_percentage = 1;  // 1%, considering no false positives by default
+		if (!strncmp(dev, "TW5864", 6))
+			cfg->motion_analysis_sqw_length = 25;  // 25% (I-frames are not flagged), considering high false-positives rate
 	}
 	cfg->debug_level = (int8_t)bc_db_get_val_int(dbres, "debug_level");
 	cfg->aud_disabled = bc_db_get_val_int(dbres, "audio_disabled") != 0;

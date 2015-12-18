@@ -94,7 +94,7 @@ struct bc_device_config {
 	int     width, height;
 	int     interval;
 	int16_t prerecord, postrecord;
-	int64_t motion_analysis_stw;
+	int     motion_analysis_sqw_length;
 	int     motion_analysis_percentage;
 	int8_t  debug_level;
 	bool   aud_disabled;
