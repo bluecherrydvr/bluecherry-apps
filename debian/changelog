@@ -1,3 +1,9 @@
+bluecherry (1:2.5.17) precise trusty wily wheezy jessie sid; urgency=low
+
+  * V4L2 stuff refactoring, tw5864 motion detection
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 18 Dec 2015 19:38:12 +0200
+
 bluecherry (1:2.5.16) precise trusty wily wheezy jessie sid; urgency=low
 
   * Update cambase db
