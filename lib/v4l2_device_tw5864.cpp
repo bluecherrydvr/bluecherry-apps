@@ -261,7 +261,7 @@ int v4l2_device_tw5864::start()
 		bc_log(Error, "Failed to analyze stream from %s: %d (%s)", dev_file, ret, err);
 		goto fail;
 	}
-#if 0
+
 	// Subscribe for motion events
 	sub.type = V4L2_EVENT_MOTION_DET;
 
@@ -270,7 +270,7 @@ int v4l2_device_tw5864::start()
 		strerror_r(errno, err, sizeof(err));
 		bc_log(Error, "Failed to subscribe to V4L2 motion events from %s: %d (%s)", dev_file, ret, err);
 	}
-#endif
+
 	_started = true;
 	update_properties();
 	return 0;
@@ -310,7 +310,7 @@ int v4l2_device_tw5864::read_packet()
 
 	create_stream_packet(&pkt);
 	av_free_packet(&pkt);
-#if 0
+
 	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
 	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
 	fcntl(dev_fd, F_SETFL, fcntl_flags);  // restore flags, exit non-blocking mode
@@ -320,7 +320,7 @@ int v4l2_device_tw5864::read_packet()
 		;  // No motion, OK
 	else
 		bc_log(Warning, "Unexpected result of DQEVENT request: ret %d, errno %d, ev.type %d\n", ret, ret == -1 ? errno : 0, ev.type);
-#endif
+
 	return 0;
 }
 
