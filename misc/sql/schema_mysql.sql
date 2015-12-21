@@ -68,6 +68,8 @@ CREATE TABLE `Devices` (
   `motion_algorithm` tinyint(1) DEFAULT '1',
   `frame_downscale_factor` decimal(2,1) DEFAULT '0.5',
   `min_motion_area` smallint(6) DEFAULT '5',
+  `motion_analysis_ssw_length` int(11) DEFAULT '-1',
+  `motion_analysis_percentage` int(11) DEFAULT '-1',
   `schedule` varchar(168) NOT NULL DEFAULT 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
   `schedule_override_global` tinyint(1) DEFAULT '0',
   `disabled` tinyint(1) DEFAULT '0',
