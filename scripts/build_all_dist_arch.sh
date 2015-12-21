@@ -13,7 +13,7 @@ function work {
 }
 
 # TODO Implement parallel building outside of sources tree
-for DIST in precise trusty wily wheezy jessie sid
+for DIST in precise trusty wily wheezy jessie
 do
 	export DIST
 	for ARCH in amd64 i386
