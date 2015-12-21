@@ -55,10 +55,10 @@ void motion_handler::set_buffer_time(int pre, int post)
 	raw_stream->buffer.set_duration(prerecord_time);
 }
 
-void motion_handler::set_motion_analysis_sqw_length(int length)
+void motion_handler::set_motion_analysis_ssw_length(int length)
 {
 	std::lock_guard<std::mutex> l(lock);
-	sqw_motion_analysis.setSeqWindow(length);
+	ssw_motion_analysis.setSeqWindow(length);
 }
 
 void motion_handler::set_motion_analysis_percentage(int percentage)
@@ -94,8 +94,8 @@ void motion_handler::run()
 			last_pkt_seq = it->seq;
 			bc_log(Debug, "pkt: flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u", it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
 			// If N% of frames in the past X seconds contain motion, trigger
-			// Push info on packet into sliding sequence window checker (SQWC)
-			// Drop from SQWC the packets which don't fit to the specified window (done internally with push())
+			// Push info on packet into sliding sequence window checker (SSWC)
+			// Drop from SSWC the packets which don't fit to the specified window (done internally with push())
 			bc_log(Debug, "pkt: motion: %s, trigger: %s, pts: %" PRId64 " seq: %u",
 					(it->flags & stream_packet::MotionFlag) ? "YES" : "NO ",
 					(it->flags & stream_packet::TriggerFlag) ? "YES" : "NO ",
@@ -108,13 +108,13 @@ void motion_handler::run()
 			}
 
 			// TODO Use DTS instead of PTS for STWC for sure monotonity?
-			sqw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
-			// Check the "sum" (count) of motion-flagged packets in SQWC
-			int percentage = 100 * sqw_motion_analysis.sum() / sqw_motion_analysis.count();
+			ssw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
+			// Check the "sum" (count) of motion-flagged packets in SSWC
+			int percentage = 100 * ssw_motion_analysis.sum() / ssw_motion_analysis.count();
 			bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
-					sqw_motion_analysis.count(), percentage, motion_threshold_percentage);
+					ssw_motion_analysis.count(), percentage, motion_threshold_percentage);
 
-			if ((sqw_motion_analysis.count() == sqw_motion_analysis.getSeqWindow())
+			if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
 					&& (percentage >= motion_threshold_percentage)) {
 				triggered = true;
 				break;  // for...

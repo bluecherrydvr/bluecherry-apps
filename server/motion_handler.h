@@ -44,7 +44,7 @@ public:
 	 * continuation helps avoid excessive recordings.
 	 */
 	void set_buffer_time(int prerecord, int postrecord);
-	void set_motion_analysis_sqw_length(int length);
+	void set_motion_analysis_ssw_length(int length);
 	void set_motion_analysis_percentage(int percentage);
 
 	/* This stream should be connected to the raw input stream, and is used to buffer
@@ -63,7 +63,7 @@ private:
 	int prerecord_time;
 	int postrecord_time;
 
-	sliding_seq_window sqw_motion_analysis;
+	sliding_seq_window ssw_motion_analysis;
 	int motion_threshold_percentage;
 };
 

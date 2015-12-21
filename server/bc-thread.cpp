@@ -213,7 +213,7 @@ void bc_record::run()
 				m_handler = new motion_handler;
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
-				m_handler->set_motion_analysis_sqw_length(cfg.motion_analysis_sqw_length);
+				m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
 				m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
 
 				rec = new recorder(this);
@@ -602,7 +602,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	                        current->brightness != update->brightness
 							|| current->video_quality != update->video_quality);
 	bool mrecord_changed = (current->prerecord != update->prerecord || current->postrecord != update->postrecord
-			|| current->motion_analysis_sqw_length != update->motion_analysis_sqw_length
+			|| current->motion_analysis_ssw_length != update->motion_analysis_ssw_length
 			|| current->motion_analysis_percentage != update->motion_analysis_percentage);
 	bool debug_changed = (current->debug_level != update->debug_level);
 
@@ -648,7 +648,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	if (mrecord_changed) {
 		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
-		bc_rec->m_handler->set_motion_analysis_sqw_length(bc_rec->cfg.motion_analysis_sqw_length);
+		bc_rec->m_handler->set_motion_analysis_ssw_length(bc_rec->cfg.motion_analysis_ssw_length);
 		bc_rec->m_handler->set_motion_analysis_percentage(bc_rec->cfg.motion_analysis_percentage);
 	}
 
