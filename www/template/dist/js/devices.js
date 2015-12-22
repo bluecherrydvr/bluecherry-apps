@@ -236,16 +236,20 @@ var motionGrid = function(el) {
         var img = grid_bl.find('img');
         var refresh_bl = grid_bl.find('.glyphicon-refresh');
 
+        var driver = img.data('driver');
+
         img.on('load', function() { 
                 img.addClass('img-active');
                 refresh_bl.hide();
 
-                drawGrid(img);
+                if (driver == 'tw5864') drawGrid(img, 16, 12);
+                else drawGrid(img);
             }).on('error', function() { 
                 img.addClass('img-active');
                 refresh_bl.hide();
 
-                drawGrid(img);
+                if (driver == 'tw5864') drawGrid(img, 16, 12);
+                else drawGrid(img);
             }).attr("src", img.attr("src"));
     };
 

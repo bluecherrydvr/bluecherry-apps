@@ -155,7 +155,7 @@
                 <div class="col-lg-7 col-md-7">
                     <div style="width: 352px;" class="grid-bl">
                         <span class="glyphicon glyphicon-refresh spinning"></span>
-                        <img width="352" src="/media/mjpeg.php?id=<?php echo $camera->info['id']; ?>" />
+                        <img width="352" src="/media/mjpeg.php?id=<?php echo $camera->info['id']; ?>" data-driver="<?php echo strtolower($camera->info['driver']); ?>"/>
 
 
                     </div>
