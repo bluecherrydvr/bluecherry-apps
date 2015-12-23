@@ -935,27 +935,21 @@ class globalSettings{
 
 class Manufacturers
 {
-    
-    const API_URL = 'http://api.cambase.io:80/api/v1/vendors.json?page=%d';
-    
+
+    const API_URL = 'https://api.evercam.io/v1/vendors';
+
     public static function getList()
     {
         global $global_settings;
         $list = array();
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
-            $page = 1;
-            do {
-                $url = sprintf(self::API_URL, $page);
-                $data = @file_get_contents($url);
-                if(!$data) {
-                    break;
-                } 
+            $data = @file_get_contents(self::API_URL);
+            if($data) {
                 $data = json_decode($data, true);
-                foreach($data['data']['vendors'] as $manufacturer) {
+                foreach($data['vendors'] as $manufacturer) {
                     $list[$manufacturer['id']] = $manufacturer['name'];
                 }
-                $page++;
-            } while($page <= $data['data']['paging']['number_of_pages']);
+            }
         } else {
             $adapter = getReadOnlyDb();
             $list = $adapter->query('SELECT manufacturer FROM manufacturers');
@@ -968,30 +962,27 @@ class Manufacturers
 
 class Cameras
 {
-    
-    const API_SEARCH_URL = 
-        'http://api.cambase.io:80/api/v1/models/search.json?page=%d&q%%5Bmanufacturer_name_cont%%5D=%s';
-    
-    const API_DETAILS_URL = 'http://api.cambase.io:80/api/v1/models/%s.json';
-    
+    const API_SEARCH_URL = 'https://api.evercam.io/v1/models?page=%d&vendor_id=%s';
+    const API_DETAILS_URL = 'https://api.evercam.io/v1/models/%s';
+
     public static function getList($manufacturer)
     {
         global $global_settings;
         $list = array();
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
-            $page = 1;
+            $page = 0;
             do {
-                $url = sprintf(self::API_SEARCH_URL, $page, urlencode($manufacturer));
+                $url = sprintf(self::API_SEARCH_URL, $page, rawurlencode($manufacturer));
                 $data = @file_get_contents($url);
                 if(!$data) {
                     break;
-                } 
+                }
                 $data = json_decode($data, true);
-                foreach($data['data']['models'] as $camera) {
-                    $list[] = array('model' => $camera['id']);
+                foreach($data['models'] as $camera) {
+                    $list[$camera['id']] = $camera['name'];
                 }
                 $page++;
-            } while($page <= $data['data']['paging']['number_of_pages']);
+            } while($page <= $data['pages']);
         } else {
             $adapter = getReadOnlyDb();
             $list = $adapter->prepare(
@@ -1006,19 +997,19 @@ class Cameras
         }
         return $list;
     }
-    
+
     public static function getCamDetails($id)
     {
         global $global_settings;
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
-            $url = sprintf(self::API_DETAILS_URL, urlencode($id));
+            $url = sprintf(self::API_DETAILS_URL, rawurlencode($id));
             $data = @file_get_contents($url);
             if(!$data) {
                 return '';
             } 
             $data = json_decode($data, true);
-            array_walk($data['models'], array('Cameras', 'sanitize'));
-            $data = $data['models'];
+            array_walk($data['models'][0], array('Cameras', 'sanitize'));
+            $data = $data['models'][0];
         } else {
             $adapter = getReadOnlyDb();
             $stmt = $adapter->prepare(
@@ -1056,14 +1047,14 @@ class Cameras
                 //<pass><![CDATA[{$data['default_password']}]]></pass>
         //";
         $data_r = Array(
-            'camName' => $data['model'],
-            'mjpegPath' => $data['mjpeg_url'],
+            'camName' => (isset($data['model']) ? $data['model'] : $data['name']),
+            'mjpegPath' => (isset($data['mjpeg_url']) ? $data['mjpeg_url'] : $data['mjpg_url']),
             'rtspPath' => $data['h264_url'],
             'mjpegPort' => 80,
             'rtspPort' => $data['rtsp_port'],
             'resolutions' => $data['resolution'],
-            'user' => $data['default_username'],
-            'pass' => $data['default_password'],
+            'user' => (isset($data['default_username']) ? $data['default_username'] : $data['username']),
+            'pass' => (isset($data['default_password']) ? $data['default_password'] : $data['password']),
         );
         data::responseJSON(true, true, $data_r);
     }

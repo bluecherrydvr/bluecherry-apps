@@ -48,7 +48,7 @@ TABLES;
 function sanitizeValues(&$value, $key) {
     if(in_array(
         $key, 
-        array('jpeg_url', 'h264_url', 'mjpeg_url', 'default_username', 'default_password')
+        array('jpg_url', 'h264_url', 'mjpg_url', 'username', 'password')
     )) {
         $value = str_replace(
             array('Unknown', 'unknown', '<blank>', 'blank', 'none', 'None', 'n/a', 'User defined', 'user defined'), 
@@ -73,33 +73,28 @@ die;
 }
 
 function processManufacturers($file){
-    $base_url = 'http://api.cambase.io/api/v1/vendors.json?page=%d';
-    $page = 1;
+    $base_url = 'https://api.evercam.io/v1/vendors';
     $manufacturers = array();
     $i = 1;
     file_put_contents($file, PHP_EOL . '-- MANUFACTURERS --' . PHP_EOL, FILE_APPEND);
-    do {
-        $url = sprintf($base_url, $page);
-        $data = @file_get_contents($url);
-        if(!$data) {
-            break;
-        } 
+    $data = @file_get_contents($base_url);
+    if($data) {
         $data = json_decode($data, true);
-        foreach($data['data']['vendors'] as $manufacturer) {
+        foreach($data['vendors'] as $manufacturer) {
             $manufacturers[$manufacturer['id']] = $i;
             $sql = sprintf("INSERT INTO \"manufacturers\" VALUES ('%d', '%s', '%s');", $i, $manufacturer['name'], $manufacturer['id']);
             file_put_contents($file, $sql . PHP_EOL, FILE_APPEND);
             $i++;
         }
-        $page++;
-    } while($page <= $data['data']['paging']['number_of_pages']);
+    }
+
     return $manufacturers;
 }
 
 function processCams($file, $manufacturers){
-    $base_url = 'http://api.cambase.io/api/v1/models.json?page=%d';
-    $base_cam_url  = 'http://api.cambase.io/api/v1/models/%s.json';
-    $page = 1;
+    $base_url = 'https://api.evercam.io/v1/models?page=%d';
+    $base_cam_url  = 'https://api.evercam.io/v1/models/%s';
+    $page = 0;
     $i = $duplicated = $failed = 0;
     file_put_contents($file, PHP_EOL . '-- CAMERAS --' . PHP_EOL, FILE_APPEND);
     $ids = array(); 
@@ -116,15 +111,15 @@ function processCams($file, $manufacturers){
             echo sprintf(
                 'Processing items %d-%d of %d.', 
                 $i + 1, 
-                $i + 100 > $data['data']['paging']['total_items'] ? $data['data']['paging']['total_items'] : ($i + 100), 
-                $data['data']['paging']['total_items']
+                $i + 100 > $data['records'] ? $data['records'] : ($i + 100), 
+                $data['records']
             );
             echo PHP_EOL;
         } 
         
-        foreach($data['data']['models'] as $camera) {
+        foreach($data['models'] as $camera) {
             $i++;
-            $cam_url = sprintf($base_cam_url, urlencode($camera['id']));
+            $cam_url = sprintf($base_cam_url, rawurlencode($camera['id']));
             $camData = @file_get_contents($cam_url);
             if(!$camData) {
                 file_put_contents(
@@ -137,7 +132,7 @@ function processCams($file, $manufacturers){
                 continue;
             }
             $camData = json_decode($camData, true);
-            $cam = $camData['models'];
+            $cam = $camData['models'][0];
             if(in_array($cam['id'], $ids)) {
                 file_put_contents(
                     './log.txt', 
@@ -148,13 +143,21 @@ function processCams($file, $manufacturers){
                 $duplicated++;
                 continue;
             }
+            if ($cam['audio_io']) {
+                $cam['audio_in'] = 1;
+                $cam['audio_out'] = 1;
+            } else {
+                $cam['audio_in'] = 0;
+                $cam['audio_out'] = 0;
+            }
+
             array_walk($cam, 'sanitizeValues');
             $sql = <<<SQL
 INSERT INTO "cameras" 
 VALUES (NULL, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, '%s', '%s');
 SQL;
-            $sql = sprintf($sql, $cam['id'], $cam['model'], $manufacturers[$cam['vendor_id']], $cam['jpeg_url'], $cam['mjpeg_url'], 
-                           $cam['h264_url'], $cam['resolution'], $cam['shape'], $cam['default_username'], $cam['default_password'], 
+            $sql = sprintf($sql, $cam['id'], $cam['name'], $manufacturers[$cam['vendor_id']], $cam['jpg_url'], $cam['mjpg_url'], 
+                           $cam['h264_url'], $cam['resolution'], $cam['shape'], $cam['username'], $cam['password'], 
                            empty($cam['psia']) ? '' : $cam['psia'], $cam['onvif'], $cam['ptz'], $cam['infrared'], $cam['varifocal'], 
                            $cam['sd_card'], $cam['upnp'], $cam['poe'], $cam['audio_in'], $cam['audio_out'], $cam['discontinued'], 
                            $cam['wifi'], serialize($cam['images']), $cam['official_url']);
@@ -163,18 +166,18 @@ SQL;
             $ids[] = $cam['id'];
         }
         $page++;
-    } while($page <= $data['data']['paging']['number_of_pages']);
+    } while($page <= $data['pages']);
 
     echo PHP_EOL . PHP_EOL;
     echo '-=-=-=-=-= IMPORT SUMMARY =-=-=-=-=-' . PHP_EOL;
-    echo $data['data']['paging']['total_items'] . ' items were processed.' . PHP_EOL;
+    echo $data['records'] . ' items were processed.' . PHP_EOL;
     echo $failed . ' items failed to import.' . PHP_EOL;
     echo $duplicated . ' duplicated items were found.' . PHP_EOL . PHP_EOL; 
 
 }
 
 if(count($argv) == 1) {
-    print_help();    
+    print_help();
 }
 
 array_shift($argv);
