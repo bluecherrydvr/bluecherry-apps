@@ -1,3 +1,13 @@
+bluecherry (1:2.5.18) precise trusty wily wheezy jessie; urgency=low
+
+  * Fix navigation back via browser button
+  * Enhancement on online cam info
+  * Set custom mot. det. cfg. 16x12 grid for tw5864
+  * Add motion_handler's Sliding Sequence Window config fields to DB
+  * Fix logrotate error
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 23 Dec 2015 16:54:23 +0200
+
 bluecherry (1:2.5.17) precise trusty wily wheezy jessie sid; urgency=low
 
   * V4L2 stuff refactoring, tw5864 motion detection
