@@ -1,5 +1,32 @@
 $(function() {
+
+
     ajaxEvent();
+
+    window.history.pushState({path: window.location.href}, '');
+});
+
+// back button browser
+$(window).on("popstate", function () {
+    if (history.state) {
+        var url = history.state.path;
+        var ajax_req = new ajaxReq();
+        ajax_req.ajaxContent(url, {
+            ajax_content_pushstate: false
+        });
+
+        // reactive left menu item
+        var menus = $('#side-menu li a');
+        menus.removeClass('active');
+        menus.each(function(i) {
+            var menu_url = $(this).attr('href');
+            if (url.indexOf(menu_url) != -1) {
+                $(this).addClass('active');
+                $(this).focus();
+                return false;
+            }
+        });
+    }
 });
 
 function tooltip() {
@@ -139,6 +166,7 @@ var ajaxReq = function () {
     var content_type = false;
     var redir = false;
     var ajax_content = false;
+    var ajax_content_pushstate = true;
     var type_req = "POST";
     var type_data = "JSON";
     var callback_func = null;
@@ -227,7 +255,7 @@ var ajaxReq = function () {
     var respProc = function (msg) {
 
         if (ajax_content) {
-            window.history.pushState({},'', form_act);
+            if (ajax_content_pushstate) window.history.pushState({path: form_act},'', form_act);
             send_but.html(msg);
 
             if ((callback_func !== null) && (typeof(callback_func === 'function'))) callback_func(msg, true);
@@ -405,6 +433,10 @@ var ajaxReq = function () {
     self.ajaxContent = function (el, data) {
         var data = data || {};
         callback_func = data.callback_func || null;
+
+        if (typeof data.ajax_content_pushstate != 'undefined') {
+            ajax_content_pushstate = data.ajax_content_pushstate;
+        }
 
         type_req = "GET";
         type_data = "HTML";
