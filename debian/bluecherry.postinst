@@ -71,6 +71,7 @@ case "$1" in
 		ucfr bluecherry /etc/bluecherry.conf
 
 		# Fixup some permissions
+		echo -e "\n\n\tVerifying permissions of existing files, please wait\n\n"
 		chown -R bluecherry:bluecherry /var/lib/bluecherry
 		chmod -R 770 /var/lib/bluecherry
 		chown -R bluecherry:bluecherry /var/run/bluecherry
