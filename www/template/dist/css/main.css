@@ -1,4 +1,10 @@
 
+@media(min-width:768px) {
+    #page-wrapper.without-left-menu {
+        margin: 0 0 0 0px !important;
+    }
+}
+
 h1 .breadcrumb {
     background-color: transparent;
     padding-top: 0px;
@@ -18,7 +24,7 @@ h1 .breadcrumb li {
 .btn-grey {
     /*color: #FFF;*/
     /*background-color: #F5F5F5;*/
-    border-color: #DDD;    
+    border-color: #DDD;
 }
 
 .text-status-disabled,
@@ -87,11 +93,16 @@ h1 .breadcrumb li {
     margin-bottom: 15px;
 }
 
-#users-list-bl .users-list-bl-item {
+#users-list-bl .users-list-bl-item,
+#playback-events-list td {
     cursor: pointer;
 }
 
-#users-list-bl.table-hover tbody tr:hover td {
+#playback-events-list .selected td {
+    background-color: red;
+}
+
+.table-hover tbody tr:hover td {
     background-color: #FCF8E3;
 }
 
@@ -259,4 +270,25 @@ span.input-group-unstyled {
     border-radius: 4px;
     border: 0px;
     background-color: transparent;
+}
+
+.legend-info {
+    position: relative;
+    top: 1px;
+}
+
+#playback-player {
+    width: inherit;
+    height: inherit;
+}
+
+#playback-events-list-bl {
+    max-height: 250px;
+    overflow: auto;
+}
+
+.mejs-overlay-error {
+    color: #A94442;
+    padding-top: 10px;
+    padding-left: 10px;
 }

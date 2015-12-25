@@ -4,6 +4,7 @@ class vars extends Controller {
 
     public function getData()
     {
+        $locale_en = localeEn();
 
         $res = "
             var_layoutToLoad = '".CHOOSE_LAYOUT."';
@@ -20,6 +21,8 @@ class vars extends Controller {
             var_confirm_remove_license = '".L_CONFIRM_DELETE."';
             var_disable = '".L_DISABLE."';
             var_enable = '".L_ENABLE."';
+            var_locale_en = parseInt(".$locale_en.");
+            var_date_format = '".dateFormat(time(), $locale_en)->format_js."';
         ";
 
         return $res;

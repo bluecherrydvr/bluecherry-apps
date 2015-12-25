@@ -27,6 +27,7 @@ define('MMENU_LOG', 'System Log');
 define('MMENU_DEVICES', 'Devices');
 define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
+define('MMENU_PLAYBACK', 'Playback');
 define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');

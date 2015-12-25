@@ -8,6 +8,7 @@ class Controller {
     protected $user = Array();
     protected $main_template = true;
     protected $varpub;
+    protected $left_menu = true;
 
     public function __construct ()
     {
@@ -57,6 +58,9 @@ class Controller {
 
         if ($this->main_template) {
             $main_page = new View('main_admin');
+
+            $main_page->left_menu = $this->left_menu;
+            $main_page->current_user = $this->user;
 
             $main_page->page_container = $page_container;
             

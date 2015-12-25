@@ -12,7 +12,7 @@
     <meta name="description" content="<?php echo DVR_COMPANY_NAME; ?>">
     <meta name="author" content="<?php echo DVR_COMPANY_NAME; ?>">
 
-	<title><?php echo DVR_COMPANY_NAME.' '.DVR_DVR.PAGE_HEADER_SEPARATOR.PAGE_HEADER_MAIN; ?></title>
+    <title><?php echo DVR_COMPANY_NAME.' '.DVR_DVR.PAGE_HEADER_SEPARATOR.PAGE_HEADER_MAIN; ?></title>
 
     <!-- Bootstrap Core CSS -->
     <link href="/template/bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -38,6 +38,9 @@
     <link href="/template/bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
 
     <link href="/template/bower_components/animate.css" rel="stylesheet">
+
+    <!-- player -->
+    <link href="/template/bower_components/mediaelement/mediaelementplayer.css" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link href="/template/dist/css/main.css?v=<?php echo time(); ?>" rel="stylesheet">
@@ -74,7 +77,19 @@
                         <i class="fa fa-user fa-fw"></i>  <i class="fa fa-caret-down"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-user">
-                        <li><a href="/logout"><i class="fa fa-sign-out fa-fw"></i> <?php echo LOGOUT; ?></a>
+                        <li>
+                            <a href="/liveview"><i class="fa fa-image fa-fw"></i> LiveView</a>
+                        </li>
+                        <li>
+                            <a href="/playback"><i class="fa fa-play fa-fw"></i> Playback</a>
+                        </li>
+                        <?php if ($current_user->info['access_setup']) { ?>
+                        <li>
+                            <a href="/"><i class="fa fa-dashboard fa-fw"></i> Admin panel</a>
+                        </li>
+                        <?php } ?>
+                        <li>
+                            <a href="/logout"><i class="fa fa-sign-out fa-fw"></i> <?php echo LOGOUT; ?></a>
                         </li>
                     </ul>
                     <!-- /.dropdown-user -->
@@ -83,6 +98,7 @@
             </ul>
             <!-- /.navbar-top-links -->
 
+            <?php if ($left_menu) { ?>
             <div class="navbar-default sidebar" role="navigation">
                 <div class="sidebar-nav navbar-collapse" id="navbar-collapse">
                     <ul class="nav" id="side-menu">
@@ -90,6 +106,9 @@
 
                         <li>
                             <a href="javascript:void(0);" class='liveView'><i class="fa fa-image fa-fw"></i> <?php echo MMENU_LIVEVIEW; ?></a>
+                        </li>
+                        <li>
+                            <a href="/playback"><i class="fa fa-play fa-fw"></i> <?php echo MMENU_PLAYBACK; ?></a>
                         </li>
                         <li>
                             <a href="javascript:void(0);" class='downloadClient'><i class="fa fa-download fa-fw"></i> <?php echo MMENU_CLIENT_DOWNLOAD; ?></a>
@@ -168,14 +187,14 @@
 
 
 
-			            <?php
-            				if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
-            				if (!$version->version['up_to_date']){
-            					echo '<div class="alert alert-danger">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div>';
-            				} else {
-            					echo '<div class="alert alert-success">'.UP_TO_DATE.': '.$version->version['installed'].'</div>';
-            				};
-            			?>
+                        <?php
+                            if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
+                            if (!$version->version['up_to_date']){
+                                echo '<div class="alert alert-danger">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div>';
+                            } else {
+                                echo '<div class="alert alert-success">'.UP_TO_DATE.': '.$version->version['installed'].'</div>';
+                            };
+                        ?>
                     </div>
 
 
@@ -219,10 +238,11 @@
                     </div>
                 </div>
             </div>
+            <?php } ?>
             <!-- /.navbar-static-side -->
         </nav>
 
-        <div id="page-wrapper">
+        <div id="page-wrapper" class="<?php echo ((!$left_menu) ? 'without-left-menu' : ''); ?>">
 
         <?php  if (!empty($general_error)){ ?>
             <div class="row general-error">
@@ -233,7 +253,7 @@
                     </div>
                 </div>
             </div>
-		<?php } ?>
+        <?php } ?>
 
             <div id="page-container">
                 <?php echo ((isset($page_container) ? $page_container : 'empty')); ?>
@@ -267,8 +287,11 @@
     <!-- Custom Theme JavaScript -->
     <script src="/template/dist/js/sb-admin-2.js"></script>
 
+    <!-- player -->
+    <script src="/template/bower_components/mediaelement/mediaelement-and-player.min.js"></script>
+
     <!-- Custom Theme JavaScript -->
-	<script type="text/javascript" src="/vars"></script>
+    <script type="text/javascript" src="/vars"></script>
     <script src="/template/dist/js/main.js?v=<?php echo time(); ?>"></script>
     <script src="/template/dist/js/main_load.js?"></script>
 
@@ -284,6 +307,7 @@
     <script src="/template/dist/js/licensing.js"></script>
     <script src="/template/dist/js/videoadj.js"></script>
     <script src="/template/dist/js/general.js"></script>
+    <script src="/template/dist/js/playback.js"></script>
 
     <?php echo getJs(); ?>
 </body>

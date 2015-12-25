@@ -65,23 +65,8 @@ class mediaStreamMp4 extends Controller {
         # After saving resulting recording to temporary file (which is necessary
         # for MP4 format), output the file contents to stdout, indicating content type
         # in HTTP headers.
-
-        # Open the file
-        $fd = fopen($outfile, 'r');
-        if ($fd === false) {
-        	header("HTTP/1.0 500 Internal Server Error - weird: cannot read just-written file");
-        	die();
-        }
-
-        # Unlink the file to avoid leaving it around if connection hangs and PHP process gets terminated prematurely
-        unlink($outfile);
-
-        # Prepare HTTP headers
-        header("Content-Type: application/octet-stream");
-
-        # Stream contents to stdout
-        fpassthru($fd);
-        fclose($fd);
+        if (Inp::get('download')) downloadFile($outfile, $filename);
+        else downloadFile($outfile);
 
     }
 }

@@ -49,6 +49,9 @@
 	<div id='leftMenu'>
 		<div id='logout'><?php echo LOGOUT; ?></div>
 		<?php if ($current_user->info['access_setup']) { echo "<div id='backToAdmin'>".BACK_TO_ADMIN."</div>"; }; ?>
+		<div id="playbackPage">
+			Playback
+		</div>
 		<div id='layoutsControl'>
 			<?php echo LAYOUTS;?>
 		</div>
