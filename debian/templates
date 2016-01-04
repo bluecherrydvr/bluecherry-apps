@@ -24,8 +24,10 @@ Type: password
 Default: bluecherry
 Description: Please enter the database user's password for Bluecherry service
 
-Template: bluecherry/note_revoke_db_credentials
+Template: bluecherry/note_leftover_data
 Type: note
-Description: Database access security consideration
- It is recommended to revoke access permissions for the credentials previously
- used for Bluecherry database, see /etc/bluecherry.conf
+Description: Leftover data notice
+ Package is removed now, but generated data is left intact: config file,
+ database and recorded media files. If you want to remove this data, consider
+ purging package data with "apt-get remove --purge bluecherry", this will
+ remove config file, database and all recordings
