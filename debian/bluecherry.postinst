@@ -141,15 +141,23 @@ case "$1" in
 			# Ask questions
 			db_input high bluecherry/mysql_admin_login  || true
 			db_input high bluecherry/mysql_admin_password  || true
-			db_input high bluecherry/db_name  || true
-			db_input high bluecherry/db_user  || true
-			db_input high bluecherry/db_password  || true
 			db_go  || true
 
 			db_get bluecherry/mysql_admin_login  || true
 			export MYSQL_ADMIN_LOGIN="$RET"
 			db_get bluecherry/mysql_admin_password  || true
 			export MYSQL_ADMIN_PASSWORD="$RET"
+
+			echo "Testing MySQL admin credentials correctness..."
+			if ! mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" &>/dev/null
+			then
+				echo -e "\n\n\tProvided MySQL admin credentials are incorrect, please retry.\n\n"
+				exit 1
+			fi
+
+			db_input high bluecherry/db_name  || true
+			db_go  || true
+
 			db_get bluecherry/db_name  || true
 			export dbname="$RET"
 
@@ -163,6 +171,10 @@ case "$1" in
 				echo -e "\n"
 				exit 1
 			fi
+
+			db_input high bluecherry/db_user  || true
+			db_input high bluecherry/db_password  || true
+			db_go  || true
 
 			db_get bluecherry/db_user  || true
 			export user="$RET"
