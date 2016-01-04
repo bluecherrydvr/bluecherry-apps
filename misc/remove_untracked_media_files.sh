@@ -24,7 +24,7 @@ then
 fi
 
 # Dump the list of absolute filenames from Media table (DB list)
-eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/' /etc/bluecherry.conf)
+. /usr/share/bluecherry/load_db_creds.sh
 echo "Dumping DB list from Media table"
 date
 time echo "SELECT filepath FROM Media" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${DB_LIST_FILE}.raw

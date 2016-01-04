@@ -2,7 +2,7 @@
 
 REFERENCE_DUMPFILE=/usr/share/bluecherry/schema_mysql.sql
 
-eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
+. /usr/share/bluecherry/load_db_creds.sh
 
 DUMPFILE=`mktemp`
 

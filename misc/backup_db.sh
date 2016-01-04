@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e # interrupt on failure
-eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
+. /usr/share/bluecherry/load_db_creds.sh
 
 BKP_ENABLED=`echo "SELECT value FROM GlobalSettings WHERE parameter = 'G_CRON_BKP_ENABLED'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
 if [[ $BKP_ENABLED != 'yes' ]]

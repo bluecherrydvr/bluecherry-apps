@@ -178,8 +178,7 @@ case "$1" in
 			# Any change to initial_data_mysql.sql won't take effect in this
 			# branch, so DB patching script must be added to mysql-upgrade dir
 
-			# Parse config for DB credentials
-			eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
+			. /usr/share/bluecherry/load_db_creds.sh
 			export dbname user password
 
 			# Get DB version
