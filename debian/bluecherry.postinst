@@ -4,7 +4,7 @@ set -x # trace
 
 . /usr/share/debconf/confmodule
 
-DB_BACKUP_GZ_FILE=/tmp/bc_db.sql.gz
+DB_BACKUP_GZ_FILE=/root/bc_db.sql.gz
 
 function db_upgrade_err() {
 	trap - ERR # avoid recurrence
