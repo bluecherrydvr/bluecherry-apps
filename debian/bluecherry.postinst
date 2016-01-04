@@ -131,6 +131,13 @@ case "$1" in
 			# 0-bytes config - fresh installation
 			# Create DB
 
+			# Remove cached answers
+			db_fset bluecherry/mysql_admin_login    seen false || true
+			db_fset bluecherry/mysql_admin_password seen false || true
+			db_fset bluecherry/db_name              seen false || true
+			db_fset bluecherry/db_user              seen false || true
+			db_fset bluecherry/db_password          seen false || true
+
 			# Ask questions
 			db_input high bluecherry/mysql_admin_login  || true
 			db_input high bluecherry/mysql_admin_password  || true
@@ -145,17 +152,22 @@ case "$1" in
 			export MYSQL_ADMIN_PASSWORD="$RET"
 			db_get bluecherry/db_name  || true
 			export dbname="$RET"
+
+			echo "Testing whether database already exists..."
+			if ! mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" -D"$dbname" &>/dev/null
+			then
+				echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:"
+				echo -e "\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;"
+				echo -e "\t * Accomplish removal of previous setup by 'apt-get remove --purge bluecherry';"
+				echo -e "\t * Remove the database '$dbname' manually."
+				echo -e "\n"
+				exit 1
+			fi
+
 			db_get bluecherry/db_user  || true
 			export user="$RET"
 			db_get bluecherry/db_password  || true
 			export password="$RET"
-
-			# Remove cached answers
-			db_fset bluecherry/mysql_admin_login    seen false
-			db_fset bluecherry/mysql_admin_password seen false
-			db_fset bluecherry/db_name              seen false
-			db_fset bluecherry/db_user              seen false
-			db_fset bluecherry/db_password          seen false
 
 			# Actually create DB and tables
 			echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD"
