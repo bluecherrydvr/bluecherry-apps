@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 VERSION := $(shell dpkg-parsechangelog | sed '/^Version:/!d;s/^[^ ]* //')
+DB_VERSION := $(shell cat misc/sql/installed_db_version)
 
 LD_LIBRARY_PATH+=:stage/lib
 
@@ -43,7 +44,12 @@ override_dh_auto_install:
 	echo "$(VERSION)" > debian/bluecherry/usr/share/bluecherry/version
 
 override_dh_installdeb:
-	sed "s/%%CURRENT_VERSION%%/${VERSION}/" debian/bluecherry.preinst.template > debian/bluecherry.preinst
+	echo "#!/bin/bash -e" > debian/bluecherry.preinst
+	cat misc/sql/load_db_creds.sh >> debian/bluecherry.preinst
+	sed \
+		-e "s/%%CURRENT_VERSION%%/${VERSION}/" \
+		-e "s/%%CURRENT_DB_VERSION%%/${DB_VERSION}/" \
+		debian/bluecherry.preinst.template >> debian/bluecherry.preinst
 	dh_installdeb
 	-rm ${CURDIR}/debian/bluecherry/DEBIAN/conffiles
 
