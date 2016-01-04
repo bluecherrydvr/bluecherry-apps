@@ -6,6 +6,37 @@ if [ -f /usr/share/debconf/confmodule ]; then
 	. /usr/share/debconf/confmodule
 fi
 
+function load_db_creds() {
+	# ATTENTION! Duplication of load_db_creds.sh
+	eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
+}
+
+function purge_files() {
+	echo "Removing recording files"
+	echo "SELECT filepath FROM Media" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 | \
+		while IFS= read -r MEDIAFILE
+		do
+			JPGFILE="`echo $MEDIAFILE | sed 's/[.]mkv$/.jpg/'`"
+			rm -f $MEDIAFILE $JPGFILE
+
+			# Try to remove empty basedirs recursively.
+			# This is probably slow, but
+			#  - this is one time thing
+			#  - the input is unsorted (possible to improve)
+			#  - removing each Media file is not the same as removing Storage dirs contents recursively
+			BASEDIR="`dirname $MEDIAFILE`"
+			while rmdir "$BASEDIR"
+			do
+				BASEDIR="`dirname $BASEDIR`"
+			done
+		done
+}
+
+function drop_db() {
+	echo "Dropping database $dbname"
+	echo "DROP DATABASE $dbname" | mysql -D"$dbname" -u"$user" -p"$password"
+}
+
 case "$1" in
 	remove)
 		a2dissite bluecherry.conf || true
@@ -26,6 +57,11 @@ case "$1" in
 			rm -f $CONFIGFILE$ext || true
 		done
 
+		load_db_creds
+		purge_files
+		drop_db
+
+		echo "Removing config file $CONFIGFILE"
 		rm -f $CONFIGFILE
 
 		if which ucf > /dev/null; then
