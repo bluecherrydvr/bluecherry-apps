@@ -19,7 +19,8 @@
                 <img id="liveViewImg" width='352' src='/media/mjpeg.php?id=<?php echo $_GET['id']; ?>' />
             </div>
         </div>
-                    
+
+        <?php if ($device_data[0]['driver'] != 'tw5864') { ?>
         <div class="form-group">
             <label class="col-lg-4 col-md-4 control-label"><?php echo VA_AUDIO_ENABLE; ?></label>
 
@@ -41,6 +42,7 @@
                 <div class="bfh-slider" data-mode="update" data-id="<?php echo $device_data[0]['id']; ?>" data-name="audio_volume" data-value="<?php echo $device_data[0]['audio_volume']; ?>"></div>
             </div>
         </div>
+        <?php } ?>
 
         <div class="form-group">
             <label class="col-lg-4 control-label"><?php echo VA_BRIGHTNESS; ?></label>
