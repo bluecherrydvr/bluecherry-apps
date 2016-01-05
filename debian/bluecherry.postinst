@@ -164,11 +164,11 @@ case "$1" in
 			echo "Testing whether database already exists..."
 			if echo "show databases" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" -D"$dbname" &>/dev/null
 			then
-				echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:"
-				echo -e "\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;"
-				echo -e "\t * Accomplish removal of previous setup by 'apt-get remove --purge bluecherry';"
-				echo -e "\t * Remove the database '$dbname' manually."
-				echo -e "\n"
+				echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:\n" \
+				"\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;\n" \
+				"\t * Accomplish removal of previous setup by 'apt-get remove --purge bluecherry';\n" \
+				"\t * Remove the database '$dbname' manually.\n" \
+				"\n"
 				exit 1
 			fi
 
