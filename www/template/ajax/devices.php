@@ -93,12 +93,14 @@
                         <div class="row">
                         <?php
                             foreach ($card->cameras as $key =>$device){
-                            	if (empty($device->info['id'])) { $device->info['id']=''; };
+                                if (empty($device->info['id'])) { $device->info['id']=''; };
                                 if (empty($device->info['device_name'])) { $device->info['device_name'] = ($device->info['status'] == 'notconfigured') ? DEVICE_VIDEO_NAME_notconfigured : DEVICE_UNNAMED; };
+                                if (isset($device->info['driver']) && ($device->info['driver'] != 'tw5864')) $display_res_fps = true;
+                                else $display_res_fps = false;
                         ?>
 
                             <div class="col-lg-4 col-md-4">
-                                <div class="well well-sm" style="min-height: 220px;">
+                                <div class="well well-sm" style="<?php echo (($display_res_fps) ? 'min-height: 220px;' : ''); ?>">
                                     <div class="row">
                                     <div class="col-lg-12 col-md-12">
                                     <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
@@ -141,7 +143,7 @@
                                     </p>
                                     </div>
                                     </div>
-                                    <?php if ($device->info['status'] != 'notconfigured' && !$device->info['disabled']) { ?>
+                                    <?php if ((($device->info['status'] != 'notconfigured') && !$device->info['disabled']) && $display_res_fps) { ?>
                                     <div>
                                         <div class="row">
                                             <div class="col-lg-6 col-md-6">
