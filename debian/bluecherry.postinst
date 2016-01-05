@@ -149,7 +149,7 @@ case "$1" in
 			export MYSQL_ADMIN_PASSWORD="$RET"
 
 			echo "Testing MySQL admin credentials correctness..."
-			if ! mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" &>/dev/null
+			if ! echo "show databases" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" &>/dev/null
 			then
 				echo -e "\n\n\tProvided MySQL admin credentials are incorrect, please retry.\n\n"
 				exit 1
