@@ -64,6 +64,7 @@
         <input type="hidden" name="type" value="Devices" />
         <input type="hidden" name="mode" value="update" />
 
+        <?php if ($camera->info['protocol'] != 'V4L2') { ?>
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo MOTION_ALGORITHM_TITLE; ?></div>
             <div class="panel-body">
@@ -106,6 +107,7 @@
 
             </div>
         </div>
+        <?php } ?>
 
 
         <div class="panel panel-default">
