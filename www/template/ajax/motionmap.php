@@ -64,6 +64,7 @@
         <input type="hidden" name="type" value="Devices" />
         <input type="hidden" name="mode" value="update" />
 
+        <?php if ($camera->info['protocol'] != 'V4L2') { ?>
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo MOTION_ALGORITHM_TITLE; ?></div>
             <div class="panel-body">
@@ -74,13 +75,13 @@
                     <div class="col-lg-8 col-md-6">
                         <div class="btn-group" data-toggle="buttons">
                             <label class="btn btn-default <?php echo $camera->info['motion_algorithm'] == 1 ? 'active' : '' ?> ">
-                        		<input type="radio" name="motion_algorithm" value="1" style="width: 30px;"
+                                <input type="radio" name="motion_algorithm" value="1" style="width: 30px;"
                                 <?php echo $camera->info['motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> />
-                        		<?php echo MOTION_DEFAULT; ?>
+                                <?php echo MOTION_DEFAULT; ?>
                             </label>
 
                             <label class="btn btn-default <?php echo $camera->info['motion_algorithm'] == '0' ? 'active' : '' ?> ">
-                        		<input type="radio" name="motion_algorithm" value="0" style="width: 30px;"
+                                <input type="radio" name="motion_algorithm" value="0" style="width: 30px;"
                                 <?php echo $camera->info['motion_algorithm'] == 0 ? ' checked="checked"' : '' ?> />
                                 <?php echo MOTION_EXPERIMENTAL ?>
                             </label>
@@ -106,6 +107,7 @@
 
             </div>
         </div>
+        <?php } ?>
 
 
         <div class="panel panel-default">
