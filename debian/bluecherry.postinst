@@ -162,7 +162,7 @@ case "$1" in
 			export dbname="$RET"
 
 			echo "Testing whether database already exists..."
-			if ! mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" -D"$dbname" &>/dev/null
+			if echo "show databases" | mysql -u"$MYSQL_ADMIN_LOGIN" -p"$MYSQL_ADMIN_PASSWORD" -D"$dbname" &>/dev/null
 			then
 				echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:"
 				echo -e "\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;"
