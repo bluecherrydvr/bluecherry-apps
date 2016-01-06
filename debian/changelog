@@ -1,3 +1,20 @@
+bluecherry (1:2.5.19) precise trusty wily wheezy jessie; urgency=low
+
+  * Add playback of recordings in browser
+  * Hide motion detection algorithm options for V4L2 devices
+  * Hide audio, resolution and framerate settings for tw5864
+  * purge: remove recordings and drop DB
+  * Change postrm notice
+  * Don't remove /etc/bluecherry.conf on new install
+  * preinst: enhance downgrade check, bind it to DB version, + more
+  * Store upgrade's DB backup in /root, not in /tmp
+  * Test MySQL admin credentials correctness early
+  * Abort when given DB already exists
+  * Drop unneeded files misc/sql/*_2020000.sql
+  * postinst: Print describing message before going for long chmod & chown
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 06 Jan 2016 23:31:07 +0200
+
 bluecherry (1:2.5.18) precise trusty wily wheezy jessie; urgency=low
 
   * Fix navigation back via browser button
