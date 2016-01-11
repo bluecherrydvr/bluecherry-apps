@@ -239,6 +239,7 @@ int v4l2_device_tw5864::start()
 	AVDictionary *open_opts = NULL;
 	av_dict_set(&open_opts, "input_format", "h264", 0);
 	av_dict_set(&open_opts, "format_whitelist", "v4l2", 0);
+	av_dict_set(&open_opts, "use_wallclock_as_timestamps", "1", 0);
 
 	AVInputFormat *input_fmt = av_find_input_format("v4l2");
 	if (!input_fmt) {
