@@ -77,7 +77,7 @@ class backup extends Controller {
 	        			#clean up
 	        			unlink('/tmp/bcbackupinfo');
 	        			unlink('/tmp/bcbackup.sql');
-	        			data::responseJSON(true, true);
+	        			data::responseJSON(true, BACKUP_B_SUCCESS);
 	        		}
 	        	break;
 	        	case 'download':
