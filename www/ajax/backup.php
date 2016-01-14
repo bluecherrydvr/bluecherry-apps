@@ -39,13 +39,13 @@ class backup extends Controller {
 
         if (!empty($_GET['mode'])) {
 	        switch($_GET['mode']) {
-	        	case 'prepare':
-	        		$_POST['noevents'] = (!empty($_POST['nodevices'])) ? 'on' : $_POST['noevents']; #make sure that events are not backed up if the devices are not
+            case 'prepare':
+	        		$no_events = (Inp::post('nodevices')) ? 'on' : Inp::post('noevents'); #make sure that events are not backed up if the devices are not
 	        		#select tables to ignore
 	        		$ignore_tables = '';
-	        		if ((!empty($_POST['noevents'])) || (!empty($_POST['nodevices'])) || (!empty($_POST['nodevices']))) {
+	        		if ($no_events || Inp::post('nodevices') || Inp::post('nousers')) {
 	        			#we are not backing up events or any related data
-	        			if (!empty($_POST['noevents'])){
+	        			if ($no_events) {
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventsCam";
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventComments";
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventTags";
@@ -53,12 +53,12 @@ class backup extends Controller {
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.EventsSystem";
 	        			}
 	        			#we are not backing up users or related data
-	        			if (!empty($_POST['nousers'])){
+	        			if (Inp::post('nousers')) {
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.Users";
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.ActiveUsers";
 	        			}
 	        			#we are not backing up devices or related data
-	        			if (!empty($_POST['nodevices'])){
+	        			if (Inp::post('nodevices')) {
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.Devices";
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.PTZPresets";
 	        				$ignore_tables .= " --ignore-table={$database_parameters['db']}.AvailableSources";
