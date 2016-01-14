@@ -88,7 +88,10 @@ class backup extends Controller {
 	        		readfile(VAR_MYSQLDUMP_TMP_LOCATION);
 	        	break;
 	        	case 'restore':
-	        		if ($_FILES['restoreDataFile']['type']!= 'application/x-compressed-tar'){ #uploaded file is not a compressed tar archive
+                    $name_info = pathinfo($_FILES['restoreDataFile']['name']);
+                    if (!isset($name_info['extension'])) $name_info['extension'] = '';
+
+	        		if (($_FILES['restoreDataFile']['type'] != 'application/x-compressed-tar') && ($name_info['extension'] != 'tgz')) { #uploaded file is not a compressed tar archive
 	        			data::responseJSON(false, BACKUP_R_WRONG_FILETYPE);
 	        		} else {
 	        			move_uploaded_file($_FILES['restoreDataFile']['tmp_name'], "/tmp/bcrestore.sql.gz");

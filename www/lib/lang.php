@@ -541,6 +541,7 @@ define('BACKUP_FAILED', 'Could not perform the backup. Is the database password 
 define('BACKUP_R_FAILED', 'Could not restore the database. Mysql returned the following error:<br />');
 define('BACKUP_R_SUCCESS', 'The database successfully restored. Please reload the page.');
 define('U_BACKUP', 'Backup');
+define('U_UPLOAD', 'Upload');
 define('U_RESTORE', 'Restore');
 define('U_CANCEL', 'Cancel');
 define('U_INCLUDED', 'Included');

@@ -63,7 +63,7 @@
         <div class="panel panel-default">
             <div class="panel-heading"><?php echo BACKUP_R_TITLE; ?></div>
             <div class="panel-body">
-                <form action="/backup?mode=restore" method="post">
+                <form action="/backup?mode=restore" method="post" id="backup-form-upload">
                     <div class="form-group" style="display: none;">
                         <input class="form-control" type="password" name="pwd"  />
                     </div>
@@ -72,7 +72,18 @@
 		                <input type="file" name="restoreDataFile">	
                     </div>
                     <div class="form-group">
-                        <button class="btn btn-success send-req-form" type="submit" data-func="backupCopyPass"> <?php echo U_RESTORE; ?></button>
+                        <button class="btn btn-success send-req-form" type="submit" data-func="backupCopyPass" data-class-success="backupRestore.showConfirm(1)"> <?php echo U_UPLOAD; ?></button>
+                    </div>
+                </form>
+
+                <form action="/backup?mode=confirmRestore" method="post" id="backup-form-confirm" style="display: none;">
+                    <div class="form-group">
+                        <label class=""><?php echo str_replace(array('%USERS%', '%DBNAME%'), array('root', $database_parameters['db']), BACKUP_PWD); ?></label>
+                        <input class="form-control" type="password" name="pwd"  />
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-success send-req-form" type="submit"  data-class-success="backupRestore.showConfirm(0).resetForms()"> <?php echo U_RESTORE; ?></button>
+                        <button class="btn btn-default click-event" type="button"  data-class="backupRestore.showConfirm(0).resetForms()"> <?php echo U_CANCEL; ?></button>
                     </div>
                 </form>
             </div>
