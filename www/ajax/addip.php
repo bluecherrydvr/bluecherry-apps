@@ -24,7 +24,7 @@ class addip extends Controller {
     {
         $mode = (!empty($_GET['m'])) ? $_GET['m'] : false;
         if ($mode=='model'){
-        	if ($_GET['manufacturer'] == 'Generic'){
+        	if (($_GET['manufacturer'] == 'Generic') || ($_GET['manufacturer'] == 1)){
         		echo "<INPUT type='hidden' name='models' id='models' value='Generic' readonly>";
         		exit();
         	}

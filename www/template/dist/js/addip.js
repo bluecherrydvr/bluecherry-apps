@@ -167,7 +167,7 @@ function cameraChooseManuf(el) {
                 sel_bl.html(msg);
                 
                 var cp = new cameraProc(el.closest('form'));
-                if (sel_val != 'Generic') {
+                if ((sel_val != 'Generic') && (parseInt(sel_val) != 1)) {
                     cp.resetForm();
                     par.show();
                 } else {
