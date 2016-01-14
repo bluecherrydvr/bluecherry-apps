@@ -99,8 +99,11 @@ var cameraProc = function (form) {
         getEl('camName', true, true, '');
         getEl('ipAddr', true, true, '');
 
-        if (data.rtspPort=='' || data.rtspPath == '') self.blRtspMjpeg('rtsp');
-        if (data.mjpegPath=='' || data.mjpegPort== '') self.blRtspMjpeg('mjpeg');
+        if (data.rtspPath != '') self.blRtspMjpeg('rtsp');
+        else {
+            if (data.mjpegPath != '') self.blRtspMjpeg('mjpeg');
+            else self.blRtspMjpeg('rtsp');
+        }
     };
 
     self.blRtspMjpeg = function (type) {
