@@ -9,6 +9,48 @@ $(function() {
 
 });
 
+function deviceChangeNameSuccess(form, msg) {
+    var cl = new deviceChangeName(form);
+    cl.success();
+}
+
+var deviceChangeName = function(el) {
+    var self = this;
+    var els = {};
+
+    self.success = function () {
+        els.title.text(els.inp_device_name.val());
+        self.form(0);
+    }
+
+    self.form = function(show) {
+        if (show == 1) {
+            els.parent.addClass('tmp-padding');
+
+            els.title_bl.hide();
+            els.form_bl.show();
+        } else {
+            els.parent.removeClass('tmp-padding');
+
+            if (els.title.text() != els.inp_device_name.val()) els.inp_device_name.val(els.title.text());
+
+            els.title_bl.show();
+            els.form_bl.hide();
+        }
+    };
+
+    var constructor = function () {
+        els.parent = el.closest('.devices-device-name');
+
+        els.title_bl = els.parent.find('.devices-device-name-title');
+        els.title = els.title_bl.find('span');
+
+        els.form_bl = els.parent.find('.devices-device-name-form');
+        els.inp_device_name = els.form_bl.find('input[name="device_name"]');
+    };
+    constructor();
+}
+
 function scheduleOverrideGlobal(el) {
     var par = el.closest('div');
     var icon = par.find('i');
