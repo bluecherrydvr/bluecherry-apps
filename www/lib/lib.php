@@ -952,7 +952,12 @@ class Manufacturers
             }
         } else {
             $adapter = getReadOnlyDb();
-            $list = $adapter->query('SELECT manufacturer FROM manufacturers');
+            $list = $adapter->query("
+                SELECT manufacturers.manufacturer FROM manufacturers
+                LEFT JOIN cameras ON (cameras.manufacturer=manufacturers.id)
+                WHERE cameras.mjpeg_url<>'' OR cameras.h264_url<>''
+                GROUP BY manufacturers.manufacturer
+                ");
             $list = $list->fetchAll(PDO::FETCH_ASSOC);
         }
         asort($list);
