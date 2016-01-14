@@ -1,7 +1,27 @@
 
                         <div class="col-lg-4 col-md-4">
-                            <div class="well well-sm">
-                                <h4 class="devices-device-name"><i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> <?php echo $device->info['device_name']; ?></h4>
+                            <div class="well well-sm well-cameras">
+                                <h4 class="devices-device-name">
+                                    <span class="devices-device-name-title click-event" data-class="deviceChangeName.form(1)">
+                                        <i class="fa fa-video-camera fa-fw text-status-<?php echo $device->info['status']; ?>"></i> 
+                                        <span><?php echo $device->info['device_name']; ?></span>
+                                    </span>
+
+                                    <form action="/devices/port-name" method="POST" class="devices-device-name-form">
+                                        <input type="hidden" name="id" value="<?php echo $device->info['id']; ?>">
+
+                                        <div class="row">
+                                            <div class=" col-xs-6 col-sm-8col-md-6 col-lg-7 devices-device-name-form-inp">
+                                                <input type="text" class="form-control input-sm"  name="device_name" value="<?php echo $device->info['device_name']; ?>">
+                                            </div>
+
+                                            <div class="col-xs-6 col-sm-4 col-md-6 col-lg-5 btn-group" role="group">
+                                                <button type="submit" class="btn btn-primary btn-sm send-req-form" data-loading-text="..."><i class="fa fa-check fa-lg"></i></button>
+                                                <button type="button" class="btn btn-warning btn-sm click-event" data-class="deviceChangeName.form(0)"><i class="fa fa-close fa-lg"></i></button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </h4>
                                 <p>
                                     <?php echo ((isset($device->info['manufacturer'])) ? $device->info['manufacturer'] : '' ); ?> 
                                     <?php echo ((isset($device->info['manufacturer']) && ($device->info['manufacturer'] == $device->info['model'])) ? '' : $device->info['model']); ?>

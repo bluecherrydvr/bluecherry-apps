@@ -271,6 +271,9 @@ define('NO_NEWS', 'There are no news right now.');
 
 define('NO_CARDS', 'There are no supported video capture cards detected on this system.');
 
+define('NO_DEVICE_NAME', 'Name field can not be empty.');
+define('EXIST_NAME', 'This name already exists.');
+
 /*user page errors*/
 define('NO_USERNAME', 'Login field can not be empty.');
 define('NO_EMAIL', 'Email field can not be empty.');

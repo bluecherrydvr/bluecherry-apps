@@ -292,3 +292,41 @@ span.input-group-unstyled {
     padding-top: 10px;
     padding-left: 10px;
 }
+
+#devices-bl .well.display_res_fps {
+    min-height: 220px;
+}
+
+#devices-bl .well.without_res_fps {
+    min-height: 160px;
+}
+
+#devices-bl .well.well-cameras {
+    min-height: 140px;
+}
+
+
+#devices-bl .devices-device-name-title {
+    cursor: pointer;
+}
+
+#devices-bl .devices-device-name-title span {
+    border-bottom: 1px #000 dashed;
+}
+
+#devices-bl .devices-device-name-form {
+    display: none;
+}
+
+#devices-bl .devices-device-name-form .devices-device-name-form-inp {
+    padding-right: 5px;
+}
+
+#devices-bl .devices-device-name-form .btn-group{
+    padding-left: 0px;
+}
+
+#devices-bl .devices-device-name.tmp-padding {
+    margin-top: 1px;
+    margin-bottom: 9px;
+}

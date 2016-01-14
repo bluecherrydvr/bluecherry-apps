@@ -36,6 +36,39 @@ class devices extends Controller {
         }
     }
 
+    public function postPortName()
+    {
+        $stat = false;
+        $msg = '';
+
+        $id = Inp::post('id');
+        if ($id) {
+            $device_name = Inp::post('device_name');
+            if (empty($device_name)) {
+                $stat = false;
+                $msg = NO_DEVICE_NAME;
+            } else {
+                $ch_name = data::query("SELECT * FROM Devices WHERE device_name='".$device_name."' AND id<>'".$id."'");
+                if (empty($ch_name)) {
+                    $stat = data::query("UPDATE Devices SET device_name='".$device_name."' WHERE id='{$id}'", true);
+                    if ($stat) {
+                        $stat = 3;
+                        $msg = Array();
+                        $msg[] = Array(
+                            'name' => 'deviceChangeNameSuccess',
+                        );
+                        Reply::ajaxDie($stat, $msg);
+                    }
+                } else {
+                    $stat = false;
+                    $msg = EXIST_NAME;
+                }
+            }
+        }
+
+        data::responseJSON($stat, $msg);
+    }
+
     private function getCards()
     {
 		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
