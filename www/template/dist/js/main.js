@@ -174,6 +174,8 @@ var ajaxReq = function () {
     var class_after = null;
     var redirect_after = null;
     var redirect_after_success = null;
+    var func_after_success = null;
+    var class_after_success = null;
 
 
     var send = function () {
@@ -311,6 +313,15 @@ var ajaxReq = function () {
                 var ajax_req = new ajaxReq();
                 ajax_req.ajaxContent(redirect_after_success);
             }
+
+            if (func_after_success) {
+                window[func_after_success](form, msg);
+            }
+
+            if (class_after_success) {
+                procEventClass(class_after_success, form, msg);
+            }
+
         } else if (msg.status == 7) {
             $.notify({
                 icon: 'fa fa-times-circle fa-fw',
@@ -407,6 +418,9 @@ var ajaxReq = function () {
 
             redirect_after = el.data('redirect') || null;
             redirect_after_success = el.data('redirect-success') || null;
+
+            func_after_success = el.data('func-success') || null;
+            class_after_success = el.data('class-success') || null;
 
             hideProperErr();
 
