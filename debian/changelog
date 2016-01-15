@@ -1,3 +1,11 @@
+bluecherry (1:2.5.20) precise trusty wily wheezy jessie; urgency=low
+
+  * Fix issues with "add IP camera" dialog
+  * Add ability to change a device name from the devices page
+  * Fixes for backup & restore dialog
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 16 Jan 2016 01:51:29 +0200
+
 bluecherry (1:2.5.19) precise trusty wily wheezy jessie; urgency=low
 
   * Add playback of recordings in browser
