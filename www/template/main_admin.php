@@ -42,6 +42,9 @@
     <!-- player -->
     <link href="/template/bower_components/mediaelement/mediaelementplayer.css" rel="stylesheet">
 
+    <!-- bootstrap table -->
+    <link href="/template/bower_components/bootstrap-table/bootstrap-table.min.css" rel="stylesheet">
+
     <!-- Custom CSS -->
     <link href="/template/dist/css/main.css?v=<?php echo time(); ?>" rel="stylesheet">
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
@@ -289,6 +292,9 @@
 
     <!-- player -->
     <script src="/template/bower_components/mediaelement/mediaelement-and-player.min.js"></script>
+
+    <!-- bootstrap table -->
+    <script src="/template/bower_components/bootstrap-table/bootstrap-table.min.js"></script>
 
     <!-- Custom Theme JavaScript -->
     <script type="text/javascript" src="/vars"></script>

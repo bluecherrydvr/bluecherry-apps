@@ -2,6 +2,18 @@ $(function() {
 
 });
 
+function playbackSorterBytes(a, b) {
+    if (a.bytes > b.bytes) return 1;
+    if (a.bytes < b.bytes) return -1;
+    return 0;
+}
+
+function playbackSorterTime(a, b) {
+    if (a.time > b.time) return 1;
+    if (a.time < b.time) return -1;
+    return 0;
+}
+
 function playbackSetVideo(el) {
     var parent = $('#playback-player-bl');
     var player_bl = $('#playback-player');

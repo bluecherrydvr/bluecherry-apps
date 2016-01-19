@@ -63,8 +63,8 @@ class playback extends Controller {
 
             $locale_en = localeEn();
             foreach ($query_res as $key => $val) {
-                $query_res[$key]['media_size'] = convertBytes($val['media_size']);
-                $query_res[$key]['time'] = dateFormat($val['time'], $locale_en)->time;
+                $query_res[$key]['media_size_converted'] = convertBytes($val['media_size']);
+                $query_res[$key]['time_converted'] = dateFormat($val['time'], $locale_en)->time;
 
                 $query_res[$key]['duration'] = date('H:i:s', $val['end'] - $val['start']);
 
