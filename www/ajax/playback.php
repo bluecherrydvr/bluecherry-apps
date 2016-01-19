@@ -66,7 +66,7 @@ class playback extends Controller {
                 $query_res[$key]['media_size_converted'] = convertBytes($val['media_size']);
                 $query_res[$key]['time_converted'] = dateFormat($val['time'], $locale_en)->time;
 
-                $query_res[$key]['duration'] = date('H:i:s', $val['end'] - $val['start']);
+                $query_res[$key]['duration'] = gmdate('H:i:s', $val['end'] - $val['start']);
 
                 if ($val['level_id'] == 'alrm') {
                     $color = 'info';
