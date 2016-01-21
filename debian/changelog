@@ -1,3 +1,10 @@
+bluecherry (1:2.5.21) precise trusty wily wheezy jessie; urgency=low
+
+  * the playback page - fixed 'event duration'
+  * the playback page - added sorting
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 21 Jan 2016 04:58:23 +0200
+
 bluecherry (1:2.5.20) precise trusty wily wheezy jessie; urgency=low
 
   * Fix issues with "add IP camera" dialog
