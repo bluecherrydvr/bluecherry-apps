@@ -45,14 +45,17 @@ function downloadFile($file_path, $file_name = '', $delete_file = true) {
         header('Expires: 0');
         header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
         header('Pragma: public');
-        header('Content-Length:' . $file_info->size);
         header('Accept-Ranges: bytes');
-        header('Content-Range: bytes '.$range.'-'.($file_info->size - 1).'/'.$file_info->size);
         if (!empty($file_info->name)) header('Content-Disposition: attachment; filename='.$file_info->name);
 
         if ($range) {
+            header('Content-Range: bytes '.$range.'-'.($file_info->size - 1).'/'.$file_info->size);
+            header('Content-Length:' . ($file_info->size - $range));
+
             header($_SERVER['SERVER_PROTOCOL'].' 206 Partial Content');
         } else {
+            header('Content-Length:' . $file_info->size);
+
             header($_SERVER['SERVER_PROTOCOL'].' 200 OK');
         }
 
