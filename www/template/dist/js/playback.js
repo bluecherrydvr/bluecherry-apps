@@ -36,6 +36,7 @@ function playbackSetVideo(el) {
     $('#playback-events-list tr').removeClass('selected');
     el.addClass('selected');
     $('#playback-player-download').attr('href', url+'&download=1');
+    $('#playback-player-download-mkv').attr('href', '/playback/download-mkv/'+id);
 
     parent.find('.panel-heading').html(el.data('title'));
 

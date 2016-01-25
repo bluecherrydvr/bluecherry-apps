@@ -105,7 +105,8 @@
                 <div>
                     <br>
                     <a href="javascript:void();" class="btn btn-primary click-event" data-function="playbackReloadVideo">Reload</a>
-                    <a href="" class="btn btn-primary" id="playback-player-download" target="_blank">Download</a>
+                    <a href="" class="btn btn-primary" id="playback-player-download" target="_blank">Download MP4 file</a>
+                    <a href="" class="btn btn-primary" id="playback-player-download-mkv" target="_blank">Download MKV file</a>
                 </div>
             </div>
         </div>

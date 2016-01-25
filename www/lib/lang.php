@@ -592,4 +592,8 @@ define('BETA_LICENSE_WARNING', 'Please note that you are running a demo version 
 
 #ip cam props
 define('IPCAM_TCPUDP_LEVEL', 'Transport');
+
+#playback
+define('PLAYBACK_FILE_NOT_FOUND', 'MKV file was not found.');
+
 ?>

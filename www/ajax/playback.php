@@ -27,6 +27,20 @@ class playback extends Controller {
         return $res;
     }
 
+    public function getDownloadMkv()
+    {
+        $id = (int) $this->uri->three;
+        if ($id) {
+            $info = data::query("SELECT * FROM Media WHERE id={$id}");
+            if (!empty($info)) {
+                $file_info = pathinfo($info[0]['filepath']);
+                downloadFile($info[0]['filepath'], $file_info['basename'], false);
+            }
+        }
+
+        return PLAYBACK_FILE_NOT_FOUND;
+    }
+
     public function postData()
     {
         $res = '';
