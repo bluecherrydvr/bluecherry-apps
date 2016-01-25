@@ -22,6 +22,7 @@ function playbackSetVideo(el) {
     var url = '/media/stream-mp4?id='+id;
     var poster = '/media/request?mode=screenshot&device_id='+id+'&id='+media_id;
 
+    parent.show();
 
     // set width/height
     var player_old = player_bl.find('video');
@@ -38,11 +39,21 @@ function playbackSetVideo(el) {
 
     parent.find('.panel-heading').html(el.data('title'));
 
-    player_bl.html('<video src="'+url+'" type="video/mp4" poster="'+poster+'" style="width: 100%; height: 100%;" preload="none" controls></video>');
+    player_bl.html('<span class="glyphicon glyphicon-refresh spinning"></span><img src="'+poster+'" style="width: 100%; height: 100%; display: none;">');
+    var img_poster = player_bl.find('img');
+
+    img_poster.on('load', function() {
+        playbackSetVideoShow(url, player_bl, parent, poster);
+    }).on('error', function() {
+        playbackSetVideoShow(url, player_bl, parent, '');
+    }).attr("src", img_poster.attr('src'));
+}
+
+function playbackSetVideoShow(url, player_bl, parent, poster) {
+    if (poster != '') poster = 'poster="'+poster+'"';
+
+    player_bl.html('<video src="'+url+'" type="video/mp4" '+poster+' style="width: 100%; height: 100%;" preload="none" controls></video>');
     var player = player_bl.find('video');
-
-
-    parent.show();
 
     player.mediaelementplayer();
 }
