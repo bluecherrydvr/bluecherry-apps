@@ -65,8 +65,10 @@ class mediaStreamMp4 extends Controller {
         # After saving resulting recording to temporary file (which is necessary
         # for MP4 format), output the file contents to stdout, indicating content type
         # in HTTP headers.
-        if (Inp::get('download')) downloadFile($outfile, $filename);
-        else downloadFile($outfile);
+        if (Inp::get('download')) {
+            $filename = str_replace('.mkv', '.mp4', $filename);
+            downloadFile($outfile, $filename);
+        } else downloadFile($outfile);
 
     }
 }
