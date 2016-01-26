@@ -1,3 +1,9 @@
+bluecherry (1:2.5.22) precise trusty wily wheezy jessie; urgency=low
+
+  * Playback page enhancements
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 26 Jan 2016 21:49:38 +0200
+
 bluecherry (1:2.5.21) precise trusty wily wheezy jessie; urgency=low
 
   * the playback page - fixed 'event duration'
