@@ -28,15 +28,27 @@ class storage extends Controller {
 
     public function postData()
     {
-    	data::query("DELETE FROM Storage", true);
-    	$status = true;
-    	foreach($_POST['path'] as $key => $path){
-    		$max = intval($_POST['max'][$key]);
-    		$min = $max - 10;
-    		$status = (data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES ({$key}, '{$path}', {$max}, {$min})", true)) ? $status : false;
-    	}
-    	data::responseJSON($status);
-    	exit;
+        $storage_check = $this->ctl('storagecheck');
+
+        $values = Array();
+        foreach($_POST['path'] as $key => $path){
+            $dir_status = $storage_check->directory_staus($path);
+            if ($dir_status) return data::responseJSON($dir_status[0], $dir_status[1]);
+
+            $max = intval($_POST['max'][$key]);
+            $min = $max - 10;
+            $values[] = "({$key}, '{$path}', {$max}, {$min})";
+        }
+
+        data::query("DELETE FROM Storage", true);
+
+        $status = true;
+        if (!empty($values)) {
+            $values = implode(',', $values);
+            $status = (data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES {$values}", true)) ? $status : false;
+        }
+
+        data::responseJSON($status);
     }
 }
 
