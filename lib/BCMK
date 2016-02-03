@@ -1,4 +1,4 @@
-LDFLAGS		+= -lmysqlclient -lconfig -lm -lrt -lbsd
+LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient -lconfig -lm -lrt -lbsd
 LDFLAGS		+= -lavutil -lavformat -lavcodec -lpugixml
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
