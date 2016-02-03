@@ -12,7 +12,6 @@ bluecherry:
     dbname = "_DBC_DBNAME_";
     user = "_DBC_DBUSER_";
     password = "_DBC_DBPASS_";
-    # You can set host/port as well, or specify a socket but we use
-    # the my.cnf default (generally local socket)
+    host = "_DBC_HOST_";
   };
 };

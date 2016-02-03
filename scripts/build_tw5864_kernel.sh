@@ -11,7 +11,7 @@ fi
 . /etc/*-release
 DEBARCH=`dpkg --print-architecture`
 SCRIPTS_DIR=`dirname $0`
-DISTRO=`$SCRIPTS_DIR/get_distro_release_name.sh`
+DISTRO=`$SCRIPTS_DIR/build_helper/get_distro_release_name.sh`
 BASE_DIR=`readlink -f $SCRIPTS_DIR/..`
 
 `dirname $0`/install_prereqs.sh
