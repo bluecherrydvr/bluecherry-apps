@@ -1,3 +1,9 @@
+bluecherry (1:2.5.23-2) precise trusty wily wheezy jessie; urgency=low
+
+  * Licensing-related minor fixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sat, 06 Feb 2016 14:30:31 +0200
+
 bluecherry (1:2.5.23) precise trusty wily wheezy jessie; urgency=low
 
   * Add logging to license checking code, on Info loglevel
