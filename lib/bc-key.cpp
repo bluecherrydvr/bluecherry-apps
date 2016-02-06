@@ -365,6 +365,14 @@ int bc_license_machine_id_by_devname(MachineId &m_id, char *devname) {
 
 	base32_encode(m_id.machine_id, sizeof(m_id.machine_id), m_id.address + 1, 5);
 
+#ifndef BC_KEY_STANDALONE
+    bc_log(Info, "devname: %s", devname);
+    bc_log(Info, "machine_id: %s", m_id.machine_id);
+    bc_log(Info, "address: %02X %02X %02X %02X %02X %02X",
+            m_id.address[0], m_id.address[1], m_id.address[2],
+            m_id.address[3], m_id.address[4], m_id.address[5]);
+#endif
+
 	return err;
 }
 
