@@ -307,6 +307,8 @@ int bc_license_machine_id_set(MachineIdSet &m_id_set) {
 		if (m_id.ifname[strlen(m_id.ifname) - 1] == '\n')
 			m_id.ifname[strlen(m_id.ifname) - 1] = '\0';
 
+        if (!strlen(m_id.ifname))
+            break;
 #ifndef BC_KEY_STANDALONE
 		bc_log(Debug, "Got devname %s", m_id.ifname);
 #endif
