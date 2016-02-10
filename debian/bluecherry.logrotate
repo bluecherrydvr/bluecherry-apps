@@ -11,15 +11,3 @@
 		reload rsyslog >/dev/null 2>&1 || true
 	endscript
 }
-
-/var/lib/bluecherry/www-*.log
-{
-	su www-data bluecherry
-	rotate 2
-	daily
-	missingok
-	notifempty
-	postrotate
-		apachectl graceful
-	endscript
-}

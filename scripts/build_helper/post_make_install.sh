@@ -37,11 +37,15 @@ else
 fi
 if [[ ${PKG_TYPE} == "deb" ]]
 then
-	install -m644 -D ${SRC_PATH}/debian/apache.conf \
-       		${DST_DIR}/etc/apache2/sites-available/bluecherry.conf
+	install -d ${DST_DIR}/etc/apache2/sites-available
+	cat ${SRC_PATH}/debian/apache.conf | sed -e "s/__BLUECHERRY_APACHE_ERROR_LOG__/\/var\/log\/apache2\/bluecherry-error.log/" \
+	      -e "s/__BLUECHERRY_APACHE_ACCESS_LOG__/\/var\/log\/apache2\/bluecherry-access.log/" \
+	      > ${DST_DIR}/etc/apache2/sites-available/bluecherry.conf
 else
-	install -m644 -D ${SRC_PATH}/debian/apache.conf \
-		${DST_DIR}/etc/httpd/sites-available/bluecherry.conf
+	install -d ${DST_DIR}/etc/httpd/sites-available
+	cat ${SRC_PATH}/debian/apache.conf | sed -e "s/__BLUECHERRY_APACHE_ERROR_LOG__/\/var\/log\/httpd\/bluecherry_error_log/" \
+	      -e "s/__BLUECHERRY_APACHE_ACCESS_LOG__/\/var\/log\/httpd\/bluecherry_access_log/" \
+	      > ${DST_DIR}/etc/httpd/sites-available/bluecherry.conf
 fi
 install -m644 -D ${SRC_PATH}/debian/bluecherry.monit \
        ${DST_DIR}/etc/monit/conf.d/bluecherry

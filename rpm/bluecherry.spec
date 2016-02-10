@@ -9,7 +9,7 @@ URL:            http://www.bluecherrydvr.com/
 Source:         %{name}-%{version}.tar.gz
 Prefix:         %{_prefix}
 BuildRequires:	git,make,rpm-build,gcc-c++,ccache,autoconf,automake,libtool,bison,flex
-BuildRequires:	texinfo,php-devel,yasm,cmake,libbsd-devel
+BuildRequires:	texinfo,php-devel,yasm,cmake,libbsd-devel,chrpath
 BuildRequires:  mariadb-devel,opencv-devel,systemd-devel,sudo
 BuildRequires:  systemd
 Requires:	httpd,mod_ssl,php,php-pdo,mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policycoreutils-python
@@ -38,12 +38,14 @@ sudo chown -R $USER %{_builddir}/%{name}
 %{_builddir}/%{name}/scripts/build_helper/post_make_install.sh rpm "%{_builddir}/%{name}" "%{buildroot}" %{version}
 
 mkdir -p %{buildroot}/etc/logrotate.d
-cp %{_builddir}/%{name}/debian/bluecherry.logrotate %{buildroot}/etc/logrotate.d/%{name}.conf
+cp %{_builddir}/%{name}/debian/bluecherry.logrotate %{buildroot}/etc/logrotate.d/bluecherry
 mkdir -p %{buildroot}/etc/php.d
 mv %{buildroot}/etc/php5/apache2/conf.d/bluecherry_apache2.ini %{buildroot}/etc/php.d/bluecherry.ini
 rm -r %{buildroot}/etc/php5
-mv %{buildroot}/usr/lib/* %{buildroot}/usr/lib64/
-chmod 755 %{buildroot}/usr/lib64/libbluecherry.so.0
+mv %{_builddir}/%{name}/usr/lib/* %{buildroot}/usr/lib64/
+chrpath -r '$ORIGIN' %{buildroot}/usr/lib64/{ffmpeg,ffprobe,ffserver}
+chrpath -r '$ORIGIN' %{buildroot}/usr/sbin/bc-server
+chmod 755 %{buildroot}/usr/lib/libbluecherry.so.0
 chmod 755 %{buildroot}/usr/lib64/php/modules/bluecherry.so
 install -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/bc-server.service
 
@@ -51,7 +53,7 @@ install -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/b
 %config(noreplace) %{_sysconfdir}/httpd/sites-available/bluecherry.conf
 %config(noreplace) %{_sysconfdir}/php.d/bluecherry.ini
 %config(noreplace) %{_sysconfdir}/cron.d/bluecherry
-%config(noreplace) %{_sysconfdir}/logrotate.d/%{name}.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/bluecherry
 %config(noreplace) %{_sysconfdir}/monit/conf.d/bluecherry
 %config(noreplace) %{_sysconfdir}/rsyslog.d/10-bluecherry.conf
 %{_sbindir}/*
@@ -61,7 +63,11 @@ install -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/b
 
 %pre
 set -x
-semanage port -m -t http_port_t -p tcp 7001 # for selinux
+if [[ $(getenforce) == "Enforcing" ]]
+then
+    echo Configuring selinux. Please wait.
+    semanage port -m -t http_port_t -p tcp 7001 # for selinux
+fi
 systemctl start mariadb.service
 systemctl enable mariadb.service
 INSTALL="1"
