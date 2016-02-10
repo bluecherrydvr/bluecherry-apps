@@ -21,7 +21,6 @@ then
 	. /usr/share/debconf/confmodule
 fi
 
-DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db.XXXXXXXXXX.sql.gz)
 
 function db_upgrade_err() {
 	trap - ERR # avoid recurrence
@@ -31,7 +30,7 @@ function db_upgrade_err() {
 	then
 		echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
 		# Drop all tables
-		for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2`
+		for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password"| tail -n +2`
 		do
 			echo "SET FOREIGN_KEY_CHECKS=0; DROP TABLE $x" | mysql -D"$dbname" -u"$user" -p"$password"
 		done
@@ -68,7 +67,7 @@ function apply_db_patches() {
 	# A check
 	if [[ "`cat /usr/share/bluecherry/installed_db_version`" != "$DB_VERSION" ]]
 	then
-		false # Fail the installation
+		exit 1 # Fail the installation
 	fi
 
 	# Save new DB_VERSION
@@ -83,20 +82,40 @@ function print_usage
     echo example:
     echo        bc_db_tool.sh new_db root '""' bluecherry bluecherry \'@some_cryptic_password_#*%\'
 }
-
-function start_mysql
+function mysql_wrapper
 {
-    # check for mysql running, start if not
-    echo start_mysql
+# !!! DO NOT PASS -p or --password to mysql_wrapper !!!
+#
+# if defined nonempty MYSQL_ADMIN_PASSWORD - use it
+# else use empty password or ~/.my.cnf
+if [[ "$MYSQL_ADMIN_PASSWORD" ]]
+then
+        mysql --password="$MYSQL_ADMIN_PASSWORD" "$@"
+else
+        mysql "$@"
+fi
 }
 function check_mysql_admin
 {
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
     echo "Testing MySQL admin credentials correctness..."
-    if ! echo "show databases" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD" &>/dev/null
+    if ! echo "show databases" | mysql_wrapper -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
     then
-        echo -e "\n\n\tProvided MySQL admin credentials are incorrect, please retry.\n\n"
+        echo -e "\n\n\tProvided MySQL admin credentials are incorrect\n"
+	echo -e "Please create ~$(whoami)/.my.cnf with right password like this\n"
+	echo    "[client]"
+	echo    "user=root"
+	echo -e "password=\"pass\"\n"
+	echo    "[mysql]"
+	echo    "user=root"
+	echo -e "password=\"pass\"\n"
+	echo    "[mysqldump]"
+	echo    "user=root"
+	echo -e "password=\"pass\"\n"
+	echo    "[mysqldiff]"
+	echo    "user=root"
+	echo    "password=\"pass\""
         exit 1
     fi
 }
@@ -106,7 +125,7 @@ function check_db_exists
     MYSQL_ADMIN_PASSWORD="$2"
     dbname=$3
     echo "Testing whether database already exists..."
-    if echo "show databases" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD" -D"$dbname" &>/dev/null
+    if echo "show databases" | mysql_wrapper -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
     then
         echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:\n" \
            "\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;\n"
@@ -126,8 +145,14 @@ function create_db
     user=$4 
     password=$5
     # Actually create DB and tables
-    echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
-    echo "GRANT ALL ON ${dbname}.* to ${user}@'localhost' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+    if [[ "$MYSQL_ADMIN_PASSWORD" ]]
+    then
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+        echo "GRANT ALL ON ${dbname}.* to ${user}@'localhost' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+    else
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'localhost' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN"
+    fi
     mysql -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
     # Save actual DB version
     DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
@@ -145,7 +170,6 @@ function new_db
     user=$4
     password=$5
 
-    start_mysql
     check_mysql_admin "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD"
     check_db_exists "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname"
     create_db "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname" "$user" "$password"
@@ -154,6 +178,9 @@ function upgrade_db
 {
     # This branch will not use initial_data_mysql.sql,
     # so DB patching script must be added to mysql-upgrade dir
+    
+    trap db_upgrade_err ERR # will restore DB from backup and terminate the execution with failure retcode
+    DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
     
     . /usr/share/bluecherry/load_db_creds.sh
     export dbname user password
@@ -211,14 +238,13 @@ function upgrade_db
 	
 	if [[ "$DB_VERSION" != "`cat /usr/share/bluecherry/installed_db_version`" ]]
 	then
-	    echo "DB_VERISON $DB_VERSION after applying DB patches is differ from `cat /usr/share/bluecherry/installed_db_version` in /usr/share/bluecherry/installed_db_version" >&2
+	    echo "DB_VERISON $DB_VERSION after applying DB patches differ from `cat /usr/share/bluecherry/installed_db_version` in /usr/share/bluecherry/installed_db_version" >&2
 	    false
 	fi
 	echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -u"$user" -p"$password" -D"$dbname"
 	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
     fi # Whether old and new DB version match
 }
-trap db_upgrade_err ERR # will restore DB from backup and terminate the execution with failure retcode
 
 MODE="$1"
 

@@ -34,8 +34,7 @@ fi
 case "$1" in
 	upgrade|install)
 		if ! id bluecherry > /dev/null 2>&1; then
-			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-				-U -G audio,video -r -m bluecherry || \
+			groupadd -r -f bluecherry
 			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
 			        -g bluecherry -G audio,video -r -m bluecherry
 		else

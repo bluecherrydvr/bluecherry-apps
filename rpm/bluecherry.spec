@@ -12,7 +12,8 @@ BuildRequires:	git,make,rpm-build,gcc-c++,ccache,autoconf,automake,libtool,bison
 BuildRequires:	texinfo,php-devel,yasm,cmake,libbsd-devel,chrpath
 BuildRequires:  mariadb-devel,opencv-devel,systemd-devel,sudo
 BuildRequires:  systemd
-Requires:	httpd,mod_ssl,php,php-pdo,mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policycoreutils-python
+Requires:	httpd,mod_ssl,php,php-pdo,php-pear-Mail,php-pear-Mail-Mime,mkvtoolnix,dpkg
+Requires:	mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policycoreutils-python
 
 %description
 This package contains the server components for the Bluecherry DVR system.
@@ -35,19 +36,16 @@ sudo make
 %install
 sudo chown -R $USER %{_builddir}/%{name}
 %make_install
-%{_builddir}/%{name}/scripts/build_helper/post_make_install.sh rpm "%{_builddir}/%{name}" "%{buildroot}" %{version}
+%{_builddir}/%{name}/scripts/build_helper/post_make_install.sh rpm "%{_builddir}/%{name}" "%{buildroot}" %{epoch}:%{version}-%{release}
 
 mkdir -p %{buildroot}/etc/logrotate.d
-cp %{_builddir}/%{name}/debian/bluecherry.logrotate %{buildroot}/etc/logrotate.d/bluecherry
+cp %{_builddir}/%{name}/rpm/bluecherry.logrotate %{buildroot}/etc/logrotate.d/bluecherry
 mkdir -p %{buildroot}/etc/php.d
 mv %{buildroot}/etc/php5/apache2/conf.d/bluecherry_apache2.ini %{buildroot}/etc/php.d/bluecherry.ini
 rm -r %{buildroot}/etc/php5
-mv %{_builddir}/%{name}/usr/lib/* %{buildroot}/usr/lib64/
-chrpath -r '$ORIGIN' %{buildroot}/usr/lib64/{ffmpeg,ffprobe,ffserver}
-chrpath -r '$ORIGIN' %{buildroot}/usr/sbin/bc-server
 chmod 755 %{buildroot}/usr/lib/libbluecherry.so.0
 chmod 755 %{buildroot}/usr/lib64/php/modules/bluecherry.so
-install -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/bc-server.service
+install -m644 -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/bc-server.service
 
 %files
 %config(noreplace) %{_sysconfdir}/httpd/sites-available/bluecherry.conf
@@ -58,6 +56,8 @@ install -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/b
 %config(noreplace) %{_sysconfdir}/rsyslog.d/10-bluecherry.conf
 %{_sbindir}/*
 %{_libdir}/*
+/usr/lib/libbluecherry.so.0
+/usr/lib/bluecherry/*
 %{_datadir}/%{name}/*
 %{_unitdir}/*
 
@@ -67,9 +67,10 @@ if [[ $(getenforce) == "Enforcing" ]]
 then
     echo Configuring selinux. Please wait.
     semanage port -m -t http_port_t -p tcp 7001 # for selinux
+    setsebool -P httpd_can_network_connect 1
 fi
-systemctl start mariadb.service
 systemctl enable mariadb.service
+systemctl start mariadb.service
 INSTALL="1"
 UPGRADE="2"
 if [[ "$1" == "$UPGRADE" ]] && [[ -s /etc/bluecherry.conf ]]
@@ -87,20 +88,19 @@ then
 fi
 
 case "$1" in
-        $UPGRADE|$INSTALL)
-                if ! id bluecherry > /dev/null 2>&1; then
-                        useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-                                -U -G audio,video -r -m bluecherry || \
-			useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
-                                -g bluecherry -G audio,video -r -m bluecherry
-                else
-                        # just to be sure we have such group, if user was created manually
-                        groupadd bluecherry || true
-                        usermod -c "Bluecherry DVR" -d /var/lib/bluecherry \
-                                -g bluecherry -G audio,video bluecherry
-                fi
-                usermod -a -G video,audio,bluecherry,dialout apache || true
-                ;;
+1|2)
+    if ! id bluecherry > /dev/null 2>&1; then
+	groupadd -r -f bluecherry
+	useradd -c "Bluecherry DVR" -d /var/lib/bluecherry \
+                -g bluecherry -G audio,video -r -m bluecherry
+    else
+        # just to be sure we have such group, if user was created manually
+        groupadd -r -f bluecherry || true
+        usermod -c "Bluecherry DVR" -d /var/lib/bluecherry \
+                -g bluecherry -G audio,video bluecherry
+    fi
+    usermod -a -G video,audio,bluecherry,dialout apache || true
+    ;;
 esac
 if [[ "$1" == "$UPGRADE" ]]
 then
@@ -120,7 +120,6 @@ systemctl start bc-server.service
 
 %preun
 set -x
-systemctl start mariadb.service
 if [[ $1 == 0 ]] # uninstall, not upgrade
 then
     systemctl stop bc-server.service

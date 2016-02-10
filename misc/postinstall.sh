@@ -3,7 +3,6 @@
 # !!! ATTENTION !!!
 # This file is common for debian amd centos (called at package postinstall stage)
 
-echo called postinstall.sh "$@"
 set -x # trace
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
 then 
@@ -127,6 +126,8 @@ case "$1" in
 			else
 				invoke-rc.d rsyslog restart || true
 			fi
+		else
+			systemctl restart rsyslog.service
 		fi
 		
 		stop_apache
@@ -170,9 +171,6 @@ case "$1" in
 				db_get bluecherry/db_name  || true
 				export dbname="$RET"
 				
-				/usr/share/bluecherry/bc_db_tool.sh "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" \
-					bc_db_name db_user db_pass
-				
 				db_input high bluecherry/db_user  || true
 				db_input high bluecherry/db_password  || true
 				db_go  || true
@@ -213,10 +211,11 @@ case "$1" in
 
 		fi # Whether there was an upgrade or fresh install
 		
-		. /usr/share/bluecherry/load_db_creds.sh
-		export dbname user password
-		/usr/share/bluecherry/compare.sh >&2
-		# trap - ERR # FIXME: restore dumped database if compare failes
+		if ! /usr/share/bluecherry/compare.sh >&2
+		then
+			echo "Loaded database scheme missmatch. Please load it manualy or restore from backup"
+			exit 1
+		fi
 
 		mkdir -p /usr/share/bluecherry/sqlite
 		if [[ $IN_DEB ]]
