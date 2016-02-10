@@ -3,6 +3,7 @@
 # !!! ATTENTION !!!
 # This file is common for debian amd centos (called at package postinstall stage)
 
+echo called postinstall.sh "$@"
 set -x # trace
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
 then 

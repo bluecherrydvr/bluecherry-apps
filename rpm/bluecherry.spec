@@ -129,15 +129,6 @@ then
     rm /etc/ssl/private/ssl-cert-snakeoil.key
     rmdir --ignore-fail-on-non-empty /etc/ssl/private
     systemctl reload httpd.service
-    # rm -rf /var/lib/bluecherry/recordings
-
-    . /usr/share/bluecherry/load_db_creds.sh
-    DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db.XXXXXXXXXX.sql.gz)
-    mysqldump -h 127.0.0.1 "$dbname" -u"$user" -p"$password" | gzip -c > "$DB_BACKUP_GZ_FILE"
-    mv "$DB_BACKUP_GZ_FILE" ~bluecherry/db_backup.sql.gz
-    echo "DROP DATABASE $dbname" | mysql -h 127.0.0.1 -D"$dbname" -u"$user" -p"$password"
-
-    rm /etc/bluecherry.conf
 fi
 
 %postun

@@ -138,7 +138,7 @@ function create_db
 function new_db
 {
     # new_db db_admin_name db_admin_pass bc_db_name db_user db_pass
-    echo new_db $1 $2 $3 $4 $5 $6
+    echo new_db "$@"
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
     dbname=$3

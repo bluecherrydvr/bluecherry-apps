@@ -11,7 +11,7 @@ Type=simple
 ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
 #ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
 ExecStop=/bin/kill -TERM ${MAINPID}
-KillSignal=GIGKILL
+KillSignal=SIGKILL
 #PrivateTmp=true
 
 [Install]
