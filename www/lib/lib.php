@@ -774,7 +774,7 @@ class softwareVersion{
 		if ($this->version['current']===$this->version['installed']){
 			$ret = true;
 		} else {
-			system("dpkg --compare-versions ".escapeshellarg($this->version['installed'])." lt ".escapeshellarg($this->version['current']), $ret);
+			$ret = version_compare( $this->version['installed'], $this->version['current'], "ge" );
 		}
 		$this->version['up_to_date'] = $ret != 0;
 		$this->version['current'] = substr($this->version['current'],
