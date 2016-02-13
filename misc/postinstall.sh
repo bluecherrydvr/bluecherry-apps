@@ -103,17 +103,6 @@ case "$1" in
 			ln -s /etc/httpd/sites-available/bluecherry.conf /etc/httpd/sites-enabled/bluecherry.conf
 			grep -q -E '^[[:space:]]*IncludeOptional .*sites-enabled.*' /etc/httpd/conf/httpd.conf || \
 				echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
-			if [[ -e /etc/ssl/certs/ssl-cert-snakeoil.pem ]]
-			then
-				rm /etc/ssl/certs/ssl-cert-snakeoil.pem
-			fi
-			ln -s /etc/pki/tls/certs/localhost.crt /etc/ssl/certs/ssl-cert-snakeoil.pem
-			install -d /etc/ssl/private
-			if [[ -e /etc/ssl/private/ssl-cert-snakeoil.key ]]
-			then
-				rm /etc/ssl/private/ssl-cert-snakeoil.key
-			fi
-			ln -s /etc/pki/tls/private/localhost.key /etc/ssl/private/ssl-cert-snakeoil.key
 		fi
 		
 		if [[ $IN_DEB ]]

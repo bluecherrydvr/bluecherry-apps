@@ -124,9 +124,6 @@ if [[ $1 == 0 ]] # uninstall, not upgrade
 then
     systemctl stop bc-server.service
     rm /etc/httpd/sites-enabled/bluecherry.conf
-    rm /etc/ssl/certs/ssl-cert-snakeoil.pem
-    rm /etc/ssl/private/ssl-cert-snakeoil.key
-    rmdir --ignore-fail-on-non-empty /etc/ssl/private
     systemctl reload httpd.service
 fi
 
