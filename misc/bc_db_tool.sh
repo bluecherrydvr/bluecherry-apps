@@ -26,7 +26,7 @@ function db_upgrade_err() {
 	trap - ERR # avoid recurrence
 	# Say something to user
 	echo -e "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: https://bluecherry.zendesk.com/anonymous_requests/new . Provide full  uncut output from console (the above text).\n\nATTENTION! The above log contains your MySQL logins and passwords, please do not post these logs on public forums.\n" >&2
-	if [[ -e $DB_BACKUP_GZ_FILE ]]
+	if [[ -s $DB_BACKUP_GZ_FILE ]]
 	then
 		echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
 		# Drop all tables
@@ -67,7 +67,7 @@ function apply_db_patches() {
 	# A check
 	if [[ "`cat /usr/share/bluecherry/installed_db_version`" != "$DB_VERSION" ]]
 	then
-		exit 1 # Fail the installation
+		false # Fail the installation
 	fi
 
 	# Save new DB_VERSION
