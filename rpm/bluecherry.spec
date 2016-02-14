@@ -76,13 +76,16 @@ UPGRADE="2"
 if [[ "$1" == "$UPGRADE" ]] && [[ -s /etc/bluecherry.conf ]]
 then
 	eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
-	DB_VERSION=$(cat %{_builddir}/%{name}/misc/sql/installed_db_version)
+	DB_VERSION=$(cat /usr/share/bluecherry/installed_db_version)
         OLD_DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
         NEW_DB_VERSION=$DB_VERSION
         if [[ "$OLD_DB_VERSION" -gt "$NEW_DB_VERSION" ]]
         then
                 echo "DOWNGRADE ACROSS DATABASE VERSIONS IS NOT SUPPORTED"
-                echo "Please 'rpm -e bluecherry' before installing this package"
+                echo "Something goes wrong. Please 'rpm -e bluecherry' "
+		echo "then drop database and '/etc/bluecherry.conf' and make clean install"
+		echo "ALL your data will be lost!!!"
+		echo "Or ask support..."
                 exit 1
         fi
 fi
