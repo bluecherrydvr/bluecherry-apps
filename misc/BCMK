@@ -1,4 +1,4 @@
-all: install FORCE
+.DEFAULT_GOAL := all
 
 configure = cd $(dir $@) && CC="ccache gcc" CXX="ccache g++" \
 	    ./configure --prefix=$(STAGE) --disable-static --enable-shared
@@ -144,6 +144,8 @@ pugixml-install: $(pugixml-contrib-dir)/libpugixml.so
  ####################
 ### Common targets ###
  ####################
+
+all: $(foreach d,$(pkgs), $d-install)
 
 install: $(foreach d,$(pkgs), $d-install) FORCE
 	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
