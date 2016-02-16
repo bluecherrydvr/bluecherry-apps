@@ -1,0 +1,22 @@
+1. install minimal system
+2. create user and add them in wheel group (sudo)
+visudo
+add line "user_name ALL=(ALL) NOPASSWD: ALL"
+3. login as user and work as user
+sudo yum -y update
+sudo yum -y install epel-release
+
+sudo yum -y install git make rpm-build gcc-c++ ccache autoconf automake libtool bison flex texinfo php-devel yasm cmake libbsd-devel \
+       mariadb-devel opencv-devel systemd-devel sudo
+cd
+mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+
+5. from host machine from directory with git repo (cleaned and checkouted with initialyzed submodules) copy sources
+tar -czf - . | ssh san@localhost -p 12222 bash -c "cat > rpmbuild/SOURCES/bluecherry-2.5.22.tar.gz"
+
+6. as user 
+cd rpmbuild/SPECS
+rpmbuild -ba bluecherry.spec
+
+

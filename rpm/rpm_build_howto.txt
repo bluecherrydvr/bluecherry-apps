@@ -1,0 +1,27 @@
+1. install minimal system
+
+2. create user build and add them in sudo sudo
+yum install -y sudo
+sudo useradd -m build
+sudo bash -c 'echo "build ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/build'
+
+3. login as 'build' and work as them
+sudo yum -y update
+sudo yum -y install epel-release # must be separate line, it install epel repository
+sudo yum -y install git make rpm-build gcc-c++ ccache autoconf automake libtool bison flex texinfo php-devel yasm cmake libbsd-devel chrpath mariadb-devel opencv-devel systemd-devel sudo
+cd
+mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+echo '%_topdir %(echo $HOME)/rpmbuild' > ~/.rpmmacros
+
+4 somewhere git clone bluecherry-apps repo and clean it
+git submodule update --recursive --init
+git clean -dxf && git reset --hard
+git submodule foreach --recursive "git clean -dxf && git reset --hard"
+
+5. from host machine from directory with git repo (cleaned and checkouted with initialyzed submodules) copy sources
+tar -czf - . | ssh build@build.machine bash -c "cat > rpmbuild/SOURCES/bluecherry-2.5.23.tar.gz"
+
+6. as user 
+cd rpmbuild/SPECS
+tar xzf ../SOURCES/bluecherry-2.5.23.tar.gz --strip-components=2 ./rpm/bluecherry.spec
+rpmbuild -bb bluecherry.spec # build binary packages
