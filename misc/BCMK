@@ -149,7 +149,7 @@ all: $(foreach d,$(pkgs), $d-install)
 
 install: $(foreach d,$(pkgs), $d-install) FORCE
 	$(INSTALL_PROG) -d $(DESTDIR)$(libexec_dir)
-	$(INSTALL_PROG) $(STAGE)/lib/*.so* $(STAGE)/bin/* -t $(DESTDIR)$(libexec_dir)
+	cp --preserve=mode,links -P $(STAGE)/lib/*.so* $(STAGE)/bin/* $(DESTDIR)$(libexec_dir)
 
 clean: $(foreach d,$(pkgs), $d-clean) FORCE
 	rm -rf $(STAGE)
