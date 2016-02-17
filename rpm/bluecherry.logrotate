@@ -8,6 +8,6 @@
 	compress
 	create 640 root bluecherry
 	postrotate
-		/bin/kill -HUP `cat /var/run/rsyslogd.pid 2> /dev/null` 2> /dev/null || true
+		systemctl restart rsyslog.service
 	endscript
 }
