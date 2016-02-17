@@ -10,7 +10,7 @@ Source:         %{name}-%{version}.tar.gz
 Prefix:         %{_prefix}
 BuildRequires:	git,make,rpm-build,gcc-c++,ccache,autoconf,automake,libtool,bison,flex
 BuildRequires:	texinfo,php-devel,yasm,cmake,libbsd-devel,chrpath
-BuildRequires:  mariadb-devel,opencv-devel,systemd-devel,sudo
+BuildRequires:  mariadb-devel,opencv-devel,systemd-devel
 BuildRequires:  systemd
 Requires:	httpd,mod_ssl,php,php-pdo,php-pear-Mail,php-pear-Mail-Mime,mkvtoolnix,dpkg
 Requires:	mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policycoreutils-python
@@ -19,22 +19,19 @@ Requires:	mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policyc
 This package contains the server components for the Bluecherry DVR system.
 
 %prep
-sudo rm -rf %{_builddir}/%{name}
 %autosetup -n %{name} -c %{name}
 echo "#define GIT_REVISION \"`git describe --dirty --always --long` `git describe --all`\"" > server/version.h
 
 %build
 git submodule foreach --recursive "git clean -dxf && git reset --hard"
 git clean -dxf && git reset --hard
+git submodule update
 echo "#define GIT_REVISION \"`git describe --dirty --always --long` `git describe --all`\"" > server/version.h
 
-sudo rm -rf %{buildroot}
 make clean
-sudo rm -rf /usr/lib/bluecherry
-sudo make
+make
 
 %install
-sudo chown -R $USER %{_builddir}/%{name}
 %make_install
 %{_builddir}/%{name}/scripts/build_helper/post_make_install.sh rpm "%{_builddir}/%{name}" "%{buildroot}" %{epoch}:%{version}-%{release}
 
