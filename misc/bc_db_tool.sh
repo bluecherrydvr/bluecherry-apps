@@ -6,7 +6,7 @@
 ### to create new bluecherry mysql db run
 # bc_db_tool.sh new_db db_admin_name db_admin_pass bc_db_name db_user db_pass
 ### to upgrade existing db run (it will check, that current db version is lower then in installed package)
-# bc_db_tool.sh upgrade_db bc_db_name db_user db_pass
+# bc_db_tool.sh upgrade_db bc_db_name db_user db_pass [db_host]
 
 set -x # trace
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
@@ -16,29 +16,9 @@ else
     IN_DEB="1"
 fi
 
-if [[ $IN_DEB ]]
-then
-	. /usr/share/debconf/confmodule
-fi
-
-
 function db_upgrade_err() {
 	trap - ERR # avoid recurrence
-	# Say something to user
-	echo -e "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: https://bluecherry.zendesk.com/anonymous_requests/new . Provide full  uncut output from console (the above text).\n\nATTENTION! The above log contains your MySQL logins and passwords, please do not post these logs on public forums.\n" >&2
-	if [[ -s $DB_BACKUP_GZ_FILE ]]
-	then
-		echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
-		# Drop all tables
-		for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password"| tail -n +2`
-		do
-			echo "SET FOREIGN_KEY_CHECKS=0; DROP TABLE $x" | mysql -D"$dbname" -u"$user" -p"$password"
-		done
-		echo "SET FOREIGN_KEY_CHECKS=1" | mysql -D"$dbname" -u"$user" -p"$password" # Restore setting just in case
-
-		# Restore from backup
-		gunzip -c $DB_BACKUP_GZ_FILE | mysql -D"$dbname" -u"$user" -p"$password"
-	fi
+	echo Failed upgrade DB
 	exit 1 # Indicate failure
 }
 
@@ -46,6 +26,7 @@ function apply_db_patches() {
 	pushd /usr/share/bluecherry/mysql-upgrade
 	# Note that entries must be numeric, and they are traversed in numeric order, ascending
 	# Entries are directories, see below
+	export dbname user password host
 	for x in `ls | sort -n`
 	do
 		if [[ $x -gt $DB_VERSION ]]
@@ -71,14 +52,15 @@ function apply_db_patches() {
 	fi
 
 	# Save new DB_VERSION
-	echo "UPDATE GlobalSettings SET value='$DB_VERSION' WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password"
+	echo "UPDATE GlobalSettings SET value='$DB_VERSION' WHERE parameter = 'G_DB_VERSION'" \
+		| mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 }
 function print_usage
 {
     echo usage: to create new database
     echo        bc_db_tool.sh new_db db_admin_name db_admin_pass bc_db_name db_user db_pass
     echo to upgrade existing database
-    echo        bc_db_tool.sh upgrade_db bc_db_name db_user db_pass
+    echo        bc_db_tool.sh upgrade_db bc_db_name db_user db_pass [db_host]
     echo example:
     echo        bc_db_tool.sh new_db root '""' bluecherry bluecherry \'@some_cryptic_password_#*%\'
 }
@@ -174,62 +156,72 @@ function new_db
     check_db_exists "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname"
     create_db "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname" "$user" "$password"
 }
+function check_mysql_connect
+{
+    dbname="$1"
+    user="$2"
+    password="$3"
+    host="$4"
+    echo 'exit' | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
+}
 function upgrade_db
 {
-    # This branch will not use initial_data_mysql.sql,
-    # so DB patching script must be added to mysql-upgrade dir
-    
+    # upgrade_db bc_db_name db_user db_pass [host]
+    echo upgrade_db "$@"
+    dbname="$1"
+    user="$2"
+    password="$3"
+    host="${4:-localhost}"
+
     trap db_upgrade_err ERR # will restore DB from backup and terminate the execution with failure retcode
-    DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
-    
-    . /usr/share/bluecherry/load_db_creds.sh
-    export dbname user password
+    check_mysql_connect "$dbname" "$user" "$password" "$host" 
     
     # Get DB version
-    export DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+    DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" \
+	    | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+    PACKAGE_DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
 
-    if [[ "$DB_VERSION" != "`cat /usr/share/bluecherry/installed_db_version`" ]]
+    if [[ "$DB_VERSION" != "$PACKAGE_DB_VERSION" ]]
     then
-	
-	# Notify user through debconf non-blocking dialog that backup is taken
-	echo "Going to updgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
-	# Backup the DB
-	mysqldump "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
+	echo package db version in base \""$DB_VERSION"\" != \""$PACKAGE_DB_VERSION"\" '(in packege db version)'
+	echo Upgradeing Database...
 	
 	if [[ "$DB_VERSION" == "" ]]
 	then
 	    # If no version stored (pre-2.2 was installed):
 	    # Rename all tables to ${table}_bkp
-	    for x in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2`
+	    for x in `echo "show tables" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" | tail -n +2`
 	    do
-	        echo "RENAME TABLE $x TO ${x}_bkp" | mysql -D"$dbname" -u"$user" -p"$password"
+	        echo "RENAME TABLE $x TO ${x}_bkp" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 	    done
 	    # Create tables from the reference DB schema
-	    mysql -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql_2020000.sql
+	    mysql -h "$host" -u"$user" -p"$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql_2020000.sql
 	    # Migrate data from all tables
 	    # Devices.rtsp_rtp_prefer_tcp, added in 2.1.7-7. Workaround for twofold incoherences:
 	    # 1) Failure of dbconfig-common to apply a DB patch to add it
 	    # 2) Different fields order in fresh installation and patched one
 	    # Try to add, ignore result because this may fail if field is already here
-	    echo "ALTER TABLE Devices_bkp ADD COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" | mysql -D"$dbname" -u"$user" -p"$password" || true
+	    echo "ALTER TABLE Devices_bkp ADD COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" \
+		    | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" || true
 	    # Try to move it to be after rtsp_password for the case it was added in the end
-	    echo "ALTER TABLE Devices_bkp MODIFY COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" | mysql -D"$dbname" -u"$user" -p"$password"
+	    echo "ALTER TABLE Devices_bkp MODIFY COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" \
+		    | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 	    # 2.1.7-1 DB patch
-	    echo "ALTER TABLE Storage_bkp DROP COLUMN record_time" | mysql -D"$dbname" -u"$user" -p"$password" || true
+	    echo "ALTER TABLE Storage_bkp DROP COLUMN record_time" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" || true
 	    # Drop "?tcp" and "?udp" postfixes from RTSP URLs in Devices
-	    echo "UPDATE Devices_bkp SET device = SUBSTRING(device, 1, LENGTH(device) - 4) WHERE SUBSTRING(device, -4) = '?udp' OR SUBSTRING(device, -4) = '?tcp'" | mysql -D"$dbname" -u"$user" -p"$password"
+	    echo "UPDATE Devices_bkp SET device = SUBSTRING(device, 1, LENGTH(device) - 4) WHERE SUBSTRING(device, -4) = '?udp' OR SUBSTRING(device, -4) = '?tcp'" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 	    # Now table contents copying should work
 	    # All other tables columns modifications (besides of constraints) are from 2.0.0 days, those versions are not used as of present days (May 2014)
 	    # preinst checks that version is not less than 2.0.3
-	    for x_bkp in `echo "show tables" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 | grep _bkp`
+	    for x_bkp in `echo "show tables" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" | tail -n +2 | grep _bkp`
 	    do
                 x=`echo $x_bkp | sed 's/_bkp//'`
-		echo "SET FOREIGN_KEY_CHECKS=0; INSERT INTO $x SELECT * FROM $x_bkp" | mysql -D"$dbname" -u"$user" -p"$password"
+		echo "SET FOREIGN_KEY_CHECKS=0; INSERT INTO $x SELECT * FROM $x_bkp" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 		# Drop all *_bkp tables
-		echo "SET FOREIGN_KEY_CHECKS=0; DROP TABLE $x_bkp" | mysql -D"$dbname" -u"$user" -p"$password"
-		echo "SET FOREIGN_KEY_CHECKS=1" | mysql -D"$dbname" -u"$user" -p"$password" # Restore setting just in case
+		echo "SET FOREIGN_KEY_CHECKS=0; DROP TABLE $x_bkp" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
+		echo "SET FOREIGN_KEY_CHECKS=1" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" # Restore setting just in case
 	    done
-	    export DB_VERSION=2020000 # to assist apply_db_patches() logics
+	    DB_VERSION=2020000 # to assist apply_db_patches() logics
 	    apply_db_patches
 	else
 	    # If there is a DB version stored (2.2 and newer was installed):
@@ -241,8 +233,9 @@ function upgrade_db
 	    echo "DB_VERISON $DB_VERSION after applying DB patches differ from `cat /usr/share/bluecherry/installed_db_version` in /usr/share/bluecherry/installed_db_version" >&2
 	    false
 	fi
-	echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -u"$user" -p"$password" -D"$dbname"
-	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" -p"$password" -D"$dbname"
+	echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
+	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" \
+		| mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
     fi # Whether old and new DB version match
 }
 
@@ -258,7 +251,12 @@ new_db)
 	new_db "$2" "$3" "$4" "$5" "$6"
 	;;
 upgrade_db)
-	upgrade_db
+	if [[ $# -lt 4 ]]
+        then
+                print_usage
+                exit 1
+        fi
+	upgrade_db "$2" "$3" "$4" "$5"
 	;;
 *)
 	print_usage

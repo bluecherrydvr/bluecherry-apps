@@ -10,7 +10,28 @@ then
 else
     IN_DEB="1"
 fi
-
+function restore_mysql_backup
+{
+    # restore_mysql_backup dbname user password host
+    dbname="$1"
+    user="$2"
+    password="$3"
+    host="${4:-localhost}"
+    
+    echo -e "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: https://bluecherry.zendesk.com/anonymous_requests/new . Provide full  uncut output from console (the above text).\n\nATTENTION! The above log contains your MySQL logins and passwords, please do not post these logs on public forums.\n" >&2
+    if [[ -s $DB_BACKUP_GZ_FILE ]]
+    then
+        echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
+        # Drop all tables
+        for x in `echo "show tables" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"| tail -n +2`
+        do
+            echo "SET FOREIGN_KEY_CHECKS=0; DROP TABLE $x" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
+        done
+        echo "SET FOREIGN_KEY_CHECKS=1" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" # Restore setting just in case
+        # Restore from backup
+        gunzip -c $DB_BACKUP_GZ_FILE | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
+    fi
+}
 if [[ $IN_DEB ]]
 then
 	. /usr/share/debconf/confmodule
@@ -196,15 +217,43 @@ case "$1" in
 			chmod 640 /etc/bluecherry.conf
 		else
 			# Upgrade
-			/usr/share/bluecherry/bc_db_tool.sh upgrade_db
+			. /usr/share/bluecherry/load_db_creds.sh
+
+			if ! echo 'exit' | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
+			then
+				echo "Can't connect mysql with credentials in /etc/bluecherry.conf"
+				echo "Please remove config or fix config"
+				exit 1
+			fi
+
+			DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
+			echo "Going to updgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
+			# Backup the DB
+			mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
+
+			if ! /usr/share/bluecherry/bc_db_tool.sh upgrade_db "$dbname" "$user" "$password" "$host"
+			then
+				echo Failed upgrade database, restoring backup
+				restore_mysql_backup "$dbname" "$user" "$password" "$host"
+				exit 1
+			fi
 
 		fi # Whether there was an upgrade or fresh install
 		
 		if ! /usr/share/bluecherry/compare.sh >&2
 		then
 			echo "Loaded database scheme missmatch. Please load it manualy or restore from backup"
+			if [[ -s "$DB_BACKUP_GZ_FILE" ]]
+			then
+				restore_mysql_backup "$dbname" "$user" "$password" "$host"
+			fi
 			exit 1
 		fi
+		# database successfully upgraded
+		if [[ -f "$DB_BACKUP_GZ_FILE" ]]
+		then
+	                rm -f "$DB_BACKUP_GZ_FILE"
+	        fi
 
 		mkdir -p /usr/share/bluecherry/sqlite
 		if [[ $IN_DEB ]]

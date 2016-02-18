@@ -78,11 +78,13 @@ then
         NEW_DB_VERSION=$DB_VERSION
         if [[ "$OLD_DB_VERSION" -gt "$NEW_DB_VERSION" ]]
         then
-                echo "DOWNGRADE ACROSS DATABASE VERSIONS IS NOT SUPPORTED"
-                echo "Something goes wrong. Please 'rpm -e bluecherry' "
-		echo "then drop database and '/etc/bluecherry.conf' and make clean install"
+                echo "DOWNGRADE ACROSS DATABASE VERSIONS IS NOT SUPPORTED" 
+		echo "Only clean install of older version"
+                echo "To cleanup your installation remove package 'rpm -e bluecherry'"
+		echo "And then run as root ~bluecherry/bin/remove_all_data.sh"
+		echo "Or manually remove all mediafiles, drop database,"
+		echo "remove config '/etc/bluecherry.conf' then 'userdel -r -f bluecherry'"
 		echo "ALL your data will be lost!!!"
-		echo "Or ask support..."
                 exit 1
         fi
 fi
@@ -104,27 +106,30 @@ case "$1" in
 esac
 if [[ "$1" == "$UPGRADE" ]]
 then
-    systemctl stop bc-server.service 
+    systemctl stop bc-server.service || true
 fi
 
 %post
 /sbin/ldconfig
 bash -x %{_datadir}/%{name}/postinstall.sh "$@"
+install -m 750 -o bluecherry -g bluecherry -D /usr/share/bluecherry/remove_all_data.sh ~bluecherry/bin/remove_all_data.sh
 
 %posttrans
-systemctl enable httpd.service
-systemctl enable bc-server.service
-systemctl daemon-reload
-systemctl stop  bc-server.service
-systemctl start bc-server.service
+systemctl enable httpd.service || true
+systemctl enable bc-server.service || true
+systemctl daemon-reload || true
+systemctl restart bc-server.service || true
 
 %preun
 set -x
 if [[ $1 == 0 ]] # uninstall, not upgrade
 then
     systemctl stop bc-server.service
-    rm /etc/httpd/sites-enabled/bluecherry.conf
-    systemctl reload httpd.service
+    if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
+    then
+        rm /etc/httpd/sites-enabled/bluecherry.conf
+    fi
+    systemctl reload httpd.service || true
 fi
 
 %postun

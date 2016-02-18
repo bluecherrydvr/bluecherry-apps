@@ -12,7 +12,7 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-mysqldump "$dbname" --no-data --skip-comments -u"$user" -p"$password" > $DUMPFILE
+mysqldump "$dbname" --no-data --skip-comments -h "$host" -u"$user" -p"$password" > $DUMPFILE
 
 function filter_variables() {
 sed -e 's/ AUTO_INCREMENT=\([^ ;]\+\)//'
