@@ -134,3 +134,12 @@ fi
 
 %postun
 /sbin/ldconfig
+echo -e "\n\t\t!!!ATTENTION!!!\n"
+echo "Bluecherry server package removed but configs, records, database and"
+echo "bluecherry user still exist. To cleanup your installation run as root "
+echo "sudo ~bluecherry/bin/remove_all_data.sh"
+echo "Or manually remove all mediafiles, drop database,"
+echo "remove config '/etc/bluecherry.conf' then 'userdel -r -f bluecherry'"
+echo "ALL bluecherry server data will be removed!!!"
+echo ""
+echo "====================================================================="
