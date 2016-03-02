@@ -652,7 +652,7 @@ class ipCamera{
 			    $highest_id = $media_files[0]['id'];
     			foreach ($media_files as $key => $media_file) {
     				if (file_exists($media_file['filepath']))
-    					unlink($media_file['filepath']);
+    					@unlink($media_file['filepath']);
                 }
     			# Remove all traversed entries, not touching the possible to appear entries with higher id
     			data::query("DELETE FROM Media WHERE device_id='{$id}' AND id <= {$highest_id}", true);
