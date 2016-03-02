@@ -40,19 +40,19 @@ class stats extends Controller {
 		return round(100 - $cpu[$id], 2);
 	}
 	function getMemUse() {
-		$f = @fopen("/proc/meminfo", "r");
-		for ($i = 0; $str = fgets($f); $i++) {
-			$stat[$i] = intval(preg_replace("/.*\s(\d+)\s.*/", "$1",
-					   $str));
-		}
-		fclose($f);
+                $f = @fopen("/proc/meminfo", "r");
+                for ($i = 0; $str = fgets($f); $i++) {
+                        $str_el = preg_split("/[\s:]+/", $str, 3);
+                        $stat[$str_el[0]] = intval($str_el[1]);
+                }
+                fclose($f);
 
-		$total = $stat[0];
-		$used = $total - $stat[1];
-		$percent = round($used / $total * 100, 2);
+                $total = $stat["MemTotal"];
+                $used = $total - $stat["MemAvailable"];
+                $percent = round($used / $total * 100, 2);
 
-		return array($total, $used, $percent);
-	}
+                return array($total, $used, $percent);
+        }
 	function getUpTime(){
 		$file = file_get_contents("/proc/uptime", "r");
 		$tmp = explode(" ", $file);
