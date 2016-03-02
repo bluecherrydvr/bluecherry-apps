@@ -314,6 +314,7 @@
     <script src="/template/dist/js/videoadj.js"></script>
     <script src="/template/dist/js/general.js"></script>
     <script src="/template/dist/js/playback.js"></script>
+    <script src="/template/dist/js/discoverCameras.js"></script>
 
     <?php echo getJs(); ?>
 </body>
