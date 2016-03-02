@@ -327,7 +327,10 @@ void v4l2_device_solo6x10::create_stream_packet(AVPacket *src)
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
-	current_packet.pts      = av_rescale_q(src->pts, demuxer->streams[src->stream_index]->time_base, AV_TIME_BASE_Q);
+	current_packet.pts      = av_rescale_q_rnd(src->pts, demuxer->streams[src->stream_index]->time_base,
+			AV_TIME_BASE_Q, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	current_packet.dts      = av_rescale_q_rnd(src->dts, demuxer->streams[src->stream_index]->time_base,
+			AV_TIME_BASE_Q, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	if (src->flags & AV_PKT_FLAG_KEY)
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
