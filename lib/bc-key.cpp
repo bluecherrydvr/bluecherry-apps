@@ -254,6 +254,7 @@ int bc_license_generate_auth(char *dest, int dest_sz, const char *key, const cha
 	return 9;
 }
 
+#ifndef BC_KEY_STANDALONE
 int bc_license_check_auth(const char *key, const char *auth)
 {
 	// ATTENTION! Uncommon retcode policy: 0 = fail, 1 = success
@@ -265,9 +266,7 @@ int bc_license_check_auth(const char *key, const char *auth)
 		return 0;
 
 	if (bc_license_machine_id_set(machine_id_set)) {
-#ifndef BC_KEY_STANDALONE
 		bc_log(Error, "Failed to get machine identification codes");
-#endif
 		return 0;
 	}
 	for (unsigned int i = 0; i < machine_id_set.size(); i++) {
@@ -287,15 +286,31 @@ int bc_license_check_auth(const char *key, const char *auth)
 int bc_license_machine_id_by_devname(MachineId &m_id, char *devname);
 int bc_license_machine_id_set(MachineIdSet &m_id_set) {
 	int ret;
+	BC_DB_RES dbres;
+	bool m_id_in_db = false;
+
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_MACHINE_ID'");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		MachineId m_id = {0, };
+		const char *tmp = bc_db_get_val(dbres, "value", NULL);
+		if (tmp) {
+			bc_log(Info, "Got machine id '%s' from DB", tmp);
+			m_id_in_db = true;
+			strlcpy(m_id.machine_id, tmp, sizeof(m_id.machine_id));
+			m_id_set.push_back(m_id);
+		}
+	}
+	bc_db_free_table(dbres);
+
 	// Getting a list of network interfaces having ethernet address (MAC)
 	// ip -o link | grep link/ether | awk -F : '{ print $2 }' | tr -d ' '
 	// Above way was not accepted to avoid introducing new dependency on iproute|iproute2 package
 	// The below bash script gives nearly the same result
 	FILE *devlist = popen("/usr/share/bluecherry/list_ether.sh", "r");
 	if (!devlist) {
-#ifndef BC_KEY_STANDALONE
 		bc_log(Error, "Failed to get network interfaces list");
-#endif
 		return -1;
 	}
 	while (!feof(devlist) && !ferror(devlist)) {
@@ -309,9 +324,7 @@ int bc_license_machine_id_set(MachineIdSet &m_id_set) {
 
         if (!strlen(m_id.ifname))
             break;
-#ifndef BC_KEY_STANDALONE
 		bc_log(Debug, "Got devname %s", m_id.ifname);
-#endif
 
 		ret = bc_license_machine_id_by_devname(m_id, m_id.ifname);
 		if (!ret)
@@ -324,6 +337,10 @@ int bc_license_machine_id_set(MachineIdSet &m_id_set) {
 		m_id_set.push_back(m_id);
 	}
 	pclose(devlist);
+
+	if (!m_id_in_db)
+		bc_db_query("INSERT INTO GlobalSettings (parameter, value) VALUES ('G_MACHINE_ID', '%s')", m_id_set.front().machine_id);
+
 	return 0;
 }
 
@@ -357,9 +374,7 @@ int bc_license_machine_id_by_devname(MachineId &m_id, char *devname) {
 	err = ioctl(fd, SIOCETHTOOL, &ifr);
 	close(fd);
 	if (err) {
-#ifndef BC_KEY_STANDALONE
 		bc_log(Error, "Cannot read permanent address of %s, errno %d", devname, errno);
-#endif
 	} else {
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 		memcpy(m_id.address, epaddr.data, MIN(sizeof(m_id.address), epaddr.size));
@@ -367,13 +382,11 @@ int bc_license_machine_id_by_devname(MachineId &m_id, char *devname) {
 
 	base32_encode(m_id.machine_id, sizeof(m_id.machine_id), m_id.address + 1, 5);
 
-#ifndef BC_KEY_STANDALONE
     bc_log(Info, "devname: %s", devname);
     bc_log(Info, "machine_id: %s", m_id.machine_id);
     bc_log(Info, "address: %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
             m_id.address[0], m_id.address[1], m_id.address[2],
             m_id.address[3], m_id.address[4], m_id.address[5]);
-#endif
 
 	return err;
 }
@@ -387,7 +400,6 @@ int bc_license_machine_id(char *out, size_t out_sz) {
 	return strlcpy(out, machine_id_set[0].machine_id, out_sz);
 }
 
-#ifndef BC_KEY_STANDALONE
 int bc_read_licenses(std::vector<bc_license> &licenses)
 {
 	std::set<std::string> existingset, newset;
