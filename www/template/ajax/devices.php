@@ -11,7 +11,10 @@
 
 <div class="row">
     <div class="col-lg-12">
-        <a href="/addip" class="btn btn-success pull-right ajax-content"><i class="fa fa-plus fa-fw"></i> <?php echo AIP_HEADER; ?></a>
+        <div class="pull-right">
+            <a href="/discover-cameras" class="btn btn-success ajax-content" role="button"><i class="fa fa-search fa-fw"></i> <?php echo DISCOVER_IP_CAMERAS; ?></a>
+            <a href="/addip" class="btn btn-success ajax-content" role="button"><i class="fa fa-plus fa-fw"></i> <?php echo AIP_HEADER; ?></a>
+        </div>
         <div class="clearfix"></div>
     </div>
 </div>
