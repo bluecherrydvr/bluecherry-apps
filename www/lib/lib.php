@@ -558,7 +558,7 @@ class ipCamera{
 		return $this->info['connection_status'];
 	}
 	protected function autoConfigure($driver, $info){ #auto configure known cameras
-		include("ipcamlib.php");
+		include_once("ipcamlib.php");
 		$result = false;
 		$control = get_ipcam_control($driver, $info);
 		if ($control) { $result = $control->auto_configure(); };
