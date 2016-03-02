@@ -312,6 +312,7 @@ define('AC_ACCESS', '');
 define('CLICK_HERE_TO_UPDATE', '[Yes]');
 
 define('AIP_HEADER', 'Add an IP Camera');
+define('DISCOVER_IP_CAMERAS', 'Discover IP Cameras');
 define('AIP_NEW_LIST_AVAILABLE', 'It appears that a newer version of our supported camera list is available. Would you like to upgrade to this version?');
 define('AIP_LIST_UPDATED_SUCCESSFULLY', 'Camera list updates sussessfully.');
 define('AIP_NEW_LIST_AVAIL', 'New ip camera tables are available.');
