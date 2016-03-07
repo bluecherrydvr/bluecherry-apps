@@ -1,3 +1,12 @@
+bluecherry (1:2.5.25) precise trusty wily wheezy jessie; urgency=low
+
+  * Fix tw5864 recordings failures caused by wrong timestamp handling
+  * Enhance licensing code to avoid invalidations
+  * Fix avalable memory reporting in web interface
+  * Packaging improvements
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Mon, 07 Mar 2016 12:49:56 +0200
+
 bluecherry (1:2.5.24) precise trusty wily wheezy jessie; urgency=low
 
   * Add RPM packaging for Centos 7
