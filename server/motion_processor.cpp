@@ -10,6 +10,7 @@ extern "C" {
 #include <libswscale/swscale.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/dict.h>
+#include <libavutil/imgutils.h>
 }
 
 #include "opencv2/opencv.hpp"
@@ -264,10 +265,8 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	frame->format = AV_PIX_FMT_GRAY8;
 	frame->width = dst_w;
 	frame->height = dst_h;
-	//avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
 
-	frame->data[0] = (uint8_t *)m.data;
-        avpicture_fill( (AVPicture *)frame, frame->data[0], AV_PIX_FMT_GRAY8, dst_w, dst_h);
+	av_image_fill_arrays(frame->data, frame->linesize, m.data, AV_PIX_FMT_GRAY8, dst_w, dst_h, 1);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
 		  rawFrame->height, frame->data, frame->linesize);
@@ -335,7 +334,7 @@ int motion_processor::detect_bc_original(AVFrame *rawFrame)
 	frame->format = AV_PIX_FMT_GRAY8;
 	frame->width = rawFrame->width * downscaleFactor;
 	frame->height = rawFrame->height * downscaleFactor;
-	avpicture_alloc((AVPicture*)frame, (AVPixelFormat)frame->format, frame->width, frame->height);
+	av_image_alloc(frame->data, frame->linesize, frame->width, frame->height, (AVPixelFormat)frame->format, 4);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
 		  rawFrame->height, frame->data, frame->linesize);
@@ -463,7 +462,7 @@ int motion_processor::detect_bc_original(AVFrame *rawFrame)
 		assert(refFrame);
 	}
 
-	avpicture_free((AVPicture*)frame);
+	av_freep(&frame->data[0]);
 	av_frame_free(&frame);
 	return ret;
 }
