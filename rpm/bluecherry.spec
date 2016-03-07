@@ -1,5 +1,5 @@
 Name:           bluecherry
-Version:	2.5.24
+Version:	2.5.25
 Release:        1
 Epoch:		1
 Summary:        Bluecherry DVR Server
