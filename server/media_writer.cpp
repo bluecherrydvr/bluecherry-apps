@@ -14,6 +14,7 @@
 extern "C" {
 #include <libavutil/mathematics.h>
 #include <libavutil/error.h>
+#include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
 
@@ -455,8 +456,8 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 			goto end;
 		}
 
-		ret = avpicture_alloc((AVPicture*)frame, AV_PIX_FMT_YUVJ420P, rawFrame->width, rawFrame->height);
-		if (ret) {
+		ret = av_image_alloc(frame->data, frame->linesize, rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P, 4);
+		if (ret < 0) {
 			bc_log(Error, "Failed to allocate picture for encoding");
 			goto end;
 		}
@@ -470,7 +471,7 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 
 	ret = avcodec_encode_video2(oc, &avpkt, frame, &got_pkt);
 	if (avpicture_allocated)
-		avpicture_free((AVPicture*)frame);
+		av_freep(&frame->data[0]);
 	if (ret < 0) {
 		char error[512];
 		av_strerror(ret, error, sizeof(error));
