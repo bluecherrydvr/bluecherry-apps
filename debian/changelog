@@ -1,3 +1,9 @@
+bluecherry (1:2.5.25-2) precise trusty wily wheezy jessie; urgency=low
+
+  * Migrate from deprecated broken ffmpeg API to fix crash
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 08 Mar 2016 02:48:36 +0200
+
 bluecherry (1:2.5.25) precise trusty wily wheezy jessie; urgency=low
 
   * Fix tw5864 recordings failures caused by wrong timestamp handling
