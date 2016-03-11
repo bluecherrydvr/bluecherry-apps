@@ -5,7 +5,12 @@ set -x
 DST_DIR=releases/$DIST/
 
 # Handy to avoid manual chroots updating and installation of new builddeps
-sudo `dirname $0`/install_prereqs.sh
+if [[ $DIST == centos* ]]
+then
+	sudo `dirname $0`/install_prereqs_RPM.sh
+else
+	sudo `dirname $0`/install_prereqs.sh
+fi
 
 # TODO Implement building outside of sources tree
 
@@ -15,6 +20,16 @@ git submodule update --recursive --init
 
 echo "#define GIT_REVISION \"`git describe --dirty --always --long` `git describe --all`\"" > server/version.h
 
-debian/rules clean binary
-mkdir -p $DST_DIR
-mv -v ../*.deb $DST_DIR
+if [[ $DIST == centos* ]]
+then
+	UPSTREAM_VERSION=`dpkg-parsechangelog | grep ^Version: | grep -E -o '([0-9]+\.){2,3}([0-9]+)'`
+	tar -czf ~build/rpmbuild/SOURCES/bluecherry-$UPSTREAM_VERSION.tar.gz .
+	sed -e "s/%%UPSTREAM_VERSION%%/${UPSTREAM_VERSION}/" rpm/bluecherry.spec.template \
+	       > ~build/rpmbuild/SPECS/bluecherry.spec
+	sudo -i -u build bash -c "cd rpmbuild/SPECS; rpmbuild -bb bluecherry.spec"
+	mv -v ~build/rpmbuild/RPMS/x86_64/*.rpm $DST_DIR
+else
+	debian/rules clean binary
+	mkdir -p $DST_DIR
+	mv -v ../*.deb $DST_DIR
+fi

@@ -41,33 +41,50 @@ EOF
 deb http://ftp.us.debian.org/debian $DIST main
 EOF
 		;;
+	centos_*)
+		DISTRO=centos
+		;;
 	*)
 		echo "Unknown DIST" >&2
 		exit 1
 		;;
 esac
-
-case $ARCH in
-	arm*)
-		mkdir -p "$LOCATION/"{,p1,p2}
-		wget -O - http://odroid.in/ubuntu_14.04lts/ubuntu-14.04lts-server-odroid-xu3-20150725.img.xz \
-			| xzdec > $LOCATION/img
-		LOOPDEV=`losetup -P --show -f $LOCATION/img`
-		mount ${LOOPDEV}p1 $LOCATION/p1
-		mount ${LOOPDEV}p2 $LOCATION/p2
-		cp -a $LOCATION/p2/* $LOCATION
-		cp -a $LOCATION/p1/* $LOCATION/boot
-		umount -l ${LOOPDEV}p1
-		umount -l ${LOOPDEV}p2
-		losetup -d $LOOPDEV
-		echo '91.189.88.151 ports.ubuntu.com' >> $LOCATION/etc/hosts
-		;;
-	*)
-		debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
-		cp ./sources.list $LOCATION/etc/apt/sources.list
-		;;
-esac
-
+if [[ "$DIST" == centos* ]]
+then
+	apt-get -y install yum
+	rpm -i http://pubmirrors.dal.corespace.com/centos/7/os/x86_64/Packages/centos-release-7-2.1511.el7.centos.2.10.x86_64.rpm || true
+	yum -y install yum --installroot=`pwd`/"$LOCATION" --releasever=7
+	cp /etc/resolv.conf "$LOCATION"/etc/resolv.conf
+	mount --rbind /proc "$LOCATION/proc"
+	mount --rbind /sys  "$LOCATION/sys"
+	mount --rbind /dev  "$LOCATION/dev"
+	chroot "$LOCATION" yum -y group install Base --releasever=7 || true
+	RES=$?
+	umount -l "$LOCATION/dev"
+	umount -l "$LOCATION/sys"
+	umount -l "$LOCATION/proc"
+	if [[ $RES != 0 ]]
+	then
+		exit 1
+	fi
+elif [[ "$ARCH" == arm* ]]
+then
+	mkdir -p "$LOCATION/"{,p1,p2}
+	wget -O - http://odroid.in/ubuntu_14.04lts/ubuntu-14.04lts-server-odroid-xu3-20150725.img.xz \
+		| xzdec > $LOCATION/img
+	LOOPDEV=`losetup -P --show -f $LOCATION/img`
+	mount ${LOOPDEV}p1 $LOCATION/p1
+	mount ${LOOPDEV}p2 $LOCATION/p2
+	cp -a $LOCATION/p2/* $LOCATION
+	cp -a $LOCATION/p1/* $LOCATION/boot
+	umount -l ${LOOPDEV}p1
+	umount -l ${LOOPDEV}p2
+	losetup -d $LOOPDEV
+	echo '91.189.88.151 ports.ubuntu.com' >> $LOCATION/etc/hosts
+else
+	debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
+	cp ./sources.list $LOCATION/etc/apt/sources.list
+fi
 
 mkdir -p $LOCATION/build
 mount --rbind `dirname $0`/../ $LOCATION/build
@@ -86,11 +103,12 @@ function cleanup() {
 }
 trap cleanup INT TERM QUIT EXIT
 
-case $ARCH in
-	arm*)
-		sudo chroot "$LOCATION" qemu-arm-static /bin/bash -e /build/scripts/install_prereqs.sh
-		;;
-	*)
-		sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
-		;;
-esac
+if [[ "$DIST" == centos* ]]
+then
+	sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs_RPM.sh
+elif [[ $ARCH == arm* ]]
+then
+	sudo chroot "$LOCATION" qemu-arm-static /bin/bash -e /build/scripts/install_prereqs.sh
+else
+	sudo chroot "$LOCATION" /bin/bash -e /build/scripts/install_prereqs.sh
+fi

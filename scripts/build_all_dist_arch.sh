@@ -23,5 +23,9 @@ do
 	done
 done
 
+# RPM
+export DIST=centos_7 ARCH=x86_64
+work
+
 export DIST=trusty ARCH=arm7l
 work
