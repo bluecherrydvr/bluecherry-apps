@@ -12,6 +12,10 @@ function work {
 	touch releases/${DIST}_${ARCH}.done
 }
 
+# RPM
+export DIST=centos_7 ARCH=x86_64
+work
+
 # TODO Implement parallel building outside of sources tree
 for DIST in precise trusty wily wheezy jessie
 do
