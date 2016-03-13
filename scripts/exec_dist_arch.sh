@@ -44,6 +44,12 @@ do
 	sudo mount --rbind {/,$LOCATION/}$x
 done
 
+if [[ -e /sys/fs/selinux ]]
+then
+	mount --rbind /sys/fs/selinux $LOCATION/sys/fs/selinux
+	mount --bind -o remount,ro $LOCATION/sys/fs/selinux
+fi
+
 case $ARCH in
 	arm*)
 		sudo chroot "$LOCATION" qemu-arm-static /bin/bash -e -c "cd /$MOUNT_LOC && $COMMAND"

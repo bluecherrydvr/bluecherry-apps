@@ -94,6 +94,12 @@ do
 	sudo mount --rbind {/,$LOCATION/}$x
 done
 
+if [[ -e /sys/fs/selinux ]]
+then
+	mount --rbind /sys/fs/selinux $LOCATION/sys/fs/selinux
+	mount --bind -o remount,ro $LOCATION/sys/fs/selinux
+fi
+
 function cleanup() {
 	for x in dev proc sys
 	do
