@@ -117,13 +117,13 @@ public:
 	int nb_streams;
 
 	/* Thread-safe; should be called from recording threads */
-	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx);
+	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx[]);
 	static void remove(struct bc_record *rec);
 
 	static rtsp_stream *findUri(std::string uri);
 
 	int activeSessionCount() { return _activeSessionCount; } 
-	void sendPackets(uint8_t *buf, unsigned int bufsz, int flags);
+	void sendPackets(uint8_t *buf, unsigned int bufsz, int flags, int stream_index);
 
 	/* Invoked to delete dead streams on the RTSP thread after a (thread-safe) remove() */
 	static void collectGarbage();

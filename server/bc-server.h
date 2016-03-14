@@ -54,7 +54,9 @@ public:
 	log_context log;
 
 	/* Streaming */
-	AVFormatContext *stream_ctx;
+	/* RTP muxing contexts */
+	AVFormatContext *stream_ctx[2];
+
 	class rtsp_stream *rtsp_stream;
 
 	time_t			osd_time;
@@ -80,6 +82,7 @@ public:
 	class recorder *rec;
 
 	int cur_pkt_flags;
+	int cur_stream_index;
 	bool pkt_first_chunk;
 
 	/* Internal */

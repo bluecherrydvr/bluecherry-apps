@@ -19,24 +19,44 @@ extern "C" {
 static int io_write(void *opaque, uint8_t *buf, int buf_size)
 {
 	struct bc_record *bc_rec = (struct bc_record *)opaque;
-	bc_rec->rtsp_stream->sendPackets(buf, buf_size, bc_rec->cur_pkt_flags);
+	bc_rec->rtsp_stream->sendPackets(buf, buf_size, bc_rec->cur_pkt_flags,
+		bc_rec->cur_stream_index);
 	return buf_size;
 }
 
+static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
+	int index, enum AVMediaType type);
+
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
+	int ret = 0;
+
+	if (bc_rec->stream_ctx[0]) {
+		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
+		return 0;
+	}
+
+	ret |= bc_streaming_setup_elementary(bc_rec, 0, AVMEDIA_TYPE_VIDEO);
+	if (bc_rec->bc->input->has_audio())
+		ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_AUDIO);
+	if (ret)
+		return ret;
+
+	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, bc_rec->stream_ctx);
+
+	return 0;
+}
+
+static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
+	int index, enum AVMediaType type)
+{
 	AVFormatContext *ctx;
-	AVStream *video_st;
+	AVStream *st;
 	AVCodec *codec;
 	AVDictionary *muxer_opts = NULL;
 	int ret = -1;
 	uint8_t *bufptr;
 	AVRational bkp_ts;
-
-	if (bc_rec->stream_ctx) {
-		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
-		return 0;
-	}
 
 	ctx = avformat_alloc_context();
 	if (!ctx) {
@@ -50,22 +70,24 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 		goto error;
 	}
 
-	video_st = avformat_new_stream(ctx, NULL);
-	if (!video_st) {
+	st = avformat_new_stream(ctx, NULL);
+	if (!st) {
 		bc_rec->log.log(Error, "Couldn't add stream to RTP muxer");
 		goto error;
 	}
 
-	bkp_ts = video_st->codec->time_base;
-	bc_rec->bc->input->properties()->video.apply(video_st->codec);
-	video_st->codec->time_base = bkp_ts;
-	bc_rec->log.log(Debug, "time_base: %d/%d", video_st->codec->time_base.num, video_st->codec->time_base.den);
+	bkp_ts = st->codec->time_base;
+	if (type == AVMEDIA_TYPE_VIDEO)
+		bc_rec->bc->input->properties()->video.apply(st->codec);
+	else
+		bc_rec->bc->input->properties()->audio.apply(st->codec);
+
+	st->codec->time_base = bkp_ts;
+	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
+		st->codec->time_base.num, st->codec->time_base.den);
 
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
-		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-	/* XXX with multiple streams, avformat_write_header will fail. We need multiple contexts
-	 * to do that, because the rtp muxer only handles one stream. */
+		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
 	ctx->packet_size = RTP_MAX_PACKET_SIZE;
 
@@ -95,8 +117,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 		goto mux_open_error;
 	}
 
-	bc_rec->stream_ctx = ctx;
-	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, ctx);
+	bc_rec->stream_ctx[index] = ctx;
 
 	return 0;
 
@@ -115,19 +136,21 @@ error:
 
 void bc_streaming_destroy(struct bc_record *bc_rec)
 {
-	AVFormatContext *ctx = bc_rec->stream_ctx;
+	for (int i = 0; i < 2; i++) {
+		AVFormatContext *ctx = bc_rec->stream_ctx[i];
 
-	if (!ctx)
-		return;
+		if (!ctx)
+			continue;
 
-	if (ctx->pb) {
-		av_write_trailer(ctx);
-		av_free(ctx->pb->buffer);
-		av_freep(&ctx->pb);
+		if (ctx->pb) {
+			av_write_trailer(ctx);
+			av_free(ctx->pb->buffer);
+			av_freep(&ctx->pb);
+		}
+
+		avformat_free_context(ctx);
+		bc_rec->stream_ctx[i] = NULL;
 	}
-
-	avformat_free_context(ctx);
-	bc_rec->stream_ctx = NULL;
 
 	rtsp_stream::remove(bc_rec);
 	bc_rec->rtsp_stream = NULL;
@@ -147,23 +170,25 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 {
 	AVPacket opkt;
 	int re;
+	int ctx_index = pkt.type == AVMEDIA_TYPE_VIDEO ? 0 : 1;
 
-	if (!bc_streaming_is_active(bc_rec) || pkt.type != AVMEDIA_TYPE_VIDEO)
+	if (!bc_streaming_is_active(bc_rec))
 		return 0;
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
-	opkt.stream_index = 0; /* XXX */
+	opkt.stream_index = 0;
 
 	bc_rec->cur_pkt_flags = pkt.flags;
+	bc_rec->cur_stream_index = ctx_index;
 	bc_rec->pkt_first_chunk = true;
 
-	re = av_write_frame(bc_rec->stream_ctx, &opkt);
+	re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
 			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");

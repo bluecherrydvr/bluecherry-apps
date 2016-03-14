@@ -784,11 +784,6 @@ int rtsp_connection::handleDescribe(rtsp_message &req)
 
 int rtsp_connection::handleSetup(rtsp_message &req)
 {
-	if (!req.header("session").empty()) {
-		sendResponse(rtsp_message(req, 455, "Method not valid in this state"));
-		return 0;
-	}
-
 	if (req.header("transport").empty()) {
 		sendResponse(rtsp_message(req, 400, "Invalid request"));
 		return 0;
@@ -910,7 +905,7 @@ int rtsp_connection::handlePause(rtsp_message &req)
 std::map<std::string,rtsp_stream*> rtsp_stream::streams;
 pthread_mutex_t rtsp_stream::streams_lock = PTHREAD_MUTEX_INITIALIZER;
 
-rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
+rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx[])
 {
 	rtsp_stream *st = new rtsp_stream;
 	st->bc_rec = bc;
@@ -922,13 +917,14 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx)
 
 	char sdp[2048];
 	int re;
-	if ((re = av_sdp_create(&ctx, 1, sdp, sizeof(sdp))) < 0) {
+
+	st->nb_streams = ctx[1] ? 2 : 1;
+	if ((re = av_sdp_create(ctx, st->nb_streams, sdp, sizeof(sdp))) < 0) {
 		char error[512];
 		av_strerror(re, error, sizeof(error));
 		bc->log.log(Error, "Cannot create SDP for streaming: %s", error);
 	}
 	st->sdp = sdp;
-	st->nb_streams = ctx->nb_streams;
 
 	pthread_mutex_lock(&streams_lock);
 	std::map<std::string,rtsp_stream*>::iterator it = streams.find(st->uri);
@@ -1080,7 +1076,7 @@ void rtsp_stream::sessionActiveChanged(rtsp_session *session)
 		_activeSessionCount--;
 }
 
-void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
+void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags, int stream_index)
 {
 	// Queue the data to execute sending logics from rtsp_server::run() thread.
 
@@ -1094,7 +1090,7 @@ void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags)
 	}
 
 	pkt[0] = '$';
-	pkt[1] = 0;
+	pkt[1] = stream_index * 2;
 	AV_WB16(pkt + 2, size);
 	memcpy(pkt + 4, buf, size);
 	// AV_WB16(pkt + 6, rtp_seq++);  // Overwritten on sending to individual session basing on its counter

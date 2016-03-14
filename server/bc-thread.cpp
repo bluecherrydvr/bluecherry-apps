@@ -330,7 +330,8 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
-	stream_ctx = 0;
+	stream_ctx[0] = 0;
+	stream_ctx[1] = 0;
 	rtsp_stream = 0;
 
 	osd_time = 0;
