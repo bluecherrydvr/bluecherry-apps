@@ -91,8 +91,10 @@ void motion_processor::run()
 		stream_packet pkt = buffer.front();
 		buffer.pop_front();
 
-		if (pkt.type != AVMEDIA_TYPE_VIDEO)
+		if (pkt.type != AVMEDIA_TYPE_VIDEO) {
+			output_source->send(pkt);
 			continue;
+		}
 
 		l.unlock();
 

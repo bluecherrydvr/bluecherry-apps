@@ -92,7 +92,9 @@ void motion_handler::run()
 			if ((int)it->seq <= last_pkt_seq)
 				continue;
 			last_pkt_seq = it->seq;
-			bc_log(Debug, "pkt: flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u", it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
+			bc_log(Debug, "pkt: type:%c flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u",
+			       it->type == AVMEDIA_TYPE_VIDEO ? 'V' : 'A',
+			       it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
 			// If N% of frames in the past X seconds contain motion, trigger
 			// Push info on packet into sliding sequence window checker (SSWC)
 			// Drop from SSWC the packets which don't fit to the specified window (done internally with push())
@@ -107,17 +109,19 @@ void motion_handler::run()
 				break;  // for...
 			}
 
-			// TODO Use DTS instead of PTS for STWC for sure monotonity?
-			ssw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
-			// Check the "sum" (count) of motion-flagged packets in SSWC
-			int percentage = 100 * ssw_motion_analysis.sum() / ssw_motion_analysis.count();
-			bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
-					ssw_motion_analysis.count(), percentage, motion_threshold_percentage);
+			if (it->type == AVMEDIA_TYPE_VIDEO) {
+				// TODO Use DTS instead of PTS for STWC for sure monotonity?
+				ssw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
+				// Check the "sum" (count) of motion-flagged packets in SSWC
+				int percentage = 100 * ssw_motion_analysis.sum() / ssw_motion_analysis.count();
+				bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
+						ssw_motion_analysis.count(), percentage, motion_threshold_percentage);
 
-			if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
-					&& (percentage >= motion_threshold_percentage)) {
-				triggered = true;
-				break;  // for...
+				if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
+						&& (percentage >= motion_threshold_percentage)) {
+					triggered = true;
+					break;  // for...
+				}
 			}
 		}
 
