@@ -1,3 +1,10 @@
+bluecherry (1:2.5.26) precise trusty wily wheezy jessie; urgency=low
+
+  * Enable audio in RTSP output
+  * Fix audio for recordings in motion detection mode
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Tue, 15 Mar 2016 22:06:07 +0200
+
 bluecherry (1:2.5.25-2) precise trusty wily wheezy jessie; urgency=low
 
   * Migrate from deprecated broken ffmpeg API to fix crash
