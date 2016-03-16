@@ -27,6 +27,7 @@ then
 	sed -e "s/%%UPSTREAM_VERSION%%/${UPSTREAM_VERSION}/" rpm/bluecherry.spec.template \
 	       > ~build/rpmbuild/SPECS/bluecherry.spec
 	sudo -i -u build bash -c "cd rpmbuild/SPECS; rpmbuild -bb bluecherry.spec"
+	mkdir -p $DST_DIR
 	mv -v ~build/rpmbuild/RPMS/x86_64/*.rpm $DST_DIR
 else
 	debian/rules clean binary

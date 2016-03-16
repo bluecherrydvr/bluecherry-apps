@@ -1,6 +1,6 @@
 Name:           bluecherry
 Version:	%%UPSTREAM_VERSION%%
-Release:        2
+Release:        1
 Epoch:		1
 Summary:        Bluecherry DVR Server
 Group:          Applications/Multimedia
