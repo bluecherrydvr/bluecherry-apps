@@ -46,6 +46,12 @@ class stats extends Controller {
                         $stat[$str_el[0]] = intval($str_el[1]);
                 }
                 fclose($f);
+		
+		// fix for linux kernel version < 3.14
+		if( !isset( $stat["MemAvailable"] ) )
+		{
+			$stat["MemAvailable"] = $stat["Cached"] + $stat["MemFree"];
+		}
 
                 $total = $stat["MemTotal"];
                 $used = $total - $stat["MemAvailable"];
