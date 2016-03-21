@@ -543,15 +543,15 @@ class discoverCameras extends Controller {
                     try {
                         $init = $ponvif->initialize();
                         if (!$init['datetime']) break;
-                        if (!$init['onvif']) {
+                        if (!$init['profile']) {
                             // wrong onvif version
                             $password_ch = true;
                             $err['onvif_ip'][] = $ip;
                             break(2);
                         }
-                        if (!$init['profile']) {
-                            break;
-                        }
+                        //if (!$init['profile']) {
+                            //break;
+                        //}
 
                         $sources = $ponvif->getSources();
                         if (empty($sources) || $ponvif->isFault($sources)) {

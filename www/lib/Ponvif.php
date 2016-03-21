@@ -137,10 +137,10 @@ class Ponvif {
             'minor'=>$onvifVersion['minor']
         );
 
-        if ((int) $onvifVersion['major'] < 2) {
-            $res['onvif'] = false;
-            return $res;
-        }
+        //if ((int) $onvifVersion['major'] < 2) {
+            //$res['onvif'] = false;
+            //return $res;
+        //}
 
 
         $this->videosources=$this->media_GetVideoSources();
