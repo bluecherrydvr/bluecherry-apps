@@ -105,6 +105,7 @@ class Ponvif {
         $res = Array();
         $res['datetime'] = true;
         $res['profile'] = true;
+        $res['onvif'] = true;
 
         $this->mediauri='http://'.$this->ipaddress.'/onvif/device_service';
 
@@ -135,6 +136,11 @@ class Ponvif {
             'major'=>$onvifVersion['major'],
             'minor'=>$onvifVersion['minor']
         );
+
+        if ((int) $onvifVersion['major'] < 2) {
+            $res['onvif'] = false;
+            return $res;
+        }
 
 
         $this->videosources=$this->media_GetVideoSources();
@@ -724,7 +730,12 @@ class Ponvif {
         $xmldata=$dom->saveXML();
         $xmldata=substr($xmldata,strpos($xmldata,"<Envelope>"));
         $xmldata=substr($xmldata,0,strpos($xmldata,"</Envelope>")+strlen("</Envelope>"));
+        libxml_use_internal_errors(true);
         $xml=simplexml_load_string($xmldata);
+        if (!$xml) {
+            libxml_clear_errors();
+            return array("Fault"=>'xml error');
+        }
         $data=json_decode(json_encode((array)$xml),1);
         $data=array($xml->getName()=>$data);
         return $data;

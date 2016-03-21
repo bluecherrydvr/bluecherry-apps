@@ -35,6 +35,7 @@ function discoverCamerasFind(form, msg) {
 
 function discoverCamerasAdded(form, msg) {
     form.find('tr').removeClass('danger');
+    form.find('tr').removeClass('warning');
 
     $.each(msg.data.err.ip, function(i, val) {
         var parent = form.find('input[value="'+val+'"]').closest('tr').addClass('danger');
