@@ -189,19 +189,25 @@ class discoverCameras extends Controller {
         //print_r($tmp);
 
         //foreach ($ips as $ip) {
-    ////if ($test->chOnvif('192.168.0.84', '34567')) echo 'ok';
+        //$ip = '172.16.1.118';
+        //if ($test->chOnvif($ip, '80')) echo 'ok';
+        //else echo 'err';
+
     //$test->setIPAddress($ip);
-    ////$test->setIPAddress('192.168.0.64');
-    //$test->setIPAddress('192.168.0.84:8899');
     //$test->setUsername('admin');
-    //$test->setPassword('12345');
+    //$test->setPassword('admin');
+    //$init = $test->initialize();
+    //if ($init['datetime']) echo 'timeok<br>';
+    //else echo 'time err<br>';
+    //if ($init['profile']) echo 'profile ok <br>';
+    //else echo 'profile err<br>';
     //try {
-    //$test->initialize();
 
 
     //print_r($test->core_GetSystemDateAndTime());
     ////die();
     //$sources=$test->getNetworkProtocols();
+                        //$sources = $test->getSources();
     ////if (empty($sources) || $test->isFault($sources)) echo 'err';
     //print_r($sources);
     ////die();
@@ -237,6 +243,7 @@ class discoverCameras extends Controller {
         $ips = Array();
         $checked_ip = Array();
         $onvif_ports = Array(
+            80,
             8899,
             34567,
             34599
@@ -282,38 +289,6 @@ class discoverCameras extends Controller {
             }
         }
 
-
-
-        // use upnp to get model/manufacturer
-        $p = @popen("/usr/bin/nmap -sV --script=broadcast-upnp-info", "r");
-        if ($p) {
-            while ($str = fgets($p)) {
-                if (strpos($str, 'Location: http://') !== false) {
-                    preg_match('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
-                    if (!empty($match[0])) {
-                        $match_parse = parse_url($match[0]);
-                        if (in_array($match_parse['host'], $ips)) {
-                            $xml = $this->curlReq($match[0]);
-                            $xml = simplexml_load_string($xml);
-                            if ($xml) {
-                                $manuf = '';
-                                $model = '';
-                                if (isset($xml->device->manufacturer)) {
-                                    $manuf = (string) $xml->device->manufacturer;
-                                }
-                                if (isset($xml->device->modelNumber)) {
-                                    $model = (string) $xml->device->modelNumber;
-                                }
-
-                                $res = $this->modifIps($match_parse['host'], $manuf, $model, $res);
-                            }
-                        }
-
-                    }
-                }
-            }
-            pclose($p);
-        }
 
         //$ips[] = '192.168.0.1';
         //$ips[] = '192.168.0.2';
@@ -371,6 +346,41 @@ class discoverCameras extends Controller {
             }
         }
 
+
+
+        // use upnp to get model/manufacturer
+        $p = @popen("/usr/bin/nmap -sV --script=broadcast-upnp-info", "r");
+        if ($p) {
+            while ($str = fgets($p)) {
+                if (strpos($str, 'Location: http://') !== false) {
+                    preg_match('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
+
+                    if (!empty($match[0])) {
+                        $match_parse = parse_url($match[0]);
+                        if (in_array($match_parse['host'], $ips)) {
+                            $xml = $this->curlReq($match[0]);
+                            $xml = simplexml_load_string($xml);
+                            if ($xml) {
+                                $manuf = '';
+                                $model = '';
+                                if (isset($xml->device->manufacturer)) {
+                                    $manuf = (string) $xml->device->manufacturer;
+                                }
+                                if (isset($xml->device->modelNumber)) {
+                                    $model = (string) $xml->device->modelNumber;
+                                }
+
+                                $res = $this->modifIps($match_parse['host'], $manuf, $model, $res);
+                            }
+                        }
+
+                    }
+                }
+            }
+            pclose($p);
+        }
+
+
         //$xml = simplexml_load_string($xml);
         //$hz = (string) $xml->host->ports->port[0]->state->attributes()->state;
         //echo $hz;
@@ -426,7 +436,7 @@ class discoverCameras extends Controller {
     protected function modifIps($ipv4, $manuf, $model_name, $data)
     {
         foreach ($data as $key => $val) {
-            if ($ipv4 == $val['ipv4_port']) {
+            if (($ipv4 == $val['ipv4_port']) || ($ipv4 == $val['ipv4']))  {
                 $data[$key]['manufacturer'] = $manuf;
                 $data[$key]['model_name'] = $model_name;
             }
@@ -495,6 +505,7 @@ class discoverCameras extends Controller {
         $err['ip'] = Array();
         $err['passwd_ip'] = Array();
         $err['rtsp_ip'] = Array();
+        $err['onvif_ip'] = Array();
 
         $added_ip = Array();
 
@@ -502,7 +513,7 @@ class discoverCameras extends Controller {
         $ipv4_port = (Inp::gp_arr('ipv4_port'));
         $ipv4_path = (Inp::gp_arr('ipv4_path'));
         $manufacturer = (Inp::gp_arr('manufacturer'));
-        $model_name = (Inp::gp_arr('model_name'));
+        $model_name_arr = (Inp::gp_arr('model_name'));
 
         $exist_devices = $this->existDevices($ipv4);
 
@@ -513,7 +524,8 @@ class discoverCameras extends Controller {
             $ip = $ipv4_port[$key];
             if (!in_array($ipv4[$key], $exist_devices)) {
             $manuf = $manufacturer[$key];
-            $model_name = $model_name[$key];
+            $model_name = $model_name_arr[$key];
+
             if (!empty($manuf)) {
                 $passwords = $this->getManufPass($manuf);
             } else {
@@ -529,7 +541,14 @@ class discoverCameras extends Controller {
                     $ponvif->setUsername($login);
                     $ponvif->setPassword($password);
                     try {
-                        $ponvif->initialize();
+                        $init = $ponvif->initialize();
+                        if (!$init['datetime']) break;
+                        if (!$init['profile']) {
+                            // wrong onvif version
+                            $password_ch = true;
+                            $err['onvif_ip'][] = $ip;
+                            break(2);
+                        }
 
                         $sources = $ponvif->getSources();
                         if (empty($sources) || $ponvif->isFault($sources)) {

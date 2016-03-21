@@ -50,6 +50,10 @@ function discoverCamerasAdded(form, msg) {
         var parent = form.find('input[value="'+val+'"]').closest('tr').addClass('danger');
     });
 
+    $.each(msg.data.err.onvif_ip, function(i, val) {
+        var parent = form.find('input[value="'+val+'"]').closest('tr').addClass('warning');
+    });
+
     $.each(msg.data.added_ip, function(i, val) {
         var parent = form.find('input[value="'+val+'"]').closest('tr');
         var checkbox = parent.find('input[type="checkbox"]');

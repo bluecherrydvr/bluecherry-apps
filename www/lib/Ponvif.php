@@ -102,14 +102,26 @@ class Ponvif {
         Public functions (basic initialization method and other collaterals)
     */
     public function initialize() {
+        $res = Array();
+        $res['datetime'] = true;
+        $res['profile'] = true;
+
         $this->mediauri='http://'.$this->ipaddress.'/onvif/device_service';
 
         try {
             $datetime=$this->core_GetSystemDateAndTime();
+
+            if (empty($datetime)) {
+                $res['datetime'] = false;
+                return $res;
+            }
+
             $timestamp=mktime($datetime['Time']['Hour'], $datetime['Time']['Minute'], $datetime['Time']['Second'],
                 $datetime['Date']['Month'], $datetime['Date']['Day'], $datetime['Date']['Year']);
             $this->deltatime=time()-$timestamp-5;
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+            throw new Exception('GetSystemDateAndTime: error');
+        }
 
             $this->capabilities=$this->core_GetCapabilities();
 
@@ -124,21 +136,29 @@ class Ponvif {
             'minor'=>$onvifVersion['minor']
         );
 
+
         $this->videosources=$this->media_GetVideoSources();
         $this->profiles=$this->media_GetProfiles();
+        if (empty($this->profiles)) {
+            $res['profile'] = false;
+            return $res;
+        }
+
         $this->sources=$this->_getActiveSources($this->videosources,$this->profiles);
 
+        return $res;
     }
 
     public function chOnvif($ip, $port = 80)
     {
+        $res = false;
+
         $this->mediauri='http://'.$ip.':'.$port.'/onvif/device_service';
         try {
-            $this->core_GetSystemDateAndTime();
+            $this->core_GetSystemDateAndTime(true);
 
             $res = true;
         } catch (Exception $e) {
-            $res = false;
         }
 
         return $res;
@@ -151,13 +171,43 @@ class Ponvif {
     /*
         Public wrappers for a subset of ONVIF primitives
     */
-    public function core_GetSystemDateAndTime() {
-        $post_string='<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><GetSystemDateAndTime xmlns="http://www.onvif.org/ver10/device/wsdl"/></s:Body></s:Envelope>';
+    public function core_GetSystemDateAndTime($check = false, $auth = false) {
+        if ($auth) {
+            $REQ=$this->_makeToken();
+            $post_string='<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Header><Security s:mustUnderstand="1" xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"><UsernameToken><Username>%%USERNAME%%</Username><Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">%%PASSWORD%%</Password><Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">%%NONCE%%</Nonce><Created xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">%%CREATED%%</Created></UsernameToken></Security></s:Header><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><GetSystemDateAndTime xmlns="http://www.onvif.org/ver10/device/wsdl"/></s:Body></s:Envelope>';
+            $post_string=str_replace(array("%%USERNAME%%",
+                               "%%PASSWORD%%",
+                               "%%NONCE%%",
+                               "%%CREATED%%"),
+                         array($REQ['USERNAME'],
+                               $REQ['PASSDIGEST'],
+                               $REQ['NONCE'],
+                               $REQ['TIMESTAMP']),
+                         $post_string);
+
+
+        } else {
+            $post_string='<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><GetSystemDateAndTime xmlns="http://www.onvif.org/ver10/device/wsdl"/></s:Body></s:Envelope>';
+        }
+
         if ($this->isFault($response=$this->_send_request($this->mediauri,$post_string))) {
             if ($this->intransingent) throw new Exception('GetSystemDateAndTime: Communication error');
         }
-        else
-            return $response['Envelope']['Body']['GetSystemDateAndTimeResponse']['SystemDateAndTime']['UTCDateTime'];
+        else {
+            if ($check) {
+                return $response['Envelope']['Body'];
+            } else {
+                if (isset($response['Envelope']['Body']['Fault'])) {
+                    if (!$auth) return $this->core_GetSystemDateAndTime(false, true);
+                } else {
+                    if (isset($response['Envelope']['Body']['GetSystemDateAndTimeResponse']['SystemDateAndTime']['UTCDateTime'])) {
+                        return $response['Envelope']['Body']['GetSystemDateAndTimeResponse']['SystemDateAndTime']['UTCDateTime'];
+                    } else {
+                        return '';
+                    }
+                }
+            }
+        }
     }
 
     public function core_GetCapabilities() {
@@ -213,8 +263,13 @@ class Ponvif {
         if ($this->isFault($response=$this->_send_request($this->mediauri,$post_string))) {
             if ($this->intransingent) throw new Exception('GetProfiles: Communication error');
         }
-        else
-            return $response['Envelope']['Body']['GetProfilesResponse']['Profiles'];
+        else {
+            if (isset($response['Envelope']['Body']['GetProfilesResponse']['Profiles'])) {
+                return $response['Envelope']['Body']['GetProfilesResponse']['Profiles'];
+            } else {
+                return '';
+            }
+        }
     }
 
     public function media_GetServices() {
@@ -297,10 +352,8 @@ class Ponvif {
                          array($REQ['USERNAME'],
                                $REQ['PASSDIGEST'],
                                $REQ['NONCE'],
-                               $REQ['TIMESTAMP'],
-                   $profileToken,
-                   $stream,
-                   $protocol),
+                               $REQ['TIMESTAMP']
+                           ),
                          $post_string);
         if ($this->isFault($response=$this->_send_request($this->mediauri,$post_string))) {
             if ($this->intransingent) throw new Exception('GetStreamUri: Communication error');
