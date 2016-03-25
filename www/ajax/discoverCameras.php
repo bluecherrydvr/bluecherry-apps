@@ -258,12 +258,11 @@ class discoverCameras extends Controller {
             if (strpos($str, 'Address:') !== false) {
                 preg_match_all('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
                 if (!empty($match[0])) {
-                    foreach ($match[0] as $addr) {
-                        if (strpos($addr, 'onvif') !== false) {
-                            $data_ip_cam = $this->dataIpCam(Array($addr));
-                            $checked_ip[] = $data_ip_cam['ipv4'];
-                            $res[] = $data_ip_cam;
-                        }
+                    $data_ip_cam = $this->dataIpCam($match[0]);
+                    $checked_ip[] = $data_ip_cam['ipv4'];
+
+                    if ($data_ip_cam['onvif']) {
+                        $res[] = $data_ip_cam;
                     }
                 }
             }
@@ -414,6 +413,7 @@ class discoverCameras extends Controller {
         $res['ipv4_path'] = '';
         $res['ipv6'] = '';
         $res['ipv6_path'] = '';
+        $res['onvif'] = true;
         $res['exists'] = $exists;
 
             foreach ($data as $key => $val) {
@@ -431,6 +431,10 @@ class discoverCameras extends Controller {
                     // ip6v
                     $res['ipv6_path'] = $val;
                     $res['ipv6'] = $val_parse['host'];
+                }
+
+                if (strpos($val, 'onvif') === false) {
+                    $res['onvif'] = false;
                 }
             }
 
