@@ -30,8 +30,8 @@
                             </td>
                             <td>
                                 <div class="form-group discover-cameras-item-auth" style="display: none;">
-                                    <input type="text" class="form-control discover-cameras-item-login" value="" placeholder="Login">
-                                    <input type="text" class="form-control discover-cameras-item-password" value="" placeholder="Password">
+                                    <input type="text" class="form-control discover-cameras-item-login" name="" value="" placeholder="Login">
+                                    <input type="text" class="form-control discover-cameras-item-password" name="" value="" placeholder="Password">
                                 </div>
                             </td>
                         </tr>

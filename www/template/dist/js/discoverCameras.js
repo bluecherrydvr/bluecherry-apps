@@ -26,6 +26,9 @@ function discoverCamerasFind(form, msg) {
         bl_clone.find('.discover-cameras-item-manufacturer').attr('name', 'manufacturer['+i+']').val(val.manufacturer);
         bl_clone.find('.discover-cameras-item-model-name').attr('name', 'model_name['+i+']').val(val.model_name);
 
+        bl_clone.find('.discover-cameras-item-login').attr('name', 'login['+i+']').val('');
+        bl_clone.find('.discover-cameras-item-password').attr('name', 'password['+i+']').val('');
+
         bl_clone.show();
         list_bl_orig.after(bl_clone);
         //items_html = items_html + '<tr><td><div class="checkbox"><label><input type="checkbox" name="cameras['+i+']"> '+val.ipv4+' '+ val.manufacturer +' '+ val.model_name +'</label><input type="hidden" name="ipv4_path['+i+']" value="'+val.ipv4_path+'"><input type="hidden" name="ipv4['+i+']" value="'+val.ipv4+'"><input type="hidden" name="manufacturer['+i+']" value="'+val.manufacturer+'"><input type="hidden" name="model_name['+i+']" value="'+val.model_name+'"></div></td></tr>';

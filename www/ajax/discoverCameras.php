@@ -522,6 +522,8 @@ class discoverCameras extends Controller {
         $ipv4_path = (Inp::gp_arr('ipv4_path'));
         $manufacturer = (Inp::gp_arr('manufacturer'));
         $model_name_arr = (Inp::gp_arr('model_name'));
+        $login_arr = (Inp::gp_arr('login'));
+        $password_arr = (Inp::gp_arr('password'));
 
         $exist_devices = $this->existDevices($ipv4);
 
@@ -534,10 +536,17 @@ class discoverCameras extends Controller {
             $manuf = $manufacturer[$key];
             $model_name = $model_name_arr[$key];
 
-            if (!empty($manuf)) {
-                $passwords = $this->getManufPass($manuf);
+            if (!empty($login_arr[$key]) || !empty($password_arr[$key])) {
+                $passwords = Array();
+                $passwords[] = Array(
+                    $login_arr[$key] => $password_arr[$key]
+                );
             } else {
-                $passwords = $this->default_pass;
+                if (!empty($manuf)) {
+                    $passwords = $this->getManufPass($manuf);
+                } else {
+                    $passwords = $this->default_pass;
+                }
             }
 
             $ponvif->setIPAddress($ip);
@@ -551,15 +560,16 @@ class discoverCameras extends Controller {
                     try {
                         $init = $ponvif->initialize();
                         if (!$init['datetime']) break;
-                        if (!$init['profile']) {
-                            // wrong onvif version
-                            $password_ch = true;
-                            $err['onvif_ip'][] = $ip;
-                            break(2);
+                        if (!empty($init['profiles'])) {
+                            if (!$init['profiles']['auth']) {
+                                break;
+                            } else {
+                                // something wrong with onvif
+                                $password_ch = true;
+                                $err['onvif_ip'][] = $ip;
+                                break(2);
+                            }
                         }
-                        //if (!$init['profile']) {
-                            //break;
-                        //}
 
                         $sources = $ponvif->getSources();
                         if (empty($sources) || $ponvif->isFault($sources)) {

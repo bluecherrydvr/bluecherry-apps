@@ -104,7 +104,7 @@ class Ponvif {
     public function initialize() {
         $res = Array();
         $res['datetime'] = true;
-        $res['profile'] = true;
+        $res['profiles'] = Array();
         $res['onvif'] = true;
 
         $this->mediauri='http://'.$this->ipaddress.'/onvif/device_service';
@@ -144,11 +144,12 @@ class Ponvif {
 
 
         $this->videosources=$this->media_GetVideoSources();
-        $this->profiles=$this->media_GetProfiles();
-        if (empty($this->profiles)) {
-            $res['profile'] = false;
+        $profiles = $this->media_GetProfiles();
+        if (empty($profiles['response'])) {
+            $res['profiles'] = $profiles;
             return $res;
         }
+        $this->profiles = $profiles['response'];
 
         $this->sources=$this->_getActiveSources($this->videosources,$this->profiles);
 
@@ -270,11 +271,20 @@ class Ponvif {
             if ($this->intransingent) throw new Exception('GetProfiles: Communication error');
         }
         else {
-            if (isset($response['Envelope']['Body']['GetProfilesResponse']['Profiles'])) {
-                return $response['Envelope']['Body']['GetProfilesResponse']['Profiles'];
+            $res['auth'] = true;
+            $res['response'] = '';
+
+            if (isset($response['Envelope']['Body']['Fault']['Code']['Subcode']['Value'])) {
+                if (strpos($response['Envelope']['Body']['Fault']['Code']['Subcode']['Value'], 'NotAuthorized') !== false) {
+                    $res['auth'] = false;
+                }
             } else {
-                return '';
+                if (isset($response['Envelope']['Body']['GetProfilesResponse']['Profiles'])) {
+                    $res['response'] = $response['Envelope']['Body']['GetProfilesResponse']['Profiles'];
+                }
             }
+
+            return $res;
         }
     }
 
@@ -718,6 +728,10 @@ class Ponvif {
     }
 
     protected function _xml2array($response) {
+        // fix for VIVOTEK
+        if ((strpos($response, '<wsse:Security>') !== false) && (strpos($response, '</wsse:Security>') === false)) {
+            $response = str_replace('<wsse:Security>', '', $response);
+        }
         $sxe = new SimpleXMLElement($response, LIBXML_NOERROR);
         $dom_sxe = dom_import_simplexml($sxe);
         $dom = new DOMDocument('1.0');
