@@ -260,7 +260,10 @@ class discoverCameras extends Controller {
                 if (!empty($match[0])) {
                     $data_ip_cam = $this->dataIpCam($match[0]);
                     $checked_ip[] = $data_ip_cam['ipv4'];
-                    $res[] = $data_ip_cam;
+
+                    if (strpos($match[0], 'onvif') !== false) {
+                        $res[] = $data_ip_cam;
+                    }
                 }
             }
 
