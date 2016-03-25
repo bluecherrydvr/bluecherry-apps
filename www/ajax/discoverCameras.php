@@ -258,9 +258,13 @@ class discoverCameras extends Controller {
             if (strpos($str, 'Address:') !== false) {
                 preg_match_all('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
                 if (!empty($match[0])) {
-                    $data_ip_cam = $this->dataIpCam($match[0]);
-                    $checked_ip[] = $data_ip_cam['ipv4'];
-                    $res[] = $data_ip_cam;
+                    foreach ($match[0] as $addr) {
+                        if (strpos($addr, 'onvif') !== false) {
+                            $data_ip_cam = $this->dataIpCam(Array($addr));
+                            $checked_ip[] = $data_ip_cam['ipv4'];
+                            $res[] = $data_ip_cam;
+                        }
+                    }
                 }
             }
 
@@ -413,22 +417,20 @@ class discoverCameras extends Controller {
         $res['exists'] = $exists;
 
             foreach ($data as $key => $val) {
-                if (strpos($val, 'onvif') !== false) {
-                    $val_parse = parse_url($val);
-                    $port = '';
-                    if (isset($val_parse['port'])) $port = ':'.$val_parse['port'];
+                $val_parse = parse_url($val);
+                $port = '';
+                if (isset($val_parse['port'])) $port = ':'.$val_parse['port'];
 
-                    if (strpos($val_parse['host'], ':') === false) {
-                        // ip4v
-                        $res['ipv4'] = $val_parse['host'];
-                        $res['ipv4_port'] = $val_parse['host'].$port;
-                        $res['ipv4_path'] = $val;
+                if (strpos($val_parse['host'], ':') === false) {
+                    // ip4v
+                    $res['ipv4'] = $val_parse['host'];
+                    $res['ipv4_port'] = $val_parse['host'].$port;
+                    $res['ipv4_path'] = $val;
 
-                    } else {
-                        // ip6v
-                        $res['ipv6_path'] = $val;
-                        $res['ipv6'] = $val_parse['host'];
-                    }
+                } else {
+                    // ip6v
+                    $res['ipv6_path'] = $val;
+                    $res['ipv6'] = $val_parse['host'];
                 }
             }
 
