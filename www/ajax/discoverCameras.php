@@ -260,10 +260,7 @@ class discoverCameras extends Controller {
                 if (!empty($match[0])) {
                     $data_ip_cam = $this->dataIpCam($match[0]);
                     $checked_ip[] = $data_ip_cam['ipv4'];
-
-                    if (strpos($match[0], 'onvif') !== false) {
-                        $res[] = $data_ip_cam;
-                    }
+                    $res[] = $data_ip_cam;
                 }
             }
 
@@ -416,20 +413,22 @@ class discoverCameras extends Controller {
         $res['exists'] = $exists;
 
             foreach ($data as $key => $val) {
-                $val_parse = parse_url($val);
-                $port = '';
-                if (isset($val_parse['port'])) $port = ':'.$val_parse['port'];
+                if (strpos($val, 'onvif') !== false) {
+                    $val_parse = parse_url($val);
+                    $port = '';
+                    if (isset($val_parse['port'])) $port = ':'.$val_parse['port'];
 
-                if (strpos($val_parse['host'], ':') === false) {
-                    // ip4v
-                    $res['ipv4'] = $val_parse['host'];
-                    $res['ipv4_port'] = $val_parse['host'].$port;
-                    $res['ipv4_path'] = $val;
+                    if (strpos($val_parse['host'], ':') === false) {
+                        // ip4v
+                        $res['ipv4'] = $val_parse['host'];
+                        $res['ipv4_port'] = $val_parse['host'].$port;
+                        $res['ipv4_path'] = $val;
 
-                } else {
-                    // ip6v
-                    $res['ipv6_path'] = $val;
-                    $res['ipv6'] = $val_parse['host'];
+                    } else {
+                        // ip6v
+                        $res['ipv6_path'] = $val;
+                        $res['ipv6'] = $val_parse['host'];
+                    }
                 }
             }
 
