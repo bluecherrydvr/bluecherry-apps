@@ -1,3 +1,11 @@
+bluecherry (1:2.5.27) precise trusty wily wheezy jessie; urgency=low
+
+  * Add nmap to package dependencies (used for of ONVIF discovery)
+  * New ONVIF features
+  * Fix memory used info in web interface for linux kernel version < 3.14
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 30 Mar 2016 22:03:44 +0300
+
 bluecherry (1:2.5.26) precise trusty wily wheezy jessie; urgency=low
 
   * Enable audio in RTSP output
