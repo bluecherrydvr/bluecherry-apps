@@ -14,6 +14,7 @@ BuildRequires:  mariadb-devel,opencv-devel,systemd-devel
 BuildRequires:  systemd
 Requires:	httpd,mod_ssl,php,php-pdo,php-pear-Mail,php-pear-Mail-Mime,mkvtoolnix,dpkg
 Requires:	mariadb,mariadb-server,sysstat,opencv-core,epel-release,libbsd,policycoreutils-python
+Requires:	nmap
 
 %description
 This package contains the server components for the Bluecherry DVR system.
