@@ -1,3 +1,9 @@
+bluecherry (1:2.7.0) precise trusty wily wheezy jessie; urgency=low
+
+  * Change version number to 2.7.0
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 30 Mar 2016 22:03:44 +0300
+
 bluecherry (1:2.5.27) precise trusty wily wheezy jessie; urgency=low
 
   * Add nmap to package dependencies (used for of ONVIF discovery)
