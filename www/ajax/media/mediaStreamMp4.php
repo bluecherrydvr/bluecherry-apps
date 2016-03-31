@@ -5,7 +5,7 @@ class mediaStreamMp4 extends Controller {
     public function __construct()
     {
         parent::__construct();
-		//$this->chAccess('backup');
+		$this->chAccess('basic');
     }
 
     public function getData()
