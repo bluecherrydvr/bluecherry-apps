@@ -1,8 +1,8 @@
-bluecherry (1:2.7.0) precise trusty wily wheezy jessie; urgency=low
+bluecherry (1:2.6.0) precise trusty wily wheezy jessie; urgency=low
 
-  * Change version number to 2.7.0
+  * Change version number to 2.6.0
 
- -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 30 Mar 2016 22:03:44 +0300
+ -- Alex Syrnikov <san@masterspline.net>  Sun, 03 Apr 2016 18:46:07 +0300
 
 bluecherry (1:2.5.27) precise trusty wily wheezy jessie; urgency=low
 
