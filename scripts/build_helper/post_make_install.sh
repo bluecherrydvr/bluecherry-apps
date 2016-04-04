@@ -39,20 +39,10 @@ fi
 if [[ ${PKG_TYPE} == "deb" ]]
 then
 	install -d ${DST_DIR}/etc/apache2/sites-available
-	cat ${SRC_PATH}/debian/apache.conf | sed \
-		-e "s/__BLUECHERRY_APACHE_ERROR_LOG__/\/var\/log\/apache2\/bluecherry-error.log/" \
-	        -e "s/__BLUECHERRY_APACHE_ACCESS_LOG__/\/var\/log\/apache2\/bluecherry-access.log/" \
-		-e "s/__BLUECHERRY_APACHE_CERTIFICATE_FILE__/\/etc\/ssl\/certs\/ssl-cert-snakeoil.pem/" \
-		-e "s/__BLUECHERRY_APACHE_CERTIFICATE_KEY_FILE__/\/etc\/ssl\/private\/ssl-cert-snakeoil.key/" \
-	        > ${DST_DIR}/etc/apache2/sites-available/bluecherry.conf
+	cat ${SRC_PATH}/debian/apache.conf > ${DST_DIR}/etc/apache2/sites-available/bluecherry.conf
 else
 	install -d ${DST_DIR}/etc/httpd/sites-available
-	cat ${SRC_PATH}/debian/apache.conf | sed \
-	        -e "s/__BLUECHERRY_APACHE_ERROR_LOG__/\/var\/log\/httpd\/bluecherry_error_log/" \
-	        -e "s/__BLUECHERRY_APACHE_ACCESS_LOG__/\/var\/log\/httpd\/bluecherry_access_log/" \
-	        -e "s/__BLUECHERRY_APACHE_CERTIFICATE_FILE__/\/etc\/pki\/tls\/certs\/localhost.crt/" \
-		-e "s/__BLUECHERRY_APACHE_CERTIFICATE_KEY_FILE__/\/etc\/pki\/tls\/private\/localhost.key/" \
-	        > ${DST_DIR}/etc/httpd/sites-available/bluecherry.conf
+	cat ${SRC_PATH}/debian/apache.conf_rpm > ${DST_DIR}/etc/httpd/sites-available/bluecherry.conf
 fi
 #       install -m644${DST_DIR}.apparmor \
 #              ${DST_DIR}/etc/apparmor.d/usr.sbin.bc-server

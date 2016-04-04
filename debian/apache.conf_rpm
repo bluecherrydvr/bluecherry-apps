@@ -1,5 +1,5 @@
 # !!! ATTENTION !!!
-# if you change this apache.conf_rpm may also need change
+# if you change this apache.conf may also need change 
 
 <IfModule mod_ssl.c>
 Listen 7001
@@ -16,24 +16,25 @@ Listen 7001
 		AllowOverride All
 		Order allow,deny
 		allow from all
+		Require all granted
 	</Directory>
 
 	<Files "mjpeg.php">
 		SetEnv downgrade-1.0
 	</Files>
 
-	ErrorLog /var/log/apache2/bluecherry-error.log
+	ErrorLog /var/log/httpd/bluecherry_error_log
 
 	# Possible values include: debug, info, notice, warn, error, crit,
 	# alert, emerg.
 	LogLevel warn
-	CustomLog /var/log/apache2/bluecherry-access.log combined
+	CustomLog /var/log/httpd/bluecherry_access_log combined
 
 	# SSL
 	SSLEngine on
 
-	SSLCertificateFile    /etc/ssl/certs/ssl-cert-snakeoil.pem
-	SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+	SSLCertificateFile    /etc/pki/tls/certs/localhost.crt
+	SSLCertificateKeyFile /etc/pki/tls/private/localhost.key
 
 	BrowserMatch "MSIE [2-6]" \
 		nokeepalive ssl-unclean-shutdown \
