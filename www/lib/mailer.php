@@ -32,60 +32,6 @@ if ($argv[1] == "motion_event") {
 	#get device details
 	$device = data::getObject('Devices', 'id', $device_id);
 
-	#get path to image
-	$path_to_image = str_replace('mkv', 'jpg', $event[0]['filepath']);
-
-    # Check the case of such short recording that snapshotting delay hasn't
-    # come, so making a snapshot afterwards
-    if (!file_exists($path_to_image)) {
-        $cmd = 'LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg'
-            .' -ss '.$device[0]['buffer_prerecording']
-            .' -i '.$event[0]['filepath'].' -frames 1 '.$path_to_image
-            .' 2>&1 && echo SUCCEED';
-        $output = shell_exec($cmd);
-        if (strstr($output, 'SUCCEED') === false) {
-            echo($cmd);
-            echo($output);
-            exit('E: ffmpeg snapshot creation process failed');
-        }
-    }
-
-	$image_name = data::getRandomString(8);
-	$subject = "Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
-	$html = "
-	<html>
-		<head>
-			<style>
-				table {
-					border-collapse:collapse;
-				}
-				td {
-					border:1px solid gray;	
-				}
-				td.desc {
-					width:120px;
-					text-align:right;
-				}
-				div.screenshot{
-					margin-top:30px;
-				}
-			</style>
-		</head>
-		<body>
-			<div>Source:
-				<table>
-					<tr><td class='desc'>Server:</td><td>{$global_settings->data['G_DVR_NAME']}</td></tr>
-					<tr><td class='desc'>Device:</td><td>{$device[0]['device_name']}</td></tr>
-					<tr><td class='desc'>Time:</td><td>".date('r', $event[0]['start'])."</td></tr>
-				</table>
-			</div>
-			<div class='screenshot'>
-				Event screenshot:<br />
-				<img height='240' src='{$image_name}.jpg'>
-			</div>
-			</body>
-	</html>";
-	$mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name); 
 } else if ($argv[1] == "device_state") {
 	$device_id = $argv[2];
 	$state = $argv[3];  // e.g. OFFLINE, BACK ONLINE
@@ -111,12 +57,6 @@ SOLO card(s) got $state on server {$global_settings->data['G_DVR_NAME']}
 } else {
 	exit('E: Unknown event type');
 }
-
-$headers = array("From"=>$global_settings->data['G_SMTP_EMAIL_FROM'], "Subject" => $subject);
-$mime->setHTMLBody($html);  
-$headers = $mime->headers($headers);
-$body = $mime->get();
-
 
 $dow = array('M', 'T', 'W', 'R', 'F', 'S', 'U');
 
@@ -149,7 +89,71 @@ $query .= "
 $rules = data::query($query);
 if (!$rules){
 	exit('I: No matching rules');
+} else {
+
+    if ($argv[1] == "motion_event") {
+        #get path to image
+        $path_to_image = str_replace('mkv', 'jpg', $event[0]['filepath']);
+
+        # Check the case of such short recording that snapshotting delay hasn't
+        # come, so making a snapshot afterwards
+        if (!file_exists($path_to_image)) {
+            $cmd = 'LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg'
+                .' -ss '.$device[0]['buffer_prerecording']
+                .' -i '.$event[0]['filepath'].' -frames 1 '.$path_to_image
+                .' 2>&1 && echo SUCCEED';
+            $output = shell_exec($cmd);
+            if (strstr($output, 'SUCCEED') === false) {
+                echo($cmd);
+                echo($output);
+                exit('E: ffmpeg snapshot creation process failed');
+            }
+        }
+
+        $image_name = data::getRandomString(8);
+        $subject = "Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
+        $html = "
+        <html>
+        <head>
+            <style>
+                table {
+                    border-collapse:collapse;
+                }
+                td {
+                    border:1px solid gray;
+                }
+                td.desc {
+                    width:120px;
+                    text-align:right;
+                }
+                div.screenshot{
+                    margin-top:30px;
+                }
+            </style>
+        </head>
+        <body>
+            <div>Source:
+                <table>
+                    <tr><td class='desc'>Server:</td><td>{$global_settings->data['G_DVR_NAME']}</td></tr>
+                    <tr><td class='desc'>Device:</td><td>{$device[0]['device_name']}</td></tr>
+                    <tr><td class='desc'>Time:</td><td>".date('r', $event[0]['start'])."</td></tr>
+                </table>
+            </div>
+            <div class='screenshot'>
+                Event screenshot:<br />
+                <img height='240' src='{$image_name}.jpg'>
+            </div>
+            </body>
+        </html>";
+        $mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name);
+    }
 }
+$headers = array("From"=>$global_settings->data['G_SMTP_EMAIL_FROM'], "Subject" => $subject);
+$mime->setHTMLBody($html);
+$headers = $mime->headers($headers);
+$body = $mime->get();
+
+
 $rules_ids = '';
 
 #clean up old (>1hr) notificationsSent records
