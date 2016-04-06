@@ -10,13 +10,13 @@ class newversion extends Controller {
 
     public function getData()
     {
-        $this->setView('ajax.newversion', false);
+        $this->setView('ajax.newversion');
+
+        $this->view->version = new softwareVersion($this->varpub->global_settings);
     }
 
     public function postData()
     {
-        $view = new View('ajax.newversion');
-        echo $view->render();
     }
 }
 

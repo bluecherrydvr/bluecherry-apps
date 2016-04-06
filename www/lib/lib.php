@@ -755,17 +755,18 @@ function ipCameras($type, $parameter = false){
 
 class softwareVersion{
 	public $version;
-	public function __construct(){
+	public function __construct($global_settings){
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
-		$time = data::getObject('GlobalSettings', 'parameter', 'G_LAST_SOFTWARE_VERSION_CHECK');
-		$tmp = data::getObject('GlobalSettings', 'parameter', 'G_LAST_CURRENT_VERSION');
-		if ($time[0]['value'] + 24*60*60 < time()) {
+		$time = $global_settings->data['G_LAST_SOFTWARE_VERSION_CHECK'];
+		$tmp = $global_settings->data['G_LAST_CURRENT_VERSION'];
+
+		if ($time + 24*60*60 < time()) {
 			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION.'?uid='.bc_license_machine_id()));
 			data::query("UPDATE GlobalSettings SET value='".time()."' WHERE parameter='G_LAST_SOFTWARE_VERSION_CHECK'", true);
 			if ($tmp) data::query("UPDATE GlobalSettings SET value='{$this->version['current']}' WHERE parameter='G_LAST_CURRENT_VERSION'", true);
-				else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')", true); //to avoid whole db update
+			else data::query("INSERT INTO GlobalSettings VALUES ('G_LAST_CURRENT_VERSION', '{$this->version['current']}')", true); //to avoid whole db update
 		} else {
-			$this->version['current'] = $tmp[0]['value'];
+			$this->version['current'] = $tmp;
 		}
 		$this->checkSoftwareVersion();
 	}
@@ -1094,10 +1095,5 @@ $global_settings = new globalSettings;
 $varpub = VarPub::get();
 $varpub->global_settings = $global_settings;
 
-
-if (empty($global_settings->data['G_DISABLE_VERSION_CHECK']) || $global_settings->data['G_DISABLE_VERSION_CHECK']==0){
-	$version = new softwareVersion;
-    $varpub->version = $version;
-}
 
 ?>

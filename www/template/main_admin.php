@@ -191,12 +191,15 @@
 
 
                         <?php
-                            if ($global_settings->data['G_DISABLE_VERSION_CHECK']==0)
-                            if (!$version->version['up_to_date']){
-                                echo '<div class="alert alert-danger">'.NOT_UP_TO_DATE.'<br /><a id="lmNewVersion" href="#">'.WANT_TO_LEARN_MORE.'</a></div>';
-                            } else {
-                                echo '<div class="alert alert-success">'.UP_TO_DATE.': '.$version->version['installed'].'</div>';
-                            };
+                            if (empty($global_settings->data['G_DISABLE_VERSION_CHECK']) || $global_settings->data['G_DISABLE_VERSION_CHECK']==0){
+                                $version = new softwareVersion($global_settings);
+
+                                if (!$version->version['up_to_date']){
+                                    echo '<div class="alert alert-danger">'.NOT_UP_TO_DATE.'<br /><a href="/newversion" class="ajax-content">'.WANT_TO_LEARN_MORE.'</a></div>';
+                                } else {
+                                    echo '<div class="alert alert-success">'.UP_TO_DATE.': '.$version->version['installed'].'</div>';
+                                }
+                            }
                         ?>
                     </div>
 
