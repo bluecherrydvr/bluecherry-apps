@@ -28,25 +28,27 @@ class licenses extends Controller {
         		exit();
         	};
         	$machine_id = bc_license_machine_id();
-        	$confirmation = fopen(VAR_LICENSE_AUTH."/?license_code={$_POST['licenseCode']}&id=".$machine_id, 'r');
-        	#if auto auth fails, show message, opt to confirm manually
-        	if (empty($confirmation)){
-        		data::responseJSON('CONF', $machine_id);
-        		exit();
-        	}
-        	#if auto ok, 
-        	$confirmation = fread($confirmation, 1024);
-        	if (strlen($confirmation) < 9){
+
+        	$url = VAR_LICENSE_AUTH."/?license_code={$_POST['licenseCode']}&id=".$machine_id;
+        	$confirmation = trim($this->sendHttpReq($url));
+
+        	#if auto ok,
+        	if ((strlen($confirmation) < 9) && (is_numeric($confirmation))){
         		data::responseJSON('F', constant('L_AUTO_RESP_'.$confirmation));
         		exit();
         	} else {
-        		$confirmation = preg_replace('/([^0-9a-zA-Z\-])/', '', $confirmation);
-        		$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$confirmation}', UNIX_TIMESTAMP())", true);
-        		if ($result){
-        			data::responseJSON(true, L_LICENSE_ADDED);
-        			exit();
+        		if (preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $confirmation, $matches)) {
+        			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$matches[0]}', UNIX_TIMESTAMP())", true);
+        			if ($result){
+        				data::responseJSON(true, L_LICENSE_ADDED);
+        				exit();
+        			} else {
+        				data::responseJSON(false, false);
+        				exit();
+        			}
         		} else {
-        			data::responseJSON(false, false);
+        			#if auto auth fails, show message, opt to confirm manually
+        			data::responseJSON('CONF', $machine_id);
         			exit();
         		}
         	}
@@ -78,6 +80,25 @@ class licenses extends Controller {
             $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
             data::responseJSON(true);
         }
+    }
+
+    private function sendHttpReq($url)
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_NOBODY, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt ($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt ($ch, CURLOPT_HTTPHEADER, array('Expect:'));
+
+        $res = curl_exec($ch);
+
+        curl_close($ch);
+
+        return $res;
     }
 }
 
