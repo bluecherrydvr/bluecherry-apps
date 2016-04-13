@@ -34,7 +34,7 @@ class storagecheck extends Controller {
     		return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
     	}
 
-        $file_group = posix_getpwuid(filegroup($path));
+        $file_group = posix_getgrgid(filegroup($path));
         if ((!isset($file_group['name'])) || (isset($file_group['name']) && ($file_group['name'] != 'bluecherry'))) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
