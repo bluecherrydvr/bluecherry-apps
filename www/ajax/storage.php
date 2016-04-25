@@ -32,7 +32,7 @@ class storage extends Controller {
 
         $values = Array();
         foreach($_POST['path'] as $key => $path){
-            $dir_status = $storage_check->directory_staus($path);
+            $dir_status = $storage_check->directory_status($path);
             if ($dir_status) return data::responseJSON($dir_status[0], $dir_status[1]);
 
             $max = intval($_POST['max'][$key]);
