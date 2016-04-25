@@ -21,13 +21,13 @@ class storagecheck extends Controller {
 
     private function initProc()
     {
-        $check_dir = $this->directory_staus($_GET['path'], 'new');
+        $check_dir = $this->directory_status($_GET['path'], 'new');
 
         data::responseJSON($check_dir[0], $check_dir[1]);
     }
 
     // path -- path to storage dir, type -- new or existing, existing are not checked for existing files
-    public function directory_staus($path, $type = '')
+    public function directory_status($path, $type = '')
     {
     	#if file 
     	if (!file_exists($path)){
@@ -45,7 +45,7 @@ class storagecheck extends Controller {
         }
 
         $file_perms = substr(decoct(fileperms($path)), 2);
-        if (($file_perms != '750')) {
+        if (($file_perms != '770')) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
