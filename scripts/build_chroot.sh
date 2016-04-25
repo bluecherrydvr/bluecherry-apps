@@ -14,7 +14,7 @@ fi
 rm -rf $LOCATION || true
 
 case $DIST in
-	precise|trusty|wily)
+	precise|trusty|wily|xenial)
 		DISTRO=ubuntu
 		APT_SOURCES_URL="http://archive.ubuntu.com/ubuntu/"
 		MIRROR_URL="http://mirrors.kernel.org/ubuntu/"
