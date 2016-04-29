@@ -59,6 +59,9 @@ window.addEvent('load', function(){
 	$('logout').addEvent('click', function(){
 		document.location = '/logout';
 	});
+	$('profilePage').addEvent('click', function(){
+		document.location = '/profile';
+	});
 	$('playbackPage').addEvent('click', function(){
 		document.location = '/playback';
 	});

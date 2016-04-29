@@ -48,6 +48,7 @@
 		?>
 	<div id='leftMenu'>
 		<div id='logout'><?php echo LOGOUT; ?></div>
+        <div id='profilePage' <?php echo (($current_user->info['access_setup']) ? 'style="display: none;"' : ''); ?>>Profile</div>
 		<?php if ($current_user->info['access_setup']) { echo "<div id='backToAdmin'>".BACK_TO_ADMIN."</div>"; }; ?>
 		<div id="playbackPage">
 			Playback
