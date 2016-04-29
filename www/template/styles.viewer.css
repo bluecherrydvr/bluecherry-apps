@@ -28,9 +28,9 @@ body { padding-top:0px; margin-top:0px; }
 #layoutsControl:hover { cursor:pointer; background-color:#eee; }
 
 /*GRID*/
-#gridAdjustments, #layoutsControl, #logout, #backToAdmin, #playbackPage	{ width:100%; text-align:center; float:left; border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
-#logout, #backToAdmin, #playbackPage { cursor:pointer; }
-#logout:hover, #backToAdmin:hover, #playbackPage:hover { background-color:#fee; }
+#gridAdjustments, #layoutsControl, #logout, #backToAdmin, #playbackPage, #profilePage { width:100%; text-align:center; float:left; border:1px solid gray; -moz-border-radius: 5px; -webkit-border-radius: 5px; padding:10px 0 10px 0; margin-bottom:15px; }
+#logout, #backToAdmin, #playbackPage, #profilePage { cursor:pointer; }
+#logout:hover, #backToAdmin:hover, #playbackPage:hover, #profilePage:hover { background-color:#fee; }
 #gridAdjustments ul					{ list-style-type:none; background-repeat:no-repeat; background-position:center center; margin:0px; padding:0px; }
 #gridAdjustments ul li				{ float:left; width:48px; height:48px; cursor:pointer; }
 #gridAdjustments ul li.l1			{ background-image:url('/img/icons/layouts/1.png'); }

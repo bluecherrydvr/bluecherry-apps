@@ -81,6 +81,9 @@
                     </a>
                     <ul class="dropdown-menu dropdown-user">
                         <li>
+                            <a href="/profile" class="ajax-content"><i class="fa fa-user fa-fw"></i> Profile</a>
+                        </li>
+                        <li>
                             <a href="/liveview"><i class="fa fa-image fa-fw"></i> LiveView</a>
                         </li>
                         <li>
@@ -318,6 +321,7 @@
     <script src="/template/dist/js/general.js"></script>
     <script src="/template/dist/js/playback.js"></script>
     <script src="/template/dist/js/discoverCameras.js"></script>
+    <script src="/template/dist/js/profile.js"></script>
 
     <?php echo getJs(); ?>
 </body>
