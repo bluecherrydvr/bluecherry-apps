@@ -125,7 +125,7 @@ DROP TABLE IF EXISTS `EventTypesCam`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `EventTypesCam` (
-  `id` varchar(10) NOT NULL,
+  `id` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -133,7 +133,7 @@ DROP TABLE IF EXISTS `EventTypesSys`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `EventTypesSys` (
-  `id` varchar(10) NOT NULL,
+  `id` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -264,7 +264,7 @@ DROP TABLE IF EXISTS `TagNames`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `TagNames` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(10) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -297,7 +297,7 @@ DROP TABLE IF EXISTS `ipPtzCommandPresets`;
 CREATE TABLE `ipPtzCommandPresets` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(128) NOT NULL,
-  `driver` varchar(12) NOT NULL,
+  `driver` varchar(12) DEFAULT '',
   `mright` varchar(128) NOT NULL,
   `mleft` varchar(128) NOT NULL,
   `up` varchar(128) NOT NULL,
@@ -313,7 +313,7 @@ CREATE TABLE `ipPtzCommandPresets` (
   `preset_save` varchar(128) NOT NULL,
   `preset_go` varchar(128) NOT NULL,
   `stop` varchar(128) NOT NULL,
-  `stop_zoom` varchar(128) NOT NULL,
+  `stop_zoom` varchar(128) DEFAULT '',
   `needs_stop` tinyint(1) NOT NULL DEFAULT '0',
   `http_auth` tinyint(1) NOT NULL DEFAULT '1',
   `custom` tinyint(1) NOT NULL DEFAULT '0',
