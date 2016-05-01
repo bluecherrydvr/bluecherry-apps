@@ -45,11 +45,6 @@ case "$1" in
 		fi
 		usermod -a -G video,audio,bluecherry,dialout www-data || true
 
-		if which service >/dev/null 2>&1; then
-			service bluecherry stop || true
-		else
-			invoke-rc.d bluecherry stop || true
-		fi
 		;;
 esac
 

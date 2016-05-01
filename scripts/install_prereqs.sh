@@ -33,7 +33,7 @@ esac
 export DEBIAN_FRONTEND=noninteractive
 
 function fake() {
-	for x in /sbin/initctl /usr/sbin/invoke-rc.d /sbin/restart /sbin/start /sbin/stop /sbin/start-stop-daemon /usr/bin/service /usr/sbin/service
+	for x in /sbin/initctl /usr/sbin/invoke-rc.d /sbin/restart /sbin/start /sbin/stop /sbin/start-stop-daemon /usr/bin/service /usr/sbin/service /bin/systemctl
 	do
 		ln -snfv /bin/true $x
 	done
@@ -59,4 +59,10 @@ sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-too
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
 
-apt-get install -y -V git build-essential gcc g++ debhelper php5-dev ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo $ADDITIONAL_PKGS
+apt-get install -y -V git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo $ADDITIONAL_PKGS
+if [[ $(./scripts/build_helper/get_distro_release_name.sh) == "xenial" ]]
+then
+	apt-get install -y -V php-dev
+else
+	apt-get install -y -V php5-dev
+fi
