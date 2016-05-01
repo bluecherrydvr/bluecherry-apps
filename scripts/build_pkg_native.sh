@@ -30,6 +30,7 @@ then
 	mkdir -p $DST_DIR
 	mv -v ~build/rpmbuild/RPMS/x86_64/*.rpm $DST_DIR
 else
+	debian/rules debian/control
 	debian/rules clean binary
 	mkdir -p $DST_DIR
 	mv -v ../*.deb $DST_DIR

@@ -1,18 +1,15 @@
 [Unit]
 Description="Bluecherry DVR Server"
 After=network.target remote-fs.target nss-lookup.target mariadb.target
-#Documentation=man:httpd(8)
-#Documentation=man:apachectl(8)
 
 [Service]
 Type=simple
 #EnvironmentFile=/etc/sysconfig/httpd
-#ExecStart=/usr/sbin/httpd $OPTIONS -DFOREGROUND
 ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
 #ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
 ExecStop=/bin/kill -TERM ${MAINPID}
 KillSignal=SIGKILL
-#PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
+Alias=bc-server.service

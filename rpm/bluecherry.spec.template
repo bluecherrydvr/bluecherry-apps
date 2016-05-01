@@ -43,7 +43,7 @@ mv %{buildroot}/etc/php5/apache2/conf.d/bluecherry_apache2.ini %{buildroot}/etc/
 rm -r %{buildroot}/etc/php5
 chmod 755 %{buildroot}/usr/lib/libbluecherry.so.0
 chmod 755 %{buildroot}/usr/lib64/php/modules/bluecherry.so
-install -m644 -D %{_builddir}/%{name}/rpm/bc-server.service %{buildroot}/%{_unitdir}/bc-server.service
+install -m644 -D %{_builddir}/%{name}/rpm/bluecherry.service %{buildroot}/%{_unitdir}/bluecherry.service
 
 %files
 %config(noreplace) %{_sysconfdir}/httpd/sites-available/bluecherry.conf

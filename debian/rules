@@ -1,14 +1,17 @@
 #!/usr/bin/make -f
 
+include /usr/share/dpkg/default.mk
+
 VERSION := $(shell dpkg-parsechangelog | sed '/^Version:/!d;s/^[^ ]* //')
 DB_VERSION := $(shell cat misc/sql/installed_db_version)
 
 LD_LIBRARY_PATH+=:stage/lib
+RELEASE_NAME := $(shell ./scripts/build_helper/get_distro_release_name.sh)
 
 %:
 	dh --parallel $@
 
-.PHONY: override_dh_strip
+.PHONY: override_dh_strip debian/control
 
 override_dh_strip:
 	dh_strip --dbg-package=bluecherry-dbg
@@ -35,6 +38,9 @@ override_dh_installdeb:
 		debian/bluecherry.preinst.template >> debian/bluecherry.preinst
 	dh_installdeb
 	-rm ${CURDIR}/debian/bluecherry/DEBIAN/conffiles
+
+debian/control: debian/control.in debian/rules debian/changelog
+	sed -e 's/^#$(RELEASE_NAME)//' debian/control.in | grep -v '^#' > debian/control
 
 override_dh_shlibdeps:
 	echo "override_dh_shlibdeps: PWD is $(shell readlink -f . )"
