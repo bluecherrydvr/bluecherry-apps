@@ -1,0 +1,37 @@
+Source: bluecherry
+Section: admin
+Priority: optional
+Maintainer: Bluecherry <maintainers@bluecherrydvr.com>
+Build-Depends: debhelper (>= 7), libmysqlclient-dev,
+ libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
+#xenial  php-dev
+#precise php5-dev
+#trusty  php5-dev
+#wily    php5-dev
+#wheezy  php5-dev
+#jessie  php5-dev
+Standards-Version: 3.8.4
+
+Package: bluecherry
+Architecture: any
+Pre-Depends: adduser
+Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
+ mkvtoolnix, php-mail, php-mail-mime, php-net-smtp, sqlite3, nmap,
+#xenial  php-sqlite3, apache2, libapache2-mod-php, php-gd, php-curl
+#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+Suggests: solo6010-dkms, monit, mail-transport-agent
+Breaks: solo6010-dkms (<< 2.4.7)
+Description: Bluecherry DVR Server
+ This package contains the server components for the Bluecherry DVR system.
+
+Package: bluecherry-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: bluecherry (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for Bluecherry DVR Server
+

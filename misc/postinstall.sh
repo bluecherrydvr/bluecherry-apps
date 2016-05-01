@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 # !!! ATTENTION !!!
-# This file is common for debian amd centos (called at package postinstall stage)
+# This file is common for debian and centos (called at package postinstall stage)
 
 set -x # trace
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
@@ -10,6 +10,7 @@ then
 else
     IN_DEB="1"
 fi
+
 function restore_mysql_backup
 {
     # restore_mysql_backup dbname user password host
@@ -105,8 +106,13 @@ case "$1" in
 		then
 			# Apache modules and sites
 			a2enmod ssl
-			a2enmod php5
 			a2enmod rewrite
+			if [[ $(/usr/share/bluecherry/scripts/get_distro_release_name.sh) == "xenial" ]]
+			then
+				a2enmod php7.0
+			else
+				a2enmod php5
+			fi
 		fi
 
 		if [[ $IN_DEB ]]

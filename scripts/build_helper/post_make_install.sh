@@ -20,6 +20,9 @@ cp    ${SRC_PATH}/misc/list_ether.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/postinstall.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/bc_db_tool.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/remove_all_data.sh ${DST_DIR}/usr/share/bluecherry/
+install -d ${DST_DIR}/usr/share/bluecherry/scripts
+install ${SRC_PATH}/scripts/build_helper/get_distro_release_name.sh \
+	${DST_DIR}/usr/share/bluecherry/scripts
 cp -a ${SRC_PATH}/misc/ponvif*       ${DST_DIR}/usr/share/bluecherry/
 rm -rf ${DST_DIR}/usr/share/bluecherry/ponvif*/.git
 install -D ${SRC_PATH}/debian/bluecherry.conf.in \

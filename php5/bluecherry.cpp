@@ -9,6 +9,7 @@
 #endif
 
 #include <sys/ioctl.h>
+#include <syslog.h>
 
 #define LOGGING_H // XXX
 #include "libbluecherry.h"
@@ -24,8 +25,11 @@ static char bch_name[] = "BC Handle";
 #define BC_CONFIG_DEFAULT	"/etc/bluecherry.conf"
 
 static int bch_id;
-
+#if PHP_MAJOR_VERSION < 7
 static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
+#else
+static void bch_destructor(zend_resource *rsrc TSRMLS_DC)
+#endif
 {
 	struct bc_handle *bch = (struct bc_handle *)rsrc->ptr;
 
@@ -37,14 +41,14 @@ static void bch_destructor(zend_rsrc_list_entry *rsrc TSRMLS_DC)
 
 PHP_MINIT_FUNCTION(bluecherry)
 {
-	bch_id = zend_register_list_destructors_ex(bch_destructor, NULL,
-						   bch_name, module_number);
+	//bch_id = zend_register_list_destructors_ex(bch_destructor, NULL,
+	//					   bch_name, module_number);
 
-	REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
-	REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
-	REGISTER_LONG_CONSTANT("BC_CID_BRIGHTNESS", V4L2_CID_BRIGHTNESS, 0);
-	REGISTER_LONG_CONSTANT("BC_CID_SATURATION", V4L2_CID_SATURATION, 0);
-
+	//REGISTER_LONG_CONSTANT("BC_CID_HUE", V4L2_CID_HUE, 0);
+	//REGISTER_LONG_CONSTANT("BC_CID_CONTRAST", V4L2_CID_CONTRAST, 0);
+	//REGISTER_LONG_CONSTANT("BC_CID_BRIGHTNESS", V4L2_CID_BRIGHTNESS, 0);
+	//REGISTER_LONG_CONSTANT("BC_CID_SATURATION", V4L2_CID_SATURATION, 0);
+	syslog(LOG_DAEMON|LOG_ERR, "%s", "PHP_MINIT_FUNCTION(bluecherry)");
 	return SUCCESS;
 }
 
@@ -61,7 +65,7 @@ PHP_MINFO_FUNCTION(bluecherry)
 
 	return;
 }
-
+#if PHP_MAJOR_VERSION < 7
 #define BCH_GET_RES(__func) do {					\
 	zval *z_ctx;							\
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",	\
@@ -75,6 +79,20 @@ PHP_MINFO_FUNCTION(bluecherry)
 		RETURN_FALSE;						\
 	}								\
 } while(0)
+#else
+#define BCH_GET_RES(__func) zval *z_ctx; \
+        do {                                        \
+        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r",       \
+                                  &z_ctx) == FAILURE)                   \
+                RETURN_FALSE;                                           \
+	bch = (struct bc_handle *)zend_fetch_resource_ex(z_ctx, bch_name, bch_id); \
+        if (bch == NULL) {                                              \
+                php_error_docref(NULL TSRMLS_CC, E_WARNING,             \
+                        __func ": invalid context");                    \
+                RETURN_FALSE;                                           \
+        }                                                               \
+} while(0)
+#endif
 
 PHP_FUNCTION(bc_db_open)
 {
@@ -94,7 +112,7 @@ PHP_FUNCTION(bc_db_escape_string)
 {
 	char *str;
 	int str_len;
-	char *tmp_str, *tmp_str_cpy;
+	char *tmp_str;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",
 				  &str, &str_len) == FAILURE)
@@ -108,11 +126,18 @@ PHP_FUNCTION(bc_db_escape_string)
 	if (tmp_str == NULL)
 		RETURN_FALSE;
 
-	/* All returned values must be allocated by emalloc, so we must
-	 * copy the result. */
-	tmp_str_cpy = estrdup(tmp_str);
-	free(tmp_str);
-	RETURN_STRING(tmp_str_cpy, 0);
+#if PHP_MAJOR_VERSION < 7
+        /* All returned values must be allocated by emalloc, so we must
+         * copy the result. */
+        char* tmp_str_cpy = estrdup(tmp_str);
+        free(tmp_str);
+        RETURN_STRING(tmp_str_cpy, 0);
+#else
+    /* In php7 string will always be copied, so source must always be freed */
+    zend_string *z_str = zend_string_init(tmp_str, strlen(tmp_str), 0);
+    free(tmp_str);
+    RETURN_STR(z_str);
+#endif
 }
 
 PHP_FUNCTION(bc_db_query)
@@ -163,11 +188,15 @@ PHP_FUNCTION(bc_db_get_table)
 	array_init(return_value);
 
 	while (!bc_db_fetch_row(dbres)) {
-		zval *row_arr;
-		int i;
-
-		ALLOC_INIT_ZVAL(row_arr);
-		array_init(row_arr);
+                int i;
+#if PHP_MAJOR_VERSION < 7
+                zval *row_arr;
+                ALLOC_INIT_ZVAL(row_arr);
+                array_init(row_arr);
+#else
+                zval row_arr;
+                array_init(&row_arr);
+#endif
 
 		for (i = 0; i < ncols; i++) {
 			const char *field = bc_db_get_field(dbres, i);
@@ -180,13 +209,23 @@ PHP_FUNCTION(bc_db_get_table)
 
 			str = bc_db_get_val(dbres, field, &len);
 			if (str == NULL)
-				add_assoc_null(row_arr, field);
-			else
-				add_assoc_stringl(row_arr, field,
-						 (char *)str, len, 1);
+#if PHP_MAJOR_VERSION < 7
+                                add_assoc_null(row_arr, field);
+                        else
+                                add_assoc_stringl(row_arr, field,
+                                                 (char *)str, len, 1);
 		}
 
 		add_next_index_zval(return_value, row_arr);
+
+#else
+                                add_assoc_null(&row_arr, field);
+                        else
+                                add_assoc_stringl(&row_arr, field, (char *)str, len);
+		}
+
+		add_next_index_zval(return_value, &row_arr);
+#endif
 	}
 
 	bc_db_free_table(dbres);
@@ -296,8 +335,11 @@ PHP_FUNCTION(bc_handle_get_byid)
 
 	if (bch == NULL)
 		RETURN_FALSE;
-
-	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
+#if PHP_MAJOR_VERSION < 7
+        ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
+#else
+        RETURN_RES(zend_register_resource(bch, bch_id));
+#endif
 }
 
 PHP_FUNCTION(bc_handle_get)
@@ -334,8 +376,11 @@ PHP_FUNCTION(bc_handle_get)
 
 	if (bch == NULL)
 		RETURN_FALSE;
-
-	ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
+#if PHP_MAJOR_VERSION < 7
+        ZEND_REGISTER_RESOURCE(return_value, bch, bch_id);
+#else
+        RETURN_RES(zend_register_resource(bch, bch_id));
+#endif
 }
 
 PHP_FUNCTION(bc_set_control)
@@ -347,8 +392,12 @@ PHP_FUNCTION(bc_set_control)
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rll", &z_ctx,
 				  &ctrl, &val) == FAILURE)
 		RETURN_FALSE;
+#if PHP_MAJOR_VERSION < 7
 	ZEND_FETCH_RESOURCE(bch, struct bc_handle *, &z_ctx, -1,
 			    bch_name, bch_id);
+#else
+	bch = (struct bc_handle *)zend_fetch_resource_ex(z_ctx, bch_name, bch_id);
+#endif
 	if (bch == NULL) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING,
 				 "bc_set_control: invalid context");
@@ -367,7 +416,11 @@ PHP_FUNCTION(bc_handle_free)
 
 	BCH_GET_RES("bc_handle_free");
 
+#if PHP_MAJOR_VERSION < 7
 	zend_list_delete((long)bch);
+#else
+	zend_list_delete(Z_RES_P(z_ctx));
+#endif
 
 	RETURN_TRUE;
 }
@@ -414,8 +467,11 @@ PHP_FUNCTION(bc_buf_data)
 	const stream_packet &packet = bch->input->packet();
 	if (!packet.data() || packet.size <= 0)
 		RETURN_FALSE;
-
-	RETURN_STRINGL(reinterpret_cast<const char*>(packet.data()), packet.size, 1);
+#if PHP_MAJOR_VERSION < 7
+        RETURN_STRINGL(reinterpret_cast<const char*>(packet.data()), packet.size, 1);
+#else
+        RETURN_STRINGL(reinterpret_cast<const char*>(packet.data()), packet.size);
+#endif
 }
 
 PHP_FUNCTION(bc_license_machine_id)
@@ -425,7 +481,11 @@ PHP_FUNCTION(bc_license_machine_id)
 	if (re < 1)
 		RETURN_FALSE;
 
-	RETURN_STRING(buf, 1);
+#if PHP_MAJOR_VERSION < 7
+        RETURN_STRING(buf, 1);
+#else
+        RETURN_STRING(buf);
+#endif
 }
 
 PHP_FUNCTION(bc_license_check)
@@ -493,7 +553,11 @@ static zend_function_entry bluecherry_functions[] = {
 	PHP_FE(bc_license_check, NULL)
 	PHP_FE(bc_license_check_auth, NULL)
 	PHP_FE(bc_license_devices_allowed, NULL)
-	{NULL, NULL, NULL}
+//#ifdef  PHP_FE_END
+	PHP_FE_END
+//#else
+//	{NULL, NULL, NULL}
+//#endif
 };
 
 zend_module_entry bluecherry_module_entry = {

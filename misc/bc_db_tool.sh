@@ -109,7 +109,8 @@ function check_db_exists
     echo "Testing whether database already exists..."
     if echo "show databases" | mysql_wrapper -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
     then
-        echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found. Aborting installation. In order to proceed installation, please do one of following things:\n" \
+        echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found."
+        echo -e "\tAborting installation. In order to proceed installation, please do one of following things:\n" \
            "\t * Restore /etc/bluecherry.conf config file if it was removed, template is in /usr/share/bluecherry/bluecherry.conf.in;\n"
 	if [[ IN_DEB ]]
 	then
