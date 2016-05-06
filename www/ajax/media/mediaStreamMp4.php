@@ -38,18 +38,29 @@ class mediaStreamMp4 extends Controller {
             die();
         }
 
+        if (strstr($ffprobe_output, 'codec_type="audio"') === false) {
+            # If no audio streams detected
+            $audio_options = ' -an ';
+        } else if (strstr($ffprobe_output, 'codec_name="aac"') !== false) {
+            # If AAC audio stream detected
+            $audio_options = ' -acodec copy ';
+        } else {
+            # If audio stream in codec other than AAC detected
+            $audio_options = ' -acodec aac -strict -2 ';
+        }
+
         if (strstr($ffprobe_output, 'streams.stream.0.codec_name="h264"') !== false
             || strstr($ffprobe_output, 'streams.stream.0.codec_name="mpeg4"') !== false) {
             # -- if codec is MPEG4 or H264, remux the file into MP4 container format;
             # -faststart option must be used for MP4 file to enable instant playback start.
-            $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename -acodec copy -vcodec copy  -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+            $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec copy  -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
         } else if (strstr($ffprobe_output, 'streams.stream.0.codec_name="mjpeg"') !== false) {
             # -- otherwise, if codec is MJPEG, reencode the video stream to MPEG4 or H264 codec;
             # Lower framerate on request, but forbid making it unreasonably high to avoid DoS attack
             if (isset($_GET['fps']) && (is_numeric($_GET['fps']) || is_float($_GET['fps'])) && $_GET['fps'] <= 30)
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename -acodec copy -vcodec mpeg4 -r {$_GET['fps']} -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec mpeg4 -r {$_GET['fps']} -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
             else
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename -acodec copy -vcodec mpeg4 -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec mpeg4 -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
         } else {
             unlink($outfile);
             header("HTTP/1.0 500 Internal Server Error - unsupported codec in video file");
