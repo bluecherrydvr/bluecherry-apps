@@ -86,6 +86,7 @@ libav/config.mak:
 		--enable-encoder=mjpeg \
 		--enable-encoder=mpeg4 \
 		--enable-encoder=rawvideo \
+		--enable-encoder=aac \
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
