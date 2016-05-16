@@ -1,3 +1,9 @@
+bluecherry (2:2.6.2) precise trusty wily wheezy jessie; urgency=low
+
+  * Change version number to 2.6.2
+
+ -- Alex Syrnikov <san@masterspline.net>  Mon, 16 May 2016 20:45:34 +0300
+
 bluecherry (2:2.6.1) precise trusty wily wheezy jessie; urgency=low
 
   * Change version number to 2.6.1
