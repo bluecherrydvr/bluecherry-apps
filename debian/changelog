@@ -1,3 +1,15 @@
+bluecherry (2:2.7.1) precise trusty wily wheezy jessie; urgency=low
+
+  * Fixed checking of response from the license server
+  * mediaStreamMp4.php: Handle different audio codecs
+  * Fix permissions error message on storage web page changes
+  * Reload the page after a license key added
+  * Add mkvtoolnix-gui in rpm deps.
+  * Performance optimizations
+  * Security fixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Wed, 25 May 2016 08:38:09 -0500
+
 bluecherry (2:2.7.0) precise trusty wily wheezy jessie; urgency=low
 
   * Change version number to 2.7.0
