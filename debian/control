@@ -11,7 +11,7 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, php5-sqlite,
  libapache2-mod-php5, sysstat, php5-gd, mkvtoolnix, php-mail, php-mail-mime,
- php-net-smtp, sqlite3, php5-curl, nmap
+ php-net-smtp, sqlite3, php5-curl, nmap, apache2
 Suggests: solo6010-dkms, monit, mail-transport-agent
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
