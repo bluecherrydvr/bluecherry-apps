@@ -45,10 +45,6 @@ case "$1" in
 		invoke-rc.d apache2 restart || true
 		invoke-rc.d rsyslog restart || true
 
-		db_fset bluecherry/note_leftover_data seen false
-		db_input high bluecherry/note_leftover_data || true
-		db_go || true
-
 	;;
 	purge)
 		CONFIGFILE=/etc/bluecherry.conf

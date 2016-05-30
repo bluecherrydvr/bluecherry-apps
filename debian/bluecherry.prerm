@@ -2,4 +2,8 @@
 
 . /usr/share/debconf/confmodule
 
+db_fset bluecherry/note_leftover_data seen false
+db_input high bluecherry/note_leftover_data || true
+db_go || true
+
 #DEBHELPER#
