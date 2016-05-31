@@ -104,10 +104,6 @@ $(function() {
         \$slider = $(this);
         \$slider.bfhslider(\$slider.data());
     });
-
-    $('body').on('change.bfhslider', '.bfh-slider', function(e){
-        videoadjSendVal($(this));
-    });
 });
 ");
 ?>

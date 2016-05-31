@@ -1,5 +1,18 @@
 $(function() {
+    window.left_button_down = false;
 
+    $('body').on('change.bfhslider', '.bfh-slider', function(e){
+        if (!left_button_down) {
+            videoadjSendVal($(this));
+        }
+    });
+
+    $('body').on('mouseup', function(e){
+        left_button_down = false;
+    })
+    $('body').on('mousedown.bfhslider', '.bfh-slider', function(e){
+        left_button_down = true;
+    });
 });
 
 function videoadjAudio(el) {
