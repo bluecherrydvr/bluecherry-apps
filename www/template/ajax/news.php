@@ -1,4 +1,5 @@
 
+<?php if (Inp::get('type') == 'ajax_content')  { ?>
 <div class="row">
     <div class="col-lg-12">
         <h1 class="page-header"><?php echo NEWS_HEADER; ?></h1>
@@ -33,3 +34,13 @@ if (!$news) {
 ?>
     </div>
 </div>
+<?php } else {
+
+    addJs("
+    $(function() {
+        var ajax_req = new ajaxReq();
+        ajax_req.ajaxContent('/news');
+    });
+    ");
+
+    } ?>
