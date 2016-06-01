@@ -19,7 +19,7 @@ class news extends Controller {
 
 
 	private function GetNews($path_to_xml){
-		$xml = @simplexml_load_file($path_to_xml);
+		$xml = @simplexml_load_string($this->loadNews($path_to_xml));
 		$cnt = 0;
 		if (!$xml || !$xml->channel->item) { return false; }
 		foreach ($xml->channel->item as $posting){
@@ -29,5 +29,21 @@ class news extends Controller {
 			}
 		}
 	}
+
+    private function loadNews($url)
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        $output = trim(curl_exec($ch));
+
+        curl_close($ch);
+
+        return $output;
+    }
 }
 
