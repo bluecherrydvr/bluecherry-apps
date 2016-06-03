@@ -150,6 +150,18 @@
                     </div>
                     </div>
 
+                    <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_ONVIF_PORT; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <div class="input-group">
+                                <input class="form-control" type="text" name="onvif_port" value="80" />
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default click-event" data-function="addIpCheckOnvifPort"><?php echo AIP_CHECK_ONVIF_PORT; ?></button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
 
 
                     </div>

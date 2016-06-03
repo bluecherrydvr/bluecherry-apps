@@ -6,6 +6,8 @@
     Confidential, all rights reserved. No distribution is permitted.
  */
 
+include_once lib_path.'Ponvif.php';
+
 class addip extends Controller {
 	
     public function __construct(){
@@ -41,6 +43,24 @@ class addip extends Controller {
 	    $result = ipCamera::create($_POST);
     	data::responseJSON($result[0], $result[1]);
     	exit;
+    }
+
+    public function postCheckOnvifPort()
+    {
+        $stat = 7;
+        $msg = AIP_CHECK_ONVIF_ERROR;
+
+        $ip = Inp::post('ip_addr');
+        $port = Inp::post('port');
+
+        $ponvif = new Ponvif();
+        if ($ponvif->chOnvif($ip, $port)) {
+            $stat = 6;
+            $msg = AIP_CHECK_ONVIF_SUCCESS;
+        }
+
+        data::responseJSON($stat, $msg);
+        exit;
     }
 }
 

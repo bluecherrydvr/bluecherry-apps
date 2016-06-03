@@ -348,6 +348,10 @@ define('AIP_NEEDRTSP', 'Please enter path to RTSP');
 define('AIP_ADVANCED_SETTINGS', 'advanced settings');
 define('AIP_CAMADDED', 'IP camera has been successfully added');
 define('AIP_PROTOCOL', 'Video stream source');
+define('AIP_ONVIF_PORT', 'ONVIF port');
+define('AIP_CHECK_ONVIF_PORT', 'Check');
+define('AIP_CHECK_ONVIF_SUCCESS', 'Successfull');
+define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
 
 #ip cam lib
 define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');
