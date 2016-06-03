@@ -35,6 +35,7 @@
                         <?php echo $preset['name']; ?>
                     </td>
                     <td class="col-lg-2 col-md-2 text-right">
+                        <div <?php echo ((($preset['name'] == 'ONVIF') && ($preset['protocol'] == 'onvif')) ? 'style="display: none;"' : ''); ?> >
                         <a href="/ptzpresetedit?id=<?php echo $preset['id'];?>&ref=<?php echo $camera->info['id'];?>" type="submit" class="btn btn-success ajax-content"><i class="fa fa-edit fa-fw"></i></a>
 
                         <form action="/ajax/update.php" method="POST" style="display: inline-block;">
@@ -45,6 +46,7 @@
 
                             <button type="submit" class="btn btn-danger send-req-form" data-confirm="Are you sure you want to delete preset '<?php echo $preset['name'];?>'?" data-loading-text="..." data-func="delTr"><i class="fa fa-times fa-fw"></i></button>
                         </form>
+                        </div>
                     </td>
                 </tr>
                 <?php } ?>

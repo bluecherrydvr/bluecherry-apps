@@ -47,6 +47,20 @@
                     </div>
                     
                     <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo IPP_PRESET_PROTOCOL; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <select class="form-control change-event" data-function="ptzChangeProtocol" name="protocol">
+                                <option value="http" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "http")) ? "selected" : ""); ?>>http</option>
+                                <option value="https" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "https")) ? "selected" : ""); ?>>https</option>
+                                <option value="onvif" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "onvif")) ? "selected" : ""); ?>>ONVIF</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="ptz-edit-settings" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == 'onvif')) ? 'style="display: none;"' : ''); ?> >
+                    
+                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo IPP_PRESET_RIGHT; ?></label>
 
                         <div class="col-lg-6 col-md-6">
@@ -183,22 +197,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="col-lg-4 col-md-4 control-label"><?php echo IPP_PRESET_PROTOCOL; ?></label>
-
-                        <div class="col-lg-6 col-md-6">
-                            <select class="form-control" name="protocol">
-                                <option value="http" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "http")) ? "selected" : ""); ?>>http</option>
-                                <option value="https" <?php echo ((isset($preset->preset['protocol']) && ($preset->preset['protocol'] == "https")) ? "selected" : ""); ?>>https</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo IPP_PRESET_PORT; ?><p class='help-block'><small><?php echo IPP_PRESET_PORT_EX; ?></small></p></label>
 
                         <div class="col-lg-6 col-md-6">
                             <input class="form-control" type="text" name="port" value="<?php echo ((empty($preset->preset['port'])) ? "" : $preset->preset['port']); ?>"  />
                         </div>
+                    </div>
+
                     </div>
 
 
