@@ -27,5 +27,6 @@ done
 export DIST=centos_7 ARCH=x86_64
 work
 
-export DIST=trusty ARCH=arm7l
-work
+# Doesn't work, needs debugging about qemu executing foreign-arch executables
+#export DIST=trusty ARCH=arm7l
+#work
