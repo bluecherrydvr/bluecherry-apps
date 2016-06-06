@@ -21,6 +21,7 @@ require_once('Reply.php');
 require_once('Inp.php');
 require_once('View.php');
 require_once('Controller.php');
+require_once ('Ponvif.php');
 
 if (empty($nload)){
 	include("lang.php");
@@ -828,26 +829,95 @@ class cameraPtz{
 	}
 	public function move($command, $id=false){
 		if (substr($this->camera->info['protocol'], 0, 2) === 'IP'){ #prepare command URL
-			$this->command = $this->getCmd($command);
-			$this->command = $this->prepareCmd($this->command);
+			if (strtolower($this->preset[0]['protocol']) == 'onvif') {
+				$this->moveOnvif($command);
+			} else {
+				$this->command = $this->getCmd($command);
+				$this->command = $this->prepareCmd($this->command);
 
-			$ch = curl_init();
-			curl_setopt($ch, CURLOPT_URL, $this->command);
-			curl_setopt($ch, CURLOPT_USERPWD, $this->camera->info['rtsp_username'].":".$this->camera->info['rtsp_password']);
-			// Set so curl_exec returns the result instead of outputting it.
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
-			// Get the response and close the channel.
-			$response = curl_exec($ch);
-			curl_close($ch);
+				$ch = curl_init();
+				curl_setopt($ch, CURLOPT_URL, $this->command);
+				curl_setopt($ch, CURLOPT_USERPWD, $this->camera->info['rtsp_username'].":".$this->camera->info['rtsp_password']);
+				// Set so curl_exec returns the result instead of outputting it.
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+				// Get the response and close the channel.
+				$response = curl_exec($ch);
+				curl_close($ch);
+			}
 		}
 	}
+
+	private function moveOnvif($command)
+	{
+		if (is_array($command) && (Inp::get('command') == 'move')) {
+			$speed_pantilt_x = '0.5';
+			$speed_pantilt_y = '0.5';
+			$pantilt_x = 0;
+			$pantilt_y = 0;
+			$zoom = 0;
+			$zoom_speed = '0.5';
+
+			$xy_value = 5 / 100 ;
+
+			if ($command['pan'] == 'r') {
+				$pantilt_x = -1 * $xy_value;
+			}
+
+			if ($command['pan'] == 'l') {
+				$pantilt_x = $xy_value;
+			}
+
+			if ($command['tilt'] == 'u') {
+				$pantilt_y = -1 * $xy_value;
+			}
+
+			if ($command['tilt'] == 'd') {
+				$pantilt_y = $xy_value;
+			}
+
+			if ($command['zoom'] == 't') {
+				$zoom = '0.1';
+			}
+
+			if ($command['zoom'] == 'w') {
+				$zoom = '-0.1';
+			}
+
+			$ponvif = new Ponvif();
+			$ponvif->setIPAddress($this->camera->info['ipAddr'] . ':' . $this->camera->info['onvif_port']);
+			$ponvif->setUsername($this->camera->info['rtsp_username']);
+			$ponvif->setPassword($this->camera->info['rtsp_password']);
+
+
+			try {
+				$init = $ponvif->initialize();
+				$sources = $ponvif->getSources();
+
+				if (empty($sources) || $ponvif->isFault($sources)) {
+					// error
+				} else {
+					$profileToken = $sources[0][0]['profiletoken'];
+
+					if ($pantilt_x || $pantilt_y) {
+						$ponvif->ptz_RelativeMove($profileToken, $pantilt_x, $pantilt_y, $speed_pantilt_x, $speed_pantilt_y);
+					}
+
+					if ($zoom) {
+						$ponvif->ptz_RelativeMoveZoom($profileToken, $zoom, $zoom_speed);
+					}
+				}
+			} catch (Exception $e) {
+			}
+		}
+	}
+
 	private function getIpCommandPreset($id){
 		return data::getObject("ipPtzCommandPresets", "id", $id);
 	}
 	private function prepareCmd($command, $id = false){
-		$command = ($command[0]=='/') ? $command : '/'.$command;
+		$command = ((isset($command[0])) && ($command[0]=='/')) ? $command : '/'.$command;
 		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
 			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);
 			$command = $this->preset[0]['protocol']."://".$this->camera->info['ipAddr'].(($this->preset[0]['port']) ? ':'.$this->preset[0]['port'] : '').$command;
