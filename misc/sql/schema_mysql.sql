@@ -46,6 +46,7 @@ CREATE TABLE `Devices` (
   `rtsp_password` varbinary(256) DEFAULT NULL,
   `rtsp_rtp_prefer_tcp` tinyint(1) NOT NULL DEFAULT '1',
   `mjpeg_path` varbinary(256) DEFAULT NULL,
+  `onvif_port` mediumint(5) DEFAULT '80',
   `ptz_control_path` varbinary(256) DEFAULT NULL,
   `ptz_control_protocol` varchar(32) DEFAULT NULL,
   `ptz_serial_values` varchar(64) DEFAULT NULL,
