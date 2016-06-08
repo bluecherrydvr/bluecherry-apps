@@ -45,7 +45,7 @@ int main(int argc, char **argv)
 
 	/* Generate keys if requested */
 	if (gen_count > 0 || gen_n_ports > 0) {
-		if (gen_count < 1 || gen_n_ports < 1 || gen_n_ports > 32)
+		if (gen_count < 1 || gen_n_ports < 1)
 			usage();
 
 		for (int i = 0; i < gen_count; i++) {
