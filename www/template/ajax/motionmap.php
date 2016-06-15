@@ -73,7 +73,7 @@
                     <label class="col-lg-4 col-md-4 control-label"><?php echo MOTION_ALGORITHM; ?></label>
 
                     <div class="col-lg-8 col-md-6">
-                        <div class="btn-group" data-toggle="buttons">
+                        <div class="btn-group" data-toggle="buttons" id="motionmap-algorithm">
                             <label class="btn btn-default <?php echo $camera->info['motion_algorithm'] == 1 ? 'active' : '' ?> ">
                         		<input type="radio" name="motion_algorithm" value="1" style="width: 30px;"
                                 <?php echo $camera->info['motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> />
@@ -101,7 +101,7 @@
                     <label class="col-lg-4 col-md-4 control-label"><?php echo 'Min. motion area %:'; ?></label>
 
                     <div class="col-lg-6 col-md-6">
-                        <div class="bfh-slider" data-name="min_motion_area" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] == 1 ? ' disabled' : ''; ?>" data-name="min_motion_area" data-min="1" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
                     </div>
                 </div>
 

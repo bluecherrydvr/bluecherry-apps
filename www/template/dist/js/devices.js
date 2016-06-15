@@ -7,6 +7,17 @@ $(function() {
         else el.show();
     });
 
+    $('body').on("change", "#motionmap-algorithm :input", function() {
+        var min_motion_area_bl = $('.bfh-slider[data-name="min_motion_area"]');
+        if ($(this).val() == 1) {
+            // default
+            min_motion_area_bl.addClass('disabled');
+        } else {
+            // experimental
+            min_motion_area_bl.removeClass('disabled');
+        }
+    });
+
 });
 
 function deviceChangeNameSuccess(form, msg) {
