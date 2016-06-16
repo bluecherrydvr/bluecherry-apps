@@ -1,3 +1,13 @@
+bluecherry (1:2.7.2) precise trusty wily wheezy jessie; urgency=low
+
+  * Min. motion area. issue #133
+  * added ONVIF PTZ functionality
+  * fixed sliders on 'Video adjustments' page. Issue #311
+  * Declare dependency on apache2
+  * Packaging fixes
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 17 Jun 2016 01:38:25 +0300
+
 bluecherry (2:2.7.1) precise trusty wily wheezy jessie; urgency=low
 
   * Fixed checking of response from the license server
