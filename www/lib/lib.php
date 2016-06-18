@@ -862,19 +862,19 @@ class cameraPtz{
 			$xy_value = 5 / 100 ;
 
 			if ($command['pan'] == 'r') {
-				$pantilt_x = -1 * $xy_value;
-			}
-
-			if ($command['pan'] == 'l') {
 				$pantilt_x = $xy_value;
 			}
 
+			if ($command['pan'] == 'l') {
+				$pantilt_x = -1 * $xy_value;
+			}
+
 			if ($command['tilt'] == 'u') {
-				$pantilt_y = -1 * $xy_value;
+				$pantilt_y = $xy_value;
 			}
 
 			if ($command['tilt'] == 'd') {
-				$pantilt_y = $xy_value;
+				$pantilt_y = -1 * $xy_value;
 			}
 
 			if ($command['zoom'] == 't') {
