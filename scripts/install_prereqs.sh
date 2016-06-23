@@ -3,7 +3,10 @@
 set -e
 set -x
 
-. /etc/*-release
+for x in /etc/*-release
+do
+	source $x
+done
 
 # Ubuntu 12 Precise lacks /etc/os-release, thus its ID is empty
 if [[ $ID == "" ]] && [[ $DISTRIB_ID == "Ubuntu" ]]
@@ -18,6 +21,12 @@ case $ID in
 		;;
 	ubuntu)
 		ADDITIONAL_PKGS="linux-image-generic linux-headers-generic"
+		if [[ "$UBUNTU_CODENAME" == 'xenial' ]]
+		then
+			ADDITIONAL_PKGS="$ADDITIONAL_PKGS php-dev"
+		else
+			ADDITIONAL_PKGS="$ADDITIONAL_PKGS php5-dev"
+		fi
 		;;
 	*)
 		exit 1
@@ -60,9 +69,3 @@ echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
 
 apt-get install -y -V git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev rsyslog sudo $ADDITIONAL_PKGS
-if [[ $(./scripts/build_helper/get_distro_release_name.sh) == "xenial" ]]
-then
-	apt-get install -y -V php-dev
-else
-	apt-get install -y -V php5-dev
-fi

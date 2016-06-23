@@ -17,7 +17,7 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
  mkvtoolnix, php-mail, php-mail-mime, php-net-smtp, sqlite3, nmap,
- apache2
+ apache2,
 #xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl
 #precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
 #trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
