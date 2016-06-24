@@ -1,3 +1,9 @@
+bluecherry (1:2.7.3) precise trusty wily wheezy jessie; urgency=low
+
+  * Fix inversion of PTZ ONVIF control
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Fri, 24 Jun 2016 03:31:34 +0300
+
 bluecherry (1:2.7.2) precise trusty wily wheezy jessie; urgency=low
 
   * Min. motion area. issue #133
