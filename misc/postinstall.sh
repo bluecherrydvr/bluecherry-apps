@@ -4,6 +4,12 @@
 # This file is common for debian and centos (called at package postinstall stage)
 
 set -x # trace
+
+for x in /etc/*-release
+do
+	source $x
+done
+
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
 then 
     IN_RPM="1"
@@ -107,9 +113,10 @@ case "$1" in
 			# Apache modules and sites
 			a2enmod ssl
 			a2enmod rewrite
-			if [[ $(/usr/share/bluecherry/scripts/get_distro_release_name.sh) == "xenial" ]]
+			if [[ "$UBUNTU_CODENAME" == 'xenial' ]]
 			then
 				a2enmod php7.0
+				phpenmod bluecherry || true
 			else
 				a2enmod php5
 			fi
