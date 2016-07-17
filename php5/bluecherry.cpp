@@ -383,33 +383,6 @@ PHP_FUNCTION(bc_handle_get)
 #endif
 }
 
-PHP_FUNCTION(bc_set_control)
-{
-	zval *z_ctx;
-	struct bc_handle *bch;
-	long ctrl, val;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rll", &z_ctx,
-				  &ctrl, &val) == FAILURE)
-		RETURN_FALSE;
-#if PHP_MAJOR_VERSION < 7
-	ZEND_FETCH_RESOURCE(bch, struct bc_handle *, &z_ctx, -1,
-			    bch_name, bch_id);
-#else
-	bch = (struct bc_handle *)zend_fetch_resource_ex(z_ctx, bch_name, bch_id);
-#endif
-	if (bch == NULL) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING,
-				 "bc_set_control: invalid context");
-		RETURN_FALSE;
-	}
-
-	if (bch->input->set_control(ctrl, val))
-		RETURN_FALSE;
-
-	RETURN_TRUE;
-}
-
 PHP_FUNCTION(bc_handle_free)
 {
 	struct bc_handle *bch;
