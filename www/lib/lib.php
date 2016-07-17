@@ -392,6 +392,16 @@ class camera {
 			$this->info += $devices[0] + $available[0];
 		}
 		$this->getPtzSettings();
+
+		$dev_spec_parts = explode('|', $this->info['device']);
+		$card_port_nr = $dev_spec_parts[2];
+		if ($this_device[0]['driver'] == 'tw5864') {
+			$devfile = shell_exec("ls {$dev_spec_parts[1]}/video4linux | sed 's/video//' | sort -n | sed 's/^/video/' | tail -n +$card_port_nr | head -n 1 | tr -d '\\n'");
+		} else {
+			$devfile = "/dev/video" . (1 + $this_device[0]['card_id'] + $card_port_nr);
+		}
+
+		$this->info['devfile'] = $devfile;
 	}
 	private function getPtzSettings(){
 		if (empty($this->info['ptz_control_path'])){
@@ -495,6 +505,66 @@ class camera {
 				return array($result, $msg);
 			break;
 		}
+	}
+
+	public function setControls($controls)
+	{
+		// Fetch available video4linux controls
+		$ctrls_rawout = shell_exec("v4l2-ctl --device {$this->info['devfile']} --list-ctrls");
+		if (!$ctrls_rawout)
+			return false;
+
+		$defined_ctrls = array();
+		foreach (explode("\n", $ctrls_rawout) as $ctrl_line) {
+			$line_split = preg_split("/[\s]+/", $ctrl_line);
+			if ($line_split[2] != ':')
+				return false;
+			$ctrl = array();
+			$ctrl['name'] = $line_split[0];
+			foreach (array_slice($line_split, 3) as $property) {
+				$name_and_val = split('=', $property);
+				$ctrl[$name_and_val[0]] = $name_and_val[1];
+			}
+			$defined_ctrls[$ctrl['name']] = $ctrl;
+		}
+
+		$setting_arr = array();
+
+		// Check which controls are requested for setting, and prepare a shell command
+		// TODO "video_quality" needs a workaround to use control "h264_minimum_qp_value" with inverted scale
+
+		foreach($controls as $setting_name => $setting) {
+			$def = $defined_ctrls[$setting_name];
+			if (!isset($def))
+				continue;
+
+			/*
+			 * x e [x_min, x_max] ([0, 100])
+			 * y e [y_min, y_max] (e.g. [-128, 127]
+			 *
+			 * y(x) = a * x + b
+			 *
+			 * a * x_min + b = y_min
+			 * a * x_max + b = y_max
+			 */
+			$x = $setting;
+
+			$x_min = 0;
+			$x_max = 100;
+			$y_min = $def['min'];
+			$y_max = $def['max'];
+			$a = ($y_max - $y_min) / ($x_max - $x_min);
+			$b = $y_min - $a * $x_min;
+			$y = $a * $x + $b;
+
+			$setting_arr[] = $setting_name . '=' . $y;
+		}
+
+		if (empty($setting_arr))
+			return false;
+
+		$ret = shell_exec("v4l2-ctl --device {$this->info['devfile']} --set-ctrls=" . implode(',', $setting_arr));
+		return bool($ret);
 	}
 }
 

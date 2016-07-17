@@ -59,17 +59,13 @@ class update extends Controller {
 		data::responseJSON($result[0], $result[1], $result[2]);
 	}
 	private	function update_control(){
-		$id = intval($_POST['id']);
-		$this_device = data::query("SELECT * FROM Devices INNER JOIN AvailableSources USING (device) WHERE Devices.id='$id'");
-		$bch = bc_handle_get($this_device[0]['device'], $this_device[0]['driver']);
-		if (!$bch) { data::responseJSON(false); return; }
-		if (isset($_POST['hue'])) { bc_set_control($bch, BC_CID_HUE, intval($_POST['hue'])); };
-		if (isset($_POST['saturation'])) { bc_set_control($bch, BC_CID_SATURATION, intval($_POST['saturation'])); };
-		if (isset($_POST['contrast'])) { bc_set_control($bch, BC_CID_CONTRAST, intval($_POST['contrast'])); };
-		if (isset($_POST['brightness'])) { bc_set_control($bch, BC_CID_BRIGHTNESS, intval($_POST['brightness'])); };
-		if (isset($_POST['video_quality'])) { bc_set_control($bch, BC_CID_VIDEO_QUALITY, intval($_POST['video_quality'])); };
+		$device = device(intval($_POST['id']));
+		if (empty($device)) {
+			data::responseJSON(false);
+			return;
+		}
 
-		bc_handle_free($bch);
+		$device->setControls($_POST);:
 		$this->update();
 	}
 	private function update(){
