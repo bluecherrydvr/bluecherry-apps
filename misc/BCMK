@@ -73,6 +73,7 @@ libav/config.mak:
 		--enable-demuxer=matroska \
 		--enable-demuxer=mjpeg \
 		--enable-demuxer=rawvideo \
+		--enable-demuxer=concat \
 		\
 		--enable-decoder=h264 \
 		--enable-decoder=mpeg4 \
