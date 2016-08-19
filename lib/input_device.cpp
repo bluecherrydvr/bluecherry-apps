@@ -194,6 +194,7 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	cc->channels = channels;
 	cc->time_base = time_base;
 	cc->profile = profile;
+	cc->bits_per_coded_sample = bits_per_coded_sample;
 	if (!extradata.empty()) {
 		cc->extradata_size = extradata.size();
 		cc->extradata = (uint8_t*)av_malloc(extradata.size() + FF_INPUT_BUFFER_PADDING_SIZE);

@@ -248,6 +248,7 @@ void lavf_device::update_properties()
 		p->audio.channels = ic->channels;
 		p->audio.time_base = (AVRational){1, ic->sample_rate};
 		p->audio.profile = ic->profile;
+		p->bits_per_coded_sample = ic->bits_per_coded_sample;
 		if (ic->extradata && ic->extradata_size)
 			p->audio.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}

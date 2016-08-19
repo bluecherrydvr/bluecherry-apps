@@ -154,6 +154,7 @@ public:
 		AVRational time_base;
 		int profile;
 		std::vector<char> extradata;
+		int bits_per_coded_sample;
 
 		audio_properties();
 		/* Apply these properties to an allocated AVCodecContext instance,
