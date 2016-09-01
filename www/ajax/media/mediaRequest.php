@@ -20,13 +20,13 @@ class mediaRequest extends Controller {
         	(!empty($device_id) || !empty($event_id)) or die('E: Event ID or camera ID is required to get a screenshot.');
 	
         	$event = (empty($event_id)) ? data::query("SELECT id, filepath FROM Media WHERE device_id='{$device_id}' AND filepath IS NOT NULL ORDER BY id DESC LIMIT 1") : data::getObject('Media', 'id', $event_id);
-        	!empty($event) or die('E: Requested event does not exist');
+		!empty($event) or requestError('E: Requested event does not exist');
 	
         	$event = $event[0];
-        	!empty($event['filepath']) or die('E: No media is associated with this event.');
+		!empty($event['filepath']) or requestError('E: No media is associated with this event.');
 	
         	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
-        	file_exists($path_to_image) or die('E: Screenshot for this event was not found');
+		file_exists($path_to_image) or requestError('E: Screenshot for this event was not found');
 	
         	header('content-type:image/jpeg');
         	readfile($path_to_image);
@@ -59,7 +59,7 @@ class mediaRequest extends Controller {
 
 function requestError($message)
 {
-	header('HTTP/1.1 550 Media request error');
+	header('HTTP/1.1 404 Media request error');
 	die('<error>'.$message.'</error>');
 }
 
