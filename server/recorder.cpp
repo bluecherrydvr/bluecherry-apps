@@ -97,7 +97,7 @@ void recorder::run()
 		 * has on-camera motion detection.
 		 */
 
-		if (recording_type == BC_EVENT_CAM_T_MOTION) {
+		if (recording_type == BC_EVENT_CAM_T_MOTION || recording_type == BC_EVENT_CAM_T_CONTINUOUS) {
 			if (snapshotting_proceeding) {
 				int ret = writer->snapshot_feed(packet);
 				if (ret < 0) {
