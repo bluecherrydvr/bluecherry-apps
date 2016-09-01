@@ -1,3 +1,10 @@
+bluecherry (1:2.7.5) precise trusty wily wheezy jessie; urgency=low
+
+  * Create screenshot for continuous records
+  * Return HTTP 404 when screenshot file is missing
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Thu, 01 Sep 2016 19:20:00 +0400
+
 bluecherry (1:2.7.4) precise trusty wily wheezy jessie; urgency=low
 
   * Package installation fix
