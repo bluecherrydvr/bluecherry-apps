@@ -519,7 +519,6 @@ static zend_function_entry bluecherry_functions[] = {
 	PHP_FE(bc_buf_get, NULL)
 	PHP_FE(bc_buf_size, NULL)
 	PHP_FE(bc_buf_data, NULL)
-	PHP_FE(bc_set_control, NULL)
 	PHP_FE(bc_ptz_cmd, NULL)
 	/* Licensing */
 	PHP_FE(bc_license_machine_id, NULL)
