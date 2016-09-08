@@ -1,3 +1,9 @@
+bluecherry (2:2.7.5-2) precise trusty wily wheezy jessie; urgency=low
+
+  * Packaging fix (epoch increment)
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Thu, 08 Sep 2016 13:27:54 +0300
+
 bluecherry (1:2.7.5) precise trusty wily wheezy jessie; urgency=low
 
   * Create screenshot for continuous records
