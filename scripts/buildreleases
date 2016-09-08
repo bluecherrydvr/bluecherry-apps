@@ -50,7 +50,7 @@ log-paths = debian lib server www misc/sql
 log-date = $(shell date -R)
 
 debian/changelog: FORCE
-	/bin/echo -e 'bluecherry (1:$(VERSION)) $(DIST); urgency=low\n' > $@
+	/bin/echo -e 'bluecherry (2:$(VERSION)) $(DIST); urgency=low\n' > $@
 	git log --pretty=format:'  * %s' ^$(ver-tag) HEAD -- $(log-paths) >> $@
 	/bin/echo -e '\n\n -- $(MAINTAINER)  $(log-date)\n' >> $@
 	git show 'HEAD:$@' >> $@
