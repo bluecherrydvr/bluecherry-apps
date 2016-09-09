@@ -23,7 +23,7 @@ git submodule update --recursive --init
 git submodule foreach --recursive "git clean -dxf"
 GIT_VERSION=`git describe --dirty --always --long`
 CFG_FILE=`ls -t /boot/config* | head -n1`
-cat $CFG_FILE <(echo -e "CONFIG_VIDEO_TW5864=m\nCONFIG_VIDEO_SOLO6X10=m\nCONFIG_VIDEO_ADV_DEBUG=y\n") > .config
+cat $CFG_FILE <(echo -e "CONFIG_VIDEO_TW5864=m\nCONFIG_VIDEO_ISIL5864=m\nCONFIG_VIDEO_SOLO6X10=m\nCONFIG_VIDEO_ADV_DEBUG=y\n") > .config
 unset ARCH
 make olddefconfig
 export DEBEMAIL="maintainers@bluecherrydvr.com"
