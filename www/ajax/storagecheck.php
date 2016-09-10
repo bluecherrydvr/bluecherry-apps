@@ -44,8 +44,7 @@ class storagecheck extends Controller {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
-        $file_perms = substr(decoct(fileperms($path)), 2);
-        if (($file_perms != '770')) {
+        if (!is_readable($path)) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
