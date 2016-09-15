@@ -1,6 +1,6 @@
 [Unit]
 Description="Bluecherry DVR Server"
-After=network.target remote-fs.target nss-lookup.target mariadb.target
+After=network.target remote-fs.target nss-lookup.target mysql.target
 
 [Service]
 Type=simple
