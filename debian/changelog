@@ -1,3 +1,9 @@
+bluecherry (2:2.7.6) precise trusty wily wheezy jessie; urgency=low
+
+  * fixed condition for error message about directory not readable
+
+ -- Andrey Utkin <andrey.utkin@corp.bluecherry.net>  Sun, 18 Sep 2016 18:16:23 +0300
+
 bluecherry (2:2.7.5-2) precise trusty wily wheezy jessie; urgency=low
 
   * Packaging fix (epoch increment)
