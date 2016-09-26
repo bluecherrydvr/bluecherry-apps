@@ -87,24 +87,55 @@ function getReadOnlyDb() {
 #singleton database class, uses php5-bluecherry functions
 class database{
 	public static $instance;
-	private function __construct(){
+	private $dblink;
+	private $dbname;
+	private $dbuser;
+	private $dbpassword;
+	private $dbhost;
+
+	private function __construct() {
 		$this->connect();
 	}
 	public static function getInstance() {
 		self::$instance or self::$instance = new database();
 		return self::$instance;
 	}
+	private function read_config(){
+		$config_file = fopen("/etc/bluecherry.conf", 'r') or die(LANG_DIE_COULDNOTOPENCONF);
+		$config_text = fread($config_file, filesize("/etc/bluecherry.conf"));
+		fclose($config_file);
+
+		$matches = array();
+
+		preg_match("/dbname[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+		$dbname = $matches[1];
+
+		preg_match("/user[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+		$dbuser = $matches[1];
+
+		preg_match("/password[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+                $dbpassword = $matches[1];
+
+		preg_match("/host[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+                $dbhost = $matches[1];
+
+		$dbname = stripslashes($dbname);
+		$dbuser = stripslashes($dbuser);
+		$dbpassword = stripslashes($dbpassword);
+		$dbhost = stripslashes($dbhost);
+	}
 	private function connect() {
-		bc_db_open() or die(LANG_DIE_COULDNOTCONNECT);
+		read_config();
+		$dblink = mysqli_connect($dbhost, $dbuser, $dbpassword, $dbname) or die(LANG_DIE_COULDNOTCONNECT);
 	}
 	public static function escapeString(&$string) {
 		self::$instance or self::$instance = new database();
-		$string = bc_db_escape_string($string);
+		$string = mysqli_real_escape_string($string);
 		return $string;
 	}
 	/* Execute a result-less query */
 	public function query($query) {
-		return bc_db_query($query);
+		return mysqli_query($dblink, $query);
 	}
 	/* Execute a query that will return results */
 	public function fetchAll($query) {
