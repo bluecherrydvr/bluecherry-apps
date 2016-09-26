@@ -9,7 +9,7 @@ if [[ $DIST == centos* ]]
 then
 	sudo `dirname $0`/install_prereqs_RPM.sh
 else
-	sudo `dirname $0`/install_prereqs.sh
+	sudo `dirname $0`/install_prereqs_native.sh
 fi
 
 # TODO Implement building outside of sources tree
