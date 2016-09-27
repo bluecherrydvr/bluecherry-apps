@@ -19,12 +19,12 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
  mkvtoolnix, php-mail, php-mail-mime, php-net-smtp, sqlite3, nmap,
  apache2,
  v4l-utils,
-#xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl
-#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
-#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
-#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
-#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
-#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl
+#xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
+#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
+#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
+#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
+#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
+#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
 Suggests: solo6010-dkms, monit, mail-transport-agent
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
