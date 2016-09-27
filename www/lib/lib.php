@@ -119,27 +119,38 @@ class database{
 		preg_match("/host[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
                 $dbhost = $matches[1];
 
-		$dbname = stripslashes($dbname);
-		$dbuser = stripslashes($dbuser);
-		$dbpassword = stripslashes($dbpassword);
-		$dbhost = stripslashes($dbhost);
+		$this->dbname = stripslashes($dbname);
+		$this->dbuser = stripslashes($dbuser);
+		$this->dbpassword = stripslashes($dbpassword);
+		$this->dbhost = stripslashes($dbhost);
 	}
 	private function connect() {
-		read_config();
-		$dblink = mysqli_connect($dbhost, $dbuser, $dbpassword, $dbname) or die(LANG_DIE_COULDNOTCONNECT);
+		$this->read_config();
+		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
 	}
 	public static function escapeString(&$string) {
 		self::$instance or self::$instance = new database();
-		$string = mysqli_real_escape_string($string);
+		$string = mysqli_real_escape_string(self::$instance->dblink, $string);
 		return $string;
 	}
 	/* Execute a result-less query */
 	public function query($query) {
-		return mysqli_query($dblink, $query);
+		return mysqli_real_query($this->dblink, $query);
 	}
 	/* Execute a query that will return results */
 	public function fetchAll($query) {
-		return bc_db_get_table($query);
+		$fetchedTable = array();
+		$qresult = mysqli_query($this->dblink, $query, MYSQLI_STORE_RESULT);
+
+		if ($qresult) {
+			$fetchedTable = mysqli_fetch_all($qresult, MYSQLI_BOTH);
+		}
+
+		return $fetchedTable;
+	}
+
+	public function last_id() {
+		return mysqli_insert_id($this->dblink);
 	}
 }
 
@@ -210,7 +221,8 @@ class data{
 
 
 	public static function last_id(){ #wrapper instead of mysql_insert_id
-		return bc_db_last_insert_rowid();
+		$db = database::getInstance();
+		return $db->last_id();
 	}
 }
 

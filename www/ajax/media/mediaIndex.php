@@ -1,5 +1,7 @@
 <?php
 
+include_once lib_path . 'lib.php';
+
 class mediaIndex extends Controller {
 	
     public function __construct()
@@ -12,12 +14,9 @@ class mediaIndex extends Controller {
     {
         print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
 
-        if (!bc_db_open()) {
-        	print "<error>Could not open database</error>\n";
-        	exit;
-        }
+	$db = database::getInstance();
 
-        $events = bc_db_get_table("SELECT * FROM Media ORDER BY start DESC");
+        $events = $db->fetchAll("SELECT * FROM Media ORDER BY start DESC");
 
         # Output one item for each media entry
         foreach ($events as $item) {
@@ -32,7 +31,6 @@ class mediaIndex extends Controller {
         	print "  </item>\n";
         }
 
-        bc_db_close();
 
         die();
     }

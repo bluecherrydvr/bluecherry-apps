@@ -1,5 +1,7 @@
 <?php
 
+include_once lib_path . 'lib.php';
+
 class mediaRequest extends Controller {
 	
     public function __construct()
@@ -40,16 +42,16 @@ class mediaRequest extends Controller {
 
         mb_http_output("pass");
 
-        if (!bc_db_open())
-        	requestError('Could not open database');
+        
+        #	requestError('Could not open database');
+        $db = database::getInstance();
 
-        $events = bc_db_get_table("SELECT * FROM Media WHERE id=" . intval($id));
+        $events = $db->fetchAll("SELECT * FROM Media WHERE id=" . intval($id));
         if (empty($events))
         	requestError('Could not retrieve media for '.$id);
 
         $item = $events[0];
 
-        bc_db_close();
 
         dl_file_resumable($item['filepath']);
 

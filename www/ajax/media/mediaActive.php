@@ -1,5 +1,7 @@
 <?php 
 
+include_once lib_path . 'lib.php';
+
 class mediaActive extends Controller {
 	
     public function __construct()
@@ -26,7 +28,6 @@ class mediaActive extends Controller {
         }
         print "</activedevices>\n";
 
-        bc_db_close();
 
         die();
     }
@@ -34,7 +35,8 @@ class mediaActive extends Controller {
     // Checks for in-progress event
     function check_active($id)
     {
-    	$list = bc_db_get_table("SELECT id FROM EventsCam WHERE device_id=$id ".
+        $db = database::getInstance();
+    	$list = $db->fetchAll("SELECT id FROM EventsCam WHERE device_id=$id ".
     				"AND length=-1");
     	if (empty($list))
     		return;
