@@ -1,3 +1,9 @@
+bluecherry (2:2.6.3) precise trusty wily wheezy jessie; urgency=low
+
+  * fixed condition for error message about directory not readable
+
+ -- Anton <anton@corp.bluecherry.net>  Wed, 12 Oct 2016 00:54:34 +0400
+
 bluecherry (2:2.6.2) precise trusty wily wheezy jessie; urgency=low
 
   * Change version number to 2.6.2
