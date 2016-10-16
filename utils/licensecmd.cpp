@@ -12,8 +12,11 @@
 
 
 #include "libbluecherry.h"
+#include "utils.h"
 
 #include <stdio.h>
+
+
 
 void usage(const char *argv0)
 {
@@ -36,6 +39,12 @@ int main(int argc, char **argv)
 		arg1 = argv[2];
 	if (argc >= 4)
 		arg2 = argv[3];
+
+	if (bc_db_open(BC_CONFIG_DEFAULT))
+	{
+		fputs("Failed to open bluecherry database", stderr);
+		return -1;
+	}
 
 	do
 	{
