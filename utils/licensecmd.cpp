@@ -22,7 +22,7 @@ void usage(const char *argv0)
 
 int main(int argc, char **argv)
 {
-	const char *name, *arg1, *arg2;
+	const char *name, *arg1 = NULL, *arg2 = NULL;
 
 	if (argc < 2)
 	{
@@ -30,7 +30,28 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	
+	name = argv[1];
+
+	if (argc >= 3)
+		arg1 = argv[2];
+	if (argc >= 4)
+		arg2 = argv[3];
+
+	do
+	{
+		if (strcmp(name, "bc_license_machine_id") == 0)
+		{
+			char buf[64];
+			int re = bc_license_machine_id(buf, sizeof(buf));
+
+			if (re < 1)
+				return -1;
+
+			puts(buf);
+			break;
+		}
+	}
+	while(0);
 
 	return 0;
 }
