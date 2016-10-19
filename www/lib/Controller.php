@@ -1,5 +1,7 @@
 <?php
 
+require_once('bc_license_wrapper.php');
+
 class Controller {
 
     protected $core;
