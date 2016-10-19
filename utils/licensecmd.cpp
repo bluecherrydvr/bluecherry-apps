@@ -106,6 +106,9 @@ int main(int argc, char **argv)
 			printf("%i\n", num);
 		}
 
+		fprintf(stderr, "unknown function name \"%s\"\n", name);
+		return -1;
+
 	}
 	while(0);
 
