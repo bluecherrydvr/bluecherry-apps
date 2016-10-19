@@ -16,7 +16,7 @@
 
 #include <stdio.h>
 
-
+#include <vector>
 
 void usage(const char *argv0)
 {
@@ -59,6 +59,53 @@ int main(int argc, char **argv)
 			puts(buf);
 			break;
 		}
+
+		if (strcmp(name, "bc_license_check") == 0)
+		{
+			if (!arg1)
+			{
+				fputs("missing \"key\" argument for function bc_license_check()", stderr);
+				return -1;
+			}
+
+			int re = bc_license_check(arg1);
+			
+			printf("%i\n", re); //0 casts to boolean FALSE in php
+			break;
+		}
+
+		if (strcmp(name, "bc_license_check_auth") == 0)
+		{
+			if (!arg1 || !arg2)
+			{
+				fputs("missing \"key\" and \"auth\" arguments for function bc_license_check_auth()", stderr);
+				return -1;
+			}
+
+			if (bc_license_check_auth(arg1, arg2) == 1)
+				puts("true");
+			else
+				puts("0");
+			break;
+		}
+
+		if (strcmp(name, "bc_license_devices_allowed") == 0)
+		{
+			std::vector<bc_license> licenses;
+			if (bc_read_licenses(licenses) < 0)
+			{
+				puts("0");
+				break;
+			}
+
+			int num = 0;
+
+			for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
+				num += it->n_devices;
+
+			printf("%i\n", num);
+		}
+
 	}
 	while(0);
 
