@@ -22,6 +22,7 @@ require_once('Inp.php');
 require_once('View.php');
 require_once('Controller.php');
 require_once ('Ponvif.php');
+require_once('bc_license_wrapper.php');
 
 if (empty($nload)){
 	include("lang.php");

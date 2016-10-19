@@ -1,5 +1,7 @@
 <?php 
 
+require_once('../lib/bc_license_wrapper.php');
+
 class licenses extends Controller {
 	
     public function __construct()
