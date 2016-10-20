@@ -42,7 +42,7 @@ int main(int argc, char **argv)
 
 	if (bc_db_open(BC_CONFIG_DEFAULT))
 	{
-		fputs("Failed to open bluecherry database", stderr);
+		fputs("Failed to open bluecherry database\n", stderr);
 		return -1;
 	}
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 		{
 			if (!arg1)
 			{
-				fputs("missing \"key\" argument for function bc_license_check()", stderr);
+				fputs("missing \"key\" argument for function bc_license_check()\n", stderr);
 				return -1;
 			}
 
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
 		{
 			if (!arg1 || !arg2)
 			{
-				fputs("missing \"key\" and \"auth\" arguments for function bc_license_check_auth()", stderr);
+				fputs("missing \"key\" and \"auth\" arguments for function bc_license_check_auth()\n", stderr);
 				return -1;
 			}
 
