@@ -1,6 +1,6 @@
 <?php 
 
-require_once('../lib/bc_license_wrapper.php');
+require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 	
