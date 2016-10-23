@@ -20,12 +20,6 @@ case $ID in
 		;;
 	ubuntu)
 		ADDITIONAL_PKGS="linux-image-generic linux-headers-generic"
-		if [[ "$UBUNTU_CODENAME" == 'xenial' ]]
-		then
-			ADDITIONAL_PKGS="$ADDITIONAL_PKGS php-dev"
-		else
-			ADDITIONAL_PKGS="$ADDITIONAL_PKGS php5-dev"
-		fi
 		;;
 	*)
 		exit 1

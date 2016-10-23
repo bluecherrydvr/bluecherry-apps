@@ -39,11 +39,7 @@ make
 
 mkdir -p %{buildroot}/etc/logrotate.d
 cp %{_builddir}/%{name}/rpm/bluecherry.logrotate %{buildroot}/etc/logrotate.d/bluecherry
-mkdir -p %{buildroot}/etc/php.d
-mv %{buildroot}/etc/php5/apache2/conf.d/bluecherry_apache2.ini %{buildroot}/etc/php.d/bluecherry.ini
-rm -r %{buildroot}/etc/php5
 chmod 755 %{buildroot}/usr/lib/libbluecherry.so.0
-chmod 755 %{buildroot}/usr/lib64/php/modules/bluecherry.so
 install -m644 -D %{_builddir}/%{name}/rpm/bluecherry.service %{buildroot}/%{_unitdir}/bluecherry.service
 
 %files

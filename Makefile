@@ -5,7 +5,7 @@ BCMK   = $(MAKE) -f "$(TOPDIR)"/BCMK.conf -f BCMK
 
 export TOPDIR STAGE BCMK CONTRIB_BASE_DIR
 
-SUBDIRS = misc lib server utils php5
+SUBDIRS = misc lib server utils
 
 
 # Goal blacklist, required in order to support debhelper
