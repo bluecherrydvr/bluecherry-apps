@@ -1,5 +1,18 @@
 <?php 
 
+function bc_ptz_cmd($id, $cmd, $delay, $panspeed, $tiltspeed, $preset_id)
+{
+    $output = array();
+    $ret = 0;
+    exec("/usr/lib/bluecherry/ptzcmd ".$id." ".$cmd." ".$delay." ".$panspeed." ".$tiltspeed." ".$preset_id,
+		 $output, $ret);
+
+    if ($ret != 0)
+        return false;
+
+    return true;
+}
+
 class mediaPtz extends Controller {
 	
     public function __construct()
