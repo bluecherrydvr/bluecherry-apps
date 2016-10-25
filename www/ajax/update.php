@@ -65,7 +65,7 @@ class update extends Controller {
 			return;
 		}
 
-		$device->setControls($_POST);:
+		$device->setControls($_POST);
 		$this->update();
 	}
 	private function update(){
