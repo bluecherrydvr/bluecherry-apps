@@ -104,6 +104,7 @@ int main(int argc, char **argv)
 				num += it->n_devices;
 
 			printf("%i\n", num);
+			break;
 		}
 
 		fprintf(stderr, "unknown function name \"%s\"\n", name);
