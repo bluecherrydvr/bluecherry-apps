@@ -1,3 +1,10 @@
+bluecherry (2:2.7.7) precise trusty xenial wily wheezy jessie; urgency=low
+
+  * Compatibility with Ubuntu 16.04LTS
+  * Removed bluecherry PHP module
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Thu, 27 Oct 2016 22:20:23 +0400
+
 bluecherry (2:2.7.6) precise trusty wily wheezy jessie; urgency=low
 
   * fixed condition for error message about directory not readable
