@@ -144,7 +144,7 @@ class database{
 		$qresult = mysqli_query($this->dblink, $query, MYSQLI_STORE_RESULT);
 
 		if ($qresult) {
-			$fetchedTable = mysqli_fetch_all($qresult, MYSQLI_BOTH);
+			$fetchedTable = mysqli_fetch_all($qresult, MYSQLI_ASSOC);
 		}
 
 		return $fetchedTable;
