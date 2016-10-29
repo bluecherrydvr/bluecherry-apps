@@ -14,11 +14,11 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
  apache2,
  v4l-utils,
 #xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
-#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
-#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
-#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
-#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysql
+#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 Suggests: solo6010-dkms, monit, mail-transport-agent
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
