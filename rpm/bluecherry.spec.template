@@ -44,7 +44,6 @@ install -m644 -D %{_builddir}/%{name}/rpm/bluecherry.service %{buildroot}/%{_uni
 
 %files
 %config(noreplace) %{_sysconfdir}/httpd/sites-available/bluecherry.conf
-%config(noreplace) %{_sysconfdir}/php.d/bluecherry.ini
 %config(noreplace) %{_sysconfdir}/cron.d/bluecherry
 %config(noreplace) %{_sysconfdir}/logrotate.d/bluecherry
 %config(noreplace) %{_sysconfdir}/monit/conf.d/bluecherry
