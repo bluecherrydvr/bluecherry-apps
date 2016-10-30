@@ -49,7 +49,6 @@ install -m644 -D %{_builddir}/%{name}/rpm/bluecherry.service %{buildroot}/%{_uni
 %config(noreplace) %{_sysconfdir}/monit/conf.d/bluecherry
 %config(noreplace) %{_sysconfdir}/rsyslog.d/10-bluecherry.conf
 %{_sbindir}/*
-%{_libdir}/*
 /usr/lib/libbluecherry.so.0
 /usr/lib/bluecherry/*
 %{_datadir}/%{name}/*
