@@ -117,8 +117,15 @@ class database{
 		preg_match("/password[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
                 $dbpassword = $matches[1];
 
-		preg_match("/host[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
-                $dbhost = $matches[1];
+		/* host value is not defined in configs created by old versions of bluecherry, set default value*/
+		if (!preg_match("/host[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches))
+		{
+			$dbhost = "localhost";
+		}
+		else
+		{
+			$dbhost = $matches[1];
+		}
 
 		$this->dbname = stripslashes($dbname);
 		$this->dbuser = stripslashes($dbuser);
