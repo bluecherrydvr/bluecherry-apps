@@ -1,3 +1,10 @@
+bluecherry (2:2.7.8) precise trusty xenial wily wheezy jessie; urgency=low
+
+  * Fixed "could not read configuration file" error caused by undefined "host" value 
+    in config file
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Wed, 02 Nov 2016 02:32:23 +0400
+
 bluecherry (2:2.7.7) precise trusty xenial wily wheezy jessie; urgency=low
 
   * Compatibility with Ubuntu 16.04LTS
