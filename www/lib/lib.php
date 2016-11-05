@@ -85,7 +85,7 @@ function getReadOnlyDb() {
 
 #classes
 
-#singleton database class, uses php5-bluecherry functions
+#singleton database class, uses mysqli functions
 class database{
 	public static $instance;
 	private $dblink;
@@ -143,7 +143,13 @@ class database{
 	}
 	/* Execute a result-less query */
 	public function query($query) {
-		return mysqli_real_query($this->dblink, $query);
+		$ret = false;
+		$ret = mysqli_real_query($this->dblink, $query);
+
+		if (!$ret)
+			trigger_error(mysqli_error($this->dblink)." query:".$query, E_USER_ERROR);
+
+		return $ret;
 	}
 	/* Execute a query that will return results */
 	public function fetchAll($query) {
@@ -152,6 +158,10 @@ class database{
 
 		if ($qresult) {
 			$fetchedTable = mysqli_fetch_all($qresult, MYSQLI_ASSOC);
+		}
+		else
+		{
+			trigger_error(mysqli_error($this->dblink)." query:".$query, E_USER_ERROR);
 		}
 
 		return $fetchedTable;
