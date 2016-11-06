@@ -272,11 +272,12 @@ class user{
 	}
 	private function updateActiveUsers(){ #updates user record and returns kick value
 		if (!empty($this->info['id'])){
+			$from_client = (int)$_SESSION['from_client'];
 			$tmp = data::query("SELECT * FROM ActiveUsers WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}");
 			if (!$tmp) { #if user record does not exist -- insert new
-				data::query("INSERT INTO ActiveUsers VALUES ({$this->info['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$_SESSION['from_client']}', ".time().", 0)", true);
+				data::query("INSERT INTO ActiveUsers VALUES ({$this->info['id']}, '{$_SERVER['REMOTE_ADDR']}', '{$from_client}', ".time().", 0)", true);
 			} else { #or update if it exists, i.e. reload within 5 minutes
-				data::query("UPDATE ActiveUsers SET time = ".time().", from_client='{$_SESSION['from_client']}' WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}", true);
+				data::query("UPDATE ActiveUsers SET time = ".time().", from_client='{$from_client}' WHERE ip = '{$_SERVER['REMOTE_ADDR']}' AND id={$this->info['id']}", true);
 			}
 			data::query("DELETE FROM ActiveUsers WHERE time <".(time()-300), true);
 			return (!empty($tmp[0]['kick'])) ? true : false;
