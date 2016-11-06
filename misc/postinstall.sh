@@ -25,7 +25,7 @@ function restore_mysql_backup
     password="$3"
     host="${4:-localhost}"
     
-    echo -e "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: https://bluecherry.zendesk.com/anonymous_requests/new . Provide full  uncut output from console (the above text).\n\nATTENTION! The above log contains your MySQL logins and passwords, please do not post these logs on public forums.\n" >&2
+    echo -e "An error occurred while migrating your database to the latest version. Please contact Bluecherry support here: support@bluecherrydvr.com . Provide full  uncut output from console (the above text).\n\nATTENTION! The above log contains your MySQL logins and passwords, please do not post these logs on public forums.\n" >&2
     if [[ -s $DB_BACKUP_GZ_FILE ]]
     then
         echo "Restoring DB from previously taken backup in $DB_BACKUP_GZ_FILE" >&2
