@@ -71,7 +71,7 @@ class devices extends Controller {
 
     private function getCards()
     {
-		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
+		$cards = data::query("SELECT card_id FROM AvailableSources GROUP BY card_id");
 		$this->info['total_devices'] = 0;
 		if (!$cards) { return false; } 
 			else {

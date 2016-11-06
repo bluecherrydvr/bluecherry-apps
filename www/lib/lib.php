@@ -823,7 +823,7 @@ class card {
 			}
 		}
 		#get card order, since mysql does not support ROW_NUMBER
-		$cards = data::query("SELECT * FROM AvailableSources GROUP BY card_id");
+		$cards = data::query("SELECT card_id FROM AvailableSources GROUP BY card_id");
 		foreach($cards as $id => $card){
 			if ($card['card_id'] == $this->info['id']) 
 				$this->info['order'] = $id+1;
