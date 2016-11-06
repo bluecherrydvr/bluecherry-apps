@@ -381,6 +381,7 @@ class user{
 			if ($new){
 				$data['salt'] = data::getRandomString(4);
 				$data['password'] = md5($data['password'].$data['salt']);
+				unset($data['id']);
 				$query = data::formQueryFromArray('insert', 'Users', $data);
 				$response = USER_CREATED;
 				$data = '';
