@@ -185,7 +185,7 @@ class data{
         $string = '';
 		$s = '0123456789abcdefghijklmnopqrstuvwxyz';
 		for ($p = 0; $p < $length; $p++)
-			$string .= $s[mt_rand(0, strlen($s))];
+			$string .= $s[mt_rand(0, strlen($s) - 1)];
 		return $string;
 	}
 	public static function formQueryFromArray($type, $table, $array, $parameter = false, $value = false){
