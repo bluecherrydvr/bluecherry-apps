@@ -817,6 +817,8 @@ static void bc_check_inprogress(void)
 			line = NULL;
 		}
 
+		free(line);
+
 		if (!duration) {
 			unsigned int e_id, m_id;
 
