@@ -12,8 +12,7 @@ define('VAR_CONF_PATH', '/etc/bluecherry.conf');
 define('VAR_ROOT_PATH', '/');
 
 define('VAR_LOG_PATH', '/var/log/bluecherry.log');
-define('VAR_WWW_LOG_PATH', '/var/lib/bluecherry/www-error.log');
-define('VAR_APACHE_LOG_PATH', '/var/log/apache2/error.log');
+define('VAR_WWW_LOG_PATH', '/var/log/apache2/bluecherry-error.log');
 
 define('VAR_NEWS_XML', 'http://www.bluecherrydvr.com/feed/');
 
