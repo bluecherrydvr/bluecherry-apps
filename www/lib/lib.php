@@ -892,7 +892,8 @@ class softwareVersion{
 	public function __construct($global_settings){
 		$this->version['installed'] = trim(@file_get_contents(VAR_PATH_TO_INSTALLED_VERSION));
 		$time = $global_settings->data['G_LAST_SOFTWARE_VERSION_CHECK'];
-		$tmp = $global_settings->data['G_LAST_CURRENT_VERSION'];
+		$tmp = isset($global_settings->data['G_LAST_CURRENT_VERSION']) ? 
+			$global_settings->data['G_LAST_CURRENT_VERSION'] : false;
 
 		if ($time + 24*60*60 < time()) {
 			$this->version['current'] = trim(@file_get_contents(VAR_PATH_TO_CURRENT_VERSION.'?uid='.bc_license_machine_id()));
