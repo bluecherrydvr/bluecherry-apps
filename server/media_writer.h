@@ -31,6 +31,7 @@ protected:
 	AVStream *video_st, *audio_st;
 	AVCodecContext *snapshot_decoder;
 	std::string snapshot_filename;
+	int64_t last_video_pts, last_video_dts, last_audio_pts, last_audio_dts;
 	/* Base PTS value for the start of the recording. This assumes that all streams
 	 * share a time_base of AV_TIME_BASE, and 0 represents the same instant across all
 	 * streams. This is set automatically by the first written packet. */

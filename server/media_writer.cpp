@@ -22,7 +22,9 @@ extern "C" {
 #include "lavf_device.h"
 
 media_writer::media_writer()
-	: oc(0), video_st(0), audio_st(0)
+	: oc(0), video_st(0), audio_st(0),
+	last_video_pts(0), last_video_dts(0),
+	last_audio_pts(0), last_audio_dts(0)
 {
 }
 
@@ -54,6 +56,29 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = s->index;
+
+	/* Fix non-increasing timestamps */
+	if (pkt.type == AVMEDIA_TYPE_AUDIO) {
+		if (opkt.pts < last_audio_pts || opkt.dts < last_audio_dts) {
+			opkt.pts = last_audio_pts + 1;
+			opkt.dts = last_audio_dts + 1;
+			bc_log(Debug, "fixing timestamps in audio packet");
+		}
+
+		last_audio_pts = opkt.pts;
+		last_audio_dts = opkt.dts;
+	}
+	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
+		if (opkt.pts < last_video_pts || opkt.dts < last_video_dts) {
+			opkt.pts = last_video_pts + 1;
+			opkt.dts = last_video_dts + 1;
+			bc_log(Debug, "fixing timestamps in video packet");
+		}
+
+		last_video_pts = opkt.pts;
+		last_video_dts = opkt.dts;
+	}
+
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
 	re = av_interleaved_write_frame(oc, &opkt);
