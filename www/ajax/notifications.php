@@ -117,7 +117,7 @@ class notifications extends Controller {
         	$cameras = '|'.implode('|', $_POST['cameras']).'|';
         	$limit = intval($_POST['limit']);
         		if (empty($_GET['id'])) { #if id not set -- create new
-        			$query = "INSERT INTO notificationSchedules values ('', '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit}, 0)";
+        			$query = "INSERT INTO notificationSchedules values (NULL, '{$daysoftheweek}', '{$_POST['s_hr']}', '{$_POST['s_min']}', '{$_POST['e_hr']}', '{$_POST['e_min']}', '{$cameras}', '{$users}', {$limit}, 0)";
         		} else { #if set update existing
         			$query = "UPDATE notificationSchedules SET day='{$daysoftheweek}', s_hr='{$_POST['s_hr']}', s_min='{$_POST['s_min']}', e_hr='{$_POST['e_hr']}', e_min='{$_POST['e_min']}', cameras='{$cameras}', users='{$users}', nlimit='{$limit}' WHERE id=".intval($_GET['id']);
         		}
