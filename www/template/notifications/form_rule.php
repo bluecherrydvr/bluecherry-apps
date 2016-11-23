@@ -33,10 +33,10 @@
                                         <div class="panel-heading"><?php echo NTF_START_TIME; ?></div>
                                         <div class="panel-body">
                                                 <div class="col-lg-6 ">
-                                                    <select class="form-control input-sm" name='s_hr' id='input-s_hr'><?php for($i=0; $i<=23; $i++){ echo "<option value='{$i}' ".(($i==$notification['s_hr']) ? 'selected' : '').">$i</option>"; } ?></select>
+                                                    <select class="form-control input-sm" name='s_hr' id='input-s_hr'><?php for($i=0; $i<=23; $i++){ echo "<option value='{$i}' ".((isset($notification['s_hr']) && $i==$notification['s_hr']) ? 'selected' : '').">$i</option>"; } ?></select>
                                                 </div>
                                                 <div class="col-lg-6 ">
-                                                    <select class="form-control input-sm" name='s_min' id='input-s_min'><?php for($i=0; $i<=59; $i++){ echo "<option value='{$i}' ".(($i==$notification['s_min']) ? 'selected' : '').">$i</option>"; } ?></select>
+                                                    <select class="form-control input-sm" name='s_min' id='input-s_min'><?php for($i=0; $i<=59; $i++){ echo "<option value='{$i}' ".((isset($notification['s_min']) && $i==$notification['s_min']) ? 'selected' : '').">$i</option>"; } ?></select>
                                                 </div>
                                         </div>
                                     </div>
@@ -47,10 +47,10 @@
                                         <div class="panel-heading"><?php echo NTF_END_TIME; ?></div>
                                         <div class="panel-body">
                                                 <div class="col-lg-6 ">
-                                					<select class="form-control input-sm" name='e_hr'><?php for($i=0; $i<=23; $i++){ echo "<option value='{$i}' ".(($i==$notification['e_hr']) ? 'selected' : '').">$i</option>"; } ?></select>
+                                					<select class="form-control input-sm" name='e_hr'><?php for($i=0; $i<=23; $i++){ echo "<option value='{$i}' ".((isset($notification['e_hr']) && $i==$notification['e_hr']) ? 'selected' : '').">$i</option>"; } ?></select>
                                                 </div>
                                                 <div class="col-lg-6">
-                        					        <select class="form-control input-sm" name='e_min'><?php for($i=0; $i<=59; $i++){ echo "<option value='{$i}' ".(($i==$notification['e_min']) ? 'selected' : '').">$i</option>"; } ?></select>
+                        					        <select class="form-control input-sm" name='e_min'><?php for($i=0; $i<=59; $i++){ echo "<option value='{$i}' ".((isset($notification['e_min']) && $i==$notification['e_min']) ? 'selected' : '').">$i</option>"; } ?></select>
                                                 </div>
                                         </div>
                                     </div>
