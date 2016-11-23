@@ -28,7 +28,7 @@ class layouts extends Controller {
 	}
 	private function newLayout(){
 		$value = $this->cookieToString();
-		data::query("INSERT INTO userLayouts VALUES ('', {$_SESSION['id']}, '{$_POST['layout']}', '{$value}')");
+		data::query("INSERT INTO userLayouts VALUES (NULL, {$_SESSION['id']}, '{$_POST['layout']}', '{$value}')");
 	}
 	private function loadLayout(){
 		$layout = data::query("SELECT layout_name, layout FROM userLayouts WHERE layout_name='{$_POST['layout']}' AND user_id='{$_SESSION['id']}'");
