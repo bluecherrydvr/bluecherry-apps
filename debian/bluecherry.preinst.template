@@ -43,7 +43,7 @@ case "$1" in
 			usermod -c "Bluecherry DVR" -d /var/lib/bluecherry \
 				-g bluecherry -G audio,video bluecherry
 		fi
-		usermod -a -G video,audio,bluecherry,dialout www-data || true
+		usermod -a -G video,audio,bluecherry,dialout,adm www-data || true
 
 		;;
 esac
