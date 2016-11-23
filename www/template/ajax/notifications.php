@@ -38,8 +38,8 @@
         	} else {
         		foreach($notifications as $id => $notification){
         			#prepare hours
-        			$notification['start'] = str_pad($notification['s_hr'], 2, '0', STR_PAD_LEFT).':'.str_pad($notification['s_min'], 2, '0');
-        			$notification['end'] = str_pad($notification['e_hr'], 2, '0', STR_PAD_LEFT).':'.str_pad($notification['e_min'], 2, '0');
+				$notification['start'] = sprintf("%02d",$notification['s_hr']).':'.sprintf("%02d",$notification['s_min']);
+				$notification['end'] = sprintf("%02d",$notification['e_hr']).':'.sprintf("%02d",$notification['e_min']); 
         			#prepare days
         			$notification['day'] = str_split($notification['day']);
         			$tmp = '';
