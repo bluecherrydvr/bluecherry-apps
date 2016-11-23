@@ -23,7 +23,7 @@
                                                 <?php echo NTF_T_TIME; ?>
                                             </td>
                                             <td>
-                                                <?php echo $notification['start']; ?>
+                                                <?php echo $notification['start']." - ".$notification['end']; ?>
                                             </td>
                                         </tr>
                                         <tr>
