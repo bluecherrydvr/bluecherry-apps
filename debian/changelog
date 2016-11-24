@@ -1,3 +1,19 @@
+bluecherry (2:2.7.9) precise trusty xenial wily wheezy jessie; urgency=low
+
+  * Fix invalid timestamps coming from IP cameras that caused "Error writing
+    frame to recording: Invalid argument" entries in bluecherry log and
+    interrupted recordings
+
+  * Fixed numerous PHP errors that resulted in warnings recorded to Apache
+    error log
+
+  * Updated MySQL queries that failed in newer MySQL version in Ubuntu
+    16.04LTS
+
+  * Updated path to Apache error log on System Log page of web admin interface
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Thu, 24 Nov 2016 04:00:00 +0400
+
 bluecherry (2:2.7.8) precise trusty xenial wily wheezy jessie; urgency=low
 
   * Fixed "could not read configuration file" error caused by undefined "host" value 
