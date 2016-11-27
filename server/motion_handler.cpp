@@ -141,6 +141,7 @@ void motion_handler::run()
 				bc_log(Debug, "motion: resume recording");
 			} else {
 				bc_log(Debug, "motion: start recording");
+				bc_log(Info, "Motion detected");
 				send_from = 0;
 			}
 			recording = true;
