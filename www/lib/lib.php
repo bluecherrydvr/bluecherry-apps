@@ -1115,16 +1115,19 @@ class globalSettings{
 			$this->data[$entry['parameter']] = $entry['value'];
 		}
 		if (empty($this->data['G_MAX_RECORD_TIME'])) {
+			data::query("DELETE FROM GlobalSettings where parameter = 'G_MAX_RECORD_TIME'", true);
 			data::query("INSERT INTO GlobalSettings VALUES('G_MAX_RECORD_TIME', '900')", true);
 			$this->data['G_MAX_RECORD_TIME'] = 900;
 		}
 
 		if (empty($this->data['G_DATA_SOURCE'])) {
+			data::query("DELETE FROM GlobalSettings where parameter = 'G_DATA_SOURCE'", true);
 			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'local')", true);
 			$this->data['G_DATA_SOURCE'] = 'local';
 		}
 
 		if (empty($this->data['G_SMTP_EMAIL_FROM'])) {
+			data::query("DELETE FROM GlobalSettings where parameter = 'G_SMTP_EMAIL_FROM'", true);
 			data::query("INSERT INTO GlobalSettings VALUES('G_SMTP_EMAIL_FROM', 'donotreply@bluecherryserver')", true);
 			$this->data['G_SMTP_EMAIL_FROM'] = 'donotreply@bluecherryserver';
 		}
