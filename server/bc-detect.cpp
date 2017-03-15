@@ -186,7 +186,7 @@ struct solo_vendor {
 const struct solo_vendor vendors[] = {
 	{ "0x9413", (const char * []) /* Softlogic */
 		{
-			"0x6010", 0
+			"0x6010", "0x6110", 0
 		}
 	},
 	{ "0x1bb3", (const char * []) /* Bluecherry */
