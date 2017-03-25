@@ -264,7 +264,7 @@ static int __bc_check_avail(struct card_list *cards)
 			if (device_id) {
 				bc_log(Debug, "Scanning device %s (%s)", device_id, path);
 				if (!strcmp(device_id, "0x5864")) {
-					bc_log(Debug, "Found TW5864 card");
+					bc_log(Info, "Found TW5864 card");
 					/* If there is no driver, this device isn't initialized yet */
 					if (udev_device_get_driver(dev))
 						ret = tw5864_add(dev, cards);
