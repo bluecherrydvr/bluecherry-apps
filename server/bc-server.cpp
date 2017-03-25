@@ -39,7 +39,7 @@ static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
 static int max_threads;
 static int cur_threads;
 static int record_id = -1;
-static int solo_ready = 0;
+static int hwcard_ready = 0;
 
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
@@ -140,7 +140,7 @@ static const char *component_string(bc_status_component c)
 		case STATUS_DB_POLLING1: return "database-1";
 		case STATUS_MEDIA_CHECK: return "media";
 		case STATUS_LICENSE: return "licensing";
-		case STATUS_SOLO_DETECT: return "solo6x10";
+		case STATUS_HWCARD_DETECT: return "hwcard";
 		default: return "";
 	}
 }
@@ -721,7 +721,7 @@ static int bc_check_db(void)
 		/* If this is a V4L2 device, it needs to be detected */
 		if (!strcasecmp(proto, "V4L2")) {
 			int card_id = bc_db_get_val_int(dbres, "card_id");
-			if (!solo_ready || card_id < 0)
+			if (!hwcard_ready || card_id < 0)
 				continue;
 		}
 
@@ -930,7 +930,7 @@ static void xml_general_status(pugi::xml_node& node)
 static void xml_solo6x10_status(pugi::xml_node& node)
 {
 	// TODO FIXME Volatile or mutex-guarded
-	node.append_attribute("solo_ready") = solo_ready;
+	node.append_attribute("hwcard_ready") = hwcard_ready;
 }
 
 static void xml_licenses_status(pugi::xml_node& node)
@@ -1102,10 +1102,10 @@ int main(int argc, char **argv)
 	/* Main loop */
 	for (unsigned int loops = 0 ;; sleep(1), loops++) {
 		/* Every 16 seconds until initialized, then every 4:16 minutes */
-		if ((!solo_ready && !(loops & 15)) || (solo_ready && !(loops & 255))) {
-			bc_status_component_begin(STATUS_SOLO_DETECT);
+		if ((!hwcard_ready && !(loops & 15)) || (hwcard_ready && !(loops & 255))) {
+			bc_status_component_begin(STATUS_HWCARD_DETECT);
 			int ret = bc_check_avail();
-			solo_ready = (ret == 0);
+			hwcard_ready = (ret == 0);
 			if (ret != 0 && !solo_down_reported) {
 				solo_down_reported = 1;
 
@@ -1134,7 +1134,7 @@ int main(int argc, char **argv)
 				if (system_ret)
 					bc_log(Error, "Failed to run mailer.php for notification");
 			}
-			bc_status_component_end(STATUS_SOLO_DETECT, ret == 0);
+			bc_status_component_end(STATUS_HWCARD_DETECT, ret == 0);
 		}
 
 		bc_status_component_begin(STATUS_MEDIA_CHECK);
