@@ -63,7 +63,7 @@
                 <div class="panel-heading" role="tab" id="devices-bl-cards-head<?php echo $counter; ?>">
                     <h4 class="panel-title">
                         <a href="#devices-bl-cards<?php echo $counter; ?>" role="button" data-toggle="collapse" data-parent="#devices-bl<?php echo $counter; ?>"><i class="fa fa-ellipsis-h fa-fw"></i>
-                        #<?php echo $counter ." ".CARD_HEADER." ".$card->info['ports']." ".PORT; ?>
+                        #<?php echo $counter ." ".CARD_HEADER." ".$card->info['ports']." ".PORT." (".$card->info['driver'].")"; ?>
                         </a>
                     </h4>
                 </div>
