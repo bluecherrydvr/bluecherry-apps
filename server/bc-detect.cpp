@@ -37,6 +37,33 @@ struct card_list {
 
 static struct udev *udev_instance;
 
+static int pci_slot_name_to_id(const char *pci_address)
+{
+	int id;
+	/* id is based on pci address domain:bus:slot.func - example 0000:04:05.0 */
+	id = (pci_address[3] - '0') << 16 /* least significant byte of PCI domain */
+                                                | (pci_address[5] -'0') << 12 /* PCI bus */
+                                                | (pci_address[6] -'0') << 8
+                                                | (pci_address[8] -'0') << 4 /* PCI slot */
+                                                | (pci_address[9] -'0');
+
+	bc_log(Debug, "converting pci_address %s to id %i", pci_address, id);
+	return id;
+}
+
+static int pci_bus_to_id(const char *pci_address)
+{
+        int id;
+        /* id is based on pci bus part of the PCI addr - used for tw5864 cards where several PCI devices are on the same physical
+	card behind the PCI to PCIe bridge, having same bus number */
+        id = (pci_address[3] - '0') << 16 /* least significant byte of PCI domain */
+                                                | (pci_address[5] -'0') << 12 /* PCI bus */
+                                                | (pci_address[6] -'0') << 8;
+
+        bc_log(Debug, "converting pci_address %s to id %i", pci_address, id);
+        return id;
+}
+
 static int check_solo(struct udev_device *device, struct card_list *cards)
 {
 	char path[PATH_MAX];
@@ -48,9 +75,11 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	const char *syspath;
 	DIR *dir;
 	struct dirent *de;
+	const char *pci_slot_name;
 
 	*card_name = 0;
 	syspath = udev_device_get_syspath(device);
+	pci_slot_name = udev_device_get_property_value(device, "PCI_SLOT_NAME");
 	dir = opendir(syspath);
 
 	bc_log(Debug, "Checking driver on %s", syspath);
@@ -90,7 +119,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 			bcuid[36] = '\0';
 			uid_type = BC_UID_TYPE_BC;
 		} else {
-			strcpy(bcuid, udev_device_get_property_value(device, "PCI_SLOT_NAME"));
+			strcpy(bcuid, pci_slot_name);
 			uid_type = BC_UID_TYPE_PCI;
 		}
 	}
@@ -127,7 +156,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 
 	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!cards[i].valid) {
-			cards[i].card_id  = id;
+			cards[i].card_id  = pci_slot_name_to_id(pci_slot_name);
 			cards[i].n_ports  = ports;
 			cards[i].uid_type = uid_type;
 			strcpy(cards[i].driver, driver);
@@ -147,6 +176,7 @@ static int tw5864_add(struct udev_device *device, struct card_list *cards)
 {
 	const char *syspath = udev_device_get_syspath(device);
 	const char *devpath = udev_device_get_devnode(device);
+	const char *pci_slot_name = udev_device_get_property_value(device, "PCI_SLOT_NAME");
 
 	bc_log(Debug, "Checking driver on devnode %s, syspath %s", devpath, syspath);
 
@@ -159,7 +189,7 @@ static int tw5864_add(struct udev_device *device, struct card_list *cards)
 				break;
 			}
 		} else {
-			cards[i].card_id  = 0;  /* Not used */
+			cards[i].card_id  = pci_bus_to_id(pci_slot_name);
 			cards[i].n_ports  = 4;  /* Let web interface merge entries with matching PCI addresses */
 			cards[i].uid_type = "TW5864";
 			strcpy(cards[i].driver, "tw5864");
