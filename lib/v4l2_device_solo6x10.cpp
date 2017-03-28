@@ -107,6 +107,8 @@ v4l2_device_solo6x10::v4l2_device_solo6x10(BC_DB_RES dbres)
 	int ret;
 
 	card_id = bc_db_get_val_int(dbres, "card_id");
+	/* Use least significant 8 bits of card_id, they correspond to the first /dev/videoN node number of this solo card */
+	card_id &= 0xFF;
 
 	// TODO Support "/dev/video%d" pattern, and not just "BCPCI|0000:07:05.0|7", in "device" field
 	while (p[0] != '\0' && p[0] != '|')

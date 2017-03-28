@@ -127,6 +127,8 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	if (sscanf(card_name, "%999[^-]-%d-%d", driver, &id, &ports) != 3)
 		return -EINVAL;
 
+	/* id is the first /dev/videoN node number assigned to this card */
+
 	sprintf(path, "%s/%s/video_type", syspath, card_name);
 	{
 		int ret = 0;
@@ -156,7 +158,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 
 	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!cards[i].valid) {
-			cards[i].card_id  = pci_slot_name_to_id(pci_slot_name);
+			cards[i].card_id  = pci_slot_name_to_id(pci_slot_name) << 8 | (id & 0xFF);
 			cards[i].n_ports  = ports;
 			cards[i].uid_type = uid_type;
 			strcpy(cards[i].driver, driver);
