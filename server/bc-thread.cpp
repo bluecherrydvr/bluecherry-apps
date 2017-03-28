@@ -588,7 +588,9 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	    strcmp(current->signal_type, update->signal_type) ||
 	    strcmp(current->rtsp_username, update->rtsp_username) ||
 	    strcmp(current->rtsp_password, update->rtsp_password) ||
-	    current->aud_disabled != update->aud_disabled)
+	    current->aud_disabled != update->aud_disabled ||
+	    current->substream_mode != update->substream_mode ||
+	    strcmp(current->substream_path, update->substream_path))
 	{
 		bc_rec->thread_should_die = "configuration changed";
 		pthread_mutex_unlock(&bc_rec->cfg_mutex);

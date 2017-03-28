@@ -76,6 +76,8 @@ CREATE TABLE `Devices` (
   `disabled` tinyint(1) DEFAULT '0',
   `audio_disabled` tinyint(1) DEFAULT '1',
   `debug_level` tinyint(4) DEFAULT '0',
+  `substream_mode` tinyint(1) DEFAULT '0',
+  `substream_path` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)

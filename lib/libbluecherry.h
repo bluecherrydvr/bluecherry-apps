@@ -55,6 +55,11 @@ typedef enum {
 	BC_DEVICE_LAVF
 } bc_device_type_t;
 
+typedef enum {
+	BC_DEVICE_STREAMING_COMMON_INPUT = 0,
+	BC_DEVICE_STREAMING_SUBSTREAM_INPUT
+} bc_streaming_substream_mode_t;
+
 struct bc_handle {
 	char			device[512];
 	char			driver[512];
@@ -62,6 +67,10 @@ struct bc_handle {
 	bc_device_type_t	type;
 
 	input_device            *input;
+	input_device            *substream_input;
+	bc_streaming_substream_mode_t substream_mode;
+
+
 	class stream_source     *source;
 
 	/* PTZ params. Path is a device for PELCO types and full URI
@@ -101,6 +110,8 @@ struct bc_device_config {
 	bool   schedule_override_global;
 	int     hue, saturation, contrast, brightness;
 	int     video_quality;
+	int8_t substream_mode;
+	char substream_path[256];
 };
 
 struct bc_license {

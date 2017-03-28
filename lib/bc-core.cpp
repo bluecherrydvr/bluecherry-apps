@@ -165,6 +165,8 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 		strlcpy(bc->device, url, sizeof(bc->device));
 		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+
+		/*TODO: check substream mode and create additional lavf_device if needed, assign to bc->substream_input */
 	}
 
 	/* This `defhost` is a workaround for empty host part in mjpeg_path */
@@ -210,6 +212,8 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc_ptz_check(bc, dbres);
 
+	/* TODO load substream_mode from db and save in bc */
+
 	if (!strncmp(protocol, "IP", 2)) {
 		ret = lavf_handle_init(bc, dbres);
 	} else if (!strncmp(device, "TW5864", 6)) {
@@ -254,6 +258,13 @@ void bc_handle_free(struct bc_handle *bc)
 
 	delete bc->input;
 	delete bc->source;
+
+	if (bc->substream_mode) {
+		bc->substream_input->stop();
+		delete bc->substream_input;
+	}
+
+
 	free(bc);
 
 	errno = save_err;
@@ -270,6 +281,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	const char *rtsp_username = bc_db_get_val(dbres, "rtsp_username", NULL);
 	const char *rtsp_password = bc_db_get_val(dbres, "rtsp_password", NULL);
 	const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
+	const char *substream_path = bc_db_get_val(dbres, "substream_path", NULL);
 
 	if (!dev || !name || !schedule || !motion_map)
 		return -1;
@@ -295,6 +307,8 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 		strlcpy(cfg->rtsp_username, rtsp_username, sizeof(cfg->rtsp_username));
 	if (rtsp_password)
 		strlcpy(cfg->rtsp_password, rtsp_password, sizeof(cfg->rtsp_password));
+	if (substream_path)
+		strlcpy(cfg->substream_path, substream_path, sizeof(cfg->substream_path));
 
 	cfg->width = bc_db_get_val_int(dbres, "resolutionX");
 	cfg->height = bc_db_get_val_int(dbres, "resolutionY");
@@ -328,6 +342,8 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->motion_algorithm = bc_db_get_val_int(dbres, "motion_algorithm");
 	cfg->motion_frame_downscale_factor = bc_db_get_val_float(dbres, "frame_downscale_factor");
 	cfg->min_motion_area = bc_db_get_val_int(dbres, "min_motion_area");
+
+	cfg->substream_mode = (int8_t)bc_db_get_val_int(dbres, "substream_mode");
 
 	return 0;
 }
