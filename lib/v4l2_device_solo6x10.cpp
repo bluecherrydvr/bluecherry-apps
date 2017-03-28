@@ -357,6 +357,11 @@ int v4l2_device_solo6x10::set_resolution(uint16_t width, uint16_t height,
 	if (needs_restart)
 		stop();
 
+	if (dev_fd == -1) {
+		if ((dev_fd = open(dev_file, O_RDWR)) < 0)
+                return -1;
+	}
+
 	if (!re && int_changed) {
 		vparm.parm.capture.timeperframe.numerator = interval;
 		if (ioctl(dev_fd, VIDIOC_S_PARM, &vparm) < 0)
