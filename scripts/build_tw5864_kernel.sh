@@ -14,7 +14,7 @@ SCRIPTS_DIR=`dirname $0`
 DISTRO=`$SCRIPTS_DIR/build_helper/get_distro_release_name.sh`
 BASE_DIR=`readlink -f $SCRIPTS_DIR/..`
 
-`dirname $0`/install_prereqs.sh
+`dirname $0`/install_prereqs_native.sh
 sudo apt-get install -y -V bc libncurses-dev
 
 cd $KERN_SRC
