@@ -82,7 +82,13 @@
                                                 <input type='hidden' name='id' value='null'>
                                                 <input type='hidden' name='card_id' value='{$card->info['id']}'>
                                                 <a  href='javascript:void(0);' class='send-req-form' id='{$card->info['id']}' data-func-after='devicesReloadPage'>".ENABLE_ALL_PORTS."</a>
-                                            </form>" : "<a href='javascript:void(0);' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>"); ?>
+                                            </form>" :
+
+					"<form action='/ajax/update.php' method='POST' style='display: inline-block'>
+						<input type='hidden' name='mode' value='updateEncoding'>
+						<input type='hidden' name='id' value='{$card->info['id']}'>
+						<a  href='javascript:void(0);' class='send-req-form' data-func-after='devicesReloadPage' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>
+					</form>"); ?>
                                     </div>
                                     <?php if ($card->info['driver'] != 'tw5864') { ?>
                                     <div class="col-lg-6 col-md-6">
