@@ -155,7 +155,7 @@ class update extends Controller {
 		$id = intval($_POST['id']);
 		$card = new card($id);
 		$result = $card->changeEncoding();
-		data::responseXml($result[0], $result[1]);
+		data::responseJSON($result[0], $result[1]);
 	}
 
 }

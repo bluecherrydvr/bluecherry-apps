@@ -86,6 +86,7 @@
 
 					"<form action='/ajax/update.php' method='POST' style='display: inline-block'>
 						<input type='hidden' name='mode' value='updateEncoding'>
+						<input type='hidden' name='type' value='Devices'>
 						<input type='hidden' name='id' value='{$card->info['id']}'>
 						<a  href='javascript:void(0);' class='send-req-form' data-func-after='devicesReloadPage' title='".CARD_CHANGE_ENCODING."' id='{$card->info['id']}'>{$card->info['encoding']}</a>
 					</form>"); ?>

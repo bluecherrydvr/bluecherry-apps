@@ -229,7 +229,7 @@ define('VA_CONTRAST', 'Contrast');
 define('VA_VIDEO_QUALITY', 'Video Quality');
 define('VA_SETDEFAULT', 'Reset values to default');
 
-define('DEVICE_ENCODING_UPDATED', '<![CDATA[Video standard setting changed. <hr /> <b>For the change to take effect you need to restart the server.</b><br> If you are changing from NTSC to PAL please follow the instructions on <a href="http://help.bluecherrydvr.com/spaces/manuals/manuals/version2/lessons/22732-Enabling-video-ports">this page</a>]]>');
+define('DEVICE_ENCODING_UPDATED', 'Video standard setting changed. <hr /> <b>For the change to take effect you need to restart the server.</b><br>');
 define('DB_FAIL_TRY_LATER', 'Could not apply changes. Please make sure you are able to connect to the DVR server and that the server is running.');
 
 define('MMAP_HEADER', 'Motion detection settings');
