@@ -460,7 +460,7 @@ class camera {
 		if ($this->info['driver'] == 'tw5864') {
 			$devfile = shell_exec("ls {$dev_spec_parts[1]}/video4linux | sed 's/video//' | sort -n | sed 's/^/video/' | tail -n +$card_port_nr | head -n 1 | tr -d '\\n'");
 		} else {
-			$devfile = "/dev/video" . (1 + $this->info['card_id'] + $card_port_nr);
+			$devfile = "/dev/video" . (1 + ($this->info['card_id'] & 255) + $card_port_nr);
 		}
 
 		$this->info['devfile'] = $devfile;
