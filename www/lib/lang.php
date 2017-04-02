@@ -34,6 +34,7 @@ define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
 define('MMENU_LICENSING', 'License keys');
+define('MMENU_AUDIT_LOG', 'Audit Log');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -605,5 +606,13 @@ define('IPCAM_TCPUDP_LEVEL', 'Transport');
 
 #playback
 define('PLAYBACK_FILE_NOT_FOUND', 'MKV file was not found.');
+
+#auditlog
+define('AUDITLOG_HEADER', 'Audit Log');
+define('AUDITLOG_DATETIME', 'Date/Time');
+define('AUDITLOG_USER', 'User');
+define('AUDITLOG_EVENTTYPE', 'Event Type');
+define('AUDITLOG_DEVICE', 'Device');
+define('AUDITLOG_IP', 'IP Address');
 
 ?>

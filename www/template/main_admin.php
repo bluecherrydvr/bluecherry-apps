@@ -142,6 +142,9 @@
                         <li>
                             <a href="/activeusers" class="ajax-content" data-left-menu="true"><i class="fa fa-user-md fa-fw"></i> <?php echo MMENU_ACTIVE_USERS; ?></a>
                         </li>
+                        <li>
+                            <a href="/auditlog" class="ajax-content" data-left-menu="true"><i class="fa fa-user-md fa-fw"></i> <?php echo MMENU_AUDIT_LOG; ?></a>
+                        </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
