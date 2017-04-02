@@ -39,6 +39,20 @@ define('RM_CLIENT_DOWNLOAD', 'http://www.bluecherrydvr.com/downloads');
 
 define('VAR_LICENSE_AUTH', 'http://keycheck.bluecherrydvr.com');
 
+define('AUDIT_FAILEDLOGIN_ID', 1);
+define('AUDIT_USRLOGIN_ID', 2);
+define('AUDIT_USRLOGOUT_ID', 3);
+define('AUDIT_DEVCONFCHANGED_ID', 4);
+define('AUDIT_NEWDEVICE_ID', 5);
+define('AUDIT_DEVDISABLED_ID', 6);
+define('AUDIT_DEVDELETED_ID', 7);
+define('AUDIT_PSWDCHANGE_ID', 8);
+define('AUDIT_GENSETTINGSCHANGED_ID', 9);
+define('AUDIT_GLOBSCHEDCHANGED_ID', 10);
+define('AUDIT_EMAILNOTIFCHANGED_ID', 11);
+
+
+
 $varpub = VarPub::get();
 $varpub_globals = Array();
 #local card props
