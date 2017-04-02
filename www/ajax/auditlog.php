@@ -12,9 +12,17 @@ class auditlog extends Controller {
     {
         $this->setView('ajax.auditlog');
 
-        $this->view->news = $this->news;
+        $this->view->auditlog = data::query("SELECT AuditLogs.id as id, dt, Users.username as user,
+						Devices.device_name as device, AuditEventTypes.description as event_type, AuditLogs.ip as ip
+						FROM AuditLogs
+						LEFT JOIN AuditEventTypes ON (AuditLogs.event_type_id = AuditEventTypes.id)
+						LEFT JOIN Users ON (AuditLogs.user_id = Users.id)
+						LEFT JOIN Devices ON (AuditLogs.device_id = Devices.id)
+						LIMIT 10");
     }
 
-
+    public function postData()
+    {
+    }
 }
 
