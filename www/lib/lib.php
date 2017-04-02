@@ -245,6 +245,19 @@ class data{
 	}
 }
 
+class auditLogger{
+
+	public static function writeEvent($event_type_id, $user_id = 'NULL', $device_id = 'NULL', $ip = ''){
+		if (empty($user_id))
+			$user_id = 'NULL';
+
+		if (empty($device_id))
+			$device_id = 'NULL';
+
+		data::query("INSERT INTO AuditLogs (dt, event_type_id, device_id, user_id, ip) VALUES(NOW(), {$event_type_id}, {$device_id}, {$user_id}, '{$ip}' )", true);
+	}
+}
+
 class user{
 	public $info;
 	public function __construct($parameter = false, $value = false){
@@ -343,18 +356,35 @@ class user{
 		return (in_array($id, $this->info['access_device_list'])) ? false : true;
 	}
 	public function doLogin($password, $from_client = false){
-		if (!$this->info) { return LOGIN_WRONG; };
+		if (!$this->info) {
+			auditLogger::writeEvent(AUDIT_FAILEDLOGIN_ID, NULL, NULL, $_SERVER['REMOTE_ADDR']);
+			return LOGIN_WRONG;
+		}
+
 		if (isset($this->info['access_setup']) && !$this->info['access_setup']){ #if user is not admin check for permissions to use web/client
-			if ((isset($this->info['access_setup']) && !$this->info['access_web']) && !$from_client)	{ return NA_WEB; };
-			if (!$this->info['access_remote'] && $from_client)	{ return NA_CLIENT; };
+			if ((isset($this->info['access_setup']) && !$this->info['access_web']) && !$from_client) {
+				auditLogger::writeEvent(AUDIT_FAILEDLOGIN_ID, NULL, NULL, $_SERVER['REMOTE_ADDR']);
+				return NA_WEB;
+			};
+
+			if (!$this->info['access_remote'] && $from_client){
+				auditLogger::writeEvent(AUDIT_FAILEDLOGIN_ID, NULL, NULL, $_SERVER['REMOTE_ADDR']);
+				return NA_CLIENT;
+			};
 		}
 		if ($this->checkPassword($password)) { 
 				$_SESSION['id'] = $this->info['id'];
 				if (!empty($_SESSION['from_client'])) { $_SESSION['from_client_override'] = true; }
 				$_SESSION['from_client'] = $from_client; 
 				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
-				return 'OK'; } 
-		else { return LOGIN_WRONG; };
+
+				auditLogger::writeEvent(AUDIT_USRLOGIN_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
+				return 'OK';
+		}
+		else {
+			auditLogger::writeEvent(AUDIT_FAILEDLOGIN_ID, NULL, NULL, $_SERVER['REMOTE_ADDR']);
+			return LOGIN_WRONG;
+		};
 	}
 	public function doLogout(){
 		if (!empty($_SESSION['from_client_manual'])){ #if returning to client unset manual login var
@@ -362,6 +392,8 @@ class user{
 		} else { #if from web -- destroy session on logout
 			session_destroy(); 
 		}
+
+		auditLogger::writeEvent(AUDIT_USRLOGOUT_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
 	}
 	public static function update($data, $new = false){
 		$check = false;

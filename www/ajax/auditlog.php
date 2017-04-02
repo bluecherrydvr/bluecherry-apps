@@ -18,7 +18,7 @@ class auditlog extends Controller {
 						LEFT JOIN AuditEventTypes ON (AuditLogs.event_type_id = AuditEventTypes.id)
 						LEFT JOIN Users ON (AuditLogs.user_id = Users.id)
 						LEFT JOIN Devices ON (AuditLogs.device_id = Devices.id)
-						LIMIT 10");
+						ORDER BY dt DESC LIMIT 10");
     }
 
     public function postData()
