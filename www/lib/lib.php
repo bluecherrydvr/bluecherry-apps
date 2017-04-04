@@ -524,6 +524,7 @@ class camera {
 				case 'Odd':  $pairty = 'o'; break;
 		};
 		$status = data::query("UPDATE Devices SET ptz_control_path='{$path}', ptz_control_protocol='{$protocol}', ptz_serial_values='{$addr},{$baud},{$bit},{$pairty},{$stop_bit}' WHERE id='{$id}'", true);
+		auditLogger::writeEvent(AUDIT_DEVCONFCHANGED_ID, $_SESSION['id'], $this->info['id'], $_SERVER['REMOTE_ADDR']);
 		data::responseJSON($status);
 	}
 	public function changeResFps($type, $value){
@@ -544,6 +545,7 @@ class camera {
 		} else {
 			$result = data::query("UPDATE Devices SET video_interval='".intval(30/$fps)."', resolutionX='{$res['x']}', resolutionY='{$res['y']}' WHERE id='{$this->info['id']}'", true);
 			$data = $container_card->info['available_capacity']-$required_capacity;
+			auditLogger::writeEvent(AUDIT_DEVCONFCHANGED_ID, $_SESSION['id'], $this->info['id'], $_SERVER['REMOTE_ADDR']);
 		}
 		return array($result, $message, $data);
 	}
@@ -659,6 +661,10 @@ class camera {
 			return false;
 
 		$ret = shell_exec("v4l2-ctl --device {$this->info['devfile']} --set-ctrls=" . implode(',', $setting_arr));
+
+		if ($ret)
+			auditLogger::writeEvent(AUDIT_DEVCONFCHANGED_ID, $_SESSION['id'], $this->info['id'], $_SERVER['REMOTE_ADDR']);
+
 		return bool($ret);
 	}
 }
@@ -787,6 +793,7 @@ class ipCamera{
 		#if there were no errors, edit the camera
 		$query = data::formQueryFromArray('update', 'Devices', $data[1], 'id', $this->info['id']);
 		$result = data::query($query, true);
+		auditLogger::writeEvent(AUDIT_DEVCONFCHANGED_ID, $_SESSION['id'], $this->info['id'], $_SERVER['REMOTE_ADDR']);
 		return array($result, false);
 	}
 	public static function create($rawData){
