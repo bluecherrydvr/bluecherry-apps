@@ -42,6 +42,9 @@ class profile extends Controller {
         $query = data::formQueryFromArray('update', 'Users', Array('password' => $password_new), 'id', $user_info['id']);
         $check = (data::query($query, true)) ? true : false;
 
+	if ($check)
+		auditLogger::writeEvent(AUDIT_PSWDCHANGE_ID, $user_info['id'], NULL, $_SERVER['REMOTE_ADDR']);
+
         data::responseJSON($check, false);
     }
 
