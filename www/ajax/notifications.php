@@ -88,6 +88,9 @@ class notifications extends Controller {
         			break;
         		}
         		$result = data::query($query, true);
+
+			if ($result)
+				auditLogger::writeEvent(AUDIT_EMAILNOTIFCHANGED_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
         	};
         	data::responseJSON($result);
         	exit();
@@ -122,6 +125,10 @@ class notifications extends Controller {
         			$query = "UPDATE notificationSchedules SET day='{$daysoftheweek}', s_hr='{$_POST['s_hr']}', s_min='{$_POST['s_min']}', e_hr='{$_POST['e_hr']}', e_min='{$_POST['e_min']}', cameras='{$cameras}', users='{$users}', nlimit='{$limit}' WHERE id=".intval($_GET['id']);
         		}
         	$result = data::query($query, true);
+
+		if ($result)
+			auditLogger::writeEvent(AUDIT_EMAILNOTIFCHANGED_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
+
         	data::responseJSON($result);
         } else {
         	data::responseJSON($result[0], $result[1]);
