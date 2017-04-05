@@ -40,6 +40,9 @@ CREATE TABLE `AuditLogs` (
   `user_id` int(11) DEFAULT NULL,
   `ip` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  KEY `AuditLogs_ibfk_1` (`event_type_id`),
+  KEY `AuditLogs_ibfk_2` (`device_id`),
+  KEY `AuditLogs_ibfk_3` (`user_id`),
   CONSTRAINT `AuditLogs_ibfk_1` FOREIGN KEY (`event_type_id`) REFERENCES `AuditEventTypes` (`id`),
   CONSTRAINT `AuditLogs_ibfk_2` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`),
   CONSTRAINT `AuditLogs_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`)
