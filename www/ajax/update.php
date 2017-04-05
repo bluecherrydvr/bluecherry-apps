@@ -106,6 +106,9 @@ class update extends Controller {
 			$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('{$parameter}', '{$value}') ON DUPLICATE KEY UPDATE value='{$value}'", true)) ? $status : false;
 		}
 
+		if ($status)
+			auditLogger::writeEvent(AUDIT_GENSETTINGSCHANGED_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
+
         data::responseJSON($status);
 	}
 	private function kickUser(){
