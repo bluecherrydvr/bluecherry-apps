@@ -425,6 +425,7 @@ class user{
 					else {
 						$data['salt'] = data::getRandomString(4);
 						$data['password'] = md5($data['password'].$data['salt']);
+						auditLogger::writeEvent(AUDIT_PSWDCHANGE_ID, $id, NULL, $_SERVER['REMOTE_ADDR']);
 					}
 				$query = data::formQueryFromArray('update', 'Users', $data, 'id', $id);
 				$response = false;
@@ -835,6 +836,10 @@ class ipCamera{
 			$device_delete_ret = data::query("DELETE FROM Devices WHERE id='{$id}'", true);
 			$attempts--;
 		} while ((!$device_delete_ret) && ($attempts > 0));
+
+		if ($device_delete_ret)
+			auditLogger::writeEvent(AUDIT_DEVDELETED_ID, $_SESSION['id'], $id, $_SERVER['REMOTE_ADDR']);
+
 		return $device_delete_ret;
 	}
 	public function changeState(){
