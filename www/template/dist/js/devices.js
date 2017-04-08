@@ -9,7 +9,7 @@ $(function() {
 
     $('body').on("change", "#motionmap-algorithm :input", function() {
         var min_motion_area_bl = $('.bfh-slider[data-name="min_motion_area"]');
-        if ($(this).val() == 1) {
+        if ($(this).val() == 0) {
             // default
             min_motion_area_bl.addClass('disabled');
         } else {
