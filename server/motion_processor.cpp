@@ -487,8 +487,11 @@ int motion_processor::set_motion_thresh_global(char value)
 
 int motion_processor::set_motion_thresh(const char *map, size_t size)
 {
-	if (size < 32*24)
+	if (size < 32*24) {
+		bc_log(Error, "Received motion thresholds map of invalid size for IP cam");
 		return -1;
+	}
+
 	size = 32*24;
 
 	std::lock_guard<std::mutex> l(lock);

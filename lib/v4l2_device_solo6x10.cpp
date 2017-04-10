@@ -551,8 +551,8 @@ int v4l2_device_solo6x10::set_motion_thresh(const char *map, size_t size)
 	vcs.controls = (struct v4l2_ext_control *)&vc;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
-	if (size < 22 * vh) {
-		bc_log(Debug, "Received motion threshold map of wrong size");
+	if (size != 22 * vh) {
+		bc_log(Error, "Received motion threshold map of wrong size for solo6x10 device");
 		return -1;
 	}
 

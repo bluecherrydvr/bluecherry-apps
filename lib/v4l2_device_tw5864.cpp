@@ -520,6 +520,13 @@ int v4l2_device_tw5864::set_motion_thresh(const char *map, size_t size)
 
 #define MD_CELLS_HOR 16
 #define MD_CELLS_VERT 12
+
+
+	if (size != MD_CELLS_HOR * MD_CELLS_VERT) {
+		bc_log(Error, "Motion thresholds map has invalid size, failed to set motion thresholds for tw5864 device");
+		return -1;
+	}
+
 	uint16_t buf[MD_CELLS_HOR * MD_CELLS_VERT];
 	struct my_v4l2_ext_control vc = {0, };
 	struct v4l2_ext_controls vcs = {0, };

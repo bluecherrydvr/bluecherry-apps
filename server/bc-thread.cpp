@@ -470,12 +470,12 @@ bool bc_record::update_motion_thresholds()
 	bool re = false;
 
 	if (m_processor) {
-		if (m_processor->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
+		if (m_processor->set_motion_thresh(cfg.motion_map, strlen(cfg.motion_map)))
 			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;
 	} else {
-		if (bc->input->set_motion_thresh(cfg.motion_map, sizeof(cfg.motion_map)))
+		if (bc->input->set_motion_thresh(cfg.motion_map, strlen(cfg.motion_map)))
 			log.log(Warning, "Cannot set motion thresholds (wrong configuration field?)");
 		else
 			re = true;

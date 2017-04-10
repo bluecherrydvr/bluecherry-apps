@@ -645,8 +645,8 @@ int v4l2_device_solo6010_dkms::set_motion_thresh(const char *map, size_t size)
 	vc.id = V4L2_CID_MOTION_THRESHOLD;
 
 	const unsigned vh = (caps() & BC_CAM_CAP_V4L2_PAL) ? 18 : 15;
-	if (size < 22 * vh) {
-		bc_log(Debug, "Received motion threshold map of wrong size");
+	if (size != 22 * vh) {
+		bc_log(Error, "Received motion threshold map of wrong size for solo6010-dkms device");
 		return -1;
 	}
 
