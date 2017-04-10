@@ -6,7 +6,7 @@
 	url = https://github.com/ltoscano/ponvif
 [submodule "misc/ponvif_ext"]
 	path = misc/ponvif_ext
-	url = git@github.com:bluecherrydvr/ponvif_ext.git
+	url = https://github.com/bluecherrydvr/ponvif_ext.git
 [submodule "misc/pugixml"]
 	path = misc/pugixml
 	url = https://github.com/zeux/pugixml.git
