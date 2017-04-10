@@ -1115,7 +1115,7 @@ var localMotionGrid = new Class({
 				case 'mmap':
 					var tempOverlay = new DVRContainerOverlay(); //takes time to load jpeg image
 					$(el).addEvent('load', function(){
-						self.drawGrid($(el), $(value).get('value'), nc, nr);
+						self.drawGrid($(el), $(value).get('value'), 32, 24);
 						tempOverlay.removeoverlay();
 						self.sensitivitySelector();
 					});

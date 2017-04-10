@@ -157,8 +157,8 @@ var motionGrid = function(el) {
         } else {
             el_class = 'table table-condensed table-bordered table-schedule table-vert-align';
         }
-    	var numcols = numcols || width/16;
-        var numrows = numrows || height/16;
+    	var numcols = numcols || 32;
+        var numrows = numrows || 24;
 
         var map_arr = motion_map.val();
         var map_arr = (""+map_arr).split("");
@@ -296,13 +296,34 @@ var motionGrid = function(el) {
                 refresh_bl.hide();
 
                 if (driver == 'tw5864') drawGrid(img, 16, 12);
-                else drawGrid(img);
+		else if (driver == 'solo6x10') {
+			var signaltype = img.data('signaltype');
+
+			if (signaltype == 'pal')
+				drawGrid(img, 22, 18);
+			else if (signaltype == 'ntsc')
+				drawGrid(img, 22, 15);
+			else
+				drawGrid(img, 22, 15);
+		}
+                else drawGrid(img, 32, 24);//32x24 - motion map size for IP cams
             }).on('error', function() { 
                 img.addClass('img-active');
                 refresh_bl.hide();
 
                 if (driver == 'tw5864') drawGrid(img, 16, 12);
-                else drawGrid(img);
+                else if (driver == 'solo6x10') {
+                        var signaltype = img.data('signaltype');
+
+                        if (signaltype == 'pal')
+                                drawGrid(img, 22, 18);
+                        else if (signaltype == 'ntsc')
+                                drawGrid(img, 22, 15);
+                        else
+                                drawGrid(img, 22, 15);
+                }
+                else drawGrid(img, 32, 24);//32x24 - motion map size for IP cams
+
             }).attr("src", img.attr("src"));
     };
 
