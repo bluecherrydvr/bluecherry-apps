@@ -296,7 +296,7 @@ var motionGrid = function(el) {
                 refresh_bl.hide();
 
                 if (driver == 'tw5864') drawGrid(img, 16, 12);
-		else if (driver == 'solo6x10') {
+		else if (driver == 'solo6110' || driver == 'solo6010') {
 			var signaltype = img.data('signaltype');
 
 			if (signaltype == 'pal')
@@ -312,7 +312,7 @@ var motionGrid = function(el) {
                 refresh_bl.hide();
 
                 if (driver == 'tw5864') drawGrid(img, 16, 12);
-                else if (driver == 'solo6x10') {
+                else if (driver == 'solo6110' || driver == 'solo6010') {
                         var signaltype = img.data('signaltype');
 
                         if (signaltype == 'pal')
