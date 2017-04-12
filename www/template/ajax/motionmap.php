@@ -93,7 +93,7 @@
                     <label class="col-lg-4 col-md-4 control-label"><?php echo 'Frame downscale factor'; ?></label>
 
                     <div class="col-lg-6 col-md-6">
-                        <?php echo arrayToSelect(Array('0.1' => '0.1', '0.2' => '0.2', '0.3' => '0.3', '0.4' => '0.4', '0.5' => '0.5', '0.6' => '0.6', '0.7' => '0.7', '0.8' => '0.8', '0.9' => '0.9', '1.0' => '1.0'), $camera->info['frame_downscale_factor'], 'frame_downscale_factor'); ?>
+                        <?php echo arrayToSelect(Array('0.125' => '0.125', '0.25' => '0.25', '0.5' => '0.5', '1.0' => '1.0'), $camera->info['frame_downscale_factor'], 'frame_downscale_factor'); ?>
                     </div>
                 </div>
 
