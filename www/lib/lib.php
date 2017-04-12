@@ -841,7 +841,19 @@ class card {
 		if (!data::query("UPDATE Devices SET signal_type='{$encoding}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}')", true)) return false;
 		if (!data::query("UPDATE Devices SET resolutionY=$resolution_full[1] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY>300", true)) return false;
 		if (!data::query("UPDATE Devices SET resolutionY=$resolution_quarter[1] WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}') AND resolutionY<300", true)) return false;
-		
+		//reset motion_map to default for solo devices
+		if (substr($this->info['driver'], 0, 5) == 'solo6'){
+			//22x15 for NTSC, 22x18 for PAL
+			if ($encoding == 'PAL')
+				$mapsize = 22*18;
+			else
+				$mapsize = 22*15;
+
+			$motion_map = str_repeat('3', $mapsize);
+
+			if (!data::query("UPDATE Devices SET motion_map='{$motion_map}' WHERE device IN (SELECT device FROM AvailableSources WHERE card_id='{$this->info['id']}')", true)) return false;
+		}
+
 		return array(true, DEVICE_ENCODING_UPDATED);
 	}
 	public function enableAllPorts(){
