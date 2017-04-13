@@ -165,6 +165,29 @@ function check_mysql_connect
     host="$4"
     echo 'exit' | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 }
+
+function fix_motion_maps
+{
+# fix motion maps for versions 2.7.9 and earlier
+    dbname="$1"
+    user="$2"
+    password="$3"
+    host="$4"
+
+    echo "Fixing motion maps..."
+
+    #IP cams - motion map of 32x24 = 768
+    echo "update Devices set motion_map = repeat('3', 768) where protocol like 'IP%' and length(motion_map) <> 768;" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
+
+    #tw5864 cards 16x12 = 192
+    echo "update Devices set motion_map = repeat('3', 192) where driver = 'tw5864' and length(motion_map) <> 192;" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
+
+    #solo6x10 PAL 22x18 = 396
+    echo "update Devices set motion_map = repeat('3', 396) where driver like 'solo6%' and length(motion_map) <> 396;" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
+    #solo6x10 NTSC 22x15 = 330
+    echo "update Devices set motion_map = repeat('3', 330) where driver like 'solo6%' and length(motion_map) <> 330;" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
+}
+
 function upgrade_db
 {
     # upgrade_db bc_db_name db_user db_pass [host]
@@ -234,6 +257,9 @@ function upgrade_db
 	    echo "DB_VERISON $DB_VERSION after applying DB patches differ from `cat /usr/share/bluecherry/installed_db_version` in /usr/share/bluecherry/installed_db_version" >&2
 	    false
 	fi
+
+	fix_motion_maps "$dbname" "$user" "$password" "$host"
+
 	echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
 	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" \
 		| mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
