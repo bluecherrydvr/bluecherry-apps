@@ -258,12 +258,12 @@ function upgrade_db
 	    false
 	fi
 
-	fix_motion_maps "$dbname" "$user" "$password" "$host"
-
 	echo "DELETE FROM GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
 	echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" \
 		| mysql -h "$host" -u"$user" -p"$password" -D"$dbname"
     fi # Whether old and new DB version match
+
+    fix_motion_maps "$dbname" "$user" "$password" "$host"
 }
 
 MODE="$1"
