@@ -18,7 +18,7 @@ extern "C" {
 
 motion_processor::motion_processor()
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCnt(0), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -245,9 +245,70 @@ int motion_processor::set_min_motion_area_percent(int p)
 	return 1;
 }
 
+/*
+void dump_opencv_frame(cv::Mat &m, const char *name,  int *counter)
+                {//debug
+                        char fname[128];
+
+                        sprintf(fname,"/tmp/%s_dump%d.bmp", name, *counter);
+
+                        bc_log(Info, "Saving deltaFrame to %s", fname);
+
+                        if (!cv::imwrite(fname, m))
+                                bc_log(Error, "Failed to save deltaFrame");
+                        (*counter)++;
+                }
+*/
+
+int motion_processor::match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, double minMotionArea, int w, int h)
+{
+	cv::Mat m, deltaFrame;
+
+	cv::absdiff(refFrame, curFrame, deltaFrame);
+
+	for (int i = 0; i < 32; i++)
+		for (int j = 0; j < 24; j++)
+		{
+			int threshmap_cell = i + j *32;
+
+			cv::Mat cell(deltaFrame, cv::Range(h/24 * j, h/24 * (j + 1)), cv::Range(w/32 * i, w/32 * (i + 1)));
+			//according to OpenCV docs, changes to "cell" subarrays are reflected in deltaFrame, no copy-on-write is performed
+			cv::threshold(cell, cell, thresholds[threshmap_cell], 255, cv::THRESH_BINARY);
+		}
+
+	int iterations = 2;
+	cv::dilate(deltaFrame, deltaFrame, cv::Mat(), cv::Point(-1,-1), iterations);
+
+
+	std::vector<std::vector<cv::Point>> contours;
+
+	cv::findContours(deltaFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0,0));
+
+	for( int i = 0; i < contours.size(); i++)
+	{
+		if (cv::contourArea(contours[i]) >= minMotionArea)
+		{
+
+			/*{
+			static int dbg_cnt4 = 0;
+
+			cv::Mat df(curFrame);
+
+			cv::Rect boundRect = cv::boundingRect(cv::Mat(contours[i]));
+			cv::rectangle(df, boundRect.tl(), boundRect.br(), cv::Scalar(255, 0, 0), 2, 8, 0);
+			dump_opencv_frame(df, "motion",  &dbg_cnt4);
+			}*/
+
+			//motion is detected
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
-	int refFrameUpdateInterval = 50;
 	int ret = 0;
 	int dst_h, dst_w;
 	double downscaleFactor = m_downscaleFactor;
@@ -256,8 +317,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	dst_h = rawFrame->height * downscaleFactor;
 	dst_w = rawFrame->width * downscaleFactor;
 
-	cv::Mat m, deltaFrame;
-	m = cv::Mat(dst_h, dst_w, CV_8UC1);
+	cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
 
 	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
 		fix_pix_fmt(rawFrame->format), dst_w, dst_h,
@@ -268,55 +328,52 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 	frame->width = dst_w;
 	frame->height = dst_h;
 
+	if (dst_w < 32 || dst_h < 24)
+	{
+		bc_log(Error, "Frame size is too small for motion detection! Increase frame downscale factor if it applies");
+		return 0;
+	}
+
 	av_image_fill_arrays(frame->data, frame->linesize, m.data, AV_PIX_FMT_GRAY8, dst_w, dst_h, 1);
 
 	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
 		  rawFrame->height, frame->data, frame->linesize);
 
 	//OpenCV stuff goes here...
-	cv::GaussianBlur(m, m, cv::Size(21,21), 0);
+	cv::GaussianBlur(m, m, cv::Size(21, 21), 0);
 
-	if (!m_refFrame.empty() && m_refFrame.rows == frame->height && m_refFrame.cols == frame->width && m_refFrameUpdateCnt != 0)
+	//match every 2nd reference frame
+	if (!m_refFrames[0].empty() && m_refFrames[0].rows == frame->height && m_refFrames[0].cols == frame->width && m_refFrameUpdateCounters[0] != 0)
 	{
-		cv::absdiff(m_refFrame, m, deltaFrame);
-		//cv::threshold(deltaFrame, deltaFrame, 50, 255, cv::THRESH_BINARY);
-		for (int i = 0; i < 32; i++)
-			for (int j = 0; j < 24; j++)
-			{
-				int threshmap_cell = i + j *32;
 
-				cv::Mat cell(deltaFrame, cv::Range(dst_h/24 * j, dst_h/24 * (j + 1)), cv::Range(dst_w/32 * i, dst_w/32 * (i + 1)));
-				//according to OpenCV docs, changes to "cell" subarrays are reflected in deltaFrame, no copy-on-write is performed
-				cv::threshold(cell, cell, thresholds[threshmap_cell], 255, cv::THRESH_BINARY);
-			}
+		ret = this->match_ref_frame_opencv(m, m_refFrames[0], minMotionArea, dst_w, dst_h);
 
-		int iterations = 2;
-		cv::dilate(deltaFrame, deltaFrame, cv::Mat(), cv::Point(-1,-1), iterations);
+		m_refFrameUpdateCounters[0]++;
 
-		std::vector<std::vector<cv::Point>> contours;
-
-		cv::findContours(deltaFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0,0));
-
-		for( int i = 0; i < contours.size(); i++)
-		{
-			if (cv::contourArea(contours[i]) >= minMotionArea)
-			{
-				ret = 1;
-				break;
-				//motion is detected
-			}
-		}
-
-		m_refFrameUpdateCnt++;
-
-		if (m_refFrameUpdateCnt % refFrameUpdateInterval == 0)
-			m_refFrameUpdateCnt = 0;
+		if (m_refFrameUpdateCounters[0] % 2 == 0)
+			m_refFrameUpdateCounters[0] = 0;
 	}
 	else
 	{
-		m_refFrame = m;
-		bc_log(Debug, "opencv motion detection - setting reference frame");
-		m_refFrameUpdateCnt = 1;
+		m_refFrames[0] = m;
+		bc_log(Debug, "opencv motion detection - setting reference frame 1");
+		m_refFrameUpdateCounters[0] = 1;
+	}
+
+	if (ret == 0 && !m_refFrames[1].empty() && m_refFrames[1].rows == frame->height && m_refFrames[1].cols == frame->width && m_refFrameUpdateCounters[1] != 0)
+	{
+		ret = this->match_ref_frame_opencv(m, m_refFrames[1], minMotionArea, dst_w, dst_h);
+
+                m_refFrameUpdateCounters[1]++;
+
+                if (m_refFrameUpdateCounters[1] % 25 == 0)
+                        m_refFrameUpdateCounters[1] = 0;
+	}
+	else if (ret == 0)
+	{
+                m_refFrames[1] = m;
+                bc_log(Debug, "opencv motion detection - setting reference frame 2");
+                m_refFrameUpdateCounters[1] = 1;
 	}
 
 	av_frame_free(&frame);

@@ -61,11 +61,12 @@ private:
 
 	int detect_bc_original(AVFrame *frame);
 	int detect_opencv(AVFrame *frame);
+	int match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, double minMotionArea, int w, int h);
 	detection_algorithm m_alg;
 
 	pthread_t m_thread;
-	cv::Mat m_refFrame;
-	int m_refFrameUpdateCnt;
+	cv::Mat m_refFrames[2];
+	int m_refFrameUpdateCounters[2];
 	double m_downscaleFactor;
 	int m_minMotionAreaPercent;
 
