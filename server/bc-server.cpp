@@ -449,6 +449,8 @@ static float path_used_percent(const char *path)
 	if (statvfs(path, &st))
 		return -1.00;
 
+	bc_log(Debug, "path_used_percent(%s) = %f, f_bavail = %i, f_blocks = %i", path, 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks, st.f_bavail, st.f_blocks);
+
 	return 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks;
 }
 
@@ -458,6 +460,8 @@ static uint64_t path_freespace(const char *path)
 
 	if (statvfs(path, &st))
 		return 0;
+
+	bc_log(Debug, "path_freespace(%s) = %ld, f_bavail = %i, f_bsize = %i", path, (uint64_t)st.f_bavail * (uint64_t)st.f_bsize, st.f_bavail, st.f_bsize);
 
 	return (uint64_t)st.f_bavail * (uint64_t)st.f_bsize;
 }
