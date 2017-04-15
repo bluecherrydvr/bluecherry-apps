@@ -1,3 +1,40 @@
+bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
+
+  * Improved experimental motion detection algorithm
+
+  * Changed set of frame downscale factors for motion detection to
+    (0.125 0.25 0.5 1.0)
+
+  * Fixed invalid sizing of motion thresholds map for IP cameras, solo6x10
+    and tw5864 devices. Motion map is reset to default when invalid size is
+    detected. This reset happens on package upgrade. Also motion map is reset
+    to default after switching PAL/NTSC on solo6x10 cards, because different
+    motion map sizes are required for each signal type
+
+  * Fixed inversed "Default"/"Experimenta" motion detection algorithm switch
+    in web UI
+
+  * Fixed NTSC/PAL switch in web UI
+
+  * Fixed issue causing port on solo6x10 going offline after changing
+    resolution or FPS
+
+  * Driver name for capture card is now displayed in web UI
+
+  * Fixed capture card detection in case when both solo6x10 and tw5864 devices
+    are present in the same system
+
+  * Fixed service startup issue at boot on Ubuntu 16.04LTS Xenial
+
+  * Replaced "solo" with "hwcard" in log messages and web UI where "tw5864"
+    also could be implied
+
+  * Added support for 6110 based Softlogic cards 
+
+  * Motion detection events are logged to bluecherry.log at Info level
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Mon, 17 Apr 2017 08:00:00 +0400
+
 bluecherry (2:2.7.9) precise trusty xenial wily wheezy jessie; urgency=low
 
   * Fix invalid timestamps coming from IP cameras that caused "Error writing
