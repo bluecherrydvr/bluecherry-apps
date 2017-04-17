@@ -13,7 +13,7 @@ function work {
 }
 
 # TODO Implement parallel building outside of sources tree
-for DIST in trusty xenial wheezy jessie
+for DIST in trusty xenial jessie
 do
 	export DIST
 	for ARCH in amd64 i386
