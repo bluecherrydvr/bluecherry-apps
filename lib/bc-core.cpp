@@ -166,7 +166,19 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		strlcpy(bc->device, url, sizeof(bc->device));
 		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 
-		/*TODO: check substream mode and create additional lavf_device if needed, assign to bc->substream_input */
+		if (bc->substream_mode) {
+			val = bc_db_get_val(dbres, "substream_path", NULL);
+
+			/* substream_path format should be same as device, 'hostname|port|path' */
+			r = parse_dev_path(url, sizeof(url), val, creds,
+                                "XXX", /* host should be always present, this default doesn't matter */
+                                "554", /* port should be always present, this default doesn't matter */
+                                uri_schema);
+	                if (r)
+				return -1;
+
+			bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+		}
 	}
 
 	/* This `defhost` is a workaround for empty host part in mjpeg_path */
@@ -212,7 +224,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 	bc_ptz_check(bc, dbres);
 
-	/* TODO load substream_mode from db and save in bc */
+	bc->substream_mode = (bc_streaming_substream_mode_t) bc_db_get_val_int(dbres, "substream_mode");
 
 	if (!strncmp(protocol, "IP", 2)) {
 		ret = lavf_handle_init(bc, dbres);
