@@ -301,10 +301,33 @@ void bc_record::run()
 		bc->source->send(packet);
 
 		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this))
-			if (bc_streaming_packet_write(this, packet) == -1) {
+		if (bc_streaming_is_active(this)) {
+			stream_packet liveview_packet;
+
+			if (bc->substream_mode) {
+				ret = bc->substream_input->read_packet();
+
+				if (ret == EAGAIN)
+					continue;
+				else if (ret != 0) {
+					if (bc->type == BC_DEVICE_LAVF) {
+		                                const char *err = reinterpret_cast<lavf_device*>(bc->substream_input)->get_error_message();
+						log.log(Error, "Read error from liveview substream: %s", *err ? err : "Unknown error");
+					}
+
+					/* Do not stop thread on liveview substream errors, recording has more priority */
+					continue;
+				}
+
+				liveview_packet = bc->substream_input->packet();
+			} else
+				liveview_packet = packet;
+
+			if (bc_streaming_packet_write(this, liveview_packet) == -1) {
 				goto error;
 			}
+		}
+
 		continue;
 error:
 		sleep(10);
