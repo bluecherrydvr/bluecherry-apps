@@ -88,4 +88,14 @@ $GLOBALS['cts_record_durations'] = array(
 );
 $varpub_globals['cts_record_durations'] = $GLOBALS['cts_record_durations'];
 
+$GLOBALS['bandwidth_limits'] = array(
+	'64' => '64 kbps',
+	'128' => '128 kbps',
+	'256' => '256 kbps',
+	'384' => '384 kbps',
+	'512' => '512 kbps',
+	'0' => 'OFF'
+);
+$varpub_globals['bandwidth_limits'] = $GLOBALS['bandwidth_limits'];
+
 $varpub->globals = $varpub_globals;
