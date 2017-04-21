@@ -79,6 +79,8 @@ define('G_DISABLE_WEB_STATS_EX', 'May improve web UI performance');
 define('G_DATA_SOURCE', 'List source');
 define('G_DATA_SOURCE_LOCAL', 'Local list');
 define('G_DATA_SOURCE_LIVE', 'Live (You need an active internet connection)');
+define('G_TOTAL_BANDWIDTH_LIMIT', 'Total bandwidth limit for liveview');
+
 
 define('G_SMTP_TITLE', 'SMTP server configuration');
 define('G_PERF_TITLE', 'Performance/connectivity');

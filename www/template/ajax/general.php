@@ -121,6 +121,14 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?><p class='help-block'><small><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?></small></p></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect($GLOBALS['bandwidth_limits'], $global_settings->data['G_TOTAL_BANDWIDTH_LIMIT'], 'G_TOTAL_BANDWIDTH_LIMIT'); ?>
+            </div>
+        </div>
+
 
     </div>
 </div>
