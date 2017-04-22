@@ -30,12 +30,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <div class="col-lg-12 col-md-12">
-                            <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> Audio support is currently experimental. It may cause problems and numerous errors in the log files. Use at your own risk.</div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_CAMERA_NAME; ?></label>
 
                         <div class="col-lg-6 col-md-6">
