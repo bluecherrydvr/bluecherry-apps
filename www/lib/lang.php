@@ -229,6 +229,8 @@ define('VA_CONTRAST', 'Contrast');
 define('VA_VIDEO_QUALITY', 'Video Quality');
 define('VA_SETDEFAULT', 'Reset values to default');
 
+define('SUB_ENABLE', 'Enable subtitles');
+
 define('DEVICE_ENCODING_UPDATED', 'Video standard setting changed. <hr /> <b>For the change to take effect you need to restart the server.</b><br>');
 define('DB_FAIL_TRY_LATER', 'Could not apply changes. Please make sure you are able to connect to the DVR server and that the server is running.');
 
