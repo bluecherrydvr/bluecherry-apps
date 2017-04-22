@@ -55,7 +55,7 @@ public:
 
 	/* Streaming */
 	/* RTP muxing contexts */
-	AVFormatContext *stream_ctx[2];
+	AVFormatContext *stream_ctx[3];
 
 	class rtsp_stream *rtsp_stream;
 

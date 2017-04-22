@@ -77,6 +77,10 @@ public:
 	bool audio_enabled() const { return _audio_enabled; }
 	virtual void set_audio_enabled(bool enabled);
 
+	virtual bool has_subtitles() const = 0;
+	bool subtitles_enabled() const { return _subs_enabled; }
+	virtual void set_subtitles_enabled(bool enabled);
+
 	/* Get the current stream properties; this is a temporary hack for streaming
 	 * and should not be relied on. Properties are included as a field with every
 	 * packet, and can be reliably updated that way.
@@ -100,7 +104,7 @@ public:
 	virtual int set_motion_thresh_global(char value) { return 0; }
 
 protected:
-	bool _audio_enabled, _started;
+	bool _audio_enabled, _started, _subs_enabled;
 	std::string _error_message;
 	/* Incremental counter for packets emitted by this device, which should increment
 	 * by exactly one for each successful return from read_packet(), beginning with
@@ -162,7 +166,17 @@ public:
 		void apply(AVCodecContext *cc) const;
 	} audio;
 
+	struct subtitle_properties {
+		enum AVCodecID codec_id;
+
+		subtitle_properties();
+		/* Apply these properties to an allocated AVCodecContext instance,
+                 * suitable for creating encoders, decoders, etc. */
+		void apply(AVCodecContext *cc) const;
+	} subs;
+
 	bool has_audio() const { return audio.codec_id != AV_CODEC_ID_NONE; }
+	bool has_subtitles() const { return subs.codec_id != AV_CODEC_ID_NONE; }
 };
 
 /* Reference counted container for the data in a stream_packet.

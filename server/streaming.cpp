@@ -39,6 +39,8 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	ret |= bc_streaming_setup_elementary(bc_rec, 0, AVMEDIA_TYPE_VIDEO);
 	if (bc_rec->bc->input->has_audio())
 		ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_AUDIO);
+	if (bc_rec->bc->input->has_subtitles())
+		ret |= bc_streaming_setup_elementary(bc_rec, 2, AVMEDIA_TYPE_SUBTITLE);
 	if (ret)
 		return ret;
 
@@ -136,7 +138,7 @@ error:
 
 void bc_streaming_destroy(struct bc_record *bc_rec)
 {
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < 3; i++) {
 		AVFormatContext *ctx = bc_rec->stream_ctx[i];
 
 		if (!ctx)
@@ -170,7 +172,24 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 {
 	AVPacket opkt;
 	int re;
-	int ctx_index = pkt.type == AVMEDIA_TYPE_VIDEO ? 0 : 1;
+	int ctx_index;
+
+	switch(pkt.type) {
+	case AVMEDIA_TYPE_VIDEO:
+		ctx_index = 0;
+		break;
+
+	case AVMEDIA_TYPE_AUDIO:
+		ctx_index = 1;
+		break;
+
+	case AVMEDIA_TYPE_SUBTITLE:
+		ctx_index = 2;
+		break;
+
+	default:
+		return 0;
+	}
 
 	if (!bc_streaming_is_active(bc_rec))
 		return 0;
