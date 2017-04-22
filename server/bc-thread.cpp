@@ -332,6 +332,7 @@ bc_record::bc_record(int i)
 
 	stream_ctx[0] = 0;
 	stream_ctx[1] = 0;
+	stream_ctx[2] = 0;
 	rtsp_stream = 0;
 
 	osd_time = 0;
