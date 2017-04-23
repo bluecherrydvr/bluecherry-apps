@@ -135,6 +135,7 @@ class database{
 	private function connect() {
 		$this->read_config();
 		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
+		mysqli_real_query($this->dblink, "set names utf8;");
 	}
 	public static function escapeString(&$string) {
 		self::$instance or self::$instance = new database();
