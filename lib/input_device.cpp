@@ -14,6 +14,11 @@ void input_device::set_audio_enabled(bool v)
 	_audio_enabled = v;
 }
 
+void input_device::set_subtitles_enabled(bool v)
+{
+	_subs_enabled = v;
+}
+
 stream_packet::stream_packet()
 	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
@@ -203,5 +208,15 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 		cc->extradata_size = 0;
 		cc->extradata = 0;
 	}
+}
+
+stream_properties::subtitle_properties::subtitle_properties()
+	: codec_id(AV_CODEC_ID_NONE)
+{
+}
+
+void stream_properties::subtitle_properties::apply(AVCodecContext *cc) const
+{
+	cc->codec_id = codec_id;
 }
 

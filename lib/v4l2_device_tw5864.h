@@ -21,6 +21,7 @@ public:
 	virtual const stream_packet &packet() const { return current_packet; }
 
 	virtual bool has_audio() const { return 0; }
+	virtual bool has_subtitles() const { return false; }
 
 	virtual int caps() const { return cam_caps; }
 
