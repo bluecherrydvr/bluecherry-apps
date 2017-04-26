@@ -71,7 +71,7 @@
                                         <input type="hidden" name="mode" value="RES">
                                         <input type="hidden" name="id" value="<?php echo  $device->info['id']; ?>">
                                                 <div class="form-group">
-                                                    <label><small>Resolution:</small></label>
+                                                    <label><small>Resolução:</small></label>
 						   <select class=' form-control'>
 							<option id=1>1280x960</option>
 							<option id=2>640x480</option>

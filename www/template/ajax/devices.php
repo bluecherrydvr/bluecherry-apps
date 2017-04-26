@@ -181,7 +181,7 @@
                                                 <input type="hidden" name="mode" value="RES">
                                                 <input type="hidden" name="id" value="<?php echo  $device->info['device']; ?>">
                                                 <div class="form-group">
-                                                    <label><small>Resolution:</small></label>
+                                                    <label><small>Resolução:</small></label>
                                                     <?php echo arrayToSelect($GLOBALS['resolutions'][$card->info['encoding']], $device->info['resolutionX'].'x'.$device->info['resolutionY'],  'value', 'RES input-sm send-req-form-select', false, 'data-class-after="devicesCards.setCapacity()"'); ?>
                                                 </div>
                                             </form>

@@ -55,15 +55,15 @@ INSERT INTO `ipPtzCommandPresets` (`id`, `name`, `mright`, `mleft`, `up`, `down`
 (3, 'Panasonic', '/cgi-bin/camctrl?pan=Right', '/cgi-bin/camctrl?pan=Left', '/cgi-bin/camctrl?tilt=Up', '/cgi-bin/camctrl?tilt=Down', '', '', '', '', '/cgi-bin/camctrl?times=up', '/cgi-bin/camctrl?times=down', '/cgi-bin/camctrl?focus=near', '/cgi-bin/camctrl?focus=far', '', '', '', 0, 1, 0, '80', 'http');
 
 
-INSERT INTO AuditEventTypes VALUES (1, "Failed login attempt");
-INSERT INTO AuditEventTypes VALUES (2, "User logged in");
-INSERT INTO AuditEventTypes VALUES (3, "User logged out");
-INSERT INTO AuditEventTypes VALUES (4, "Device configuration changed");
-INSERT INTO AuditEventTypes VALUES (5, "New device added");
-INSERT INTO AuditEventTypes VALUES (6, "Device disabled");
-INSERT INTO AuditEventTypes VALUES (7, "Device deleted");
-INSERT INTO AuditEventTypes VALUES (8, "Password changed for user");
-INSERT INTO AuditEventTypes VALUES (9, "General settings changed");
-INSERT INTO AuditEventTypes VALUES (10, "Global schedule changed");
-INSERT INTO AuditEventTypes VALUES (11, "Email notification settings changed");
+INSERT INTO AuditEventTypes VALUES (1, "Falha na tentativa de login");
+INSERT INTO AuditEventTypes VALUES (2, "Usuário logado");
+INSERT INTO AuditEventTypes VALUES (3, "Usuário desconectado");
+INSERT INTO AuditEventTypes VALUES (4, "Configuração do dispositivo alterada");
+INSERT INTO AuditEventTypes VALUES (5, "Novo dispositivo adicionado");
+INSERT INTO AuditEventTypes VALUES (6, "Dispositivo desativado");
+INSERT INTO AuditEventTypes VALUES (7, "Dispositivo excluído");
+INSERT INTO AuditEventTypes VALUES (8, "Senha alterada para o usuário");
+INSERT INTO AuditEventTypes VALUES (9, "Definições gerais alteradas");
+INSERT INTO AuditEventTypes VALUES (10, "Horário global alterado");                                                                        
+INSERT INTO AuditEventTypes VALUES (11, "Configurações de notificação de e-mail alteradas");
 

@@ -25,7 +25,7 @@ require_once ('Ponvif.php');
 require_once('bc_license_wrapper.php');
 
 if (empty($nload)){
-	include("lang.php");
+	include("lang_ptbr.php");
 	include("var.php");
 	include("upgrade.php");
 }
