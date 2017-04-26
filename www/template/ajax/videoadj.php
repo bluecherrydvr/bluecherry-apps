@@ -85,6 +85,18 @@
         </div>
 
         <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo VA_COMPRESSION; ?></label>
+
+            <div class="col-lg-8">
+		<select class=" form-control">
+		<option id=1><?php echo VA_COMPRESSION_LOW; ?></option>
+		<option id=2><?php echo VA_COMPRESSION_MEDIUM; ?></option>
+		<option id=3><?php echo VA_COMPRESSION_HIGH; ?></option>
+		</select>
+            </div>
+        </div>
+
+        <div class="form-group">
             <div class="col-lg-8 col-lg-offset-4 col-md-8 col-md-offset-4">
                 <button type="button" class="btn btn-success click-event" data-function="videoadjReset"><?php echo VA_SETDEFAULT; ?></button>
             </div>
