@@ -115,22 +115,37 @@
                 <div class="panel-body">
                 
                     <div class="form-group motion-sens-bl">
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()">Off</button>
                         </div>
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
+                            <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">_</button>
+                        </div>
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">Minimal</button>
                         </div>
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
+                            <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">_</button>
+                        </div>
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">Low</button>
                         </div>
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
+                            <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event" data-class="motionGrid.average()" data-active="primary">_</button>
+                        </div>
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event" data-class="motionGrid.average()" data-active="primary">Average</button>
                         </div>
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
+                            <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">_</button>
+                        </div>
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">High</button>
                         </div>
-                        <div class="col-lg-2 col-md-2">
+                        <div class="col-lg-1 col-md-1">
+                            <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">_</button>
+                        </div>
+                        <div class="col-lg-1 col-md-1">
                             <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Very High</button>
                         </div>
                     </div>
