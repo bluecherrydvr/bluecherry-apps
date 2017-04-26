@@ -156,6 +156,9 @@
                             <a href="/deviceschedule" class="ajax-content" data-left-menu="true"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
                         </li>
                         <li>
+                            <a href="/alarmschedule" class="ajax-content" data-left-menu="true"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_ALRMSCHED; ?></a>
+                        </li>
+                        <li>
                             <a href="/notifications" class="ajax-content" data-left-menu="true"><i class="fa fa-envelope fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
                         </li>
 

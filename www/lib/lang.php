@@ -26,6 +26,7 @@ define('MMENU_USERS', 'Users');
 define('MMENU_LOG', 'System Log');
 define('MMENU_DEVICES', 'Devices');
 define('MMENU_SCHED', 'Global schedule');
+define('MMENU_ALRMSCHED', 'Alarms schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_PLAYBACK', 'Playback');
 define('MMENU_STATISTICS', 'Event statistics');
@@ -246,6 +247,7 @@ define('MOTION_DEFAULT', 'Default');
 define('MOTION_EXPERIMENTAL', 'Experimental');
 
 define('SCHED_HEADER','Device recording schedule');
+define('ALRMSCHED_HEADER', 'Alarms recording schedule');
 define('SCHED_SELECTOR_TITLE', 'Use these selectors to fill in the schedule below');
 define('SCHED_OFF', 'Off');
 define('SCHED_CONT', 'Continuous');
