@@ -116,37 +116,34 @@
                 
                     <div class="form-group motion-sens-bl">
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()">Off</button>
+                            <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()">Desligado</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">_</button>
+                            <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">Minimo Baixo</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">Minimal</button>
+                            <button type="button" class="btn btn-success btn-block motion-btn-sens click-event disabled" data-class="motionGrid.minimal()">Minimo</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">_</button>
+                            <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">Muito Baixo</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">Low</button>
+                            <button type="button" class="btn btn-info btn-block motion-btn-sens click-event disabled" data-class="motionGrid.low()">Baixo</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event" data-class="motionGrid.average()" data-active="primary">_</button>
+                            <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event" data-class="motionGrid.average()" data-active="primary">Media</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event" data-class="motionGrid.average()" data-active="primary">Average</button>
+                            <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">Acima da Media</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">_</button>
+                            <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">Alto Baixo</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">High</button>
+                            <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Alto</button>
                         </div>
                         <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">_</button>
-                        </div>
-                        <div class="col-lg-1 col-md-1">
-                            <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Very High</button>
+                            <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Muito Alto</button>
                         </div>
                     </div>
 
