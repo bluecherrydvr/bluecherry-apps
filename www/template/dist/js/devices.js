@@ -169,7 +169,10 @@ var motionGrid = function(el) {
             grid_table += '<tr><thead>';
             grid_table += '<th></th>';
             for(col = 1; col<=numcols; col++) {
-                grid_table += '<th>'+(col - 1)+'</th>';
+		if (numcols == 16 && numrows == 16)
+			grid_table += '<th>Port'+col+'</th>';
+		else
+	                grid_table += '<th>'+(col - 1)+'</th>';
             }
             grid_table += '</thead></tr>';
         }
@@ -178,7 +181,11 @@ var motionGrid = function(el) {
     	for (row = 1; row<=numrows; row++) {
             grid_table += '<tr>';
             if (!img) {
-                grid_table += '<th>'+week_days[row]+'</th>';
+
+		if (numcols == 16 && numrows == 16)
+			grid_table += '<th>Sensor'+row+'</th>';
+		else 
+        	        grid_table += '<th>'+week_days[row]+'</th>';
             }
 
             for(col = 1; col<=numcols; col++) {
@@ -219,6 +226,10 @@ var motionGrid = function(el) {
 
     self.sheduleDrawGrid = function () {
         drawGrid(null, 24, 7);
+    }
+
+    self.gpioDrawGrid = function () {
+        drawGrid(null, 16, 16);
     }
 
     self.setSchedule = function () {
