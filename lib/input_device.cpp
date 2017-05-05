@@ -218,5 +218,6 @@ stream_properties::subtitle_properties::subtitle_properties()
 void stream_properties::subtitle_properties::apply(AVCodecContext *cc) const
 {
 	cc->codec_id = codec_id;
+	cc->codec_type = AVMEDIA_TYPE_SUBTITLE;
 }
 
