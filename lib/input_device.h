@@ -80,6 +80,7 @@ public:
 	virtual bool has_subtitles() const = 0;
 	bool subtitles_enabled() const { return _subs_enabled; }
 	virtual void set_subtitles_enabled(bool enabled);
+	void set_subtitles_text(const char *text);
 
 	/* Get the current stream properties; this is a temporary hack for streaming
 	 * and should not be relied on. Properties are included as a field with every
@@ -106,14 +107,20 @@ public:
 protected:
 	bool _audio_enabled, _started, _subs_enabled;
 	std::string _error_message;
+	std::string _subs_teixt;
+
 	/* Incremental counter for packets emitted by this device, which should increment
 	 * by exactly one for each successful return from read_packet(), beginning with
 	 * zero. Subclass is expected to handle this behavior in the packet creation logic.
 	 */
 	unsigned next_packet_seq;
 	std::shared_ptr<stream_properties> current_properties;
+	time_t subs_ts;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
+
+	bool has_new_subs();
+	stream_packet get_subs_packet();
 };
 
 /* Properties of the media held by stream_packets. This is roughly equivalent
