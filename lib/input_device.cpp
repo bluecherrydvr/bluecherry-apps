@@ -19,6 +19,30 @@ void input_device::set_subtitles_enabled(bool v)
 	_subs_enabled = v;
 }
 
+void input_device::set_subtitles_text(const char *text)
+{
+	if (!_subs_enabled)
+		return;
+
+	_subs_text = std::string(text);
+}
+
+bool input_device::has_new_subs()
+{
+	if (_subs_enabled && subs_ts != time(NULL))
+		return true;
+
+	return false;
+}
+
+stream_packet input_device::get_subs_packet()
+{
+	AVSubtitle avsub;
+	AVSubtitleRect avsubrect;
+
+	...
+}
+
 stream_packet::stream_packet()
 	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
