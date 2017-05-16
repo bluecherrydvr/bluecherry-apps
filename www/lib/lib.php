@@ -353,6 +353,7 @@ class user{
 				if (!empty($_SESSION['from_client'])) { $_SESSION['from_client_override'] = true; }
 				$_SESSION['from_client'] = $from_client; 
 				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
+				if (isset($this->info['change_password']) && $this->info['change_password']) return 'OK CHANGE_PASSWORD';
 				return 'OK'; } 
 		else { return LOGIN_WRONG; };
 	}

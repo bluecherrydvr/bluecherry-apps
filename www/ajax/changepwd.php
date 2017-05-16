@@ -1,15 +1,16 @@
 <?php
 
-class login extends Controller {
+class changepwd extends Controller {
 
     public function __construct ()
     {
         parent::__construct();
+	chAccess();????which one?
     }
 
     public function getData()
     {
-        $this->setView('login', false);
+        $this->setView('changepwd', false);
     }
 
     public function postData()
@@ -27,9 +28,7 @@ class login extends Controller {
                 } else {
                     Reply::ajaxDie('1', '/liveview');
                 }
-            } else if ($result == 'OK CHANGE_PASSWORD') {
-		    Reply::ajaxDie('1', '/changepwd');
-	    } else {
+            } else {
                 Reply::ajaxDie('2', $result);
             }
         }

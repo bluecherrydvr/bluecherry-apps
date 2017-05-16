@@ -124,6 +124,14 @@
                             <input class="form-control" type='password' name='password' value="<?php echo ((!empty($dvr_users->data['new'])) ? '' : '__default__'); ?>"  />
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_CHANGEPASSWORD; ?><p class='help-block'><small><?php echo USERS_CHANGEPASSWORD_EX; ?></small></p></label>
+
+                        <div class="col-lg-6 col-md-6 form-control-static">
+                            <input type="checkbox" name="change_password" <?php echo ((!empty($dvr_users->data[0]['change_password'])) ? 'checked' : ''); ?>  />
+                        </div>
+                    </div>
                     
                     <div class="form-group users-add-email-bl">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo USERS_EMAIL; ?><p class='help-block'><small><?php echo USERS_EMAIL_EX; ?></small></p></label>
