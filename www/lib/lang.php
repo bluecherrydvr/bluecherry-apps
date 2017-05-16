@@ -168,7 +168,8 @@ define('EMAIL_LIMIT', 'Limit');
 define('EMAIL_LIMIT_EX', 'Emails/hour (0 - unlimited)');
 define('USERS_NOTES', 'User notes');
 define('USERS_NOTES_EX', 'visible only to admin');
-
+define('USERS_CHANGEPASSWORD', 'Change password on next login');
+define('USERS_CHANGEPASSWORD_EX', 'User is asked to change password');
 
 define('USERS_STATUS_ADMIN', 'Administrator');
 define('USERS_STATUS_VIEWER','Viewer');

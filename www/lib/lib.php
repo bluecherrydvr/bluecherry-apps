@@ -379,6 +379,7 @@ class user{
 				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
 
 				auditLogger::writeEvent(AUDIT_USRLOGIN_ID, $_SESSION['id'], NULL, $_SERVER['REMOTE_ADDR']);
+				if (isset($this->info['change_password']) && $this->info['change_password']) return 'OK CHANGE_PASSWORD';
 				return 'OK';
 		}
 		else {
