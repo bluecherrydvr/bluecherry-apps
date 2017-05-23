@@ -168,7 +168,7 @@ define('EMAIL_LIMIT_EX', 'Emails/Hora (0 - Ilimitado)');
 define('USERS_NOTES', 'Notas do Usuário');
 define('USERS_NOTES_EX', 'Visivel Apenas para Administradores');
 define('USERS_CHANGEPASSWORD', 'Alterar senha no próximo login');
-define('USERS_CHANGEPASSWORD_EX', 'O usuário é solicitado a alterar a senha');
+define('USERS_CHANGEPASSWORD_EX', 'Solicitar Alteracao de Senha');
 
 define('USERS_STATUS_ADMIN', 'Administrador');
 define('USERS_STATUS_VIEWER','Visualizador');
