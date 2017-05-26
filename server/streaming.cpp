@@ -89,8 +89,10 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 	bkp_ts = st->codec->time_base;
 	if (type == AVMEDIA_TYPE_VIDEO)
 		bc_rec->bc->input->properties()->video.apply(st->codec);
-	else
+	else if (type == AVMEDIA_TYPE_AUDIO)
 		bc_rec->bc->input->properties()->audio.apply(st->codec);
+	else if (type == AVMEDIA_TYPE_SUBTITLE)
+		bc_rec->bc->input->properties()->subs.apply(st->codec);
 
 	st->codec->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
