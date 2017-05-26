@@ -905,7 +905,7 @@ int rtsp_connection::handlePause(rtsp_message &req)
 std::map<std::string,rtsp_stream*> rtsp_stream::streams;
 pthread_mutex_t rtsp_stream::streams_lock = PTHREAD_MUTEX_INITIALIZER;
 
-rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx[])
+rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx[], int streams_num)
 {
 	rtsp_stream *st = new rtsp_stream;
 	st->bc_rec = bc;
@@ -918,7 +918,7 @@ rtsp_stream *rtsp_stream::create(struct bc_record *bc, AVFormatContext *ctx[])
 	char sdp[2048];
 	int re;
 
-	st->nb_streams = ctx[1] ? 2 : 1;
+	st->nb_streams = streams_num;
 	if ((re = av_sdp_create(ctx, st->nb_streams, sdp, sizeof(sdp))) < 0) {
 		char error[512];
 		av_strerror(re, error, sizeof(error));
