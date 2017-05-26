@@ -117,7 +117,7 @@ public:
 	int nb_streams;
 
 	/* Thread-safe; should be called from recording threads */
-	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx[]);
+	static rtsp_stream *create(struct bc_record *rec, AVFormatContext *rtpctx[], int streams_num);
 	static void remove(struct bc_record *rec);
 
 	static rtsp_stream *findUri(std::string uri);

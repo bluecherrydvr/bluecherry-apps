@@ -30,6 +30,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	int ret = 0;
+    int streams_num = 1;
 
 	if (bc_rec->stream_ctx[0]) {
 		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
@@ -37,14 +38,21 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	}
 
 	ret |= bc_streaming_setup_elementary(bc_rec, 0, AVMEDIA_TYPE_VIDEO);
-	if (bc_rec->bc->input->has_audio())
+
+	if (bc_rec->bc->input->has_audio()) {
 		ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_AUDIO);
-	if (bc_rec->bc->input->has_subtitles())
+        streams_num++;
+    }
+
+	if (bc_rec->bc->input->has_subtitles()) {
 		ret |= bc_streaming_setup_elementary(bc_rec, 2, AVMEDIA_TYPE_SUBTITLE);
+        streams_num++;
+    }
+
 	if (ret)
 		return ret;
 
-	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, bc_rec->stream_ctx);
+	bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, bc_rec->stream_ctx, streams_num);
 
 	return 0;
 }
