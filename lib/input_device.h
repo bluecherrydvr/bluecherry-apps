@@ -107,7 +107,7 @@ public:
 protected:
 	bool _audio_enabled, _started, _subs_enabled;
 	std::string _error_message;
-	std::string _subs_teixt;
+	std::string _subs_text;
 
 	/* Incremental counter for packets emitted by this device, which should increment
 	 * by exactly one for each successful return from read_packet(), beginning with
