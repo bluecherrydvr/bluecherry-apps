@@ -97,6 +97,8 @@ libav/config.mak:
 		--enable-encoder=rawvideo \
 		--enable-encoder=aac \
 		\
+		--enable-encoder=text \
+		\
 		--enable-filter=scale \
 		--enable-filter=fps \
 		\
