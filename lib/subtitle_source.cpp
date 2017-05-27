@@ -68,6 +68,9 @@ int subtitle_source::write_packet(const char *in)
 
 	AVSubtitleRect *rects[1] = { &avsubrect };
 
+	if (!is_started)
+		return -1;
+
 	memset(&avsub, 0, sizeof(avsub));
 	memset(&avsubrect, 0, sizeof(avsubrect));
 
