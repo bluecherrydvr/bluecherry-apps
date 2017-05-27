@@ -12,7 +12,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 }
 
-class stream_packet;
+#include "libbluecherry.h"
 
 class subtitle_source
 {

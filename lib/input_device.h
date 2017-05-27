@@ -47,6 +47,7 @@
 
 class stream_packet;
 class stream_properties;
+class subtitle_source;
 
 /* input_device provides an abstract interface implemented by device backends, such
  * as v4l2_device and lavf_device. Generally, each bc_handle has an input_device, which
@@ -116,7 +117,6 @@ protected:
 	unsigned next_packet_seq;
 	std::shared_ptr<stream_properties> current_properties;
 	time_t subs_ts;
-	subtitle_source subs_source;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
 
@@ -348,5 +348,7 @@ protected:
 
 	virtual void apply_bound();
 };
+
+#include "subtitle_source.h"
 
 #endif

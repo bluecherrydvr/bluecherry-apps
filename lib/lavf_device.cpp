@@ -185,7 +185,7 @@ int lavf_device::read_packet()
 	}
     /*get subtitle packet first*/
     if (subtitles_enabled() && has_new_subs()) {
-		re = subs_source.write_packet(_subs_text.c_str()));
+		re = subs_source.write_packet(_subs_text.c_str());
 
 		if (re < 0)
 			return -1;
