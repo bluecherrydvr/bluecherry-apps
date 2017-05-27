@@ -73,7 +73,7 @@ int subtitle_source::write_packet(const char *in)
 
 	subtitle_out = new uint8_t[1024];
 
-	avsubrect.text = in;
+	avsubrect.text = (char*)in;
 	avsubrect.type = SUBTITLE_TEXT;
 
 	avsub.format = 1; //1 for text
@@ -93,7 +93,7 @@ int subtitle_source::write_packet(const char *in)
 
 	current_packet = stream_packet(subtitle_out, current_properties);
 	current_packet.seq      = packet_counter;
-	current_packet.size     = out_size
+	current_packet.size     = out_size;
 	current_packet.ts_clock = time(NULL);
 	current_packet.pts      = packet_counter;
 	current_packet.dts      = packet_counter;

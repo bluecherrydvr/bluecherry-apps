@@ -45,6 +45,7 @@ private:
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
 	stream_packet current_packet;
+	subtitle_source subs_source;
 
 	void create_stream_packet(AVPacket *src);
 
