@@ -116,11 +116,12 @@ protected:
 	unsigned next_packet_seq;
 	std::shared_ptr<stream_properties> current_properties;
 	time_t subs_ts;
+	subtitle_source subs_source;
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
 
 	bool has_new_subs();
-	stream_packet get_subs_packet();
+
 };
 
 /* Properties of the media held by stream_packets. This is roughly equivalent
@@ -175,6 +176,7 @@ public:
 
 	struct subtitle_properties {
 		enum AVCodecID codec_id;
+		AVRational time_base;
 
 		subtitle_properties();
 		/* Apply these properties to an allocated AVCodecContext instance,
