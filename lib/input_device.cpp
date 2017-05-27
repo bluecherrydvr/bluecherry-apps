@@ -35,14 +35,6 @@ bool input_device::has_new_subs()
 	return false;
 }
 
-stream_packet input_device::get_subs_packet()
-{
-	AVSubtitle avsub;
-	AVSubtitleRect avsubrect;
-
-	...
-}
-
 stream_packet::stream_packet()
 	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
@@ -235,7 +227,7 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 }
 
 stream_properties::subtitle_properties::subtitle_properties()
-	: codec_id(AV_CODEC_ID_NONE)
+	: codec_id(AV_CODEC_ID_NONE), time_base({ 1, 1})
 {
 }
 
@@ -243,5 +235,6 @@ void stream_properties::subtitle_properties::apply(AVCodecContext *cc) const
 {
 	cc->codec_id = codec_id;
 	cc->codec_type = AVMEDIA_TYPE_SUBTITLE;
+	cc->time_base = time_base;
 }
 

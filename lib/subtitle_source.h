@@ -23,12 +23,19 @@ public:
 	void stop();
 	int start();
 
-	int get_stream_packet(stream_packet *out, const char *in);
+	int write_packet(const char *in);
+	const stream_packet &packet() const { return current_packet; }
+	virtual bool has_subtitles() const { return true; }
 
 private:
 	AVCodec *encoder;
 	AVCodecContext *enc_ctx;
 	bool is_started;
+
+	uint8_t *subtitle_out;
+	int packet_counter;
+	stream_packet current_packet;
+	std::shared_ptr<stream_properties> current_properties;
 };
 
 #endif
