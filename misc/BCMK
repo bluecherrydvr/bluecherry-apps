@@ -68,6 +68,7 @@ libav/config.mak:
 		--enable-muxer=mp4 \
 		--enable-muxer=image2 \
 		--enable-muxer=rawvideo \
+		--enable-muxer=ass \
 		\
 		--enable-demuxer=rtsp \
 		--enable-demuxer=matroska \
@@ -98,6 +99,8 @@ libav/config.mak:
 		--enable-encoder=aac \
 		\
 		--enable-encoder=text \
+		--enable-encoder=ass \
+		--enable-libass \
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
