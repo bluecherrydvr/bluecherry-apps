@@ -177,6 +177,7 @@ public:
 	struct subtitle_properties {
 		enum AVCodecID codec_id;
 		AVRational time_base;
+		const char *subtitle_header;
 
 		subtitle_properties();
 		/* Apply these properties to an allocated AVCodecContext instance,
