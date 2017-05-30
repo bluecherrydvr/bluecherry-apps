@@ -29,8 +29,10 @@ void input_device::set_subtitles_text(const char *text)
 
 bool input_device::has_new_subs()
 {
-	if (_subs_enabled && subs_ts != time(NULL))
+	if (_subs_enabled && subs_ts != time(NULL)) {
+		subs_ts = time(NULL);
 		return true;
+	}
 
 	return false;
 }

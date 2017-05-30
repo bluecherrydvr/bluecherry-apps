@@ -46,7 +46,7 @@ void recorder::run()
 		buffer.pop_front();
 		l.unlock();
 
-		if (!packet.data()) {
+		if (!packet.data() && !packet.is_subs_frame()) {
 			/* Null packets force recording end */
 			recording_end();
 			l.lock();
@@ -261,6 +261,7 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 void recorder::recording_end()
 {
+	bc_log(Debug, "recorder: recording_end()");
 	/* Close the media entry in the db */
 	if (current_event && bc_event_has_media(current_event)) {
         if (recording_type == BC_EVENT_CAM_T_MOTION
