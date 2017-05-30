@@ -43,6 +43,8 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		s = audio_st;
 	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
 		s = video_st;
+	else if (pkt.type == AVMEDIA_TYPE_SUBTITLE)
+		s = subs_st;
 	else
 		bc_log(Debug, "write_packet: unexpected packet (to be ignored): pkt.type %d, dts %" PRId64 ", pts %" PRId64 ", size %d", pkt.type, pkt.dts, pkt.pts, pkt.size);
 
@@ -277,6 +279,15 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		bkp_ts = audio_st->codec->time_base;
 		properties.audio.apply(audio_st->codec);
 		audio_st->codec->time_base = bkp_ts;
+	}
+
+	if (properties.has_subtitles()) {
+		subs_st = avformat_new_stream(oc, NULL);
+		if (!subs_st)
+			goto error;
+		bkp_ts = subs_st->codec->time_base;
+		properties.subs.apply(subs_st->codec);
+		subs_st->codec->time_base = bkp_ts;
 	}
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {

@@ -28,7 +28,7 @@ public:
 protected:
 	std::string file_path;
 	AVFormatContext *oc;
-	AVStream *video_st, *audio_st;
+	AVStream *video_st, *audio_st, *subs_st;
 	AVCodecContext *snapshot_decoder;
 	std::string snapshot_filename;
 	int64_t last_video_pts, last_video_dts, last_audio_pts, last_audio_dts;
