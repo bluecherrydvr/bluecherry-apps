@@ -279,6 +279,7 @@ public:
 
 	bool is_key_frame() const { return flags & KeyframeFlag; }
 	bool is_video_frame() const { return type == AVMEDIA_TYPE_VIDEO; }
+	bool is_subs_frame() const { return type == AVMEDIA_TYPE_SUBTITLE; }
 
 private:
 	stream_packet_data *d;

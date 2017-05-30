@@ -21,7 +21,7 @@ public:
 	~subtitle_source();
 
 	void stop();
-	int start();
+	int start(const std::shared_ptr<stream_properties> &prop);
 
 	int write_packet(const char *in);
 	const stream_packet &packet() const { return current_packet; }

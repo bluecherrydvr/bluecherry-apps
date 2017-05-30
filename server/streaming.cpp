@@ -30,7 +30,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	int ret = 0;
-    int streams_num = 1;
+	int streams_num = 1;
 
 	if (bc_rec->stream_ctx[0]) {
 		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
@@ -45,7 +45,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
     }
 
 	if (bc_rec->bc->input->has_subtitles()) {
-		ret |= bc_streaming_setup_elementary(bc_rec, 2, AVMEDIA_TYPE_SUBTITLE);
+		ret |= bc_streaming_setup_elementary(bc_rec, streams_num, AVMEDIA_TYPE_SUBTITLE);
         streams_num++;
     }
 
@@ -91,8 +91,12 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 		bc_rec->bc->input->properties()->video.apply(st->codec);
 	else if (type == AVMEDIA_TYPE_AUDIO)
 		bc_rec->bc->input->properties()->audio.apply(st->codec);
-	else if (type == AVMEDIA_TYPE_SUBTITLE)
-		bc_rec->bc->input->properties()->subs.apply(st->codec);
+	else if (type == AVMEDIA_TYPE_SUBTITLE) {
+		//bc_rec->bc->input->properties()->subs.apply(st->codec);
+		bc_rec->bc->input->properties()->video.apply(st->codec);
+		st->codec->width = 240;
+		st->codec->height = 960;
+	}
 
 	st->codec->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
@@ -194,7 +198,10 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		break;
 
 	case AVMEDIA_TYPE_SUBTITLE:
-		ctx_index = 2;
+		if (bc_rec->stream_ctx[2])
+			ctx_index = 2;
+		else
+			ctx_index = 1;
 		break;
 
 	default:
