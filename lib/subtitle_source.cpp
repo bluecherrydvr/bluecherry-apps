@@ -21,6 +21,7 @@ void subtitle_source::stop()
 	current_packet = stream_packet();
 	current_properties.reset();
 
+	enc_ctx->subtitle_header = NULL;
 	avcodec_free_context(&enc_ctx);
 	is_started = false;
 }
@@ -79,6 +80,7 @@ int subtitle_source::start(const std::shared_ptr<stream_properties> &prop)
              "\r\n"
              "[Events]\r\n"
              "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\r\n";
+	enc_ctx->subtitle_header_size = strlen((const char*)enc_ctx->subtitle_header);
 
 	ret = avcodec_open2(enc_ctx, encoder, NULL);
         if (ret < 0) {

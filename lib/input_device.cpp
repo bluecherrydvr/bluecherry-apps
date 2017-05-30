@@ -273,5 +273,6 @@ void stream_properties::subtitle_properties::apply(AVCodecContext *cc) const
 	cc->codec_type = AVMEDIA_TYPE_SUBTITLE;
 	cc->time_base = time_base;
 	cc->subtitle_header = (uint8_t*) subtitle_header;
+	cc->subtitle_header_size = strlen((const char*)cc->subtitle_header);
 }
 
