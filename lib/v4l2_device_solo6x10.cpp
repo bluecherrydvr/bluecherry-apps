@@ -298,9 +298,9 @@ int v4l2_device_solo6x10::read_packet()
 
         _subs_enabled = true;//debug
         if (subtitles_enabled() && has_new_subs() && next_packet_seq > 0) {
-                re = subs_source.write_packet(timestamped_sub().c_str());
+                ret = subs_source.write_packet(timestamped_sub().c_str());
 
-                if (re < 0)
+                if (ret < 0)
                         return -1;
 
                 current_packet = subs_source.packet();
