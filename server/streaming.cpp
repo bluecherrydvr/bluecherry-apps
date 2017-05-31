@@ -93,10 +93,24 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 		bc_rec->bc->input->properties()->audio.apply(st->codec);
 	else if (type == AVMEDIA_TYPE_SUBTITLE) {
 		//bc_rec->bc->input->properties()->subs.apply(st->codec);
-		bc_rec->bc->input->properties()->video.apply(st->codec);
-		st->codec->width = 240;
-		st->codec->height = 960;
-	}
+		//bc_rec->bc->input->properties()->audio.apply(st->codec);
+		//st->codec->width = 240;
+		//st->codec->height = 960;
+		/* setup fake audio stream that carries subtitles in payload */
+		st->codec->codec_id = AV_CODEC_ID_AAC;
+		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
+		st->codec->bit_rate = 0;
+		st->codec->sample_rate = 48000;
+		st->codec->sample_fmt = AV_SAMPLE_FMT_FLTP;
+		st->codec->channels = 1;
+		st->codec->time_base = (AVRational){1, 48000};
+		st->codec->profile = 1;
+		st->codec->bits_per_coded_sample = 0;
+		st->codec->extradata_size = 2;
+		st->codec->extradata = (uint8_t*)av_malloc(2 + FF_INPUT_BUFFER_PADDING_SIZE);;//"\021\210"
+		memcpy(st->codec->extradata, "\021\210", 2);
+
+        }
 
 	st->codec->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
