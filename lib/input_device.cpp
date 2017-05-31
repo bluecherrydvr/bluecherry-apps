@@ -37,6 +37,22 @@ bool input_device::has_new_subs()
 	return false;
 }
 
+std::string input_device::timestamped_sub()
+{
+	time_t t;
+        struct tm tm;
+	char timebuf[64];
+
+	tzset();
+
+	t = time(NULL);
+	//subs_ts = t;
+
+	strftime(timebuf, sizeof(timebuf), " %F %T", localtime_r(&t, &tm));
+
+	return _subs_text + std::string(timebuf);
+}
+
 stream_packet::stream_packet()
 	: size(0), flags(NoFlags), pts(AV_NOPTS_VALUE), dts(AV_NOPTS_VALUE), type(-1), ts_clock(0), ts_monotonic(0),
 	  seq(0), d(0)
