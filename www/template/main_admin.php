@@ -116,16 +116,10 @@
                         <li>
                             <a href="/playback"><i class="fa fa-play fa-fw"></i> <?php echo MMENU_PLAYBACK; ?></a>
                         </li>
-                        <li>
-                            <a href="javascript:void(0);" class='downloadClient'><i class="fa fa-download fa-fw"></i> <?php echo MMENU_CLIENT_DOWNLOAD; ?></a>
-                        </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
 
-                        <li>
-                            <a href="/news" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?></a>
-                        </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>
