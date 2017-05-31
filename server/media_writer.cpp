@@ -96,7 +96,10 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 void media_writer::close()
 {
-	video_st = audio_st = NULL;
+	if (subs_st)
+		subs_st->codec->subtitle_header = NULL;
+
+	video_st = audio_st = subs_st = NULL;
 
 	if (oc) {
 		if (oc->pb)
