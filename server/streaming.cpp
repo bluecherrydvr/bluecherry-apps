@@ -238,6 +238,8 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	bc_rec->cur_stream_index = ctx_index;
 	bc_rec->pkt_first_chunk = true;
 
+	bc_rec->log.log(Info, "streaming packet with flags set to %x", pkt.flags);
+	//write_packet:
 	re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
@@ -252,6 +254,21 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		stop_handle_properly(bc_rec);
 		return -1;
 	}
+
+	if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag)) {//send motion event to client
+                if (bc_rec->stream_ctx[2])
+                        ctx_index = 2;
+                else
+                        ctx_index = 1;
+
+		opkt.size = 1;
+		opkt.pts = AV_NOPTS_VALUE;
+		opkt.dts = AV_NOPTS_VALUE;
+		bc_rec->log.log(Info, "sending motion popup trigger packet");
+		//goto write_packet;
+		av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
+	}
+
 	return 1;
 }
 
