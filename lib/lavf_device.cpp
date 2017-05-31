@@ -60,7 +60,7 @@ void lavf_device::stop()
 	avformat_close_input(&ctx);
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
-    subs_source.stop();
+	subs_source.stop();
 }
 
 int lavf_device::start()
@@ -162,7 +162,7 @@ int lavf_device::start()
 	}
 
 	update_properties();
-    subs_source.start();
+	subs_source.start(current_properties);
 	_started = true;
 
 	return 0;
@@ -183,16 +183,18 @@ int lavf_device::read_packet()
 		strcpy(error_message, "No active session");
 		return -1;
 	}
-    /*get subtitle packet first*/
-    if (subtitles_enabled() && has_new_subs()) {
-		re = subs_source.write_packet(_subs_text.c_str());
+	/*get subtitle packet first*/
+	_subs_enabled = true;//debug
+	//_subs_text = "subtitle test";//debug
+	if (subtitles_enabled() && has_new_subs() && next_packet_seq > 0) {
+		re = subs_source.write_packet(timestamped_sub().c_str());
 
 		if (re < 0)
 			return -1;
 
 		current_packet = subs_source.packet();
 		return 0;
-    }
+	}
 
 	av_free_packet(&frame);
 	re = av_read_frame(ctx, &frame);
@@ -264,6 +266,9 @@ void lavf_device::update_properties()
 		if (ic->extradata && ic->extradata_size)
 			p->audio.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}
+
+	//p->subs.codec_id = AV_CODEC_ID_TEXT;
+	//p->subs.time_base = (AVRational){1, 1};
 
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
