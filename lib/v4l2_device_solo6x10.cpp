@@ -266,6 +266,7 @@ int v4l2_device_solo6x10::start()
 
 	_started = true;
 	update_properties();
+	subs_source.start(current_properties);
 	return 0;
 
 fail:
@@ -293,6 +294,18 @@ int v4l2_device_solo6x10::read_packet()
 	char err[100] = "";
 	struct v4l2_event ev = {0, };
 	int fcntl_flags = fcntl(dev_fd, F_GETFL);
+
+
+        _subs_enabled = true;//debug
+        if (subtitles_enabled() && has_new_subs() && next_packet_seq > 0) {
+                re = subs_source.write_packet(timestamped_sub().c_str());
+
+                if (re < 0)
+                        return -1;
+
+                current_packet = subs_source.packet();
+                return 0;
+        }
 
 	ret = av_read_frame(demuxer, &pkt);
 	if (ret) {

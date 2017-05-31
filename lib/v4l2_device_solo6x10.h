@@ -21,7 +21,7 @@ public:
 	virtual const stream_packet &packet() const { return current_packet; }
 
 	virtual bool has_audio() const { return 0; }
-	virtual bool has_subtitles() const { return false; }
+	virtual bool has_subtitles() const { return true; }
 
 	virtual int caps() const { return cam_caps; }
 
@@ -49,6 +49,7 @@ private:
 	int			dev_id;
 	int			got_vop;
 	stream_packet           current_packet;
+	subtitle_source subs_source;
 
 	void update_properties();
 	void create_stream_packet(AVPacket *src);
