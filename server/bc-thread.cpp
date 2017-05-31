@@ -407,6 +407,8 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
 
 
+	bc->input->set_subtitles_text(bc_rec->cfg.name);
+
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
 			   bc_rec) != 0) {

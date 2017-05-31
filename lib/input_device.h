@@ -121,6 +121,7 @@ protected:
 	void set_error_message(const std::string &msg) { _error_message = msg; }
 
 	bool has_new_subs();
+	std::string timestamped_sub();
 
 };
 
