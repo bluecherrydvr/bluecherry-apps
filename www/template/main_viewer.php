@@ -51,7 +51,7 @@
         <div id='profilePage' <?php echo (($current_user->info['access_setup']) ? 'style="display: none;"' : ''); ?>>Profile</div>
 		<?php if ($current_user->info['access_setup']) { echo "<div id='backToAdmin'>".BACK_TO_ADMIN."</div>"; }; ?>
 		<div id="playbackPage">
-			Playback
+			<?php echo MMENU_PLAYBACK;?>
 		</div>
 		<div id='layoutsControl'>
 			<?php echo LAYOUTS;?>

@@ -1,6 +1,6 @@
 <div class="row">
     <div class="col-lg-12">
-        <h1 class="page-header">Playback</h1>
+        <h1 class="page-header"><?php echo MMENU_PLAYBACK; ?></h1>
     </div>
 </div>
 
