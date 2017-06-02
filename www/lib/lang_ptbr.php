@@ -277,7 +277,7 @@ define('AVAILABLE_DEVICES', 'Fontes de Video Disponiveis:');
 define('LAYOUT_CONTROL', 'Selecionar Layout:');
 define('NONE_SELECTED', 'Nenhum Selecionado');
 define('CLEAR_LAYOUT', 'Limpar Layout');
-define('BACK_TO_ADMIN', 'Retornar ao Painel Administrativo');
+define('BACK_TO_ADMIN', 'Retornar Menu ADM');
 
 define('NO_NEWS', 'Nao ha Noticias no Momento.');
 
