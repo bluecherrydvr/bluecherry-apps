@@ -545,6 +545,16 @@ define('DW_F', 'Friday');
 define('DW_S', 'Saturday');
 define('DW_U', 'Sunday');
 
+#date/time related strings
+define('DT_TODAY', 'Today');
+define('DT_YESTERDAY', 'Yesterday');
+define('DT_THISWEEK', 'This Week');
+define('DT_LASTWEEK', 'Last Week');
+define('DT_QUICKDATE', 'Quick Date');
+define('DT_DAYS', 'days');
+define('DT_HOURS', 'hours');
+define('DT_MINUTES', 'minutes');
+
 #backup/restore
 define('BACKUP_HEADER', 'Backup and restore your database');
 define('BACKUP_R_CONF', 'Restoring your database will permanently remove all current data. We sttongly suggest performing current backup before using restore.');
