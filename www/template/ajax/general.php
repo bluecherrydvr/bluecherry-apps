@@ -73,36 +73,6 @@
 
         <div class="panel-body">
 
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_DISABLE_VERSION_CHECK; ?><p class='help-block'><small><?php echo G_DISABLE_VERSION_CHECK_EX; ?></small></p></label>
-
-            <div class="col-lg-6 form-control-static">
-                <input class="" type='checkbox' name='G_DISABLE_VERSION_CHECK' <?php echo (($global_settings->data['G_DISABLE_VERSION_CHECK']==0) ? 'checked' : ''); ?>>
-            </div>
-        </div>
-
-
-    	<div class="form-group">
-            <label class="col-lg-4 control-label">
-                <?php echo G_DATA_SOURCE ?>
-            </label>
-
-            <div class="col-lg-6">
-                <div class="btn-group" data-toggle="buttons">
-                    <label class="btn btn-default <?php echo $global_settings->data['G_DATA_SOURCE'] != 'live' ? 'active' : '' ?> ">
-                        <input type="radio" name="G_DATA_SOURCE" value="local" style="width: 30px;"
-                           <?php echo $global_settings->data['G_DATA_SOURCE'] != 'live' ? ' checked="checked"' : '' ?> /> 
-                        <?php echo G_DATA_SOURCE_LOCAL ?>
-                    </label>
-
-                    <label class="btn btn-default <?php echo $global_settings->data['G_DATA_SOURCE'] == 'live' ? 'active' : '' ?> ">
-                        <input type="radio" name="G_DATA_SOURCE" value="live"  style="width: 30px;"
-                           <?php echo $global_settings->data['G_DATA_SOURCE'] == 'live' ? ' checked="checked"' : '' ?> /> 
-                        <?php echo G_DATA_SOURCE_LIVE ?>
-                    </label>
-                </div>
-            </div>
-        </div>
         
         <div class="form-group">
             <label class="col-lg-4 control-label"><?php echo G_DISABLE_IP_C_CHECK; ?><p class='help-block'><small><?php echo G_DISABLE_IP_C_CHECK_EX; ?></small></p></label>
