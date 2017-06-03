@@ -79,7 +79,7 @@
 
                 <div class="row">
                     <div class="col-md-12">
-                        <button class="btn btn-success btn-block send-req-form" type="submit" data-type-data="HTML" data-func-after="playbackSetResult">Get</button>
+                        <button class="btn btn-success btn-block send-req-form" type="submit" data-type-data="HTML" data-func-after="playbackSetResult"><?php echo LANG_GET; ?></button>
                     </div>
                 </div>
 

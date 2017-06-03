@@ -49,6 +49,7 @@ define('DSCED_MSG', 'You can not use web interface at this time. If this is a mi
 #die (fatal) messages
 define('LANG_DIE_COULDNOTCONNECT', 'Fatal error: could not connect to the database: ');
 define('LANG_DIE_COULDNOTOPENCONF', 'Fatal error: could not read configuration file.');
+define('LANG_GET', 'Get');
 
 #general
 define('BB_MAP_ARROW', '>');
