@@ -248,7 +248,7 @@ define('DEVICE_ENCODING_UPDATED', '<![CDATA[A definicao padrao de video foi alte
 define('DB_FAIL_TRY_LATER', 'Nao foi possivel aplicar as alteracoes. Certifique-se de que consegue conectar ao servidor DVR e que o servidor esta com a aplicacao em funcionamento.');
 
 define('MMAP_HEADER', 'Configuracoes de Deteccao de Movimento');
-define('MMAP_SELECTOR_TITLE', 'Use estes Selectores para Escolher o Nivel de Sensibilidade para Preencher a Grelha Abaixo');
+define('MMAP_SELECTOR_TITLE', 'Selecionar Nivel de Sensibilidade');
 define('BUFFER_TITLE', 'Escolha Quantos Segundos para Gravar Antes e Depois dos Eventos de Movimento');
 define('PRE_REC_BUFFER', 'Pre-Evento');
 define('POST_REC_BUFFER', 'Pos-Evento');

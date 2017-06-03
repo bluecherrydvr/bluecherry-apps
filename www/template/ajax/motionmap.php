@@ -154,8 +154,8 @@
 
                     <div class="form-group">
                         <div class="col-lg-12 col-md-12">
-                            <button type="button" class="btn btn-default click-event" data-class="motionGrid.clearAll()">Clear All</button>
-                            <button type="button" class="btn btn-grey click-event" data-class="motionGrid.fillAll()">Fill All</button>
+                            <button type="button" class="btn btn-default click-event" data-class="motionGrid.clearAll()">Vazio</button>
+                            <button type="button" class="btn btn-grey click-event" data-class="motionGrid.fillAll()">Cheio</button>
                         </div>
                     </div>
 
