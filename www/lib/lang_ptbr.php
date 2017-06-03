@@ -50,6 +50,9 @@ define('DSCED_MSG', 'Nao pode usar a Interface Web, contate o administrador do s
 define('LANG_DIE_COULDNOTCONNECT', 'Erro Fatal: nao pode conectar ao banco de dados: ');
 define('LANG_DIE_COULDNOTOPENCONF', 'Erro Fatal: nao pode ler arquivos de configuracao.');
 define('LANG_GET', 'Buscar');
+define('LANG_FINDCAMERAS', 'Procurar Cameras');
+define('LANG_ADDSELECTEDCAMERAS', 'Adicionar Cameras');
+
 
 #general
 define('BB_MAP_ARROW', '>');
@@ -139,12 +142,13 @@ define('USERS_TABLE_HEADER_STATUS', 'Status');
 define('USERS_LIST', 'Usuarios do DVR');
 
 define('DELETE_USER', 'Deletar Usuario');
+define('USERS_EDITACCESSLIST', ' Editar Acesso');
 define('DELETE_USER_SELF', 'Voce Nao Pode Remover seu Proprio Registro de Usuario');
 define('USER_DELETED_OK', 'Registro do Usuario Excluido com Exito');
 
 define('USERS_NEW', 'Criar Novo Usuario');
 define('USERS_NAME', 'Nome');
-define('USERS_NAME_EX', 'Usuarios Nome completo');
+define('USERS_NAME_EX', 'Nome completo');
 define('USERS_LOGIN', 'Login');
 define('USERS_LOGIN_EX', 'Login');
 define('USERS_PASSWORD', 'Senha');
@@ -157,7 +161,7 @@ define('USERS_PHONE_EX', 'Telefone #');
 define('USERS_ACCESS_SETUP', 'Accesso Administrador');
 define('USERS_ACCESS_SETUP_EX', 'Privilegios Administrativos');
 define('USERS_ACCESS_REMOTE', 'Acesso Remoto');
-define('USERS_ACCESS_REMOTE_EX', 'Acesso Remoto Client');
+define('USERS_ACCESS_REMOTE_EX', 'Acesso Cliente Remoto');
 define('USERS_ACCESS_WEB', 'Acesso WEB');
 define('USERS_ACCESS_WEB_EX', 'Acesso Visualizador WEB');
 define('USERS_ACCESS_BACKUP', 'Arquivo de Video');
@@ -325,7 +329,7 @@ define('AC_ACCESS', '');
 define('CLICK_HERE_TO_UPDATE', '[SIM]');
 
 define('AIP_HEADER', 'Adicionar Camera IP');
-define('DISCOVER_IP_CAMERAS', 'Descobrir Cameras IP');
+define('DISCOVER_IP_CAMERAS', 'Localizar cameras IP');
 define('AIP_NEW_LIST_AVAILABLE', 'Uma Versao Mais Recente da Nossa Lista de Cameras Suportadas esta Disponivel. Gostaria de Atualizar Para esta Versao?');
 define('AIP_LIST_UPDATED_SUCCESSFULLY', 'Atualizacoes da Lista de Cameras.');
 define('AIP_NEW_LIST_AVAIL', 'Novas Cameras IP estao Disponiveis.');
@@ -626,7 +630,7 @@ define('PLAYBACK_FILE_NOT_FOUND', 'MKV Arquivo Nao Foi Encontrado.');
 
 #auditlog
 define('AUDITLOG_HEADER', 'Log de auditoria');
-define('AUDITLOG_DATETIME', 'Eventos');
+define('AUDITLOG_DATETIME', 'Data');
 define('AUDITLOG_USER', 'Usuário');
 define('AUDITLOG_EVENTTYPE', 'Eventos');
 define('AUDITLOG_DEVICE', 'Dispositivo');
