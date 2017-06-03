@@ -242,6 +242,8 @@ define('VA_COMPRESSION_LOW', 'Baixo');
 define('VA_COMPRESSION_MEDIUM', 'Medio');
 define('VA_COMPRESSION_HIGH', 'Alto');
 
+define('SUB_ENABLE', 'Ativar Legendas');
+
 define('DEVICE_ENCODING_UPDATED', '<![CDATA[A definicao padrao de video foi alterada. <hr /> <b>Para que a alteracao tenha efeito, voce precisa reiniciar o servidor.</b><br> Se estiver a mudar de NTSC para PALM, siga as instrucoes no <a href="http://help.rclindustria.com/spaces/manuals/manuals/version2/lessons/22732-Enabling-video-ports">esta pagina</a>]]>');
 define('DB_FAIL_TRY_LATER', 'Nao foi possivel aplicar as alteracoes. Certifique-se de que consegue conectar ao servidor DVR e que o servidor esta com a aplicacao em funcionamento.');
 
