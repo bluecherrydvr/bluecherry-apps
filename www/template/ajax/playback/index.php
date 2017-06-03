@@ -35,13 +35,13 @@
 
                     <div class="col-lg-4 col-md-4">
                         <div class="form-group">
-                            <label>Quick Date</label>
+                            <label><?php echo DT_QUICKDATE; ?></label>
                             <div>
                                 <select name="quick_date" class="form-control change-event" data-function="playbackSetDate">
-                                    <option value="today">Today</option>
-                                    <option value="yesterday">Yesterday</option>
-                                    <option value="this_week">This Week</option>
-                                    <option value="last_week">Last Week</option>
+                                    <option value="today"><?php echo DT_TODAY; ?></option>
+                                    <option value="yesterday"><?php echo DT_YESTERDAY; ?></option>
+                                    <option value="this_week"><?php echo DT_THISWEEK; ?></option>
+                                    <option value="last_week"><?php echo DT_LASTWEEK; ?></option>
                                 </select>
                             </div>
                         </div>

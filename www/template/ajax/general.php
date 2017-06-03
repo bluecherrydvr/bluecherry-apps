@@ -57,7 +57,7 @@
                 <div class="input-group">
 
                     <input class="form-control" type='text' name='G_MAX_RECORD_AGE' value='<?php if (isset($global_settings->data['G_MAX_RECORD_AGE'])) { echo $global_settings->data['G_MAX_RECORD_AGE'] / (60 * 60 * 24); } ?>' />
-                    <span class="input-group-addon">days</span>
+                    <span class="input-group-addon"><?php echo DT_DAYS; ?></span>
                 </div>
 
             </div>

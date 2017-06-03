@@ -50,7 +50,7 @@
                 </td>
             </tr>
             <tr class="table-storage-tr-info">
-                <td colspan="5">Storage Estimation: <?php echo $days; ?> days <?php echo $hours; ?> hours and <?php echo $minutues; ?> minutues</td>
+		<td colspan="5">Storage Estimation: <?php echo $days." ".DT_DAYS." ".$hours." ".DT_HOURS." ".$minutues." ".DT_MINUTES; ?></td>
             </tr>
 
             <?php } ?>
