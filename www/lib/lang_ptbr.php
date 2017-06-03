@@ -256,6 +256,9 @@ define('MOTION_ALGORITHM_TITLE', 'Algoritmo de Deteccao de Movimento');
 define('MOTION_ALGORITHM', 'Algoritmo ');
 define('MOTION_DEFAULT', 'Padrao');
 define('MOTION_EXPERIMENTAL', 'Experimental');
+define('MOTION_FRAMEDOWNSCALEFACTOR', 'Escala de Frame');
+define('MOTION_MINMOTIONAREA', 'Area Minima Movimento %:');
+
 
 define('SCHED_HEADER','Agendamento de Gravacao');
 define('ALRMSCHED_HEADER', 'Programação de alarmes');
