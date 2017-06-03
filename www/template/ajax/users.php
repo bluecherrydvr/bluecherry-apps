@@ -79,7 +79,7 @@
                 <button type="submit" class="btn btn-danger send-req-form" data-redirect="/users" data-confirm="Delete this user (ID: <?php echo $dvr_users->data[0]['id'];?>)?"><i class="fa fa-times fa-fw"></i><?php echo DELETE_USER; ?></button>
             </form>
 
-            <a href="/cameraperms?id=<?php echo $dvr_users->data[0]['id'];?> " class="btn btn-primary pull-left ajax-content"><i class="fa fa-video-camera fa-fw"></i> Edit access list</a>
+            <a href="/cameraperms?id=<?php echo $dvr_users->data[0]['id'];?> " class="btn btn-primary pull-left ajax-content"><i class="fa fa-video-camera fa-fw"></i><?php echo USERS_EDITACCESSLIST; ?></a>
 
         <?php } ?>
 

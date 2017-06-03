@@ -46,8 +46,8 @@
 <div class="row">
     <div class="col-lg-12">
         <form action="/discover-cameras" method="post" class="form-horizontal" style="display: inline;">
-            <button type="submit" class="btn btn-success send-req-form" data-func-after="discoverCamerasFind" data-func="discoverCamerasClearList">Find cameras</button>
+            <button type="submit" class="btn btn-success send-req-form" data-func-after="discoverCamerasFind" data-func="discoverCamerasClearList"><?php echo LANG_FINDCAMERAS; ?></button>
         </form>
-        <button type="button" class="btn btn-primary send-req-form" data-form-id="discover-cameras-list" data-func-after="discoverCamerasAdded">Add selected cameras</button>
+        <button type="button" class="btn btn-primary send-req-form" data-form-id="discover-cameras-list" data-func-after="discoverCamerasAdded"><?php echo LANG_ADDSELECTEDCAMERAS; ?></button>
     </div>
 </div>

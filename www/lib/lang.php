@@ -50,6 +50,8 @@ define('DSCED_MSG', 'You can not use web interface at this time. If this is a mi
 define('LANG_DIE_COULDNOTCONNECT', 'Fatal error: could not connect to the database: ');
 define('LANG_DIE_COULDNOTOPENCONF', 'Fatal error: could not read configuration file.');
 define('LANG_GET', 'Get');
+define('LANG_FINDCAMERAS', 'Find cameras');
+define('LANG_ADDSELECTEDCAMERAS', 'Add selected cameras');
 
 #general
 define('BB_MAP_ARROW', '>');
@@ -140,6 +142,7 @@ define('USERS_TABLE_HEADER_STATUS', 'Status');
 define('USERS_LIST', 'DVR users');
 
 define('DELETE_USER', 'Delete user');
+define('USERS_EDITACCESSLIST', ' Edit access list');
 define('DELETE_USER_SELF', 'You can not remove your own user record');
 define('USER_DELETED_OK', 'User record successfully deleted');
 
