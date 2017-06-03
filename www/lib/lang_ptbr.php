@@ -416,6 +416,7 @@ define('MJPEG_DISABLED', 'Este Dispositivo foi Desativado.');
 define('MJPEG_DEVICE_NOT_FOUND', 'Dispositivo com ID %ID% Nao foi Encontrado.');
 define('MJPEG_NO_PERMISSION', 'Voce Nao tem Permissao para Acessar a Camera ID %ID%.');
 #storage 
+define('STORAGE_ESTIMATION', 'Estimativa de Armazenamento');
 define('STRAGE_HEADER', 'Gerenciar Locais de Armazenamento');
 define('ADD_LOCATION', 'Adicionar Localizacao');
 define('LOCATION', 'Pasta:');
