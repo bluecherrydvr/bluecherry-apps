@@ -49,6 +49,7 @@ define('DSCED_MSG', 'Nao pode usar a Interface Web, contate o administrador do s
 #die (fatal) messages
 define('LANG_DIE_COULDNOTCONNECT', 'Erro Fatal: nao pode conectar ao banco de dados: ');
 define('LANG_DIE_COULDNOTOPENCONF', 'Erro Fatal: nao pode ler arquivos de configuracao.');
+define('LANG_GET', 'Buscar');
 
 #general
 define('BB_MAP_ARROW', '>');
