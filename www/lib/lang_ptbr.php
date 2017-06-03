@@ -541,6 +541,16 @@ define('DW_F', 'Sexta');
 define('DW_S', 'Sabado');
 define('DW_U', 'Domingo');
 
+#date/time related strings
+define('DT_TODAY', 'Hoje');
+define('DT_YESTERDAY', 'Ontem');
+define('DT_THISWEEK', 'Esta Semana');
+define('DT_LASTWEEK', 'Ultima Semana');
+define('DT_QUICKDATE', 'Busca Rapida');
+define('DT_DAYS', 'dias');
+define('DT_HOURS', 'horas');
+define('DT_MINUTES', 'minutos');
+
 #backup/restore
 define('BACKUP_HEADER', 'Faca Backup e Restaure seu Banco de Dados');
 define('BACKUP_R_CONF', 'Restaurar o Banco de Dados ira Remover Permanentemente Todos os Dados Atuais.
