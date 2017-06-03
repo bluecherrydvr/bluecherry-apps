@@ -256,6 +256,8 @@ define('MOTION_ALGORITHM_TITLE', 'Motion detection algorithm');
 define('MOTION_ALGORITHM', 'Algorithm');
 define('MOTION_DEFAULT', 'Default');
 define('MOTION_EXPERIMENTAL', 'Experimental');
+define('MOTION_FRAMEDOWNSCALEFACTOR', 'Frame downscale factor');
+define('MOTION_MINMOTIONAREA', 'Min. motion area %:');
 
 define('SCHED_HEADER','Device recording schedule');
 define('ALRMSCHED_HEADER', 'Alarms recording schedule');
