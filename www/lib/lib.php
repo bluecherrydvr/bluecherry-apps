@@ -26,7 +26,7 @@ require_once('bc_license_wrapper.php');
 
 if (empty($nload)){
 	include("lang_ptbr.php");
-	include("var.php");
+	include("var_ptbr.php");
 	include("upgrade.php");
 }
 
