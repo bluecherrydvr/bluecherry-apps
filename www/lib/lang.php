@@ -267,7 +267,7 @@ define('SCHED_CONT', 'Continuous');
 define('SCHED_MOTION', 'Motion');
 define('SCHED_SENSOR', 'Sensor');
 define('SCHED_TRIGGER', 'Trigger');
-define('SCHED_FILLALL', 'Fill');
+define('SCHED_FILLALL', 'Fill All');
 
 
 define('ALL_DEVICES', 'All devices');

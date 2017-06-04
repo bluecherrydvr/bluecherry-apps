@@ -51,10 +51,10 @@
                 
                             <div class="form-group motion-sens-bl">
                                 <div class="col-lg-2 col-md-3">
-                                    <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()">Off</button>
+                                    <button type="button" class="btn btn-default btn-block motion-btn-sens click-event disabled" data-class="motionGrid.off()"><?php echo SCHED_OFF; ?></button>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
-                                    <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()">Alarm</button>
+                                    <button type="button" class="btn btn-danger btn-block motion-btn-sens click-event disabled" data-class="motionGrid.veryHigh()"><?php echo SCHED_SENSOR; ?></button>
                                 </div>
                             </div>
 
@@ -65,7 +65,7 @@
 
                             <div class="form-group">
                                 <div class="col-lg-12 col-md-12">
-                                    <button type="button" class="btn btn-grey click-event" data-class="motionGrid.setSchedule().fillAll()">Fill All</button>
+                                    <button type="button" class="btn btn-grey click-event" data-class="motionGrid.setSchedule().fillAll()"><?php echo SCHED_FILLALL; ?></button>
                                 </div>
                             </div>
     

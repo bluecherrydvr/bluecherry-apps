@@ -263,12 +263,12 @@ define('MOTION_MINMOTIONAREA', 'Area Minima Movimento %:');
 define('SCHED_HEADER','Agendamento de Gravacao');
 define('ALRMSCHED_HEADER', 'Programação de alarmes');
 define('SCHED_SELECTOR_TITLE', 'Use esses Seletores para Preencher o Cronograma Abaixo');
-define('SCHED_OFF', 'Fora');
+define('SCHED_OFF', 'Desligado');
 define('SCHED_CONT', 'Continuo');
 define('SCHED_MOTION', 'Movimento');
-define('SCHED_SENSOR', 'Sensor');
+define('SCHED_SENSOR', 'Alarme');
 define('SCHED_TRIGGER', 'Evento');
-define('SCHED_FILLALL', 'Fill');
+define('SCHED_FILLALL', 'Cheio');
 
 
 define('ALL_DEVICES', 'Todos os Dispositivos');
