@@ -41,7 +41,7 @@ class Route
         //$url = strtolower($url);
         if (empty($url)) {
             //$url = 'news';
-            $uri['path'] = '/news';
+            $uri['path'] = '/general';
         } else {
             if (preg_match('/ajax\/(.*)\.php/', $url, $matches)) {
                 $old_ajax_url = true;
