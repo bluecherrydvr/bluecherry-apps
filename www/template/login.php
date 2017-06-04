@@ -46,16 +46,16 @@
         <div class="row">
             <div class="col-md-4 col-md-offset-4">
                 <div class="panel panel-default">
-                    <div class="panel-heading">Please Sign In
+                    <div class="panel-heading"><?php echo LOGIN_PLEASE; ?>
                     </div>
                     <div class="panel-body">
                         <form role="form" method="post" action="/login">
                             <fieldset>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Username" name="login" autofocus>
+                                    <input class="form-control" placeholder="<?php echo LOGIN_LOGIN; ?>" name="login" autofocus>
                                 </div>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Password" name="password" type="password" value="">
+                                    <input class="form-control" placeholder="<?php echo LOGIN_PASSWORD; ?>" name="password" type="password" value="">
                                 </div>
                                 <!-- Change this to a button or input when using this as a form -->
                                 <div class="form-group">
