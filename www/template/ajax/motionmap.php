@@ -98,7 +98,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Min. motion area %:'; ?></label>
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo MOTION_MINMOTIONAREA; ?></label>
 
                     <div class="col-lg-6 col-md-6">
                         <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] == 0 ? ' disabled' : ''; ?>" data-name="min_motion_area" data-min="1" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
