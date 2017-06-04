@@ -75,7 +75,7 @@
                             <div class="panel-body">
                                 <div class="row">
                                     <div class="col-lg-6 col-md-6">
-                                        Encoding: <?php echo (($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | 
+                                        Padrao: <?php echo (($card->info['encoding']=='notconfigured') ? '<b>'.SIGNAL_TYPE_NOT_CONFD."</b> | 
                                             <form action='/ajax/update.php' method='POST' style='display: inline-block'>
                                                 <input type='hidden' name='mode' value='enableAll'>
                                                 <input type='hidden' name='type' value='Devices'>
@@ -93,7 +93,7 @@
                                     </div>
                                     <?php if ($card->info['driver'] != 'tw5864') { ?>
                                     <div class="col-lg-6 col-md-6">
-                                       <a href="/gpio">GPIO</a> Unused capacity: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
+                                       <a href="/gpio">GPIO</a> Frames Restantes: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
                                     </div>
                                     <?php } ?>
                                 </div>
