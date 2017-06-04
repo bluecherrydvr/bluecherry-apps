@@ -840,7 +840,7 @@ class ipCamera{
 		} while ((!$device_delete_ret) && ($attempts > 0));
 
 		if ($device_delete_ret)
-			auditLogger::writeEvent(AUDIT_DEVDELETED_ID, $_SESSION['id'], $id, $_SERVER['REMOTE_ADDR']);
+			auditLogger::writeEvent(AUDIT_DEVDELETED_ID, $_SESSION['id'], 'NULL', $_SERVER['REMOTE_ADDR']);
 
 		return $device_delete_ret;
 	}
