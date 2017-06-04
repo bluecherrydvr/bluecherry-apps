@@ -641,4 +641,10 @@ define('AUDITLOG_EVENTTYPE', 'Event Type');
 define('AUDITLOG_DEVICE', 'Device');
 define('AUDITLOG_IP', 'IP Address');
 
+#changepassword
+define('CHANGEPWD_PLEASE', 'Please Enter New Password');
+define('CHANGEPWD_NEWPWD', 'New Password');
+define('CHANGEPWD_CONFIRM', 'Confirm New Password');
+define('CHANGEPWD_CHANGE', 'Change Password');
+
 ?>

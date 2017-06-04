@@ -46,20 +46,20 @@
         <div class="row">
             <div class="col-md-4 col-md-offset-4">
                 <div class="panel panel-default">
-                    <div class="panel-heading">Please Enter New Password
+                    <div class="panel-heading"><?php echo CHANGEPWD_PLEASE; ?>
                     </div>
                     <div class="panel-body">
                         <form role="form" method="post" action="/changepwd">
                             <fieldset>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Password" name="password" type="password" value="">
+                                    <input class="form-control" placeholder="<?php echo CHANGEPWD_NEWPWD; ?>" name="password" type="password" value="">
                                 </div>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Confirm New Password" name="confirm_password" type="password" value="">
+                                    <input class="form-control" placeholder="<?php echo CHANGEPWD_CONFIRM; ?>" name="confirm_password" type="password" value="">
                                 </div>
                                 <!-- Change this to a button or input when using this as a form -->
                                 <div class="form-group">
-                                    <button type="submit" class="btn btn-lg btn-success btn-block send-req-form">Change Password</button>
+                                    <button type="submit" class="btn btn-lg btn-success btn-block send-req-form"><?php echo CHANGEPWD_CHANGE; ?></button>
                                 </div>
 
                                 <div class="form-group">
