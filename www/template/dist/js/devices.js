@@ -109,7 +109,7 @@ var motionGrid = function(el) {
     var motion_map = null;
     var color_array = { 'bg-default' : 0 , 'bg-success' : 1, 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 4, 'bg-danger' : 5};
     var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 'T', 'bg-danger' : 'C'};
-    var week_days = new Array('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
+    var week_days = new Array('', 'Domingo', 'Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta', 'Sabado');
 
     var getColorClass = function (symb) {
         var res = 'bg-default';
