@@ -647,4 +647,9 @@ define('CHANGEPWD_NEWPWD', 'Nova Senha');
 define('CHANGEPWD_CONFIRM', 'Confirmar Senha');
 define('CHANGEPWD_CHANGE', 'Alterar Senha');
 
+#login
+define('LOGIN_PLEASE', 'Faça o Login');
+define('LOGIN_PASSWORD', 'Senha');
+define('LOGIN_LOGIN', 'Usuario');
+
 ?>
