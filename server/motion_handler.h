@@ -56,6 +56,9 @@ public:
 	void destroy();
 	void run();
 
+	/*hack for IP cam popups*/
+	void set_triggered_ext_flag(int *flag) { ext_triggered_flag = flag; }
+
 private:
 	class raw_input_consumer *raw_stream;
 	stream_consumer *flag_stream;
@@ -65,6 +68,7 @@ private:
 
 	sliding_seq_window ssw_motion_analysis;
 	int motion_threshold_percentage;
+	int *ext_triggered_flag;
 };
 
 #endif

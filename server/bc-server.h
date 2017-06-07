@@ -82,6 +82,7 @@ public:
 	class recorder *rec;
 
 	int cur_pkt_flags;
+	int motion_flag;
 	int cur_stream_index;
 	bool pkt_first_chunk;
 

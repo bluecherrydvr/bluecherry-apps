@@ -230,6 +230,8 @@ void bc_record::run()
 					bc->input->set_motion(true);
 					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 				} else {
+					m_handler->set_triggered_ext_flag(&this->motion_flag);
+
 					m_processor = new motion_processor;
 					m_processor->set_logging_context(log);
 					update_motion_thresholds();
@@ -349,6 +351,8 @@ bc_record::bc_record(int i)
 	t_processor = 0;
 	m_handler = 0;
 	rec = 0;
+
+	motion_flag = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
