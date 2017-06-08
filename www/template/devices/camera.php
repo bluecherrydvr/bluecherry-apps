@@ -74,6 +74,7 @@
                                                     <label><small>Resolução:</small></label>
 						   <select class=' form-control'>
 							<option id=1>1280x960</option>
+							<option id=1>736x480</option>
 							<option id=2>640x480</option>
 						   </select>
                                                 </div>
