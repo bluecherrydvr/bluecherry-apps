@@ -13,7 +13,7 @@ public:
 };
 
 motion_handler::motion_handler()
-	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0), motion_threshold_percentage(66)
+	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0), motion_threshold_percentage(66), ext_triggered_flag(0)
 {
 	raw_stream = new raw_input_consumer;
 }
@@ -162,6 +162,9 @@ void motion_handler::run()
 
 		if (triggered)
 			last_motion = buffer.back().ts_monotonic;
+
+		if (triggered && ext_triggered_flag)
+			*ext_triggered_flag = 1;
 
 		if (!recording)
 			continue;
