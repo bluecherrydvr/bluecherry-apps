@@ -245,7 +245,7 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 }
 
 stream_properties::subtitle_properties::subtitle_properties()
-	: codec_id(AV_CODEC_ID_TEXT), time_base({ 1, 1})
+	: codec_id(AV_CODEC_ID_TEXT), time_base({ 1, 1000})
 {
 	subtitle_header = 
              "[Script Info]\r\n"

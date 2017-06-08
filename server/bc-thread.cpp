@@ -353,6 +353,7 @@ bc_record::bc_record(int i)
 	rec = 0;
 
 	motion_flag = 0;
+	last_sub_pts = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)

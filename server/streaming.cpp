@@ -218,6 +218,9 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 			ctx_index = 1;
 		break;
 
+		/* Makes subtitle packets pass in keyframe-only mode */
+		pkt.flags |= stream_packet::KeyframeFlag;
+
 	default:
 		return 0;
 	}
@@ -238,7 +241,11 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	bc_rec->cur_stream_index = ctx_index;
 	bc_rec->pkt_first_chunk = true;
 
-	bc_rec->log.log(Info, "streaming packet with flags set to %x", pkt.flags);
+	bc_rec->log.log(Debug, "streaming packet for stream %d with flags set to %x dts = %" PRId64 ", pts = %" PRId64, ctx_index,  pkt.flags, opkt.dts, opkt.pts);
+
+	if (pkt.type == AVMEDIA_TYPE_SUBTITLE)
+		bc_rec->last_sub_pts = opkt.pts;
+
 	//write_packet:
 	re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
@@ -255,18 +262,23 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		return -1;
 	}
 
-	if (bc_rec->motion_flag || pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag)) {//send motion event to client
+	if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag || bc_rec->motion_flag)) {//send motion event to client
                 if (bc_rec->stream_ctx[2])
                         ctx_index = 2;
                 else
                         ctx_index = 1;
 
 		opkt.size = 1;
-		opkt.pts = AV_NOPTS_VALUE;
-		opkt.dts = AV_NOPTS_VALUE;
-		bc_rec->log.log(Info, "sending motion popup trigger packet");
+		opkt.pts = bc_rec->last_sub_pts + 1;
+		opkt.dts = bc_rec->last_sub_pts + 1;
+		bc_rec->log.log(Info, "sending motion popup trigger packet dts = %" PRId64 ", pts = %" PRId64, opkt.dts, opkt.pts);
 		//goto write_packet;
-		av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
+		re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
+		if (re < 0) {
+			char err[512] = { 0 };
+	                av_strerror(re, err, sizeof(err));
+			bc_rec->log.log(Error, "Can't write popup trigger packet to live stream: %s", err);
+		}
 		bc_rec->motion_flag = 0;
 	}
 

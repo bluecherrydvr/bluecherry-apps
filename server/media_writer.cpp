@@ -51,6 +51,9 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	if (!s)
 		return true;
 
+	if (pkt.type == AVMEDIA_TYPE_SUBTITLE)
+		bc_log(Debug, "subtitle packet dts = %" PRId64 ", pts = %" PRId64, pkt.dts, pkt.pts);
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
 	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
@@ -81,6 +84,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		last_video_dts = opkt.dts;
 	}
 
+
+	if (pkt.type == AVMEDIA_TYPE_SUBTITLE) {
+		opkt.pts = pkt.pts;
+		opkt.dts = pkt.dts;
+	}
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
 	re = av_interleaved_write_frame(oc, &opkt);

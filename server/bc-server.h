@@ -83,6 +83,7 @@ public:
 
 	int cur_pkt_flags;
 	int motion_flag;
+	int64_t last_sub_pts;
 	int cur_stream_index;
 	bool pkt_first_chunk;
 
