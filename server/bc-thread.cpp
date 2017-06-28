@@ -302,6 +302,8 @@ void bc_record::run()
 		packet = bc->input->packet();
 		bc->source->send(packet);
 
+		/* Reencode packet for live streaming here */
+
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this))
 			if (bc_streaming_packet_write(this, packet) == -1) {
