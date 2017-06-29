@@ -19,7 +19,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
 #wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
-Suggests: solo6010-dkms, monit, mail-transport-agent
+Suggests: monit, mail-transport-agent
 Breaks: solo6010-dkms (<< 2.4.7)
 Description: Bluecherry DVR Server
  This package contains the server components for the Bluecherry DVR system.
