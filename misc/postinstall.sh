@@ -279,6 +279,18 @@ case "$1" in
 
 		# End of DB management
 
+		# Clean up files created by solo6010-dkms
+		if [[ $IN_DEB ]]
+                then
+			if [[ -e /etc/modprobe.d/solo6x10.conf ]]
+			then
+				if [[ $(grep "blacklist solo6x10" /etc/modprobe.d/solo6x10.conf) ]]
+				then
+					rm /etc/modprobe.d/solo6x10.conf
+				fi
+			fi
+		fi
+
 		# Reenable our site in Apache
 		start_apache
 		;;
