@@ -100,7 +100,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 		st->codec->codec_id = AV_CODEC_ID_AAC;
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 		st->codec->bit_rate = 0;
-		st->codec->sample_rate = 48000;
+		st->codec->sample_rate = 48001;
 		st->codec->sample_fmt = AV_SAMPLE_FMT_FLTP;
 		st->codec->channels = 1;
 		st->codec->time_base = (AVRational){1, 48000};
