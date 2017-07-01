@@ -30,7 +30,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 int bc_streaming_setup(struct bc_record *bc_rec)
 {
 	int ret = 0;
-	int streams_num = 1;
+	int streams_num = 2;
 
 	if (bc_rec->stream_ctx[0]) {
 		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
@@ -38,9 +38,10 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	}
 
 	ret |= bc_streaming_setup_elementary(bc_rec, 0, AVMEDIA_TYPE_VIDEO);
+	ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_SUBTITLE);
 
 	if (bc_rec->bc->input->has_audio()) {
-		ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_AUDIO);
+		ret |= bc_streaming_setup_elementary(bc_rec, 2, AVMEDIA_TYPE_AUDIO);
         streams_num++;
     }
 
@@ -100,7 +101,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 		st->codec->codec_id = AV_CODEC_ID_AAC;
 		st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
 		st->codec->bit_rate = 0;
-		st->codec->sample_rate = 48001;
+		st->codec->sample_rate = (index == 1 ? 48002 : 48001);
 		st->codec->sample_fmt = AV_SAMPLE_FMT_FLTP;
 		st->codec->channels = 1;
 		st->codec->time_base = (AVRational){1, 48000};
@@ -166,7 +167,7 @@ error:
 
 void bc_streaming_destroy(struct bc_record *bc_rec)
 {
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		AVFormatContext *ctx = bc_rec->stream_ctx[i];
 
 		if (!ctx)
@@ -208,14 +209,14 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		break;
 
 	case AVMEDIA_TYPE_AUDIO:
-		ctx_index = 1;
+		ctx_index = 2;
 		break;
 
 	case AVMEDIA_TYPE_SUBTITLE:
-		if (bc_rec->stream_ctx[2])
-			ctx_index = 2;
+		if (bc_rec->stream_ctx[3])
+			ctx_index = 3;
 		else
-			ctx_index = 1;
+			ctx_index = 2;
 		break;
 
 		/* Makes subtitle packets pass in keyframe-only mode */
@@ -263,16 +264,13 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	}
 
 	if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag || bc_rec->motion_flag)) {//send motion event to client
-                if (bc_rec->stream_ctx[2])
-                        ctx_index = 2;
-                else
-                        ctx_index = 1;
+		ctx_index = 1;
 
 		opkt.size = 1;
 		opkt.pts = bc_rec->last_sub_pts + 1;
 		opkt.dts = bc_rec->last_sub_pts + 1;
 		bc_rec->log.log(Info, "sending motion popup trigger packet dts = %" PRId64 ", pts = %" PRId64, opkt.dts, opkt.pts);
-		//goto write_packet;
+
 		re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
 		if (re < 0) {
 			char err[512] = { 0 };
