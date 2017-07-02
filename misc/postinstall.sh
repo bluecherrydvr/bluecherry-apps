@@ -291,6 +291,17 @@ case "$1" in
 			fi
 		fi
 
+		if [[ $IN_DEB ]]
+		then
+			if [[ -e /etc/modules && ! $(grep "inserted by bluecherry package" /etc/modules) ]]
+			then
+				echo "Adding kernel modules for Bluecherry hardware capture cards to /etc/modules"
+				echo "#automatically inserted by bluecherry package" >> /etc/modules
+				echo "solo6x10" >> /etc/modules
+				echo "tw5864" >> /etc/modules
+			fi
+		fi
+
 		# Reenable our site in Apache
 		start_apache
 		;;
