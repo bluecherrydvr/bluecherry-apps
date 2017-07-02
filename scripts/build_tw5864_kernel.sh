@@ -28,7 +28,7 @@ unset ARCH
 make olddefconfig
 export DEBEMAIL="maintainers@bluecherrydvr.com"
 export DEBFULLNAME="Bluecherry Maintainers"
-make -j `getconf _NPROCESSORS_ONLN` deb-pkg LOCALVERSION="-bc-tw5864-$DISTRO-$DEBARCH"
+make -j `getconf _NPROCESSORS_ONLN` deb-pkg LOCALVERSION="-bluecherry"
 
 # Rebuild linux-image package properly, with our postinst
 PKG_GUTS_DIR="`pwd`/debian/tmp"
