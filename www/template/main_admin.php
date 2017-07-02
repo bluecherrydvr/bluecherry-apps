@@ -119,6 +119,9 @@
                         <li>
                             <a href="javascript:void(0);" class='downloadClient'><i class="fa fa-download fa-fw"></i> <?php echo MMENU_CLIENT_DOWNLOAD; ?></a>
                         </li>
+                        <li>
+                            <a href="http://docs.bluecherrydvr.com/"><i class="fa fa-book fa-fw"></i> <?php echo MMENU_DOCUMENTATION; ?></a>
+                        </li>
 
                         <li class="divider"></li>
                         <li class="divider"></li>

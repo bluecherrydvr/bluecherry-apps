@@ -31,6 +31,7 @@ define('MMENU_PLAYBACK', 'Playback');
 define('MMENU_STATISTICS', 'Event statistics');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
+define('MMENU_DOCUMENTATION', 'Documentation');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
 define('MMENU_LICENSING', 'License keys');
