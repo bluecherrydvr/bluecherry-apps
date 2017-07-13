@@ -7,7 +7,10 @@ set -x # trace
 
 for x in /etc/*-release
 do
-	source $x
+	if [[ ! -d $x ]]
+	then
+		source $x
+	fi
 done
 
 if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
