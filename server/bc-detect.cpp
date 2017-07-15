@@ -298,7 +298,7 @@ static int __bc_check_avail(struct card_list *cards)
 				bc_log(Debug, "Scanning device %s (%s)", device_id, path);
 				for (const char **x = vendors[i].devices; *x; ++x) {
 					if (!strcmp(device_id, *x)) {
-						bc_log(Debug, "Found card from vendor %s, checking driver...", vendors[i]);
+						bc_log(Debug, "Found card from vendor %s, checking driver...", vendors[i].vendor);
 						/* If there is no driver, this device isn't initialized yet */
 						ret = udev_device_get_driver(dev)
 							? check_solo(dev, cards) : -EAGAIN;
