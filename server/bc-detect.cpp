@@ -33,6 +33,8 @@ struct card_list {
 	char name[256];
 	char driver[64];
 	char video_type[8];
+
+	int gpio_base_pin_num;
 };
 
 static struct udev *udev_instance;
@@ -76,6 +78,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 	DIR *dir;
 	struct dirent *de;
 	const char *pci_slot_name;
+	int gpio_base_pin_num = -1;
 
 	*card_name = 0;
 	syspath = udev_device_get_syspath(device);
@@ -144,6 +147,32 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 			strcpy(video_type, "NTSC");
 	}
 
+	/* Detect base number of GPIO pins on this card */
+	sprintf(path, "%s/gpio", syspath);
+	{
+		dir = opendir(path);
+
+		while ((de = readdir(dir))) {
+			if (!strncmp(de->d_name, "gpiochip", 8)) {
+				sprintf(path, "%s/gpio/%s/base", syspath, de->d_name);
+
+				bc_log(Debug, "Reading gpio pin base number from  %s", path);
+
+				int fd = open(path, 0, O_RDONLY);
+				if (fd >=0) {
+					int ret;
+					char basebuf[16];
+					ret = read(fd, basebuf, sizeof(basebuf));
+					if (ret > 0)
+						gpio_base_pin_num = atoi(basebuf);
+				}
+
+				break;
+			}
+		}
+		closedir(dir);
+	}
+
 	/* Check to see if we've scanned this one before */
 	for (int i = 0; i < MAX_CARDS; i++) {
 		/* Already scanned? */
@@ -153,8 +182,8 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 		}
 	}
 
-	bc_log(Info, "solo6x10: Found %s[%s] id %d, %d ports", bcuid, driver,
-		id, ports);
+	bc_log(Info, "solo6x10: Found %s[%s] id %d, %d ports, gpio base pin number %i", bcuid, driver,
+		id, ports, gpio_base_pin_num);
 
 	for (int i = 0; i < MAX_CARDS; i++) {
 		if (!cards[i].valid) {
@@ -167,6 +196,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 
 			cards[i].valid = 1;
 			cards[i].dirty = 0;
+			cards[i].gpio_base_pin_num = gpio_base_pin_num;
 			break;
 		}
 	}
