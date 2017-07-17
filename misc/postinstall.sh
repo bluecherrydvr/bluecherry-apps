@@ -292,6 +292,16 @@ case "$1" in
 					rm /etc/modprobe.d/solo6x10.conf
 				fi
 			fi
+
+			# no idea which package created this file but let's remove it anyway
+			if [[ -e /etc/modprobe.d/blacklist-solo6x10.conf ]]
+			then
+				if [[ $(grep "blacklist solo6x10" /etc/modprobe.d/blacklist-solo6x10.conf) ]]
+				then
+					rm /etc/modprobe.d/blacklist-solo6x10.conf
+				fi
+			fi
+
 		fi
 
 		if [[ $IN_DEB ]]
