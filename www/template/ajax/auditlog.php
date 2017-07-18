@@ -5,12 +5,13 @@
     </div>
 </div>
 
-<div class="form-group">
-    <div class="col-lg-12 col-md-12">
-        <button class="btn btn-success pull-right send-req-form" type="submit"><i class="fa fa-check fa-fw"></i>Download</button>
+<div class="row">
+    <div class="col-lg-12">
+        <a href="/downloadauditlogs" class="btn btn-success pull-right">Download CSV</a>
         <div class="clearfix"></div>
     </div>
 </div>
+
 
 <div class="row">
     <div class="col-lg-12">
