@@ -56,6 +56,8 @@ libav/config.mak:
 		--disable-everything \
 		\
 		--enable-indev=v4l2 \
+		--enable-vaapi \
+		--enable-hwaccel=h264_vaapi \
 		\
 		--enable-protocol=file \
 		--enable-protocol=pipe \
@@ -97,6 +99,7 @@ libav/config.mak:
 		--enable-encoder=mpeg4 \
 		--enable-encoder=rawvideo \
 		--enable-encoder=aac \
+		--enable-encoder=h264_vaapi \
 		\
 		--enable-encoder=text \
 		--enable-encoder=ass \
@@ -104,6 +107,7 @@ libav/config.mak:
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
+		--enable-filter=scale_vaapi \
 		\
 
 
