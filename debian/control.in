@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Bluecherry <maintainers@bluecherrydvr.com>
 Build-Depends: debhelper (>= 7), libmysqlclient-dev,
  libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
+ libva-dev
 Standards-Version: 3.8.4
 
 Package: bluecherry
