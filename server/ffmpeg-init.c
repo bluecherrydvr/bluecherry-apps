@@ -11,6 +11,7 @@
 #include <libavformat/avformat.h>
 #include <libavdevice/avdevice.h>
 #include <libavfilter/avfilter.h>
+#include <libavcodec/avcodec.h>
 #include "logc.h"
 
 /* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
@@ -107,19 +108,17 @@ static int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
 
 void bc_ffmpeg_init()
 {
-	extern AVCodec ff_h264_vaapi_encoder;
-
 	if (av_lockmgr_register(bc_av_lockmgr)) {
 		bc_log(Fatal, "libav lock registration failed");
 		exit(1);
 	}
 
 	avcodec_register(&fake_h264_encoder);
-	avcodec_register(&ff_h264_vaapi_encoder);
 	av_register_all();
 	avfilter_register_all();
 	avformat_network_init();
 	avdevice_register_all();
+	avcodec_register_all();
 
 	av_log_set_callback(av_log_cb);
 }
