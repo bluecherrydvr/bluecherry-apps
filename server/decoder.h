@@ -12,12 +12,25 @@
 class decoder
 {
 public:
-	decoder(const stream_properties &prop);
+	decoder(int media_type);
 	~decoder();
+
+	void push_packet(const stream_packet &pkt);
+	//const char *get_error_message();
+	//bool has_error() const;
+
+	bool decode();
+	AVFrame *decoded_frame();
 
 private:
 	struct AVCodecContext *decoder_ctx;
+	AVFrame *frame;
+	int type;
 	std::shared_ptr<const stream_properties> saved_properties;
+
+	bool init_decoder();
+	void release_decoder();
+	void print_av_errormsg(int ret);
 };
 
 #endif
