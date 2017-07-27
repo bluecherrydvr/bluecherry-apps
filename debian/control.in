@@ -15,6 +15,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
  apache2,
  v4l-utils,
  vainfo,
+ i965-va-driver,
 #xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
 #precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
