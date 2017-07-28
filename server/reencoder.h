@@ -10,8 +10,32 @@
 #include "decoder.h"
 #include "encoder.h"
 
+extern "C"
+{
+#include <libavfilter/avfiltergraph.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libavutil/opt.h>
+}
+
 class reencoder
 {
+public:
+	reencoder();
+	~reencoder();
+
+	bool push_packet(const stream_packet &packet);
+
+	bool run_loop();
+
+	const stream_packet &packet() const;
+private:
+	decoder *dec;
+	encoder *enc;
+	AVFilterContext *buffersink_ctx;
+	AVFilterContext *buffersrc_ctx;
+	AVFilterGraph *filter_graph;
+
 };
 
 #endif
