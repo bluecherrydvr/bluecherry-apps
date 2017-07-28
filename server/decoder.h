@@ -21,6 +21,7 @@ public:
 
 	bool decode();
 	AVFrame *decoded_frame();
+	const struct AVCodecContext *get_ctx() const { return decoder_ctx; }
 
 private:
 	struct AVCodecContext *decoder_ctx;
