@@ -26,6 +26,7 @@ extern "C" {
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
+#include "vaapi.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -1074,6 +1075,11 @@ int main(int argc, char **argv)
 
 	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
 	       __VERSION__ ") " GIT_REVISION );
+
+	/* read device name from config instead of hardcoded default */
+	if (!vaapi_hwaccel::init("/dev/dri/renderD128")) {
+		bc_log(Warning, "Failed to initialize VAAPI device, VAAPI hardware acceleration is not available");
+	}
 
 	/* Mutex */
 	bc_initialize_mutexes();
