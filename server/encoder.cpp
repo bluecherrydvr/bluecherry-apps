@@ -8,6 +8,11 @@ encoder::encoder()
 
 encoder::~encoder()
 {
+	release_encoder();
+}
+
+void encoder::release_encoder()
+{
 	if (encoder_ctx)
 	{
 		avcodec_close(encoder_ctx);
@@ -21,8 +26,17 @@ void encoder::push_frame(AVFrame* frame)
 
 	if (!encoder_ctx)
 	{
-		bc_log(Error, "encoder is not initializd, push_frame() failed!");
+		bc_log(Error, "encoder is not initialized, push_frame() failed!");
 		return;
+	}
+
+	/* Check if frame size is changed since initialization*/
+	if (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height)
+	{
+		release_encoder();
+
+		/* reinitialize encoder with new frame size */
+		...
 	}
 
 	ret = avcodec_send_frame(encoder_ctx, frame);
