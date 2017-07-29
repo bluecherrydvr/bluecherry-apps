@@ -27,6 +27,7 @@ private:
 	std::shared_ptr<stream_properties> props;
 	int next_packet_seq;
 
+	void release_encoder();
 public:
 	bool init_encoder(int media_type, int codec_id, int bitrate, int width, int height, AVBufferRef* hw_frames_ctx);
 };
