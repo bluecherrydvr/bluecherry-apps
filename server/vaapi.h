@@ -19,7 +19,6 @@ class vaapi_hwaccel
 {
 public:
 	vaapi_hwaccel();
-	vaapi_hwaccel(AVBufferRef *frctx);
 
 	static bool init(const char *device);
 
@@ -30,13 +29,12 @@ public:
 	bool hwupload_frame(AVCodecContext *s, AVFrame *frame);
 	bool hwdownload_frame(AVCodecContext *s, AVFrame *frame);
 
-	AVBufferRef *frame_ctx() const { return frame_context; }
+	static AVBufferRef *alloc_frame_ctx(const AVCodecContext *s);
 private:
 	static AVBufferRef *device_context;
 	static bool is_initialised;
 	static int init_decoder(AVCodecContext *s);
 
-	AVBufferRef *frame_context;
 };
 
 #endif
