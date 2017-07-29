@@ -34,6 +34,53 @@ bool vaapi_hwaccel::init(const char *device)
 	return true;
 }
 
+bool vaapi_hwaccel::hwupload_frame(AVBufferRef *hwframe_ctx, AVFrame *input)
+{
+	AVFrame *output = 0;
+	int ret;
+
+	output = av_frame_alloc();
+
+	if (!output)
+		return false;
+
+	output->format = AV_PIX_FMT_VAAPI;
+
+	ret = av_hwframe_get_buffer(hwframe_ctx, output, 0);
+
+	if (ret != 0)
+		goto fail;
+
+	if (input->format == AV_PIX_FMT_YUVJ420P)
+		input->format = AV_PIX_FMT_YUV420P;
+
+	ret = av_hwframe_transfer_data(output, input, 0);
+
+	if (ret < 0)
+	{
+		goto fail;
+	}
+
+	ret = av_frame_copy_props(output, input);
+
+	if (ret < 0) {
+		av_frame_unref(output);
+		goto fail;
+	}
+
+	av_frame_unref(input);
+	av_frame_move_ref(input, output);
+	av_frame_free(&output);
+
+	return true;
+
+fail:
+	bc_log(Error, "Failed to upload frame to vaapi frame context");
+	if (output)
+		av_frame_free(&output);
+	return false;
+}
+
 enum AVPixelFormat vaapi_hwaccel::get_format(AVCodecContext *s, const enum AVPixelFormat *pix_fmts)
 {
 
