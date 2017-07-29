@@ -88,7 +88,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
                 p->video.width = width;
                 p->video.height = height;
                 //p->video.time_base = ic->time_base;
-                //p->video.profile = ic->profile;
+                p->video.profile = 100; //H264 High profile
 	}
 
 	props = std::shared_ptr<stream_properties>(p);
@@ -126,6 +126,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder_ctx->hw_frames_ctx = 0;
 		avcodec_close(encoder_ctx);
 		avcodec_free_context(&encoder_ctx);
+		encoder_ctx = 0;
 		return false;
 	}
 
