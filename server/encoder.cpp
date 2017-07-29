@@ -19,6 +19,12 @@ void encoder::push_frame(AVFrame* frame)
 {
 	int ret;
 
+	if (!encoder_ctx)
+	{
+		bc_log(Error, "encoder is not initializd, push_frame() failed!");
+		return;
+	}
+
 	ret = avcodec_send_frame(encoder_ctx, frame);
 
 	if (ret < 0)
@@ -78,7 +84,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 	if (media_type == AVMEDIA_TYPE_VIDEO)
 	{
 		p->video.codec_id = (enum AVCodecID)codec_id;
-		p->video.pix_fmt = AV_PIX_FMT_YUV420P;//AV_PIX_FMT_VAAPI?
+		p->video.pix_fmt = AV_PIX_FMT_VAAPI;
                 p->video.width = width;
                 p->video.height = height;
                 //p->video.time_base = ic->time_base;
@@ -104,9 +110,8 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 
 	if (type == AVMEDIA_TYPE_VIDEO && props->video.codec_id == AV_CODEC_ID_H264)
 	{
-		AVRational tb = encoder_ctx->time_base;
 		props->video.apply(encoder_ctx);
-		encoder_ctx->time_base = tb;
+		encoder_ctx->time_base = AVRational{1, 1000};
 
 		encoder_ctx->bit_rate = bitrate;
 		encoder_ctx->gop_size = 2;
@@ -118,6 +123,9 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 	if (avcodec_open2(encoder_ctx, encoder, NULL) < 0)
 	{
 		bc_log(Error, "Failed to open encoder");
+		encoder_ctx->hw_frames_ctx = 0;
+		avcodec_close(encoder_ctx);
+		avcodec_free_context(&encoder_ctx);
 		return false;
 	}
 
