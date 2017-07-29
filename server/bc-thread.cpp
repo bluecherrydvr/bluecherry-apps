@@ -274,6 +274,8 @@ void bc_record::run()
 				th.detach();
 			}
 
+			reenc = new reencoder();
+
 			sched_last = 0;
 		}
 
@@ -303,6 +305,12 @@ void bc_record::run()
 		bc->source->send(packet);
 
 		/* Reencode packet for live streaming here */
+		if (reenc) {
+			if (reenc->push_packet(packet) && reenc->run_loop()) {
+				bc_log(Info, "got reencoded packet!");
+				packet = reenc->packet();
+			}
+		}
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this))
@@ -357,6 +365,7 @@ bc_record::bc_record(int i)
 
 	motion_flag = 0;
 	last_sub_pts = 0;
+	reenc = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -474,6 +483,11 @@ void bc_record::destroy_elements()
 
 	if (bc)
 		bc->input->set_motion(false);
+
+	if (reenc) {
+		delete reenc;
+		reenc = 0;
+	}
 }
 
 bool bc_record::update_motion_thresholds()

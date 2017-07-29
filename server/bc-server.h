@@ -17,6 +17,8 @@ extern "C" {
 
 #include <pugixml.hpp>
 
+#include "reencoder.h"
+
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
@@ -80,6 +82,9 @@ public:
 	class trigger_processor *t_processor;
 	class motion_handler *m_handler;
 	class recorder *rec;
+
+	/* Livestream reencoding */
+	class reencoder *reenc;
 
 	int cur_pkt_flags;
 	int motion_flag;
