@@ -14,14 +14,6 @@ AVBufferRef *vaapi_hwaccel::device_context = 0;
 bool vaapi_hwaccel::is_initialised = false;
 
 vaapi_hwaccel::vaapi_hwaccel()
-	: frame_context(0)
-{
-	if (!is_initialised)
-		bc_log(Error, "VAAPI device is not initialized!");
-}
-
-vaapi_hwaccel::vaapi_hwaccel(AVBufferRef *frctx)
-	: frame_context(frctx)
 {
 	if (!is_initialised)
 		bc_log(Error, "VAAPI device is not initialized!");
@@ -92,15 +84,8 @@ int vaapi_hwaccel::get_buffer(AVCodecContext *s, AVFrame *frame, int flags)
 	return ret;
 }
 
-int vaapi_hwaccel::init_decoder(AVCodecContext *s)
+AVBufferRef *vaapi_hwaccel::alloc_frame_ctx(const AVCodecContext *s)
 {
-// static method!
-//	if (frame_context)
-//	{
-//		bc_log(Error, "VAAPI frame context already exists, failed to initialize decoder!");
-//		return 0;
-//	}
-
 	AVBufferRef* ref;
 	AVHWFramesContext* frctx;
 
@@ -128,13 +113,22 @@ int vaapi_hwaccel::init_decoder(AVCodecContext *s)
 		return 0;
 	}
 
+	return ref;
+}
+
+int vaapi_hwaccel::init_decoder(AVCodecContext *s)
+{
+	AVBufferRef* ref;
+
+	ref = vaapi_hwaccel::alloc_frame_ctx(s);
+
+	if (!ref)
+		return 0;
+
 	s->pix_fmt = s->sw_pix_fmt;
 	s->hw_frames_ctx = ref;
 
 	s->opaque = (void*)1; //hardware acceleration is enabled for this AVCodecContext instance
-
-//static method!
-//	frame_context = ref;
 
 	return 1;
 }
