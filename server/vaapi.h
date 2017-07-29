@@ -26,7 +26,7 @@ public:
 	static enum AVPixelFormat get_format(AVCodecContext *s, const enum AVPixelFormat *pix_fmts);
 	static int get_buffer(AVCodecContext *s, AVFrame *frame, int flags);
 
-	bool hwupload_frame(AVCodecContext *s, AVFrame *frame);
+	static bool hwupload_frame(AVBufferRef *hwframe_ctx, AVFrame *input);
 	bool hwdownload_frame(AVCodecContext *s, AVFrame *frame);
 
 	static AVBufferRef *alloc_frame_ctx(const AVCodecContext *s);
