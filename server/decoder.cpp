@@ -67,6 +67,7 @@ bool decoder::init_decoder()
 	}
 
 	decoder_ctx = ctx;
+	bc_log(Debug, "decoder instance is successfully initialized");
 	return true;
 }
 
@@ -88,6 +89,8 @@ AVFrame *decoder::decoded_frame()
 
 	ret = avcodec_receive_frame(decoder_ctx, frame);
 
+
+	bc_log(Debug, "decoder::decoded_frame(): avcodec_receive_frame() returned %i", ret);
 	if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
         {
 		print_av_errormsg(ret);
@@ -121,6 +124,7 @@ void decoder::push_packet(const stream_packet &pkt)
 
 	if (!decoder_ctx)
 	{
+		bc_log(Debug, "trying to initialize decoder");
 		if (!init_decoder())
 		{
 			bc_log(Error, "Cannot initialize decoder!");
@@ -136,6 +140,7 @@ void decoder::push_packet(const stream_packet &pkt)
 	avpkt.data  = const_cast<uint8_t*>(pkt.data());
 	avpkt.size  = pkt.size;
 
+	bc_log(Debug, "sending packet to decoder");
 	int ret = avcodec_send_packet(decoder_ctx, &avpkt);
 
 	if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
