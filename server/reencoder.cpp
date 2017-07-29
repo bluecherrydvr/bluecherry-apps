@@ -2,7 +2,7 @@
 #include "vaapi.h"
 
 reencoder::reencoder()
-	: dec(0), enc(0), buffersink_ctx(0), buffersrc_ctx(0), filter_graph(0),
+	: dec(0), enc(0),
 	software_decoding(false), hwframe_ctx(0)
 {
 	bc_log(Info, "new reencoder instance created");
@@ -15,9 +15,6 @@ reencoder::~reencoder()
 		delete dec;
 	if (enc)
 		delete enc;
-	//free contexts
-	if (filter_graph)
-		avfilter_graph_free(&filter_graph);
 }
 
 bool reencoder::push_packet(const stream_packet &packet)
