@@ -35,7 +35,8 @@ private:
 	AVFilterContext *buffersink_ctx;
 	AVFilterContext *buffersrc_ctx;
 	AVFilterGraph *filter_graph;
-
+	bool software_decoding;
+	AVBufferRef *hwframe_ctx;
 };
 
 #endif
