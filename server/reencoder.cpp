@@ -34,6 +34,7 @@ bool reencoder::run_loop()
 {
 	AVFrame *frame;
 	AVFrame *scaled_frame;
+	bool result;
 
 	/* 1) DECODE */
 	frame = dec->decoded_frame();
@@ -92,6 +93,9 @@ bool reencoder::run_loop()
 	if (scaled_frame == NULL)
 		return false;
 
+
+	bc_log(Debug, "got frame of size %d x %d from scaler", scaled_frame->width, scaled_frame->height);
+
 	/* 3) ENCODE */
 	if (!enc)
 	{
@@ -110,10 +114,13 @@ bool reencoder::run_loop()
 		}
 	}
 
+	enc->push_frame(scaled_frame);
 
-	enc->push_frame(frame);
+	result = enc->encode();
 
-	return enc->encode();
+	av_frame_free(&scaled_frame);
+
+	return result;
 }
 
 const stream_packet &reencoder::packet() const
