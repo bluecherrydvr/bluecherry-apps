@@ -38,7 +38,7 @@ void encoder::push_frame(AVFrame* frame)
 
 		codec_id = encoder_ctx->codec_id;
 		bitrate = encoder_ctx->bit_rate;
-		hw_frames_ctx = encoder_ctx->hw_frames_ctx;
+		hw_frames_ctx = av_buffer_ref(encoder_ctx->hw_frames_ctx);
 
 		release_encoder();
 
@@ -139,7 +139,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 
 		encoder_ctx->bit_rate = bitrate;
 		encoder_ctx->gop_size = 2;
-		encoder_ctx->hw_frames_ctx = hw_frames_ctx;
+		encoder_ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
 	}
 
 	//audio ...
