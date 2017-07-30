@@ -45,7 +45,7 @@ void encoder::push_frame(AVFrame* frame)
 		/* reinitialize encoder with new frame size */
 		if (!init_encoder(type, codec_id, bitrate, frame->width, frame->height, hw_frames_ctx))
 		{
-			bc_log(Error, "failed to reinitialize decoder for new frame size");
+			bc_log(Error, "failed to reinitialize encoder for new frame size");
 		}
 	}
 
