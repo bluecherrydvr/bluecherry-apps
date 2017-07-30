@@ -8,6 +8,9 @@ scaler::scaler()
 
 scaler::~scaler()
 {
+	avfilter_graph_free(&filter_graph);
+
+	//...
 }
 
 bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx)
@@ -18,6 +21,7 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 	AVFilter *buffersink = NULL;
 	AVPixelFormat pix_fmt = AV_PIX_FMT_VAAPI;
 	AVBufferSrcParameters *par;
+	char *filter_dump;
 
 	AVFilterInOut *outputs = avfilter_inout_alloc();
 	AVFilterInOut *inputs  = avfilter_inout_alloc();
@@ -121,6 +125,11 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 	if ((ret = avfilter_graph_config(filter_graph, NULL)) < 0)
 		goto end;
 
+	filter_dump = avfilter_graph_dump(filter_graph, NULL);
+	bc_log(Info, "scaler: created filter graph %s", filter_dump);
+	av_free(filter_dump);
+
+	return true;
 end:
 	av_strerror(ret, args, sizeof(args));
 	bc_log(Error, "failed to init scaler: %s", args);
