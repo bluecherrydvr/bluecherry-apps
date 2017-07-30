@@ -1,6 +1,7 @@
 #include "reencoder.h"
 #include "vaapi.h"
 
+
 reencoder::reencoder()
 	: dec(0), enc(0), scl(0),
 	software_decoding(false), hwframe_ctx(0)
@@ -17,6 +18,9 @@ reencoder::~reencoder()
 		delete enc;
 	if (scl)
 		delete scl;
+
+	if (hwframe_ctx)
+		av_buffer_unref(&hwframe_ctx);
 }
 
 bool reencoder::push_packet(const stream_packet &packet)
@@ -67,7 +71,7 @@ bool reencoder::run_loop()
 
 		}
 		else
-			hwframe_ctx = ctx->hw_frames_ctx;
+			hwframe_ctx = av_buffer_ref(ctx->hw_frames_ctx);
 
 		//hardcoded output size
 		if (!scl->init_scaler(frame->width / 2, frame->height / 2, hwframe_ctx, ctx))
@@ -118,7 +122,7 @@ bool reencoder::run_loop()
 
 	result = enc->encode();
 
-	av_frame_free(&scaled_frame);
+	av_frame_unref(scaled_frame);
 
 	return result;
 }
