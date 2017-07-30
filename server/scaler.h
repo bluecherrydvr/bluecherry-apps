@@ -24,7 +24,7 @@ public:
 	scaler();
 	~scaler();
 
-	bool init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx);
+	bool init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, AVCodecContext *dec_ctx);
 
 	void push_frame(AVFrame *in);
 	AVFrame *scaled_frame();
