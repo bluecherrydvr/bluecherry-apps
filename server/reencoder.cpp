@@ -40,7 +40,7 @@ bool reencoder::run_loop()
 	frame = dec->decoded_frame();
 
 	if (!frame)
-		bc_log(Info, "got no frame from decoder!");
+		bc_log(Debug, "got no frame from decoder!");
 
 	if (!frame)
 		return false;
