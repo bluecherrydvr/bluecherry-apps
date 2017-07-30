@@ -33,10 +33,20 @@ void encoder::push_frame(AVFrame* frame)
 	/* Check if frame size is changed since initialization*/
 	if (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height)
 	{
+		int codec_id, bitrate;
+		AVBufferRef* hw_frames_ctx;
+
+		codec_id = encoder_ctx->codec_id;
+		bitrate = encoder_ctx->bit_rate;
+		hw_frames_ctx = encoder_ctx->hw_frames_ctx;
+
 		release_encoder();
 
 		/* reinitialize encoder with new frame size */
-		...
+		if (!init_encoder(type, codec_id, bitrate, frame->width, frame->height, hw_frames_ctx))
+		{
+			bc_log(Error, "failed to reinitialize decoder for new frame size");
+		}
 	}
 
 	ret = avcodec_send_frame(encoder_ctx, frame);
