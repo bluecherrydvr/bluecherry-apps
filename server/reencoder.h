@@ -9,6 +9,7 @@
 
 #include "decoder.h"
 #include "encoder.h"
+#include "scaler.h"
 
 extern "C"
 {
@@ -32,6 +33,8 @@ public:
 private:
 	decoder *dec;
 	encoder *enc;
+	scaler *scl;
+
 	bool software_decoding;
 	AVBufferRef *hwframe_ctx;
 };
