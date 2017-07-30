@@ -2,7 +2,7 @@
 
 scaler::scaler()
 	: buffersink_ctx(0), buffersrc_ctx(0),
-	filter_graph(0), hw_frame_ctx(0)
+	filter_graph(0), hw_frame_ctx(0), out_frame(0)
 {
 }
 
@@ -10,7 +10,7 @@ scaler::~scaler()
 {
 	avfilter_graph_free(&filter_graph);
 
-	//...
+	av_frame_free(&out_frame);
 }
 
 bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx)
@@ -129,6 +129,13 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 	bc_log(Info, "scaler: created filter graph %s", filter_dump);
 	av_free(filter_dump);
 
+	out_frame = av_frame_alloc();
+	if (!out_frame)
+	{
+		ret = AVERROR(ENOMEM);
+		goto end;
+	}
+
 	return true;
 end:
 	av_strerror(ret, args, sizeof(args));
@@ -144,6 +151,8 @@ void scaler::push_frame(AVFrame *in)
 
 	bc_log(Debug, "Pushing decoded frame to scale filter");
 
+	//check for input frame size change
+
 	ret = av_buffersrc_add_frame_flags(buffersrc_ctx, in, 0);
 
 	if (ret < 0)
@@ -155,14 +164,9 @@ void scaler::push_frame(AVFrame *in)
 
 AVFrame *scaler::scaled_frame()
 {
-	AVFrame *out;
 	int ret;
 
-	out = av_frame_alloc();
-	if (!out)
-		return NULL;
-
-	ret = av_buffersink_get_frame(buffersink_ctx,out);
+	ret = av_buffersink_get_frame(buffersink_ctx,out_frame);
 
 	if (ret < 0)
 	{
@@ -173,11 +177,10 @@ AVFrame *scaler::scaled_frame()
 			bc_log(Error, "scaler: failed to pull filtered frame from filtergraph - %s", args);
 		}
 
-		av_frame_free(&out);
 		return NULL;
 	}
 
-	return out;
+	return out_frame;
 }
 
 //there are different input and output hwframe contexts in vaapi_scale!!!

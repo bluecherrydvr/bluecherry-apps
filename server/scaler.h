@@ -34,6 +34,7 @@ private:
 	AVFilterContext *buffersrc_ctx;
 	AVFilterGraph *filter_graph;
 	AVBufferRef *hw_frame_ctx;
+	AVFrame *out_frame;
 };
 
 #endif
