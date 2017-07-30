@@ -10,7 +10,7 @@ scaler::~scaler()
 {
 }
 
-bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, AVCodecContext *dec_ctx)
+bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx)
 {
 	char args[512];
 	int ret = 0;
