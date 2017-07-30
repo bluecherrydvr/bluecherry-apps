@@ -167,7 +167,11 @@ AVFrame *scaler::scaled_frame()
 	if (ret < 0)
 	{
 		if (ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
-			bc_log(Error, "scaler: failed to pull filtered frame from filtergraph");
+		{
+			char args[512];
+			av_strerror(ret, args, sizeof(args));
+			bc_log(Error, "scaler: failed to pull filtered frame from filtergraph - %s", args);
+		}
 
 		av_frame_free(&out);
 		return NULL;
