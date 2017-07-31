@@ -24,23 +24,23 @@ public:
 	scaler();
 	~scaler();
 
-	bool init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx);
+	bool init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx);
 
 	void push_frame(AVFrame *in);
 	AVFrame *scaled_frame();
+
+	void reinitialize(const AVCodecContext *updated_ctx);
 
 private:
 	AVFilterContext *buffersink_ctx;
 	AVFilterContext *buffersrc_ctx;
 	AVFilterGraph *filter_graph;
-	AVBufferRef *hw_frame_ctx;
+	AVBufferRef *hw_frames_ctx;
 	AVFrame *out_frame;
 
 	int scaled_width;
 	int scaled_height;
-	int source_width;
-	int source_height;
-	const AVCodecContext *source_ctx;
+	bool software_decoding;
 
 	void release_scaler();
 };
