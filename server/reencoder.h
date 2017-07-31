@@ -22,7 +22,7 @@ extern "C"
 class reencoder
 {
 public:
-	reencoder();
+	reencoder(int bitrate, int out_frame_w, int out_frame_h);
 	~reencoder();
 
 	bool push_packet(const stream_packet &packet);
@@ -38,6 +38,9 @@ private:
 	int last_decoded_fw;
 	int last_decoded_fh;
 
+	int bitrate;
+	int out_frame_w;
+	int out_frame_h;
 };
 
 #endif

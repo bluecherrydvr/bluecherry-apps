@@ -2,11 +2,12 @@
 #include "vaapi.h"
 
 
-reencoder::reencoder()
+reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h)
 	: dec(0), enc(0), scl(0),
-	last_decoded_fw(0), last_decoded_fh(0)
+	last_decoded_fw(0), last_decoded_fh(0),
+	bitrate(bitrate), out_frame_w(out_frame_w), out_frame_h(out_frame_h)
 {
-	bc_log(Info, "new reencoder instance created");
+	bc_log(Info, "new reencoder instance created, output bitrate %d, output frame_width %dx%d", bitrate, out_frame_w, out_frame_h);
 }
 
 reencoder::~reencoder()
@@ -57,8 +58,7 @@ bool reencoder::run_loop()
 
 		const AVCodecContext *ctx = dec->get_ctx();
 
-		//hardcoded output size
-		if (!scl->init_scaler(frame->width / 2, frame->height / 2, ctx))
+		if (!scl->init_scaler(out_frame_w, out_frame_h, ctx))
 		{
 			bc_log(Error, "Failed to initialize scaler instance for reencoding");
 			delete scl;
@@ -94,8 +94,7 @@ bool reencoder::run_loop()
 		enc = new encoder();
 
 
-		//hardcoded parameters, for testing purposes
-		if (!enc->init_encoder(AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_H264, 64000, scaled_frame->width, scaled_frame->height, scaled_frame->hw_frames_ctx))
+		if (!enc->init_encoder(AVMEDIA_TYPE_VIDEO, AV_CODEC_ID_H264, bitrate, scaled_frame->width, scaled_frame->height, scaled_frame->hw_frames_ctx))
 		{
 			bc_log(Error, "Failed to initialize encoder instance");
 			delete enc;
