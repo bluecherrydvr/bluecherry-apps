@@ -104,6 +104,10 @@ CREATE TABLE `Devices` (
   `disabled` tinyint(1) DEFAULT '0',
   `audio_disabled` tinyint(1) DEFAULT '1',
   `debug_level` tinyint(4) DEFAULT '0',
+  `reencode_livestream` tinyint(1) DEFAULT '0',
+  `reencode_bitrate` int(11) NOT NULL DEFAULT '64000',
+  `reencode_frame_width` smallint(6) NOT NULL DEFAULT '352',
+  `reencode_frame_height` smallint(6) NOT NULL DEFAULT '240',
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)
