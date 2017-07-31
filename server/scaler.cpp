@@ -2,15 +2,20 @@
 
 scaler::scaler()
 	: buffersink_ctx(0), buffersrc_ctx(0),
-	filter_graph(0), hw_frame_ctx(0), out_frame(0)
+	filter_graph(0), hw_frame_ctx(0), out_frame(0), source_ctx(0)
 {
 }
 
-scaler::~scaler()
+void scaler::release_scaler()
 {
 	avfilter_graph_free(&filter_graph);
 
 	av_frame_free(&out_frame);
+}
+
+scaler::~scaler()
+{
+	release_scaler();
 }
 
 bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx)
@@ -22,6 +27,14 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 	AVPixelFormat pix_fmt = AV_PIX_FMT_VAAPI;
 	AVBufferSrcParameters *par;
 	char *filter_dump;
+
+
+	scaled_width = out_width;
+	scaled_height = out_height;
+	source_width = dec_ctx->width;
+	source_height = dec_ctx->height;
+	hw_frame_ctx = hwframe_ctx;
+	source_ctx = dec_ctx;
 
 	AVFilterInOut *outputs = avfilter_inout_alloc();
 	AVFilterInOut *inputs  = avfilter_inout_alloc();
@@ -151,7 +164,20 @@ void scaler::push_frame(AVFrame *in)
 
 	bc_log(Debug, "Pushing decoded frame to scale filter");
 
-	//check for input frame size change
+	/* Check for input frame size change */
+	if (in->width != source_width || in->height != source_height)
+	{
+		bc_log(Info, "scaler: input frame size changed, reinitializing scaler");
+
+		hw_frame_ctx = av_buffer_ref(hw_frame_ctx);
+		release_scaler();
+
+		if (!init_scaler(scaled_width, scaled_height, hw_frame_ctx, source_ctx))
+		{
+			bc_log(Error, "Failed to reinitialize scaler for new input frame size");
+			return;
+		}
+	}
 
 	ret = av_buffersrc_add_frame_flags(buffersrc_ctx, in, 0);
 
