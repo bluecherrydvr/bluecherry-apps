@@ -35,6 +35,14 @@ private:
 	AVFilterGraph *filter_graph;
 	AVBufferRef *hw_frame_ctx;
 	AVFrame *out_frame;
+
+	int scaled_width;
+	int scaled_height;
+	int source_width;
+	int source_height;
+	const AVCodecContext *source_ctx;
+
+	void release_scaler();
 };
 
 #endif
