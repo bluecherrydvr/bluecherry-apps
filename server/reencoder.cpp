@@ -4,7 +4,7 @@
 
 reencoder::reencoder()
 	: dec(0), enc(0), scl(0),
-	software_decoding(false), hwframe_ctx(0)
+	last_decoded_fw(0), last_decoded_fh(0)
 {
 	bc_log(Info, "new reencoder instance created");
 }
@@ -18,9 +18,6 @@ reencoder::~reencoder()
 		delete enc;
 	if (scl)
 		delete scl;
-
-	if (hwframe_ctx)
-		av_buffer_unref(&hwframe_ctx);
 }
 
 bool reencoder::push_packet(const stream_packet &packet)
@@ -49,6 +46,8 @@ bool reencoder::run_loop()
 	if (!frame)
 		return false;
 
+	bc_log(Debug, "reencoder: got frame %dx%d from decoder", frame->width, frame->height);
+
 	/* 2) SCALE */
 	if (!scl)
 	{
@@ -58,23 +57,8 @@ bool reencoder::run_loop()
 
 		const AVCodecContext *ctx = dec->get_ctx();
 
-		if (!ctx->opaque)
-		{
-			bc_log(Warning, "hardware accelerated decoding is not available, falling back to software decoding");
-
-			hwframe_ctx = vaapi_hwaccel::alloc_frame_ctx(ctx);
-
-			if (!hwframe_ctx)
-				return false;
-
-			software_decoding = true;
-
-		}
-		else
-			hwframe_ctx = av_buffer_ref(ctx->hw_frames_ctx);
-
 		//hardcoded output size
-		if (!scl->init_scaler(frame->width / 2, frame->height / 2, hwframe_ctx, ctx))
+		if (!scl->init_scaler(frame->width / 2, frame->height / 2, ctx))
 		{
 			bc_log(Error, "Failed to initialize scaler instance for reencoding");
 			delete scl;
@@ -83,12 +67,14 @@ bool reencoder::run_loop()
 		}
 	}
 
-	if (software_decoding)
+	if (last_decoded_fw > 0 && (last_decoded_fw != frame->width || last_decoded_fh != frame->height))
 	{
-		/* move frame data from system memory to video mem */
-		if (!vaapi_hwaccel::hwupload_frame(hwframe_ctx, frame))
-			return false;
+		const AVCodecContext *ctx = dec->get_ctx();
+		scl->reinitialize(ctx);
 	}
+
+	last_decoded_fw = frame->width;
+	last_decoded_fh = frame->height;
 
 	scl->push_frame(frame);
 

@@ -35,8 +35,9 @@ private:
 	encoder *enc;
 	scaler *scl;
 
-	bool software_decoding;
-	AVBufferRef *hwframe_ctx;
+	int last_decoded_fw;
+	int last_decoded_fh;
+
 };
 
 #endif

@@ -1,8 +1,10 @@
 #include "scaler.h"
+#include "vaapi.h"
 
 scaler::scaler()
 	: buffersink_ctx(0), buffersrc_ctx(0),
-	filter_graph(0), hw_frame_ctx(0), out_frame(0), source_ctx(0)
+	filter_graph(0), hw_frames_ctx(0), out_frame(0),
+	software_decoding(false)
 {
 }
 
@@ -16,9 +18,12 @@ void scaler::release_scaler()
 scaler::~scaler()
 {
 	release_scaler();
+
+	if (software_decoding)
+		av_buffer_unref(&hw_frames_ctx);
 }
 
-bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx, const AVCodecContext *dec_ctx)
+bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx)
 {
 	char args[512];
 	int ret = 0;
@@ -31,10 +36,20 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 
 	scaled_width = out_width;
 	scaled_height = out_height;
-	source_width = dec_ctx->width;
-	source_height = dec_ctx->height;
-	hw_frame_ctx = hwframe_ctx;
-	source_ctx = dec_ctx;
+	hw_frames_ctx = dec_ctx->hw_frames_ctx;
+
+	if (!hw_frames_ctx)
+	{
+		bc_log(Warning, "hardware accelerated decoding is not available, falling back to software decoding");
+
+		hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(dec_ctx);
+
+		if (!hw_frames_ctx)
+			return false;
+
+		software_decoding = true;
+	}
+
 
 	AVFilterInOut *outputs = avfilter_inout_alloc();
 	AVFilterInOut *inputs  = avfilter_inout_alloc();
@@ -85,7 +100,7 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 
 	memset(par, 0, sizeof(*par));
 	par->format = AV_PIX_FMT_NONE;
-	par->hw_frames_ctx = hwframe_ctx;
+	par->hw_frames_ctx = hw_frames_ctx;
 
 	ret = av_buffersrc_parameters_set(buffersrc_ctx, par);
 	if (ret < 0)
@@ -160,26 +175,47 @@ end:
 	return false;
 }
 
+void scaler::reinitialize(const AVCodecContext *updated_ctx)
+{
+		bc_log(Info, "scaler:  reinitializing scaler with new decoder context");
+
+		if (software_decoding)
+		{
+			av_buffer_unref(&hw_frames_ctx);
+			hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(updated_ctx);
+
+			if (!hw_frames_ctx)
+				return;
+		}
+		else
+			hw_frames_ctx = updated_ctx->hw_frames_ctx;
+
+		release_scaler();
+
+		if (!init_scaler(scaled_width, scaled_height, updated_ctx))
+		{
+			bc_log(Error, "Failed to reinitialize scaler for new input frame size");
+			return;
+		}
+
+}
+
 void scaler::push_frame(AVFrame *in)
 {
 	int ret;
 
 	bc_log(Debug, "Pushing decoded frame to scale filter");
 
-	/* Check for input frame size change */
-	if (in->width != source_width || in->height != source_height)
+
+	if (software_decoding)
 	{
-		bc_log(Info, "scaler: input frame size changed, reinitializing scaler");
-
-		hw_frame_ctx = av_buffer_ref(hw_frame_ctx);
-		release_scaler();
-
-		if (!init_scaler(scaled_width, scaled_height, hw_frame_ctx, source_ctx))
-		{
-			bc_log(Error, "Failed to reinitialize scaler for new input frame size");
+		/* move frame data from system memory to video mem */
+		if (!vaapi_hwaccel::hwupload_frame(hw_frames_ctx, in))
 			return;
-		}
-	}
+
+		bc_log(Debug, "scaler: uploaded frame %dx%d from software decoder to vaapi frame context", in->width, in->height);
+        }
+
 
 	ret = av_buffersrc_add_frame_flags(buffersrc_ctx, in, 0);
 
