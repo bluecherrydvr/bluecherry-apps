@@ -101,6 +101,10 @@ struct bc_device_config {
 	bool   schedule_override_global;
 	int     hue, saturation, contrast, brightness;
 	int     video_quality;
+	bool reencode_enabled;
+	int reencode_bitrate;
+	int reencode_frame_width;
+	int reencode_frame_height;
 };
 
 struct bc_license {
