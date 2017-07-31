@@ -47,6 +47,8 @@ bool scaler::init_scaler(int out_width, int out_height, AVBufferRef *hwframe_ctx
 		goto end;
 	}
 
+	filter_graph->nb_threads = 1;
+
 	buffersrc = avfilter_get_by_name("buffer");
 	buffersink = avfilter_get_by_name("buffersink");
 
