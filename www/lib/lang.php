@@ -387,6 +387,14 @@ define('PLEASE_LOGIN', 'You need');
 
 define('USERNAME_EXISTS', 'User with this username already exists.');
 
+#reencode
+define('REENCODE_HEADER', 'Livestream reencoding configuration');
+define('REENCODE_SUBHEADER', 'Livestream reencoding settings for camera');
+define('REENCODE_ENABLED', 'Enable livestream reencoding');
+define('REENCODE_BITRATE', 'Output bitrate');
+define('REENCODE_RESOLUTION', 'Output resolution');
+define('DEVICE_EDIT_REENCODE', 'Livestream reencoding settings');
+
 #PTZ
 define('DEVICE_EDIT_PTZ', 'PTZ settings');
 

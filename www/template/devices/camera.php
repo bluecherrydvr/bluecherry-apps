@@ -50,6 +50,7 @@
                                             		<li><a href="/ajax/motionmap.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_MMAP;?></a></li>
                                             		<li><a href="/ajax/deviceschedule.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_SCHED; ?></a></li>
                                             		<li><a href="/ajax/ptzpresetlist.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_PTZ; ?></a></li>
+							<li><a href="/ajax/reencode.php?id=<?php echo $device->info['id']; ?>" class="ajax-content"><?php echo DEVICE_EDIT_REENCODE; ?></a></li>
                                                     <li>
                                                         <form action="/ajax/update.php" method="POST">
                                                             <input type="hidden" name="mode" value="deleteIp">

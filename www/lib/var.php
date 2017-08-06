@@ -88,4 +88,23 @@ $GLOBALS['cts_record_durations'] = array(
 );
 $varpub_globals['cts_record_durations'] = $GLOBALS['cts_record_durations'];
 
+#reencode bitrates
+$GLOBALS['reencode_bitrates'] = array(
+	'64000' => '64 kbps',
+	'128000' => '128 kbps',
+	'256000' => '256 kbps',
+	'512000' => '512 kbps',
+	'1000000' => '1 mbps'
+);
+$varpub_globals['reencode_bitrates'] = $GLOBALS['reencode_bitrates'];
+#reencode resolutions
+$GLOBALS['reencode_resolutions'] = array(
+	'160x120',
+	'320x240',
+	'352x240',
+	'352x288',
+	'640x480'
+);
+$varpub_globals['reencode_resolutions'] = $GLOBALS['reencode_resolutions'];
+
 $varpub->globals = $varpub_globals;
