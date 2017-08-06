@@ -265,6 +265,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 
 	if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag || bc_rec->motion_flag)) {//send motion event to client
 		ctx_index = 1;
+		bc_rec->cur_stream_index = ctx_index;
 
 		opkt.size = 1;
 		opkt.pts = bc_rec->last_sub_pts + 1;
