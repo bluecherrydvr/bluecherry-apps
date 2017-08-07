@@ -5,6 +5,7 @@
 #include "bt.h"
 
 #include "motion_processor.h"
+#include "vaapi.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
@@ -176,6 +177,9 @@ bool motion_processor::decode_create(const stream_properties &prop)
 
 	prop.video.apply(decode_ctx);
 
+	decode_ctx->get_format = vaapi_hwaccel::get_format;
+	decode_ctx->get_buffer2 = vaapi_hwaccel::get_buffer;
+
 	// XXX we may want to set some options here, such as disabling threaded decoding
 	AVDictionary *decoder_opts = NULL;
 	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
@@ -202,6 +206,13 @@ void motion_processor::decode_destroy()
 
 int motion_processor::detect(AVFrame *rawFrame)
 {
+	/* Check if frame comes from vaapi hardware decoder */
+	if (rawFrame->hw_frames_ctx)
+	{
+		if (!vaapi_hwaccel::hwdownload_frame(decode_ctx, rawFrame))
+			return 0;
+	}
+
 	switch (m_alg)
 	{
 		case BC_DEFAULT:
