@@ -34,6 +34,61 @@ bool vaapi_hwaccel::init(const char *device)
 	return true;
 }
 
+bool vaapi_hwaccel::hwdownload_frame(AVCodecContext *s, AVFrame *input)
+{
+	AVFrame *output = 0;
+	int ret;
+
+	if (input->hw_frames_ctx == NULL)
+	{
+		bc_log(Error, "vaapi_hwaccel::hwdownload_frame: input frame does not contain hardware frame context");
+		return false;
+	}
+
+	if (input->format != AV_PIX_FMT_VAAPI)
+	{
+		bc_log(Error, "vaapi_hwaccel::hwdownload_frame: invalid pixel format in input frame");
+		return false;
+	}
+
+	output = av_frame_alloc();
+
+	if (!output)
+		return false;
+
+	output->format = s->sw_pix_fmt;
+
+	if (output->format == AV_PIX_FMT_YUVJ420P)
+		output->format = AV_PIX_FMT_YUV420P;
+
+	ret = av_hwframe_transfer_data(output, input, 0);
+
+	if (ret < 0)
+	{
+		bc_log(Error, "failed to transfer data from hardware frame");
+		goto fail;
+	}
+
+	ret = av_frame_copy_props(output, input);
+
+	if (ret < 0)
+	{
+		av_frame_unref(output);
+		goto fail;
+	}
+
+	av_frame_unref(input);
+	av_frame_move_ref(input, output);
+	av_frame_free(&output);
+
+	return true;
+
+fail:
+	if (output)
+		av_frame_free(&output);
+	return false;
+}
+
 bool vaapi_hwaccel::hwupload_frame(AVBufferRef *hwframe_ctx, AVFrame *input)
 {
 	AVFrame *output = 0;
