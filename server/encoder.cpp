@@ -138,7 +138,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder_ctx->time_base = AVRational{1, 1000};
 
 		encoder_ctx->bit_rate = bitrate;
-		encoder_ctx->gop_size = 2;
+		encoder_ctx->gop_size = 10;
 		encoder_ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
 	}
 
