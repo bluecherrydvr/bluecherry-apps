@@ -67,6 +67,18 @@ function getOs(){
 	$it = $_SERVER['HTTP_USER_AGENT'];
 }
 
+function getRenderNodes() {
+	$ret = array();
+
+	for($i = 0; $i < 4; $i++) {
+		$node = "/dev/dri/renderD".intval($i + 128);
+		if (file_exists($node) && filetype($node) == "char")
+			$ret[$i] = $node;
+	}
+
+	return $ret;
+}
+
 /**
  * Returns SQLite Database connection
  * 
