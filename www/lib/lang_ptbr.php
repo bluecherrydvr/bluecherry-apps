@@ -95,6 +95,9 @@ define('G_MAX_RECORD_TIME_EX', 'Dividir Videos em Segmentos de');
 define('G_MAX_RECORD_AGE', 'Armazenamento Maximo');
 define('G_MAX_RECORD_AGE_EX', 'Deixar o sistema remover todas as gravacoes mais antigas do que determinado numero de dias (opcional)');
 
+define('G_VAAPI_DEVICE', 'VAAPI dispositivo');
+define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of video decoding and encoding');
+
 #mail
 define('G_SMTP_SERVICE', 'Servico de Email');
 define('G_SMTP_EMAIL_FROM', 'Valor SMTP');
@@ -203,6 +206,15 @@ define('NA_WEB', 'Voce Nao Tem Permissao para Usar a Interface  WEB');
 define('NA_CLIENT', 'Voce nao Tem Permissao Para usar o Cliente Remoto');
 
 define('WARN_DEFAULT_PASSWORD', 'Voce Nao Alterou a Senha Padrao Neste Sistema. Para Seguranca Recomendamos Altamente <a id="updateAdminPassword" href="#">Atualizar sua Senha</a>.');
+
+#reencode
+define('REENCODE_HEADER', 'Configuracao Reencoder Ao Vivo');
+define('REENCODE_SUBHEADER', 'Definicoes reencaminhamento ao vivo para a camera');
+define('REENCODE_ENABLED', 'Habilitar reencoder ao vivo');
+define('REENCODE_BITRATE', 'Taxa de bits de saida');
+define('REENCODE_RESOLUTION', 'Resolucao de saida');
+define('DEVICE_EDIT_REENCODE', 'Configuracoes de reencodificacao ao vivo');
+
 
 #devices
 define('CARD_HEADER', 'RCL Hardware De Compressao');
