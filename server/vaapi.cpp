@@ -191,6 +191,12 @@ AVBufferRef *vaapi_hwaccel::alloc_frame_ctx(const AVCodecContext *s)
 	AVBufferRef* ref;
 	AVHWFramesContext* frctx;
 
+        if (!is_initialised)
+	{
+		bc_log(Error, "VAAPI device is not initialized!");
+		return 0;
+	}
+
 	ref = av_hwframe_ctx_alloc(device_context);
 
 	if (ref == NULL)
