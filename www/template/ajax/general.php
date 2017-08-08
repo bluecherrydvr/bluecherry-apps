@@ -67,6 +67,21 @@
     </div>
 </div>
 
+<div class="panel panel-default">
+    <div class="panel-heading"><?php echo G_PERF_TITLE; ?></div>
+
+    <div class="panel-body">
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_VAAPI_DEVICE; ?><p class='help-block'><small><?php echo G_VAAPI_DEVICE_EX; ?></small></p></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect(getRenderNodes(), $global_settings->data['G_VAAPI_DEVICE'], 'G_VAAPI_DEVICE'); ?>
+            </div>
+        </div>
+
+    </div>
+</div>
 
 <div class="panel panel-default">
     <div class="panel-heading"><?php echo G_PERF_TITLE; ?></div>

@@ -981,6 +981,29 @@ static void xml_status_callback(pugi::xml_document& xmldoc)
 	xml_licenses_status(subNode);
 }
 
+static void setup_vaapi()
+{
+	const char *def = "/dev/dri/renderD128";
+	const char *renderNode = def;
+	BC_DB_RES dbres;
+
+	dbres = bc_db_get_table("SELECT value from GlobalSettings WHERE "
+                                "parameter='G_VAAPI_DEVICE'");
+
+        if (!dbres)
+                bc_status_component_error("Database failure for VAAPI device parameter");
+
+        if (dbres && !bc_db_fetch_row(dbres)) {
+                renderNode = bc_db_get_val(dbres, "value", NULL);
+	}
+
+	if (!vaapi_hwaccel::init(renderNode)) {
+		bc_log(Warning, "Failed to initialize VAAPI device %s, VAAPI hardware acceleration is not available", renderNode);
+	} else
+		bc_log(Info, "Initialized render node %s for VAAPI hardware acceleration", renderNode);
+
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -1076,11 +1099,6 @@ int main(int argc, char **argv)
 	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
 	       __VERSION__ ") " GIT_REVISION );
 
-	/* read device name from config instead of hardcoded default */
-	if (!vaapi_hwaccel::init("/dev/dri/renderD128")) {
-		bc_log(Warning, "Failed to initialize VAAPI device, VAAPI hardware acceleration is not available");
-	}
-
 	/* Mutex */
 	bc_initialize_mutexes();
 
@@ -1096,6 +1114,8 @@ int main(int argc, char **argv)
 	bc_log(Info, "SQL database connection opened");
 
 	db_cleanup();
+
+	setup_vaapi();
 
 	bc_status_component_begin(STATUS_DB_POLLING1);
 	{

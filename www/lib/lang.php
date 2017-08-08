@@ -96,6 +96,9 @@ define('G_MAX_RECORD_TIME_EX', 'Split videos into segments of');
 define('G_MAX_RECORD_AGE', 'Max record storage age');
 define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given number of days (optional)');
 
+define('G_VAAPI_DEVICE', 'VAAPI device');
+define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of video decoding and encoding');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');
