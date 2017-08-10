@@ -45,6 +45,8 @@ static int hwcard_ready = 0;
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
 int max_record_time_sec;
+int global_bandwidth_limit = 0;
+int global_bitrate_per_device = 0;
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -380,6 +382,21 @@ static int bc_check_globals(void)
 	}
 	pthread_mutex_unlock(&mutex_max_record_time_sec);
 	bc_db_free_table(dbres);
+
+	/* get global_bandwidth_limit */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_TOTAL_BANDWIDTH_LIMIT'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for total bandwidth limit");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		global_bandwidth_limit = bc_db_get_val_int(dbres, "value");
+	} else {
+		/* Set default */
+		global_bandwidth_limit = 0;
+	}
+        bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
 	return load_storage_paths();
@@ -760,6 +777,20 @@ static int bc_check_db(void)
 			bc_rec_list.erase(bc_rec_list.begin() + i);
 		}
 	}
+
+	if (global_bandwidth_limit > 0) {
+		int active_streaming_dev_num = 0;
+		for (i = bc_rec_list.size() - 1; i >= 0; i--) {
+			bc_rec = bc_rec_list[i];
+			if (bc_streaming_is_active(bc_rec))
+				active_streaming_dev_num++;
+		}
+		if (active_streaming_dev_num > 0)
+			global_bitrate_per_device = global_bandwidth_limit / active_streaming_dev_num;
+		else
+			global_bitrate_per_device = global_bandwidth_limit;
+	}
+
 	pthread_mutex_unlock(&bc_rec_list_lock);
 
 	bc_db_free_table(dbres);

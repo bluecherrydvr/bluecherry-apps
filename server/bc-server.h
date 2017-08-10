@@ -85,6 +85,7 @@ public:
 
 	/* Livestream reencoding */
 	class reencoder *reenc;
+	int streaming_bitrate;
 
 	int cur_pkt_flags;
 	int motion_flag;
@@ -142,6 +143,9 @@ extern char global_sched[7 * 24 + 1];
 extern int snapshot_delay_ms;
 #define MAX_RECORD_TIME_SEC_DEFAULT 900
 extern int max_record_time_sec;
+
+extern int global_bandwidth_limit;
+extern int global_bitrate_per_device;
 
 /* @return 0 on success, negative if no free storage locations */
 int bc_get_media_loc(char *dest, size_t size);

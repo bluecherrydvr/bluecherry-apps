@@ -21,6 +21,14 @@ reencoder::~reencoder()
 		delete scl;
 }
 
+void reencoder::update_bitrate(int new_bitrate)
+{
+	bitrate = new_bitrate;
+
+	if (enc)
+		enc->update_bitrate(new_bitrate);
+}
+
 bool reencoder::push_packet(const stream_packet &packet)
 {
 

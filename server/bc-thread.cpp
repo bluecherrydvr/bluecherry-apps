@@ -75,6 +75,18 @@ static void update_osd(struct bc_record *bc_rec)
 	d->set_osd("%s %s", name_buf, buf);
 }
 
+static void check_bitrate(struct bc_record *bc_rec)
+{
+	if (global_bandwidth_limit > 0) {
+		if (global_bitrate_per_device > 0)
+			bc_rec->streaming_bitrate = global_bitrate_per_device;
+		else
+			bc_rec->streaming_bitrate = global_bandwidth_limit;
+	} else if (bc_rec->cfg.reencode_enabled) {
+		bc_rec->streaming_bitrate = bc_rec->cfg.reencode_bitrate;
+	}
+}
+
 static void check_schedule(struct bc_record *bc_rec)
 {
 	const char *schedule = global_sched;
@@ -161,6 +173,9 @@ void bc_record::run()
 		update_osd(this);
 		if (!(iteration++ % 50))
 			check_schedule(this);
+
+		if (!(iteration % 12))
+			check_bitrate(this);
 
 		if (!bc->input->is_started()) {
 			if (bc->input->start() < 0) {
@@ -275,7 +290,7 @@ void bc_record::run()
 			}
 
 			if (cfg.reencode_enabled) {
-				reenc = new reencoder(cfg.reencode_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
+				reenc = new reencoder(streaming_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
 			}
 
 			sched_last = 0;
@@ -308,6 +323,7 @@ void bc_record::run()
 
 		/* Reencode packet for live streaming here */
 		if (reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
+			reenc->update_bitrate(streaming_bitrate);
 			if (reenc->push_packet(packet) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
 				packet = reenc->packet();
@@ -368,6 +384,7 @@ bc_record::bc_record(int i)
 	motion_flag = 0;
 	last_sub_pts = 0;
 	reenc = 0;
+	streaming_bitrate = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -427,6 +444,8 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 
 	bc->input->set_subtitles_text(bc_rec->cfg.name);
+
+	check_bitrate(bc_rec);
 
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
@@ -616,7 +635,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	    strcmp(current->rtsp_username, update->rtsp_username) ||
 	    strcmp(current->rtsp_password, update->rtsp_password) ||
 	    current->reencode_enabled != update->reencode_enabled ||
-	    current->reencode_bitrate != update->reencode_bitrate ||
+	    /* current->reencode_bitrate != update->reencode_bitrate || */
 	    current->reencode_frame_width != update->reencode_frame_width ||
 	    current->reencode_frame_height != update->reencode_frame_height ||
 	    current->aud_disabled != update->aud_disabled)
@@ -685,6 +704,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	}
 
 	check_schedule(bc_rec);
+	check_bitrate(bc_rec);
 	return 0;
 }
 

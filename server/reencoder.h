@@ -24,6 +24,7 @@ class reencoder
 public:
 	reencoder(int bitrate, int out_frame_w, int out_frame_h);
 	~reencoder();
+	void update_bitrate(int new_bitrate);
 
 	bool push_packet(const stream_packet &packet);
 
