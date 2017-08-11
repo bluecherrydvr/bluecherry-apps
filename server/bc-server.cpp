@@ -391,7 +391,7 @@ static int bc_check_globals(void)
 		bc_status_component_error("Database failure for total bandwidth limit");
 
 	if (dbres && !bc_db_fetch_row(dbres)) {
-		global_bandwidth_limit = bc_db_get_val_int(dbres, "value");
+		global_bandwidth_limit = 1000 * bc_db_get_val_int(dbres, "value");
 	} else {
 		/* Set default */
 		global_bandwidth_limit = 0;
