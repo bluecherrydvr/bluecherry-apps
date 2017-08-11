@@ -630,6 +630,9 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	bc_rec->log.log(Info, "Applying configuration changes");
 
+	if (global_bandwidth_limit > 0 && !reenc)
+		return -1;
+
 	if (strcmp(current->dev, update->dev) || strcmp(current->driver, update->driver) ||
 	    strcmp(current->signal_type, update->signal_type) ||
 	    strcmp(current->rtsp_username, update->rtsp_username) ||
