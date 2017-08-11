@@ -170,6 +170,14 @@ void bc_record::run()
 				break;
 		}
 
+		if (global_bandwidth_limit > 0 && !reenc ||
+		    reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0)
+		{
+			thread_should_die = "reencoding configuration changed";
+			break;
+		}
+
+
 		update_osd(this);
 		if (!(iteration++ % 50))
 			check_schedule(this);
@@ -629,9 +637,6 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	pthread_mutex_lock(&bc_rec->cfg_mutex);
 
 	bc_rec->log.log(Info, "Applying configuration changes");
-
-	if (global_bandwidth_limit > 0 && !bc_rec->reenc)
-		return -1;
 
 	if (strcmp(current->dev, update->dev) || strcmp(current->driver, update->driver) ||
 	    strcmp(current->signal_type, update->signal_type) ||
