@@ -289,7 +289,7 @@ void bc_record::run()
 				th.detach();
 			}
 
-			if (cfg.reencode_enabled) {
+			if (cfg.reencode_enabled || global_bandwidth_limit > 0) {
 				reenc = new reencoder(streaming_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
 			}
 
