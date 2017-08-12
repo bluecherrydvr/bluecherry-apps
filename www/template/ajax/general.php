@@ -80,6 +80,26 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?><p class='help-block'><small><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?></small></p></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect($GLOBALS['bandwidth_limits'], $global_settings->data['G_TOTAL_BANDWIDTH_LIMIT'], 'G_TOTAL_BANDWIDTH_LIMIT'); ?>
+            </div>
+        </div>
+
+        <div class="form-group">
+			<label class="col-lg-4 col-md-4 control-label">
+				Resolucao de Tramissao
+				<p class="help-block">
+					<small>Resolucao de Tramissao</small>
+				</p>
+			</label>
+			<div class="col-lg-6 col-md-6">
+				<?php echo arrayToSelect($GLOBALS['reencode_resolutions'], $global_settings->data['G_REENCODE_RESOLUTION'], 'G_REENCODE_RESOLUTION'); ?>
+			</div>
+        </div>
+
     </div>
 </div>
 
@@ -105,27 +125,6 @@
                 <input type='checkbox' name='G_DISABLE_WEB_STATS' <?php echo (($global_settings->data['G_DISABLE_WEB_STATS']==1) ? 'checked' : ''); ?>>
             </div>
         </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 col-md-4 control-label"><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?><p class='help-block'><small><?php echo G_TOTAL_BANDWIDTH_LIMIT; ?></small></p></label>
-
-            <div class="col-lg-6 col-md-6">
-                    <?php echo arrayToSelect($GLOBALS['bandwidth_limits'], $global_settings->data['G_TOTAL_BANDWIDTH_LIMIT'], 'G_TOTAL_BANDWIDTH_LIMIT'); ?>
-            </div>
-        </div>
-
-        <div class="form-group">
-			<label class="col-lg-4 col-md-4 control-label">
-				Resolucao de Tramissao
-				<p class="help-block">
-					<small>Resolucao de Tramissao</small>
-				</p>
-			</label>
-			<div class="col-lg-6 col-md-6">
-				<?php echo arrayToSelect($GLOBALS['reencode_resolutions'], $global_settings->data['G_REENCODE_RESOLUTION'], 'G_REENCODE_RESOLUTION'); ?>
-			</div>
-        </div>
-
 
     </div>
 </div>
