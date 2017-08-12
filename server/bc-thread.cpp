@@ -170,8 +170,9 @@ void bc_record::run()
 				break;
 		}
 
-		if (global_bandwidth_limit > 0 && !reenc ||
-		    reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0)
+		if (iteration > 0 &&
+			(global_bandwidth_limit > 0 && !reenc ||
+			 reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0))
 		{
 			thread_should_die = "reencoding configuration changed";
 			break;
