@@ -38,6 +38,11 @@ bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *de
 	scaled_height = out_height;
 	hw_frames_ctx = dec_ctx->hw_frames_ctx;
 
+	if (out_width > dec_ctx->width || out_height > dec_ctx->height)
+		bc_log(Warning, "input stream %dx%d  is scaled to larger frame size %dx%d,"
+			" please check your settings", dec_ctx->width, dec_ctx->height,
+			out_width, out_height);
+
 	if (!hw_frames_ctx)
 	{
 		bc_log(Warning, "hardware accelerated decoding is not available, falling back to software decoding");
