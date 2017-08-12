@@ -24,6 +24,7 @@ extern pthread_mutex_t mutex_global_sched;
 extern pthread_mutex_t mutex_streaming_setup;
 extern pthread_mutex_t mutex_snapshot_delay_ms;
 extern pthread_mutex_t mutex_max_record_time_sec;
+extern pthread_mutex_t mutex_global_reencode_resolution;
 
 /* Default configuration file */
 #define BC_CONFIG_DEFAULT      "/etc/bluecherry.conf"
@@ -86,6 +87,8 @@ public:
 	/* Livestream reencoding */
 	class reencoder *reenc;
 	int streaming_bitrate;
+	int streaming_width;
+	int streaming_height;
 
 	int cur_pkt_flags;
 	int motion_flag;
@@ -146,6 +149,9 @@ extern int max_record_time_sec;
 
 extern int global_bandwidth_limit;
 extern int global_bitrate_per_device;
+
+extern int global_reencode_frame_w;
+extern int global_reencode_frame_h;
 
 /* @return 0 on success, negative if no free storage locations */
 int bc_get_media_loc(char *dest, size_t size);

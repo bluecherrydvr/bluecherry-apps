@@ -178,6 +178,14 @@ void bc_record::run()
 			break;
 		}
 
+		if (iteration > 0 && global_bandwidth_limit > 0 &&
+		    (streaming_width != global_reencode_frame_w ||
+		     streaming_height != global_reencode_frame_h))
+		{
+			thread_should_die = "global reencoding resolution changed";
+			break;
+		}
+
 
 		update_osd(this);
 		if (!(iteration++ % 50))
@@ -299,7 +307,17 @@ void bc_record::run()
 			}
 
 			if (cfg.reencode_enabled || global_bandwidth_limit > 0) {
-				reenc = new reencoder(streaming_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
+				streaming_width = cfg.reencode_frame_width;
+				streaming_height = cfg.reencode_frame_height;
+
+				if (global_bandwidth_limit > 0) {
+					pthread_mutex_lock(&mutex_global_reencode_resolution);
+					streaming_width = global_reencode_frame_w;
+					streaming_height = global_reencode_frame_h;
+					pthread_mutex_unlock(&mutex_global_reencode_resolution);
+				}
+
+				reenc = new reencoder(streaming_bitrate, streaming_width, streaming_height);
 			}
 
 			sched_last = 0;
@@ -394,6 +412,8 @@ bc_record::bc_record(int i)
 	last_sub_pts = 0;
 	reenc = 0;
 	streaming_bitrate = 0;
+	streaming_width = 0;
+	streaming_height = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)

@@ -33,6 +33,7 @@ pthread_mutex_t mutex_global_sched;
 pthread_mutex_t mutex_streaming_setup;
 pthread_mutex_t mutex_snapshot_delay_ms;
 pthread_mutex_t mutex_max_record_time_sec;
+pthread_mutex_t mutex_global_reencode_resolution;
 
 static std::vector<bc_record*> bc_rec_list;
 static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -47,6 +48,8 @@ int snapshot_delay_ms;
 int max_record_time_sec;
 int global_bandwidth_limit = 0;
 int global_bitrate_per_device = 0;
+int global_reencode_frame_w = 160;
+int global_reencode_frame_h = 120;
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -134,6 +137,8 @@ static void bc_initialize_mutexes()
 	pthread_mutex_init(&mutex_snapshot_delay_ms,
 			   (pthread_mutexattr_t *) NULL);
 	pthread_mutex_init(&mutex_max_record_time_sec,
+			   (pthread_mutexattr_t *) NULL);
+	pthread_mutex_init(&mutex_global_reencode_resolution,
 			   (pthread_mutexattr_t *) NULL);
 }
 
@@ -397,6 +402,35 @@ static int bc_check_globals(void)
 		global_bandwidth_limit = 0;
 	}
         bc_db_free_table(dbres);
+
+        /* get global reencode resolution */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_REENCODE_RESOLUTION'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for global reencode resolution");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		const char *resolution = bc_db_get_val(dbres, "value", NULL);
+
+		if (resolution) {
+			int w, h;
+			char resbuf[12];
+
+			strlcpy(resbuf, resolution, sizeof resbuf);
+			w = atoi(strtok(resbuf, "x"));
+			h = atoi(strtok(NULL, "x"));
+
+			if (w > 0 && h > 0) {
+				pthread_mutex_lock(&mutex_global_reencode_resolution);
+				global_reencode_frame_w = w;
+				global_reencode_frame_h = h;
+				pthread_mutex_unlock(&mutex_global_reencode_resolution);
+			}
+		}
+	}
+
+	bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
 	return load_storage_paths();
