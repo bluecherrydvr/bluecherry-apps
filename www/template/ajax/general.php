@@ -122,11 +122,7 @@
 				</p>
 			</label>
 			<div class="col-lg-6 col-md-6">
-				<select id="G_TOTAL_TRANSMITI_LIMIT" class=" form-control" name="G_TOTAL_TRANSMITI_LIMIT">
-					<option value="1">320 x 240</option>
-					<option value="2" selected="selected" >640 x 480</option>
-					<option value="3">800 x 600</option>
-				</select>
+				<?php echo arrayToSelect($GLOBALS['reencode_resolutions'], $global_settings->data['G_REENCODE_RESOLUTION'], 'G_REENCODE_RESOLUTION'); ?>
 			</div>
         </div>
 
