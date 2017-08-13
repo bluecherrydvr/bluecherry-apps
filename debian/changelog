@@ -1,4 +1,4 @@
-bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
+bluecherry (2:2.8.0alrm16) trusty xenial wheezy jessie; urgency=low
 
   * Improved experimental motion detection algorithm
 
