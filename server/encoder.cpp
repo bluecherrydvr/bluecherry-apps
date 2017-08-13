@@ -38,15 +38,17 @@ void encoder::push_frame(AVFrame* frame)
 		AVBufferRef* hw_frames_ctx;
 
 		codec_id = encoder_ctx->codec_id;
-		hw_frames_ctx = av_buffer_ref(encoder_ctx->hw_frames_ctx);
 
 		release_encoder();
 
 		/* reinitialize encoder with new frame size or bitrate */
-		if (!init_encoder(type, codec_id, current_bitrate, frame->width, frame->height, hw_frames_ctx))
+		if (!init_encoder(type, codec_id, current_bitrate, frame->width, frame->height, frame->hw_frames_ctx))
 		{
 			bc_log(Error, "failed to reinitialize encoder");
+			return;
 		}
+
+		bc_log(Info, "Encoder is reinitialized for frame size %dx%d, output bitrate %d", frame->width, frame->height, current_bitrate);
 	}
 
 	ret = avcodec_send_frame(encoder_ctx, frame);
