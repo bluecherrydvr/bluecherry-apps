@@ -26,6 +26,7 @@ extern "C" {
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
+#include "trigger_processor.h"
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -980,6 +981,179 @@ static void xml_status_callback(pugi::xml_document& xmldoc)
 	xml_licenses_status(subNode);
 }
 
+static std::vector<int> bc_str_to_int_array(const char *str)
+{
+	std::vector<int> ret;
+
+	if (str) {
+		char *val_str;
+		char *str_copy = strdup(str);
+
+		val_str = strtok(str_copy, ",");
+
+		if (val_str) {
+			int val_int = atoi(val_str);
+
+			ret.push_back(val_int);
+
+			while ((val_str = strtok(NULL, ","))) {
+				val_int = atoi(val_str);
+				ret.push_back(val_int);
+			}
+		}
+
+		free(str_copy);
+	}
+
+	return ret;
+}
+
+static bool bc_check_and_export_gpio_pin(int pin_id)
+{
+	char pathbuf[256];
+	struct stat st;
+
+	sprintf(pathbuf, "/sys/class/gpio/gpio%d", pin_id);
+
+	if (stat(pathbuf, &st) != 0) {
+		char commandbuf[256];
+
+		sprintf(commandbuf, "/usr/lib/bluecherry/gpiocmd export_pin %d", pin_id);
+
+		if (system(commandbuf) != 0) {
+			bc_log(Error, "failed to export gpio pin %d", pin_id);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool bc_write_pin(int pin_id, int value)
+{
+	char commandbuf[256];
+
+	sprintf(commandbuf, "/usr/lib/bluecherry/gpiocmd write %d %d", pin_id, value);
+
+	if (system(commandbuf) != 0) {
+		bc_log(Error, "failed to set relay pin %d to %d", pin_id, value);
+		return false;
+	}
+
+	return true;
+}
+
+static void bc_check_gpio()
+{
+	char pathbuf[256];
+
+	struct gpio_pin
+	{
+		int pin_id;
+		int card_id;
+
+		std::vector<int> trigger_output_pins;
+		std::vector<int> trigger_devices;
+	};
+
+	static std::vector<struct gpio_pin> gpio_config;
+
+	static int loops = 0;
+
+	if ((loops & 7) == 0) {
+		//reload config from database
+		BC_DB_RES dbres;
+
+		gpio_config.clear();
+
+		dbres = bc_db_get_table("SELECT card_id, input_pin_id, trigger_output_pins, trigger_devices "
+					"FROM GpioConfig");
+
+		if (!dbres)
+			return;
+
+		while (!bc_db_fetch_row(dbres)) {
+			struct gpio_pin pin;
+
+			pin.pin_id = bc_db_get_val_int(dbres, "input_pin_id");
+			pin.card_id = bc_db_get_val_int(dbres, "card_id");
+
+			const char *out_pins = bc_db_get_val(dbres, "trigger_output_pins", NULL);
+			const char *trigger_devs = bc_db_get_val(dbres, "trigger_devices", NULL);
+
+			pin.trigger_output_pins = bc_str_to_int_array(out_pins);
+			pin.trigger_devices = bc_str_to_int_array(trigger_devs);
+
+
+			//export new input pins
+			if (!bc_check_and_export_gpio_pin(pin.pin_id))
+				continue;
+
+			gpio_config.push_back(pin);
+		}
+	}
+
+	/* Check input pin states, switch output pins and trigger recording on camera devices */
+	// switch turned on relays off after timeout
+	for (int i = 0; i < gpio_config.size(); i++) {
+		FILE *pin_f;
+		char pinval[4];
+		int pin_state;
+
+		struct gpio_pin pin = gpio_config[i];
+
+		/*Skip not configured pins */
+		if (pin.trigger_output_pins.empty() && pin.trigger_devices.empty())
+			continue;
+
+		/* Read value from pin */
+		sprintf(pathbuf, "/sys/class/gpio/gpio%d/value", pin.pin_id);
+
+		pin_f = fopen(pathbuf, "r");
+
+		if (!pin_f || !fread(pinval, 1, 4, pin_f))
+		{
+			bc_log(Error, "failed to read from pin %d on card %d: %s", pin.pin_id, pin.card_id, strerror(errno));
+			continue;
+		}
+
+		pin_state = atoi(pinval);
+
+		bc_log(Debug, "read value %d from pin %d on card %d", pin_state, pin.pin_id, pin.card_id);
+
+		fclose(pin_f);
+
+		/* As inputs are inverted in GPIO module by optodecouplers, 1 means idle state, 0 triggered state,
+		 * if GPIO module is not connected, all inputs should be read as 0 */
+		if (pin_state == 0) {
+			bc_log(Info, "alarm on GPIO input pin %d on card %d", pin.pin_id, pin.card_id);
+
+			/* Trigger cameras */
+			for (int j = 0; j < pin.trigger_devices.size(); j++) {
+				int camera_id = pin.trigger_devices[j];
+				trigger_processor *proc = trigger_server::Instance().find_processor(camera_id);
+
+				if (!proc) {
+					bc_log(Error, "Failed to find camera device id %d associated with sensor", camera_id);
+					continue;
+				}
+
+				proc->trigger("sensor alarm");
+			}
+
+			/* Turn on relays */
+			for (int j = 0; j < pin.trigger_output_pins.size(); j++) {
+				if (!bc_check_and_export_gpio_pin(pin.trigger_output_pins[j]))
+					continue;
+				bc_write_pin(pin.trigger_output_pins[j], 1);
+			}
+		}
+
+	}
+
+	loops++;
+}
+
 int main(int argc, char **argv)
 {
 	int opt;
@@ -1187,6 +1361,9 @@ int main(int argc, char **argv)
 
 		if (!(loops & 63))
 			bc_update_server_status();
+
+		if (hwcard_ready)
+			bc_check_gpio();
 	}
 
 	bc_stop_threads();
