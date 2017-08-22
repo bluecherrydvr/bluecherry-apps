@@ -24,6 +24,9 @@
 
 #define MAX_CARDS		32
 
+#define SOLO_RELAY_PINS_NUM 8
+#define SOLO_INPUT_PINS_NUM 16
+
 struct card_list {
 	int valid:1, dirty:1;
 
@@ -370,6 +373,20 @@ int bc_check_avail(void)
 		if (!card->valid)
 			break;
 
+		if (card->gpio_base_pin_num > -1) {
+			for (int j = 0; j < SOLO_INPUT_PINS_NUM; j++) {
+				int input_pin_num;
+
+				input_pin_num = card->gpio_base_pin_num + SOLO_RELAY_PINS_NUM + j;
+
+				ret |= __bc_db_query("INSERT IGNORE INTO GpioConfig "
+						     "(card_id, input_pin_id) "
+						     "VALUES('%d', '%d')",
+						     card->card_id,
+						     input_pin_num);
+			}
+		}
+
 		for (int j = 0; j < card->n_ports; j++) {
 			ret |= __bc_db_query("INSERT INTO AvailableSources "
 			                     "(device, driver, card_id, video_type) "
@@ -380,6 +397,9 @@ int bc_check_avail(void)
 				goto rollback;
 		}
 	}
+
+	if (__bc_db_query("DELETE FROM GpioConfig WHERE card_id NOT IN (SELECT card_id from AvailableSources)"))
+		goto rollback;
 
 	if (bc_db_commit_trans()) {
 	rollback:
