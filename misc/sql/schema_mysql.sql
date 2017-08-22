@@ -220,6 +220,17 @@ CREATE TABLE `GlobalSettings` (
   PRIMARY KEY (`parameter`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `GpioConfig`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `GpioConfig` (
+  `card_id` varchar(255) NOT NULL,
+  `input_pin_id` int(11) NOT NULL,
+  `trigger_output_pins` varchar(255),
+  `trigger_devices` varchar(255),
+  UNIQUE KEY `uniq_input_pin` (`card_id`,`input_pin_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `Licenses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
