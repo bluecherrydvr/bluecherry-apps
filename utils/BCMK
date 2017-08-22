@@ -12,6 +12,9 @@ getaudio: %:%.o $(TOPDIR)/server/g723-dec.o
 bc-license: %:%.o
 	$(CXX) -o $@ $^ -lbsd
 
+gpiocmd: %:%.o
+	$(LD) -o $@ $^
+
 $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 	$(BCMK) -C "$(@D)" $(@F)
 
