@@ -22,6 +22,7 @@ public:
 
   void register_processor(int camera_id, trigger_processor *processor);
   void unregister_processor(int camera_id, trigger_processor *processor);
+  trigger_processor *find_processor(int camera_id);
 
 private:
   trigger_server();
@@ -40,5 +41,4 @@ private:
 
   pthread_mutex_t processor_registry_lock;
   std::map<int, trigger_processor*>processor_registry;
-  trigger_processor *find_processor(int camera_id);
 };
