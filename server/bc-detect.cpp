@@ -232,6 +232,7 @@ static int tw5864_add(struct udev_device *device, struct card_list *cards)
 
 			cards[i].valid = 1;
 			cards[i].dirty = 0;
+			cards[i].gpio_base_pin_num = -1;
 
 			bc_log(Info, "Found 4 ports of TW5864 card (%s)", pci_slot_name);
 			break;
