@@ -92,6 +92,8 @@ case "$1" in
 		fi	
 		chown -R bluecherry:bluecherry /var/lib/bluecherry
 		chmod -R 770 /var/lib/bluecherry
+		chown root /usr/lib/bluecherry/gpiocmd
+		chmod 4755 /usr/lib/bluecherry/gpiocmd
 		if [[ $IN_DEB ]]
 		then
 			chown -R bluecherry:bluecherry /var/run/bluecherry
