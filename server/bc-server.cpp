@@ -11,6 +11,7 @@
 #include <bsd/string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <pwd.h>
 #include <grp.h>
 #include <signal.h>
@@ -1120,11 +1121,21 @@ static bool bc_check_and_export_gpio_pin(int pin_id)
 
 static bool bc_write_pin(int pin_id, int value)
 {
-	char commandbuf[256];
+	char pinbuf[16];
+	int wstatus;
 
-	sprintf(commandbuf, "/usr/lib/bluecherry/gpiocmd write %d %d", pin_id, value);
+	sprintf(pinbuf, "%d", pin_id);
 
-	if (system(commandbuf) != 0) {
+	pid_t pid = fork();
+
+	if (pid == 0) {
+		execl("/usr/lib/bluecherry/gpiocmd", "/usr/lib/bluecherry/gpiocmd", "write", pinbuf, value ? "1" : "0");
+		exit(1);
+	}
+
+	waitpid(pid, &wstatus, 0);
+
+	if (pid < 0 || !WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
 		bc_log(Error, "failed to set relay pin %d to %d", pin_id, value);
 		return false;
 	}
