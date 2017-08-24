@@ -1243,6 +1243,10 @@ static void bc_check_gpio()
 				}
 
 				proc->trigger("sensor alarm");
+				/* Send trigger packet to livestream */
+				struct bc_record *bc_rec = bc_record_exists(camera_id);
+				if (bc_rec)
+					bc_rec->motion_flag = 1;
 			}
 
 			/* Turn on relays */
