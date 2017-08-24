@@ -1044,7 +1044,8 @@ static bool bc_write_pin(int pin_id, int value)
 		exit(1);
 	}
 
-	waitpid(pid, &wstatus, 0);
+	if (pid > 0)
+		waitpid(pid, &wstatus, 0);
 
 	if (pid < 0 || !WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
 		bc_log(Error, "failed to set relay pin %d to %d", pin_id, value);
