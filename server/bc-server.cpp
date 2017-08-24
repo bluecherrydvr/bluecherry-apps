@@ -1071,6 +1071,8 @@ static void setup_vaapi()
 	} else
 		bc_log(Info, "Initialized render node %s for VAAPI hardware acceleration", renderNode);
 
+	if (dbres)
+		bc_db_free_table(dbres);
 }
 
 static std::vector<int> bc_str_to_int_array(const char *str)
