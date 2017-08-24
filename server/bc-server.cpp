@@ -1002,6 +1002,8 @@ static void setup_vaapi()
 	} else
 		bc_log(Info, "Initialized render node %s for VAAPI hardware acceleration", renderNode);
 
+	if (dbres)
+		bc_db_free_table(dbres);
 }
 
 int main(int argc, char **argv)
