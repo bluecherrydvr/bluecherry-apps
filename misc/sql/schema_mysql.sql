@@ -226,8 +226,8 @@ DROP TABLE IF EXISTS `GpioConfig`;
 CREATE TABLE `GpioConfig` (
   `card_id` varchar(255) NOT NULL,
   `input_pin_id` int(11) NOT NULL,
-  `trigger_output_pins` varchar(255),
-  `trigger_devices` varchar(255),
+  `trigger_output_pins` varchar(255) DEFAULT NULL,
+  `trigger_devices` varchar(255) DEFAULT NULL,
   UNIQUE KEY `uniq_input_pin` (`card_id`,`input_pin_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
