@@ -1269,8 +1269,9 @@ static void bc_check_gpio()
 		if (it->second == 0) {
 			bc_write_pin(it->first, 0);
 			bc_log(Info, "Relay output %d is switched off by timeout", it->first);
-			gpio_relays_timeouts.erase(it);
-			break;
+			auto erase_it = it;
+			it--;
+			gpio_relays_timeouts.erase(erase_it);
 		}
 	}
 
