@@ -1129,7 +1129,7 @@ static bool bc_write_pin(int pin_id, int value)
 	pid_t pid = fork();
 
 	if (pid == 0) {
-		execl("/usr/lib/bluecherry/gpiocmd", "/usr/lib/bluecherry/gpiocmd", "write", pinbuf, value ? "1" : "0");
+		execl("/usr/lib/bluecherry/gpiocmd", "/usr/lib/bluecherry/gpiocmd", "write", pinbuf, value ? "1" : "0", NULL);
 		exit(1);
 	}
 
