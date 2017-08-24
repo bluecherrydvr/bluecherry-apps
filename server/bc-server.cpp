@@ -44,6 +44,8 @@ static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 static int hwcard_ready = 0;
+static std::map<int, int> gpio_relays_timeouts;
+static int gpio_relay_reset_timeout = 10;
 
 char global_sched[7 * 24 + 1];
 int snapshot_delay_ms;
@@ -1122,7 +1124,7 @@ static bool bc_check_and_export_gpio_pin(int pin_id)
 static bool bc_write_pin(int pin_id, int value)
 {
 	char pinbuf[16];
-	int wstatus;
+	int wstatus = 0;
 
 	sprintf(pinbuf, "%d", pin_id);
 
@@ -1134,7 +1136,7 @@ static bool bc_write_pin(int pin_id, int value)
 	}
 
 	if (pid > 0)
-		waitpid(pid, &wstatus, 0);
+		waitpid(pid, &wstatus, __WALL);
 
 	if (pid < 0 || !WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
 		bc_log(Error, "failed to set relay pin %d to %d", pin_id, value);
@@ -1195,7 +1197,6 @@ static void bc_check_gpio()
 	}
 
 	/* Check input pin states, switch output pins and trigger recording on camera devices */
-	// switch turned on relays off after timeout
 	for (int i = 0; i < gpio_config.size(); i++) {
 		FILE *pin_f;
 		char pinval[4];
@@ -1246,10 +1247,31 @@ static void bc_check_gpio()
 			for (int j = 0; j < pin.trigger_output_pins.size(); j++) {
 				if (!bc_check_and_export_gpio_pin(pin.trigger_output_pins[j]))
 					continue;
-				bc_write_pin(pin.trigger_output_pins[j], 1);
+
+				/* Relay is already turned on, skip writing */
+				if (gpio_relays_timeouts.count(pin.trigger_output_pins[j])) {
+					gpio_relays_timeouts[pin.trigger_output_pins[j]] = gpio_relay_reset_timeout;
+					continue;
+				}
+
+				if (bc_write_pin(pin.trigger_output_pins[j], 1))
+					gpio_relays_timeouts[pin.trigger_output_pins[j]] = gpio_relay_reset_timeout;
 			}
 		}
 
+	}
+
+	/* Switch turned on relays off after timeout */
+	for (auto it = gpio_relays_timeouts.begin(); it != gpio_relays_timeouts.end(); ++it) {
+		if (it->second > 0)
+			it->second--;
+
+		if (it->second == 0) {
+			bc_write_pin(it->first, 0);
+			bc_log(Info, "Relay output %d is switched off by timeout", it->first);
+			gpio_relays_timeouts.erase(it);
+			break;
+		}
 	}
 
 	loops++;
