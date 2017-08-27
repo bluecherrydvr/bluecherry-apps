@@ -93,7 +93,7 @@
                                     </div>
                                     <?php if ($card->info['driver'] != 'tw5864') { ?>
                                     <div class="col-lg-6 col-md-6">
-                                       <a href="/gpio">GPIO</a> Frames Restantes: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
+                                       Frames Restantes: <a href="javascript:void(0);" class="devices-cards-capacity"  style="cursor: help;"><?php echo $card->info['available_capacity']; ?></a>
                                     </div>
                                     <?php } ?>
                                 </div>

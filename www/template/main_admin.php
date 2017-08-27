@@ -147,6 +147,9 @@
                             <a href="/devices" class="ajax-content" data-left-menu="true"><i class="fa fa-video-camera fa-fw"></i> <?php echo MMENU_DEVICES; ?></a>
                         </li>
                         <li>
+                            <a href="/gpio" class="ajax-content" data-left-menu="true"><i class="fa fa-random fa-fw"></i> <?php echo MMENU_GPIO; ?></a>
+                        </li>
+                        <li>
                             <a href="/deviceschedule" class="ajax-content" data-left-menu="true"><i class="fa fa-th fa-fw"></i> <?php echo MMENU_SCHED; ?></a>
                         </li>
                         <li>
