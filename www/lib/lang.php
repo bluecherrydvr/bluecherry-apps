@@ -39,6 +39,10 @@ define('MMENU_BACKUP', 'Database backup');
 define('MMENU_LICENSING', 'License keys');
 define('MMENU_AUDIT_LOG', 'Audit Log');
 
+#GPIO
+define('GPIO', 'GPIO');
+define('GPIO_RESET_RELAYS', 'Reset Relays');
+
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
 define('COUND_NOT_OPEN_PAGE_EX', 'The page requested could not be loaded at this time. Please make sure you are able to connect to the DVR server and that the server is running.');

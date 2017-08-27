@@ -9,9 +9,104 @@ class gpio extends Controller {
 		$this->chAccess('admin');
     }
 
+    private function getCards()
+    {
+                $cards = data::query("SELECT card_id FROM AvailableSources WHERE driver LIKE 'solo%' GROUP BY card_id");
+                $this->info['total_devices'] = 0;
+                if (!$cards) { return false; }
+                        else {
+                                foreach ($cards as $key => $card){
+                                        $this->cards[$card['card_id']] = new card($card['card_id']);
+                                        $this->info['total_devices'] += count($this->cards[$card['card_id']]->cameras);
+                                }
+
+                        }
+     }
+
+    private function readPinVal($pin_id)
+    {
+	$v = '-';
+
+	if (file_exists("/sys/class/gpio/gpio".$pin_id."/value"))
+	{
+		$h = fopen("/sys/class/gpio/gpio".$pin_id."/value", 'r');
+
+		if ($h)
+			$v = intval(fread($h, 1));
+
+		fclose($h);
+	}
+
+	return $v;
+    }
+
+    private function getPinStates()
+    {
+	$pinstates = array();
+
+	$pin_basenums = data::query("SELECT MIN(input_pin_id)-8 as basenum, card_id FROM GpioConfig GROUP BY card_id");
+
+	foreach ($pin_basenums as $key => $basenum)
+	{
+		$basepin = $basenum['basenum'];
+
+		$relays = array();
+		$sensors = array();
+
+		for ($pin_id = $basepin; $pin_id < $basepin + 8; $pin_id++)
+			$relays[$pin_id - $basepin] = $this->readPinVal($pin_id);
+
+		for ($pin_id = $basepin + 8; $pin_id < $basepin + 24; $pin_id++)
+			$sensors[$pin_id - $basepin - 8] = $this->readPinVal($pin_id);
+
+		$pinstates[$basenum['card_id']]['relays'] = $relays;
+		$pinstates[$basenum['card_id']]['sensors'] = $sensors;
+
+	}
+
+	return $pinstates;
+    }
+
+    private function resetRelays()
+    {
+	$pin_basenums = data::query("SELECT MIN(input_pin_id)-8 as basenum, card_id FROM GpioConfig GROUP BY card_id");
+
+	foreach ($pin_basenums as $key => $basenum)
+	{
+		$basepin = $basenum['basenum'];
+		$output = array();
+	        $ret = 0;
+
+		for ($relay_pin = $basepin; $relay_pin < $basepin + 8; $relay_pin++)
+		{
+			if (!file_exists("/sys/class/gpio/gpio".$relay_pin."/value"))
+				exec("/usr/lib/bluecherry/gpiocmd export_pin ".$relay_pin, $output, $ret);
+
+			exec("/usr/lib/bluecherry/gpiocmd write ".$relay_pin." 0", $output, $ret);
+			//TODO check for errors, return ajax error
+		}
+	}
+    }
+
+    public function postData()
+    {
+
+	if (!empty($_GET['mode']) && $_GET['mode'] == 'reset')
+		$this->resetRelays();
+
+	data::responseJSON(true);
+    }
+
     public function getData()
     {
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'reset')
+                $this->resetRelays();
+
         $this->setView('ajax.gpio');
+
+	$this->view->pinstates = $this->getPinStates();
+	$this->getCards();
+	$this->view->cards = $this->cards;
 
         $id = (isset($_GET['id']) and $_GET['id'] != '') ? intval($_GET['id']) : 'global';
 
