@@ -25,6 +25,7 @@ define('MMENU_STORAGE', 'Armazenamento');
 define('MMENU_USERS', 'Usuarios');
 define('MMENU_LOG', 'Eventos do Sistema');
 define('MMENU_DEVICES', 'Dispositivos');
+define('MMENU_GPIO', 'GPIO');
 define('MMENU_SCHED', 'Agendamento Global');
 define('MMENU_ALRMSCHED', 'Programação de alarmes');
 define('MMENU_LIVEVIEW', 'Ao Vivo');
