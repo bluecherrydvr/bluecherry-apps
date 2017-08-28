@@ -99,8 +99,11 @@ class gpio extends Controller {
 
     public function getData()
     {
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'reset')
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'reset') {
                 $this->resetRelays();
+		header("Location: /gpio");
+		exit;
+	}
 
         $this->setView('ajax.gpio');
 
