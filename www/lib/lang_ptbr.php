@@ -38,6 +38,10 @@ define('MMENU_BACKUP', 'Backup de Configuracao');
 define('MMENU_LICENSING', 'Chaves de Acesso');
 define('MMENU_AUDIT_LOG', 'Log de auditoria');
 
+#GPIO
+define('GPIO', 'GPIO');
+define('GPIO_RESET_RELAYS', 'Reset Relays');
+
 #main
 define('COUND_NOT_OPEN_PAGE', 'Pagina Nao Pode Carregar');
 define('COUND_NOT_OPEN_PAGE_EX', 'Pagina nao pode carregar. Ceritifique-se que voce esta habilitado a conectar no DVR.');
