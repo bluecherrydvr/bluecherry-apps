@@ -40,13 +40,17 @@ class gpio extends Controller {
 	return $v;
     }
 
+    private function getPinBasenums()
+    {
+	$this->pin_basenums = data::query("SELECT MIN(input_pin_id)-8 as basenum, card_id FROM GpioConfig GROUP BY card_id");
+    }
+
     private function getPinStates()
     {
 	$pinstates = array();
 
-	$pin_basenums = data::query("SELECT MIN(input_pin_id)-8 as basenum, card_id FROM GpioConfig GROUP BY card_id");
 
-	foreach ($pin_basenums as $key => $basenum)
+	foreach ($this->pin_basenums as $key => $basenum)
 	{
 		$basepin = $basenum['basenum'];
 
@@ -69,9 +73,7 @@ class gpio extends Controller {
 
     private function resetRelays()
     {
-	$pin_basenums = data::query("SELECT MIN(input_pin_id)-8 as basenum, card_id FROM GpioConfig GROUP BY card_id");
-
-	foreach ($pin_basenums as $key => $basenum)
+	foreach ($this->pin_basenums as $key => $basenum)
 	{
 		$basepin = $basenum['basenum'];
 		$output = array();
@@ -88,17 +90,138 @@ class gpio extends Controller {
 	}
     }
 
+    private function getGpioConfig()
+    {
+	//[sensor_card_id][relay_card_id][relay_pin][sensor_pin];
+	//[sensor_card_id][camera_device_id][sensor_pin]
+	$relay_mappings = array();
+	$camera_mappings = array();
+
+	$relay_to_sensors = array();//global linux pin id's
+	$camera_to_sensors = array();
+
+	$gpioconfig = data::query("SELECT card_id, input_pin_id, trigger_output_pins, trigger_devices FROM GpioConfig ORDER BY card_id, input_pin_id");
+
+	foreach($gpioconfig as $row_id => $row) {
+		if (!empty($row['trigger_output_pins'])) {
+			$output_pins = explode(",",$row['trigger_output_pins']);
+
+			foreach($output_pins as $key => $out_pin) {
+				if (!array_key_exists($out_pin, $relay_to_sensors))
+					$relay_to_sensors[$out_pin] = array();
+
+				$relay_to_sensors[$out_pin][$row['input_pin_id']] = 1;
+			}
+		}
+
+		if (!empty($row['trigger_devices'])) {
+			$device_ids = explode(",", $row['trigger_devices']);
+
+			foreach ($device_ids as $key => $device_id) {
+				if(!array_key_exists($device_id, $camera_to_sensors))
+					$camera_to_sensors[$device_id] = array();
+
+				$camera_to_sensors[$device_id][$row['input_pin_id']] = 1;
+			}
+		}
+	}
+
+	foreach ($this->pin_basenums as $sensor_key => $s) {
+		$relay_mappings[$s['card_id']] = array();
+		foreach($this->pin_basenums as $relay_key => $r) {
+			$relay_mappings[$s['card_id']][$r['card_id']] = array();
+
+			for ($i = 0; $i < 8; $i++) {
+				$relay_mappings[$s['card_id']][$r['card_id']][$i] = array();
+				for ($j = 0; $j < 16; $j++) {
+
+					$glob_relay_pin_id = $r['basenum'] + $i;
+					$glob_sensor_pin_id = $s['basenum'] + $j + 8;
+					$relay_mappings[$s['card_id']][$r['card_id']][$i][$j] = "0"."rm_sc".$s['card_id']."_sp".$glob_sensor_pin_id."_rp".$glob_relay_pin_id;
+
+					if (isset($relay_to_sensors[$glob_relay_pin_id])
+						 && isset($relay_to_sensors[$glob_relay_pin_id][$glob_sensor_pin_id])
+						 && $relay_to_sensors[$glob_relay_pin_id][$glob_sensor_pin_id] == 1)
+						$relay_mappings[$s['card_id']][$r['card_id']][$i][$j][0] = "1";
+				}
+			}
+		}
+	}
+
+	$enabled_Devices = data::query("SELECT id, device_name FROM Devices WHERE disabled=0");
+
+	foreach ($this->pin_basenums as $sensor_key => $s) {
+		$camera_mappings[$s['card_id']] = array();
+
+		foreach ($enabled_Devices as $key => $enabledDevice) {
+			$camera_mappings[$s['card_id']][$enabledDevice['id']] = array();
+			$camera_mappings[$s['card_id']][$enabledDevice['id']]['device_name'] = $enabledDevice['device_name'];
+
+			for ($j = 0; $j < 16; $j++) {
+				$glob_sensor_pin_id = $s['basenum'] + $j + 8;
+
+				$camera_mappings[$s['card_id']][$enabledDevice['id']][$j] = "0"."cm_sc".$s['card_id']."_sp".$glob_sensor_pin_id."_cam".$enabledDevice['id'];
+
+				if (isset($camera_to_sensors[$enabledDevice['id']])
+					&& isset($camera_to_sensors[$enabledDevice['id']][$glob_sensor_pin_id])
+					&& $camera_to_sensors[$enabledDevice['id']][$glob_sensor_pin_id] == 1 )
+					$camera_mappings[$s['card_id']][$enabledDevice['id']][$j][0] = "1";
+			}
+		}
+	}
+
+	$this->relay_mappings = $relay_mappings;
+	$this->camera_mappings = $camera_mappings;
+    }
+
     public function postData()
     {
+	$this->getPinBasenums();
 
-	if (!empty($_GET['mode']) && $_GET['mode'] == 'reset')
-		$this->resetRelays();
+	$enabled_dev_ids = data::query("SELECT id FROM Devices WHERE disabled=0");
+
+	foreach ($this->pin_basenums as $sensor_key => $s) {
+		for ($j = 0; $j < 16; $j++) {
+			$glob_sensor_pin_id = $s['basenum'] + $j + 8;
+			$trigger_output_pins = array();
+			$trigger_devices = array();
+
+			foreach ($this->pin_basenums as $relay_key => $r) {
+				for ($i = 0; $i < 8; $i++) {
+					$glob_relay_pin_id = $r['basenum'] + $i;
+
+					if (isset($_POST["rm_sc".$s['card_id']."_sp".$glob_sensor_pin_id."_rp".$glob_relay_pin_id]))
+						array_push($trigger_output_pins, $glob_relay_pin_id);
+				}
+			}
+
+			foreach ($enabled_dev_ids as $key => $enabled_device) {
+				if (isset($_POST["cm_sc".$s['card_id']."_sp".$glob_sensor_pin_id."_cam".$enabled_device['id']]))
+					array_push($trigger_devices, $enabled_device['id']);
+			}
+
+			if (!empty($trigger_output_pins)) {
+				$trigger_output_pins = "'".implode(",", $trigger_output_pins)."'";
+			} else
+				$trigger_output_pins = "NULL";
+
+			if (!empty($trigger_devices)) {
+				$trigger_devices = "'".implode(",", $trigger_devices)."'";
+			} else
+				$trigger_devices = "NULL";
+
+			data::query("UPDATE GpioConfig SET trigger_output_pins=".$trigger_output_pins.", trigger_devices=".$trigger_devices." WHERE card_id=".$s['card_id']." AND input_pin_id=".$glob_sensor_pin_id);
+
+		}
+	}
 
 	data::responseJSON(true);
     }
 
     public function getData()
     {
+	$this->getPinBasenums();
+
         if (!empty($_GET['mode']) && $_GET['mode'] == 'reset') {
                 $this->resetRelays();
 		header("Location: /gpio");
@@ -110,6 +233,10 @@ class gpio extends Controller {
 	$this->view->pinstates = $this->getPinStates();
 	$this->getCards();
 	$this->view->cards = $this->cards;
+
+	$this->getGpioConfig();
+	$this->view->relay_mappings = $this->relay_mappings;
+	$this->view->camera_mappings = $this->camera_mappings;
 
         $id = (isset($_GET['id']) and $_GET['id'] != '') ? intval($_GET['id']) : 'global';
 
