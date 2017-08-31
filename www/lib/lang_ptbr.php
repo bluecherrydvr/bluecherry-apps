@@ -129,6 +129,8 @@ define('G_TEST_EMAIL_BODY', 'Email de Teste');
 define('G_TEST_EMAIL_SENT', 'Mensagem Enviada');
 
 define('G_TOTAL_BANDWIDTH_LIMIT', 'Limitador de Banda');
+define('G_GPIO_RELAY_RESET_TIMEOUT', 'GPIO Relays Reset Timeout');
+
 
 #users page
 define('EDIT_ACCESS_LIST', 'Permissao Acesso das Cameras');

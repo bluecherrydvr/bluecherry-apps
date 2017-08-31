@@ -130,5 +130,13 @@ $GLOBALS['reencode_resolutions'] = array(
 	'640x480'
 );
 $varpub_globals['reencode_resolutions'] = $GLOBALS['reencode_resolutions'];
+#relay reset timeouts
+$GLOBALS['relay_reset_timeouts'] = array(
+	'15' => '15 segundos',
+	'30' => '30 segundos',
+	'45' => '45 segundos',
+	'60' => '60 segundos',
+	'-1' =>  'Manualmente'
+);
 
 $varpub->globals = $varpub_globals;
