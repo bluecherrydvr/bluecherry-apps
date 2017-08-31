@@ -68,6 +68,22 @@
 </div>
 
 <div class="panel panel-default">
+    <div class="panel-heading"><?php echo GPIO; ?></div>
+
+     <div class="panel-body">
+
+        <div class="form-group">
+            <label class="col-lg-4 col-md-4 control-label"><?php echo G_GPIO_RELAY_RESET_TIMEOUT; ?><p class='help-block'><small><?php echo G_GPIO_RELAY_RESET_TIMEOUT; ?></small></p></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect($GLOBALS['relay_reset_timeouts'], $global_settings->data['G_GPIO_RELAY_RESET_TIMEOUT'], 'G_GPIO_RELAY_RESET_TIMEOUT'); ?>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="panel panel-default">
     <div class="panel-heading"><?php echo G_PERF_TITLE; ?></div>
 
     <div class="panel-body">

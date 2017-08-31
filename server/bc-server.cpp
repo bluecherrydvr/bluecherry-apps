@@ -392,6 +392,17 @@ static int bc_check_globals(void)
 	pthread_mutex_unlock(&mutex_max_record_time_sec);
 	bc_db_free_table(dbres);
 
+	/* get gpio_relay_reset_timeout */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_GPIO_RELAY_RESET_TIMEOUT'");
+	if (!dbres)
+		bc_status_component_error("Database failure for gpio relay reset timeout");
+
+	if (dbres && !bc_db_fetch_row(dbres))
+		gpio_relay_reset_timeout = bc_db_get_val_int(dbres, "value");
+
+	bc_db_free_table(dbres);
+
 	/* get global_bandwidth_limit */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 			"parameter='G_TOTAL_BANDWIDTH_LIMIT'");
