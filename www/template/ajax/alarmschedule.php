@@ -4,7 +4,7 @@
     
         <ol class="breadcrumb">
             <li><a href="/ajax/devices.php" class="ajax-content"><?php echo ALL_DEVICES; ?></a></li>
-            <li class="active"> <?php echo (($global) ? '<b>'.EDITING_GLOBAL_SCHED.'</b>' : EDITING_SCHED." <b>".(($device_schedule->schedule_data[0]['device_name']) ? $device_schedule->schedule_data[0]['device_name'] : $device_schedule->schedule_data[0]['id'])."</b>"); ?></li>
+            <li class="active"> <?php echo  '<b>'.EDITING_GLOBAL_SCHED.'</b>'; ?></li>
         </ol>
         </h1>
     </div>
@@ -16,26 +16,11 @@
     <div class="col-lg-12">
     <form action="/ajax/update.php" method="post" class="form-horizontal" id="motion-submit">
 
-        <input type="hidden" name="id" value="<?php echo ($global) ? 'global' : $device_schedule->schedule_data[0]['id']; ?>" />
-        <input type="hidden" name="<?php echo (!$global) ? 'schedule' : 'G_DEV_SCED' ; ?>" id="motion-map" value="<?php echo $device_schedule->schedule_data[0]['schedule']; ?>" />
+        <input type="hidden" name="id" value="global" />
+        <input type="hidden" name="G_ALARM_SCED" id="motion-map" value="<?php echo $device_schedule->schedule_data[0]['schedule']; ?>" />
         <input type="hidden" name="type" value="Devices" />
-        <input type="hidden" name="mode" value="<?php echo (!$global) ? 'update' : 'global' ; ?>" />
+        <input type="hidden" name="mode" value="global" />
 
-
-        <div class="form-group">
-            <div class="col-lg-12">
-                <?php if (!$global) { ?>
-                    <div class="alert alert-<?php echo (($og) ? 'success' : 'warning'); ?>">
-                        <label><i class="fa fa-fw <?php echo (($og) ? 'fa-check-circle' : 'fa-warning'); ?>"></i></label>
-                        <label class="checkbox-inline form-control-static">
-                            <input type="checkbox" class="click-event" data-function="scheduleOverrideGlobal" <?php echo (($og) ? ' checked="checked"': '' ); ?> /> <?php echo GLOBAL_SCHED_OG; ?>
-                            <input type="hidden" name="schedule_override_global" value="<?php echo (($og) ? '1': '0' ); ?>" />
-                        </label>
-                    </div>
-                <?php } ?>
-            </div>
-        </div>
-                    
         <div class="form-group">
             <div class="col-lg-12">
                 <button class="btn btn-success pull-right send-req-form" type="submit" data-func="getMotionMap"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>

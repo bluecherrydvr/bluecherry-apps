@@ -48,6 +48,7 @@ static std::map<int, int> gpio_relays_timeouts;
 static int gpio_relay_reset_timeout = 10;
 
 char global_sched[7 * 24 + 1];
+char alarm_sched[7 * 24 + 1];
 int snapshot_delay_ms;
 int max_record_time_sec;
 int global_bandwidth_limit = 0;
@@ -355,6 +356,27 @@ static int bc_check_globals(void)
 		/* Default to continuous record */
 		memset(global_sched, 'C', sizeof(global_sched));
 		global_sched[sizeof(global_sched)-1] = 0;
+	}
+	bc_db_free_table(dbres);
+
+	/* Get alarm schedule, default to off */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_ALARM_SCED'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for alarm schedule");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		const char *sched = bc_db_get_val(dbres, "value", NULL);
+		if (sched) {
+			//pthread_mutex_lock(&mutex_global_sched);
+			strlcpy(alarm_sched, sched, sizeof(alarm_sched));
+			//pthread_mutex_unlock(&mutex_global_sched);
+		}
+	} else {
+		/* Default to off */
+		memset(alarm_sched, 'O', sizeof(alarm_sched));
+		alarm_sched[sizeof(alarm_sched)-1] = 0;
 	}
 	bc_db_free_table(dbres);
 
@@ -1176,6 +1198,9 @@ static void bc_check_gpio()
 
 	static int loops = 0;
 
+	time_t t;
+	struct tm tm;
+
 	if ((loops & 7) == 0) {
 		//reload config from database
 		BC_DB_RES dbres;
@@ -1208,6 +1233,13 @@ static void bc_check_gpio()
 			gpio_config.push_back(pin);
 		}
 	}
+
+	/* Check alarms schedule */
+	time(&t);
+	localtime_r(&t, &tm);
+
+	if (alarm_sched[tm.tm_hour + (tm.tm_wday * 24)] != 'C')
+		goto reset_relays;
 
 	/* Check input pin states, switch output pins and trigger recording on camera devices */
 	for (int i = 0; i < gpio_config.size(); i++) {
@@ -1278,6 +1310,7 @@ static void bc_check_gpio()
 
 	}
 
+reset_relays:
 	/* Switch turned on relays off after timeout */
 	for (auto it = gpio_relays_timeouts.begin(); it != gpio_relays_timeouts.end(); ++it) {
 		if (it->second > 0)
