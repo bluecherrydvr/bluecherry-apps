@@ -20,12 +20,15 @@ public:
 
 	const stream_packet &packet() const { return current_packet; }
 
+	void update_bitrate(int new_bitrate) { current_bitrate = new_bitrate; }
+
 private:
 	struct AVCodecContext *encoder_ctx;
 	int type;
 	stream_packet current_packet;
 	std::shared_ptr<stream_properties> props;
 	int next_packet_seq;
+	int current_bitrate;
 
 	void release_encoder();
 public:

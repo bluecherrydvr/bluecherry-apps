@@ -21,6 +21,14 @@ reencoder::~reencoder()
 		delete scl;
 }
 
+void reencoder::update_bitrate(int new_bitrate)
+{
+	bitrate = new_bitrate;
+
+	if (enc)
+		enc->update_bitrate(new_bitrate);
+}
+
 bool reencoder::push_packet(const stream_packet &packet)
 {
 
@@ -71,6 +79,12 @@ bool reencoder::run_loop()
 	{
 		const AVCodecContext *ctx = dec->get_ctx();
 		scl->reinitialize(ctx);
+
+		if (enc)
+		{
+			delete enc;
+			enc = NULL;
+		}
 	}
 
 	last_decoded_fw = frame->width;
@@ -84,7 +98,7 @@ bool reencoder::run_loop()
 		return false;
 
 
-	bc_log(Debug, "got frame of size %d x %d from scaler", scaled_frame->width, scaled_frame->height);
+	bc_log(Debug, "got frame of size %d x %d vaapi surface %#x from scaler", scaled_frame->width, scaled_frame->height, (uintptr_t)scaled_frame->data[3]);
 
 	/* 3) ENCODE */
 	if (!enc)
