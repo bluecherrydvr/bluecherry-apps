@@ -1,3 +1,8 @@
+bluecherry (3:3.0.0) trusty xenial jessie; urgency=low
+  * Work in progress...
+  * New feature - force password change on next user login
+  * Livestream reencoding to lower bitrate using VAAPI acceleration
+
 bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
 
   * Improved experimental motion detection algorithm
