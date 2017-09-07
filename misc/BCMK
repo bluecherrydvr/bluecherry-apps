@@ -58,6 +58,7 @@ libav/config.mak:
 		--enable-indev=v4l2 \
 		--enable-vaapi \
 		--enable-hwaccel=h264_vaapi \
+		--enable-hwaccel=hevc_vaapi \
 		\
 		--enable-protocol=file \
 		--enable-protocol=pipe \
@@ -78,6 +79,7 @@ libav/config.mak:
 		--enable-demuxer=concat \
 		\
 		--enable-decoder=h264 \
+		--enable-decoder=hevc \
 		--enable-decoder=mpeg4 \
 		--enable-decoder=mjpeg \
 		--enable-decoder=rawvideo \
@@ -91,6 +93,7 @@ libav/config.mak:
 		--enable-decoder=pcm_s16le \
 		\
 		--enable-parser=h264 \
+		--enable-parser=hevc \
 		--enable-parser=mpeg4video \
 		--enable-parser=mjpeg \
 		\
@@ -99,6 +102,7 @@ libav/config.mak:
 		--enable-encoder=rawvideo \
 		--enable-encoder=aac \
 		--enable-encoder=h264_vaapi \
+		--enable-encoder=hevc_vaapi \
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
