@@ -40,7 +40,18 @@ define('MMENU_AUDIT_LOG', 'Log de auditoria');
 
 #GPIO
 define('GPIO', 'GPIO');
-define('GPIO_RESET_RELAYS', 'Reset Relays');
+define('GPIO_RESET_RELAYS', 'Resetar Relés');
+define('GPIO_STATE', 'Estado GPIO');
+define('GPIO_RELAYS', 'Relés');
+define('GPIO_SENSORS', 'Sensores');
+define('GPIO_CARD', 'Placa ');
+define('GPIO_SENSORS_TO_RELAYS_MAP', 'Mapeamento de sensores para relés');
+define('GPIO_SENSORS_ON_CARD', 'Sensores da Placa ');
+define('GPIO_RELAY', 'Relé ');
+define('GPIO_ON_CARD', ' da Placa ');
+define('GPIO_SENSORS_TO_CAMERAS_MAP', 'Sensores para mapeamento de câmeras');
+
+
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Pagina Nao Pode Carregar');
