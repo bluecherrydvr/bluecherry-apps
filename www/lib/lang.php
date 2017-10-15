@@ -42,6 +42,16 @@ define('MMENU_AUDIT_LOG', 'Audit Log');
 #GPIO
 define('GPIO', 'GPIO');
 define('GPIO_RESET_RELAYS', 'Reset Relays');
+define('GPIO_STATE', 'GPIO State');
+define('GPIO_RELAYS', 'Relays');
+define('GPIO_SENSORS', 'Sensors');
+define('GPIO_CARD', 'Card ');
+define('GPIO_SENSORS_TO_RELAYS_MAP', 'Sensors to Relays Mapping');
+define('GPIO_SENSORS_ON_CARD', 'Sensors on card ');
+define('GPIO_RELAY', 'Relay ');
+define('GPIO_ON_CARD', ' on card ');
+define('GPIO_SENSORS_TO_CAMERAS_MAP', 'Sensors to Cameras Mapping');
+
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');

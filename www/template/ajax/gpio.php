@@ -31,11 +31,11 @@
 	<div class="form-group">
 	<div class="col-lg-12">
 	  <div class="panel panel-default">
-	    <div class="panel-heading">GPIO State</div>
+	    <div class="panel-heading"><?php echo GPIO_STATE; ?></div>
             <div class="panel-body">
 		<div class="col-lg-4 col-md-4">
 		  <div class="panel panel-default">
-		    <div class="panel-heading">Relays</div>
+		    <div class="panel-heading"><?php echo GPIO_RELAYS; ?></div>
 		    <div class="panel-body">
 			<table class="table"><tbody>
 			<?php foreach ($pinstates as $card_id => $cardpins) { ?>
@@ -58,11 +58,11 @@
 		</div>
 		<div class="col-lg-8 col-md-8">
 		  <div class="panel panel-default">
-		    <div class="panel-heading">Sensors</div>
+		    <div class="panel-heading"><?php echo GPIO_SENSORS; ?></div>
 		     <div class="panel-body">
                         <table class="table"><tbody>
                         <?php foreach ($pinstates as $card_id => $cardpins) { ?>
-                        <tr><td><?php echo "Card ".$cards[$card_id]->info['order']; ?></td></tr>
+                        <tr><td><?php echo GPIO_CARD.$cards[$card_id]->info['order']; ?></td></tr>
                                 <tr><td>
                                 <table class="table table-bordered">
                                 <thead>
@@ -86,11 +86,11 @@
         <div class="form-group">
         <div class="col-lg-12">
           <div class="panel panel-default">
-            <div class="panel-heading">Sensors to Relays Mapping</div>
+            <div class="panel-heading"><?php echo GPIO_SENSORS_TO_RELAYS_MAP; ?></div>
             <div class="panel-body">
 		<ul class="nav nav-tabs">
 		<?php foreach($cards as $card_id => $card)
-			echo "<li ".( $card->info['order'] == 1 ? "class=\"active\"" : "")."><a data-toggle=\"tab\" href=\"#relays_navtab_card".$card_id."\">Card ".$card->info['order']."</a></li>"; ?>
+			echo "<li ".( $card->info['order'] == 1 ? "class=\"active\"" : "")."><a data-toggle=\"tab\" href=\"#relays_navtab_card".$card_id."\">".GPIO_CARD.$card->info['order']."</a></li>"; ?>
 		</ul>
 		<div class="tab-content">
 			<?php foreach($cards as $card_id => $card) { ?>
@@ -98,14 +98,14 @@
 			<!-- sensors to relays table --!>
 			<table class="table table-bordered">
 			<thead>
-			<tr><th></th><th colspan=16><?php echo "Sensors on card ".$card->info['order']; ?></th></tr>
+			<tr><th></th><th colspan=16><?php echo GPIO_SENSORS_ON_CARD.$card->info['order']; ?></th></tr>
 			<tr><th>Relays</th><?php foreach ($pinstates[$card_id]['sensors'] as $pin_id => $pin) echo "<th>".$pin_id."</th>"; ?></tr>
 			</thead>
 			<tbody>
 			<?php foreach($relay_mappings[$card_id] as $relay_card_id => $relaycard)
 				foreach($relaycard as $relay_pin_id => $relay_pin) {?>
 				<tr>
-					<td><?php echo "Relay ".$relay_pin_id." on card ".$cards[$relay_card_id]->info['order']; ?> </td>
+					<td><?php echo GPIO_RELAY.$relay_pin_id.GPIO_ON_CARD.$cards[$relay_card_id]->info['order']; ?> </td>
 					<?php foreach ($relay_pin as $sensor_pin_id => $sensor_pin)
 							echo "<td><input type='checkbox' name=\"".substr($sensor_pin, 1)."\" ".
 							(substr($sensor_pin, 0, 1) == 1 ?  'checked' : '')
@@ -125,11 +125,11 @@
         <div class="form-group">
         <div class="col-lg-12">
           <div class="panel panel-default">
-            <div class="panel-heading">Sensors to Cameras Mapping</div>
+            <div class="panel-heading"><?php echo GPIO_SENSORS_TO_CAMERAS_MAP; ?></div>
             <div class="panel-body">
 		<ul class="nav nav-tabs">
                 <?php foreach($cards as $card_id => $card)
-                        echo "<li ".( $card->info['order'] == 1 ? "class=\"active\"" : "")."><a data-toggle=\"tab\" href=\"#cameras_navtab_card".$card_id."\">Card ".$card->info['order']."</a></li>"; ?>
+                        echo "<li ".( $card->info['order'] == 1 ? "class=\"active\"" : "")."><a data-toggle=\"tab\" href=\"#cameras_navtab_card".$card_id."\">".GPIO_CARD.$card->info['order']."</a></li>"; ?>
                 </ul>
                 <div class="tab-content">
                         <?php foreach($cards as $card_id => $card) { ?>
@@ -137,7 +137,7 @@
 			<!-- sensors to cameras table --!>
 			<table class="table table-bordered">
 			<thead>
-                        <tr><th></th><th colspan=16><?php echo "Sensors on card ".$card->info['order']; ?></th></tr>
+                        <tr><th></th><th colspan=16><?php echo GPIO_SENSORS_ON_CARD.$card->info['order']; ?></th></tr>
                         <tr><th>Dispositivos</th><?php foreach ($pinstates[$card_id]['sensors'] as $pin_id => $pin) echo "<th>".$pin_id."</th>"; ?></tr>
                         </thead>
                         <tbody>
