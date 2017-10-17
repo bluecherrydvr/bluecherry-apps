@@ -43,9 +43,9 @@ CREATE TABLE `AuditLogs` (
   KEY `AuditLogs_ibfk_1` (`event_type_id`),
   KEY `AuditLogs_ibfk_2` (`device_id`),
   KEY `AuditLogs_ibfk_3` (`user_id`),
-  CONSTRAINT `AuditLogs_ibfk_1` FOREIGN KEY (`event_type_id`) REFERENCES `AuditEventTypes` (`id`),
-  CONSTRAINT `AuditLogs_ibfk_2` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`),
-  CONSTRAINT `AuditLogs_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`)
+  CONSTRAINT `AuditLogs_ibfk_1` FOREIGN KEY (`event_type_id`) REFERENCES `AuditEventTypes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `AuditLogs_ibfk_2` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `AuditLogs_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `Users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `AvailableSources`;
