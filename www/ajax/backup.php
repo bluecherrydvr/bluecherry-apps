@@ -114,8 +114,8 @@ class backup extends Controller {
 	        		};
 	        	break;
 	        	case 'confirmRestore': #run restore
-	        		$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
-	        		if (!empty($response)){
+				$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
+				if (!empty($response) && strstr($response, "ERROR")){
 	        			data::responseJSON(false, BACKUP_R_FAILED.$response);
 	        		} else {
 	        			data::responseJSON(true, BACKUP_R_SUCCESS);
