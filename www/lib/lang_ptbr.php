@@ -398,6 +398,7 @@ define('AIP_ADVANCED_SETTINGS', 'Configuracoes Avancadas');
 define('AIP_CAMADDED', 'A Camera IP foi Adicionada com Exito');
 define('AIP_PROTOCOL', 'Fonte do Stream de Video');
 define('AIP_ONVIF_PORT', 'Porta ONVIF ');
+define('AIP_ONVIF_RESOLUTION', 'Resolução ONVIF');
 define('AIP_CHECK_ONVIF_PORT', 'Checar');
 define('AIP_CHECK_ONVIF_SUCCESS', 'Bem Sucedido');
 define('AIP_CHECK_ONVIF_ERROR', 'Mal Sucedido');
