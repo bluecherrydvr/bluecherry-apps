@@ -899,6 +899,10 @@ static void get_last_run_date()
 
 static void *bc_update_abandoned_media_threadproc(void *arg)
 {
+	/* Running mkvinfo could take a significant amount time on long recordings,
+	 * so processing of abandoned recordings is done in this separate thread.
+	 */
+	bc_log(Info, "started processing abandoned recordings");
 	while(!abandoned_media_to_update.empty()) {
 		char cmd[4096];
 		char *line = NULL;
@@ -925,21 +929,22 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 
 		pclose(fp);
 
-		abandoned_media_to_update.pop();
-
 		pthread_mutex_lock(&mutex_abandoned_media);
 		abandoned_media_updated.push(m);
 		pthread_mutex_unlock(&mutex_abandoned_media);
+
+		abandoned_media_to_update.pop();
 	}
 
-	abandoned_media_update_in_progress = false;
+	bc_log(Info, "finished processing abandoned recordings");
 
 	return NULL;
 }
 
 static void bc_check_abandoned_media_updates()
 {
-	//update DB here from abandoned_media_updated[], use mutex
+	/* Called from main loop, updates lengths of processed recordings in database */
+	bc_log(Info, "Updating length of %d abandoned recordings", abandoned_media_updated.size());
 	while(!abandoned_media_updated.empty()) {
 		struct media_record m;
 
@@ -962,6 +967,9 @@ static void bc_check_abandoned_media_updates()
 		abandoned_media_updated.pop();
 		pthread_mutex_unlock(&mutex_abandoned_media);
 	}
+
+	if (abandoned_media_to_update.empty())
+		abandoned_media_update_in_progress = false;
 }
 
 static void bc_check_inprogress(void)
@@ -1000,6 +1008,7 @@ static void bc_check_inprogress(void)
 
 		abandoned_media_to_update.push(m);
 		abandoned_media_update_in_progress = true;
+		bc_log(Info, "Found abandoned recording %s, queued for length update", m.filepath.c_str());
         }
 	if (abandoned_media_update_in_progress) {
 		pthread_t thread_id;
