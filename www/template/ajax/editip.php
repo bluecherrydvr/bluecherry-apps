@@ -150,6 +150,21 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_ONVIF_RESOLUTION; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <div class="input-group">
+                                <select name="onvif_resolution" class="form-control">
+				<option value="<?php echo $ipCamera->info['resolutionX'].'x'.$ipCamera->info['resolutionY']; ?>"><?php echo $ipCamera->info['resolutionX'].'x'.$ipCamera->info['resolutionY']; ?></option>
+				</select>
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default click-event" data-function="addIpCheckOnvifPort"><?php echo AIP_CHECK_ONVIF_PORT; ?></button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label">
                             <a href="javascript:void(0);" class="btn btn-default" id="edittip-advanced-settings"><?php echo AIP_ADVANCED_SETTINGS; ?></a>
                         </label>

@@ -787,6 +787,11 @@ class ipCamera{
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
+			if (!empty($rawData['onvif_resolution'])) {
+				$resolution = explode('x', $rawData['onvif_resolution'], 2);
+				$data['resolutionX'] = $resolution[0];
+				$data['resolutionY'] = $resolution[1];
+			}
 			//var_dump_pre($data); exit();
 			
 		$duplicate_path = data::getObject('Devices', 'device', $data['device']);
