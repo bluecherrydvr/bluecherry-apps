@@ -36,8 +36,8 @@ class editip extends Controller {
 
 	exec("/usr/lib/bluecherry/onvif_tool ".
 		$cam->info['ipAddr'] . ':' . $cam->info['onvif_port'].
-		" ".$cam->info['rtsp_username'].
-		" ".$cam->info['rtsp_password'].
+		" ".(empty($cam->info['rtsp_username']) ? "empty" : $cam->info['rtsp_username']).
+		" ".(empty($cam->info['rtsp_password']) ? "empty" : $cam->info['rtsp_password']).
 		" resolutions",
 		$onvifResolutions, $ret);
 

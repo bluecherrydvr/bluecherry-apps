@@ -796,8 +796,8 @@ class ipCamera{
 
 				$onvif_data['resolution'] = $data['resolutionX']."x".$data['resolutionY'];
 				$onvif_data['addr'] = $rawData['ipAddr'].":".$data['onvif_port'];
-				$onvif_data['username'] = $data['rtsp_username'];
-				$onvif_data['password'] = $data['rtsp_password'];
+				$onvif_data['username'] = strlen($data['rtsp_username']) > 0 ? $data['rtsp_username'] : "empty";
+				$onvif_data['password'] = strlen($data['rtsp_password']) > 0 ? $data['rtsp_password'] : "empty";
 			}
 			//var_dump_pre($data); exit();
 			
