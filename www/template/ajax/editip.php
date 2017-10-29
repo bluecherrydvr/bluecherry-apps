@@ -154,12 +154,7 @@
 
                         <div class="col-lg-6 col-md-6">
                             <div class="input-group">
-                                <select name="onvif_resolution" class="form-control">
-				<option value="<?php echo $ipCamera->info['resolutionX'].'x'.$ipCamera->info['resolutionY']; ?>"><?php echo $ipCamera->info['resolutionX'].'x'.$ipCamera->info['resolutionY']; ?></option>
-				</select>
-                                <span class="input-group-btn">
-                                    <button type="button" class="btn btn-default click-event" data-function="addIpCheckOnvifPort"><?php echo AIP_CHECK_ONVIF_PORT; ?></button>
-                                </span>
+				<?php echo arrayToSelect($onvifResolutions, $ipCamera->info['resolutionX'].'x'.$ipCamera->info['resolutionY'], 'onvif_resolution'); ?>
                             </div>
                         </div>
                     </div>
