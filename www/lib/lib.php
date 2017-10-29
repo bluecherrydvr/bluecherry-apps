@@ -787,10 +787,17 @@ class ipCamera{
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
+
+			$onvif_data = array();
 			if (!empty($rawData['onvif_resolution'])) {
 				$resolution = explode('x', $rawData['onvif_resolution'], 2);
 				$data['resolutionX'] = $resolution[0];
 				$data['resolutionY'] = $resolution[1];
+
+				$onvif_data['resolution'] = $data['resolutionX']."x".$data['resolutionY'];
+				$onvif_data['addr'] = $rawData['ipAddr'].":".$data['onvif_port'];
+				$onvif_data['username'] = $data['rtsp_username'];
+				$onvif_data['password'] = $data['rtsp_password'];
 			}
 			//var_dump_pre($data); exit();
 			
@@ -799,7 +806,7 @@ class ipCamera{
 		if (!empty($duplicate_path) && ($duplicate_path[0]['mjpeg_path'] == $data['mjpeg_path'])) {
 			return array(false, AIP_ALREADY_EXISTS);
 		}
-		return array(true, $data);
+		return array(true, $data, $onvif_data);
 	}
 	public function edit($data){
 		$data = self::prepareData($data, $this->info['id']);
@@ -813,6 +820,10 @@ class ipCamera{
 		$query = data::formQueryFromArray('update', 'Devices', $data[1], 'id', $this->info['id']);
 		$result = data::query($query, true);
 		auditLogger::writeEvent(AUDIT_DEVCONFCHANGED_ID, $_SESSION['id'], $this->info['id'], $_SERVER['REMOTE_ADDR']);
+		//update resolution using onvif
+		if (!empty($data[2]))
+			exec("/usr/lib/bluecherry/onvif_tool ".$data[2]['addr']." ".$data[2]['username']." ".$data[2]['password']." set_resolution ".$data[2]['resolution']);
+
 		return array($result, false);
 	}
 	public static function create($rawData){
