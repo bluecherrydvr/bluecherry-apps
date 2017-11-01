@@ -1,3 +1,22 @@
+bluecherry (2:2.8.1) trusty xenial jessie; urgency=low
+
+  * Fixed media cleaning caused by error in free space calculation
+
+  * Fixed error message in backup restore
+
+  * Updated database of IP cameras
+
+  * Autoloading of solo6x10 and tw5864 capture card kernel modules
+
+  * Removed solo6010-dkms
+
+  * Added link to server documentation in web UI
+
+  * Removed warning about experimentatl status of audio support, audio is
+    stable for a long time
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Wed, 01 Nov 2017 23:00:00 +0400
+
 bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
 
   * Improved experimental motion detection algorithm
