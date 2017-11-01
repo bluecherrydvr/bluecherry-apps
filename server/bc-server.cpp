@@ -493,7 +493,7 @@ const char *select_best_path(void)
 		if (cur < best)
 			continue;
 
-		if (!is_storage_full(p)) {
+		if (is_storage_full(p) != 1) {
 			best = cur;
 			ret = p;
 		} else if (cur > best_overused) {
@@ -664,7 +664,7 @@ static int bc_check_media(void)
 
 	/* If there's some space left, skip cleanup */
 	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (!is_storage_full(&media_stor[i])) {
+		if (is_storage_full(&media_stor[i]) != 1) {
 			storage_overloaded = false;
 			break;
 		}
