@@ -27,11 +27,14 @@ extern "C" {
 #include "status_server.h"
 #include "trigger_server.h"
 
+#include <queue>
+
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
 pthread_mutex_t mutex_streaming_setup;
 pthread_mutex_t mutex_snapshot_delay_ms;
 pthread_mutex_t mutex_max_record_time_sec;
+pthread_mutex_t mutex_abandoned_media;
 
 static std::vector<bc_record*> bc_rec_list;
 static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -64,6 +67,18 @@ time_t last_known_running;
 #define TRIAL_DAYS 30
 #define TRIAL_MAX_DEVICES INT_MAX
 static std::vector<bc_license> licenses;
+
+
+struct media_record {
+	int id;
+	int media_id;
+	int duration;
+	std::string filepath;
+};
+
+static bool abandoned_media_update_in_progress = false;
+static std::queue<struct media_record> abandoned_media_to_update;
+static std::queue<struct media_record> abandoned_media_updated;
 
 static rtsp_server *rtsp = NULL;
 
@@ -131,6 +146,8 @@ static void bc_initialize_mutexes()
 	pthread_mutex_init(&mutex_snapshot_delay_ms,
 			   (pthread_mutexattr_t *) NULL);
 	pthread_mutex_init(&mutex_max_record_time_sec,
+			   (pthread_mutexattr_t *) NULL);
+	pthread_mutex_init(&mutex_abandoned_media,
 			   (pthread_mutexattr_t *) NULL);
 }
 
@@ -777,6 +794,73 @@ static void get_last_run_date()
 		bc_db_free_table(dbres);
 }
 
+static void *bc_update_abandoned_media_threadproc(void *arg)
+{
+	while(!abandoned_media_to_update.empty()) {
+		char cmd[4096];
+		char *line = NULL;
+		size_t len;
+		FILE *fp;
+		struct media_record m;
+
+		m = abandoned_media_to_update.front();
+		sprintf(cmd, "mkvinfo -v %s", m.filepath.c_str());
+
+		fp = popen(cmd, "r");
+		if (fp == NULL)
+			continue;
+
+		while (getline(&line, &len, fp) >= 0) {
+			char *p;
+			if ((p = strstr(line, "timecode ")))
+				sscanf(p, "timecode %d.", &m.duration);
+			free(line);
+			line = NULL;
+		}
+
+		free(line);
+
+		pclose(fp);
+
+		abandoned_media_to_update.pop();
+
+		pthread_mutex_lock(&mutex_abandoned_media);
+		abandoned_media_updated.push(m);
+		pthread_mutex_unlock(&mutex_abandoned_media);
+	}
+
+	abandoned_media_update_in_progress = false;
+
+	return NULL;
+}
+
+static void bc_check_abandoned_media_updates()
+{
+	//update DB here from abandoned_media_updated[], use mutex
+	while(!abandoned_media_updated.empty()) {
+		struct media_record m;
+
+		pthread_mutex_lock(&mutex_abandoned_media);
+		m = abandoned_media_updated.front();
+		pthread_mutex_unlock(&mutex_abandoned_media);
+
+		if (!m.duration) {
+			bc_log(Info, "Deleting empty media %s", m.filepath.c_str());
+			bc_db_query("DELETE FROM Media WHERE id=%u", m.media_id);
+
+			unlink(m.filepath.c_str());
+		} else {
+			bc_log(Info, "Updating length of abandoned media %s to %d", m.filepath.c_str(), m.duration);
+			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
+				    "id=%d", m.duration, m.id);
+		}
+
+		pthread_mutex_lock(&mutex_abandoned_media);
+		abandoned_media_updated.pop();
+		pthread_mutex_unlock(&mutex_abandoned_media);
+	}
+}
+
 static void bc_check_inprogress(void)
 {
 	BC_DB_RES dbres;
@@ -790,14 +874,11 @@ static void bc_check_inprogress(void)
 
 	while (!bc_db_fetch_row(dbres)) {
 		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-		int duration = 0;
-		char cmd[4096];
-		char *line = NULL;
-		size_t len;
-		FILE *fp;
 		int event_id = bc_db_get_val_int(dbres, "id");
+		int m_id = bc_db_get_val_int(dbres, "media_id");
 
 		if (!filepath) {
+			int duration = 0;
 			bc_log(Info, "Event %d left in-progress at shutdown; setting duration", event_id);
 			time_t start = bc_db_get_val_int(dbres, "time");
 			duration = int64_t(last_known_running) - int64_t(start);
@@ -807,44 +888,25 @@ static void bc_check_inprogress(void)
 			continue;
 		}
 
-		sprintf(cmd, "mkvinfo -v %s", filepath);
+		struct media_record m;
 
-		fp = popen(cmd, "r");
-		if (fp == NULL)
-			continue;
+		m.id = event_id;
+		m.media_id = m_id;
+		m.filepath = std::string(filepath);
+		m.duration = 0;
 
-		while (getline(&line, &len, fp) >= 0) {
-			char *p;
-			if ((p = strstr(line, "timecode ")))
-				sscanf(p, "timecode %d.", &duration);
-			free(line);
-			line = NULL;
-		}
-
-		free(line);
-
-		if (!duration) {
-			unsigned int e_id, m_id;
-
-			e_id = bc_db_get_val_int(dbres, "id");
-			m_id = bc_db_get_val_int(dbres, "media_id");
-
-			bc_log(Info, "Deleting empty media %s", filepath);
-			// XXX: Deleted automatically by cascading
-			// bc_db_query("DELETE FROM EventsCam WHERE id=%u", e_id);
-			bc_db_query("DELETE FROM Media WHERE id=%u", m_id);
-
-			unlink(filepath);
-		} else {
-			unsigned int id = bc_db_get_val_int(dbres, "id");
-
-			bc_log(Info, "Updating length of abandoned media %s to %d", filepath, duration);
-			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
-				    "id=%d", duration, id);
-		}
-
-		pclose(fp);
+		abandoned_media_to_update.push(m);
+		abandoned_media_update_in_progress = true;
         }
+	if (abandoned_media_update_in_progress) {
+		pthread_t thread_id;
+		pthread_attr_t attr;
+
+		pthread_attr_init(&attr);
+		pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+		pthread_create(&thread_id, NULL, bc_update_abandoned_media_threadproc, NULL);
+		pthread_attr_destroy(&attr);
+	}
 
 	bc_db_free_table(dbres);
 }
@@ -1181,6 +1243,10 @@ int main(int argc, char **argv)
 			error |= bc_check_db();
 			bc_status_component_end(STATUS_DB_POLLING1, error == 0);
 		}
+
+		/* Every 16 seconds */
+		if (abandoned_media_update_in_progress && (loops % 15) == 0)
+			bc_check_abandoned_media_updates();
 
 		/* Every second, check for dead threads */
 		bc_check_threads();
