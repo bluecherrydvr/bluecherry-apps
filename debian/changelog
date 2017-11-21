@@ -1,3 +1,9 @@
+bluecherry (2:2.8.2) trusty xenial jessie; urgency=low
+
+  * Fixed long startup time caused by updating length of abandoned media.
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Tue, 21 Nov 2017 21:30:00 +0400
+
 bluecherry (2:2.8.1) trusty xenial jessie; urgency=low
 
   * Fixed media cleaning caused by error in free space calculation
