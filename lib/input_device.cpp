@@ -168,6 +168,19 @@ void stream_properties::video_properties::apply(AVCodecContext *cc) const
 	cc->height = height;
 	cc->time_base = time_base;
 	cc->profile = profile;
+
+	cc->codec_tag = codec_tag;
+	cc->bits_per_coded_sample = bits_per_coded_sample;
+	cc->bits_per_raw_sample = bits_per_raw_sample;
+	cc->level = level;
+	cc->field_order = field_order;
+	cc->color_range = color_range;
+	cc->color_primaries = color_primaries;
+	cc->color_trc = color_trc;
+	cc->colorspace = colorspace;
+	cc->chroma_sample_location = chroma_sample_location;
+	cc->sample_aspect_ratio = sample_aspect_ratio;
+
 	if (!extradata.empty()) {
 		cc->extradata_size = extradata.size();
 		cc->extradata = (uint8_t*)av_malloc(extradata.size() + FF_INPUT_BUFFER_PADDING_SIZE);
