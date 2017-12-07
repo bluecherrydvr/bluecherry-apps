@@ -102,7 +102,7 @@ case "$1" in
 esac
 if [[ "$1" == "$UPGRADE" ]]
 then
-    systemctl stop bc-server.service || true
+    systemctl stop bluecherry.service || true
 fi
 
 %post
@@ -112,15 +112,15 @@ install -m 750 -o bluecherry -g bluecherry -D /usr/share/bluecherry/remove_all_d
 
 %posttrans
 systemctl enable httpd.service || true
-systemctl enable bc-server.service || true
+systemctl enable bluecherry.service || true
 systemctl daemon-reload || true
-systemctl restart bc-server.service || true
+systemctl restart bluecherry.service || true
 
 %preun
 set -x
 if [[ $1 == 0 ]] # uninstall, not upgrade
 then
-    systemctl stop bc-server.service
+    systemctl stop bluecherry.service
     if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
     then
         rm /etc/httpd/sites-enabled/bluecherry.conf
