@@ -647,7 +647,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		bc_rec->m_processor->set_min_motion_area_percent(bc_rec->cfg.min_motion_area);
 	}
 
-	if (mrecord_changed) {
+	if (mrecord_changed && bc_rec->m_handler) {
 		bc_rec->m_handler->set_buffer_time(bc_rec->cfg.prerecord, bc_rec->cfg.postrecord);
 		bc_rec->m_handler->set_motion_analysis_ssw_length(bc_rec->cfg.motion_analysis_ssw_length);
 		bc_rec->m_handler->set_motion_analysis_percentage(bc_rec->cfg.motion_analysis_percentage);
