@@ -1,3 +1,10 @@
+bluecherry (2:2.8.3) trusty xenial jessie; urgency=low
+
+  * Fixed crash caused by changing motion detection settings on camera in
+    continuous recording mode
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Sun, 17 Dec 2017 15:12:00 +0400
+
 bluecherry (2:2.8.2) trusty xenial jessie; urgency=low
 
   * Fixed long startup time caused by updating length of abandoned media.
