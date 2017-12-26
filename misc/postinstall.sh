@@ -110,6 +110,12 @@ case "$1" in
 			chown root:bluecherry /var/log/bluecherry.log
 		fi
 		chmod 640 /var/log/bluecherry.log
+		
+		# Use the correct user for rsyslog under debian
+		if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) ]]
+		then
+			sed -i 's/ syslog / root /' /etc/logrotate.d/bluecherry
+		fi
 
 		if [[ $IN_DEB ]]
 		then
