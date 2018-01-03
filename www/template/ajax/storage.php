@@ -26,6 +26,7 @@
             <?php
                 foreach ($locations as $id => $location){
                 	$recordTime = intval($location['record_time']);
+			$used_storage = intval($location['used_percent']);
                 	$days = floor($recordTime / (3600 * 24));
                 	$hours = floor(($recordTime % (3600* 24)) / 3600);
                 	$minutues = floor(($recordTime % 3600) / 60);
@@ -51,6 +52,9 @@
             </tr>
             <tr class="table-storage-tr-info">
                 <td colspan="5">Storage Estimation: <?php echo $days; ?> days <?php echo $hours; ?> hours and <?php echo $minutues; ?> minutues</td>
+            </tr>
+	    <tr class="table-storage-tr-info">
+                <td colspan="5">Storage Used: <?php  echo $used_storage."%"; ?></td>
             </tr>
 
             <?php } ?>
