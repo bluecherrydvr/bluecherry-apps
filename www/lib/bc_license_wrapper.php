@@ -16,6 +16,9 @@ function bc_license_check($key)
 {
 	$output = array();
 	$ret = 0;
+	
+	if(!preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $key))
+		return false;
 
 	exec("/usr/lib/bluecherry/licensecmd bc_license_check ".$key, $output, $ret);
 
@@ -29,6 +32,12 @@ function bc_license_check_auth($key, $auth)
 {
 	$output = array();
 	$ret = 0;
+	
+	if(!preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $key))
+		return false;
+	
+	if(!preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $auth))
+		return false;
 
 	exec("/usr/lib/bluecherry/licensecmd bc_license_check_auth ".$key." ".$auth, $output, $ret);
 
