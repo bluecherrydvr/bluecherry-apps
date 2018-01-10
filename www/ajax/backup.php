@@ -65,7 +65,9 @@ class backup extends Controller {
 	        			}
 				
 	        		}
-	        		shell_exec("mysqldump --single-transaction -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
+				
+				$_POST['pwd'] = escapeshellarg($_POST['pwd']);
+	        		shell_exec("mysqldump --single-transaction -u root --password={$_POST['pwd']} {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
 	        		if (filesize("/tmp/bcbackup.sql")==0){
 	        			data::responseJSON(false, BACKUP_FAILED);
 	        		} else {
@@ -114,7 +116,8 @@ class backup extends Controller {
 	        		};
 	        	break;
 	        	case 'confirmRestore': #run restore
-				$response = shell_exec("mysql -u root --password=\"{$_POST['pwd']}\" {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
+				$_POST['pwd'] = escapeshellarg($_POST['pwd']);
+				$response = shell_exec("mysql -u root --password={$_POST['pwd']} {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
 				if (!empty($response) && strstr($response, "ERROR")){
 	        			data::responseJSON(false, BACKUP_R_FAILED.$response);
 	        		} else {
