@@ -119,6 +119,10 @@ function dl_file_resumable($file)
 
 	// Open the file
 	$fp = fopen($file, 'rb');
+
+	if (!$fp)
+		exit;
+
 	// Seek to start of missing part
 	fseek($fp, $seek_start);
 
