@@ -41,6 +41,10 @@ class stats extends Controller {
 	}
 	function getMemUse() {
                 $f = @fopen("/proc/meminfo", "r");
+
+		if (!$f)
+			return array(0, 0, 0);
+
                 for ($i = 0; $str = fgets($f); $i++) {
                         $str_el = preg_split("/[\s:]+/", $str, 3);
                         $stat[$str_el[0]] = intval($str_el[1]);
