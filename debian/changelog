@@ -1,3 +1,16 @@
+bluecherry (2:2.8.4) trusty xenial jessie; urgency=low
+
+  * Fixed issue in web UI that caused endless loop filling
+    Apache error log with error messages and triggered by
+    deleting recording files being downloaded
+
+  * Improved estimation of remaining storage time available
+
+  * Used percent of storage space is displayed along with
+    remaining recording time
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Wed, 07 Feb 2018 21:30:00 +0400
+
 bluecherry (2:2.8.3) trusty xenial jessie; urgency=low
 
   * Fixed crash caused by changing motion detection settings on camera in
