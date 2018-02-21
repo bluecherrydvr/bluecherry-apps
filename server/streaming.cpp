@@ -170,7 +170,15 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 {
 	AVPacket opkt;
 	int re;
-	int ctx_index = pkt.type == AVMEDIA_TYPE_VIDEO ? 0 : 1;
+
+	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
+		ctx_index = 0;
+	} else if (pkt.type == AVMEDIA_TYPE_AUDIO) {
+		ctx_index = 1;
+	} else {
+		bc_rec->log.log(Warning, "Got unknown packet type, ignoring.");
+		return 0;
+	}
 
 	if (!bc_streaming_is_active(bc_rec))
 		return 0;
