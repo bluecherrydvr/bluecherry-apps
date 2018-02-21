@@ -641,6 +641,8 @@ static int bc_cleanup_media()
 			continue;
 		}
 
+		sync();
+
 		removed++;
 
 		if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
