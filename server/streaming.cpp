@@ -170,6 +170,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 {
 	AVPacket opkt;
 	int re;
+	int ctx_index;
 
 	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
 		ctx_index = 0;
