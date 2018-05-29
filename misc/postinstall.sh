@@ -122,7 +122,7 @@ case "$1" in
 			# Apache modules and sites
 			a2enmod ssl
 			a2enmod rewrite
-			if [[ "$UBUNTU_CODENAME" == 'xenial' ]]
+			if [[ "$UBUNTU_CODENAME" == 'xenial' || "$VERSION" == "9 (stretch)" ]]
 			then
 				a2enmod php7.0
 			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
