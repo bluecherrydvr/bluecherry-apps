@@ -2,7 +2,12 @@ Source: bluecherry
 Section: admin
 Priority: optional
 Maintainer: Bluecherry <maintainers@bluecherrydvr.com>
-Build-Depends: debhelper (>= 7), libmysqlclient-dev,
+Build-Depends: debhelper (>= 7),
+#xenial libmysqlclient-dev,
+#bionic libmysqlclient-dev,
+#trusty libmysqlclient-dev,
+#jessie libmysqlclient-dev,
+#stretch default-libmysqlclient-dev,
  libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
 Standards-Version: 3.8.4
 
@@ -14,6 +19,8 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, mysql-server, curl, sysstat,
  apache2,
  v4l-utils,
 #xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
+#bionic  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
+#stretch php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
 #precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
