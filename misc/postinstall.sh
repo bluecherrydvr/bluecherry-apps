@@ -118,7 +118,9 @@ case "$1" in
 			if [[ "$UBUNTU_CODENAME" == 'xenial' ]]
 			then
 				a2enmod php7.0
-				phpenmod bluecherry || true
+			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
+			then
+				a2enmod php7.2
 			else
 				a2enmod php5
 			fi

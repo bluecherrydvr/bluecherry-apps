@@ -32,6 +32,13 @@ case "`uname --hardware-platform`" in
 		;;
 esac
 
+if [[ $VERSION == "9 (stretch)" ]]
+then
+        ADDITIONAL_PKGS="$ADDITIONAL_PKGS default-libmysqlclient-dev"
+else
+        ADDITIONAL_PKGS="$ADDITIONAL_PKGS libmysqlclient-dev"
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
