@@ -14,7 +14,7 @@ fi
 rm -rf $LOCATION || true
 
 case $DIST in
-	precise|trusty|wily|xenial)
+	precise|trusty|wily|xenial|bionic)
 		DISTRO=ubuntu
 		APT_SOURCES_URL="http://archive.ubuntu.com/ubuntu/"
 		MIRROR_URL="http://mirrors.kernel.org/ubuntu/"
@@ -25,7 +25,7 @@ deb $APT_SOURCES_URL ${DIST}-updates main restricted universe multiverse
 deb $APT_SOURCES_URL ${DIST}-backports main restricted universe multiverse
 EOF
 		;;
-	wheezy|jessie)
+	wheezy|jessie|stretch)
 		DISTRO=debian
 		MIRROR_URL="http://mirrors.kernel.org/debian/"
 		cat <<EOF > "./sources.list"

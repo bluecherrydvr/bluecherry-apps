@@ -33,6 +33,13 @@ case "`uname --hardware-platform`" in
 		;;
 esac
 
+if [[ $VERSION == "9 (stretch)" ]]
+then
+	ADDITIONAL_PKGS="$ADDITIONAL_PKGS default-libmysqlclient-dev"
+else
+	ADDITIONAL_PKGS="$ADDITIONAL_PKGS libmysqlclient-dev"
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 
 function fake() {
@@ -62,4 +69,4 @@ sed -i "s/update_initramfs=yes/update_initramfs=no/" $LOCATION/etc/initramfs-too
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
 
-apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev libva-dev rsyslog sudo $ADDITIONAL_PKGS
+apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo $ADDITIONAL_PKGS

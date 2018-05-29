@@ -32,11 +32,18 @@ case "`uname --hardware-platform`" in
 		;;
 esac
 
+if [[ $VERSION == "9 (stretch)" ]]
+then
+        ADDITIONAL_PKGS="$ADDITIONAL_PKGS default-libmysqlclient-dev"
+else
+        ADDITIONAL_PKGS="$ADDITIONAL_PKGS libmysqlclient-dev"
+fi
+
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
 
 apt-get upgrade -y -V
 
-apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libmysqlclient-dev libopencv-dev libudev-dev libva-dev rsyslog sudo $ADDITIONAL_PKGS
+apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo $ADDITIONAL_PKGS
 
