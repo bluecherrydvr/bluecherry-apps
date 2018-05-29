@@ -1,7 +1,9 @@
-bluecherry (3:3.0.0) trusty xenial jessie; urgency=low
+bluecherry (3:3.0.0) trusty xenial jessie bionic stretch; urgency=low
   * Work in progress...
   * New feature - force password change on next user login
   * Livestream reencoding to lower bitrate using VAAPI acceleration
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Mon, 17 Apr 2017 08:00:00 +0400
 
 bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
 
