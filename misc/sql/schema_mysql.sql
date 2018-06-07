@@ -14,7 +14,7 @@ DROP TABLE IF EXISTS `ActiveUsers`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `ActiveUsers` (
   `id` int(11) DEFAULT NULL,
-  `ip` varchar(20) DEFAULT NULL,
+  `ip` varchar(64) DEFAULT NULL,
   `from_client` tinyint(1) DEFAULT NULL,
   `time` int(11) DEFAULT NULL,
   `kick` tinyint(1) DEFAULT NULL
