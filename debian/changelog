@@ -1,3 +1,11 @@
+bluecherry (2:2.8.6) trusty xenial bionic jessie stretch; urgency=low
+
+  * Add support of Ubuntu 18.04 Bionic and Debian 9 Stretch distros.
+
+  * Fix issue with accessing server over IPv6.
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Thu, 07 Jun 2018 21:30:00 +0400
+
 bluecherry (2:2.8.5) trusty xenial jessie stretch; urgency=low
 
   * Fixed crash caused by non-video or audio packets sent by
