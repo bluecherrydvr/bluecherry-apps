@@ -1,4 +1,0 @@
-* Use dev_t in storage to detect if a user has added two directories or
-  devices that are actually the same.
-* Use APR Util dbd interface instead of our in-house abstraction (aprutil is
-  apache license, so safe to use).
