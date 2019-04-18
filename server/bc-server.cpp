@@ -39,7 +39,6 @@ pthread_mutex_t mutex_abandoned_media;
 static std::vector<bc_record*> bc_rec_list;
 static pthread_mutex_t bc_rec_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static int max_threads;
 static int cur_threads;
 static int record_id = -1;
 static int hwcard_ready = 0;
@@ -61,12 +60,6 @@ static struct bc_storage media_stor[MAX_STOR_LOCS];
 /* Timestamp of when the server was last known to be running prior to this
  * instance; may be zero if unknown or never */
 time_t last_known_running;
-
-/* Prerelease */
-#define DONT_ENFORCE_LICENSING 0
-#define TRIAL_DAYS 30
-#define TRIAL_MAX_DEVICES INT_MAX
-static std::vector<bc_license> licenses;
 
 
 struct media_record {
@@ -156,7 +149,6 @@ static const char *component_string(bc_status_component c)
 	switch (c) {
 		case STATUS_DB_POLLING1: return "database-1";
 		case STATUS_MEDIA_CHECK: return "media";
-		case STATUS_LICENSE: return "licensing";
 		case STATUS_HWCARD_DETECT: return "hwcard";
 		default: return "";
 	}
@@ -748,14 +740,6 @@ static int bc_check_db(void)
 				continue;
 		}
 
-		/* Maximum threads, used for licensing control */
-		if (!DONT_ENFORCE_LICENSING && max_threads >= 0 && cur_threads >= max_threads) {
-			bc_status_component_error("Device %d disabled due to licensing "
-				"restrictions (%d/%d devices used)", id, cur_threads, max_threads);
-			re |= -1;
-			continue;
-		}
-
 		bc_rec = bc_record::create_from_db(id, dbres);
 		if (!bc_rec) {
 			re |= -1;
@@ -933,39 +917,6 @@ static void usage(const char *progname)
 	fprintf(stderr, "  -r\tRecord a specific ID only\n");
 }
 
-
-/* Returns 0 if okay, otherwise -1 and outputs an error */
-static int check_trial_expired()
-{
-	struct stat d;
-	time_t now = time(NULL);
-	FILE *f;
-
-	if (stat("/var/lib/bluecherry", &d) != 0 || d.st_ctime > now ||
-		(now - d.st_ctime >= TRIAL_DAYS*60*60*24)) {
-		goto fail;
-	}
-
-	f = fopen("/var/lib/.bcins", "r");
-	if (f) {
-		char buf[16];
-		int64_t ftime = 0;
-
-		size_t len = fread(&buf, 1, sizeof(buf)-1, f);
-		buf[len] = 0;
-		fclose(f);
-
-		ftime = atoll(buf);
-		if (ftime <= now && (now - ftime < TRIAL_DAYS*60*60*24))
-			return 0;
-	}
-
-	fail:
-	bc_status_component_error("The %d day trial of Bluecherry has expired. You can "
-		"buy a license from http://store.bluecherry.net/licenses", TRIAL_DAYS);
-	return -1;
-}
-
 static int open_db_loop(const char *config_file)
 {
 	for (int count = 1; bc_db_open(config_file); sleep(1), count++)
@@ -1010,13 +961,6 @@ static void xml_solo6x10_status(pugi::xml_node& node)
 	node.append_attribute("hwcard_ready") = hwcard_ready;
 }
 
-static void xml_licenses_status(pugi::xml_node& node)
-{
-	// TODO FIXME Volatile or mutex-guarded
-	node.append_attribute("max_threads") = max_threads;
-	node.append_attribute("cur_threads") = cur_threads;
-}
-
 static void xml_devices_status(pugi::xml_node& node)
 {
 	pthread_mutex_lock(&bc_rec_list_lock);
@@ -1047,10 +991,6 @@ static void xml_status_callback(pugi::xml_document& xmldoc)
 	// solo6x10 cards status
 	subNode = rootNode.append_child("solo6x10");
 	xml_solo6x10_status(subNode);
-
-	// Licenses status
-	subNode = rootNode.append_child("Licenses");
-	xml_licenses_status(subNode);
 }
 
 int main(int argc, char **argv)
@@ -1218,32 +1158,6 @@ int main(int argc, char **argv)
 		/* Check media locations for full */
 		int mc_ret = bc_check_media();
 		bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
-
-		/* Every about 2 minutes */
-		if ((loops & 127) == 0) {
-			bc_status_component_begin(STATUS_LICENSE);
-			int old_n_devices = max_threads;
-			max_threads = 0;
-			int ret = (bc_read_licenses(licenses) < 0);
-
-			if (ret == 0) {
-				for (std::vector<bc_license>::iterator it = licenses.begin(); it != licenses.end(); ++it)
-					max_threads += it->n_devices;
-
-				if (max_threads == 0) {
-					int expired = check_trial_expired();
-					if (!expired) {
-						max_threads = TRIAL_MAX_DEVICES;
-						if ((loops & 2047) == 0)
-							bc_log(Warning, "Not licensed; running in trial mode");
-					}
-				} else if (old_n_devices != max_threads) {
-					bc_log(Info, "Licensed for %d devices", max_threads);
-				}
-			}
-
-			bc_status_component_end(STATUS_LICENSE, ret == 0);
-	 	}
 
 		/* Every 8 seconds */
 		if ((loops & 7) == 0) {
