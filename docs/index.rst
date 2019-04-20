@@ -7,3 +7,5 @@ Table of Contents
    
    server-install
    setup-configuration
+   client
+
