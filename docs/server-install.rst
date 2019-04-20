@@ -1,6 +1,6 @@
-****************
-Setup of Bluecherry server
-****************
+*********************************
+Installation of Bluecherry server
+*********************************
 
 Server Installation
 
