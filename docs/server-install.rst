@@ -1,5 +1,5 @@
 ****************
-Version 2 Manual
+Setup of Bluecherry server
 ****************
 
 Server Installation
@@ -32,27 +32,26 @@ Copy and paste the commands to add our repository, or use the ISO to automate th
 
 Installing the server
 ---------------------
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300920838328.png
-
+.. image:: img/term-mysql-setup.png
 
 The instructions below assume you have received the download instructions, or installed from our CD installer.
 
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png
+.. image:: img/term-bluecherry-setup.png
 
 If you do not already have mysql-server installed you will be prompted to create a password for the ‘root’ MySQL account. While Ubuntu lists this as optional, it is recommended that you set a password.
 
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png
+.. image:: img/term-bluecherry-setup-2.png
 
 You will now be asked to configure Bluecherry. You must hit Yes, or the installation process will fail.
 
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300921064670-display.png
+.. image:: img/term-bluecherry-setup-3.png
 
 Enter the database administrative password that you set previously for the ‘root’ user.
 
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300921118467-display.png
+.. image:: img/term-bluecherry-setup-4.png
 
 Enter the password that you want to create for the bluecherry database. This can be the same password that you provided for the root MySQL account, but we recommend keeping the password unique. You will be asked to enter this password twice to verify the password matched.
 
-.. image:: http://manula.r.sizr.io/large/user/8991/img/media-1300921219530-display.png
+.. image:: img/term-bluecherry-setup-5.png
 
 At this point the bluecherry server will be installed. If you plan to install the client on the same system, then please follow the client installation guide.

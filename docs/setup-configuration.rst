@@ -1,14 +1,16 @@
-**********
+Setup and configuration
+=======================
+
 Logging in
-**********
+----------
+
 
 **Connect to the server with a web browser**
 
 By default the server runs on a port 7001, and requires SSL. You can access the server using https://hostname:7001
 
-****************************
 Navigating the web interface
-****************************
+---------------------------
 
 .. image:: img/adminlogin.png
 
@@ -31,9 +33,8 @@ Navigating the web interface
 17. Server statistics - This section shows current CPU, memory and how long the system has been running.
 18. Profile link - Here you can easily update your profile, reset your password, or simply logout
 
-**************************************
 Adding / Managing network (IP) cameras
-**************************************
+--------------------------------------
 
 This section covers adding and managing analog cameras. A Bluecherry hardware compression card is required for use with analog cameras and our software.
 
@@ -49,9 +50,8 @@ This section covers adding and managing analog cameras. A Bluecherry hardware co
 .. image:: img/devices-list-ip.png
 
 
-*******************
 Recording schedules
-*******************
+------------------
 
 We support two types of schedules. The first is a global schedule and the second is a per-camera schedule. Both are covered below
 
@@ -74,9 +74,8 @@ Under the Devices tab, select ‘Schedule’ under each camera that you want to 
 
 **Select the checkbox for ‘Use device-specific schedule for this camera’ and select the type of recording schedule you want and click ‘Save changes’**
 
-************
 Adding users
-************
+------------
 
 .. image:: img/users.png
 
@@ -87,10 +86,8 @@ Adding users
 **Complete the form with the user specific information. It’s usually recommended to have two administrator accounts, in case one user is delete or the password is forgotten.**
 
 
-
-***********************
 Editing / viewing users
-***********************
+----------------------
 
 .. image:: img/user-selection.png
 
@@ -102,9 +99,8 @@ Editing / viewing users
 
 **You can the option to change any of the fields above, including the password. You can also add specific restrictions on what the user has access to. The notes section lets you add user specific notes.**
 
-*************************
 Restrict cameras per user
-*************************
+-------------------------
 
 **Restricting access on a per-user basis**
 
@@ -121,9 +117,8 @@ From the ‘Users’ section click on any of the names in the list. For this exa
 **By default Joe Blow has access to all cameras. We do not want him to have access to cameras, simply click on the camera name. This will change the color of the camera from green (full access) to red (no access). Joe Blow will not see the camera in the available video devices, or in the event / search area. Changes are applied instantly.
 **
 
-***********
 System logs
-***********
+-----------
 
 **Select ‘System Log’ from the left menu bar **
 .. image:: img/systemlog-select.png
@@ -133,10 +128,8 @@ Note: These logs is randomly rotated, so it will likely not contain all of the l
 
 .. image:: img/system-log.png
 
-******************************
 Admin password reset procedure
-******************************
-
+------------------------------
 
 In case you’ve lost or forgot Bluecherry server Admin password, you can change it to default in database.
 
