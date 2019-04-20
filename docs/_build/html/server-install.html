@@ -1,0 +1,135 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Version 2 Manual &mdash; Bluecherry 2.8 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '2.8',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Bluecherry 2.8 documentation" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="version-2-manual">
+<h1>Version 2 Manual<a class="headerlink" href="#version-2-manual" title="Permalink to this headline">¶</a></h1>
+<p>Server Installation</p>
+<hr class="docutils" />
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>Version 2 supports Ubuntu LTS releases (Ubuntu 14.04 and Ubuntu 16.04), Debian Jessie and experimental support for CentOS 7.</p>
+<p>Ubuntu has two different x86 installation methods. The first is Ubuntu desktop, which will install Ubuntu along with the graphical interface. It is recommended that users without prior knowledge of Ubuntu or Linux use this method. You can also download our ISO image (bluecherry-v2-desktop-14.04-amd64.iso)</p>
+<p>The second installation method is Ubuntu Server. The installation is a text-based interface and significantly more complicated then the desktop method. By default, the installation will not include the graphical desktop, which some users prefer. It is recommended for customers with prior experience adding third party software repositories from a command line.</p>
+</div>
+<div class="section" id="installing-bluecherry-from-the-bluecherry-repository">
+<h2>Installing Bluecherry from the Bluecherry repository<a class="headerlink" href="#installing-bluecherry-from-the-bluecherry-repository" title="Permalink to this headline">¶</a></h2>
+<p>Obtain download instructions</p>
+<p>If you haven’t purchased a software license from us, you can give our software a free 30 day spin by clicking here and you will be given the download instructions.</p>
+<p>Copy and paste the commands to add our repository, or use the ISO to automate the install.</p>
+<p><code class="docutils literal"><span class="pre">sudo</span> <span class="pre">bash</span> <span class="pre">-c</span> <span class="pre">&quot;$(wget</span> <span class="pre">-O</span> <span class="pre">-</span> <span class="pre">https://dl.bluecherrydvr.com/scripts/install)&quot;)&quot;</span></code></p>
+</div>
+<div class="section" id="installing-the-server">
+<h2>Installing the server<a class="headerlink" href="#installing-the-server" title="Permalink to this headline">¶</a></h2>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300920838328.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300920838328.png" />
+<p>The instructions below assume you have received the download instructions, or installed from our CD installer.</p>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png" />
+<p>If you do not already have mysql-server installed you will be prompted to create a password for the ‘root’ MySQL account. While Ubuntu lists this as optional, it is recommended that you set a password.</p>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300921015523-display.png" />
+<p>You will now be asked to configure Bluecherry. You must hit Yes, or the installation process will fail.</p>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300921064670-display.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300921064670-display.png" />
+<p>Enter the database administrative password that you set previously for the ‘root’ user.</p>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300921118467-display.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300921118467-display.png" />
+<p>Enter the password that you want to create for the bluecherry database. This can be the same password that you provided for the root MySQL account, but we recommend keeping the password unique. You will be asked to enter this password twice to verify the password matched.</p>
+<img alt="http://manula.r.sizr.io/large/user/8991/img/media-1300921219530-display.png" src="http://manula.r.sizr.io/large/user/8991/img/media-1300921219530-display.png" />
+<p>At this point the bluecherry server will be installed. If you plan to install the client on the same system, then please follow the client installation guide.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Version 2 Manual</a><ul>
+<li><a class="reference internal" href="#requirements">Requirements</a></li>
+<li><a class="reference internal" href="#installing-bluecherry-from-the-bluecherry-repository">Installing Bluecherry from the Bluecherry repository</a></li>
+<li><a class="reference internal" href="#installing-the-server">Installing the server</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/server-install.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Curtis Hall.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/server-install.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
