@@ -101,7 +101,7 @@ Using Pan / Tilt / Zoom enabled cameras
 
 A screen cast has been setup overviewing how to use the Pan / Tilt / Zoom options in Version 2.
 
-.. youtube:: https://www.youtube.com/watch?v=-4YeH3UCUCA
+.. youtube:: -4YeH3UCUCA
 
 
 Viewing previously recorded events
