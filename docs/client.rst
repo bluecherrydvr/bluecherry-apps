@@ -101,6 +101,8 @@ Using Pan / Tilt / Zoom enabled cameras
 
 A screen cast has been setup overviewing how to use the Pan / Tilt / Zoom options in Version 2.
 
+:: youtube:: https://www.youtube.com/watch?v=-4YeH3UCUCA
+
 .. raw:: html
 
  <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">

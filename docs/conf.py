@@ -29,7 +29,8 @@ import os
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+#extensions = []
+extensions = ['sphinxcontrib.youtube']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -47,7 +48,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Bluecherry'
-copyright = '2019, Curtis Hall'
+copyright = '2019, Bluecherry'
 author = 'Curtis Hall'
 
 # The version info for the project you're documenting, acts as replacement for
