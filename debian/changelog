@@ -1,3 +1,9 @@
+bluecherry (2:2.8.7) trusty xenial bionic jessie stretch; urgency=low
+
+  * Bluecherry released under GPLv2 or later.
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Tue, 23 Apr 2019 23:30:00 +0400
+
 bluecherry (2:2.8.6) trusty xenial bionic jessie stretch; urgency=low
 
   * Add support of Ubuntu 18.04 Bionic and Debian 9 Stretch distros.
