@@ -45,7 +45,7 @@ define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_DOCUMENTATION', 'Documentation');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
-define('MMENU_LICENSING', 'License keys');
+define('MMENU_LICENSING', 'Support ID keys');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -586,21 +586,21 @@ define('BACKUP_DOWNLOAD', 'Download backup file');
 define('BACKUP_B_SUCCESS', 'Created');
 
 #licensing
-define('L_ADDCODE', 'Add a license code');
+define('L_ADDCODE', 'Add a support ID code');
 define('L_ADD', 'Add');
 define('L_PORTS', 'Ports');
-define('L_CONFIRMCODE', 'Confirm a license code');
-define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the license code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
-define('L_INVALID_LICENSE', 'The license code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_INVALID_LICENSE_EXISTS', 'The license code you entered is already in use on this system.');
+define('L_CONFIRMCODE', 'Confirm a support ID code');
+define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
+define('L_INVALID_LICENSE', 'The code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
+define('L_INVALID_LICENSE_EXISTS', 'The code you entered is already in use on this system.');
 define('L_INVALID_CONFIRMATION', 'Confirmation code you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_LICENSE_ADDED', 'The license was successfully activated.');
-define('L_CURRENT',  'Active license codes');
+define('L_LICENSE_ADDED', 'The code was successfully activated.');
+define('L_CURRENT',  'Active  codes');
 define('L_CONFIRM', 'Confirm');
-define('L_CONFIRM_DELETE', 'Are you sure you want to remove this license?');
-define('L_NO_LICENSES', 'You have no active licenses');
-define('L_AUTO_RESP_1', 'This license code does not exist.');
-define('L_AUTO_RESP_2', 'This license was already used on a different machine. If you recently made changes to your computer configuration, please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> to reset your license.');
+define('L_CONFIRM_DELETE', 'Are you sure you want to remove this code?');
+define('L_NO_LICENSES', 'You have no active support ID keys');
+define('L_AUTO_RESP_1', 'This code does not exist.');
+define('L_AUTO_RESP_2', 'This key was already used on a different machine. If you recently made changes to your computer configuration, please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> to reset your license.');
 define('L_AUTO_RESP_3', 'Sorry, you made too many unsuccessful authorization attempts per day. Please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> or try again later.');
 define('L_AUTO_RESP_4', 'Sorry, you need to contact Bluecherry via phone or email to obtain authorization.');
 define('L_AUTO_RESP_5', 'Sorry, an error was encountered while authorizing your license. Please try again later or <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a>.');
