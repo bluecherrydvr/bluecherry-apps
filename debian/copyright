@@ -3,9 +3,6 @@ Name: Bluecherry DVR Server
 Maintainer: Bluecherry <maintainers@bluecherry.net>
 
 Files: *
-Copyright: 2010-2011, Bluecherry, LLC
-License: Proprietary-BC
-
-License: Proprietary-BC
- All rights reserved. No distribution is permitted.
+Copyright: 2010-2019, Bluecherry, LLC
+License: GPL-2.0-or-later
 
