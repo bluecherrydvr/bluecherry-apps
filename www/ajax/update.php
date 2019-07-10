@@ -95,6 +95,7 @@ class update extends Controller {
 			$_POST['G_DISABLE_VERSION_CHECK'] = (empty($_POST['G_DISABLE_VERSION_CHECK'])) ? 1 : 0;
 			$_POST['G_DISABLE_IP_C_CHECK'] = (!empty($_POST['G_DISABLE_IP_C_CHECK'])) ? 1 : 0;
 			$_POST['G_DISABLE_WEB_STATS'] = (!empty($_POST['G_DISABLE_WEB_STATS'])) ? 1 : 0;
+			$_POST['G_ENABLE_WATERMARKING'] = (!empty($_POST['G_ENABLE_WATERMARKING'])) ? 1 : 0;
 		};
 
 		if (!empty($_POST['G_MAX_RECORD_AGE']))  # this catches all except "" and "0"

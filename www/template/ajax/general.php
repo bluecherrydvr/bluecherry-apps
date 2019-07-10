@@ -34,6 +34,14 @@
             </div>
         </div>
 
+	<div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_ENABLE_WATERMARKING; ?><p class='help-block'><small><?php echo G_ENABLE_WATERMARKING_EX; ?></small></p></label>
+
+            <div class="col-lg-6 form-control-static">
+                <input class="" type='checkbox' name='G_ENABLE_WATERMARKING' <?php echo (($global_settings->data['G_ENABLE_WATERMARKING']==1) ? 'checked' : ''); ?>>
+            </div>
+        </div>
+
         <div class="form-group">
             <label class="col-lg-4 col-md-4 control-label"><?php echo G_DEV_NOTES; ?><p class='help-block'><small><?php echo G_DEV_NOTES_EX; ?></small></p></label>
 

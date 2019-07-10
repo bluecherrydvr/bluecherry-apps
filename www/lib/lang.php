@@ -89,6 +89,8 @@ define('G_DISABLE_VERSION_CHECK', 'Check for available updates');
 define('G_DISABLE_VERSION_CHECK_EX', 'requires server to have internet access');
 define('G_DVR_NAME', 'DVR Name');
 define('G_DVR_NAME_EX', 'You can name your dvr after its location or usage');
+define('G_ENABLE_WATERMARKING', 'Enable OSD');
+define('G_ENABLE_WATERMARKING_EX', 'Adds watermarks with DVR name and timestamp on live streams and recordings.');
 define('G_DVR_EMAIL', 'Email address');
 define('G_DVR_EMAIL_EX', 'Email for notifications');
 define('G_DEV_NOTES', 'Notes');
