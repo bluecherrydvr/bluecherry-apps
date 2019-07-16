@@ -90,6 +90,8 @@ define('G_DISABLE_VERSION_CHECK', 'Checar Updates Disponiveis');
 define('G_DISABLE_VERSION_CHECK_EX', 'Exige Servidor para Acesso a Internet');
 define('G_DVR_NAME', 'Nome DVR');
 define('G_DVR_NAME_EX', 'Voce pode nomear seu DVR apos sua localizacao ou uso');
+define('G_ENABLE_WATERMARKING', 'Ativar Marca d\'água');
+define('G_ENABLE_WATERMARKING_EX', 'Adiciona marcas d\'água com Nome e Data em transmissões ao vivo e gravações');
 define('G_DVR_EMAIL', 'Endereco de Email'); 
 define('G_DVR_EMAIL_EX', 'Notificacao de Email');
 define('G_DEV_NOTES', 'Notas');
