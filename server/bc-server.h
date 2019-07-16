@@ -90,6 +90,9 @@ public:
 	int streaming_width;
 	int streaming_height;
 
+	/* Watermarking */
+	int watermarking_enabled;
+
 	int cur_pkt_flags;
 	int motion_flag;
 	int64_t last_sub_pts;
@@ -153,6 +156,7 @@ extern int global_bitrate_per_device;
 extern int global_reencode_frame_w;
 extern int global_reencode_frame_h;
 
+extern int global_enable_watermarking;
 /* @return 0 on success, negative if no free storage locations */
 int bc_get_media_loc(char *dest, size_t size);
 

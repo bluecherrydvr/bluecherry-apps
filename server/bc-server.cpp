@@ -58,6 +58,7 @@ int global_bandwidth_limit = 0;
 int global_bitrate_per_device = 0;
 int global_reencode_frame_w = 160;
 int global_reencode_frame_h = 120;
+int global_enable_watermarking = 0;
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -485,6 +486,19 @@ static int bc_check_globals(void)
 	}
 
 	bc_db_free_table(dbres);
+
+	/* get watermarking status */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+			"parameter='G_ENABLE_WATERMARKING'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for watermarking");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		global_enable_watermarking = bc_db_get_val_int(dbres, "value");
+	}
+
+        bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
 	return load_storage_paths();

@@ -146,6 +146,8 @@ void bc_record::notify_device_state(const char *state)
 void bc_record::run()
 {
 	stream_packet packet;
+	stream_packet recording_packet;
+	stream_packet streaming_packet;
 	int ret;
 	unsigned iteration = 0;
 
@@ -186,6 +188,13 @@ void bc_record::run()
 			break;
 		}
 
+
+		if (iteration > 0 &&
+		    watermarking_enabled != global_watermarking_enabled)
+		{
+			thread_should_die = "global watermarking configuration changed";
+			break;
+		}
 
 		update_osd(this);
 		if (!(iteration++ % 50))
@@ -306,7 +315,7 @@ void bc_record::run()
 				th.detach();
 			}
 
-			if (cfg.reencode_enabled || global_bandwidth_limit > 0) {
+			if (watermarking_enabled || cfg.reencode_enabled || global_bandwidth_limit > 0) {
 				streaming_width = cfg.reencode_frame_width;
 				streaming_height = cfg.reencode_frame_height;
 
@@ -315,9 +324,15 @@ void bc_record::run()
 					streaming_width = global_reencode_frame_w;
 					streaming_height = global_reencode_frame_h;
 					pthread_mutex_unlock(&mutex_global_reencode_resolution);
+				} else if (!cfg.reencode_enabled) {
+					streaming_bitrate = -1;
+					streaming_width = -1;
+					streaming_height = -1;
 				}
 
-				reenc = new reencoder(streaming_bitrate, streaming_width, streaming_height);
+
+				reenc = new reencoder(streaming_bitrate, streaming_width, streaming_height,
+							(bool) watermarking_enabled);
 			}
 
 			sched_last = 0;
@@ -346,22 +361,27 @@ void bc_record::run()
 		}
 
 		packet = bc->input->packet();
-		bc->source->send(packet);
 
-		/* Reencode packet for live streaming here */
-		if (bc_streaming_is_active(this) && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
+		/* Reencode packet if watermarking or livestream reencoding is enabled */
+		if (reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
 			reenc->update_bitrate(streaming_bitrate);
-			if (reenc->push_packet(packet) && reenc->run_loop()) {
+			if (reenc->push_packet(packet, bc_streaming_is_active(this)) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
-				packet = reenc->packet();
+				recording_packet = reenc->recording_packet();
+				streaming_packet = reenc->streaming_packet();
 			}
 			else
 				continue;
+		} else {
+			recording_packet = packet;
+			streaming_packet = packet;
 		}
+
+		bc->source->send(recording_packet);
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this))
-			if (bc_streaming_packet_write(this, packet) == -1) {
+			if (bc_streaming_packet_write(this, streaming_packet) == -1) {
 				goto error;
 			}
 		continue;
@@ -416,6 +436,8 @@ bc_record::bc_record(int i)
 	streaming_bitrate = 0;
 	streaming_width = 0;
 	streaming_height = 0;
+
+	watermarking_enabled = global_watermarking_enabled;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -477,6 +499,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc->input->set_subtitles_text(bc_rec->cfg.name);
 
 	check_bitrate(bc_rec);
+	watermarking_enabled = global_watermarking_enabled;
 
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
