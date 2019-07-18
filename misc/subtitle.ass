@@ -1,0 +1,17 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 640
+PlayResY: 480
+
+[V4+ Styles]
+
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+
+Style: Toplabel,Arial,16, &H80ffffff,&Hffffffff,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,7,40,40,40,0
+Style: Timestamp,Arial,16, &H80ffffff,&Hffffffff,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,1,0,2,40,40,40,0
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+
+Dialogue: 0,0:00:00.00,9:59:59.99,Toplabel, NTP,0000,0000,0000,,DVRNAME
+Dialogue: 0,0:00:00.00,9:59:59.99,Timestamp, NTP,0000,0000,0000,,cameraname_timestamp
