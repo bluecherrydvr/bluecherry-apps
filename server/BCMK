@@ -14,7 +14,7 @@ CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  bc-detect.o streaming.o rtsp.o signals.o motion_processor.o trigger_processor.o \
-		  decoder.o encoder.o reencoder.o vaapi.o scaler.o \
+		  decoder.o encoder.o reencoder.o vaapi.o scaler.o watermarker.o \
 		  recorder.o motion_handler.o ffmpeg-init.o bt.o status_server.o \
 		  trigger_server.o
 

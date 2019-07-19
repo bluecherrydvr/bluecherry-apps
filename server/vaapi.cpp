@@ -34,7 +34,7 @@ bool vaapi_hwaccel::init(const char *device)
 	return true;
 }
 
-bool vaapi_hwaccel::hwdownload_frame(AVCodecContext *s, AVFrame *input)
+bool vaapi_hwaccel::hwdownload_frame(const AVCodecContext *s, AVFrame *input)
 {
 	AVFrame *output = 0;
 	int ret;

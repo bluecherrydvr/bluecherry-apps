@@ -190,7 +190,7 @@ void bc_record::run()
 
 
 		if (iteration > 0 &&
-		    watermarking_enabled != global_watermarking_enabled)
+		    watermarking_enabled != global_enable_watermarking)
 		{
 			thread_should_die = "global watermarking configuration changed";
 			break;
@@ -364,7 +364,7 @@ void bc_record::run()
 
 		/* Reencode packet if watermarking or livestream reencoding is enabled */
 		if (reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
-			reenc->update_bitrate(streaming_bitrate);
+			reenc->update_streaming_bitrate(streaming_bitrate);
 			if (reenc->push_packet(packet, bc_streaming_is_active(this)) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
 				recording_packet = reenc->recording_packet();
@@ -437,7 +437,7 @@ bc_record::bc_record(int i)
 	streaming_width = 0;
 	streaming_height = 0;
 
-	watermarking_enabled = global_watermarking_enabled;
+	watermarking_enabled = global_enable_watermarking;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -499,7 +499,7 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc->input->set_subtitles_text(bc_rec->cfg.name);
 
 	check_bitrate(bc_rec);
-	watermarking_enabled = global_watermarking_enabled;
+	bc_rec->watermarking_enabled = global_enable_watermarking;
 
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
