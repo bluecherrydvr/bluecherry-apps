@@ -1,0 +1,114 @@
+#!/bin/bash
+
+if [[ $SUDO_USER == "bluecherry" ]]
+then
+        echo "You're installing Bluecherry on a system that already has an existing bluecherry user. Please remove that user first as it will be automatically created."
+        exit
+fi
+
+if [[ $(getent passwd "$UID" | cut -d: -f1) == "bluecherry" ]]
+then
+    echo "You're installing Bluecherry on a system that already has an existing bluecherry user. Please remove that user first as it will be automatically created."
+exit
+fi 
+
+check_distro()
+{
+    if [[ -e /etc/lsb-release ]]
+    then
+        . /etc/lsb-release
+    fi
+
+    if [[ -e /etc/os-release ]] 
+    then
+        . /etc/os-release
+    fi
+    
+    if [[ -e /etc/os-release ]] && [[ $ID == "centos" ]]
+    then
+            DISTRO=${ID}_${VERSION_ID}
+    else
+    
+    if [[ -e /etc/lsb-release ]]
+    then
+        DISTRO=$DISTRIB_CODENAME
+    else
+        DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
+    fi
+    fi
+    echo $DISTRO
+}
+
+bionic_install()
+{
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic.list
+    apt -y update
+    apt -y install bluecherry
+    systemctl restart bluecherry
+}
+
+xenial_install()
+{
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-xenial.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-xenial.list
+    apt -y update
+    apt -y install bluecherry
+    systemctl restart bluecherry
+}
+
+centos_7_install()
+{   
+    setenforce 0
+    sed -i 's/^SELINUX=.*/SELINUX=permissive/g' /etc/selinux/config
+    curl -s https://dl.bluecherrydvr.com/yum.repos.d/bluecherry-centos7.repo -o /etc/yum.repos.d/bluecherry-centos7.repo 
+    yum -y update
+    yum -y install epel-release
+    yum -y install dpkg wget epel-release httpd libbsd mariadb mariadb-server mkvtoolnix mkvtoolnix-gui mod_ssl nmap opencv-core php php-mysqlnd php-pdo php-pear-Mail php-pear-Mail-Mime policycoreutils-python sysstat v4l-utils
+    firewall-cmd --zone=public --add-port=7001/tcp --permanent
+    firewall-cmd --zone=public --add-port=7002/tcp --permanent
+    firewall-cmd --reload
+    yum -y install bluecherry
+    systemctl restart bluecherry
+}
+
+jessie_install()
+{
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-jessie.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jessie.list
+    apt-get -y update
+    apt-get -y install bluecherry
+}
+
+wheezy_install()
+{
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-wheezy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-wheezy.list
+    apt-get -y update
+    apt-get -y install bluecherry
+}
+
+stretch_install()
+{
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-stretch.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-stretch.list
+    apt-get -y update
+    apt-get -y install bluecherry
+}
+
+if   [ $(check_distro) == "xenial" ]; then
+    xenial_install
+elif [ $(check_distro) == "bionic" ]; then 
+    bionic_install
+elif [ $(check_distro) == "centos_7" ]; then 
+    centos_7_install
+elif [ $(check_distro) == "jessie" ]; then 
+    jessie_install
+elif [ $(check_distro) == "wheezy" ]; then 
+    wheezy_install
+    elif [ $(check_distro) == "stretch" ]; then 
+    stretch_install
+else
+    echo "Distro not supported"
+fi
+
