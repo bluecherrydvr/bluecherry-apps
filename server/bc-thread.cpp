@@ -146,8 +146,6 @@ void bc_record::notify_device_state(const char *state)
 void bc_record::run()
 {
 	stream_packet packet;
-	stream_packet recording_packet;
-	stream_packet streaming_packet;
 	int ret;
 	unsigned iteration = 0;
 
@@ -367,23 +365,24 @@ void bc_record::run()
 			reenc->update_streaming_bitrate(streaming_bitrate);
 			if (reenc->push_packet(packet, bc_streaming_is_active(this)) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
-				recording_packet = reenc->recording_packet();
-				streaming_packet = reenc->streaming_packet();
+				packet = reenc->recording_packet();
 			}
 			else
 				continue;
-		} else {
-			recording_packet = packet;
-			streaming_packet = packet;
 		}
 
-		bc->source->send(recording_packet);
+		bc->source->send(packet);
 
 		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this))
-			if (bc_streaming_packet_write(this, streaming_packet) == -1) {
+		if (bc_streaming_is_active(this)) {
+			if (reenc)
+				packet = reenc->streaming_packet();
+
+			if (bc_streaming_packet_write(this, packet) == -1) {
 				goto error;
 			}
+		}
+
 		continue;
 error:
 		sleep(10);
