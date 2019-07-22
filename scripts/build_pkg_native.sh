@@ -33,5 +33,5 @@ else
 	debian/rules debian/control
 	debian/rules clean binary
 	mkdir -p $DST_DIR
-	mv -v ../*.deb $DST_DIR
+	mv -v ../bluecherry*.deb $DST_DIR
 fi
