@@ -4,6 +4,7 @@
 
 reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool watermarking)
 	: dec(0), wmr(0), enc_streaming(0), enc_recording(0), scl(0),
+	hw_frames_ctx(0),
 	last_decoded_fw(0), last_decoded_fh(0),
 	out_frame_w(out_frame_w), out_frame_h(out_frame_h),
 	streaming_bitrate(bitrate), recording_bitrate(0),
@@ -133,6 +134,11 @@ bool reencoder::run_loop()
 				wmr = nullptr;
 				return false;
 			}
+
+			hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(ctx);
+
+			if (!hw_frames_ctx)
+				return false;
 		}
 	}
 
@@ -187,6 +193,11 @@ bool reencoder::run_loop()
 			return false;
 
 		bc_log(Debug, "got frame size %d x %d from watermarked", watermarked_frame->width, watermarked_frame->height);
+
+		if (!vaapi_hwaccel::hwupload_frame(hw_frames_ctx, watermarked_frame))
+			return false;
+
+		bc_log(Debug, "uploaded watermarked frame to vaapi hardware context");
 	}
 
 

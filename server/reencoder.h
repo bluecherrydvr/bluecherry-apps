@@ -39,6 +39,8 @@ private:
 	encoder *enc_streaming;
 	encoder *enc_recording;
 	scaler *scl;
+	/* intermediary hw context between watermarker and scaler/encoder */
+	AVBufferRef *hw_frames_ctx;
 
 	int last_decoded_fw;
 	int last_decoded_fh;
