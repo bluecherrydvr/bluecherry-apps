@@ -91,6 +91,7 @@ libav/config.mak:
 		--enable-decoder=pcm_f32le \
 		--enable-decoder=pcm_f64le \
 		--enable-decoder=pcm_s16le \
+		--enable-decoder=ass \
 		\
 		--enable-parser=h264 \
 		--enable-parser=mpeg4video \
