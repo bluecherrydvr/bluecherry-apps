@@ -108,6 +108,7 @@ libav/config.mak:
 		--enable-filter=scale \
 		--enable-filter=fps \
 		--enable-filter=scale_vaapi \
+		--enable-filter=subtitles \
 		\
 
 
