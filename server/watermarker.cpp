@@ -27,7 +27,6 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 	int ret = 0;
 	AVFilter *buffersrc = NULL;
 	AVFilter *buffersink = NULL;
-	AVPixelFormat pix_fmt = AV_PIX_FMT_VAAPI;
 	AVBufferSrcParameters *par;
 	char *filter_dump;
 
@@ -67,7 +66,8 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 
 	snprintf(args, sizeof(args),
 		"video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-		dec_ctx->width, dec_ctx->height, /* dec_ctx->pix_fmt,  AV_PIX_FMT_VAAPI */ pix_fmt,
+		dec_ctx->width, dec_ctx->height,
+		software_decoding ? dec_ctx->pix_fmt : dec_ctx->sw_pix_fmt,
 		dec_ctx->time_base.num, dec_ctx->time_base.den,
 		dec_ctx->sample_aspect_ratio.num,
 		dec_ctx->sample_aspect_ratio.den);
@@ -109,8 +109,7 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 	}
 
 	ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",
-		/* (uint8_t*)&dec_ctx->pix_fmt, sizeof(dec_ctx->pix_fmt), */
-		(uint8_t*)&pix_fmt, sizeof(pix_fmt),
+		(uint8_t*)&dec_ctx->pix_fmt, sizeof(dec_ctx->pix_fmt),
 		AV_OPT_SEARCH_CHILDREN);
 
 	if (ret < 0)
