@@ -29,7 +29,7 @@ public:
 	virtual const stream_packet &packet() const { return current_packet; }
 
 	virtual bool has_audio() const { return audio_stream_index >= 0; }
-	virtual bool has_subtitles() const { return true; }
+	virtual bool has_subtitles() const { return false; }
 
 	const char *get_error_message() const { return error_message; }
 	const char *stream_info();
@@ -45,7 +45,6 @@ private:
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
 	stream_packet current_packet;
-	subtitle_source subs_source;
 
 	void create_stream_packet(AVPacket *src);
 

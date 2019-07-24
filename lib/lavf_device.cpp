@@ -60,7 +60,6 @@ void lavf_device::stop()
 	avformat_close_input(&ctx);
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
-	subs_source.stop();
 }
 
 int lavf_device::start()
@@ -162,7 +161,6 @@ int lavf_device::start()
 	}
 
 	update_properties();
-	subs_source.start(current_properties);
 	_started = true;
 
 	return 0;
@@ -182,18 +180,6 @@ int lavf_device::read_packet()
 	if (!ctx) {
 		strcpy(error_message, "No active session");
 		return -1;
-	}
-	/*get subtitle packet first*/
-	_subs_enabled = true;//debug
-	//_subs_text = "subtitle test";//debug
-	if (subtitles_enabled() && has_new_subs() && next_packet_seq > 0) {
-		re = subs_source.write_packet(timestamped_sub().c_str());
-
-		if (re < 0)
-			return -1;
-
-		current_packet = subs_source.packet();
-		return 0;
 	}
 
 	av_free_packet(&frame);
