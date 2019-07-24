@@ -114,7 +114,9 @@ bool reencoder::run_loop()
 	if (!frame)
 		return false;
 
-	bc_log(Debug, "reencoder: got frame %dx%d from decoder", frame->width, frame->height);
+	recording_bitrate = dec->get_ctx()->bit_rate;
+
+	bc_log(Debug, "reencoder: got frame %dx%d from decoder, bitrate %d", frame->width, frame->height,  dec->get_ctx()->bit_rate);
 
 	/* 2) ADD WATERMARK */
 	if (watermarking)
