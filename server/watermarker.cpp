@@ -109,7 +109,8 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 	}
 
 	ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",
-		(uint8_t*)&dec_ctx->pix_fmt, sizeof(dec_ctx->pix_fmt),
+		software_decoding ? (uint8_t*)&dec_ctx->pix_fmt : (uint8_t*)&dec_ctx->sw_pix_fmt,
+		sizeof(dec_ctx->pix_fmt),
 		AV_OPT_SEARCH_CHILDREN);
 
 	if (ret < 0)
