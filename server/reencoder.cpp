@@ -37,6 +37,8 @@ reencoder::~reencoder()
 		delete enc_recording;
 	if (scl)
 		delete scl;
+	if (hw_frames_ctx)
+		av_buffer_unref(&hw_frames_ctx);
 }
 
 void reencoder::update_streaming_bitrate(int new_bitrate)
@@ -153,7 +155,9 @@ bool reencoder::run_loop()
 
 		const AVCodecContext *ctx = dec->get_ctx();
 
-		if (!scl->init_scaler(out_frame_w, out_frame_h, ctx))
+		AVBufferRef *hwctx = watermarking ? hw_frames_ctx : ctx->hw_frames_ctx;
+
+		if (!scl->init_scaler(out_frame_w, out_frame_h, ctx, hwctx))
 		{
 			bc_log(Error, "Failed to initialize scaler instance for reencoding");
 			delete scl;
@@ -166,8 +170,10 @@ bool reencoder::run_loop()
 	{
 		const AVCodecContext *ctx = dec->get_ctx();
 
+		AVBufferRef *hwctx = watermarking ? hw_frames_ctx : ctx->hw_frames_ctx;
+
 		if (scl)
-			scl->reinitialize(ctx);
+			scl->reinitialize(ctx, hwctx);
 
 		if (enc_streaming)
 		{
@@ -248,6 +254,9 @@ bool reencoder::run_loop()
 		break;
 	case REENC_MODE_STREAMING_ONLY:
 
+		//if (!init_enc_recording(frame))
+		//	return false;
+
 		scl->push_frame(frame);
 
 		scaled_frame = scl->scaled_frame();
@@ -275,6 +284,9 @@ bool reencoder::run_loop()
 
 const stream_packet &reencoder::streaming_packet() const
 {
+	if (mode == REENC_MODE_WMR_ONLY)
+		return enc_recording->packet();
+
 	return enc_streaming->packet();
 }
 
