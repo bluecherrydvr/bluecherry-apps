@@ -171,8 +171,8 @@ void bc_record::run()
 		}
 
 		if (iteration > 0 &&
-			(global_bandwidth_limit > 0 && !reenc ||
-			 reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0))
+			(((global_bandwidth_limit > 0 || watermarking_enabled) && !reenc) ||
+			 reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0 && !watermarking_enabled))
 		{
 			thread_should_die = "reencoding configuration changed";
 			break;
