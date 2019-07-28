@@ -141,14 +141,18 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder_ctx->time_base = AVRational{1, 1000};
 
 		encoder_ctx->bit_rate = bitrate;
-		encoder_ctx->gop_size = 10;
+		encoder_ctx->rc_max_rate = bitrate * 3 / 2;
+		encoder_ctx->gop_size = 120;
+		encoder_ctx->global_quality = 18;
 		encoder_ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
 		encoder_ctx->framerate = AVRational{15, 1};
 	}
 
-	//audio ...
+	AVDictionary *options = nullptr;
 
-	if (avcodec_open2(encoder_ctx, encoder, NULL) < 0)
+	av_dict_set(&options, "rc_mode", "AVBR", 0);
+
+	if (avcodec_open2(encoder_ctx, encoder, &options) < 0)
 	{
 		bc_log(Error, "Failed to open encoder");
 		encoder_ctx->hw_frames_ctx = 0;
