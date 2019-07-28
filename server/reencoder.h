@@ -20,6 +20,7 @@ extern "C"
 #include <libavutil/opt.h>
 }
 
+
 class reencoder
 {
 public:
@@ -51,10 +52,11 @@ private:
 	int streaming_bitrate;
 	int recording_bitrate;
 
-	int incoming_bitrate_avg;
-	int avg_window_size;
-	time_t avg_time;
-	int incoming_packets_cnt;
+	void update_stats(const stream_packet &packet);
+
+	int64_t incoming_bitrate_avg;
+	bool stats_collected;
+	int64_t first_packet_dts;
 
 	bool watermarking;
 
