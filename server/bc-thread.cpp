@@ -365,7 +365,8 @@ void bc_record::run()
 			reenc->update_streaming_bitrate(streaming_bitrate);
 			if (reenc->push_packet(packet, bc_streaming_is_active(this)) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
-				packet = reenc->recording_packet();
+				if (watermarking_enabled)
+					packet = reenc->recording_packet();
 			}
 			else
 				continue;
