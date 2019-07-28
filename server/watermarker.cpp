@@ -1,11 +1,32 @@
 #include "watermarker.h"
 #include "vaapi.h"
 
+#include <ass/ass.h>
+
+
+typedef struct AssContext {
+    const AVClass *avclass;
+    ASS_Library  *library;
+    ASS_Renderer *renderer;
+    ASS_Track    *track;
+    char *filename;
+    char *fontsdir;
+    char *charenc;
+    char *force_style;
+    int stream_index;
+    int alpha;
+    uint8_t rgba_map[4];
+    int     pix_step[4];       ///< steps per pixel for each plane of the main output
+    int original_w, original_h;
+    int shaping;
+    //FFDrawContext draw;
+} AssContext;
+
 watermarker::watermarker()
 	: name_string(0),
 	buffersink_ctx(0), buffersrc_ctx(0),
 	filter_graph(0), decoder_ctx(0), out_frame(0),
-	software_decoding(false)
+	track(0), software_decoding(false)
 {
 }
 
@@ -19,6 +40,23 @@ void watermarker::release_watermarker()
 watermarker::~watermarker()
 {
 	release_watermarker();
+}
+
+void watermarker::find_asstrack()
+{
+	for (int i = 0; i < filter_graph->nb_filters; i++)
+	{
+		if (strcmp(filter_graph->filters[i]->filter->name, "subtitles") == 0)
+		{
+			AssContext *assctx = (AssContext*)filter_graph->filters[i]->priv;
+
+			track = assctx->track;
+
+			bc_log(Debug, "watermarker: ass context found %s", track->events[0].Text);
+
+			break;
+		}
+	}
 }
 
 bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *dec_ctx)
@@ -157,6 +195,8 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 		goto end;
 	}
 
+	find_asstrack();
+
 	return true;
 end:
 	av_strerror(ret, args, sizeof(args));
@@ -210,6 +250,9 @@ void watermarker::push_frame(AVFrame *in)
 		bc_log(Debug, "watermarker: downloaded frame %dx%d from vaapi frame context");
         }
 
+	track->events[0].Duration = LLONG_MAX;
+	track->events[1].Duration = LLONG_MAX;
+	bc_log(Debug, "watermarker: track %s %lld %lld", track->events[0].Text, track->events[0].Start, track->events[0].Duration);
 
 	ret = av_buffersrc_add_frame_flags(buffersrc_ctx, in, 0);
 

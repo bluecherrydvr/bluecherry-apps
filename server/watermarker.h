@@ -15,8 +15,10 @@ extern "C"
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavutil/opt.h>
+#include <libavutil/log.h>
 }
 
+#include <ass/ass.h>
 
 class watermarker
 {
@@ -38,10 +40,12 @@ private:
 	AVFilterGraph *filter_graph;
 	const AVCodecContext *decoder_ctx;
 	AVFrame *out_frame;
+	ASS_Track    *track;
 
 	bool software_decoding;
 
 	void release_watermarker();
+	void find_asstrack();
 };
 
 #endif
