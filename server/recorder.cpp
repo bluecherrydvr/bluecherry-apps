@@ -70,6 +70,7 @@ void recorder::run()
 				/* Recordings must always start with a video keyframe; this should
 				 * be ensured in most cases (continuous splits, initialization), but
 				 * if absolutely necessary we'll drop packets. */
+				bc_log(Error, "First packet is not a video keyframe!");
 				goto end;
 			}
 
