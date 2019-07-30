@@ -167,7 +167,7 @@ int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &packe
 int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Streaming */
-int bc_streaming_setup(struct bc_record *bc_rec);
+int bc_streaming_setup(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props);
 void bc_streaming_destroy(struct bc_record *bc_rec);
 int bc_streaming_is_setup(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_is_active(struct bc_record *bc_rec) __attribute__((pure));
