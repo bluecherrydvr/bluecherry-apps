@@ -10,7 +10,8 @@ reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool waterma
 	streaming_bitrate(bitrate), recording_bitrate(0),
 	incoming_bitrate_avg(0), stats_collected(false),
 	first_packet_dts(0),
-	watermarking(watermarking)
+	watermarking(watermarking),
+	dvr_name(nullptr), camera_name(nullptr)
 {
 	bc_log(Info, "new reencoder instance created, streaming bitrate %d,\
 output streaming frame_width %dx%d, watermarking %s",
@@ -114,7 +115,7 @@ void reencoder::update_stats(const stream_packet &packet)
 	incoming_bitrate_avg += packet.size * 8;
 
 	if (recording_bitrate == 0)
-		recording_bitrate = packet.size * 8 * 5;
+		recording_bitrate = packet.size * 8 * 15;
 
 	if (packet.seq > 1 && packet.dts - first_packet_dts > AV_TIME_BASE * 3)
 	{
@@ -132,7 +133,7 @@ void reencoder::update_stats(const stream_packet &packet)
 		{
 			enc_recording->update_framerate(fps);
 			/* difference is > 25% */
-			if (abs(incoming_bitrate_avg - recording_bitrate) * 100 / recording_bitrate > 25)
+			if ((incoming_bitrate_avg - recording_bitrate) * 100 / recording_bitrate > 25)
 			{
 				recording_bitrate = incoming_bitrate_avg;
 				enc_recording->update_bitrate(recording_bitrate);
@@ -172,7 +173,7 @@ bool reencoder::run_loop()
 
 			const AVCodecContext *ctx = dec->get_ctx();
 
-			if (!wmr->init_watermarker("DVR NAME", ctx))
+			if (!wmr->init_watermarker(dvr_name, camera_name, ctx))
 			{
 				bc_log(Error, "Failed to initialize watermarker instance");
 				delete wmr;

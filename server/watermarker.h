@@ -26,7 +26,7 @@ public:
 	watermarker();
 	~watermarker();
 
-	bool init_watermarker(const char *dvrname, const AVCodecContext *dec_ctx);
+	bool init_watermarker(const char *dvrname, const char *cameraname, const AVCodecContext *dec_ctx);
 
 	void push_frame(AVFrame *in);
 	AVFrame *watermarked_frame();
@@ -35,12 +35,16 @@ public:
 
 private:
 	const char *name_string;
+	const char *dvr_name;
+	const char *camera_name;
 	AVFilterContext *buffersink_ctx;
 	AVFilterContext *buffersrc_ctx;
 	AVFilterGraph *filter_graph;
 	const AVCodecContext *decoder_ctx;
 	AVFrame *out_frame;
 	ASS_Track    *track;
+	char timestamp_buf[128];
+	time_t last_timestamp;
 
 	bool software_decoding;
 

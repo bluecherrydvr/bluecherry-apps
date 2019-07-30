@@ -27,6 +27,8 @@ public:
 	reencoder(int streaming_bitrate, int out_frame_w, int out_frame_h, bool watermarking = false);
 	~reencoder();
 	void update_streaming_bitrate(int new_bitrate);
+	void set_dvr_name(const char *dvrname) { dvr_name = dvrname; };
+	void set_camera_name(const char *cameraname) { camera_name = cameraname; };
 
 	bool push_packet(const stream_packet &packet, bool reencode_for_streaming);
 
@@ -70,6 +72,9 @@ private:
 
 	bool init_enc_streaming(AVFrame *in);
 	bool init_enc_recording(AVFrame *in);
+
+	const char *dvr_name;
+	const char *camera_name;
 };
 
 #endif

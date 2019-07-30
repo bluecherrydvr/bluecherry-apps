@@ -331,6 +331,12 @@ void bc_record::run()
 
 				reenc = new reencoder(streaming_bitrate, streaming_width, streaming_height,
 							(bool) watermarking_enabled);
+
+				if (watermarking_enabled) {
+					reenc->set_dvr_name(global_dvr_name);
+					reenc->set_camera_name(cfg.name);
+				}
+
 			}
 
 			sched_last = 0;

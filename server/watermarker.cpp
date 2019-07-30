@@ -23,10 +23,11 @@ typedef struct AssContext {
 } AssContext;
 
 watermarker::watermarker()
-	: name_string(0),
+	: dvr_name(nullptr), camera_name(nullptr),
 	buffersink_ctx(0), buffersrc_ctx(0),
 	filter_graph(0), decoder_ctx(0), out_frame(0),
-	track(0), software_decoding(false)
+	track(0), software_decoding(false),
+	last_timestamp(0)
 {
 }
 
@@ -59,7 +60,7 @@ void watermarker::find_asstrack()
 	}
 }
 
-bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *dec_ctx)
+bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, const AVCodecContext *dec_ctx)
 {
 	char args[512];
 	int ret = 0;
@@ -68,7 +69,8 @@ bool watermarker::init_watermarker(const char *dvrname, const AVCodecContext *de
 	AVBufferSrcParameters *par;
 	char *filter_dump;
 
-	name_string = dvrname;
+	dvr_name = dvrname;
+	camera_name = cameraname;
 	decoder_ctx = dec_ctx;
 
 	if (!dec_ctx->hw_frames_ctx)
@@ -226,7 +228,7 @@ void watermarker::reinitialize(const AVCodecContext *updated_ctx)
 
 		release_watermarker();
 
-		if (!init_watermarker(name_string, updated_ctx))
+		if (!init_watermarker(dvr_name, camera_name, updated_ctx))
 		{
 			bc_log(Error, "Failed to reinitialize watermarker for new input frame size");
 			return;
@@ -237,6 +239,8 @@ void watermarker::reinitialize(const AVCodecContext *updated_ctx)
 void watermarker::push_frame(AVFrame *in)
 {
 	int ret;
+	time_t t;
+	int namelen;
 
 	bc_log(Debug, "watermarker: pushing decoded frame to subtitles filter");
 
@@ -250,9 +254,29 @@ void watermarker::push_frame(AVFrame *in)
 		bc_log(Debug, "watermarker: downloaded frame %dx%d from vaapi frame context");
         }
 
-	track->events[0].Duration = LLONG_MAX;
-	track->events[1].Duration = LLONG_MAX;
-	bc_log(Debug, "watermarker: track %s %lld %lld", track->events[0].Text, track->events[0].Start, track->events[0].Duration);
+	t = time(NULL);
+
+	if (last_timestamp != t)
+	{
+		track->events[0].Duration = LLONG_MAX;
+		track->events[1].Duration = LLONG_MAX;
+
+		track->events[0].Text = (char*)dvr_name;
+
+		namelen = strlen(camera_name);
+
+		namelen = namelen > (sizeof timestamp_buf) / 2 ? (sizeof timestamp_buf) / 2 : namelen;
+
+		memcpy(timestamp_buf, camera_name, namelen);
+		timestamp_buf[namelen] = '\0';
+
+		strftime(timestamp_buf + namelen,sizeof timestamp_buf - namelen, " %F %H:%M:%S", localtime(&t));
+		track->events[1].Text = timestamp_buf;
+
+		bc_log(Debug, "watermarker: track %s %lld %lld", track->events[0].Text, track->events[0].Start, track->events[0].Duration);
+
+		last_timestamp = t;
+	}
 
 	ret = av_buffersrc_add_frame_flags(buffersrc_ctx, in, 0);
 
