@@ -59,6 +59,7 @@ int global_bitrate_per_device = 0;
 int global_reencode_frame_w = 160;
 int global_reencode_frame_h = 120;
 int global_enable_watermarking = 0;
+char global_dvr_name[256];
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -499,6 +500,23 @@ static int bc_check_globals(void)
 	}
 
         bc_db_free_table(dbres);
+
+	/* G_DVR_NAME */
+	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
+				"parameter='G_DVR_NAME'");
+
+	if (!dbres)
+		bc_status_component_error("Database failure for DVR name");
+
+	if (dbres && !bc_db_fetch_row(dbres)) {
+		const char *dvrname = bc_db_get_val(dbres, "value", NULL);
+		if (dvrname) {
+			strlcpy(global_dvr_name, dvrname, sizeof(global_dvr_name));
+		}
+	} else {
+		strlcpy(global_dvr_name, "Alarmtek DVR", sizeof global_dvr_name);
+	}
+	bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
 	return load_storage_paths();

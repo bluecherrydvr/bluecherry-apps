@@ -157,6 +157,7 @@ extern int global_reencode_frame_w;
 extern int global_reencode_frame_h;
 
 extern int global_enable_watermarking;
+extern char global_dvr_name[256];
 /* @return 0 on success, negative if no free storage locations */
 int bc_get_media_loc(char *dest, size_t size);
 
