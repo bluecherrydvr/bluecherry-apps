@@ -221,7 +221,7 @@ void bc_record::run()
 				log.log(Info, "Stream started: %s", info);
 			}
 
-			if (bc_streaming_setup(this))
+			if (bc_streaming_setup(this, this->bc->input->properties()))
 				log.log(Error, "Unable to setup live broadcast of device stream");
 		}
 
@@ -335,6 +335,10 @@ void bc_record::run()
 				if (watermarking_enabled) {
 					reenc->set_dvr_name(global_dvr_name);
 					reenc->set_camera_name(cfg.name);
+
+					if (bc_streaming_is_setup(this)) {
+						bc_streaming_destroy(this);
+					}
 				}
 
 			}
@@ -379,6 +383,11 @@ void bc_record::run()
 		}
 
 		bc->source->send(packet);
+
+		if (watermarking_enabled && !bc_streaming_is_setup(this)) {
+			if (bc_streaming_setup(this, reenc->streaming_packet().properties()))
+                                log.log(Error, "Unable to reinitialize watermarked streaming");
+		}
 
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this)) {
