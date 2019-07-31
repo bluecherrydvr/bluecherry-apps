@@ -1335,6 +1335,8 @@ static void bc_check_gpio()
 
 			gpio_config.push_back(pin);
 		}
+
+		bc_db_free_table(dbres);
 	}
 
 	/* Check alarms schedule */
