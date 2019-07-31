@@ -177,6 +177,7 @@ end:
 	bc_log(Error, "failed to init scaler: %s", args);
 	avfilter_inout_free(&inputs);
 	avfilter_inout_free(&outputs);
+	avfilter_graph_free(&filter_graph);
 	return false;
 }
 

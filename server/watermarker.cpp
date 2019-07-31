@@ -55,6 +55,11 @@ void watermarker::find_asstrack()
 
 			bc_log(Debug, "watermarker: ass context found %s", track->events[0].Text);
 
+			free(track->events[0].Text);
+			free(track->events[1].Text);
+			track->events[0].Text = (char*)dvr_name;
+			track->events[1].Text = (char*)camera_name;
+
 			break;
 		}
 	}
@@ -205,6 +210,7 @@ end:
 	bc_log(Error, "failed to init watermarker: %s", args);
 	avfilter_inout_free(&inputs);
 	avfilter_inout_free(&outputs);
+	avfilter_graph_free(&filter_graph);
 	return false;
 }
 

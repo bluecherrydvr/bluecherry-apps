@@ -159,8 +159,11 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		avcodec_close(encoder_ctx);
 		avcodec_free_context(&encoder_ctx);
 		encoder_ctx = 0;
+		av_dict_free(&options);
 		return false;
 	}
+
+	av_dict_free(&options);
 
 	return true;
 }
