@@ -264,6 +264,12 @@ void watermarker::push_frame(AVFrame *in)
 		bc_log(Debug, "watermarker: downloaded frame %dx%d from vaapi frame context");
         }
 
+	if (in->width == 0 || in->height == 0)
+	{
+		bc_log(Error, "watermarker: empty frame received, discarding");
+		return;
+	}
+
 	t = time(NULL);
 
 	if (last_timestamp != t)
