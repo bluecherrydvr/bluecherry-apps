@@ -180,8 +180,12 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 		goto end;
 	}
 
-	snprintf(args, sizeof(args), "subtitles=filename=/usr/share/bluecherry/subtitle.ass:original_size=640x480");/*"scale_vaapi=w=%d:h=%d",
-			out_width, out_height);*/
+	if (dec_ctx->width >= 640)
+		snprintf(args, sizeof(args),
+			"subtitles=filename=/usr/share/bluecherry/subtitle.ass:original_size=640x480");
+	else
+		snprintf(args, sizeof(args),
+			"subtitles=filename=/usr/share/bluecherry/subtitle_lowres.ass:original_size=352x240");
 
 
 	if ((ret = avfilter_graph_parse_ptr(filter_graph, args,
