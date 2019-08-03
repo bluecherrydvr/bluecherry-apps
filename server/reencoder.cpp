@@ -38,6 +38,8 @@ reencoder::~reencoder()
 		delete enc_recording;
 	if (scl)
 		delete scl;
+	if (wmr)
+		delete wmr;
 	if (hw_frames_ctx)
 		av_buffer_unref(&hw_frames_ctx);
 }
