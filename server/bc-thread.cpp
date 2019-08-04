@@ -170,7 +170,7 @@ void bc_record::run()
 				break;
 		}
 
-		if (iteration > 0 &&
+		if (iteration > 0 && start_failed == 0 &&
 			(((global_bandwidth_limit > 0 || watermarking_enabled) && !reenc) ||
 			 reenc && !cfg.reencode_enabled && global_bandwidth_limit == 0 && !watermarking_enabled))
 		{
