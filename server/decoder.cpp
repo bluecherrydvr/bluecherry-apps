@@ -8,7 +8,8 @@ extern "C"
 #include "vaapi.h"
 
 decoder::decoder(int media_type)
-	: decoder_ctx(0), frame(0), type(media_type)
+	: decoder_ctx(0), frame(0), type(media_type),
+	props_changed(false)
 {
 }
 
@@ -116,10 +117,16 @@ void decoder::push_packet(const stream_packet &pkt)
 	if (pkt.type != type)
 		return;
 
+	props_changed = false;
+
+	if (!decoder_ctx)
+		saved_properties = pkt.properties();
+
 	if (pkt.properties() != saved_properties)
 	{
 		saved_properties = pkt.properties();
 		release_decoder();
+		props_changed = true;
 	}
 
 	if (!decoder_ctx)

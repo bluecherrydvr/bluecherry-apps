@@ -47,6 +47,7 @@ private:
 
 	int last_decoded_fw;
 	int last_decoded_fh;
+	enum AVPixelFormat last_decoded_pixfmt;
 
 	int out_frame_w;
 	int out_frame_h;

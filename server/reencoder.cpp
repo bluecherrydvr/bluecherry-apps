@@ -6,6 +6,7 @@ reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool waterma
 	: dec(0), wmr(0), enc_streaming(0), enc_recording(0), scl(0),
 	hw_frames_ctx(0),
 	last_decoded_fw(0), last_decoded_fh(0),
+	last_decoded_pixfmt(AV_PIX_FMT_NONE),
 	out_frame_w(out_frame_w), out_frame_h(out_frame_h),
 	streaming_bitrate(bitrate), recording_bitrate(0),
 	incoming_bitrate_avg(0), stats_collected(false),
@@ -210,7 +211,9 @@ bool reencoder::run_loop()
 		}
 	}
 
-	if (last_decoded_fw > 0 && (last_decoded_fw != frame->width || last_decoded_fh != frame->height))
+	//if (last_decoded_fw > 0 && 
+	//	(last_decoded_fw != frame->width || last_decoded_fh != frame->height || last_decoded_pixfmt != frame->format))
+	if (dec->properties_changed())
 	{
 		const AVCodecContext *ctx = dec->get_ctx();
 
@@ -218,6 +221,9 @@ bool reencoder::run_loop()
 
 		if (scl)
 			scl->reinitialize(ctx, hwctx);
+
+		if (wmr)
+			wmr->reinitialize(ctx);
 
 		if (enc_streaming)
 		{
@@ -234,6 +240,7 @@ bool reencoder::run_loop()
 
 	last_decoded_fw = frame->width;
 	last_decoded_fh = frame->height;
+	last_decoded_pixfmt = (enum AVPixelFormat)frame->format;
 
 	if (watermarking)
 	{
