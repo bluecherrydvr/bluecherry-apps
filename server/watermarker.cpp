@@ -33,6 +33,12 @@ watermarker::watermarker()
 
 void watermarker::release_watermarker()
 {
+	if (track)
+	{
+		track->events[0].Text = NULL;
+		track->events[1].Text = NULL;
+	}
+
 	avfilter_graph_free(&filter_graph);
 
 	av_frame_free(&out_frame);
