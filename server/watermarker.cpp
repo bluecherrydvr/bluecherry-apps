@@ -266,8 +266,6 @@ void watermarker::push_frame(AVFrame *in)
 		/* move frame data from video mem to system mem*/
 		if (!vaapi_hwaccel::hwdownload_frame(decoder_ctx, in))
 			return;
-
-		bc_log(Debug, "watermarker: downloaded frame %dx%d from vaapi frame context");
         }
 
 	if (in->width == 0 || in->height == 0)
