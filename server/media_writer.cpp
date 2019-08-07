@@ -472,9 +472,9 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 	oc->width   = rawFrame->width;
 	oc->height  = rawFrame->height;
 	oc->pix_fmt = AV_PIX_FMT_YUVJ420P;
-	oc->mb_lmin = oc->lmin = oc->qmin * FF_QP2LAMBDA;
-	oc->mb_lmax = oc->lmax = oc->qmax * FF_QP2LAMBDA;
-	oc->flags  |= CODEC_FLAG_QSCALE;
+	oc->mb_lmin = oc->qmin * FF_QP2LAMBDA;
+	oc->mb_lmax = oc->qmax * FF_QP2LAMBDA;
+	oc->flags  |= AV_CODEC_FLAG_QSCALE;
 	oc->global_quality = oc->qmin * FF_QP2LAMBDA;
 	oc->time_base.num = 1;
 	oc->time_base.den = 30000;

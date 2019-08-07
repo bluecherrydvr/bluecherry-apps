@@ -51,7 +51,6 @@ libav/config.mak:
 		\
 		--disable-libxcb \
 		--disable-xlib \
-		--disable-sdl \
 		\
 		--disable-everything \
 		\

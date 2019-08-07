@@ -207,7 +207,7 @@ int lavf_device::read_packet()
 
 void lavf_device::create_stream_packet(AVPacket *src)
 {
-	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE];
+	uint8_t *buf = new uint8_t[src->size + AV_INPUT_BUFFER_PADDING_SIZE];
 	/* XXX The padding is a hack to avoid overreads by optimized
 	 * functions. */
 	memcpy(buf, src->data, src->size);
