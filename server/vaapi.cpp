@@ -226,15 +226,8 @@ AVBufferRef *vaapi_hwaccel::alloc_frame_ctx(const AVCodecContext *s)
 
 int vaapi_hwaccel::init_decoder(AVCodecContext *s)
 {
-	AVBufferRef* ref;
-
-	ref = vaapi_hwaccel::alloc_frame_ctx(s);
-
-	if (!ref)
-		return 0;
-
 	s->pix_fmt = s->sw_pix_fmt;
-	s->hw_frames_ctx = ref;
+	s->hw_device_ctx = av_buffer_ref(device_context);
 
 	s->opaque = (void*)1; //hardware acceleration is enabled for this AVCodecContext instance
 

@@ -45,13 +45,9 @@ bool decoder::init_decoder()
 	if (type == AVMEDIA_TYPE_VIDEO)
 	{
 		ctx->get_format = vaapi_hwaccel::get_format;
-		ctx->get_buffer2 = vaapi_hwaccel::get_buffer;
 	}
 
-	AVDictionary *decoder_opts = NULL;
-        av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
-        ret = avcodec_open2(ctx, codec, &decoder_opts);
-        av_dict_free(&decoder_opts);
+        ret = avcodec_open2(ctx, codec, NULL);
 
         if (ret < 0)
 	{
