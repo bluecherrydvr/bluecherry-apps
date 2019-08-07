@@ -108,7 +108,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		st->codec->profile = 1;
 		st->codec->bits_per_coded_sample = 0;
 		st->codec->extradata_size = 2;
-		st->codec->extradata = (uint8_t*)av_malloc(2 + FF_INPUT_BUFFER_PADDING_SIZE);;//"\021\210"
+		st->codec->extradata = (uint8_t*)av_malloc(2 + AV_INPUT_BUFFER_PADDING_SIZE);;//"\021\210"
 		memcpy(st->codec->extradata, "\021\210", 2);
 
         }
@@ -118,7 +118,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		st->codec->time_base.num, st->codec->time_base.den);
 
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
-		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+		st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
 	ctx->packet_size = RTP_MAX_PACKET_SIZE;
 

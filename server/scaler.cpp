@@ -27,8 +27,8 @@ bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *de
 {
 	char args[512];
 	int ret = 0;
-	AVFilter *buffersrc = NULL;
-	AVFilter *buffersink = NULL;
+	const AVFilter *buffersrc = NULL;
+	const AVFilter *buffersink = NULL;
 	AVPixelFormat pix_fmt = AV_PIX_FMT_VAAPI;
 	AVBufferSrcParameters *par;
 	char *filter_dump;

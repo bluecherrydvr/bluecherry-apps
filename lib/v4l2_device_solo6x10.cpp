@@ -320,7 +320,7 @@ int v4l2_device_solo6x10::read_packet()
 // TODO Deduplicate with lavf_device
 void v4l2_device_solo6x10::create_stream_packet(AVPacket *src)
 {
-	uint8_t *buf = new uint8_t[src->size + FF_INPUT_BUFFER_PADDING_SIZE];
+	uint8_t *buf = new uint8_t[src->size + AV_INPUT_BUFFER_PADDING_SIZE];
 	/* XXX The padding is a hack to avoid overreads by optimized
 	 * functions. */
 	memcpy(buf, src->data, src->size);

@@ -75,8 +75,8 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 {
 	char args[512];
 	int ret = 0;
-	AVFilter *buffersrc = NULL;
-	AVFilter *buffersink = NULL;
+	const AVFilter *buffersrc = NULL;
+	const AVFilter *buffersink = NULL;
 	AVBufferSrcParameters *par;
 	char *filter_dump;
 

@@ -81,7 +81,7 @@ bool encoder::encode()
 	}
 
 	//set stream_packet
-	uint8_t *buf = new uint8_t[pkt.size + FF_INPUT_BUFFER_PADDING_SIZE];
+	uint8_t *buf = new uint8_t[pkt.size + AV_INPUT_BUFFER_PADDING_SIZE];
 	memcpy(buf, pkt.data, pkt.size);
 
 	current_packet = stream_packet(buf, props);
