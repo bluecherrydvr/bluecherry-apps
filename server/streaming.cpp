@@ -263,7 +263,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		return -1;
 	}
 
-	if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag || bc_rec->motion_flag)) {//send motion event to client
+	/*if (pkt.type == AVMEDIA_TYPE_VIDEO && (pkt.flags & stream_packet::MotionFlag || bc_rec->motion_flag)) {//send motion event to client
 		ctx_index = 1;
 		bc_rec->cur_stream_index = ctx_index;
 
@@ -279,7 +279,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 			bc_rec->log.log(Error, "Can't write popup trigger packet to live stream: %s", err);
 		}
 		bc_rec->motion_flag = 0;
-	}
+	}*/
 
 	return 1;
 }
