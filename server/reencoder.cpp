@@ -63,6 +63,9 @@ bool reencoder::push_packet(const stream_packet &packet, bool reencode_for_strea
 
 	update_stats(packet);
 
+	if (watermarking && wmr && packet.seq % 100 == 0)
+		wmr->reinitialize(dec->get_ctx());
+
 	return true;
 }
 
