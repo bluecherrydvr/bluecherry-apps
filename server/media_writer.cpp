@@ -43,16 +43,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		s = audio_st;
 	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
 		s = video_st;
-	else if (pkt.type == AVMEDIA_TYPE_SUBTITLE)
-		s = subs_st;
 	else
 		bc_log(Debug, "write_packet: unexpected packet (to be ignored): pkt.type %d, dts %" PRId64 ", pts %" PRId64 ", size %d", pkt.type, pkt.dts, pkt.pts, pkt.size);
 
 	if (!s)
 		return true;
-
-	if (pkt.type == AVMEDIA_TYPE_SUBTITLE)
-		bc_log(Debug, "subtitle packet dts = %" PRId64 ", pts = %" PRId64, pkt.dts, pkt.pts);
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
@@ -85,11 +80,6 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	}
 
 
-	if (pkt.type == AVMEDIA_TYPE_SUBTITLE) {
-		opkt.pts = pkt.pts;
-		opkt.dts = pkt.dts;
-	}
-
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
 	re = av_interleaved_write_frame(oc, &opkt);
 	if (re < 0) {
@@ -104,10 +94,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 void media_writer::close()
 {
-	if (subs_st)
-		subs_st->codec->subtitle_header = NULL;
-
-	video_st = audio_st = subs_st = NULL;
+	video_st = audio_st = NULL;
 
 	if (oc) {
 		if (oc->pb)
@@ -258,12 +245,15 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 {
 	int ret;
 	AVCodec *codec;
+	AVCodecContext avctx;
 	AVDictionary *muxer_opts = NULL;
 	AVRational bkp_ts;
 
 	if (oc)
 		return 0;
 
+
+	memset(&avctx, 0, sizeof avctx);
 	/* Get the output format */
 	AVOutputFormat *fmt_out = av_guess_format("matroska", NULL, NULL);
 	if (!fmt_out) {
@@ -271,40 +261,34 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		goto error;
 	}
 
-	if ((oc = avformat_alloc_context()) == NULL)
-		goto error;
+	//if ((oc = avformat_alloc_context()) == NULL)
+	//	goto error;
 
-	oc->oformat = fmt_out;
+	//oc->oformat = fmt_out;
+	avformat_alloc_output_context2(&oc, fmt_out, NULL, path.c_str());
+
+	if (!oc)
+		goto error;
 
 	video_st = avformat_new_stream(oc, NULL);
 	if (!video_st)
 		goto error;
-	bkp_ts = video_st->codec->time_base;
-	properties.video.apply(video_st->codec);
-	video_st->codec->time_base = bkp_ts;
+	properties.video.apply(&avctx);
+	avcodec_parameters_from_context(video_st->codecpar, &avctx);
 
 	if (properties.has_audio()) {
 		audio_st = avformat_new_stream(oc, NULL);
 		if (!audio_st)
 			goto error;
-		bkp_ts = audio_st->codec->time_base;
-		properties.audio.apply(audio_st->codec);
-		audio_st->codec->time_base = bkp_ts;
+		properties.audio.apply(&avctx);
+		avcodec_parameters_from_context(audio_st->codecpar, &avctx);
 	}
 
-	if (properties.has_subtitles()) {
-		subs_st = avformat_new_stream(oc, NULL);
-		if (!subs_st)
-			goto error;
-		bkp_ts = subs_st->codec->time_base;
-		properties.subs.apply(subs_st->codec);
-		subs_st->codec->time_base = bkp_ts;
-	}
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
-		video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+		video_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 		if (audio_st)
-			audio_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+			audio_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	}
 
 	/* Open output file */
