@@ -146,6 +146,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder_ctx->gop_size = 20;
 		encoder_ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
 		encoder_ctx->framerate = current_fps;
+		encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	}
 
 	AVDictionary *options = nullptr;
@@ -164,6 +165,10 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 	}
 
 	av_dict_free(&options);
+
+	if (encoder_ctx->extradata && encoder_ctx->extradata_size)
+		p->video.extradata.assign(encoder_ctx->extradata, encoder_ctx->extradata + encoder_ctx->extradata_size);
+
 
 	return true;
 }
