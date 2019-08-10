@@ -10,6 +10,37 @@ class mediaRequest extends Controller {
 		$this->chAccess('basic');
     }
 
+    function stream_concatenated_video()
+    {
+	$device_id = (!empty($_GET['device_id'])) ? intval($_GET['device_id']) : false;
+
+	$start_time = (!empty($_GET['start_time'])) ? intval($_GET['start_time']) : false;
+	$end_time = (!empty($_GET['end_time'])) ? intval($_GET['end_time']) : false;
+
+	if (!$device_id || !$start_time || !$end_time)
+		requestError("E: Invalid parameters");
+
+	$listfilename = "/tmp/bc_concat_listfile_".getmypid()."_".$device_id."_".$start_time."_".$end_time;
+
+	$components = data::query("SELECT start, end, size, filepath from Media where device_id='{$device_id}' ORDER BY start");
+
+	if (empty($components[0]))
+		requestError("E: No media files found");
+
+	$fp = fopen($file, 'w');
+
+	// .. fill list file with filenames and durations
+
+	$ffmpegcmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg "
+		. " -f concat -safe 0 -i ".$listfilename." -c copy -f matroska -";
+
+	// ... set headers content-type filename, etc
+
+	mb_http_output("pass");
+	passthru($ffmpegcmd);
+	unlink($listfilename);
+    }
+
     public function getData()
     {
         session_write_close();
@@ -34,6 +65,11 @@ class mediaRequest extends Controller {
         	readfile($path_to_image);
         	exit();
         }
+
+	if (!empty($_GET['mode']) && $_GET['mode']=='concatenated_video'){
+		stream_concatenated_video();
+		exit();
+	}
 
         if (empty($_GET['id']))
         	requestError('No ID sent');
