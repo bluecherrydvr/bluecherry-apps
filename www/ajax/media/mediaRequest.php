@@ -20,21 +20,41 @@ class mediaRequest extends Controller {
 	if (!$device_id || !$start_time || !$end_time)
 		requestError("E: Invalid parameters");
 
-	$listfilename = "/tmp/bc_concat_listfile_".getmypid()."_".$device_id."_".$start_time."_".$end_time;
+	$listfilename = "/tmp/bc_concat_listfile_".getmypid()
+		."_".$device_id."_".$start_time."_".$end_time."_".rand();
 
 	$components = data::query("SELECT start, end, size, filepath from Media where device_id='{$device_id}' ORDER BY start");
 
 	if (empty($components[0]))
 		requestError("E: No media files found");
 
-	$fp = fopen($file, 'w');
+	$fp = fopen($listfilename, 'w');
 
-	// .. fill list file with filenames and durations
+	if (!$fp)
+		requestError("E: Failed to create list file for concat demuxer");
+
+	foreach ($components as $component)
+	{
+		fwrite($fp, "file '{$component['filepath']}'\n");
+
+		if ($component['end'] != 0)
+		{
+			$duration = $component['end'] - $component['start'];
+			fwrite($fp, "duration ".intval($duration)."\n");
+		}
+
+	}
+	fclose($fp);
 
 	$ffmpegcmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg "
 		. " -f concat -safe 0 -i ".$listfilename." -c copy -f matroska -";
 
-	// ... set headers content-type filename, etc
+	$filename = strftime("%F_%H", $components[0]['start'])
+		."__".strftime("%F_%H", $components[count($components) -1]['start'])
+		.".mkv";
+
+	header('Content-Type: video/mpeg');
+	header('Content-Disposition: attachment; filename="' . $filename . '"');
 
 	mb_http_output("pass");
 	passthru($ffmpegcmd);
