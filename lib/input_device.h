@@ -186,6 +186,8 @@ public:
 		void apply(AVCodecContext *cc) const;
 	} subs;
 
+	bool operator!=(const stream_properties&) const;
+
 	bool has_audio() const { return audio.codec_id != AV_CODEC_ID_NONE; }
 	bool has_subtitles() const { return subs.codec_id != AV_CODEC_ID_NONE; }
 };
