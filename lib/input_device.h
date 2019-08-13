@@ -173,6 +173,8 @@ public:
 		void apply(AVCodecContext *cc) const;
 	} audio;
 
+	bool operator!=(const stream_properties&) const;
+
 	bool has_audio() const { return audio.codec_id != AV_CODEC_ID_NONE; }
 };
 
