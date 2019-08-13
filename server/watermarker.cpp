@@ -226,7 +226,7 @@ end:
 
 void watermarker::reinitialize(const AVCodecContext *updated_ctx)
 {
-		bc_log(Info, "watermarker:  reinitializing watermarker with new decoder context");
+		bc_log(Debug, "watermarker:  reinitializing watermarker with new decoder context");
 		/*
 		if (software_decoding)
 		{
