@@ -40,6 +40,7 @@ do_start()
 {
 	mkdir -p "$PIDDIR"
 	chown "$DAEMONUSER:$DAEMONUSER" "$PIDDIR"
+	rm "/tmp/bc_concat_*"
 
 	# Return
 	#   0 if daemon has been started
