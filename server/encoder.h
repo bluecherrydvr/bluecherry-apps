@@ -20,6 +20,7 @@ public:
 
 	const stream_packet &packet() const { return current_packet; }
 
+	AVRational get_fps() const { return current_fps; }
 	void update_bitrate(int new_bitrate) { current_bitrate = new_bitrate; }
 	void update_framerate(AVRational fps) { current_fps = fps; }
 

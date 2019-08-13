@@ -58,7 +58,8 @@ private:
 	void update_stats(const stream_packet &packet);
 
 	int64_t incoming_bitrate_avg;
-	bool stats_collected;
+	uint32_t bitrate_calc_period_sec;
+	uint32_t incoming_fps_ctr;
 	int64_t first_packet_dts;
 
 	bool watermarking;

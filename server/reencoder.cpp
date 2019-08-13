@@ -9,8 +9,8 @@ reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool waterma
 	last_decoded_pixfmt(AV_PIX_FMT_NONE),
 	out_frame_w(out_frame_w), out_frame_h(out_frame_h),
 	streaming_bitrate(bitrate), recording_bitrate(0),
-	incoming_bitrate_avg(0), stats_collected(false),
-	first_packet_dts(0),
+	incoming_bitrate_avg(0), bitrate_calc_period_sec(3),
+	incoming_fps_ctr(0), first_packet_dts(0),
 	watermarking(watermarking),
 	dvr_name(nullptr), camera_name(nullptr)
 {
@@ -111,42 +111,43 @@ bool reencoder::init_enc_recording(AVFrame *in)
 
 void reencoder::update_stats(const stream_packet &packet)
 {
-	if (stats_collected)
-		return;
-
-
 	if (incoming_bitrate_avg == 0)
 		first_packet_dts = packet.dts;
 
 	incoming_bitrate_avg += packet.size * 8;
+	incoming_fps_ctr++;
 
 	if (recording_bitrate == 0)
 		recording_bitrate = packet.size * 8 * 15;
 
-	if (packet.seq > 1 && packet.dts - first_packet_dts > AV_TIME_BASE * 3)
+	if (packet.seq > 1 && packet.dts - first_packet_dts > AV_TIME_BASE * bitrate_calc_period_sec)
 	{
 		int64_t timediff = packet.dts - first_packet_dts;
 
 		incoming_bitrate_avg = incoming_bitrate_avg *  AV_TIME_BASE / timediff;
 
-		AVRational fps = { packet.seq / 3, 1};
+		AVRational fps = { incoming_fps_ctr / bitrate_calc_period_sec, 1};
 
 		bc_log(Info, "reencoder: input framerate is %i / %i", fps.num, fps.den);
-		if (enc_streaming)
+		if (enc_streaming && abs(enc_streaming->get_fps().num - fps.num) > 2)
 			enc_streaming->update_framerate(fps);
 
 		if (enc_recording)
 		{
-			enc_recording->update_framerate(fps);
+			if (abs(enc_recording->get_fps().num - fps.num) > 2)
+				enc_recording->update_framerate(fps);
+
 			/* difference is > 25% */
-			if ((incoming_bitrate_avg - recording_bitrate) * 100 / recording_bitrate > 25)
+			if (llabs(incoming_bitrate_avg - recording_bitrate) * 100 / recording_bitrate > 25)
 			{
 				recording_bitrate = incoming_bitrate_avg;
 				enc_recording->update_bitrate(recording_bitrate);
 				bc_log(Info, "reencoder: updating recording bitrate to %i, fps %i / %i", recording_bitrate, fps.num, fps.den);
 			}
 		}
-		stats_collected = true;
+		incoming_bitrate_avg = 0;
+		bitrate_calc_period_sec = 10;
+		incoming_fps_ctr = 0;
 	}
 }
 
