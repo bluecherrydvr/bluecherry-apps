@@ -159,6 +159,30 @@ stream_properties::video_properties::video_properties()
 {
 }
 
+bool stream_properties::operator!=(const stream_properties& other) const
+{
+	if (video.codec_id != other.video.codec_id
+		|| video.pix_fmt != other.video.pix_fmt
+		|| video.width != other.video.width
+		|| video.height != other.video.height
+		|| video.profile != other.video.profile)
+		return true;
+
+	if (has_audio() != other.has_audio())
+		return true;
+
+	if (has_audio()) {
+		if (audio.codec_id != other.audio.codec_id
+		|| audio.sample_rate != other.audio.sample_rate
+		|| audio.sample_fmt != other.audio.sample_fmt
+		|| audio.channels != other.audio.channels
+		|| audio.bits_per_coded_sample != other.audio.bits_per_coded_sample)
+		return true;
+	}
+
+	return false;
+}
+
 void stream_properties::video_properties::apply(AVCodecContext *cc) const
 {
 	cc->codec_id = codec_id;

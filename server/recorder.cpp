@@ -53,7 +53,10 @@ void recorder::run()
 			continue;
 		}
 
-		if (packet.properties() != saved_properties) {
+		if (!saved_properties)
+			saved_properties = packet.properties();
+
+		if (packet.properties() != saved_properties && *packet.properties() != *saved_properties) {
 			bc_log(Debug, "recorder: stream properties changed");
 			saved_properties = packet.properties();
 			recording_end();
