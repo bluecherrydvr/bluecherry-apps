@@ -202,7 +202,7 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 		goto end;
 
 	filter_dump = avfilter_graph_dump(filter_graph, NULL);
-	bc_log(Info, "watermarker: created filter graph %s", filter_dump);
+	bc_log(Debug, "watermarker: created filter graph %s", filter_dump);
 	av_free(filter_dump);
 
 	out_frame = av_frame_alloc();
