@@ -149,7 +149,7 @@ function stream_concatenated_video()
 		."_".$device_id."_".$start_time."_".$end_time."_".rand();
 
 	$components = data::query("SELECT start, end, size, filepath from Media "
-		 ."where device_id='{$device_id}' and start >= '{$start_time}' and end < '{$end_time}' "
+		 ."where device_id='{$device_id}' and start >= '{$start_time}' and start <= '{$end_time}' "
 		 ." ORDER BY start");
 
 	if (empty($components[0]))
