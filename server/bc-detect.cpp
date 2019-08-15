@@ -168,6 +168,7 @@ static int check_solo(struct udev_device *device, struct card_list *cards)
 					ret = read(fd, basebuf, sizeof(basebuf));
 					if (ret > 0)
 						gpio_base_pin_num = atoi(basebuf);
+					close(fd);
 				}
 
 				break;
