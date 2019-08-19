@@ -79,6 +79,7 @@ libav/config.mak:
 		--enable-demuxer=ass \
 		\
 		--enable-bsf=h264_mp4toannexb \
+		--enable-bsf=extract_extradata \
 		\
 		--enable-decoder=h264 \
 		--enable-decoder=mpeg4 \
