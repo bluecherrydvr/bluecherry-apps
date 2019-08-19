@@ -335,12 +335,13 @@ void bc_record::run()
 				if (watermarking_enabled) {
 					reenc->set_dvr_name(global_dvr_name);
 					reenc->set_camera_name(cfg.name);
-
-					if (bc_streaming_is_setup(this)) {
-						bc_streaming_destroy(this);
-					}
 				}
-
+				/* Reencoded video has different stream properties,
+				 * so we'll initialize streaming again later,
+				 * when reencoded packet is available */
+				if (bc_streaming_is_setup(this)) {
+					bc_streaming_destroy(this);
+				}
 			}
 
 			sched_last = 0;
@@ -373,27 +374,52 @@ void bc_record::run()
 		/* Reencode packet if watermarking or livestream reencoding is enabled */
 		if (reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
 			reenc->update_streaming_bitrate(streaming_bitrate);
-			if (reenc->push_packet(packet, bc_streaming_is_active(this)) && reenc->run_loop()) {
-				bc_log(Debug, "got reencoded packet!");
-				if (watermarking_enabled)
-					packet = reenc->recording_packet();
+			if (reenc->push_packet(packet, bc_streaming_is_active(this))) {
+
+				while(reenc->run_loop());
+
+				if (watermarking_enabled) {
+					while(reenc->read_recording_packet()) {
+						packet = reenc->recording_packet();
+						bc->source->send(packet);
+
+						/* No separate reencoding for streaming, use packets reencoded for recording */
+						if (streaming_bitrate == -1) {
+							if (!bc_streaming_is_setup(this)) {
+								if (bc_streaming_setup(this, packet.properties()))
+									log.log(Error, "Unable to reinitialize watermarked streaming");
+							}
+
+							if (bc_streaming_is_active(this))
+								if (bc_streaming_packet_write(this, packet) == -1)
+									log.log(Error, "Failed to stream watermarked packet");
+						}
+					}
+				}
+
+				if (streaming_bitrate > 0) {
+					while(reenc->read_streaming_packet()) {
+						packet = reenc->streaming_packet();
+
+						if (!bc_streaming_is_setup(this)) {
+							if (bc_streaming_setup(this, packet.properties()))
+								log.log(Error, "Unable to reinitialize watermarked streaming");
+						}
+
+						if (bc_streaming_is_active(this))
+							if (bc_streaming_packet_write(this, packet) == -1)
+								log.log(Error, "Failed to stream watermarked packet");
+					}
+				}
 			}
-			else
-				continue;
+
+			continue;
 		}
 
 		bc->source->send(packet);
 
-		if (watermarking_enabled && !bc_streaming_is_setup(this)) {
-			if (bc_streaming_setup(this, reenc->streaming_packet().properties()))
-                                log.log(Error, "Unable to reinitialize watermarked streaming");
-		}
-
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this)) {
-			if (reenc)
-				packet = reenc->streaming_packet();
-
 			if (bc_streaming_packet_write(this, packet) == -1) {
 				goto error;
 			}

@@ -34,13 +34,18 @@ public:
 
 	bool run_loop();
 
+	bool read_streaming_packet();
+	bool read_recording_packet();
 	const stream_packet &streaming_packet() const;
 	const stream_packet &recording_packet() const;
 private:
 	decoder *dec;
 	watermarker *wmr;
 	encoder *enc_streaming;
+	encoder *enc_streaming_todelete;
 	encoder *enc_recording;
+	encoder *enc_recording_todelete;
+
 	scaler *scl;
 	/* intermediary hw context between watermarker and scaler/encoder */
 	AVBufferRef *hw_frames_ctx;

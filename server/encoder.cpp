@@ -2,22 +2,24 @@
 #include "vaapi.h"
 
 encoder::encoder()
-	: encoder_ctx(0), type(0), next_packet_seq(0),
+	: encoder_ctx(0), encoder_ctx_todelete(0), type(0), next_packet_seq(0),
 	current_fps(AVRational{5, 1})
 {
 }
 
 encoder::~encoder()
 {
-	release_encoder();
+	release_encoder(&encoder_ctx_todelete);
+	release_encoder(&encoder_ctx);
 }
 
-void encoder::release_encoder()
+void encoder::release_encoder(AVCodecContext **ctx)
 {
-	if (encoder_ctx)
+	if (*ctx)
 	{
-		avcodec_close(encoder_ctx);
-		avcodec_free_context(&encoder_ctx);
+		avcodec_close(*ctx);
+		avcodec_free_context(ctx);
+		*ctx = nullptr;
 	}
 }
 
@@ -32,16 +34,21 @@ void encoder::push_frame(AVFrame* frame)
 	}
 
 	/* Check if frame size is changed since initialization or bitrate is updated */
-	if (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
+	if (frame && (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
 		|| current_bitrate != encoder_ctx->bit_rate
-		|| current_fps.num != encoder_ctx->framerate.num)
+		|| current_fps.num != encoder_ctx->framerate.num))
 	{
 		int codec_id;
 		AVBufferRef* hw_frames_ctx;
 
 		codec_id = encoder_ctx->codec_id;
 
-		release_encoder();
+		release_encoder(&encoder_ctx_todelete);
+
+		encoder_ctx_todelete = encoder_ctx;
+		encoder_ctx = nullptr;
+
+		avcodec_send_frame(encoder_ctx_todelete, NULL);
 
 		/* reinitialize encoder with new frame size or bitrate */
 		if (!init_encoder(type, codec_id, current_bitrate, frame->width, frame->height, frame->hw_frames_ctx))
@@ -65,13 +72,22 @@ bool encoder::encode()
 {
 	int ret;
 	AVPacket pkt;
+	AVCodecContext *ctx;
 
 	av_init_packet(&pkt);
 
-	ret = avcodec_receive_packet(encoder_ctx, &pkt);
+	ctx = encoder_ctx_todelete ? encoder_ctx_todelete : encoder_ctx;
+
+	ret = avcodec_receive_packet(ctx, &pkt);
 
 	if (ret < 0)
 	{
+		if (encoder_ctx_todelete && ret == AVERROR_EOF)
+		{
+			release_encoder(&encoder_ctx_todelete);
+			return false;
+		}
+
 		if (ret != AVERROR(EAGAIN))
 		{
 			bc_log(Error, "Failed to get encoded packet");

@@ -26,6 +26,7 @@ public:
 
 private:
 	struct AVCodecContext *encoder_ctx;
+	struct AVCodecContext *encoder_ctx_todelete;
 	int type;
 	stream_packet current_packet;
 	std::shared_ptr<stream_properties> props;
@@ -33,7 +34,7 @@ private:
 	int current_bitrate;
 	AVRational current_fps;
 
-	void release_encoder();
+	void release_encoder(AVCodecContext **ctx);
 public:
 	bool init_encoder(int media_type, int codec_id, int bitrate, int width, int height, AVBufferRef* hw_frames_ctx);
 };

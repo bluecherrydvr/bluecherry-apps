@@ -3,8 +3,10 @@
 
 
 reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool watermarking)
-	: dec(0), wmr(0), enc_streaming(0), enc_recording(0), scl(0),
-	hw_frames_ctx(0),
+	: dec(0), wmr(0),
+	enc_streaming(0), enc_streaming_todelete(0),
+	enc_recording(0), enc_recording_todelete(0),
+	scl(0),	hw_frames_ctx(0),
 	last_decoded_fw(0), last_decoded_fh(0),
 	last_decoded_pixfmt(AV_PIX_FMT_NONE),
 	out_frame_w(out_frame_w), out_frame_h(out_frame_h),
@@ -35,8 +37,12 @@ reencoder::~reencoder()
 		delete dec;
 	if (enc_streaming)
 		delete enc_streaming;
+	if (enc_streaming_todelete)
+		delete enc_streaming_todelete;
 	if (enc_recording)
 		delete enc_recording;
+	if (enc_recording_todelete)
+		delete enc_recording_todelete;
 	if (scl)
 		delete scl;
 	if (wmr)
@@ -115,18 +121,20 @@ void reencoder::update_stats(const stream_packet &packet)
 		first_packet_dts = packet.dts;
 
 	incoming_bitrate_avg += packet.size * 8;
-	incoming_fps_ctr++;
 
 	if (recording_bitrate == 0)
 		recording_bitrate = packet.size * 8 * 15;
 
-	if (packet.seq > 1 && packet.dts - first_packet_dts > AV_TIME_BASE * bitrate_calc_period_sec)
+	if (packet.seq > 1 && incoming_fps_ctr > 0 
+		&& packet.dts - first_packet_dts > AV_TIME_BASE * bitrate_calc_period_sec)
 	{
 		int64_t timediff = packet.dts - first_packet_dts;
 
 		incoming_bitrate_avg = incoming_bitrate_avg *  AV_TIME_BASE / timediff;
 
-		AVRational fps = { incoming_fps_ctr / bitrate_calc_period_sec, 1};
+		AVRational fps;
+
+		av_reduce(&fps.num, &fps.den, incoming_fps_ctr, timediff / AV_TIME_BASE, 1000);
 
 		bc_log(Info, "reencoder: input framerate is %i / %i", fps.num, fps.den);
 		if (enc_streaming && abs(enc_streaming->get_fps().num - fps.num) > 2)
@@ -166,6 +174,8 @@ bool reencoder::run_loop()
 
 	if (!frame)
 		return false;
+
+	incoming_fps_ctr++;
 
 	bc_log(Debug, "reencoder: got frame %dx%d from decoder, bitrate %d", frame->width, frame->height,  dec->get_ctx()->bit_rate);
 
@@ -231,13 +241,25 @@ bool reencoder::run_loop()
 
 		if (enc_streaming)
 		{
-			delete enc_streaming;
+			if (enc_streaming_todelete)
+				delete enc_streaming_todelete;
+
+			enc_streaming_todelete = enc_streaming;
+
+			enc_streaming_todelete->push_frame(NULL);
+
 			enc_streaming = nullptr;
 		}
 
 		if (enc_recording)
 		{
-			delete enc_recording;
+			if (enc_recording_todelete)
+				delete enc_recording_todelete;
+
+			enc_recording_todelete = enc_recording;
+
+			enc_recording_todelete->push_frame(NULL);
+
 			enc_recording = nullptr;
 		}
 	}
@@ -273,7 +295,6 @@ bool reencoder::run_loop()
 
 		enc_recording->push_frame(watermarked_frame);
 
-		result = enc_recording->encode();
 
 		av_frame_unref(watermarked_frame);
 
@@ -284,8 +305,6 @@ bool reencoder::run_loop()
 			return false;
 
 		enc_recording->push_frame(watermarked_frame);
-
-		result = enc_recording->encode();
 
 		scl->push_frame(watermarked_frame);
 
@@ -300,8 +319,6 @@ bool reencoder::run_loop()
 			return false;
 
 		enc_streaming->push_frame(scaled_frame);
-
-		enc_streaming->encode();
 
 		av_frame_unref(scaled_frame);
 		av_frame_unref(watermarked_frame);
@@ -327,12 +344,60 @@ bool reencoder::run_loop()
 
 		enc_streaming->push_frame(scaled_frame);
 
-		result = enc_streaming->encode();
-
 		av_frame_unref(scaled_frame);
 
 		break;
 	}
+
+	return true;
+}
+
+bool reencoder::read_streaming_packet()
+{
+	bool result = false;
+
+	if (enc_streaming_todelete)
+	{
+		result = enc_streaming_todelete->encode();
+
+		if (!result)
+		{
+			delete enc_streaming_todelete;
+			enc_streaming_todelete = nullptr;
+		}
+		else
+			return true;
+	}
+
+	if (!enc_streaming)
+		return false;
+
+	result = enc_streaming->encode();
+
+	return result;
+}
+
+bool reencoder::read_recording_packet()
+{
+	bool result = false;
+
+	if (enc_recording_todelete)
+	{
+		result = enc_recording_todelete->encode();
+
+		if (!result)
+		{
+			delete enc_recording_todelete;
+			enc_recording_todelete = nullptr;
+		}
+		else
+			return true;
+	}
+
+	if (!enc_recording)
+		return false;
+
+	result = enc_recording->encode();
 
 	return result;
 }
@@ -340,13 +405,21 @@ bool reencoder::run_loop()
 const stream_packet &reencoder::streaming_packet() const
 {
 	if (mode == REENC_MODE_WMR_ONLY)
-		return enc_recording->packet();
+	{
+		return recording_packet();
+	}
+
+	if (enc_streaming_todelete)
+		return enc_streaming_todelete->packet();
 
 	return enc_streaming->packet();
 }
 
 const stream_packet &reencoder::recording_packet() const
 {
+	if (enc_recording_todelete)
+		return enc_recording_todelete->packet();
+
 	return enc_recording->packet();
 }
 
