@@ -55,6 +55,12 @@ bool decoder::init_decoder()
 		return false;
 	}
 
+	if (ctx->pix_fmt != AV_PIX_FMT_VAAPI)
+	{
+		ctx->opaque = 0;
+		ctx->hw_device_ctx = NULL;
+	}
+
 	frame = av_frame_alloc();
 
 	if (!frame)
@@ -108,12 +114,19 @@ void decoder::print_av_errormsg(int ret)
 	bc_log(Error, "decoder error: %s", error);
 }
 
+bool decoder::properties_changed()
+{
+	bool result = props_changed;
+
+	props_changed = false;
+
+	return result;
+}
+
 void decoder::push_packet(const stream_packet &pkt)
 {
 	if (pkt.type != type)
 		return;
-
-	props_changed = false;
 
 	if (!decoder_ctx)
 		saved_properties = pkt.properties();

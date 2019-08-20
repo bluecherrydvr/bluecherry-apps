@@ -22,7 +22,7 @@ public:
 	bool decode();
 	AVFrame *decoded_frame();
 	const struct AVCodecContext *get_ctx() const { return decoder_ctx; }
-	bool properties_changed() { return props_changed; }
+	bool properties_changed();
 
 private:
 	struct AVCodecContext *decoder_ctx;
