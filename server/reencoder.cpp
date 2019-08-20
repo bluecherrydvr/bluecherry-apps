@@ -237,6 +237,12 @@ bool reencoder::run_loop()
 	{
 		const AVCodecContext *ctx = dec->get_ctx();
 
+		if (watermarking)
+		{
+			av_buffer_unref(&hw_frames_ctx);
+			hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(ctx);
+		}
+
 		AVBufferRef *hwctx = watermarking ? hw_frames_ctx : ctx->hw_frames_ctx;
 
 		if (scl)
