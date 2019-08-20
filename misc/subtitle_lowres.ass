@@ -7,8 +7,8 @@ PlayResY: 240
 
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 
-Style: Toplabel,Arial,16, &H50FFFFFF,&H50000000,&H50000000,&H50000000,0,0,0,0,100,100,0,0,4,0,0,7,10,10,10,0
-Style: Timestamp,Monospace,14, &H50FFFFFF,&H50000000,&H50000000,&H50000000,0,0,0,0,100,100,0,0,4,0,0,2,10,10,10,0
+Style: Toplabel,Arial,16, &H50FFFFFF,&H50000000,&H50000000,&HA0000000,0,0,0,0,100,100,0,0,4,0,0,7,10,10,10,0
+Style: Timestamp,Monospace,14, &H50FFFFFF,&H50000000,&H50000000,&HA0000000,0,0,0,0,100,100,0,0,4,0,0,2,10,10,10,0
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
