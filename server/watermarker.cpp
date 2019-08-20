@@ -87,7 +87,7 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 
 	if (!dec_ctx->hw_frames_ctx)
 	{
-		bc_log(Warning, "watermarker: incoming frames are software decoded");
+		bc_log(Debug, "watermarker: incoming frames are software decoded");
 
 		software_decoding = true;
 	}

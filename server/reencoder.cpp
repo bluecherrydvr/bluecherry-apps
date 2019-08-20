@@ -16,7 +16,7 @@ reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool waterma
 	watermarking(watermarking),
 	dvr_name(nullptr), camera_name(nullptr)
 {
-	bc_log(Info, "new reencoder instance created, streaming bitrate %d,\
+	bc_log(Debug, "new reencoder instance created, streaming bitrate %d,\
 output streaming frame_width %dx%d, watermarking %s",
 		bitrate, out_frame_w, out_frame_h, watermarking ? "enabled" : "disabled");
 
@@ -119,7 +119,7 @@ void reencoder::update_stats(const stream_packet &packet)
 {
 	if (packet.dts < 0)
 	{
-		bc_log(Info, "reencoder: ignoring packet with negative DTS in bitrate calculations");
+		bc_log(Debug, "reencoder: ignoring packet with negative DTS in bitrate calculations");
 		return;
 	}
 
@@ -142,7 +142,7 @@ void reencoder::update_stats(const stream_packet &packet)
 
 		av_reduce(&fps.num, &fps.den, incoming_fps_ctr, timediff / AV_TIME_BASE, 1000);
 
-		bc_log(Info, "reencoder: input framerate is %i / %i", fps.num, fps.den);
+		bc_log(Debug, "reencoder: input framerate is %i / %i", fps.num, fps.den);
 		if (enc_streaming && abs(enc_streaming->get_fps().num - fps.num) > 2)
 			enc_streaming->update_framerate(fps);
 
@@ -156,7 +156,7 @@ void reencoder::update_stats(const stream_packet &packet)
 			{
 				recording_bitrate = incoming_bitrate_avg;
 				enc_recording->update_bitrate(recording_bitrate);
-				bc_log(Info, "reencoder: updating recording bitrate to %i, fps %i / %i", recording_bitrate, fps.num, fps.den);
+				bc_log(Debug, "reencoder: updating recording bitrate to %i, fps %i / %i", recording_bitrate, fps.num, fps.den);
 			}
 		}
 		incoming_bitrate_avg = 0;
@@ -190,7 +190,7 @@ bool reencoder::run_loop()
 	{
 		if (!wmr)
 		{
-			bc_log(Info, "creating new watermarker instance");
+			bc_log(Debug, "creating new watermarker instance");
 
 			wmr = new watermarker();
 
@@ -214,7 +214,7 @@ bool reencoder::run_loop()
 	/* 3) SCALE */
 	if (!scl && out_frame_w > 0)
 	{
-		bc_log(Info, "creating new scaler instance for reencoding");
+		bc_log(Debug, "creating new scaler instance for reencoding");
 
 		scl = new scaler();
 

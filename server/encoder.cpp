@@ -57,7 +57,7 @@ void encoder::push_frame(AVFrame* frame)
 			return;
 		}
 
-		bc_log(Info, "Encoder is reinitialized for frame size %dx%d, output bitrate %d", frame->width, frame->height, current_bitrate);
+		bc_log(Debug, "Encoder is reinitialized for frame size %dx%d, output bitrate %d", frame->width, frame->height, current_bitrate);
 	}
 
 	ret = avcodec_send_frame(encoder_ctx, frame);
