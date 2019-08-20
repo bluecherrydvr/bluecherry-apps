@@ -79,6 +79,7 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 	const AVFilter *buffersink = NULL;
 	AVBufferSrcParameters *par;
 	char *filter_dump;
+	enum AVPixelFormat pixfmt;
 
 	dvr_name = dvrname;
 	camera_name = cameraname;
@@ -91,6 +92,10 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 		software_decoding = true;
 	}
 
+	pixfmt = software_decoding ? dec_ctx->pix_fmt : dec_ctx->sw_pix_fmt;
+
+	if (pixfmt == AV_PIX_FMT_YUVJ420P)
+		pixfmt = AV_PIX_FMT_YUV420P;
 
 	AVFilterInOut *outputs = avfilter_inout_alloc();
 	AVFilterInOut *inputs  = avfilter_inout_alloc();
@@ -118,7 +123,7 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 	snprintf(args, sizeof(args),
 		"video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
 		dec_ctx->width, dec_ctx->height,
-		software_decoding ? dec_ctx->pix_fmt : dec_ctx->sw_pix_fmt,
+		pixfmt,
 		dec_ctx->time_base.num, dec_ctx->time_base.den,
 		dec_ctx->sample_aspect_ratio.num,
 		dec_ctx->sample_aspect_ratio.den);
@@ -160,8 +165,8 @@ bool watermarker::init_watermarker(const char *dvrname, const char *cameraname, 
 	}
 
 	ret = av_opt_set_bin(buffersink_ctx, "pix_fmts",
-		software_decoding ? (uint8_t*)&dec_ctx->pix_fmt : (uint8_t*)&dec_ctx->sw_pix_fmt,
-		sizeof(dec_ctx->pix_fmt),
+		(uint8_t*)&pixfmt,
+		sizeof(pixfmt),
 		AV_OPT_SEARCH_CHILDREN);
 
 	if (ret < 0)
@@ -243,6 +248,8 @@ void watermarker::reinitialize(const AVCodecContext *updated_ctx)
 		decoder_ctx = updated_ctx;
 
 		release_watermarker();
+
+		last_timestamp = 0;
 
 		if (!init_watermarker(dvr_name, camera_name, updated_ctx))
 		{
