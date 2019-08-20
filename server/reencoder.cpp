@@ -117,6 +117,12 @@ bool reencoder::init_enc_recording(AVFrame *in)
 
 void reencoder::update_stats(const stream_packet &packet)
 {
+	if (packet.dts < 0)
+	{
+		bc_log(Info, "reencoder: ignoring packet with negative DTS in bitrate calculations");
+		return;
+	}
+
 	if (incoming_bitrate_avg == 0)
 		first_packet_dts = packet.dts;
 
