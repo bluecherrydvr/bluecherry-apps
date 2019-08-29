@@ -59,6 +59,7 @@ int global_bitrate_per_device = 0;
 int global_reencode_frame_w = 160;
 int global_reencode_frame_h = 120;
 int global_enable_watermarking = 0;
+int global_hwaccel_available = 0;
 char global_dvr_name[256];
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
@@ -497,6 +498,13 @@ static int bc_check_globals(void)
 
 	if (dbres && !bc_db_fetch_row(dbres)) {
 		global_enable_watermarking = bc_db_get_val_int(dbres, "value");
+
+		if (global_enable_watermarking && !global_hwaccel_available) {
+			global_enable_watermarking = 0;
+			bc_status_component_error(
+				"Unable to turn on watermarking, hardware\
+				acceleration is not available");
+		}
 	}
 
         bc_db_free_table(dbres);
@@ -1206,8 +1214,10 @@ static void setup_vaapi()
 
 	if (!vaapi_hwaccel::init(renderNode)) {
 		bc_log(Warning, "Failed to initialize VAAPI device %s, VAAPI hardware acceleration is not available", renderNode);
-	} else
+	} else {
+		global_hwaccel_available = 1;
 		bc_log(Info, "Initialized render node %s for VAAPI hardware acceleration", renderNode);
+	}
 
 	if (dbres)
 		bc_db_free_table(dbres);
