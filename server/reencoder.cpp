@@ -14,7 +14,8 @@ reencoder::reencoder(int bitrate, int out_frame_w, int out_frame_h, bool waterma
 	incoming_bitrate_avg(0), bitrate_calc_period_sec(3),
 	incoming_fps_ctr(0), first_packet_dts(0),
 	watermarking(watermarking),
-	dvr_name(nullptr), camera_name(nullptr)
+	dvr_name(nullptr), camera_name(nullptr),
+	motion_flags_ctr(0)
 {
 	bc_log(Debug, "new reencoder instance created, streaming bitrate %d,\
 output streaming frame_width %dx%d, watermarking %s",
@@ -117,6 +118,9 @@ bool reencoder::init_enc_recording(AVFrame *in)
 
 void reencoder::update_stats(const stream_packet &packet)
 {
+	if (packet.flags & stream_packet::MotionFlag)
+		motion_flags_ctr++;
+
 	if (packet.dts < 0)
 	{
 		bc_log(Debug, "reencoder: ignoring packet with negative DTS in bitrate calculations");
@@ -171,6 +175,7 @@ bool reencoder::run_loop()
 	AVFrame *scaled_frame = NULL;
 	AVFrame *watermarked_frame = NULL;
 	bool result = false;
+	int motion_flag = 0;
 
 	/* 1) DECODE */
 	frame = dec->decoded_frame();
@@ -258,7 +263,7 @@ bool reencoder::run_loop()
 
 			enc_streaming_todelete = enc_streaming;
 
-			enc_streaming_todelete->push_frame(NULL);
+			enc_streaming_todelete->push_frame(NULL, 0);
 
 			enc_streaming = nullptr;
 		}
@@ -270,7 +275,7 @@ bool reencoder::run_loop()
 
 			enc_recording_todelete = enc_recording;
 
-			enc_recording_todelete->push_frame(NULL);
+			enc_recording_todelete->push_frame(NULL, 0);
 
 			enc_recording = nullptr;
 		}
@@ -297,6 +302,11 @@ bool reencoder::run_loop()
 		bc_log(Debug, "uploaded watermarked frame to vaapi hardware context");
 	}
 
+	if (motion_flags_ctr > 0)
+	{
+		motion_flag = 1;
+		motion_flags_ctr--;
+	}
 
 	switch (mode)
 	{
@@ -305,7 +315,7 @@ bool reencoder::run_loop()
 		if (!init_enc_recording(watermarked_frame))
 			return false;
 
-		enc_recording->push_frame(watermarked_frame);
+		enc_recording->push_frame(watermarked_frame, motion_flag);
 
 
 		av_frame_unref(watermarked_frame);
@@ -316,7 +326,7 @@ bool reencoder::run_loop()
 		if (!init_enc_recording(watermarked_frame))
 			return false;
 
-		enc_recording->push_frame(watermarked_frame);
+		enc_recording->push_frame(watermarked_frame, motion_flag);
 
 		scl->push_frame(watermarked_frame);
 
@@ -330,7 +340,7 @@ bool reencoder::run_loop()
 		if (!init_enc_streaming(scaled_frame))
 			return false;
 
-		enc_streaming->push_frame(scaled_frame);
+		enc_streaming->push_frame(scaled_frame, motion_flag);
 
 		av_frame_unref(scaled_frame);
 		av_frame_unref(watermarked_frame);
@@ -354,7 +364,7 @@ bool reencoder::run_loop()
 		if (!init_enc_streaming(scaled_frame))
 			return false;
 
-		enc_streaming->push_frame(scaled_frame);
+		enc_streaming->push_frame(scaled_frame, motion_flag);
 
 		av_frame_unref(scaled_frame);
 

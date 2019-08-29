@@ -3,7 +3,7 @@
 
 encoder::encoder()
 	: encoder_ctx(0), encoder_ctx_todelete(0), type(0), next_packet_seq(0),
-	current_fps(AVRational{5, 1})
+	current_fps(AVRational{5, 1}), motion_flags_ctr(0)
 {
 }
 
@@ -23,7 +23,7 @@ void encoder::release_encoder(AVCodecContext **ctx)
 	}
 }
 
-void encoder::push_frame(AVFrame* frame)
+void encoder::push_frame(AVFrame* frame, int motion_flag)
 {
 	int ret;
 
@@ -32,6 +32,9 @@ void encoder::push_frame(AVFrame* frame)
 		bc_log(Error, "encoder is not initialized, push_frame() failed!");
 		return;
 	}
+
+	if (motion_flag)
+		motion_flags_ctr++;
 
 	/* Check if frame size is changed since initialization or bitrate is updated */
 	if (frame && (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
@@ -111,7 +114,11 @@ bool encoder::encode()
 	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	current_packet.type = type;
-	///
+	if (motion_flags_ctr > 0)
+	{
+		current_packet.flags |= stream_packet::MotionFlag;
+		motion_flags_ctr--;
+	}
 
 	av_packet_unref(&pkt);
 	return true;

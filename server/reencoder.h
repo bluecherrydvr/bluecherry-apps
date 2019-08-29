@@ -82,6 +82,7 @@ private:
 
 	const char *dvr_name;
 	const char *camera_name;
+	int motion_flags_ctr;
 };
 
 #endif

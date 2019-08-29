@@ -15,7 +15,7 @@ public:
 	encoder();
 	~encoder();
 
-	void push_frame(AVFrame* frame);
+	void push_frame(AVFrame* frame, int motion_flag);
 	bool encode();
 
 	const stream_packet &packet() const { return current_packet; }
@@ -33,6 +33,7 @@ private:
 	int next_packet_seq;
 	int current_bitrate;
 	AVRational current_fps;
+	int motion_flags_ctr;
 
 	void release_encoder(AVCodecContext **ctx);
 public:
