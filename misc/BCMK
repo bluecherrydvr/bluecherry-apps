@@ -99,6 +99,7 @@ libav/config.mak:
 		\
 		--enable-filter=scale \
 		--enable-filter=fps \
+		--enable-filter=aresample \
 		\
 
 
