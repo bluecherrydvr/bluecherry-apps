@@ -1,3 +1,15 @@
+bluecherry (2:2.8.8) trusty xenial bionic jessie stretch; urgency=low
+
+  * Enable 'aresample' filter in ffmpeg build. Fixes issues with playback
+    of recordings having soundtrack in the web UI.
+
+  * Fixed frame downscale precision in the database.
+
+  * Add some hints about checking storage permissions and mounting network
+    storage on in the storage section of web UI. 
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Fri, 06 Sep 2019 18:20:00 +0400
+
 bluecherry (2:2.8.7) trusty xenial bionic jessie stretch; urgency=low
 
   * Bluecherry released under GPLv2 or later.
