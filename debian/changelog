@@ -1,3 +1,9 @@
+bluecherry (2:2.8.5alrm45) trusty xenial jessie; urgency=low
+
+  * Fixed frame downscale precision in the database.
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Fri, 06 Sep 2019 19:30:00 +0400
+
 bluecherry (2:2.8.5alrm43) trusty xenial jessie; urgency=low
 
   * Fix motion detection when watermarking is enabled
