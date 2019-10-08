@@ -121,6 +121,9 @@ void reencoder::update_stats(const stream_packet &packet)
 	if (packet.flags & stream_packet::MotionFlag)
 		motion_flags_ctr++;
 
+	if (motion_flags_ctr > 250)
+		bc_log(Error, "reencoder: motion flags counter grows too big");
+
 	if (packet.dts < 0)
 	{
 		bc_log(Debug, "reencoder: ignoring packet with negative DTS in bitrate calculations");

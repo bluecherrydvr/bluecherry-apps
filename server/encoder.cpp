@@ -36,6 +36,9 @@ void encoder::push_frame(AVFrame* frame, int motion_flag)
 	if (motion_flag)
 		motion_flags_ctr++;
 
+	if (motion_flags_ctr > 250)
+		bc_log(Error, "encoder: motion flags counter value grows too big");
+
 	/* Check if frame size is changed since initialization or bitrate is updated */
 	if (frame && (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
 		|| current_bitrate != encoder_ctx->bit_rate
