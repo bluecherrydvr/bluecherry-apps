@@ -79,6 +79,21 @@ function getRenderNodes() {
 	return $ret;
 }
 
+function checkVaapiSupport($renderNode, $profile) {
+	$output = array();
+	$ret = 0;
+
+	exec("vainfo --display drm --device ".$renderNode, $output, $ret);
+
+	if (intval($ret) !== 0) {
+		return -1;//Failure,No VAAPI support detected
+	}
+
+	$output = implode("\n", $output);
+
+	return substr_count($output, $profile);
+}
+
 /**
  * Returns SQLite Database connection
  * 
