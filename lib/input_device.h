@@ -141,19 +141,6 @@ class stream_properties
 public:
 	struct video_properties {
 		enum AVCodecID codec_id;
-		unsigned int codec_tag;
-
-		int bits_per_coded_sample;
-		int bits_per_raw_sample;
-		int level;
-		enum AVFieldOrder field_order;
-		enum AVColorRange color_range;
-		enum AVColorPrimaries color_primaries;
-		enum AVColorTransferCharacteristic color_trc;
-		enum AVColorSpace colorspace;
-		enum AVChromaLocation chroma_sample_location;
-		AVRational sample_aspect_ratio;
-
 		enum AVPixelFormat pix_fmt;
 		int width;
 		int height;
