@@ -232,9 +232,9 @@ case "$1" in
 			# Generate config
 			if [[ $IN_DEB ]]
 			then
-				dbhost="localhost"
+				dbhost="${host:-localhost}"
 			else
-				dbhost="127.0.0.1"
+				dbhost="${host:-127.0.0.1}"
 			fi
 			cat /usr/share/bluecherry/bluecherry.conf.in | sed -e "s/_DBC_DBNAME_/${dbname}/"  -e "s/_DBC_DBUSER_/${user}/"  -e "s/_DBC_DBPASS_/${password}/" -e "s/_DBC_HOST_/${dbhost}/" > /etc/bluecherry.conf
 			chown root:bluecherry /etc/bluecherry.conf
