@@ -130,18 +130,18 @@ function create_db
     # Actually create DB and tables
     if [[ "$MYSQL_ADMIN_PASSWORD" ]]
     then
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
         echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
     else
 	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN"
-	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN"
     fi
     mysql -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
     # Save actual DB version
     DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
-    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -u"$user" --password="$password" -D"$dbname"
+    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname"
     # Put initial data into DB
-    mysql -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
+    mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
 }
 function new_db
 {
