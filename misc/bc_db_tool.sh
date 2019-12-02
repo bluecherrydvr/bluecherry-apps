@@ -82,7 +82,7 @@ function check_mysql_admin
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
     echo "Testing MySQL admin credentials correctness..."
-    if ! echo "show databases" | mysql_wrapper -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
+    if ! echo "show databases" | mysql_wrapper -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
     then
         echo -e "\n\n\tProvided MySQL admin credentials are incorrect\n"
 	echo -e "Please create ~$(whoami)/.my.cnf with right password like this\n"
@@ -107,7 +107,7 @@ function check_db_exists
     MYSQL_ADMIN_PASSWORD="$2"
     dbname=$3
     echo "Testing whether database already exists..."
-    if echo "show databases" | mysql_wrapper -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
+    if echo "show databases" | mysql_wrapper -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
     then
         echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found."
         echo -e "\tAborting installation. In order to proceed installation, please do one of following things:\n" \
