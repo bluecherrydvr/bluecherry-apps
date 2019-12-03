@@ -131,9 +131,9 @@ function create_db
     if [[ "$MYSQL_ADMIN_PASSWORD" ]]
     then
 	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
-        echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
     else
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -u"$MYSQL_ADMIN_LOGIN"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN"
 	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN"
     fi
     mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
