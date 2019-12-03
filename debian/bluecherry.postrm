@@ -8,12 +8,12 @@ fi
 
 function load_db_creds() {
 	# ATTENTION! Duplication of load_db_creds.sh
-	eval $(sed '/\(dbname\|user\|password\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
+	eval $(sed '/\(dbname\|user\|password\|host\)/!d;s/ *= */=/'";s/\"/'/g" /etc/bluecherry.conf)
 }
 
 function purge_files() {
 	echo "Removing recording files"
-	echo "SELECT filepath FROM Media" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 | \
+	echo "SELECT filepath FROM Media" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password" | tail -n +2 | \
 		while IFS= read -r MEDIAFILE
 		do
 			JPGFILE="`echo $MEDIAFILE | sed 's/[.]mkv$/.jpg/'`"
@@ -34,7 +34,7 @@ function purge_files() {
 
 function drop_db() {
 	echo "Dropping database $dbname"
-	echo "DROP DATABASE $dbname" | mysql -D"$dbname" -u"$user" -p"$password"
+	echo "DROP DATABASE $dbname" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
 }
 
 case "$1" in

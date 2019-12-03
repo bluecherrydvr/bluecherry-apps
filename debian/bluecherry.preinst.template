@@ -11,7 +11,7 @@ fi
 
 if [ "$1" = upgrade ] && [[ -s /etc/bluecherry.conf ]]
 then
-	OLD_DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+	OLD_DB_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DB_VERSION'" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password" | tail -n 1`
 	NEW_DB_VERSION="%%CURRENT_DB_VERSION%%"
 	if [[ "$OLD_DB_VERSION" -gt "$NEW_DB_VERSION" ]]
 	then
@@ -24,10 +24,10 @@ fi
 # Fixing https://github.com/bluecherrydvr/bluecherry-apps/issues/191
 if [[ "$1" == upgrade ]] && dpkg --compare-versions "$2" lt "1:2.2" && [[ -s /etc/bluecherry.conf ]]
 then
-	G_MAX_RECORD_TIME=`echo "SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_TIME';" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n 1`
+	G_MAX_RECORD_TIME=`echo "SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_TIME';" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password" | tail -n 1`
 	if [[ $G_MAX_RECORD_TIME == "15}" ]] || [[ $G_MAX_RECORD_TIME -le 900 ]]
 	then
-		echo "UPDATE GlobalSettings SET value = '900' WHERE parameter = 'G_MAX_RECORD_TIME';" | mysql -D"$dbname" -u"$user" -p"$password"
+		echo "UPDATE GlobalSettings SET value = '900' WHERE parameter = 'G_MAX_RECORD_TIME';" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
 	fi
 fi
 
