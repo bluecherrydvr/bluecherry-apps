@@ -188,6 +188,7 @@ case "$1" in
 				db_fset bluecherry/db_name              seen false || true
 				db_fset bluecherry/db_user              seen false || true
 				db_fset bluecherry/db_password          seen false || true
+				db_fset bluecherry/db_host				seen false || true
 
 				# Ask questions
 				db_input high bluecherry/mysql_admin_login  || true
@@ -199,9 +200,12 @@ case "$1" in
 				db_get bluecherry/mysql_admin_password  || true
 				export MYSQL_ADMIN_PASSWORD="$RET"
 
+				db_input high bluecherry/db_host  || true
 				db_input high bluecherry/db_name  || true
 				db_go  || true
-
+				
+				db_get bluecherry/db_host || true
+				export host="$RET"
 				db_get bluecherry/db_name  || true
 				export dbname="$RET"
 				

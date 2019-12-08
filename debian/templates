@@ -9,6 +9,11 @@ Type: password
 Description: Please enter MySQL administrative user's password.
  This is needed for assistance in creation of database for Bluecherry service.
 
+Template: bluecherry/db_host
+Type: string
+Default: localhost
+Description: Please enter the name of the mysql server host if remote or leave default for a local install.
+
 Template: bluecherry/db_name
 Type: string
 Default: bluecherry
