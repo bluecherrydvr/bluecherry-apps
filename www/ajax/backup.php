@@ -36,7 +36,8 @@ class backup extends Controller {
 
     private function getAction($database_parameters)
     {
-
+		list($dbname, $dbuser, $dbpassword, $dbhost) = database::read_config();
+		
         if (!empty($_GET['mode'])) {
 	        switch($_GET['mode']) {
             case 'prepare':
@@ -66,8 +67,8 @@ class backup extends Controller {
 				
 	        		}
 				
-				$_POST['pwd'] = escapeshellarg($_POST['pwd']);
-	        		shell_exec("mysqldump --single-transaction -u root --password={$_POST['pwd']} {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
+					$_POST['pwd'] = escapeshellarg($_POST['pwd']);
+	        		shell_exec("mysqldump --single-transaction -h$dbhost -u root --password={$_POST['pwd']} {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
 	        		if (filesize("/tmp/bcbackup.sql")==0){
 	        			data::responseJSON(false, BACKUP_FAILED);
 	        		} else {
@@ -117,7 +118,7 @@ class backup extends Controller {
 	        	break;
 	        	case 'confirmRestore': #run restore
 				$_POST['pwd'] = escapeshellarg($_POST['pwd']);
-				$response = shell_exec("mysql -u root --password={$_POST['pwd']} {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
+				$response = shell_exec("mysql -h$dbhost -u root --password={$_POST['pwd']} {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
 				if (!empty($response) && strstr($response, "ERROR")){
 	        			data::responseJSON(false, BACKUP_R_FAILED.$response);
 	        		} else {

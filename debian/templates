@@ -9,6 +9,11 @@ Type: password
 Description: Please enter MySQL administrative user's password.
  This is needed for assistance in creation of database for Bluecherry service.
 
+Template: bluecherry/db_host
+Type: string
+Default: localhost
+Description: Please enter the name of the mysql server host if remote or leave default for a local install.
+
 Template: bluecherry/db_name
 Type: string
 Default: bluecherry
@@ -24,10 +29,15 @@ Type: password
 Default: bluecherry
 Description: Please enter the database user's password for Bluecherry service
 
+Template: bluecherry/db_userhost
+Type: string
+Default: localhost
+Description: Used for remote mysql server, network mask to allow login from bluecherry user. Example '%' allows from any machine; '192.168.0.%' allows local network only.
+
 Template: bluecherry/note_leftover_data
 Type: note
 Description: Leftover data notice
- Package is removed now, but generated data is left intact: config file,
+ Package is removed now, but generated data is left intact: config file
  database and recorded media files. If you want to remove this data, consider
  purging package data with "apt-get remove --purge bluecherry", this will
  remove config file, database and all recordings

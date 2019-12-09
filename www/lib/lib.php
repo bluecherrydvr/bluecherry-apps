@@ -128,7 +128,8 @@ class database{
 		self::$instance or self::$instance = new database();
 		return self::$instance;
 	}
-	private function read_config(){
+
+    public static function read_config() {
 		$config_file = fopen("/etc/bluecherry.conf", 'r') or die(LANG_DIE_COULDNOTOPENCONF);
 		$config_text = fread($config_file, filesize("/etc/bluecherry.conf"));
 		fclose($config_file);
@@ -154,13 +155,19 @@ class database{
 			$dbhost = $matches[1];
 		}
 
+        return array($dbname, $dbuser, $dbpassword, $dbhost);
+    }
+
+	private function load_config() {
+        list($dbname, $dbuser, $dbpassword, $dbhost) = database::read_config();
 		$this->dbname = stripslashes($dbname);
 		$this->dbuser = stripslashes($dbuser);
 		$this->dbpassword = stripslashes($dbpassword);
 		$this->dbhost = stripslashes($dbhost);
 	}
+
 	private function connect() {
-		$this->read_config();
+		$this->load_config();
 		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
 		mysqli_real_query($this->dblink, "set names utf8;");
 	}

@@ -27,7 +27,7 @@ fi
 . /usr/share/bluecherry/load_db_creds.sh
 echo "Dumping DB list from Media table"
 date
-time echo "SELECT filepath FROM Media" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${DB_LIST_FILE}.raw
+time echo "SELECT filepath FROM Media" | mysql -h"$host" -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${DB_LIST_FILE}.raw
 
 # Do `readlink -f` for each entry.
 echo "Resolving absolute file paths"
@@ -62,7 +62,7 @@ date
 
 
 # Dump the list of absolute filenames in all directories being Storage table entries (FS list)
-echo "SELECT path FROM Storage" | mysql -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${STORAGES_LIST_FILE}.raw
+echo "SELECT path FROM Storage" | mysql -h"$host" -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${STORAGES_LIST_FILE}.raw
 # Patch list with default value, which is actual when the table is empty
 echo "/var/lib/bluecherry/recordings" >> ${STORAGES_LIST_FILE}.raw
 # Drop trailing slash for uniformness, to avoid duplication

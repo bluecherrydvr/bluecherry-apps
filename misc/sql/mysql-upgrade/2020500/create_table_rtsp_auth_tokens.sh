@@ -7,4 +7,4 @@ CREATE TABLE `RtspAuthTokens` (
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `uniq_session` (`user_id`,`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8
-' | mysql -D"$dbname" -u"$user" -p"$password"
+' | mysql -h"$host" -D"$dbname" -u"$user" -p"$password"
