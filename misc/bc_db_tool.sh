@@ -82,7 +82,7 @@ function check_mysql_admin
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
     echo "Testing MySQL admin credentials correctness..."
-    if ! echo "show databases" | mysql_wrapper -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
+    if ! echo "show databases" | mysql_wrapper -h"${host}" -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
     then
         echo -e "\n\n\tProvided MySQL admin credentials are incorrect\n"
 	echo -e "Please create ~$(whoami)/.my.cnf with right password like this\n"
@@ -107,7 +107,7 @@ function check_db_exists
     MYSQL_ADMIN_PASSWORD="$2"
     dbname=$3
     echo "Testing whether database already exists..."
-    if echo "show databases" | mysql_wrapper -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
+    if echo "show databases" | mysql_wrapper -h"${host}" -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
     then
         echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found."
         echo -e "\tAborting installation. In order to proceed installation, please do one of following things:\n" \
@@ -130,18 +130,18 @@ function create_db
     # Actually create DB and tables
     if [[ "$MYSQL_ADMIN_PASSWORD" ]]
     then
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
-	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
     else
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN"
-	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost:-localhost}' IDENTIFIED BY '$password'" | mysql -h"${host:-localhost}" -u"$MYSQL_ADMIN_LOGIN"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN"
     fi
-    mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
+    mysql -h"${host}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
     # Save actual DB version
     DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
-    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname"
+    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -h"${host}" -u"$user" --password="$password" -D"$dbname"
     # Put initial data into DB
-    mysql -h"${host:-localhost}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
+    mysql -h"${host}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
 }
 function new_db
 {
@@ -195,7 +195,7 @@ function upgrade_db
     dbname="$1"
     user="$2"
     password="$3"
-    host="${4:-localhost}"
+    host="${4}"
 
     trap db_upgrade_err ERR # will restore DB from backup and terminate the execution with failure retcode
     check_mysql_connect "$dbname" "$user" "$password" "$host" 
