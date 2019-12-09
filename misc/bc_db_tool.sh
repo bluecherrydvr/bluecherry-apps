@@ -131,7 +131,7 @@ function create_db
     user=$5 
     password=$6
 	userhost=$7
-	
+
     # Actually create DB and tables
     if [[ "$MYSQL_ADMIN_PASSWORD" ]]
     then
@@ -282,7 +282,7 @@ new_db)
 		print_usage
 		exit 1
 	fi
-	new_db "$2" "$3" "$4" "$5" "$6"
+	new_db "$2" "$3" "$4" "$5" "$6" "$7" "$8"
 	;;
 upgrade_db)
 	if [[ $# -lt 4 ]]
