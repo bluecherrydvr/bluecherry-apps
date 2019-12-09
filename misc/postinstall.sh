@@ -244,7 +244,7 @@ case "$1" in
 			else
 				dbhost="${host:-127.0.0.1}"
 			fi
-			cat /usr/share/bluecherry/bluecherry.conf.in | sed -e "s/_DBC_DBNAME_/${dbname}/"  -e "s/_DBC_DBUSER_/${user}/"  -e "s/_DBC_DBPASS_/${password}/" -e "s/_DBC_HOST_/${dbhost}/" -e "s/_DBC_USERHOST_/${userhost}"> /etc/bluecherry.conf
+			cat /usr/share/bluecherry/bluecherry.conf.in | sed -e "s/_DBC_DBNAME_/${dbname}/"  -e "s/_DBC_DBUSER_/${user}/"  -e "s/_DBC_DBPASS_/${password}/" -e "s/_DBC_HOST_/${dbhost}/" -e "s/_DBC_USERHOST_/${userhost}/"> /etc/bluecherry.conf
 			chown root:bluecherry /etc/bluecherry.conf
 			chmod 640 /etc/bluecherry.conf
 		else
