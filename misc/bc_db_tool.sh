@@ -58,7 +58,7 @@ function apply_db_patches() {
 function print_usage
 {
     echo usage: to create new database
-    echo        bc_db_tool.sh new_db db_admin_name db_admin_pass bc_db_name db_user db_pass
+    echo        bc_db_tool.sh new_db db_admin_name db_admin_pass bc_db_name db_user db_pass db_host db_userhost
     echo to upgrade existing database
     echo        bc_db_tool.sh upgrade_db bc_db_name db_user db_pass [db_host]
     echo example:
@@ -105,9 +105,11 @@ function check_db_exists
 {
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
-    dbname=$3
+	dbhost=$3
+    dbname=$4
+
     echo "Testing whether database already exists..."
-    if echo "show databases" | mysql_wrapper -h"${host}" -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
+    if echo "show databases" | mysql_wrapper -h"$dbhost" -u"$MYSQL_ADMIN_LOGIN" -D"$dbname" &>/dev/null
     then
         echo -e "\n\n\tDatabase '$dbname' already exists, but /etc/bluecherry.conf is not found."
         echo -e "\tAborting installation. In order to proceed installation, please do one of following things:\n" \
@@ -124,38 +126,43 @@ function create_db
 {
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
-    dbname=$3
-    user=$4 
-    password=$5
+	dbhost=$3
+    dbname=$4
+    user=$5 
+    password=$6
+	userhost=$7
+	
     # Actually create DB and tables
     if [[ "$MYSQL_ADMIN_PASSWORD" ]]
     then
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
-	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"$dbhost" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"$dbhost" -u"$MYSQL_ADMIN_LOGIN" --password="$MYSQL_ADMIN_PASSWORD"
     else
-	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN"
-	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"${host}" -u"$MYSQL_ADMIN_LOGIN"
+	echo "DROP DATABASE IF EXISTS $dbname; CREATE DATABASE $dbname" | mysql -h"$dbhost" -u"$MYSQL_ADMIN_LOGIN"
+	echo "GRANT ALL ON ${dbname}.* to ${user}@'${userhost}' IDENTIFIED BY '$password'" | mysql -h"$dbhost" -u"$MYSQL_ADMIN_LOGIN"
     fi
-    mysql -h"${host}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
+    mysql -h"$dbhost" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/schema_mysql.sql
     # Save actual DB version
     DB_VERSION=`cat /usr/share/bluecherry/installed_db_version`
-    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -h"${host}" -u"$user" --password="$password" -D"$dbname"
+    echo "INSERT INTO GlobalSettings (parameter, value) VALUES ('G_DB_VERSION', '$DB_VERSION')" | mysql -h"$dbhost" -u"$user" --password="$password" -D"$dbname"
     # Put initial data into DB
-    mysql -h"${host}" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
+    mysql -h"$dbhost" -u"$user" --password="$password" -D"$dbname" < /usr/share/bluecherry/initial_data_mysql.sql
 }
 function new_db
 {
-    # new_db db_admin_name db_admin_pass bc_db_name db_user db_pass
+    # new_db db_admin_name db_admin_pass bc_db_name db_user db_pass db_host db_userhost
     echo new_db "$@"
     MYSQL_ADMIN_LOGIN="$1"
     MYSQL_ADMIN_PASSWORD="$2"
     dbname=$3
     user=$4
     password=$5
+	host=$6
+	userhost=$7
 
     check_mysql_admin "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD"
-    check_db_exists "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname"
-    create_db "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$dbname" "$user" "$password"
+    check_db_exists "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$host" "$dbname"
+    create_db "$MYSQL_ADMIN_LOGIN" "$MYSQL_ADMIN_PASSWORD" "$host" "$dbname" "$user" "$password" "$userhost"
 }
 function check_mysql_connect
 {

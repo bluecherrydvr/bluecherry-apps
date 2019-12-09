@@ -13,5 +13,6 @@ bluecherry:
     user = "_DBC_DBUSER_";
     password = "_DBC_DBPASS_";
     host = "_DBC_HOST_";
+    userhost = "_DBC_USERHOST_";
   };
 };
