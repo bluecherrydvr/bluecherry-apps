@@ -38,7 +38,7 @@ public:
 	static int get_buffer(AVCodecContext *s, AVFrame *frame, int flags);
 
 	static bool hwupload_frame(AVBufferRef *hwframe_ctx, AVFrame *input);
-	static bool hwdownload_frame(AVCodecContext *s, AVFrame *frame);
+	static bool hwdownload_frame(const AVCodecContext *s, AVFrame *frame);
 
 	static AVBufferRef *alloc_frame_ctx(const AVCodecContext *s);
 private:

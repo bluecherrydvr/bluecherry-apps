@@ -178,7 +178,6 @@ bool motion_processor::decode_create(const stream_properties &prop)
 	prop.video.apply(decode_ctx);
 
 	decode_ctx->get_format = vaapi_hwaccel::get_format;
-	decode_ctx->get_buffer2 = vaapi_hwaccel::get_buffer;
 
 	// XXX we may want to set some options here, such as disabling threaded decoding
 	AVDictionary *decoder_opts = NULL;

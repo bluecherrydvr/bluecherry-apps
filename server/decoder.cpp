@@ -44,7 +44,6 @@ bool decoder::init_decoder()
 	if (type == AVMEDIA_TYPE_VIDEO)
 	{
 		ctx->get_format = vaapi_hwaccel::get_format;
-		ctx->get_buffer2 = vaapi_hwaccel::get_buffer;
 	}
 
 	AVDictionary *decoder_opts = NULL;
