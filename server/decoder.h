@@ -33,12 +33,14 @@ public:
 	bool decode();
 	AVFrame *decoded_frame();
 	const struct AVCodecContext *get_ctx() const { return decoder_ctx; }
+	bool properties_changed();
 
 private:
 	struct AVCodecContext *decoder_ctx;
 	AVFrame *frame;
 	int type;
 	std::shared_ptr<const stream_properties> saved_properties;
+	bool props_changed;
 
 	bool init_decoder();
 	void release_decoder();

@@ -8,7 +8,8 @@ extern "C"
 #include "vaapi.h"
 
 decoder::decoder(int media_type)
-	: decoder_ctx(0), frame(0), type(media_type)
+	: decoder_ctx(0), frame(0), type(media_type),
+	props_changed(false)
 {
 }
 
@@ -46,15 +47,18 @@ bool decoder::init_decoder()
 		ctx->get_format = vaapi_hwaccel::get_format;
 	}
 
-	AVDictionary *decoder_opts = NULL;
-        av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
-        ret = avcodec_open2(ctx, codec, &decoder_opts);
-        av_dict_free(&decoder_opts);
+        ret = avcodec_open2(ctx, codec, NULL);
 
         if (ret < 0)
 	{
 		avcodec_free_context(&ctx);
 		return false;
+	}
+
+	if (ctx->pix_fmt != AV_PIX_FMT_VAAPI)
+	{
+		ctx->opaque = 0;
+		ctx->hw_device_ctx = NULL;
 	}
 
 	frame = av_frame_alloc();
@@ -110,15 +114,28 @@ void decoder::print_av_errormsg(int ret)
 	bc_log(Error, "decoder error: %s", error);
 }
 
+bool decoder::properties_changed()
+{
+	bool result = props_changed;
+
+	props_changed = false;
+
+	return result;
+}
+
 void decoder::push_packet(const stream_packet &pkt)
 {
 	if (pkt.type != type)
 		return;
 
+	if (!decoder_ctx)
+		saved_properties = pkt.properties();
+
 	if (pkt.properties() != saved_properties)
 	{
 		saved_properties = pkt.properties();
 		release_decoder();
+		props_changed = true;
 	}
 
 	if (!decoder_ctx)

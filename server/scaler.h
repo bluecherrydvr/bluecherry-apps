@@ -35,12 +35,12 @@ public:
 	scaler();
 	~scaler();
 
-	bool init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx);
+	bool init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx, AVBufferRef *hwctx);
 
 	void push_frame(AVFrame *in);
 	AVFrame *scaled_frame();
 
-	void reinitialize(const AVCodecContext *updated_ctx);
+	void reinitialize(const AVCodecContext *updated_ctx, AVBufferRef *hwctx);
 
 private:
 	AVFilterContext *buffersink_ctx;

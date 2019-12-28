@@ -23,7 +23,7 @@ scaler::~scaler()
 		av_buffer_unref(&hw_frames_ctx);
 }
 
-bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx)
+bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *dec_ctx, AVBufferRef *hwctx)
 {
 	char args[512];
 	int ret = 0;
@@ -36,7 +36,7 @@ bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *de
 
 	scaled_width = out_width;
 	scaled_height = out_height;
-	hw_frames_ctx = dec_ctx->hw_frames_ctx;
+	hw_frames_ctx = hwctx;
 
 	if (out_width > dec_ctx->width || out_height > dec_ctx->height)
 		bc_log(Warning, "input stream %dx%d  is scaled to larger frame size %dx%d,"
@@ -177,27 +177,28 @@ end:
 	bc_log(Error, "failed to init scaler: %s", args);
 	avfilter_inout_free(&inputs);
 	avfilter_inout_free(&outputs);
+	avfilter_graph_free(&filter_graph);
 	return false;
 }
 
-void scaler::reinitialize(const AVCodecContext *updated_ctx)
+void scaler::reinitialize(const AVCodecContext *updated_ctx, AVBufferRef *hwctx)
 {
 		bc_log(Info, "scaler:  reinitializing scaler with new decoder context");
 
 		if (software_decoding)
 		{
 			av_buffer_unref(&hw_frames_ctx);
-			hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(updated_ctx);
+			//hw_frames_ctx = vaapi_hwaccel::alloc_frame_ctx(updated_ctx);
 
-			if (!hw_frames_ctx)
-				return;
+			//if (!hw_frames_ctx)
+				//return;
 		}
 		else
-			hw_frames_ctx = updated_ctx->hw_frames_ctx;
+			hw_frames_ctx = hwctx;
 
 		release_scaler();
 
-		if (!init_scaler(scaled_width, scaled_height, updated_ctx))
+		if (!init_scaler(scaled_width, scaled_height, updated_ctx, hwctx))
 		{
 			bc_log(Error, "Failed to reinitialize scaler for new input frame size");
 			return;

@@ -317,9 +317,9 @@ void bc_record::run()
 
 		/* Reencode packet for live streaming here */
 		if (bc_streaming_is_active(this) && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
-			if (reenc->push_packet(packet) && reenc->run_loop()) {
+			if (reenc->push_packet(packet, true) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
-				packet = reenc->packet();
+				packet = reenc->streaming_packet();
 			}
 			else
 				continue;

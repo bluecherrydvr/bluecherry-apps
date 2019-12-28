@@ -1,3 +1,4 @@
+#ifdef WATERMARKER_ENABLED
 #include "watermarker.h"
 #include "vaapi.h"
 
@@ -327,4 +328,4 @@ AVFrame *watermarker::watermarked_frame()
 
 	return out_frame;
 }
-
+#endif

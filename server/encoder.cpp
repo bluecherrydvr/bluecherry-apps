@@ -2,25 +2,28 @@
 #include "vaapi.h"
 
 encoder::encoder()
-	: encoder_ctx(0), type(0), next_packet_seq(0)
+	: encoder_ctx(0), encoder_ctx_todelete(0), type(0), next_packet_seq(0),
+	current_fps(AVRational{5, 1}), motion_flags_ctr(0)
 {
 }
 
 encoder::~encoder()
 {
-	release_encoder();
+	release_encoder(&encoder_ctx_todelete);
+	release_encoder(&encoder_ctx);
 }
 
-void encoder::release_encoder()
+void encoder::release_encoder(AVCodecContext **ctx)
 {
-	if (encoder_ctx)
+	if (*ctx)
 	{
-		avcodec_close(encoder_ctx);
-		avcodec_free_context(&encoder_ctx);
+		avcodec_close(*ctx);
+		avcodec_free_context(ctx);
+		*ctx = nullptr;
 	}
 }
 
-void encoder::push_frame(AVFrame* frame)
+void encoder::push_frame(AVFrame* frame, int motion_flag)
 {
 	int ret;
 
@@ -30,16 +33,28 @@ void encoder::push_frame(AVFrame* frame)
 		return;
 	}
 
+	if (motion_flag)
+		motion_flags_ctr++;
+
+	if (motion_flags_ctr > 250)
+		bc_log(Error, "encoder: motion flags counter value grows too big");
+
 	/* Check if frame size is changed since initialization or bitrate is updated */
-	if (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
-		|| current_bitrate != encoder_ctx->bit_rate)
+	if (frame && (frame->width != encoder_ctx->width || frame->height != encoder_ctx->height
+		|| current_bitrate != encoder_ctx->bit_rate
+		|| current_fps.num != encoder_ctx->framerate.num))
 	{
 		int codec_id;
 		AVBufferRef* hw_frames_ctx;
 
 		codec_id = encoder_ctx->codec_id;
 
-		release_encoder();
+		release_encoder(&encoder_ctx_todelete);
+
+		encoder_ctx_todelete = encoder_ctx;
+		encoder_ctx = nullptr;
+
+		avcodec_send_frame(encoder_ctx_todelete, NULL);
 
 		/* reinitialize encoder with new frame size or bitrate */
 		if (!init_encoder(type, codec_id, current_bitrate, frame->width, frame->height, frame->hw_frames_ctx))
@@ -48,7 +63,7 @@ void encoder::push_frame(AVFrame* frame)
 			return;
 		}
 
-		bc_log(Info, "Encoder is reinitialized for frame size %dx%d, output bitrate %d", frame->width, frame->height, current_bitrate);
+		bc_log(Debug, "Encoder is reinitialized for frame size %dx%d, output bitrate %d", frame->width, frame->height, current_bitrate);
 	}
 
 	ret = avcodec_send_frame(encoder_ctx, frame);
@@ -63,13 +78,22 @@ bool encoder::encode()
 {
 	int ret;
 	AVPacket pkt;
+	AVCodecContext *ctx;
 
 	av_init_packet(&pkt);
 
-	ret = avcodec_receive_packet(encoder_ctx, &pkt);
+	ctx = encoder_ctx_todelete ? encoder_ctx_todelete : encoder_ctx;
+
+	ret = avcodec_receive_packet(ctx, &pkt);
 
 	if (ret < 0)
 	{
+		if (encoder_ctx_todelete && ret == AVERROR_EOF)
+		{
+			release_encoder(&encoder_ctx_todelete);
+			return false;
+		}
+
 		if (ret != AVERROR(EAGAIN))
 		{
 			bc_log(Error, "Failed to get encoded packet");
@@ -93,7 +117,11 @@ bool encoder::encode()
 	current_packet.ts_monotonic = bc_gettime_monotonic();
 
 	current_packet.type = type;
-	///
+	if (motion_flags_ctr > 0)
+	{
+		current_packet.flags |= stream_packet::MotionFlag;
+		motion_flags_ctr--;
+	}
 
 	av_packet_unref(&pkt);
 	return true;
@@ -141,22 +169,33 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder_ctx->time_base = AVRational{1, 1000};
 
 		encoder_ctx->bit_rate = bitrate;
-		encoder_ctx->gop_size = 10;
+		encoder_ctx->rc_max_rate = bitrate * 2;
+		encoder_ctx->gop_size = 20;
 		encoder_ctx->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
-		encoder_ctx->framerate = AVRational{15, 1};
+		encoder_ctx->framerate = current_fps;
+		encoder_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	}
 
-	//audio ...
+	AVDictionary *options = nullptr;
 
-	if (avcodec_open2(encoder_ctx, encoder, NULL) < 0)
+	//av_dict_set(&options, "rc_mode", "AVBR", 0);
+
+	if (avcodec_open2(encoder_ctx, encoder, &options) < 0)
 	{
 		bc_log(Error, "Failed to open encoder");
 		encoder_ctx->hw_frames_ctx = 0;
 		avcodec_close(encoder_ctx);
 		avcodec_free_context(&encoder_ctx);
 		encoder_ctx = 0;
+		av_dict_free(&options);
 		return false;
 	}
+
+	av_dict_free(&options);
+
+	if (encoder_ctx->extradata && encoder_ctx->extradata_size)
+		p->video.extradata.assign(encoder_ctx->extradata, encoder_ctx->extradata + encoder_ctx->extradata_size);
+
 
 	return true;
 }
