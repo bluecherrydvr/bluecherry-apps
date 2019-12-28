@@ -77,6 +77,9 @@ libav/config.mak:
 		--enable-demuxer=rawvideo \
 		--enable-demuxer=concat \
 		\
+		--enable-bsf=h264_mp4toannexb \
+		--enable-bsf=extract_extradata \
+		\
 		--enable-decoder=h264 \
 		--enable-decoder=hevc \
 		--enable-decoder=mpeg4 \
@@ -86,6 +89,7 @@ libav/config.mak:
 		--enable-decoder=ac3 \
 		--enable-decoder=mp2 \
 		--enable-decoder=mp3 \
+		--enable-decoder=wav \
 		--enable-decoder=pcm_f32le \
 		--enable-decoder=pcm_f64le \
 		--enable-decoder=pcm_s16le \
