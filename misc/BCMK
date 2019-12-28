@@ -89,7 +89,6 @@ libav/config.mak:
 		--enable-decoder=ac3 \
 		--enable-decoder=mp2 \
 		--enable-decoder=mp3 \
-		--enable-decoder=wav \
 		--enable-decoder=pcm_f32le \
 		--enable-decoder=pcm_f64le \
 		--enable-decoder=pcm_s16le \
