@@ -60,9 +60,11 @@
                 <td colspan="5"><div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo "Note 1:  A storage directory is accessible only if the permissions on each of the directories in the path prefix of pathname grant search (i.e., execute) access to the user id that the web server runs as (usually 'www-data').  If any directory  is  inaccessible,  then
        the directory is not readable, even if correct permissions and ownership are set on this directory. This is a frequent issue with automounted external storage like USB drives."; ?></div></td>
             </tr>
-
 	    <tr class="table-storage-tr-info">
-                <td colspan="5"><div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo "Note 2:  It is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)."; ?></div></td>
+                <td colspan="5"><div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo 'Note 2:  Before adding a new folder, ensure that the: <br /> - folder exists <br /> - folder is empty <br /> - folder belongs to user bluecherry, group bluecherry. <br /><br /> To create directory run: "sudo mkdir -p &lt;your path&gt;" <br /> To set permissions run: "sudo chmod 770 &lt;your path&gt; <br /> To set ownership run: "sudo chown -R bluecherry:bluecherry &lt;your path&gt;".'; ?></div></td>
+            </tr>
+	    <tr class="table-storage-tr-info">
+                <td colspan="5"><div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo "Note 3:  It is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)."; ?></div></td>
             </tr>
             <?php } ?>
 
