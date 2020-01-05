@@ -226,6 +226,9 @@ AVBufferRef *vaapi_hwaccel::alloc_frame_ctx(const AVCodecContext *s)
 
 int vaapi_hwaccel::init_decoder(AVCodecContext *s)
 {
+	if (!is_initialised)
+		return 0;
+
 	s->pix_fmt = s->sw_pix_fmt;
 	s->hw_device_ctx = av_buffer_ref(device_context);
 
