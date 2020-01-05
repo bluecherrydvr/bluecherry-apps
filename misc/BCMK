@@ -93,6 +93,7 @@ libav/config.mak:
 		--enable-decoder=pcm_f64le \
 		--enable-decoder=pcm_s16le \
 		--enable-decoder=pcm_alaw \
+		--enable-decoder=pcm_mulaw \
 		\
 		--enable-parser=h264 \
 		--enable-parser=hevc \
