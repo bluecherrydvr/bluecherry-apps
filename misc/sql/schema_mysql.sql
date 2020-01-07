@@ -80,6 +80,8 @@ CREATE TABLE `Devices` (
   `reencode_bitrate` int(11) NOT NULL DEFAULT '64000',
   `reencode_frame_width` smallint(6) NOT NULL DEFAULT '352',
   `reencode_frame_height` smallint(6) NOT NULL DEFAULT '240',
+  `substream_mode` tinyint(1) DEFAULT '0',
+  `substream_path` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)

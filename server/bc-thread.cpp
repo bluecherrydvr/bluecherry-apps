@@ -326,10 +326,33 @@ void bc_record::run()
 		}
 
 		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this))
-			if (bc_streaming_packet_write(this, packet) == -1) {
+		if (bc_streaming_is_active(this)) {
+			stream_packet liveview_packet;
+
+			if (bc->substream_mode) {
+				ret = bc->substream_input->read_packet();
+
+				if (ret == EAGAIN)
+					continue;
+				else if (ret != 0) {
+					if (bc->type == BC_DEVICE_LAVF) {
+		                                const char *err = reinterpret_cast<lavf_device*>(bc->substream_input)->get_error_message();
+						log.log(Error, "Read error from liveview substream: %s", *err ? err : "Unknown error");
+					}
+
+					/* Do not stop thread on liveview substream errors, recording has more priority */
+					continue;
+				}
+
+				liveview_packet = bc->substream_input->packet();
+			} else
+				liveview_packet = packet;
+
+			if (bc_streaming_packet_write(this, liveview_packet) == -1) {
 				goto error;
 			}
+		}
+
 		continue;
 error:
 		sleep(10);
@@ -623,7 +646,9 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	    current->reencode_bitrate != update->reencode_bitrate ||
 	    current->reencode_frame_width != update->reencode_frame_width ||
 	    current->reencode_frame_height != update->reencode_frame_height ||
-	    current->aud_disabled != update->aud_disabled)
+	    current->aud_disabled != update->aud_disabled ||
+	    current->substream_mode != update->substream_mode ||
+	    strcmp(current->substream_path, update->substream_path))
 	{
 		bc_rec->thread_should_die = "configuration changed";
 		pthread_mutex_unlock(&bc_rec->cfg_mutex);
