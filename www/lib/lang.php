@@ -353,6 +353,8 @@ define('AIP_USER', 'Username');
 define('AIP_PASS', 'Password');
 define('AIP_MJPATH', 'Path to MJPEG');
 define('AIP_RTSP', 'Path to RTSP');
+define('AIP_SUBSTREAM_ENABLE', 'Use substream for live view');
+define('AIP_SUBSTREAM_PATH', 'Substream path');
 define('AIP_ADD', 'Add camera');
 define('AIP_ALREADY_EXISTS', 'Camera with these settings already exists in the list of the devices.');
 define('AIP_NAME_ALREADY_EXISTS', 'Camera with this name already exists. Names must be unique.');
