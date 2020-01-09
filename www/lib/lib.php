@@ -697,6 +697,9 @@ class ipCamera{
 				$this->info['mjpeg_path']  =	$tmp[2];
 			}
 		}
+		$this->info['substream_enabled'] = ($info[0]['substream_mode'] != '0') ? '1' : '0';
+		$tmp = explode('|', $info[0]['substream_path']);
+		$this->info['substream'] = $tmp[2];
 		#get manufacturer and model information
                 $stmt = getReadOnlyDb()->prepare(
                     'SELECT m.manufacturer ' . 
@@ -759,6 +762,13 @@ class ipCamera{
 		#prepare audio check box, ignored for new devices
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
+			$data['substream_mode'] = (!empty($rawData['substream_enabled']) && $rawData['substream_enabled']=='on') ? 1 : 0;
+			empty ($rawData['substream']) or $rawData['substream'] = (substr($rawData['substream'][0], 0, 1) != '/') ? '/'.$rawData['substream'] : $rawData['substream'];
+			if ($rawData['protocol'] == "IP-MJPEG")
+				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['portMjpeg']}|{$rawData['substream']}";
+			else
+				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['substream']}";
+
 			$data['debug_level'] = (!empty($rawData['debug_level']) && $rawData['debug_level']=='on') ? 1 : 0;
 		#prepare rtsp username/password
 			$data['rtsp_username'] = empty($_POST['user']) ?  '' : $rawData['user'];
