@@ -35,10 +35,10 @@ static int io_write(void *opaque, uint8_t *buf, int buf_size)
 	return buf_size;
 }
 
-static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
+static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props,
 	int index, enum AVMediaType type);
 
-int bc_streaming_setup(struct bc_record *bc_rec)
+int bc_streaming_setup(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props)
 {
 	int ret = 0;
 
@@ -47,9 +47,9 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 		return 0;
 	}
 
-	ret |= bc_streaming_setup_elementary(bc_rec, 0, AVMEDIA_TYPE_VIDEO);
+	ret |= bc_streaming_setup_elementary(bc_rec, props, 0, AVMEDIA_TYPE_VIDEO);
 	if (bc_rec->bc->input->has_audio())
-		ret |= bc_streaming_setup_elementary(bc_rec, 1, AVMEDIA_TYPE_AUDIO);
+		ret |= bc_streaming_setup_elementary(bc_rec, props, 1, AVMEDIA_TYPE_AUDIO);
 	if (ret)
 		return ret;
 
@@ -58,7 +58,7 @@ int bc_streaming_setup(struct bc_record *bc_rec)
 	return 0;
 }
 
-static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
+static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props,
 	int index, enum AVMediaType type)
 {
 	AVFormatContext *ctx;
@@ -89,9 +89,9 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec,
 
 	bkp_ts = st->codec->time_base;
 	if (type == AVMEDIA_TYPE_VIDEO)
-		bc_rec->bc->input->properties()->video.apply(st->codec);
+		props->video.apply(st->codec);
 	else
-		bc_rec->bc->input->properties()->audio.apply(st->codec);
+		props->audio.apply(st->codec);
 
 	st->codec->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
