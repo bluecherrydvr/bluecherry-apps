@@ -39,6 +39,9 @@ extern pthread_mutex_t mutex_max_record_time_sec;
 /* Default configuration file */
 #define BC_CONFIG_DEFAULT      "/etc/bluecherry.conf"
 
+#define BC_MAINSTREAM_START_FAILED 1
+#define BC_SUBSTREAM_START_FAILED 2
+
 class bc_record
 {
 public:

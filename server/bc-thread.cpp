@@ -169,22 +169,42 @@ void bc_record::run()
 				break;
 		}
 
+		if (bc->substream_mode && !bc->substream_input->is_started() && !(iteration % 30)) {
+			if (bc->substream_input->start() < 0) {
+				if ((start_failed & BC_SUBSTREAM_START_FAILED) == 0) {
+					log.log(Error, "Error starting substream: %s",
+						bc->substream_input->get_error_message());
+				}
+				start_failed |= BC_SUBSTREAM_START_FAILED;
+			} else if (start_failed & BC_SUBSTREAM_START_FAILED) {
+				start_failed &= ~BC_SUBSTREAM_START_FAILED;
+				log.log(Error, "Substream started after failures");
+			} else if (bc->type == BC_DEVICE_LAVF) {
+				const char *info = reinterpret_cast<lavf_device*>(bc->substream_input)->stream_info();
+				log.log(Info, "Substream started: %s", info);
+			}
+
+			if (bc->substream_input->is_started())
+				if (bc_streaming_setup(this, this->bc->substream_input->properties()))
+					log.log(Error, "Unable to setup live broadcast from substream");
+		}
+
 		update_osd(this);
 		if (!(iteration++ % 50))
 			check_schedule(this);
 
 		if (!bc->input->is_started()) {
 			if (bc->input->start() < 0) {
-				if (!start_failed) {
+				if ((start_failed & BC_MAINSTREAM_START_FAILED) == 0) {
 					log.log(Error, "Error starting device stream: %s", bc->input->get_error_message());
 					/* Notification hook to PHP: device is offline */
 					notify_device_state("OFFLINE");
 				}
-				start_failed++;
+				start_failed |= BC_MAINSTREAM_START_FAILED;
 				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 				goto error;
-			} else if (start_failed) {
-				start_failed = 0;
+			} else if (start_failed & BC_MAINSTREAM_START_FAILED) {
+				start_failed &= ~BC_MAINSTREAM_START_FAILED;
 				log.log(Error, "Stream started after failures");
 			}
 
@@ -193,8 +213,9 @@ void bc_record::run()
 				log.log(Info, "Stream started: %s", info);
 			}
 
-			if (bc_streaming_setup(this))
-				log.log(Error, "Unable to setup live broadcast of device stream");
+			if (bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT)
+				if (bc_streaming_setup(this, this->bc->input->properties()))
+					log.log(Error, "Unable to setup live broadcast of device stream");
 		}
 
 		if (sched_last) {
