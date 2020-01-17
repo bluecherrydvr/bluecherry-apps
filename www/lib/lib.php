@@ -67,33 +67,6 @@ function getOs(){
 	$it = $_SERVER['HTTP_USER_AGENT'];
 }
 
-function getRenderNodes() {
-	$ret = array();
-
-	for($i = 0; $i < 4; $i++) {
-		$node = "/dev/dri/renderD".intval($i + 128);
-		if (file_exists($node) && filetype($node) == "char")
-			$ret[$i] = $node;
-	}
-
-	return $ret;
-}
-
-function checkVaapiSupport($renderNode, $profile) {
-	$output = array();
-	$ret = 0;
-
-	exec("vainfo --display drm --device ".$renderNode, $output, $ret);
-
-	if (intval($ret) !== 0) {
-		return -1;//Failure,No VAAPI support detected
-	}
-
-	$output = implode("\n", $output);
-
-	return substr_count($output, $profile);
-}
-
 /**
  * Returns SQLite Database connection
  * 
@@ -128,8 +101,7 @@ class database{
 		self::$instance or self::$instance = new database();
 		return self::$instance;
 	}
-
-    public static function read_config() {
+	private function read_config(){
 		$config_file = fopen("/etc/bluecherry.conf", 'r') or die(LANG_DIE_COULDNOTOPENCONF);
 		$config_text = fread($config_file, filesize("/etc/bluecherry.conf"));
 		fclose($config_file);
@@ -155,19 +127,13 @@ class database{
 			$dbhost = $matches[1];
 		}
 
-        return array($dbname, $dbuser, $dbpassword, $dbhost);
-    }
-
-	private function load_config() {
-        list($dbname, $dbuser, $dbpassword, $dbhost) = database::read_config();
 		$this->dbname = stripslashes($dbname);
 		$this->dbuser = stripslashes($dbuser);
 		$this->dbpassword = stripslashes($dbpassword);
 		$this->dbhost = stripslashes($dbhost);
 	}
-
 	private function connect() {
-		$this->load_config();
+		$this->read_config();
 		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
 		mysqli_real_query($this->dblink, "set names utf8;");
 	}
@@ -387,7 +353,6 @@ class user{
 				if (!empty($_SESSION['from_client'])) { $_SESSION['from_client_override'] = true; }
 				$_SESSION['from_client'] = $from_client; 
 				if ($_SESSION['from_client']) { $_SESSION['from_client_manual'] = true; } #if user manually logging in from client
-				if (isset($this->info['change_password']) && $this->info['change_password']) return 'OK CHANGE_PASSWORD';
 				return 'OK'; } 
 		else { return LOGIN_WRONG; };
 	}
@@ -697,9 +662,6 @@ class ipCamera{
 				$this->info['mjpeg_path']  =	$tmp[2];
 			}
 		}
-		$this->info['substream_enabled'] = ($info[0]['substream_mode'] != '0') ? '1' : '0';
-		$tmp = explode('|', $info[0]['substream_path']);
-		$this->info['substream'] = $tmp[2];
 		#get manufacturer and model information
                 $stmt = getReadOnlyDb()->prepare(
                     'SELECT m.manufacturer ' . 
@@ -762,13 +724,6 @@ class ipCamera{
 		#prepare audio check box, ignored for new devices
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
-			$data['substream_mode'] = (!empty($rawData['substream_enabled']) && $rawData['substream_enabled']=='on') ? 1 : 0;
-			empty ($rawData['substream']) or $rawData['substream'] = (substr($rawData['substream'][0], 0, 1) != '/') ? '/'.$rawData['substream'] : $rawData['substream'];
-			if ($rawData['protocol'] == "IP-MJPEG")
-				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['portMjpeg']}|{$rawData['substream']}";
-			else
-				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['substream']}";
-
 			$data['debug_level'] = (!empty($rawData['debug_level']) && $rawData['debug_level']=='on') ? 1 : 0;
 		#prepare rtsp username/password
 			$data['rtsp_username'] = empty($_POST['user']) ?  '' : $rawData['user'];
@@ -1202,7 +1157,7 @@ class globalSettings{
 class Manufacturers
 {
 
-    const API_URL = 'https://api.evercam.io/v1/vendors';
+	const API_URL = 'https://cam-api.bluecherry.workers.dev/manufacturers?fields[]=name';
 
     public static function getList()
     {
@@ -1212,11 +1167,13 @@ class Manufacturers
             $data = @file_get_contents(self::API_URL);
             if($data) {
                 $data = json_decode($data, true);
-                foreach($data['vendors'] as $manufacturer) {
-                    $list[$manufacturer['id']] = $manufacturer['name'];
+
+				foreach($data['records'] as $manufacturer) {
+					$list[$manufacturer['fields']['name']] = $manufacturer['fields']['name'];
                 }
             }
-        } else {
+
+		} else {
             $adapter = getReadOnlyDb();
             $list = $adapter->query("
                 SELECT manufacturers.manufacturer FROM manufacturers
@@ -1226,87 +1183,180 @@ class Manufacturers
                 ");
             $list = $list->fetchAll(PDO::FETCH_ASSOC);
         }
-        asort($list);
+		asort($list);
+
         return $list;
     }
 }
 
 class Cameras
 {
-    const API_SEARCH_URL = 'https://api.evercam.io/v1/models?page=%d&vendor_id=%s';
-    const API_DETAILS_URL = 'https://api.evercam.io/v1/models/%s';
+	const API_SEARCH_URL = 'https://cam-api.bluecherry.workers.dev/models?filterByFormula=={Manufacturer}="%s"';
 
     public static function getList($manufacturer)
     {
         global $global_settings;
         $list = array();
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
-            $page = 0;
+
+            $offset = NULL;
             do {
-                $url = sprintf(self::API_SEARCH_URL, $page, rawurlencode($manufacturer));
+				$url = sprintf(self::API_SEARCH_URL, rawurlencode($manufacturer));
+				if($offset)
+				{
+					$url .= "&offset=".$offset;
+
+					// echo $url;
+					// exit;
+				}
+
                 $data = @file_get_contents($url);
                 if(!$data) {
                     break;
                 }
-                $data = json_decode($data, true);
-                foreach($data['models'] as $camera) {
-                    $list[$camera['id']] = $camera['name'];
-                }
-                $page++;
-            } while($page <= $data['pages']);
+				$data = json_decode($data, true);
+
+                // echo "<pre>";
+				// print_r($data);
+
+				foreach($data['records'] as $camera) {
+                    $list[rawurlencode($manufacturer).' - '.$camera['id']] = $camera['fields']['Model'];
+				}
+
+				if(isset($data['offset']))
+				{
+					$offset = $data['offset'];
+				}
+
+			} while(isset($data['offset']));
+
+			// print_r($list);
+			// exit;
+
         } else {
             $adapter = getReadOnlyDb();
             $list = $adapter->prepare(
-                'SELECT api_id, model ' . 
-                'FROM cameras AS C ' . 
-                'JOIN manufacturers AS M ON C.manufacturer = M.id ' . 
-                'WHERE M.manufacturer = ? ' . 
+                'SELECT api_id, model ' .
+                'FROM cameras AS C ' .
+                'JOIN manufacturers AS M ON C.manufacturer = M.id ' .
+                'WHERE M.manufacturer = ? ' .
                 'ORDER BY model ASC'
             );
             $list->execute(array($manufacturer));
             $list = $list->fetchAll(PDO::FETCH_KEY_PAIR);
-        }
+		}
+
+		// echo "<pre>";
+		// print_r($list);
+
         return $list;
     }
 
-    public static function getCamDetails($id)
+    public static function getCamDetails($details)
     {
         global $global_settings;
         if($global_settings->data['G_DATA_SOURCE'] == 'live') {
-            $url = sprintf(self::API_DETAILS_URL, rawurlencode($id));
-            $data = @file_get_contents($url);
-            if(!$data) {
-                return '';
-            } 
-            $data = json_decode($data, true);
-            array_walk($data['models'][0], array('Cameras', 'sanitize'));
-            $data = $data['models'][0];
+
+			$array = explode(" - ",$details);
+			$manufacturer = $array[0];
+			$id = $array[1];
+
+			// echo "<pre>";
+			// print_r($details);
+			// exit;
+
+			// $url = sprintf(self::API_SEARCH_URL, rawurlencode($manufacturer ));
+
+			// $data = @file_get_contents($url);
+
+            // if(!$data) {
+            //     return '';
+			// }
+
+			// // echo "<pre>";
+			// // print_r($data);
+			// // exit;
+
+			// $data = json_decode($data, true);
+
+			$flag = 0;
+			$offset = NULL;
+            do {
+				$url = sprintf(self::API_SEARCH_URL, rawurlencode($manufacturer));
+				if($offset)
+				{
+					$url .= "&offset=".$offset;
+
+					// echo $url;
+					// exit;
+				}
+
+                $offset_data = @file_get_contents($url);
+                if(!$offset_data) {
+                    break;
+				}
+
+				$offset_data = json_decode($offset_data, true);
+
+				foreach($offset_data['records'] as $key => $camera) {
+					if ($camera['id'] == $id) {
+						$data = $camera['fields'];
+						$flag = 1;
+						break;
+					}
+				}
+
+				if(isset($offset_data['offset']) && $flag == 0)
+				{
+					$offset = $offset_data['offset'];
+				}
+				else
+				{
+					$offset = NULL;
+				}
+
+			} while(isset($offset));
+
+
+			// echo "<pre>";
+			// print_r($data);
+			// exit;
+
+			// array_walk($data['models'][0], array('Cameras', 'sanitize'));
+
+			// $data = $data['models'][0];
+
         } else {
             $adapter = getReadOnlyDb();
             $stmt = $adapter->prepare(
-                'SELECT C.*, M.manufacturer AS manufacturer_id ' . 
-                'FROM cameras AS c ' . 
-                'JOIN manufacturers AS M ON c.manufacturer = M.id ' . 
+                'SELECT C.*, M.manufacturer AS manufacturer_id ' .
+                'FROM cameras AS c ' .
+                'JOIN manufacturers AS M ON c.manufacturer = M.id ' .
                 'WHERE api_id = ? '
             );
             $stmt->execute(array($id));
             $data = $stmt->fetch(PDO::FETCH_ASSOC);
         }
 
-        if (isset($data['vendor_id'])) {
-            $data['rtsp_port'] = strcasecmp('acti', $data['vendor_id']) === 0 ? 7070 : 554;
-        } else {
-            $data['rtsp_port'] = strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+        // if (isset($data['vendor_id'])) {
+        //     $data['rtsp_port'] = strcasecmp('acti', $data['vendor_id']) === 0 ? 7070 : 554;
+        // } else {
+        //     $data['rtsp_port'] = strcasecmp('acti', $data['manufacturer_id']) === 0 ? 7070 : 554;
+		// }
+
+
+		if (isset($data['ManufacturerLink'][0])) {
+            $data['rtsp_port'] = strcasecmp('acti', $data['ManufacturerLink'][0]) == '' ? 7070 : 554;
         }
-        
-        if(!empty($data['mjpeg_url'])) {
-            $data['mjpeg_url'] = '/' . ltrim($data['mjpeg_url'], '/');
+
+        if(!empty($data['MJPEG path'])) {
+            $data['mjpeg_path'] = '/' . ltrim($data['MJPEG path'], '/');
         }
-        
-        if(!empty($data['h264_url'])) {
-            $data['h264_url'] = '/' . ltrim($data['h264_url'], '/');
+
+        if(!empty($data['RTSP path'])) {
+            $data['rtsp_path'] = '/' . ltrim($data['RTSP path'], '/');
         }
-        
+
         //$data = "
                 //<camName><![CDATA[{$data['model']}]]></camName>
                 //<mjpegPath><![CDATA[{$data['mjpeg_url']}]]></mjpegPath>
@@ -1316,40 +1366,42 @@ class Cameras
                 //<resolutions><![CDATA[{$data['resolution']}]]></resolutions>
                 //<user><![CDATA[{$data['default_username']}]]></user>
                 //<pass><![CDATA[{$data['default_password']}]]></pass>
-        //";
+		//";
+
         $data_r = Array(
-            'camName' => (isset($data['model']) ? $data['model'] : $data['name']),
-            'mjpegPath' => (isset($data['mjpeg_url']) ? $data['mjpeg_url'] : $data['mjpg_url']),
-            'rtspPath' => $data['h264_url'],
+            'camName' => (isset($data['Model']) ? $data['Model'] : ''),
+            'mjpegPath' => (isset($data['mjpeg_path']) ? $data['mjpeg_path'] : ''),
+            'rtspPath' => $data['rtsp_path'],
             'mjpegPort' => 80,
             'rtspPort' => $data['rtsp_port'],
-            'resolutions' => $data['resolution'],
-            'user' => (isset($data['default_username']) ? $data['default_username'] : $data['username']),
-            'pass' => (isset($data['default_password']) ? $data['default_password'] : $data['password']),
-        );
+            'resolutions' => '',
+            'user' => (isset($data['Default username']) ? $data['Default username'] : ''),
+            'pass' => (isset($data['Default password']) ? $data['Default password'] : ''),
+		);
+
         data::responseJSON(true, true, $data_r);
     }
-    
+
     /**
      * Function to be used as array_walk callback for preparing data
-     * 
-     * 
+     *
+     *
      * @param mixed $value The array element value
      * @param mixed $key   The array element key
-     * 
+     *
      */
-    
+
     public static function sanitize(&$value, $key)
     {
         if(in_array(
-            $key, 
-            array('jpeg_url', 'h264_url', 'mjpeg_url', 
+            $key,
+            array('jpeg_url', 'h264_url', 'mjpeg_url',
                   'default_username', 'default_password')
         )) {
             $value = str_replace(
-                array('Unknown', 'unknown', '<blank>', 'blank', 'none', 'None', 
-                      'n/a', 'User defined', 'user defined'), 
-                '', 
+                array('Unknown', 'unknown', '<blank>', 'blank', 'none', 'None',
+                      'n/a', 'User defined', 'user defined'),
+                '',
                 $value
             );
         }
