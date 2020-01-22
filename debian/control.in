@@ -29,6 +29,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
 #wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+Recommends: mysql-server
 Suggests: monit, mail-transport-agent
 Conflicts: solo6010-dkms
 Replaces: solo6010-dkms
