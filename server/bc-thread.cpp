@@ -33,6 +33,7 @@
 #include "trigger_processor.h"
 #include "motion_handler.h"
 #include "recorder.h"
+#include "substream-thread.h"
 
 #define DEF_TH_LOG_LEVEL Warning
 
@@ -55,7 +56,9 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 
 void stop_handle_properly(struct bc_record *bc_rec)
 {
-	bc_streaming_destroy(bc_rec);
+	if (!bc_rec->bc->substream_mode)
+		bc_streaming_destroy(bc_rec);
+
 	bc_rec->bc->input->stop();
 }
 
@@ -169,24 +172,9 @@ void bc_record::run()
 				break;
 		}
 
-		if (bc->substream_mode && !bc->substream_input->is_started() && !(iteration % 30)) {
-			if (bc->substream_input->start() < 0) {
-				if ((start_failed & BC_SUBSTREAM_START_FAILED) == 0) {
-					log.log(Error, "Error starting substream: %s",
-						bc->substream_input->get_error_message());
-				}
-				start_failed |= BC_SUBSTREAM_START_FAILED;
-			} else if (start_failed & BC_SUBSTREAM_START_FAILED) {
-				start_failed &= ~BC_SUBSTREAM_START_FAILED;
-				log.log(Error, "Substream started after failures");
-			} else if (bc->type == BC_DEVICE_LAVF) {
-				const char *info = reinterpret_cast<lavf_device*>(bc->substream_input)->stream_info();
-				log.log(Info, "Substream started: %s", info);
-			}
-
-			if (bc->substream_input->is_started())
-				if (bc_streaming_setup(this, this->bc->substream_input->properties()))
-					log.log(Error, "Unable to setup live broadcast from substream");
+		if (bc->substream_mode && !liveview_substream) {
+			liveview_substream = new substream();
+			liveview_substream_thread = new std::thread(&substream::run, liveview_substream, this);
 		}
 
 		update_osd(this);
@@ -337,7 +325,7 @@ void bc_record::run()
 		bc->source->send(packet);
 
 		/* Reencode packet for live streaming here */
-		if (bc_streaming_is_active(this) && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
+		if (bc_streaming_is_active(this) && !bc->substream_mode && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
 			if (reenc->push_packet(packet, true) && reenc->run_loop()) {
 				bc_log(Debug, "got reencoded packet!");
 				packet = reenc->streaming_packet();
@@ -347,29 +335,9 @@ void bc_record::run()
 		}
 
 		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this)) {
-			stream_packet liveview_packet;
+		if (bc_streaming_is_active(this) && !bc->substream_mode) {
 
-			if (bc->substream_mode) {
-				ret = bc->substream_input->read_packet();
-
-				if (ret == EAGAIN)
-					continue;
-				else if (ret != 0) {
-					if (bc->type == BC_DEVICE_LAVF) {
-		                                const char *err = reinterpret_cast<lavf_device*>(bc->substream_input)->get_error_message();
-						log.log(Error, "Read error from liveview substream: %s", *err ? err : "Unknown error");
-					}
-
-					/* Do not stop thread on liveview substream errors, recording has more priority */
-					continue;
-				}
-
-				liveview_packet = bc->substream_input->packet();
-			} else
-				liveview_packet = packet;
-
-			if (bc_streaming_packet_write(this, liveview_packet) == -1) {
+			if (bc_streaming_packet_write(this, packet) == -1) {
 				goto error;
 			}
 		}
@@ -529,6 +497,16 @@ void bc_record::destroy_elements()
 		m_handler->disconnect();
 		m_handler->destroy();
 		m_handler = 0;
+	}
+
+	if (liveview_substream)
+	{
+		liveview_substream->stop();
+		liveview_substream_thread->join();
+		delete liveview_substream;
+		delete liveview_substream_thread;
+		liveview_substream = 0;
+		liveview_substream_thread = 0;
 	}
 
 	if (bc)

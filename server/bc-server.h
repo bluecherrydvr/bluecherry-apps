@@ -20,6 +20,7 @@
 
 #include "libbluecherry.h"
 #include <pthread.h>
+#include <thread>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -96,6 +97,10 @@ public:
 	class trigger_processor *t_processor;
 	class motion_handler *m_handler;
 	class recorder *rec;
+
+	/* Live View substream */
+	class substream *liveview_substream;
+	class std::thread *liveview_substream_thread;
 
 	/* Livestream reencoding */
 	class reencoder *reenc;
