@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include "bc-server.h"
 #include "lavf_device.h"
+#include <thread>
 
 substream::substream()
 	: /*rec(0),*/ exit_flag(false)
@@ -11,6 +12,10 @@ substream::substream()
 void substream::run(struct bc_record *r)
 {
 	/*rec = r;*/
+	int ret;
+	stream_packet liveview_packet;
+
+	r->log.log(Debug, "Starting substream thread %u ...", std::this_thread::get_id());
 
 	while (!exit_flag)
 	{
@@ -34,30 +39,28 @@ void substream::run(struct bc_record *r)
 				if (bc_streaming_setup(r, r->bc->substream_input->properties()))
 					r->log.log(Error, "Unable to setup live broadcast from substream");
 		}
-//...
+
+		ret = r->bc->substream_input->read_packet();
+
+		if (ret == EAGAIN)
+			continue;
+		else if (ret != 0) {
+			if (r->bc->type == BC_DEVICE_LAVF) {
+				const char *err = reinterpret_cast<lavf_device*>(r->bc->substream_input)->get_error_message();
+				r->log.log(Error, "Read error from liveview substream: %s", *err ? err : "Unknown error");
+			}
+			goto error;
+		}
+
+		liveview_packet = r->bc->substream_input->packet();
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(r)) {
-			int ret;
-			stream_packet liveview_packet;
-
-			ret = r->bc->substream_input->read_packet();
-
-			if (ret == EAGAIN)
-				continue;
-			else if (ret != 0) {
-				if (r->bc->type == BC_DEVICE_LAVF) {
-					const char *err = reinterpret_cast<lavf_device*>(r->bc->substream_input)->get_error_message();
-					r->log.log(Error, "Read error from liveview substream: %s", *err ? err : "Unknown error");
-				}
-				goto error;
-			}
-
-			liveview_packet = r->bc->substream_input->packet();
-
 			if (bc_streaming_packet_write(r, liveview_packet) == -1) {
+				r->log.log(Error, "Failed to write substream packet");
 				goto error;
 			}
 		} else {
+			r->log.log(Debug, "Substream: no active RTSP clients, sleeping...");
 			sleep(1);
 		}
 
@@ -66,10 +69,11 @@ void substream::run(struct bc_record *r)
 	error:
 		bc_streaming_destroy(r);
 		r->bc->substream_input->stop();
-		sleep(10);
+		sleep(3);
 	}
 
 	bc_streaming_destroy(r);
+	r->bc->substream_input->stop();
 }
 
 void substream::stop()

@@ -59,6 +59,17 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	if (!bc_rec->bc->substream_mode)
 		bc_streaming_destroy(bc_rec);
 
+	if (bc_rec->liveview_substream)
+	{
+		bc_rec->liveview_substream->stop();
+		bc_rec->liveview_substream_thread->join();
+		delete bc_rec->liveview_substream;
+		delete bc_rec->liveview_substream_thread;
+		bc_rec->liveview_substream = 0;
+		bc_rec->liveview_substream_thread = 0;
+	}
+
+
 	bc_rec->bc->input->stop();
 }
 
@@ -386,6 +397,8 @@ bc_record::bc_record(int i)
 	m_handler = 0;
 	rec = 0;
 	reenc = 0;
+	liveview_substream = 0;
+	liveview_substream_thread = 0;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -497,16 +510,6 @@ void bc_record::destroy_elements()
 		m_handler->disconnect();
 		m_handler->destroy();
 		m_handler = 0;
-	}
-
-	if (liveview_substream)
-	{
-		liveview_substream->stop();
-		liveview_substream_thread->join();
-		delete liveview_substream;
-		delete liveview_substream_thread;
-		liveview_substream = 0;
-		liveview_substream_thread = 0;
 	}
 
 	if (bc)
