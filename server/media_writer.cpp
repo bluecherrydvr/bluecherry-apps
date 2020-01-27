@@ -256,15 +256,15 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 {
 	int ret;
 	AVCodec *codec;
-	AVCodecContext avctx;
+	AVCodecContext *avctx;
 	AVDictionary *muxer_opts = NULL;
 	AVRational bkp_ts;
 
 	if (oc)
 		return 0;
 
+	avctx = avcodec_alloc_context3(NULL);
 
-	memset(&avctx, 0, sizeof avctx);
 	/* Get the output format */
 	AVOutputFormat *fmt_out = av_guess_format("matroska", NULL, NULL);
 	if (!fmt_out) {
@@ -284,17 +284,18 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	video_st = avformat_new_stream(oc, NULL);
 	if (!video_st)
 		goto error;
-	properties.video.apply(&avctx);
-	avcodec_parameters_from_context(video_st->codecpar, &avctx);
+	properties.video.apply(avctx);
+	avcodec_parameters_from_context(video_st->codecpar, avctx);
 
 	if (properties.has_audio()) {
 		audio_st = avformat_new_stream(oc, NULL);
 		if (!audio_st)
 			goto error;
-		properties.audio.apply(&avctx);
-		avcodec_parameters_from_context(audio_st->codecpar, &avctx);
+		properties.audio.apply(avctx);
+		avcodec_parameters_from_context(audio_st->codecpar, avctx);
 	}
 
+	avcodec_free_context(&avctx);
 
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
 		video_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
