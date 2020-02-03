@@ -112,6 +112,8 @@ libav/config.mak:
 		--enable-filter=fps \
 		--enable-filter=scale_vaapi \
 		--enable-filter=aresample \
+		--enable-filter=hwupload \
+		--enable-filter=hwdownload \
 		\
 
 
