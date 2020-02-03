@@ -105,6 +105,7 @@ libav/config.mak:
 		--enable-encoder=rawvideo \
 		--enable-encoder=aac \
 		--enable-encoder=h264_vaapi \
+		--enable-encoder=h264_mjpeg \
 		--enable-encoder=hevc_vaapi \
 		\
 		--enable-filter=scale \
