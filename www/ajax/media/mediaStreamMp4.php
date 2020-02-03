@@ -49,6 +49,18 @@ class mediaStreamMp4 extends Controller {
             $audio_options = ' -acodec aac -strict -2 ';
         }
 
+	$vcodec = "libx264";
+	$hwaccel = "";
+	$hwfilter = "";
+
+	$vaapi_device = $this->varpub->global_settings->data['G_VAAPI_DEVICE'];
+	if (strcasecmp($vaapi_device, "none") != 0)
+	{
+		$vcodec = "h264_vaapi";
+		$hwaccel = "-init_hw_device vaapi=hwva:$vaapi_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device hwva";
+		$hwfilter = "-filter_hw_device hwva -vf 'format=nv12|vaapi,hwupload'";
+	}
+
         if (strstr($ffprobe_output, 'streams.stream.0.codec_name="h264"') !== false
             || strstr($ffprobe_output, 'streams.stream.0.codec_name="mpeg4"') !== false) {
             # -- if codec is MPEG4 or H264, remux the file into MP4 container format;
@@ -58,9 +70,9 @@ class mediaStreamMp4 extends Controller {
             # -- otherwise, if codec is MJPEG, reencode the video stream to MPEG4 or H264 codec;
             # Lower framerate on request, but forbid making it unreasonably high to avoid DoS attack
             if (isset($_GET['fps']) && (is_numeric($_GET['fps']) || is_float($_GET['fps'])) && $_GET['fps'] <= 30)
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec mpeg4 -r {$_GET['fps']} -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg $hwaccel -i $filename $audio_options $hwfilter -vcodec $vcodec -r {$_GET['fps']} -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
             else
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec mpeg4 -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg $hwaccel -i $filename $audio_options $hwfilter -vcodec $vcodec -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
         } else {
             unlink($outfile);
             header("HTTP/1.0 500 Internal Server Error - unsupported codec in video file");
