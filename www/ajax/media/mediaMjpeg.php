@@ -82,7 +82,7 @@ function image_err($msg)
 
 
 function print_image($id, $out_multipart, $current_user) {
-
+	global $global_settings;
 	$transcode = true;
 
 	if ($transcode) {
@@ -96,6 +96,9 @@ function print_image($id, $out_multipart, $current_user) {
 
 		// Launch ffmpeg with token as HTTP parameter
 
+		$hwaccel = "";
+		$hwfilter = "";
+
 		$device = data::getObject('Devices', 'id', $id);
 		if ($device[0]['protocol'] == 'IP-MJPEG') {
 			$codec = ' copy ';
@@ -105,14 +108,24 @@ function print_image($id, $out_multipart, $current_user) {
 			//$codec .= ' -r ' . $transcode_fps . ' ';
 			$transcode_quality = 5;
 			$codec .= ' -q:v ' . $transcode_quality . ' ';
+
+			$vaapi_device = $global_settings->data['G_VAAPI_DEVICE'];
+			if (strcasecmp($vaapi_device, "none") != 0)
+			{
+				$codec = " mjpeg_vaapi -r 5 -global_quality 90 -jfif 1 ";
+				$hwaccel = " -init_hw_device vaapi=hwva:$vaapi_device -hwaccel vaapi -hwaccel_output_format vaapi -hwaccel_device hwva ";
+				$hwfilter = " -filter_hw_device hwva -vf 'format=nv12|vaapi,hwupload' ";
+			}
 		}
 		$frames = ($out_multipart
 				? ''
 				: ' -vframes 1 ');
 
 		$cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg "
+			. $hwaccel
 			. " -rtsp_transport tcp -i rtsp://127.0.0.1:7002/live/$id?authtoken=$token "
 			. " -aspect 1/1 " # forces JFIF marker which is used for longer marker
+			. $hwfilter
 			. " -an -vcodec " . $codec . $frames ." -f rawvideo - ";
 
 		// Parse out individual frames and insert the boundary
