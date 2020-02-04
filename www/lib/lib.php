@@ -107,6 +107,33 @@ function checkVaapiSupport($renderNode, $profile) {
 	return substr_count($output, $profile);
 }
 
+function autoDetectVaapiSetup() {
+	$nodes = getRenderNodes();
+
+	if (empty($nodes))
+		return "None";
+
+	$scores = array();
+	$max_score = 0;
+	$max_score_id = 0;
+
+	for($i = 0; $i < count($nodes); $i++) {
+		$scores[$i] = checkVaapiSupport($nodes[$i], "H264");
+		$scores[$i] += checkVaapiSupport($nodes[$i], "HEVC");
+		$scores[$i] += checkVaapiSupport($nodes[$i], "JPEG");
+	}
+
+	for($i = 0; $i < count($nodes); $i++) {
+		if ($scores[$i] > $max_score) {
+			$max_score = $scores[$i];
+			$max_score_id = $i;
+		}
+
+	}
+
+	return $nodes[$max_score_id];
+}
+
 /**
  * Returns SQLite Database connection
  * 

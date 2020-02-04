@@ -100,6 +100,9 @@ class update extends Controller {
 		if (!empty($_POST['G_MAX_RECORD_AGE']))  # this catches all except "" and "0"
 			$_POST['G_MAX_RECORD_AGE'] *= 60 * 60 * 24;  # convert days to seconds
 
+		if (stristr($_POST['G_VAAPI_DEVICE'], 'autodetect'))
+			$_POST['G_VAAPI_DEVICE'] = autoDetectVaapiSetup();
+
 		foreach ($_POST as $parameter => $value){
 			if (!preg_match("/G_.+/", $parameter))
 				continue;

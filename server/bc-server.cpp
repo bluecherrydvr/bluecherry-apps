@@ -1007,8 +1007,9 @@ static void xml_status_callback(pugi::xml_document& xmldoc)
 
 static void setup_vaapi()
 {
-	const char *def = "/dev/dri/renderD128";
-	const char *renderNode = def;
+	const char autodetect[] = "Autodetect";
+	const char none[] = "None";
+	const char *renderNode = autodetect;
 	BC_DB_RES dbres;
 
 	dbres = bc_db_get_table("SELECT value from GlobalSettings WHERE "
@@ -1021,11 +1022,38 @@ static void setup_vaapi()
                 renderNode = bc_db_get_val(dbres, "value", NULL);
 	}
 
+	if (strncasecmp(renderNode, autodetect, sizeof autodetect) == 0) {
+		system("/usr/bin/php /usr/share/bluecherry/www/lib/vaapi_autodetect.php");
+
+		if (dbres)
+			bc_db_free_table(dbres);
+
+		dbres = bc_db_get_table("SELECT value from GlobalSettings WHERE "
+					"parameter='G_VAAPI_DEVICE'");
+
+		if (!dbres)
+			bc_status_component_error("Database failure for VAAPI device parameter");
+
+		if (dbres && !bc_db_fetch_row(dbres)) {
+			renderNode = bc_db_get_val(dbres, "value", NULL);
+			bc_log(Info, "Auto-detected VAAPI device: %s", renderNode);
+		}
+	}
+
+	if (strncasecmp(renderNode, none, sizeof none) == 0)
+		goto exit;
+
+	if (access(renderNode, R_OK) == -1) {
+		bc_log(Warning, "VAAPI device %s does not exist or is not readable to bluecherry, hardware acceleration is not available", renderNode);
+		goto exit;
+	}
+
 	if (!vaapi_hwaccel::init(renderNode)) {
 		bc_log(Warning, "Failed to initialize VAAPI device %s, VAAPI hardware acceleration is not available", renderNode);
 	} else
 		bc_log(Info, "Initialized render node %s for VAAPI hardware acceleration", renderNode);
 
+exit:
 	if (dbres)
 		bc_db_free_table(dbres);
 }
