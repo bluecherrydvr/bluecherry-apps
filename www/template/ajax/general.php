@@ -76,7 +76,7 @@
             <label class="col-lg-4 control-label"><?php echo G_VAAPI_DEVICE; ?><p class='help-block'><small><?php echo G_VAAPI_DEVICE_EX; ?></small></p></label>
 
             <div class="col-lg-6 col-md-6">
-                    <?php echo arrayToSelect(getRenderNodes(), $global_settings->data['G_VAAPI_DEVICE'], 'G_VAAPI_DEVICE'); ?>
+                    <?php echo arrayToSelect(getVaapiOptions(), $global_settings->data['G_VAAPI_DEVICE'], 'G_VAAPI_DEVICE'); ?>
             </div>
         </div>
 
