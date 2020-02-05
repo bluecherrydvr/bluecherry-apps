@@ -13,7 +13,7 @@
 <div class="row">
     <div class="col-lg-12">
 
-        <form action="/ajax/reencode.php" method="post" class="form-horizontal">
+        <form action="/ajax/reencode.php" method="post" class="form-horizontal" >
 	    <input type="hidden" name="id" value="<?php echo $this_camera->info['id']; ?>" />
 
         <div class="form-group">
@@ -30,7 +30,7 @@
                     <label class="col-lg-4 col-md-4 control-label"><?php echo REENCODE_ENABLED; ?></label>
 
 	           <div class="col-lg-6 col-md-6">
-	                <input type="checkbox" name="reencode_enabled" <?php echo $this_camera->info['reencode_livestream'] ? ' checked="checked"':''; ?>  />
+	                <input type="checkbox" name="reencode_enabled" <?php echo $this_camera->info['reencode_livestream'] ? ' checked="checked"':''; ?> <?php echo empty($vaapi_na) ? '' : 'disabled="disabled"' ; ?>  />
 	            </div>
 
                 </div>
@@ -51,8 +51,10 @@
 			echo arrayToSelect($reencode_resolutions, $reencode_res, 'resolution', 'resolution'); ?>
                     </div>
                 </div>
-                    
-
+<div class="col-lg-10 col-md-10">
+		<div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo "Note 1:  Livestream reencoding is available only if your GPU supports VAAPI hardware acceleration" ?></div>
+		<div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo "Note 2:  Enabling option \"Use substream for liveview\" in IP camera properties overrides this feature, stream provided by IP camera substream is used for live view instead of the reencoded main video stream" ?></div>
+</div>
             </div>
         </div>
     </div>

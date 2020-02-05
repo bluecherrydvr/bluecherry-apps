@@ -10,11 +10,22 @@ class reencode extends Controller {
 
     public function getData()
     {
-        $this->setView('ajax.reencode');
+	global $global_settings;
+
+	$this->setView('ajax.reencode');
+
+	$vaapi_device = $global_settings->data['G_VAAPI_DEVICE'];
+
+	$vaapi_na = "";
+
+	if (strcasecmp($vaapi_device, "none") == 0)
+		$vaapi_na = "disabled";
+
+	$this->view->vaapi_na = $vaapi_na;
 
 	$this_camera = device(intval($_GET['id']));
-        
-        $this->view->this_camera = $this_camera;
+
+	$this->view->this_camera = $this_camera;
     }
 
     public function postData()
