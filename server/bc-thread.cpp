@@ -303,8 +303,13 @@ void bc_record::run()
 				th.detach();
 			}
 
-			if (cfg.reencode_enabled) {
+			if (cfg.reencode_enabled && bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT) {
 				reenc = new reencoder(cfg.reencode_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
+
+				/* Reencoded stream has different properties, they'll be set later when
+				 * the first packet comes out from encoder */
+				if (bc_streaming_is_setup(this))
+					bc_streaming_destroy(this);
 			}
 
 			sched_last = 0;
@@ -336,13 +341,25 @@ void bc_record::run()
 		bc->source->send(packet);
 
 		/* Reencode packet for live streaming here */
-		if (bc_streaming_is_active(this) && !bc->substream_mode && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
-			if (reenc->push_packet(packet, true) && reenc->run_loop()) {
-				bc_log(Debug, "got reencoded packet!");
-				packet = reenc->streaming_packet();
+		if (!bc->substream_mode && reenc && packet.type == AVMEDIA_TYPE_VIDEO) {
+			if (reenc->push_packet(packet, true)) {
+				while (reenc->run_loop());
+
+				while(reenc->read_streaming_packet()) {
+					packet = reenc->streaming_packet();
+
+					if (!bc_streaming_is_setup(this)) {
+						if (bc_streaming_setup(this, packet.properties()))
+							log.log(Error, "Unable to reinitialize reencoded live view stream");
+					}
+
+					if (bc_streaming_is_active(this))
+						if (bc_streaming_packet_write(this, packet) == -1)
+							log.log(Error, "Failed to stream reencoded live view");
+				}
 			}
-			else
-				continue;
+
+			continue;
 		}
 
 		/* Send packet to streaming clients */
