@@ -87,7 +87,7 @@ bool reencoder::init_enc_streaming(AVFrame *in)
 {
 	if (!enc_streaming)
 	{
-		bc_log(Info, "creating encoder instance for streaming");
+		bc_log(Debug, "creating encoder instance for streaming");
 
 		enc_streaming = new encoder();
 

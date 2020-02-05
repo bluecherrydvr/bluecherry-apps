@@ -161,7 +161,7 @@ bool scaler::init_scaler(int out_width, int out_height, const AVCodecContext *de
 		goto end;
 
 	filter_dump = avfilter_graph_dump(filter_graph, NULL);
-	bc_log(Info, "scaler: created filter graph %s", filter_dump);
+	bc_log(Debug, "scaler: created filter graph %s", filter_dump);
 	av_free(filter_dump);
 
 	out_frame = av_frame_alloc();
