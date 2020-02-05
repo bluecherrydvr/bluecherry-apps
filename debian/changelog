@@ -1,9 +1,17 @@
-bluecherry (3:3.0.0) trusty xenial jessie bionic stretch; urgency=low
-  * Work in progress...
+bluecherry (3:3.0.1) xenial bionic stretch; urgency=low
+
+  * IP camera substreams can be used as a live view stream source
+
+  * VAAPI hardware accelerated decoding for motion detection
+
+  * VAAPI hardware accelerated reencoding for MJPEG streams in web UI live
+    view
+
   * New feature - force password change on next user login
+
   * Livestream reencoding to lower bitrate using VAAPI acceleration
 
- -- Anton Sviridenko <anton@corp.bluecherry.net>  Mon, 17 Apr 2017 08:00:00 +0400
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Thu, 06 Feb 2020 00:25:00 +0400
 
 bluecherry (2:2.8.0) trusty xenial wheezy jessie; urgency=low
 
