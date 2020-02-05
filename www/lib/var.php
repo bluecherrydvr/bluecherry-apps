@@ -102,6 +102,7 @@ $varpub_globals['cts_record_durations'] = $GLOBALS['cts_record_durations'];
 #reencode bitrates
 $GLOBALS['reencode_bitrates'] = array(
 	'64000' => '64 kbps',
+	'96000' => '96 kbps',
 	'128000' => '128 kbps',
 	'256000' => '256 kbps',
 	'512000' => '512 kbps',
@@ -114,7 +115,8 @@ $GLOBALS['reencode_resolutions'] = array(
 	'320x240',
 	'352x240',
 	'352x288',
-	'640x480'
+	'640x480',
+	'704x576'
 );
 $varpub_globals['reencode_resolutions'] = $GLOBALS['reencode_resolutions'];
 
