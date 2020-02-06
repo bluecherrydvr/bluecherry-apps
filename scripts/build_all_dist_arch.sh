@@ -13,7 +13,7 @@ function work {
 }
 
 # TODO Implement parallel building outside of sources tree
-for DIST in bionic stretch trusty xenial jessie
+for DIST in bionic buster
 do
 	export DIST
 	for ARCH in amd64 i386

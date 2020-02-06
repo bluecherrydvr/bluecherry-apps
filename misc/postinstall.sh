@@ -128,6 +128,9 @@ case "$1" in
 			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
 			then
 				a2enmod php7.2
+			elif [[ "$VERSION" == "10 (buster)" ]]
+			then
+				a2enmod php7.3
 			else
 				a2enmod php5
 			fi

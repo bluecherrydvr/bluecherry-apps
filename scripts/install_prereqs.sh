@@ -33,7 +33,7 @@ case "`uname --hardware-platform`" in
 		;;
 esac
 
-if [[ $VERSION == "9 (stretch)" ]]
+if [[ $VERSION == "9 (stretch)" || $VERSION == "10 (buster)" ]]
 then
 	ADDITIONAL_PKGS="$ADDITIONAL_PKGS default-libmysqlclient-dev"
 else

@@ -25,7 +25,7 @@ deb $APT_SOURCES_URL ${DIST}-updates main restricted universe multiverse
 deb $APT_SOURCES_URL ${DIST}-backports main restricted universe multiverse
 EOF
 		;;
-	wheezy|jessie|stretch)
+	wheezy|jessie|stretch|buster)
 		DISTRO=debian
 		MIRROR_URL="http://mirrors.kernel.org/debian/"
 		cat <<EOF > "./sources.list"

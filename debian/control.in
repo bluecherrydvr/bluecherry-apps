@@ -8,6 +8,7 @@ Build-Depends: debhelper (>= 7),
 #trusty libmysqlclient-dev,
 #jessie libmysqlclient-dev,
 #stretch default-libmysqlclient-dev,
+#buster default-libmysqlclient-dev,
  libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
  libva-dev
 Standards-Version: 3.8.4
@@ -23,6 +24,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  i965-va-driver,
 #xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
 #bionic  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
+#buster  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
 #stretch php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
 #precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
 #trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
