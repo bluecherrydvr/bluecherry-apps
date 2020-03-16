@@ -1132,17 +1132,38 @@ class cameraPtz{
 					$profileToken = $sources[0][0]['profiletoken'];
 
 					if ($pantilt_x || $pantilt_y) {
-						$ponvif->ptz_RelativeMove($profileToken, $pantilt_x, $pantilt_y, $speed_pantilt_x, $speed_pantilt_y);
+						$ponvif->ptz_ContinuousMove($profileToken, $pantilt_x, $pantilt_y, $speed_pantilt_x, $speed_pantilt_y);
 					}
 
 					if ($zoom) {
-						$ponvif->ptz_RelativeMoveZoom($profileToken, $zoom, $zoom_speed);
+						$ponvif->ptz_ContinuousMoveZoom($profileToken, $zoom, $zoom_speed);
 					}
 				}
 			} catch (Exception $e) {
-			}
-		}
-	}
+                    }
+            } elseif (!is_array($command) && $command == 'stop') {
+
+                    $ponvif = new Ponvif();
+                    $ponvif->setIPAddress($this->camera->info['ipAddr'] . ':' . $this->camera->info['onvif_port']);
+                    $ponvif->setUsername($this->camera->info['rtsp_username']);
+                    $ponvif->setPassword($this->camera->info['rtsp_password']);
+
+
+                    try {
+                            $init = $ponvif->initialize();
+                            $sources = $ponvif->getSources();
+
+                            if (empty($sources) || $ponvif->isFault($sources)) {
+                                    // error
+                            } else {
+                                    $profileToken = $sources[0][0]['profiletoken'];
+
+                                    $ponvif->ptz_Stop($profileToken, true, false);
+                            }
+                    } catch (Exception $e) {
+                    }
+            }
+    }
 
 	private function getIpCommandPreset($id){
 		return data::getObject("ipPtzCommandPresets", "id", $id);
