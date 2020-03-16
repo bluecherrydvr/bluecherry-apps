@@ -1,3 +1,11 @@
+bluecherry (3:3.0.2) xenial bionic stretch; urgency=low
+
+  * #383 - ONVIF PTZ not functioning
+
+  * #382 IP camera detection no longer works
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sun, 15 Mar 2020 21:58:00 -0600
+
 bluecherry (3:3.0.1) xenial bionic stretch; urgency=low
 
   * IP camera substreams can be used as a live view stream source
