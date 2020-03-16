@@ -172,7 +172,12 @@ class discoverCameras extends Controller {
             34599
         );
 
-        $p = @popen("/usr/bin/nmap --script=broadcast-wsdd-discover", "r");
+        $ipaddress = $_SERVER['REMOTE_ADDR'];
+		// Grab the IP address, then chop off the last octet and replace it with a 0 and then nmap that subnet.  This could fail miserably on a public IP.
+        $target = long2ip(ip2long("$ipaddress") & 0xFFFFFF00);
+        // Quick and dirty hack to fix IP camera detection bug #382
+        $p = @popen("/usr/bin/nmap -p 554 $ipaddress/24 --open -oG -", "r");
+
         if (!$p) {
             data::responseJSON(0);
         }
