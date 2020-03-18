@@ -1,8 +1,6 @@
 <?php 
 
 /*
-eeeeeee
-
 Copyright (c) 2010-2011 Bluecherry, LLC.
     http://www.bluecherrydvr.com / support@bluecherrydvr.com
     Confidential, all rights reserved. No distribution is permitted.
