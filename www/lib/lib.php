@@ -1080,66 +1080,65 @@ class cameraPtz{
 		}
 	}
 
-	private function moveOnvif($command)
-	{
-		if (is_array($command) && (Inp::get('command') == 'move')) {
-			$speed_pantilt_x = '0.5';
-			$speed_pantilt_y = '0.5';
-			$pantilt_x = 0;
-			$pantilt_y = 0;
-			$zoom = 0;
-			$zoom_speed = '0.5';
+	  private function moveOnvif($command)
+    {
+            if (is_array($command) && (Inp::get('command') == 'move')) {
+                    $speed_pantilt_x = '0.5';
+                    $speed_pantilt_y = '0.5';
+                    $pantilt_x = 0;
+                    $pantilt_y = 0;
+                    $zoom = 0;
+                    $zoom_speed = '0.5';
 
-			$xy_value = 5 / 100 ;
+                    $xy_value = 5 / 100 ;
 
-			if ($command['pan'] == 'r') {
-				$pantilt_x = $xy_value;
-			}
+                    if ($command['pan'] == 'r') {
+                            $pantilt_x = $xy_value;
+                    }
 
-			if ($command['pan'] == 'l') {
-				$pantilt_x = -1 * $xy_value;
-			}
+                    if ($command['pan'] == 'l') {
+                            $pantilt_x = -1 * $xy_value;
+                    }
 
-			if ($command['tilt'] == 'u') {
-				$pantilt_y = $xy_value;
-			}
+                    if ($command['tilt'] == 'u') {
+                            $pantilt_y = $xy_value;
+                    }
 
-			if ($command['tilt'] == 'd') {
-				$pantilt_y = -1 * $xy_value;
-			}
+                    if ($command['tilt'] == 'd') {
+                            $pantilt_y = -1 * $xy_value;
+                    }
 
-			if ($command['zoom'] == 't') {
-				$zoom = '0.1';
-			}
+                    if ($command['zoom'] == 't') {
+                            $zoom = '0.1';
+                    }
 
-			if ($command['zoom'] == 'w') {
-				$zoom = '-0.1';
-			}
+                    if ($command['zoom'] == 'w') {
+                            $zoom = '-0.1';
+                    }
+                    $ponvif = new Ponvif();
+                    $ponvif->setIPAddress($this->camera->info['ipAddr'] . ':' . $this->camera->info['onvif_port']);
+                    $ponvif->setUsername($this->camera->info['rtsp_username']);
+                    $ponvif->setPassword($this->camera->info['rtsp_password']);
 
-			$ponvif = new Ponvif();
-			$ponvif->setIPAddress($this->camera->info['ipAddr'] . ':' . $this->camera->info['onvif_port']);
-			$ponvif->setUsername($this->camera->info['rtsp_username']);
-			$ponvif->setPassword($this->camera->info['rtsp_password']);
 
+                    try {
+                            $init = $ponvif->initialize();
+                            $sources = $ponvif->getSources();
 
-			try {
-				$init = $ponvif->initialize();
-				$sources = $ponvif->getSources();
+                            if (empty($sources) || $ponvif->isFault($sources)) {
+                                    // error
+                            } else {
+                                    $profileToken = $sources[0][0]['profiletoken'];
 
-				if (empty($sources) || $ponvif->isFault($sources)) {
-					// error
-				} else {
-					$profileToken = $sources[0][0]['profiletoken'];
+                                    if ($pantilt_x || $pantilt_y) {
+                                            $ponvif->ptz_ContinuousMove($profileToken, $pantilt_x, $pantilt_y, $speed_pantilt_x, $speed_pantilt_y);
+                                    }
 
-					if ($pantilt_x || $pantilt_y) {
-						$ponvif->ptz_ContinuousMove($profileToken, $pantilt_x, $pantilt_y, $speed_pantilt_x, $speed_pantilt_y);
-					}
-
-					if ($zoom) {
-						$ponvif->ptz_ContinuousMoveZoom($profileToken, $zoom, $zoom_speed);
-					}
-				}
-			} catch (Exception $e) {
+                                    if ($zoom) {
+                                            $ponvif->ptz_ContinuousMoveZoom($profileToken, $zoom, $zoom_speed);
+                                    }
+                            }
+                    } catch (Exception $e) {
                     }
             } elseif (!is_array($command) && $command == 'stop') {
 
