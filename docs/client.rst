@@ -16,7 +16,7 @@ The next three steps will allow you to easily connect to an existing Bluecherry 
 
 .. image:: img/media_1343401030662_display.png
 
-Enter the hostname or IP address of the Bluecherry server. The default login and password for new installations is 'Admin' and 'bluecherry' (no quotes). You can optionally click 'Use default' to have this information automatically entered for you.
+Enter the hostname or IP address of the Bluecherry server. The default login and password for new installations are 'Admin' and 'bluecherry' (no quotes). You can optionally click 'Use default' to have this information automatically entered for you.
 
 .. image:: img/media_1343401081941_display.png
 
@@ -49,11 +49,11 @@ Once you select 'Apply' the client will automatically connect to the server. All
 Adding cameras to the live view
 -------------------------------
 
-Once you have successfully connected to a Bluecherry server the list of available cameras will be displayed on the left.
+Once you have successfully connected to a Bluecherry server, the list of available cameras will be displayed on the left.
 
 .. image:: img/media_1343401663259_display.png
 
-Drag and drop cameras onto the live view area
+Drag and drop cameras onto the live view area.
 
 .. image:: img/Drag_and_drop_cameras_onto_the_live_view_area_display.png
 
@@ -69,18 +69,16 @@ Cameras with audio stream available are marked with the blue speaker icon. You c
 
 .. image:: img/57cc3c5a903360649f6e5018/file-fvdWbUe8AD.png
 
-When audio is enabled on one camera, it is disabled on all others, only the single camera stream can be listened at the same time.
+When audio is enabled on one camera, it is disabled on all others. Only the single camera stream can be listened at the same time.
 
-If your camera supports audio, but the speaker icon does not appear in the live view area, please check that "Enable audio" checkbox is checked in camera properties of the Bluecherry server administration interface and  audio stream is enabled in camera's own settings.
+If your camera supports audio but the speaker icon does not appear in the live view area, please check that "Enable audio" checkbox is checked in camera properties of the Bluecherry server administration interface and  audio stream is enabled in camera's own settings.
 
 Layouts
 -------
 
-We support several different methods of viewing your cameras. First, it's possible to create as many layouts as you need. For example, you are a school resource officer who wants to only watch the hallways of your school that has two Bluecherry DVR systems installed. You can create a new layout
+We support several different methods of viewing your cameras. It's possible to create as many layouts as you need. For example, you are a school resource officer who wants to only watch the hallways of your school that has two Bluecherry DVR systems installed. You can create a new layout
 
 .. image:: img/media_1291306737420_display.png
-
-First, it's possible to create as many layouts as you need. For example, you are a school resource officer who wants to only watch the hallways of your school that has two Bluecherry DVR systems installed.
 
 First drag and drop the cameras into the layout that you prefer. Then click 'New Layout' and create a name for the new layout and click ok.
 
@@ -88,7 +86,7 @@ First drag and drop the cameras into the layout that you prefer. Then click 'New
 
 **Pre-defined layouts**
 
-We provide four pre-defined layouts as seen in the box above. These are one channel, four channel, nine channel and sixteen channel layouts.
+We provide four pre-defined layouts as seen in the box above. These are one channel, four channel, nine channel, and sixteen channel layouts.
 
 .. image:: img/Pre-defined_layouts.png
 
@@ -122,7 +120,7 @@ Double clicking on the event will pull up the video. At this point you can play 
 Searching events
 ----------------
 
-By default the list of events under the main live view window are limited to just a few hours.  To access all of the events select 'Events' in the top left corner of the UI.
+By default the list of events under the main live view window are limited to just a few hours. To access all of the events select 'Events' in the top left corner of the UI.
 
 .. image:: img/file-0LIlQV0NJa.png
 
@@ -130,7 +128,7 @@ From the screen below you can select the camera(s) you want to view events on, a
 
 .. image:: img/file-IVwulSqFHd.png
 
-Once you select the date click **Load events**, this is a very important step, otherwise the server will not display any events.
+Once you select the date click **Load events**.  This is a very important step, otherwise the server will not display any events.
 
 
 
