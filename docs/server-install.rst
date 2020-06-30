@@ -9,7 +9,7 @@ Server Installation
 Requirements
 ------------
 
-Version 2 supports Ubuntu LTS releases (Ubuntu 14.04 and Ubuntu 16.04), Debian Jessie and experimental support for CentOS 7.
+Version 3 (beta) supports Ubuntu LTS releases (Ubuntu 16.04 and Ubuntu 18.04), Debian 9 (Stretch) and Debian 10 (Buster).  Support for CentOS has been removed.
 
 
 Ubuntu has two different x86 installation methods. The first is Ubuntu desktop, which will install Ubuntu along with the graphical interface. It is recommended that users without prior knowledge of Ubuntu or Linux use this method. You can also download our ISO image (bluecherry-v2-desktop-14.04-amd64.iso)
@@ -19,15 +19,13 @@ The second installation method is Ubuntu Server. The installation is a text-base
 
 Installing Bluecherry from the Bluecherry repository
 ----------------------------------------------------
-Obtain download instructions
+Download instructions
 
-
-If you haven’t purchased a software license from us, you can give our software a free 30 day spin by clicking here and you will be given the download instructions.
+Currently version 3 is in beta which means 'unstable'.  
 
 Copy and paste the commands to add our repository, or use the ISO to automate the install.
 
-``sudo bash -c "$(wget -O - https://dl.bluecherrydvr.com/scripts/install)")"``
-
+`` sudo bash -c "$(wget -O - https://dl.bluecherrydvr.com/scripts/install-unstable)"``
 
 
 Installing the server
