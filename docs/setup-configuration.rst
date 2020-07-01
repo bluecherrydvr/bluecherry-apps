@@ -34,7 +34,7 @@ Navigating the web interface
 18. Profile link - Here you can easily update your profile, reset your password, or simply logout
 
 Adding / Managing network (IP) cameras
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------
 
 This section covers adding and managing analog cameras. A Bluecherry hardware compression card is required for use with analog cameras and our software.
 
@@ -71,7 +71,7 @@ ONVIF port.  Defaults to port 80, currently not used by Bluecherry and added for
 Once this you've completed this section click Add camera then test your configuration in the Bluecherry client or Bluecherry web interface.  Optionally you can look at /var/log/bluecherry.log to see if the IP camera was successfully connected to by Bluecherry.
 
 Automatic discovery of IP cameras
----------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Select Devices from the menu**
 
@@ -107,7 +107,7 @@ Recording schedules
 
 We support two types of schedules. The first is a global schedule and the second is a per-camera schedule. Both are covered below
 
-.. image:: docs/global-schedule.png
+.. image:: img/global-schedule.png
 
 **Global schedule**
 
@@ -126,8 +126,11 @@ Under the Devices tab, select ‘Schedule’ under each camera that you want to 
 
 **Select the checkbox for ‘Use device-specific schedule for this camera’ and select the type of recording schedule you want and click ‘Save changes’**
 
+Users and permissions
+---------------------
+
 Adding users
-------------
+^^^^^^^^^^^^
 
 .. image:: img/users.png
 
@@ -138,8 +141,8 @@ Adding users
 **Complete the form with the user specific information. It’s usually recommended to have two administrator accounts, in case one user is delete or the password is forgotten.**
 
 
-Editing / viewing users
-----------------------
+Managing users
+^^^^^^^^^^^^^^
 
 .. image:: img/user-selection.png
 
@@ -152,7 +155,7 @@ Editing / viewing users
 **You can the option to change any of the fields above, including the password. You can also add specific restrictions on what the user has access to. The notes section lets you add user specific notes.**
 
 Restrict cameras per user
--------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Restricting access on a per-user basis**
 
@@ -173,6 +176,7 @@ System logs
 -----------
 
 **Select ‘System Log’ from the left menu bar **
+
 .. image:: img/systemlog-select.png
 
 **This log shows everything that has been logged to /var/log/bluecherry.log and to /var/lib/bluecherry/www-error.log
