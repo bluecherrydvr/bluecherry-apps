@@ -40,7 +40,7 @@ This section covers adding and managing analog cameras. A Bluecherry hardware co
 
 .. Tip:: It is recommended that you change the 'List Source' from 'Local' to 'Live' in General Settings -> Performance/connectivity.  This will allow you to recieve the last list of manufacturers and model numbers.
 
-** image:: img/list-source.png
+.. image:: img/list-source.png
 
 Manually adding network (IP) cameras
 ------------------------------------
@@ -58,7 +58,7 @@ Manually adding network (IP) cameras
 
 **Devices -> Add an IP cameras**
 
-** image:: img/ipcamera-manual-add.png
+.. image:: img/ipcamera-manual-add.png
 
 If you already know the RTSP path you can select 'Generic' and update the Camera name (used in Bluecherry to show events), Camera IP or host, Username, Password.
 
