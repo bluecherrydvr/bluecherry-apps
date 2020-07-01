@@ -34,7 +34,7 @@ Navigating the web interface
 18. Profile link - Here you can easily update your profile, reset your password, or simply logout
 
 Adding / Managing network (IP) cameras
---------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This section covers adding and managing analog cameras. A Bluecherry hardware compression card is required for use with analog cameras and our software.
 
@@ -43,7 +43,7 @@ This section covers adding and managing analog cameras. A Bluecherry hardware co
 .. image:: img/list-source.png
 
 Manually adding network (IP) cameras
-------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Select Devices from the menu**
 
