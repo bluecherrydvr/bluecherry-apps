@@ -38,9 +38,7 @@ Adding / Managing network (IP) cameras
 
 This section covers adding and managing analog cameras. A Bluecherry hardware compression card is required for use with analog cameras and our software.
 
-Tip
-
-It is recommended that you change the 'List Source' from 'Local' to 'Live' in General Settings -> Performance/connectivity.  This will allow you to recieve the last list of manufacturers and model numbers.
+.. Tip:: It is recommended that you change the 'List Source' from 'Local' to 'Live' in General Settings -> Performance/connectivity.  This will allow you to recieve the last list of manufacturers and model numbers.
 
 ** image:: img/list-source.png
 
@@ -56,9 +54,7 @@ Manually adding network (IP) cameras
 
 .. image:: img/devices-list-ip.png
 
-Tip
-
-Always make sure your IP cameras are set to a static IP.  If the IP camera is setup with dynamic (DHCP) and the IP address changes Bluecherry will not be able to connect to the IP camera.
+.. Tip:: Always make sure your IP cameras are set to a static IP.  If the IP camera is setup with dynamic (DHCP) and the IP address changes Bluecherry will not be able to connect to the IP camera.
 
 **Devices -> Add an IP cameras**
 
@@ -85,21 +81,19 @@ Automatic discovery of IP cameras
 
 .. image:: img/devices-list-ip.png
 
-Warning
-
-Currently this is still in development and may not work as expected and can take up to two minutes to run.
+.. Warning:: Currently this is still in development and may not work as expected and can take up to two minutes to run.
 
 **Devices -> Discover IP Cameras -> Find cameras**
 
-** image:: img/ipcamera-discovery.png
+.. image:: img/ipcamera-discovery.png
 
 A list of the IP addresses and model numbers (if available) will be listed of any device that Bluecherry can autodetect.  If your IP camera is NOT in this list then follow the Manually adding network (IP) cameras section.
 
-** image:: img/ipcamera-discovery-list.png
+.. image:: img/ipcamera-discovery-list.png
 
 Click on the checkbox next to the camera you wish to add then click 'Add camera'
 
-** image:: img/ipcamera-discovery-auth.png
+.. image:: img/ipcamera-discovery-auth.png
 
 Complete the login and password for the camera then click 'Add selected camera'
 
