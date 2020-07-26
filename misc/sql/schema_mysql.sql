@@ -82,6 +82,7 @@ CREATE TABLE `Devices` (
   `reencode_frame_height` smallint(6) NOT NULL DEFAULT '240',
   `substream_mode` tinyint(1) DEFAULT '0',
   `substream_path` varchar(255) DEFAULT NULL,
+  `onvif_events_enabled` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)

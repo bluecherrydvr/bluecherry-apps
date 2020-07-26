@@ -38,6 +38,16 @@
                     
         <div class="form-group">
             <div class="col-lg-12">
+                <?php if (!$global) { ?>
+                        <label class="checkbox-inline form-control-static">
+                            <input type="checkbox" class="" name="onvif_events_enabled"  <?php echo (($$device_schedule->schedule_data[0]['onvif_events_enabled']) ? ' checked="checked"': '' ); ?> /> <?php echo TRIGGER_ONVIF_EVENTS; ?>
+                        </label>
+                <?php } ?>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-lg-12">
                 <button class="btn btn-success pull-right send-req-form" type="submit" data-func="getMotionMap"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
                 <div class="clearfix"></div>
             </div>

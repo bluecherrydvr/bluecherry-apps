@@ -661,6 +661,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	    strcmp(current->signal_type, update->signal_type) ||
 	    strcmp(current->rtsp_username, update->rtsp_username) ||
 	    strcmp(current->rtsp_password, update->rtsp_password) ||
+	    current->onvif_events_enabled != update->onvif_events_enabled ||
 	    current->reencode_enabled != update->reencode_enabled ||
 	    current->reencode_bitrate != update->reencode_bitrate ||
 	    current->reencode_frame_width != update->reencode_frame_width ||

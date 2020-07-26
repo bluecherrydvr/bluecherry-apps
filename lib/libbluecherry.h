@@ -109,6 +109,7 @@ struct bc_device_config {
 	char motion_map[769];
 	int8_t motion_algorithm;
 	double motion_frame_downscale_factor;
+	bool onvif_events_enabled;
 	int min_motion_area;
 	char schedule[7 * 24 + 1];
 	int     width, height;
