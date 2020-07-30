@@ -8,6 +8,7 @@
 #define __BC_SERVER_H
 
 #include "libbluecherry.h"
+#include <thread>
 #include <pthread.h>
 
 extern "C" {
@@ -92,6 +93,10 @@ public:
 
 	/* Watermarking */
 	int watermarking_enabled;
+
+	/* ONVIF events */
+	class onvif_events *onvif_ev;
+	class std::thread *onvif_ev_thread;
 
 	int cur_pkt_flags;
 	int motion_flag;

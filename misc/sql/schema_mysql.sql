@@ -108,6 +108,7 @@ CREATE TABLE `Devices` (
   `reencode_bitrate` int(11) NOT NULL DEFAULT '64000',
   `reencode_frame_width` smallint(6) NOT NULL DEFAULT '352',
   `reencode_frame_height` smallint(6) NOT NULL DEFAULT '240',
+  `onvif_events_enabled` tinyint(1) DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)

@@ -296,6 +296,7 @@ define('EDITING_MMAP', 'Motion detection settings for camera:');
 define('EDITING_SCHED', 'Recording schedule for camera:');
 define('EDITING_GLOBAL_SCHED', 'Global schedule');
 define('GLOBAL_SCHED_OG', 'Use device-specific schedule for this camera.');
+define('TRIGGER_ONVIF_EVENTS', 'Trigger recording on ONVIF events');
 define('SIGNAL_TYPE_NOT_CONFD', 'Configure at least one device first');
 define('SCHED_GLOBAL', 'global');
 define('SCHED_SPEC', 'device specific');

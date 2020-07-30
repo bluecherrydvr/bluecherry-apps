@@ -308,6 +308,7 @@ define('EDITING_MMAP', 'Configuracao de Deteccao de Movimento para a Camera:');
 define('EDITING_SCHED', 'Agendamento de Gravacao Para a Camera:');
 define('EDITING_GLOBAL_SCHED', 'Agendamento Global');
 define('GLOBAL_SCHED_OG', 'Usar Programacao Especifica Para Esta Camera.');
+define('TRIGGER_ONVIF_EVENTS', 'Disparar a gravacao em eventos ONVIF');
 define('SIGNAL_TYPE_NOT_CONFD', 'Configurar Pelo Menos um Dispositivo Primeiro');
 define('SCHED_GLOBAL', 'Global');
 define('SCHED_SPEC', 'Dispositivo Especifico');

@@ -86,6 +86,19 @@ function scheduleOverrideGlobal(el) {
     }
 }
 
+function triggerONVIFevents(el) {
+    var par = el.closest('div');
+    var el_val = par.find('input[name="onvif_events_enabled"]');
+
+    if (el.prop('checked')) {
+        
+        el_val.val('1');
+    } else {
+
+        el_val.val('0');
+    }
+}
+
 function getMotionMap(form) {
     var tds = form.find('.table-grid td');
     var map = '';

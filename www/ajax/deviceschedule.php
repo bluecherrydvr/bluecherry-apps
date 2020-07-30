@@ -15,7 +15,7 @@ class deviceschedule extends Controller {
 
         $id = (isset($_GET['id']) and $_GET['id'] != '') ? intval($_GET['id']) : 'global';
 
-		$q = ($id != 'global') ? "SELECT id, device_name, protocol, schedule, schedule_override_global FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
+		$q = ($id != 'global') ? "SELECT id, device_name, protocol, schedule, schedule_override_global, onvif_events_enabled FROM Devices WHERE id='$id'" : "SELECT value as schedule FROM GlobalSettings WHERE parameter='G_DEV_SCED'";
 		$tmp =  data::query($q);
 		#if there is no schedule copy global
 		if ($id != 'global' && empty($tmp[0]['schedule'])){
