@@ -105,6 +105,10 @@ public:
 	/* Livestream reencoding */
 	class reencoder *reenc;
 
+	/* ONVIF events */
+	class onvif_events *onvif_ev;
+	class std::thread *onvif_ev_thread;
+
 	int cur_pkt_flags;
 	int cur_stream_index;
 	bool pkt_first_chunk;

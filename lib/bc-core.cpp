@@ -363,6 +363,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->video_quality = bc_db_get_val_int(dbres, "video_quality");
 
 	cfg->onvif_events_enabled = bc_db_get_val_int(dbres, "onvif_events_enabled") != 0;
+	cfg->onvif_port = bc_db_get_val_int(dbres, "onvif_port");
 
 	cfg->motion_algorithm = bc_db_get_val_int(dbres, "motion_algorithm");
 	cfg->motion_frame_downscale_factor = bc_db_get_val_float(dbres, "frame_downscale_factor");

@@ -29,6 +29,7 @@
 #include "v4l2_device_solo6010-dkms.h"
 #include "v4l2_device_tw5864.h"
 #include "stream_elements.h"
+#include "onvif_events.h"
 #include "motion_processor.h"
 #include "trigger_processor.h"
 #include "motion_handler.h"
@@ -301,6 +302,11 @@ void bc_record::run()
 
 				std::thread th(&motion_handler::run, m_handler);
 				th.detach();
+
+				if (cfg.onvif_events_enabled) {
+					onvif_ev = new onvif_events();
+					onvif_ev_thread = new std::thread(&onvif_events::run, onvif_ev, this);
+				}
 			}
 
 			if (cfg.reencode_enabled && bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT) {
@@ -408,6 +414,8 @@ bc_record::bc_record(int i)
 	sched_last = 0;
 	thread_should_die = 0;
 	file_started = 0;
+	onvif_ev = 0;
+	onvif_ev_thread = 0;
 
 	m_processor = 0;
 	t_processor = 0;
@@ -521,6 +529,12 @@ void bc_record::destroy_elements()
 		t_processor->disconnect();
 		t_processor->destroy();
 		t_processor = 0;
+	}
+
+	if (onvif_ev) {
+		onvif_ev->stop();
+		onvif_ev = 0;
+		onvif_ev_thread->join();
 	}
 
 	if (m_handler) {
@@ -662,6 +676,7 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	    strcmp(current->rtsp_username, update->rtsp_username) ||
 	    strcmp(current->rtsp_password, update->rtsp_password) ||
 	    current->onvif_events_enabled != update->onvif_events_enabled ||
+	    current->onvif_port != update->onvif_port ||
 	    current->reencode_enabled != update->reencode_enabled ||
 	    current->reencode_bitrate != update->reencode_bitrate ||
 	    current->reencode_frame_width != update->reencode_frame_width ||
