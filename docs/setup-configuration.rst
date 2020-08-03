@@ -102,6 +102,24 @@ Once this you've completed this section click Add camera then test your configur
 
 .. image:: img/webui-sections.png
 
+Motion detection settings
+-------------------------
+
+.. image:: img/motion-detection-settings.png
+
+Pre-event buffer: Amount (in seconds) of video saved prior to when motion is recorded
+Post-event buffer: Amount (in seconds) of video saved after motion is recorded
+
+**Motion detection algorithm**
+
+Default: This uses more host CPU usage, but is easier to configure.
+
+Experimental:  
+
+Frame downscale factor - Each video frame is downscaled by this factor before applying motion detection algorithms, this saves CPU usage as processing full-sized frames take more CPU time.  However when using a smaller (downscaled) video frame small amounts of motion could be missed.
+Minimum percent - Amount (in precentage) of the video frame covered by moving object before a motion event is considered good.
+
+
 Recording schedules
 ------------------
 
