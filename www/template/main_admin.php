@@ -158,7 +158,9 @@
                         <li>
                             <a href="/notifications" class="ajax-content" data-left-menu="true"><i class="fa fa-envelope fa-fw"></i> <?php echo MMENU_NOTFICATIONS; ?></a>
                         </li>
-
+                        <li>
+                            <a href="/webhook"><i class="fa fa-cog fa-fw"></i> Webhooks</a>
+                        </li>
                         <li class="divider"></li>
                         <li class="divider"></li>
 
@@ -326,6 +328,7 @@
     <script src="/template/dist/js/discoverCameras.js"></script>
     <script src="/template/dist/js/profile.js"></script>
     <script src="/template/dist/js/ptz.js"></script>
+    <script src="/template/dist/js/webhook.js"></script>
 
     <?php echo getJs(); ?>
 </body>
