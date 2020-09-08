@@ -330,6 +330,24 @@ CREATE TABLE `ipPtzCommandPresets` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+
+DROP TABLE IF EXISTS `webhooks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `webhooks` (
+	`id` SMALLINT(5) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`label` VARCHAR(50) NOT NULL,
+	`url` VARCHAR(255) NOT NULL,
+	`events` VARCHAR(255) NULL DEFAULT NULL,
+	`cameras` VARCHAR(255) NULL DEFAULT NULL,
+	`status` TINYINT(4) NOT NULL DEFAULT '0',
+	`last_update` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+
 DROP TABLE IF EXISTS `notificationSchedules`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
