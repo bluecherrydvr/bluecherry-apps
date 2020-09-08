@@ -35,6 +35,71 @@ $mime = new Mail_mime($crlf);
 
 $timestamp = time();
 
+function webhook_trigger($eventName, $deviceId, $payload = array()) {
+	$webhooks = data::query('SELECT * FROM `webhooks` WHERE `status` = 1');
+
+	if (empty($webhooks)) {
+		return;
+	}
+
+	$handlers = array();
+	$cct = curl_multi_init();
+
+	foreach ($webhooks as $webhook) {
+
+		$events = empty($webhook['events']) ? array() :  explode(',', $webhook['events']);
+
+		// empty event value means all events
+		if (!empty($events) && !in_array($eventName, $events)) {
+			continue;
+		}
+
+		$devices = empty($webhook['cameras']) ? array() :  explode(',', $webhook['cameras']);
+
+		// empty event value means all devices
+		if (!empty($devices) && !in_array($deviceId, $devices)) {
+			continue;
+		}
+
+		$payload = json_encode(array_merge(array(
+			'event_name' => $eventName,
+			'device_id' => $deviceId
+		), $payload));
+
+		$ch = curl_init($webhook['url']);
+		curl_setopt_array($ch, array(
+			CURLOPT_CUSTOMREQUEST => 'POST',
+			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_TIMEOUT => 5,
+			CURLOPT_HTTPHEADER => array(
+				'Content-Type: application/json',
+				'Content-Length: ' . strlen($payload))
+			));
+
+		curl_multi_add_handle($cct, $ch);
+		$handlers[] = $ch;
+	}
+
+	if (empty($handlers)) {
+		curl_multi_close($cct);
+		return;
+	}
+
+	do {
+		curl_multi_exec($cct, $active);
+		curl_multi_select($cct);
+	} while ($active);
+
+	foreach ($handlers as $handler) {
+		curl_multi_remove_handle($cct, $handler);
+	}
+
+	curl_multi_close($cct);
+}
+
+
+
 if ($argv[1] == "motion_event") {
 	$event = data::getObject('Media', 'id', $argv[2]);
 
@@ -43,11 +108,20 @@ if ($argv[1] == "motion_event") {
 	#get device details
 	$device = data::getObject('Devices', 'id', $device_id);
 
+	webhook_trigger('motion_event', $device_id, array(
+		'device_name' => $device[0]['device_name']
+	));
+
 } else if ($argv[1] == "device_state") {
 	$device_id = $argv[2];
 	$state = $argv[3];  // e.g. OFFLINE, BACK ONLINE
 	#get device details
 	$device = data::getObject('Devices', 'id', $device_id);
+
+	webhook_trigger('device_state', $device_id, array(
+		'device_name' => $device[0]['device_name'],
+		'state' => $state
+	));
 
 	$subject = "Status notification for device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
 	$html = "
