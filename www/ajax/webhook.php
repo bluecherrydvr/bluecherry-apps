@@ -15,7 +15,7 @@ class webhook extends Controller {
 
         $this->view->cameras = data::getObject('Devices');
         $this->view->webhooks = data::getObject('webhooks');
-        $this->view->events = array('motion_event', 'device_state'/*, 'solo'*/);
+        $this->view->events = array('motion_event', 'device_state', 'solo');
 
         $this->setCurrentFormData();
 
