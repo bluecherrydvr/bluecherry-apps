@@ -35,7 +35,7 @@ $mime = new Mail_mime($crlf);
 
 $timestamp = time();
 
-function webhook_trigger($eventName, $deviceId, $payload = array()) {
+function webhook_trigger($eventName, $deviceId = null, $payload = array()) {
 	$webhooks = data::query('SELECT * FROM `webhooks` WHERE `status` = 1');
 
 	if (empty($webhooks)) {
@@ -57,13 +57,13 @@ function webhook_trigger($eventName, $deviceId, $payload = array()) {
 		$devices = empty($webhook['cameras']) ? array() :  explode(',', $webhook['cameras']);
 
 		// empty event value means all devices
-		if (!empty($devices) && !in_array($deviceId, $devices)) {
+		if (!empty($deviceId) && !empty($devices) && !in_array($deviceId, $devices)) {
 			continue;
 		}
 
 		$payload = json_encode(array_merge(array(
 			'event_name' => $eventName,
-			'device_id' => $deviceId
+			'event_datetime' => date(DATE_ATOM)
 		), $payload));
 
 		$ch = curl_init($webhook['url']);
@@ -109,7 +109,9 @@ if ($argv[1] == "motion_event") {
 	$device = data::getObject('Devices', 'id', $device_id);
 
 	webhook_trigger('motion_event', $device_id, array(
-		'device_name' => $device[0]['device_name']
+		'device_id' => $device_id,
+		'device_name' => $device[0]['device_name'],
+		'dvr_name' => $global_settings->data['G_DVR_NAME']
 	));
 
 } else if ($argv[1] == "device_state") {
@@ -119,8 +121,10 @@ if ($argv[1] == "motion_event") {
 	$device = data::getObject('Devices', 'id', $device_id);
 
 	webhook_trigger('device_state', $device_id, array(
+		'device_id' => $device_id,
 		'device_name' => $device[0]['device_name'],
-		'state' => $state
+		'state' => $state,
+		'dvr_name' => $global_settings->data['G_DVR_NAME']
 	));
 
 	$subject = "Status notification for device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
@@ -132,6 +136,12 @@ Device {$device[0]['device_name']} got $state on server {$global_settings->data[
 	</html>";
 } else if ($argv[1] == "solo") {
 	$state = $argv[2];
+
+	webhook_trigger('solo', null, array(
+		'state' => $state,
+		'dvr_name' => $global_settings->data['G_DVR_NAME']
+	));
+
 	$subject = "Status notification for Bluecherry SOLO card(s) on server {$global_settings->data['G_DVR_NAME']}";
 	$html = "
 	<html>
