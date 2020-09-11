@@ -20,7 +20,7 @@
             <tbody>
             <?php foreach ($events as $val) { ?>
                 <?php if ($val['media_available'] && ($val['end'] > 0)) { ?>
-                <tr class="<?php echo $val['color']; ?> click-event" data-function="playbackSetVideo" data-id="<?php echo $val['media_id'] ?>" data-title="<?php echo $val['device_name'];  ?> - <?php echo $val['time'];  ?>" data-media-id="<?php echo $val['media_id']; ?>">
+                <tr class="<?php echo $val['color']; ?> click-event" data-function="playbackSetVideo" data-id="<?php echo $val['media_id'] ?>" data-title="<?php echo $val['device_name'];  ?> - Recorded time: <?php echo date('m/d/Y h:i A', $val['time']);  ?>" data-media-id="<?php echo $val['media_id']; ?>">
                     <td data-time="<?php echo $val['time']; ?>"><?php echo $val['time_converted']; ?></td>
                     <td><?php echo $val['type_id']; ?></td>
                     <td>

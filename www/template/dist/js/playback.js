@@ -68,6 +68,7 @@ function playbackReloadVideo(el) {
 }
 
 function playbackSetResult(form, msg) {
+    $('#playback-player-bl').hide();
     $('#playback-results').html(msg);
 }
 
