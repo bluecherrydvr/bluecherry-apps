@@ -61,7 +61,7 @@ function webhook_trigger($eventName, $deviceId = null, $payload = array()) {
 			continue;
 		}
 
-		$payload = json_encode(array_merge(array(
+		$body = json_encode(array_merge(array(
 			'event_name' => $eventName,
 			'event_datetime' => date(DATE_ATOM)
 		), $payload));
@@ -69,12 +69,12 @@ function webhook_trigger($eventName, $deviceId = null, $payload = array()) {
 		$ch = curl_init($webhook['url']);
 		curl_setopt_array($ch, array(
 			CURLOPT_CUSTOMREQUEST => 'POST',
-			CURLOPT_POSTFIELDS => $payload,
+			CURLOPT_POSTFIELDS => $body,
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_TIMEOUT => 5,
 			CURLOPT_HTTPHEADER => array(
 				'Content-Type: application/json',
-				'Content-Length: ' . strlen($payload))
+				'Content-Length: ' . strlen($body))
 			));
 
 		curl_multi_add_handle($cct, $ch);
