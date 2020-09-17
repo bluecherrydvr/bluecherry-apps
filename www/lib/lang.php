@@ -628,4 +628,25 @@ define('IPCAM_TCPUDP_LEVEL', 'Transport');
 #playback
 define('PLAYBACK_FILE_NOT_FOUND', 'MKV file was not found.');
 
+#webhook
+define('WEBHOOK_FORM_HEADING_ADD', 'Add Webhook');
+define('WEBHOOK_FORM_HEADING_EDIT', 'Edit Webhook');
+define('WEBHOOK_FORM_FIELD_LABEL', 'Label');
+define('WEBHOOK_FORM_FIELD_URL', 'URL');
+define('WEBHOOK_FORM_FIELD_EVENTS', 'Events');
+define('WEBHOOK_FORM_FIELD_CAMERAS', 'Cameras');
+define('WEBHOOK_FORM_FIELD_ENABLED', 'Enabled');
+define('WEBHOOK_FORM_FIELD_EVENT_MOTION_EVENT', 'Motion Event');
+define('WEBHOOK_FORM_FIELD_EVENT_DEVICE_STATE', 'Device Status');
+define('WEBHOOK_FORM_FIELD_EVENT_SOLO', 'Bluecherry analog capture card (solo)');
+define('WEBHOOK_FORM_BUTTON_CREATE', 'Create');
+define('WEBHOOK_FORM_BUTTON_UPDATE', 'Update');
+define('WEBHOOK_LISTING_HEADER', 'Webhook List');
+define('WEBHOOK_LISTING_TABLE_HEADER_LABEL', 'Label');
+define('WEBHOOK_LISTING_TABLE_HEADER_ACTIONS', 'Actions');
+define('WEBHOOK_LISTING_TABLE_LAST_UPDATE', 'Last Update:');
+define('WEBHOOK_LISTING_TABLE_BUTTON_EDIT', 'Edit');
+define('WEBHOOK_LISTING_TABLE_BUTTON_DELETE', 'Delete');
+define('WEBHOOK_LISTING_TABLE_BUTTON_CREATE_NEW', 'Create New');
+
 ?>
