@@ -172,39 +172,60 @@ class discoverCameras extends Controller {
             34599
         );
 
-        $ipaddress = $_SERVER['REMOTE_ADDR'];
-		// Grab the IP address, then chop off the last octet and replace it with a 0 and then nmap that subnet.  This could fail miserably on a public IP.
-        $target = long2ip(ip2long("$ipaddress") & 0xFFFFFF00);
-        // Quick and dirty hack to fix IP camera detection bug #382
-        $p = @popen("/usr/bin/nmap -p 554 $ipaddress/24 --open -oG -", "r");
+	//
+	$p = @popen("/usr/lib/bluecherry/onvif_tool dummyaddr null null discover", "r");
+	if (!$p) {
+		data::responseJSON(0);
+	}
+	$wait_ip_line = true;
+	$cams_i = 0;
+	while ($str = fgets($p)) {
 
-        if (!$p) {
-            data::responseJSON(0);
-        }
-        while ($str = fgets($p)) {
-            // check right onivf device
-            if (strpos($str, 'Address:') !== false) {
-                preg_match_all('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
-                if (!empty($match[0])) {
-                    $data_ip_cam = $this->dataIpCam($match[0]);
-                    $checked_ip[] = $data_ip_cam['ipv4'];
+		//IP
+		//scope strings
+		//newline
 
-                    if ($data_ip_cam['onvif']) {
-                        $res[] = $data_ip_cam;
-                    }
-                }
-            }
+		if ($str[0] == "\n" && !$wait_ip_line) {
+			$wait_ip_line = true;
+			$cams_i++;
+		}
 
-            if (preg_match('/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/', $str, $match)) {
-                $ips[] = $match[0];
-            }
-        }
-        pclose($p);
+		if ($wait_ip_line){
+			if (preg_match('/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/', $str, $match)) {
+				$cam = Array();
+				$cam['manufacturer'] = '';
+				$cam['model_name'] = '';
+				$cam['ipv4_port'] = '';
+				$cam['ipv6'] = '';
+				$cam['ipv6_path'] = '';
+				$cam['onvif'] = true;
+				$cam['exists'] = false;
+
+				$cam['ipv4'] = $match[0];
+				$ips[] = $match[0];
+				$cam['ipv4_path'] = 'http://'.$match[0].'/onvif/device_service';
+				$cam['ipv4_port'] = $match[0].':80';
+
+				$wait_ip_line = false;
+
+				$res[$cams_i] = $cam;
+			}
+		}else{
+			//match "name/manufacturer"
+			preg_match_all('#name/([\w/%\-]+)#', $str, $match);
+			if (!empty($match[1]))
+				$res[$cams_i]['manufacturer'] = $match[1][0];
+			//match hardware/modelname
+			preg_match_all('#hardware/([\w/%\-]+)#', $str, $match);
+			if (!empty($match[1]))
+				$res[$cams_i]['model_name'] = $match[1][0];
+		}
+	}
+	pclose($p);
 
         $ips = array_unique($ips);
 
         $exist_devices = $this->existDevices($ips);
-        // don't explore exist devices
         foreach ($res as $key => $val) {
             if (in_array($val['ipv4'], $exist_devices)) {
                 $ips = array_diff($ips, Array($val['ipv4']));
@@ -215,129 +236,11 @@ class discoverCameras extends Controller {
         }
         foreach ($ips as $key => $val) {
             if (in_array($val, $exist_devices)) {
-                $res[] = $this->dataIpCam(Array('http://'.$val.'/onvif/device_service'), 1);
                 unset($ips[$key]);
             }
         }
-
-
-        $onvif_ports_str = implode(',', $onvif_ports);
-        $ponvif = new Ponvif();
-        // check chines devices
-        foreach ($ips as $ip) {
-            if (!in_array($ip, $checked_ip)) {
-                $checked_ip[] = $ip;
-
-                $p = @popen("/usr/bin/nmap -p ".$onvif_ports_str." -oX - ".$ip." 2>&1", "r");
-                if ($p) {
-                    $xml = '';
-                    while ($str = fgets($p)) {
-                        $xml .= trim($str);
-                    }
-                    pclose($p);
-
-                    $xml = simplexml_load_string($xml);
-                    if (isset($xml->host->ports->port)) {
-                        foreach ($xml->host->ports->port as $key => $val) {
-                            $state_port = (string) $val->state->attributes()->state;
-                            $port = (string) $val->attributes()->portid;
-                            if ($state_port == 'open') {
-                                if ($ponvif->chOnvif($ip, $port)) {
-                                    $res[] = $this->dataIpCam(Array('http://'.$ip.':'.$port.'/onvif/device_service'));
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-
-        // use upnp to get model/manufacturer
-        $p = @popen("/usr/bin/nmap -sV --script=broadcast-upnp-info", "r");
-        if ($p) {
-            while ($str = fgets($p)) {
-                if (strpos($str, 'Location: http://') !== false) {
-                    preg_match('#\bhttps?://[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/))#', $str, $match);
-
-                    if (!empty($match[0])) {
-                        $match_parse = parse_url($match[0]);
-                        if (in_array($match_parse['host'], $ips)) {
-                            $xml = $this->curlReq($match[0]);
-                            $xml = simplexml_load_string($xml);
-                            if ($xml) {
-                                $manuf = '';
-                                $model = '';
-                                if (isset($xml->device->manufacturer)) {
-                                    $manuf = (string) $xml->device->manufacturer;
-                                }
-                                if (isset($xml->device->modelNumber)) {
-                                    $model = (string) $xml->device->modelNumber;
-                                }
-
-                                $res = $this->modifIps($match_parse['host'], $manuf, $model, $res);
-                            }
-                        }
-
-                    }
-                }
-            }
-            pclose($p);
-        }
-
+	//
         data::responseJSON($status, 'err', $res);
-    }
-
-    protected function dataIpCam($data, $exists = 0)
-    {
-        $res = Array();
-        $res['manufacturer'] = '';
-        $res['model_name'] = '';
-        $res['ipv4'] = '';
-        $res['ipv4_port'] = '';
-        $res['ipv4_path'] = '';
-        $res['ipv6'] = '';
-        $res['ipv6_path'] = '';
-        $res['onvif'] = true;
-        $res['exists'] = $exists;
-
-            foreach ($data as $key => $val) {
-                $val_parse = parse_url($val);
-                $port = '';
-                if (isset($val_parse['port'])) $port = ':'.$val_parse['port'];
-
-                if (strpos($val_parse['host'], ':') === false) {
-                    // ip4v
-                    $res['ipv4'] = $val_parse['host'];
-                    $res['ipv4_port'] = $val_parse['host'].$port;
-                    $res['ipv4_path'] = $val;
-
-                } else {
-                    // ip6v
-                    $res['ipv6_path'] = $val;
-                    $res['ipv6'] = $val_parse['host'];
-                }
-
-                if (strpos($val, 'onvif') === false) {
-                    $res['onvif'] = false;
-                }
-            }
-
-        return $res;
-    }
-
-    protected function modifIps($ipv4, $manuf, $model_name, $data)
-    {
-        foreach ($data as $key => $val) {
-            if (($ipv4 == $val['ipv4_port']) || ($ipv4 == $val['ipv4']))  {
-                $data[$key]['manufacturer'] = $manuf;
-                $data[$key]['model_name'] = $model_name;
-            }
-        }
-
-        return $data;
     }
 
 
@@ -362,7 +265,7 @@ class discoverCameras extends Controller {
 
         foreach ($this->default_manuf_pass as $key => $val) {
             $key = strtolower($key);
-            if ($key == $manuf) {
+            if ($key == $manuf || strpos($manuf, $key) !== false) {
                 $res = $val;
                 break;
             }
