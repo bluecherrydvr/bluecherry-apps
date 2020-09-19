@@ -27,7 +27,7 @@ EOF
 		;;
 	wheezy|jessie|stretch|buster)
 		DISTRO=debian
-		MIRROR_URL="http://mirrors.kernel.org/debian/"
+		MIRROR_URL="http://deb.debian.org/debian/"
 		cat <<EOF > "./sources.list"
 deb http://ftp.us.debian.org/debian $DIST main
 deb http://ftp.debian.org/debian/ ${DIST}-updates main
@@ -82,7 +82,7 @@ then
 	losetup -d $LOOPDEV
 	echo '91.189.88.151 ports.ubuntu.com' >> $LOCATION/etc/hosts
 else
-	debootstrap --arch $ARCH --variant minbase $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
+	debootstrap --arch $ARCH --variant buildd $ADDITIONAL_ARGS $DIST "$LOCATION" $MIRROR_URL
 	cp ./sources.list $LOCATION/etc/apt/sources.list
 fi
 
