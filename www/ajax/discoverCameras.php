@@ -83,6 +83,9 @@ class discoverCameras extends Controller {
         'JVC' => Array(
             Array('admin' => 'jvc'),
         ),
+	'Lorex' => Array(
+	    Array('admin' => 'admin'),
+	),
         'March Networks' => Array(
             Array('admin' => ''),
         ),
