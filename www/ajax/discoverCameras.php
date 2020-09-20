@@ -1,6 +1,5 @@
 <?php 
 
-include_once lib_path.'Ponvif.php';
 
 class discoverCameras extends Controller {
 
@@ -319,7 +318,6 @@ class discoverCameras extends Controller {
 
         $exist_devices = $this->existDevices($ipv4);
 
-        $ponvif = new Ponvif();
         foreach(Inp::gp_arr('cameras') as $key => $val) {
             $err_add = true;
 
@@ -341,38 +339,34 @@ class discoverCameras extends Controller {
                 }
             }
 
-            $ponvif->setIPAddress($ip);
+            $onvif_addr = $ip;
 
             $password_ch = false;
             // guess login/passwrod
             foreach ($passwords as $pass_arr) {
                 foreach ($pass_arr as $login => $password) {
-                    $ponvif->setUsername($login);
-                    $ponvif->setPassword($password);
+                    $onvif_username = $login;
+		    $onvif_password = $password;
                     try {
-                        $init = $ponvif->initialize();
-                        if (!$init['datetime']) break;
-                        if (!empty($init['profiles'])) {
-                            if (!$init['profiles']['auth']) {
-                                break;
-                            } else {
-                                // something wrong with onvif
-                                $password_ch = true;
-                                $err['onvif_ip'][] = $ip;
-                                break(2);
-                            }
-                        }
+			 $p = @popen("/usr/lib/bluecherry/onvif_tool $onvif_addr $onvif_username $onvif_password get_stream_urls", "r");
+			 if (!$p)
+			 	break;
 
-                        $sources = $ponvif->getSources();
-                        if (empty($sources) || $ponvif->isFault($sources)) {
-                            // error
-                        } else {
+			 $media_service = fgets($p);
+			 if (!$media_service || !strpos($media_service, "onvif/media_service"))
+			 {
+			 	$password_ch = true;
+				 $err['onvif_ip'][] = $ip;
+				 break(2);
+			 }
+			 $main_stream = fgets($p);
+			 $sub_stream = fgets($p);
+			 pclose($p);
+
+                         {
                             $password_ch = true;
 
-                            $profileToken = $sources[0][0]['profiletoken'];
-                            $profileToken_name = $sources[0][0]['profiletoken_name'];
-                            $media_uri = $ponvif->media_GetStreamUri($profileToken);
-                            if (empty($media_uri)) $media_uri = $ponvif->media_GetStreamUri($profileToken_name);
+			    $media_uri = trim($main_stream);
 
                             if (empty($media_uri)) {
                                 $err['rtsp_ip'][] = $ip;
@@ -383,17 +377,15 @@ class discoverCameras extends Controller {
 
                                 if (!isset($media_uri_parse['port'])) {
                                     $media_uri_parse['port'] = 554;
-
-                                    $net_protocols = $ponvif->getNetworkProtocols();
-                                    foreach ($net_protocols as $net_key => $net_val) {
-                                        if (isset($net_val['Name']) && ($net_val['Name'] == 'RTSP')) {
-                                            $media_uri_parse['port'] = $net_val['Port'];
-                                            break;
-                                        }
-                                    }
                                 }
+
                                 if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
 
+				if ($sub_stream) {
+				    $sub_parse = parse_url(trim($sub_stream));
+				    $sub_stream = $sub_parse['path'];
+				    if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
+				}
                                 $_POST = Array(
                                     'mode' => 'addip',
                                     'models' => 'Generic',
@@ -404,6 +396,7 @@ class discoverCameras extends Controller {
                                     'protocol' => 'IP-RTSP',
                                     'rtsp' => $media_uri_parse['path'],
                                     'port' => $media_uri_parse['port'],
+				    'substream' => $sub_stream,
                                     'prefertcp' => '1',
                                     'mjpeg' => '',
                                     'portMjpeg' => 80
