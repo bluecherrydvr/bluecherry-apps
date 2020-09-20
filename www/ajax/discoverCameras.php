@@ -348,14 +348,13 @@ class discoverCameras extends Controller {
                     $onvif_username = $login;
 		    $onvif_password = $password;
                     try {
-			 $p = @popen("/usr/lib/bluecherry/onvif_tool $onvif_addr $onvif_username $onvif_password get_stream_urls", "r");
+			 $p = @popen("/usr/lib/bluecherry/onvif_tool \"{$onvif_addr}\" \"{$onvif_username}\" \"{$onvif_password}\" get_stream_urls", "r");
 			 if (!$p)
 			 	break;
 
 			 $media_service = fgets($p);
-			 if (!$media_service || !strpos($media_service, "onvif/media_service"))
+			 if (!$media_service)
 			 {
-			 	$password_ch = true;
 				 $err['onvif_ip'][] = $ip;
 				 break(2);
 			 }
@@ -363,6 +362,7 @@ class discoverCameras extends Controller {
 			 $sub_stream = fgets($p);
 			 pclose($p);
 
+			if ($main_stream)
                          {
                             $password_ch = true;
 
