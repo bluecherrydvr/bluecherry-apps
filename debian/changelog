@@ -1,3 +1,17 @@
+bluecherry (3:3.0.3) focal bionic buster; urgency=low
+
+  * Discover IP cameras using ONVIF WSDD
+
+  * Autoconfigure RTSP paths using ONVIF
+
+  * Recording triggered by ONVIF events (in trigger mode)
+
+  * Webhooks
+
+  * Updated playback screen layout
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Mon, 21 Sep 2020 05:30:00 +0400
+
 bluecherry (3:3.0.2) xenial bionic stretch; urgency=low
 
   * #383 - ONVIF PTZ not functioning
