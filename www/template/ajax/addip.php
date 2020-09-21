@@ -151,6 +151,14 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_SUBSTREAM_PATH; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <input class="form-control" type="text" name="substream" disabled="disabled"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_ONVIF_PORT; ?></label>
 
                         <div class="col-lg-6 col-md-6">

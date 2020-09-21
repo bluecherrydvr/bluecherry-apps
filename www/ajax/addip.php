@@ -17,7 +17,6 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-include_once lib_path.'Ponvif.php';
 
 class addip extends Controller {
 	
@@ -60,17 +59,54 @@ class addip extends Controller {
     {
         $stat = 7;
         $msg = AIP_CHECK_ONVIF_ERROR;
+	$data_r = Array();
 
         $ip = Inp::post('ip_addr');
         $port = Inp::post('port');
 
-        $ponvif = new Ponvif();
-        if ($ponvif->chOnvif($ip, $port)) {
-            $stat = 6;
-            $msg = AIP_CHECK_ONVIF_SUCCESS;
-        }
+	//
+	$user = Inp::post('user');
+	$pass = Inp::post('pass');
+	$onvif_addr = $ip.":".$port;
 
-        data::responseJSON($stat, $msg);
+	$p = @popen("/usr/lib/bluecherry/onvif_tool \"{$onvif_addr}\" \"{$user}\" \"{$pass}\" get_stream_urls", "r");
+
+	if (!$p){
+		data::responseJSON($stat, $msg);
+		exit;
+	}
+
+	$media_service = fgets($p);
+	$main_stream = fgets($p);
+	$sub_stream = fgets($p);
+	pclose($p);
+	if ($media_service && $main_stream){
+	$stat = 6;
+	$msg = AIP_CHECK_ONVIF_SUCCESS;
+
+	$media_uri_parse = parse_url(trim($main_stream));
+	if (!isset($media_uri_parse['port']))
+		$media_uri_parse['port'] = 554;
+	if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
+
+	if ($sub_stream) {
+		$sub_parse = parse_url(trim($sub_stream));
+		$sub_stream = $sub_parse['path'];
+		if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
+	}
+
+        $data_r = Array(
+            //'camName' => (isset($data['Model']) ? $data['Model'] : ''),
+            'rtspPath' => $media_uri_parse['path'],
+            'rtspPort' => $media_uri_parse['port'],
+	    'substream' => $sub_stream,
+            //'user' => (isset($data['Default username']) ? $data['Default username'] : ''),
+            //'pass' => (isset($data['Default password']) ? $data['Default password'] : ''),
+                );
+	}
+	//
+
+        data::responseJSON($stat, $msg, $data_r);
         exit;
     }
 }

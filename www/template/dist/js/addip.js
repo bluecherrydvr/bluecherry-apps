@@ -42,22 +42,6 @@ $(function() {
     
 });
 
-function addIpCheckOnvifPort(el) {
-    var form = el.closest('form');
-    var ip_addr = form.find('input[name="ipAddr"]').val();
-    var port = form.find('input[name="onvif_port"]').val();
-
-    var ajax_req = new ajaxReq();
-    ajax_req.manReq({
-        form_act : '/addip/check-onvif-port',
-        form_data : {
-            ip_addr : ip_addr,
-            port : port
-        },
-        ajax_indic : el
-    });
-}
-
 var cameraProc = function (form) {
     var self = this;
     var els = {};
@@ -102,6 +86,7 @@ var cameraProc = function (form) {
         getEl('ipAddr', enabled, true);
         getEl('user', enabled, true);
         getEl('pass', enabled, true);
+	getEl('substream', enabled, true);
     };
 
     self.setData = function (data) {
@@ -112,6 +97,7 @@ var cameraProc = function (form) {
         getEl('user', true, true, data.user);
         getEl('pass', true, true, data.pass);
         getEl('onvif_port', true, true, '80');
+	getEl('substream', true, true, data.substream);
 
         getEl('camName', true, true, '');
         getEl('ipAddr', true, true, '');
@@ -151,6 +137,34 @@ var cameraProc = function (form) {
     };
     constructor();
 };
+
+function addIpCheckOnvifPort(el) {
+    var form = el.closest('form');
+    var ip_addr = form.find('input[name="ipAddr"]').val();
+    var port = form.find('input[name="onvif_port"]').val();
+    var user = form.find('input[name="user"]').val();
+    var pass = form.find('input[name="pass"]').val();
+
+    var ajax_req = new ajaxReq();
+    ajax_req.manReq({
+        form_act : '/addip/check-onvif-port',
+        form_data : {
+            ip_addr : ip_addr,
+            port : port,
+	    user : user,
+	    pass : pass
+        },
+        ajax_indic : el,
+        callback_func: function (msg, done) {
+            if (done) {
+                var cp = new cameraProc(el.closest('form'));
+                cp.setData(msg.data);
+            } else {
+
+            }
+        }
+    });
+}
 
 function cameraChooseModel(el) {
     var ajax_req = new ajaxReq();
