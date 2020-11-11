@@ -13,11 +13,17 @@
 #include <thread>
 
 onvif_events::onvif_events()
-	: rec(0), onvif_tool_pid(-1)
+	: rec(0), exit_flag(false), onvif_tool_pid(-1)
 {
 }
 
 void onvif_events::run(struct bc_record *r)
+{
+	while(!exit_flag)
+		run_onvif_tool(r);
+}
+
+void onvif_events::run_onvif_tool(struct bc_record *r)
 {
 	int stdout_fds[2] = {-1, -1};
 	//int stderr_fds[2] = {-1, -1};
@@ -105,7 +111,7 @@ void onvif_events::run(struct bc_record *r)
 
 thread_exit:
 	r->log.log(Info, "ONVIF events thread exiting... ");
-	stop();
+	unsubscribe();
 	fclose(onvif_tool_stdout);
 }
 
@@ -136,10 +142,9 @@ void onvif_events::stop()
 {
 	if (onvif_tool_pid == -1)
 		return;
-
+	exit_flag = true;
 	kill(onvif_tool_pid, SIGKILL);
 	waitpid(onvif_tool_pid, NULL, 0);
-	unsubscribe();
 	onvif_tool_pid = -1;
 }
 
