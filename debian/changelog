@@ -1,4 +1,4 @@
-bluecherry (2:2.8.5alrm47) trusty xenial jessie; urgency=low
+bluecherry (2:2.8.5alrm51) trusty xenial jessie; urgency=low
 
   * Fixed frame downscale precision in the database.
 
