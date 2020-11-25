@@ -1,3 +1,9 @@
+bluecherry (3:3.0.4) focal bionic buster; urgency=low
+
+  * Restart subscription to ONVIF events if connection is lost
+
+ -- Anton Sviridenko <anton@corp.bluecherry.net>  Wed, 25 Nov 2020 09:05:00 +0400
+
 bluecherry (3:3.0.3) focal bionic buster; urgency=low
 
   * Discover IP cameras using ONVIF WSDD
