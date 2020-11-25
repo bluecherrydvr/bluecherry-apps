@@ -95,9 +95,12 @@ void onvif_events::run(struct bc_record *r)
 	{
 		trigger_processor *proc = trigger_server::Instance().find_processor(r->id);
 
-		if (proc)
+		if (proc) {
 			proc->trigger(read_buf);
-		else {
+			bc_db_query("INSERT INTO OnvifEvents (device_id,event_time,onvif_topic)"
+					" VALUES(%i, NOW(), '%.255s')",
+					r->id, read_buf);
+		} else {
 			r->log.log(Error, "Unable to find trigger processor for ONVIF event");
 			break;
 		}
