@@ -11,12 +11,6 @@ Requirements
 
 Version 3 (beta) supports Ubuntu LTS releases (Ubuntu 16.04 and Ubuntu 18.04), Debian 9 (Stretch) and Debian 10 (Buster).  Support for CentOS has been removed.
 
-
-Ubuntu has two different x86 installation methods. The first is Ubuntu desktop, which will install Ubuntu along with the graphical interface. It is recommended that users without prior knowledge of Ubuntu or Linux use this method. You can also download our ISO image (bluecherry-v2-desktop-14.04-amd64.iso)
-
-
-The second installation method is Ubuntu Server. The installation is a text-based interface and significantly more complicated then the desktop method. By default, the installation will not include the graphical desktop, which some users prefer. It is recommended for customers with prior experience adding third party software repositories from a command line.
-
 Installing Bluecherry from the Bluecherry repository
 ----------------------------------------------------
 Download instructions
