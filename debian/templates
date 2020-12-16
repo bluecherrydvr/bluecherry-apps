@@ -3,6 +3,7 @@ Type: string
 Default: root
 Description: Please enter MySQL administrative user's name.
  This is needed for assistance in creation of database for Bluecherry service.
+ ** Important: Unless you are connecting to an existing mysql server this username should be kept as root **
 
 Template: bluecherry/mysql_admin_password
 Type: password
