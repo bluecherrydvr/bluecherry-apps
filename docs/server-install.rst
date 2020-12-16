@@ -25,7 +25,7 @@ Currently version 3 is in beta which means 'unstable'.
 
 Copy and paste the commands to add our repository to Ubuntu 16.04 / Ubuntu 18.04 / Ubuntu 20.04 / Debian 9 / Debian 10.
 
-::sudo bash -c "$(wget -O - https://dl.bluecherrydvr.com/scripts/install-unstable)"::
+sudo bash -c "$(wget -O - https://dl.bluecherrydvr.com/scripts/install-unstable)"::
 
 
 Installing the server
