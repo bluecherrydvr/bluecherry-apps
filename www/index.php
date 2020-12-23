@@ -1,5 +1,7 @@
 <?php DEFINE('INDVR', true);
 
+require_once 'vendor/autoload.php';
+
 $site_path = __DIR__;
 
 define ('site_path', $site_path . '/');

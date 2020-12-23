@@ -152,84 +152,95 @@
             ?>
 
         <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_SERVICE; ?><p class='help-block'><small><?php echo G_SMTP_SERVICE_EX; ?></small></p></label>
+            <label class="col-lg-4 control-label"><?php echo G_SMTP_SERVICE; ?></label>
 
             <div class="col-lg-6">
-                <select class="form-control" name='G_SMTP_SERVICE'>
-                    <option value='default' <?php echo ($global_settings->data['G_SMTP_SERVICE']=='default') ? 'selected': '';?>><?php echo G_SMTP_DEF_MTA; ?></option>
-                    <option value='smtp' <?php echo ($global_settings->data['G_SMTP_SERVICE']=='smtp') ? 'selected': '';?>><?php echo G_SMTP_SMTP; ?></option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_USERNAME; ?><p class='help-block'><small><?php echo G_SMTP_USERNAME_EX; ?></small></p></label>
-
-            <div class="col-lg-6">
-                <input class="form-control" type='text' name='G_SMTP_USERNAME' value='<?php echo $global_settings->data['G_SMTP_USERNAME']; ?>' />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_PASSWORD; ?><p class='help-block'><small><?php echo G_SMTP_PASSWORD_EX; ?></small></p></label>
-
-            <div class="col-lg-6">
-                <input class="form-control" type='password' name='G_SMTP_PASSWORD' value='<?php echo $global_settings->data['G_SMTP_PASSWORD']; ?>' />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_EMAIL_FROM; ?><p class='help-block'><small><?php echo G_SMTP_EMAIL_FROM_EX; ?></small></p></label>
-
-            <div class="col-lg-6">
-                <input class="form-control" type='text' name='G_SMTP_EMAIL_FROM' value='<?php echo $global_settings->data['G_SMTP_EMAIL_FROM']; ?>' />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_HOST; ?><p class='help-block'><small><?php echo G_SMTP_HOST_EX; ?></small></p></label>
-            
-            <div class="col-lg-6">
-                <input class="form-control" type='text' name='G_SMTP_HOST' value='<?php echo  $global_settings->data['G_SMTP_HOST']; ?>' />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_PORT; ?><p class='help-block'><small><?php echo G_SMTP_PORT_EX; ?></small></p></label>
-
-            <div class="col-lg-6">
-                <input class="form-control" type='text' name='G_SMTP_PORT' value='<?php echo  $global_settings->data['G_SMTP_PORT']; ?>' />
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SMTP_SSL; ?><p class='help-block'><small><?php echo G_SMTP_SSL_EX; ?></small></p></label>
-
-            <div class="col-lg-6">
-                <select class="form-control" name='G_SMTP_SSL'>
-                    <option value='none' <?php echo ($global_settings->data['G_SMTP_SSL']=='none') ? 'selected': '';?>><?php echo L_NONE; ?></option>
-                    <option value='tls' <?php echo ($global_settings->data['G_SMTP_SSL']=='tls') ? 'selected': '';?>>TLS/SSL</option>
-                </select>
-            </div>
-        </div>
-
-
-        <div class="form-group">
-            <label class="col-lg-4 control-label"><?php echo G_SEND_TEST_EMAIL_TO; ?></label>
-
-            <div class="col-lg-6">
-                <div class="input-group">
-                    <input type="text" class="form-control" name="test_email" value="" id="general-test-email">
-                    <span class="input-group-btn">
-                        <button type="button" class="btn btn-default send-req-form" data-func="generalTestEmail" data-form-id="general-test-email-form"><?php echo G_SEND_TEST_EMAIL; ?></button>
-                    </span>
+                <div class="row">
+                    <div class="col-lg-5">
+                        <select class="form-control" name='G_SMTP_SERVICE'>
+                            <option value='default' <?php echo ($global_settings->data['G_SMTP_SERVICE']=='default') ? 'selected': '';?>><?php echo G_SMTP_DEF_MTA; ?></option>
+                            <option value='smtp' <?php echo ($global_settings->data['G_SMTP_SERVICE']=='smtp') ? 'selected': '';?>><?php echo G_SMTP_SMTP; ?></option>
+                        </select>
+                        <p class='help-block'><small><?php echo G_SMTP_SERVICE_EX; ?></small></p>
+                    </div>
+                    <label class="control-label col-lg-2"><?php echo G_SMTP_SSL; ?></label>
+                    <div class="col-lg-5">
+                        <select class="form-control" name='G_SMTP_SSL'>
+                            <option value='none' <?php echo ($global_settings->data['G_SMTP_SSL']=='none') ? 'selected': '';?>><?php echo L_NONE; ?></option>
+                            <option value='tls' <?php echo ($global_settings->data['G_SMTP_SSL']=='tls') ? 'selected': '';?>>TLS/SSL</option>
+                        </select>
+                        <p class='help-block'><small><?php echo G_SMTP_SSL_EX; ?></small></p>
+                    </div>
                 </div>
             </div>
         </div>
 
 
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_SMTP_EMAIL_FROM; ?></label>
+
+            <div class="col-lg-6">
+                <input class="form-control" type='text' name='G_SMTP_EMAIL_FROM' value='<?php echo $global_settings->data['G_SMTP_EMAIL_FROM']; ?>' />
+                <p class='help-block'><small><?php echo G_SMTP_EMAIL_FROM_EX; ?></small></p>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_SMTP_CREDENTIALS; ?></label>
+
+            <div class="col-lg-3">
+                <input class="form-control" type='text' name='G_SMTP_USERNAME' placeholder="<?php echo G_SMTP_USERNAME; ?>" value='<?php echo $global_settings->data['G_SMTP_USERNAME']; ?>' />
+            </div>
+            <div class="col-lg-3">
+                <input class="form-control" type='password' name='G_SMTP_PASSWORD' placeholder="<?php echo G_SMTP_PASSWORD; ?>" value='<?php echo $global_settings->data['G_SMTP_PASSWORD']; ?>' />
+            </div>
+        </div>
+
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_SMTP_HOST; ?></label>
+
+            <div class="col-lg-6">
+                <div class="row">
+                <div class="col-lg-8">
+                    <input class="form-control" type='text' name='G_SMTP_HOST' value='<?php echo  $global_settings->data['G_SMTP_HOST']; ?>' />
+                    <p class='help-block'><small><?php echo G_SMTP_HOST_EX; ?></small></p>
+                </div>
+
+                <label class="col-lg-1 control-label">:</label>
+
+                <div class="col-lg-3">
+                    <input class="form-control" type='text' name='G_SMTP_PORT' placeholder="<?php echo G_SMTP_PORT; ?>" value='<?php echo  $global_settings->data['G_SMTP_PORT']; ?>' />
+                </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
+
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><?php echo G_SMTP_TITLE_TEST; ?></div>
+
+        <div class="panel-body">
+
+            <div class="form-group">
+                <label class="col-lg-4 control-label"><?php echo G_SEND_TEST_EMAIL_TO; ?></label>
+
+                <div class="col-lg-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="test_email" value="" id="general-test-email">
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default send-req-form" data-func="generalTestEmail" data-form-id="general-test-email-form"><?php echo G_SEND_TEST_EMAIL; ?></button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <input type="hidden" name="mode" value="global" />
 
 <div class="form-group">

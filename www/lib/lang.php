@@ -93,6 +93,7 @@ define('G_DATA_SOURCE_LOCAL', 'Local list');
 define('G_DATA_SOURCE_LIVE', 'Live (You need an active internet connection)');
 
 define('G_SMTP_TITLE', 'SMTP server configuration');
+define('G_SMTP_TITLE_TEST', 'SMTP server configuration test');
 define('G_PERF_TITLE', 'Performance/connectivity');
 
 define('G_MAX_RECORD_TIME', 'Record length');
@@ -107,6 +108,7 @@ define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');
+define('G_SMTP_CREDENTIALS', 'Credentials');
 define('G_SMTP_USERNAME', 'Username');
 define('G_SMTP_PASSWORD', 'Password');
 define('G_SMTP_HOST', 'SMTP host');
