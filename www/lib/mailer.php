@@ -126,8 +126,11 @@ if ($argv[1] == "motion_event") {
 	));
 
 	$subject = "Status notification for device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
-	$message = (new \Swift_Message($subject))
-		->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+	$message = new \Swift_Message($subject);
+
+    if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+		$message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+    }
 
 	$message->setBody("
 	<html>
@@ -144,8 +147,13 @@ Device {$device[0]['device_name']} got $state on server {$global_settings->data[
 	));
 
 	$subject = "Status notification for Bluecherry SOLO card(s) on server {$global_settings->data['G_DVR_NAME']}";
-	$message = (new \Swift_Message($subject))
-		->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+    
+	$message = new \Swift_Message($subject);
+
+    if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+		$message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+    }
+        
 	$message->setBody("
 	<html>
 		<body>
@@ -210,8 +218,14 @@ if (!$rules){
 
         $image_name = data::getRandomString(8);
         $subject = "Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
-		$message = (new \Swift_Message($subject))
-			->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+        
+		$message = new \Swift_Message($subject);
+
+        if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+            $message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+        }
+            
+
 		$attachment = \Swift_Image::fromPath($path_to_image)
 			->setContentType('image/jpeg')
 			->setFilename($image_name . '.jpg')

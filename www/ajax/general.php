@@ -25,9 +25,12 @@ class general extends Controller {
 
 
         $message = (new \Swift_Message(G_TEST_EMAIL_SUBJECT))
-            ->setFrom($global_settings->data['G_SMTP_EMAIL_FROM'])
             ->setTo($_POST['email'])
             ->setBody(G_TEST_EMAIL_BODY . ' from ' . $global_settings->data['G_DVR_NAME'], 'text/html');
+
+        if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+            $message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+        }
 
 
         switch($global_settings->data['G_SMTP_SERVICE']){
