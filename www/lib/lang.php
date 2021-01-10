@@ -114,6 +114,7 @@ define('G_SMTP_PASSWORD', 'Password');
 define('G_SMTP_HOST', 'SMTP host');
 define('G_SMTP_PORT', 'SMTP port');
 define('G_SMTP_SSL', 'SSL');
+define('G_SMTP_TRANSPORT_SECURITY', 'Transport Security');
 define('G_SMTP_SERVICE_EX', '');
 define('G_SMTP_EMAIL_FROM_EX', 'When Bluecherry service sends email, this value is used as sender address ("From")');
 define('G_SMTP_USERNAME_EX', '');

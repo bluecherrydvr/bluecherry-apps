@@ -47,8 +47,8 @@ class general extends Controller {
                     $transport->setPort($global_settings->data['G_SMTP_PORT']);
                 }
 
-                if (isset($global_settings->data['G_SMTP_SSL']) && $global_settings->data['G_SMTP_SSL'] === 'tls') {
-                    $transport->setEncryption('ssl');
+                if (isset($global_settings->data['G_SMTP_SSL']) && in_array($global_settings->data['G_SMTP_SSL'], ['ssl', 'tls'], true)) {
+                    $transport->setEncryption($global_settings->data['G_SMTP_SSL']);
                 }
 
                 break;

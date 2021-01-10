@@ -163,11 +163,16 @@
                         </select>
                         <p class='help-block'><small><?php echo G_SMTP_SERVICE_EX; ?></small></p>
                     </div>
-                    <label class="control-label col-lg-2"><?php echo G_SMTP_SSL; ?></label>
+                    <label class="control-label col-lg-2"><?php echo G_SMTP_TRANSPORT_SECURITY; ?></label>
                     <div class="col-lg-5">
                         <select class="form-control" name='G_SMTP_SSL'>
-                            <option value='none' <?php echo ($global_settings->data['G_SMTP_SSL']=='none') ? 'selected': '';?>><?php echo L_NONE; ?></option>
-                            <option value='tls' <?php echo ($global_settings->data['G_SMTP_SSL']=='tls') ? 'selected': '';?>>TLS/SSL</option>
+                            <?php
+                                $validSecureOptions = ['tls' => 'TLS', 'ssl' => 'SSL', 'none' => L_NONE];
+
+                                foreach ($validSecureOptions as $value => $label) {
+                                    echo '<option value="', $value, '"', ($value === $global_settings->data['G_SMTP_SSL'] ? ' selected' : ''), '>', $label, '</option>';
+                                }
+                            ?>
                         </select>
                         <p class='help-block'><small><?php echo G_SMTP_SSL_EX; ?></small></p>
                     </div>
