@@ -26,12 +26,10 @@ if (empty($argv[1]) || empty($argv[2])){
 	exit("E: Usage: ${argv[0]} <event class> <arg>...");
 }
 
-#PEAR::Mail mailer
-include_once('Mail.php');
-include_once('Mail/mime.php');
+require_once '/usr/share/bluecherry/www/vendor/autoload.php';
 
-$crlf = "\r\n";
-$mime = new Mail_mime($crlf);
+
+
 
 $timestamp = time();
 
@@ -128,12 +126,18 @@ if ($argv[1] == "motion_event") {
 	));
 
 	$subject = "Status notification for device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
-	$html = "
+	$message = new \Swift_Message($subject);
+
+    if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+		$message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+    }
+
+	$message->setBody("
 	<html>
 		<body>
 Device {$device[0]['device_name']} got $state on server {$global_settings->data['G_DVR_NAME']}
 		</body>
-	</html>";
+	</html>", 'text/html');
 } else if ($argv[1] == "solo") {
 	$state = $argv[2];
 
@@ -143,12 +147,19 @@ Device {$device[0]['device_name']} got $state on server {$global_settings->data[
 	));
 
 	$subject = "Status notification for Bluecherry SOLO card(s) on server {$global_settings->data['G_DVR_NAME']}";
-	$html = "
+    
+	$message = new \Swift_Message($subject);
+
+    if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+		$message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+    }
+        
+	$message->setBody("
 	<html>
 		<body>
 SOLO card(s) got $state on server {$global_settings->data['G_DVR_NAME']}
 		</body>
-	</html>";
+	</html>", 'text/html');
 } else {
 	exit('E: Unknown event type');
 }
@@ -207,7 +218,19 @@ if (!$rules){
 
         $image_name = data::getRandomString(8);
         $subject = "Event on device {$device[0]['device_name']} on server {$global_settings->data['G_DVR_NAME']}";
-        $html = "
+        
+		$message = new \Swift_Message($subject);
+
+        if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+            $message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+        }
+            
+
+		$attachment = \Swift_Image::fromPath($path_to_image)
+			->setContentType('image/jpeg')
+			->setFilename($image_name . '.jpg')
+			->setDisposition('inline');
+        $message->setBody("
         <html>
         <head>
             <style>
@@ -236,17 +259,13 @@ if (!$rules){
             </div>
             <div class='screenshot'>
                 Event screenshot:<br />
-                <img height='240' src='{$image_name}.jpg'>
+                <img height='240' src='cid:{$message->embed($attachment)}'>
             </div>
             </body>
-        </html>";
-        $mime->addHTMLImage($path_to_image, "image/jpeg", "{$image_name}.jpg", true, $image_name);
+        </html>", 'text/html');
     }
 }
-$headers = array("From"=>$global_settings->data['G_SMTP_EMAIL_FROM'], "Subject" => $subject);
-$mime->setHTMLBody($html);
-$headers = $mime->headers($headers);
-$body = $mime->get();
+
 
 
 $rules_ids = '';
@@ -281,40 +300,43 @@ $emails = array();
 
 foreach($users as $id => $user){
 	$user = data::getObject('Users', 'id', $user);
-	$tmp = explode('|', $user[0]['email']);
-	$emails = array_merge($emails, $tmp);
+	$emails = array_merge($emails, explode('|', $user[0]['email']));
 }
-$emails = array_unique($emails);
+
+$message->setTo(array_unique($emails));
 
 switch($global_settings->data['G_SMTP_SERVICE']){
 	case 'default': #use MTA
-		$mail = Mail::factory('mail');
+		$transport = new \Swift_SendmailTransport('/usr/sbin/sendmail -bs');
 	break;
 	case 'smtp': #user user supplied SMTP config
-		$smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? '' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
-		$smtp_params['port'] = $global_settings->data['G_SMTP_PORT'];
-		$smtp_params['username'] = $global_settings->data['G_SMTP_USERNAME'];
-		$smtp_params['password'] = $global_settings->data['G_SMTP_PASSWORD'];
-		$smtp_params['auth'] = true;
-		$mail = Mail::factory('smtp', $smtp_params);
-		if ($global_settings->data['G_SMTP_SSL'] == 'tls') {
-			$mail->SMTPSecure = "ssl";
-		};
+
+		$transport = (new \Swift_SmtpTransport($global_settings->data['G_SMTP_HOST']))
+			->setUsername($global_settings->data['G_SMTP_USERNAME'])
+			->setPassword($global_settings->data['G_SMTP_PASSWORD']);
+
+		if (isset($global_settings->data['G_SMTP_PORT'])) {
+			$transport->setPort($global_settings->data['G_SMTP_PORT']);
+		}
+
+		if (isset($global_settings->data['G_SMTP_SSL']) && in_array($global_settings->data['G_SMTP_SSL'], ['ssl', 'tls'], true)) {
+            $transport->setEncryption($global_settings->data['G_SMTP_SSL']);
+        }
 	break;
 }
 
-$error = null;
-foreach($emails as $email){
-		$re = $mail->send($email, $headers, $body); 
-		if ($re !== TRUE)
-			$error = $re;
-}
+$logger = new \Swift_Plugins_Loggers_ArrayLogger();
+$transport->registerPlugin(new \Swift_Plugins_LoggerPlugin($logger));
 
-if (PEAR::isError($error)) {
-	$tmp = data::query("UPDATE GlobalSettings set value='{$error->getMessage()}' WHERE parameter='G_SMTP_FAIL'", true);
-	exit("E: ".$error->getMessage());
-} else {
-	$tmp = data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
+
+
+if ($transport->send($message)) {
+	data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
 	exit('OK');
+
+} else {
+	$message = $logger->dump();
+	data::query("UPDATE GlobalSettings set value='{$message}' WHERE parameter='G_SMTP_FAIL'", true);
+	exit("E: " . $message);
 }
 ?>

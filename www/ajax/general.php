@@ -1,5 +1,6 @@
 <?php 
 
+
 class general extends Controller {
 
     public function __construct ()
@@ -16,42 +17,53 @@ class general extends Controller {
 
     public function postData()
     {
-        if (Inp::post('mode') == 'testemail') {
-            $global_settings = $this->varpub->global_settings;
+        if (Inp::post('mode') !== 'testemail') {
+            return;
+        }
 
-            include_once('Mail.php');
-            include_once('Mail/mime.php');
-            $crlf = "\r\n";
-            $mime = new Mail_mime($crlf);
-            $email = $_POST['email'];
-    
-            $headers = array("From"=>$global_settings->data['G_SMTP_EMAIL_FROM'], "Subject" => G_TEST_EMAIL_SUBJECT);
-            $body = G_TEST_EMAIL_BODY . ' from ' . $global_settings->data['G_DVR_NAME'];
-            $mime->setHTMLBody($body);  
-            $headers = $mime->headers($headers);
-            $body = $mime->get();
-            switch($global_settings->data['G_SMTP_SERVICE']){
-                case 'default': #use MTA
-                    $mail = Mail::factory('mail');
+        $global_settings = $this->varpub->global_settings;
+
+
+        $message = (new \Swift_Message(G_TEST_EMAIL_SUBJECT))
+            ->setTo($_POST['email'])
+            ->setBody(G_TEST_EMAIL_BODY . ' from ' . $global_settings->data['G_DVR_NAME'], 'text/html');
+
+        if (!empty($global_settings->data['G_SMTP_EMAIL_FROM'])) {
+            $message->setFrom($global_settings->data['G_SMTP_EMAIL_FROM']);
+        }
+
+
+        switch($global_settings->data['G_SMTP_SERVICE']){
+            case 'default': #use MTA
+                $transport = new \Swift_SendmailTransport('/usr/sbin/sendmail -bs');
                 break;
-                case 'smtp': #user user supplied SMTP config
-                    $smtp_params['host'] = (($global_settings->data['G_SMTP_SSL'] == 'none') ? '' : 'ssl://').$global_settings->data['G_SMTP_HOST'];
-                    $smtp_params['port'] = $global_settings->data['G_SMTP_PORT'];
-                    $smtp_params['username'] = $global_settings->data['G_SMTP_USERNAME'];
-                    $smtp_params['password'] = $global_settings->data['G_SMTP_PASSWORD'];
-                    $smtp_params['auth'] = true;
-                    $mail = Mail::factory('smtp', $smtp_params);
-                    if ($global_settings->data['G_SMTP_SSL'] == 'tls') {
-                        $mail->SMTPSecure = "ssl";
-                    };
+            case 'smtp': #user user supplied SMTP config
+
+                $transport = (new \Swift_SmtpTransport($global_settings->data['G_SMTP_HOST']))
+                    ->setUsername($global_settings->data['G_SMTP_USERNAME'])
+                    ->setPassword($global_settings->data['G_SMTP_PASSWORD']);
+
+                if (isset($global_settings->data['G_SMTP_PORT'])) {
+                    $transport->setPort($global_settings->data['G_SMTP_PORT']);
+                }
+
+                if (isset($global_settings->data['G_SMTP_SSL']) && in_array($global_settings->data['G_SMTP_SSL'], ['ssl', 'tls'], true)) {
+                    $transport->setEncryption($global_settings->data['G_SMTP_SSL']);
+                }
+
                 break;
-            }
-            $re = $mail->send($email, $headers, $body); 
-            if (PEAR::isError($re)) {
-                data::responseJSON(false, "E: ".$re->getMessage());
-            } else {
-                data::responseJSON(true, G_TEST_EMAIL_SENT);
-            }
+        }
+
+        $logger = new \Swift_Plugins_Loggers_ArrayLogger();
+        $transport->registerPlugin(new \Swift_Plugins_LoggerPlugin($logger));
+
+
+        if ($transport->send($message)) {
+            data::responseJSON(true, G_TEST_EMAIL_SENT);
+
+        } else {
+            $message = $logger->dump();
+            data::responseJSON(false, "E: " . $message);
         }
     }
 }
