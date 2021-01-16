@@ -64,7 +64,7 @@ If you already know the RTSP path you can select 'Generic' and update the Camera
 
 Video source stream should always be RTSP, only use MJPEG if you know for sure what you are doing.
 Path to RTSP.  This should always have a forward slash (/) followed by the RTSP path for the model of your IP camera (example - /media/video).  A quick Google search can usually provide you the RTSP path, or use the manufacturer list above to try to populate this for you.
-RTSP port.  *Most* IP camera manufacturers, with the exception of ACTi and some Hikvision cameras, use the default port of 554.  
+RTSP port.  *Most* IP camera manufacturers, with the exception of ACTi and some Hikvision cameras, use the default port of 554.
 Transport.  Usually this is TCP, some manufacturers like ACTi use RTSP over UDP.
 ONVIF port.  Defaults to port 80, currently not used by Bluecherry and added for future releases.
 
@@ -107,7 +107,7 @@ Recording schedules
 
 We support two types of schedules. The first is a global schedule and the second is a per-camera schedule. Both are covered below
 
-.. image:: docs/global-schedule.png
+.. image:: img/global-schedule.png
 
 **Global schedule**
 
@@ -185,8 +185,9 @@ Admin password reset procedure
 
 In case you’ve lost or forgot Bluecherry server Admin password, you can change it to default in database.
 
-``mysql -u bluecherry -p bluecherry -e "update Users set password='b22dec1d6cfa580962f3a3796a5dc6b3', salt='1234' where username='Admin';"``
+::
+
+  mysql -u bluecherry -p bluecherry -e "update Users set password='b22dec1d6cfa580962f3a3796a5dc6b3', salt='1234' where username='Admin';"``
 
 
 This resets the login to Admin and the password to bluecherry
-

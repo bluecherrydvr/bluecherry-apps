@@ -27,7 +27,7 @@ Finish by clicking 'close'
 Adding your first server
 ------------------------
 
-The Bluecherry client can connect to multiple Bluecherry servers.  
+The Bluecherry client can connect to multiple Bluecherry servers.
 
 Inside the client click 'Add new server'
 
@@ -67,7 +67,7 @@ You can repeat this process or any camera or DVR that you have listed on the lef
 
 Cameras with audio stream available are marked with the blue speaker icon. You can turn on audio by selecting "Enable audio" in the right-click menu of the selected camera.
 
-.. image:: img/57cc3c5a903360649f6e5018/file-fvdWbUe8AD.png
+.. image:: img/client-audio-enable.png
 
 When audio is enabled on one camera, it is disabled on all others, only the single camera stream can be listened at the same time.
 
@@ -131,8 +131,3 @@ From the screen below you can select the camera(s) you want to view events on, a
 .. image:: img/file-IVwulSqFHd.png
 
 Once you select the date click **Load events**, this is a very important step, otherwise the server will not display any events.
-
-
-
-
-

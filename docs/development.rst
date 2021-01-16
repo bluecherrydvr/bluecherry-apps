@@ -27,7 +27,7 @@ Once you obtain the device id, you can obtain a multi-part JPEG image from this 
 ``https://login:password@bluecherry-server/media/mjpeg.php?id={camera_id}&multipart=true``
 
 **Return single image (JPEG)**
-
+´
 Obtain one image from the server:
 ``https://login:password@bluecherry-server/media/mjpeg.php?id={camera_id}``
 
@@ -55,4 +55,3 @@ Trigger recording:
 ``https://login:password@bluecherry-server:7001/media/trigger.php?camera_id={camera_id}&description=TEST``
 
  Camera must be set to Trigger (‘T’) in the recording schedule. Description will show in the logs that a trigger was recording with the description you inserted.
-
