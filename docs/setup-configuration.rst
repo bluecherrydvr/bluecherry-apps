@@ -33,75 +33,6 @@ Navigating the web interface
 17. Server statistics - This section shows current CPU, memory and how long the system has been running.
 18. Profile link - Here you can easily update your profile, reset your password, or simply logout
 
-Adding / Managing network (IP) cameras
---------------------------------------
-
-This section covers adding and managing analog cameras. A Bluecherry hardware compression card is required for use with analog cameras and our software.
-
-.. Tip:: It is recommended that you change the 'List Source' from 'Local' to 'Live' in General Settings -> Performance/connectivity.  This will allow you to recieve the last list of manufacturers and model numbers.
-
-.. image:: img/list-source.png
-
-Manually adding network (IP) cameras
-------------------------------------
-
-**Select Devices from the menu**
-
-.. image:: img/devices-list.png
-
-
-**By default the ‘IP Cameras’ section is minimized.**
-
-.. image:: img/devices-list-ip.png
-
-.. Tip:: Always make sure your IP cameras are set to a static IP.  If the IP camera is setup with dynamic (DHCP) and the IP address changes Bluecherry will not be able to connect to the IP camera.
-
-**Devices -> Add an IP cameras**
-
-.. image:: img/ipcamera-manual-add.png
-
-If you already know the RTSP path you can select 'Generic' and update the Camera name (used in Bluecherry to show events), Camera IP or host, Username, Password.
-
-Video source stream should always be RTSP, only use MJPEG if you know for sure what you are doing.
-Path to RTSP.  This should always have a forward slash (/) followed by the RTSP path for the model of your IP camera (example - /media/video).  A quick Google search can usually provide you the RTSP path, or use the manufacturer list above to try to populate this for you.
-RTSP port.  *Most* IP camera manufacturers, with the exception of ACTi and some Hikvision cameras, use the default port of 554.  
-Transport.  Usually this is TCP, some manufacturers like ACTi use RTSP over UDP.
-ONVIF port.  Defaults to port 80, currently not used by Bluecherry and added for future releases.
-
-Once this you've completed this section click Add camera then test your configuration in the Bluecherry client or Bluecherry web interface.  Optionally you can look at /var/log/bluecherry.log to see if the IP camera was successfully connected to by Bluecherry.
-
-Automatic discovery of IP cameras
----------------------------------
-
-**Select Devices from the menu**
-
-.. image:: img/devices-list.png
-
-**By default the ‘IP Cameras’ section is minimized.**
-
-.. image:: img/devices-list-ip.png
-
-.. Warning:: Currently this is still in development and may not work as expected and can take up to two minutes to run.
-
-**Devices -> Discover IP Cameras -> Find cameras**
-
-.. image:: img/ipcamera-discovery.png
-
-A list of the IP addresses and model numbers (if available) will be listed of any device that Bluecherry can autodetect.  If your IP camera is NOT in this list then follow the Manually adding network (IP) cameras section.
-
-.. image:: img/ipcamera-discovery-list.png
-
-Click on the checkbox next to the camera you wish to add then click 'Add camera'
-
-.. image:: img/ipcamera-discovery-auth.png
-
-Complete the login and password for the camera then click 'Add selected camera'
-
-Once this you've completed this section click Add camera then test your configuration in the Bluecherry client or Bluecherry web interface.  Optionally you can look at /var/log/bluecherry.log to see if the IP camera was successfully connected to by Bluecherry.
-
-
-.. image:: img/webui-sections.png
-
 Recording schedules
 ------------------
 
@@ -189,4 +120,3 @@ In case you’ve lost or forgot Bluecherry server Admin password, you can change
 
 
 This resets the login to Admin and the password to bluecherry
-
