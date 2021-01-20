@@ -1,5 +1,7 @@
 ## Building from source
 
+[![Join the chat at https://gitter.im/bluecherrydvr/dev-server](https://badges.gitter.im/bluecherrydvr/dev-server.svg)](https://gitter.im/bluecherrydvr/dev-server?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Currently building from source requires running pre-configured scripts to generate some of the required files for a build.  In the past we used chroots for build environments, however it is possible to build for your specific distributions using the following command:
 
 In the root of bluecherry-apps run the following command.
