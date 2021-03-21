@@ -470,7 +470,7 @@ static float path_used_percent(const char *path)
 	if (statvfs(path, &st))
 		return -1.00;
 
-	bc_log(Debug, "path_used_percent(%s) = %f, f_bavail = %i, f_blocks = %i", path, 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks, st.f_bavail, st.f_blocks);
+	bc_log(Debug, "path_used_percent(%s) = %f, f_bavail = %li, f_blocks = %li", path, 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks, st.f_bavail, st.f_blocks);
 
 	return 100.0 - 100.0 * (float)st.f_bavail / (float)st.f_blocks;
 }
@@ -482,7 +482,7 @@ static uint64_t path_freespace(const char *path)
 	if (statvfs(path, &st))
 		return 0;
 
-	bc_log(Debug, "path_freespace(%s) = %ld, f_bavail = %i, f_bsize = %i", path, (uint64_t)st.f_bavail * (uint64_t)st.f_bsize, st.f_bavail, st.f_bsize);
+	bc_log(Debug, "path_freespace(%s) = %ld, f_bavail = %li, f_bsize = %li", path, (uint64_t)st.f_bavail * (uint64_t)st.f_bsize, st.f_bavail, st.f_bsize);
 
 	return (uint64_t)st.f_bavail * (uint64_t)st.f_bsize;
 }
@@ -839,7 +839,7 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 static void bc_check_abandoned_media_updates()
 {
 	/* Called from main loop, updates lengths of processed recordings in database */
-	bc_log(Info, "Updating length of %d abandoned recordings", abandoned_media_updated.size());
+	bc_log(Info, "Updating length of %ld abandoned recordings", abandoned_media_updated.size());
 	while(!abandoned_media_updated.empty()) {
 		struct media_record m;
 
@@ -1071,7 +1071,7 @@ int main(int argc, char **argv)
 
 	umask(007);
 
-	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:f:")) != -1) {
 		switch (opt) {
 		case 's': bg = 0; break;
 		case 'r': record_id = atoi(optarg); break;

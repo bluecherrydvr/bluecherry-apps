@@ -262,13 +262,19 @@ void bc_record::run()
 					bc->input->set_motion(true);
 					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 				} else {
-					m_processor = new motion_processor;
+					m_processor = new motion_processor(this);
 					m_processor->set_logging_context(log);
 					update_motion_thresholds();
 
 					m_processor->set_motion_algorithm(cfg.motion_algorithm);
 					m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
 					m_processor->set_min_motion_area_percent(cfg.min_motion_area);
+                    m_processor->set_max_motion_area_percent(cfg.max_motion_area);
+
+                    m_processor->set_max_motion_frames(cfg.max_motion_frames);
+                    m_processor->set_min_motion_frames(cfg.min_motion_frames);
+                    m_processor->set_motion_blend_ratio(cfg.motion_blend_ratio);
+                    m_processor->set_motion_debug(cfg.motion_debug);
 
 					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 					m_processor->output()->connect(m_handler->input_consumer());
@@ -704,7 +710,13 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	bool motion_config_changed = (current->motion_algorithm != update->motion_algorithm
 			|| abs(current->motion_frame_downscale_factor - update->motion_frame_downscale_factor) > 0.0625
-			|| current->min_motion_area != update->min_motion_area);
+			|| current->min_motion_area != update->min_motion_area
+            || current->max_motion_area != update->max_motion_area
+            || current->max_motion_frames != update->max_motion_frames
+            || current->min_motion_frames != update->min_motion_frames
+            || current->motion_blend_ratio != update->motion_blend_ratio
+            || current->motion_debug != update->motion_debug
+    );
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
@@ -740,6 +752,11 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		bc_rec->m_processor->set_motion_algorithm(bc_rec->cfg.motion_algorithm);
 		bc_rec->m_processor->set_frame_downscale_factor(bc_rec->cfg.motion_frame_downscale_factor);
 		bc_rec->m_processor->set_min_motion_area_percent(bc_rec->cfg.min_motion_area);
+        bc_rec->m_processor->set_max_motion_area_percent(bc_rec->cfg.max_motion_area);
+        bc_rec->m_processor->set_max_motion_frames(bc_rec->cfg.max_motion_frames);
+        bc_rec->m_processor->set_min_motion_frames(bc_rec->cfg.min_motion_frames);
+        bc_rec->m_processor->set_motion_blend_ratio(bc_rec->cfg.motion_blend_ratio);
+        bc_rec->m_processor->set_motion_debug(bc_rec->cfg.motion_debug);
 	}
 
 	if (mrecord_changed && bc_rec->m_handler) {

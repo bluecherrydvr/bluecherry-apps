@@ -368,8 +368,14 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	cfg->motion_algorithm = bc_db_get_val_int(dbres, "motion_algorithm");
 	cfg->motion_frame_downscale_factor = bc_db_get_val_float(dbres, "frame_downscale_factor");
 	cfg->min_motion_area = bc_db_get_val_int(dbres, "min_motion_area");
+    cfg->max_motion_area = bc_db_get_val_int(dbres, "max_motion_area");
 
-	cfg->reencode_enabled = bc_db_get_val_int(dbres, "reencode_livestream") != 0;
+    cfg->max_motion_frames = bc_db_get_val_int(dbres, "max_motion_frames");
+    cfg->min_motion_frames = bc_db_get_val_int(dbres, "min_motion_frames");
+    cfg->motion_blend_ratio = bc_db_get_val_int(dbres, "motion_blend_ratio");
+    cfg->motion_debug = bc_db_get_val_int(dbres, "motion_debug");
+
+    cfg->reencode_enabled = bc_db_get_val_int(dbres, "reencode_livestream") != 0;
 	cfg->reencode_bitrate = bc_db_get_val_int(dbres, "reencode_bitrate");
 	cfg->reencode_frame_width = bc_db_get_val_int(dbres, "reencode_frame_width");
 	cfg->reencode_frame_height = bc_db_get_val_int(dbres, "reencode_frame_height");

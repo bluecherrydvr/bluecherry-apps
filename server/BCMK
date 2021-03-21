@@ -6,7 +6,7 @@ LDFLAGS		+= -lbluecherry -lbsd -ludev \
 LDFLAGS		+= -ldl
 
 # OpenCV libraries
-LDFLAGS		+= -lopencv_core -lopencv_imgproc
+LDFLAGS		+= -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 
 BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*//;s/).*//;q' $(TOPDIR)/debian/changelog)
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'

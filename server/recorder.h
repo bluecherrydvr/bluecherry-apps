@@ -16,6 +16,9 @@ public:
 	void set_recording_type(bc_event_cam_type_t type);
 	void set_buffer_time(int prerecord);
 
+	int get_device_id() { return device_id; }
+	bc_event_cam_t get_current_event() { return current_event; }
+
 	void destroy();
 	void run();
 
