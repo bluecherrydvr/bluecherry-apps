@@ -260,6 +260,7 @@ define('MOTION_ALGORITHM_TITLE', 'Motion detection algorithm');
 define('MOTION_ALGORITHM', 'Algorithm');
 define('MOTION_DEFAULT', 'Default');
 define('MOTION_EXPERIMENTAL', 'Experimental');
+define('MOTION_CV_TEMPORAL', 'Frame-based');
 
 define('SCHED_HEADER','Device recording schedule');
 define('SCHED_SELECTOR_TITLE', 'Use these selectors to fill in the schedule below');

@@ -1,3 +1,10 @@
+bluecherry (3:3.0.5) focal bionic buster; urgency=low
+
+  * Adds temporal-based motion detection algorithm
+  * Minor improvements to Experimental motion detection algorithm, specifically support for "max motion area".
+
+ -- Kyle Mallory <kylemallory@yahoo.com>  Wed, 2 Mar 2021 19:00:00 -0700
+
 bluecherry (3:3.0.4) focal bionic buster; urgency=low
 
   * Restart subscription to ONVIF events if connection is lost

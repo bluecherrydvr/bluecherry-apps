@@ -8,13 +8,27 @@ $(function() {
     });
 
     $('body').on("change", "#motionmap-algorithm :input", function() {
-        var min_motion_area_bl = $('.bfh-slider[data-name="min_motion_area"]');
         if ($(this).val() == 0) {
             // default
-            min_motion_area_bl.addClass('disabled');
-        } else {
+            $('.bfh-slider[data-name="min_motion_area"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').addClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').addClass('disabled');
+        } else if ($(this).val() == 1) {
             // experimental
-            min_motion_area_bl.removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').addClass('disabled');
+        } else if ($(this).val() == 2) {
+            // OpenCV Temporal
+            $('.bfh-slider[data-name="min_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').removeClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').removeClass('disabled');
         }
     });
 
@@ -92,6 +106,19 @@ function triggerONVIFevents(el) {
 
     if (el.prop('checked')) {
         
+        el_val.val('1');
+    } else {
+
+        el_val.val('0');
+    }
+}
+
+function toggleMotionDebug(el) {
+    var par = el.closest('div');
+    var el_val = par.find('input[name="motion_debug"]');
+
+    if (el.prop('checked')) {
+
         el_val.val('1');
     } else {
 

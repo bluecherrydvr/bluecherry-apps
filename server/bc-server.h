@@ -30,6 +30,7 @@ extern "C" {
 #include <pugixml.hpp>
 
 #include "reencoder.h"
+#include "recorder.h"
 
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;

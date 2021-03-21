@@ -69,6 +69,7 @@ CREATE TABLE `Devices` (
   `motion_algorithm` tinyint(1) DEFAULT '1',
   `frame_downscale_factor` decimal(4,3) DEFAULT '0.500',
   `min_motion_area` smallint(6) DEFAULT '5',
+  `max_motion_area` smallint(5) DEFAULT '90',
   `motion_analysis_ssw_length` int(11) DEFAULT '-1',
   `motion_analysis_percentage` int(11) DEFAULT '-1',
   `schedule` varchar(168) NOT NULL DEFAULT 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
@@ -83,6 +84,11 @@ CREATE TABLE `Devices` (
   `substream_mode` tinyint(1) DEFAULT '0',
   `substream_path` varchar(255) DEFAULT NULL,
   `onvif_events_enabled` tinyint(1) DEFAULT '0',
+  `min_motion_frames` smallint(5) DEFAULT '15',
+  `max_motion_frames` smallint(5) DEFAULT '20',
+  `motion_blend_ratio` smallint(5) DEFAULT '15',
+  `motion_debug` tinyint(1) DEFAULT '0',
+
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)
