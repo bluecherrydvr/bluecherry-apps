@@ -259,7 +259,7 @@ if (!$rules){
             </div>
             <div class='screenshot'>
                 Event screenshot:<br />
-                <img height='240' src='cid:{$message->embed($attachment)}'>
+                <img height='240' src='{$message->embed($attachment)}'>
             </div>
             </body>
         </html>", 'text/html');
