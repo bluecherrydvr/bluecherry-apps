@@ -16,9 +16,11 @@ RELEASE_NAME := $(shell ./scripts/build_helper/get_distro_release_name.sh)
 override_dh_strip:
 	dh_strip --dbg-package=bluecherry-dbg
 
+#override_dh_installinit: sbin-start=$(wildcard /sbin/start)
 override_dh_installinit:
+	#dh_installinit $(if $(sbin-start),--name=bluecherry)
 	dh_installinit --name=bluecherry
-	
+
 override_dh_installlogrotate:
 	dh_installlogrotate
 
@@ -47,3 +49,4 @@ override_dh_shlibdeps:
 
 override_dh_usrlocal:
 	true
+	
