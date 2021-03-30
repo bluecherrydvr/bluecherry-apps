@@ -1,0 +1,11 @@
+[Unit]
+Description=Bluecherry DVR Server
+After=syslog.target network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/bc-server -s bluecherry -g bluecherry
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
