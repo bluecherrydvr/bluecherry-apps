@@ -59,6 +59,12 @@ function webhook_trigger($eventName, $deviceId = null, $payload = array()) {
 			continue;
 		}
 
+		$uuidParam = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'G_SERVER_UUID\' LIMIT 1');
+
+		if (!empty($uuidParam)) {
+			$payload['server_uuid'] = $uuidParam[0]['value'];
+		}
+
 		$body = json_encode(array_merge(array(
 			'event_name' => $eventName,
 			'event_datetime' => date(DATE_ATOM)
