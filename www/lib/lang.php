@@ -45,7 +45,7 @@ define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_DOCUMENTATION', 'Documentation');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
-define('MMENU_LICENSING', 'Support ID keys');
+define('MMENU_LICENSING', 'License keys');
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -590,10 +590,10 @@ define('BACKUP_DOWNLOAD', 'Download backup file');
 define('BACKUP_B_SUCCESS', 'Created');
 
 #licensing
-define('L_ADDCODE', 'Add a support ID code');
+define('L_ADDCODE', 'Add a license code');
 define('L_ADD', 'Add');
 define('L_PORTS', 'Ports');
-define('L_CONFIRMCODE', 'Confirm a support ID code');
+define('L_CONFIRMCODE', 'Confirm a code');
 define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
 define('L_INVALID_LICENSE', 'The code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_INVALID_LICENSE_EXISTS', 'The code you entered is already in use on this system.');
