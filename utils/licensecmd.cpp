@@ -20,14 +20,155 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <stdarg.h>
-
+#include <stdio.h>
+#include <vector>
 
 #include "libbluecherry.h"
 #include "utils.h"
 
-#include <stdio.h>
+#define V3_LICENSING 1
 
-#include <vector>
+#ifdef V3_LICENSING
+#include "licensecmd.h"
+
+int bc_license_v3_init()
+{
+	int status;
+
+	status = SetProductData(PRODUCT_DATA);
+	if (LA_OK != status)
+	{
+		return V3_LICENSE_FAIL;
+	}
+	status = SetProductId(PRODUCT_ID, LA_USER);
+	if (LA_OK != status)
+	{
+		return V3_LICENSE_FAIL;
+	}
+
+	status = SetAppVersion(PRODUCT_VERSION);
+	if (LA_OK != status)
+	{
+		return V3_LICENSE_FAIL;
+	}
+
+	return V3_LICENSE_OK;
+}
+
+// Ideally on a button click inside a dialog
+int activate()
+{
+	int status;
+
+	status = SetLicenseKey(PRODCUT_KEY);
+	if (LA_OK != status)
+	{
+		return V3_LICENSE_FAIL;
+	}
+
+	status = ActivateLicense();
+	if (LA_OK == status 
+			|| LA_EXPIRED == status 
+			|| LA_SUSPENDED == status)
+	{
+		return V3_LICENSE_OK;
+	}
+	else
+	{
+		return V3_LICENSE_FAIL;
+	}
+}
+
+// Ideally on a button click inside a dialog
+int activateTrial()
+{
+	int status;
+
+	status = ActivateTrial();
+	if (LA_OK == status)
+	{
+		return V3_LICENSE_OK;
+	}
+	else
+	{
+		return V3_LICENSE_FAIL;
+	}
+}
+
+int bc_license_v3_check()
+{
+	if (bc_license_v3_init() != LA_OK)
+	{
+		return V3_LICENSE_FAIL;
+	}
+
+	int status = IsLicenseGenuine();
+	if (LA_OK == status)
+	{
+		return V3_LICENSE_OK;
+	}
+	else if (LA_EXPIRED == status 
+			|| LA_SUSPENDED == status 
+			|| LA_GRACE_PERIOD_OVER == status)
+	{
+		return V3_LICENSE_FAIL;
+	}
+	else
+	{
+		int trialStatus;
+		trialStatus = IsTrialGenuine();
+		if (LA_OK == trialStatus)
+		{
+			//printf("Trial days left: %d", daysLeft);
+			return V3_LICENSE_OK;
+		}
+		else if (LA_TRIAL_EXPIRED == trialStatus)
+		{
+			// Time to buy the license and activate the app
+			return activate();
+		}
+		else
+		{
+			// Activating the trial
+			return activateTrial();
+		}
+	}
+	return V3_LICENSE_OK;
+}
+
+int main(int argc, char **argv)
+{
+	const char *name;
+
+	if (argc < 2)
+	{
+		return V3_LICENSE_FAIL;
+	}
+	name = argv[1];
+
+	do
+	{
+		if (strcmp(name, "bc_v3license_check") == 0)
+		{
+			if (bc_license_v3_check() == V3_LICENSE_OK)
+			{
+				puts("true");
+			}
+			else
+			{
+				puts("0");
+			}
+			break;
+		}
+
+		fprintf(stderr, "unknown function name \"%s\"\n", name);
+		return V3_LICENSE_FAIL;
+	}
+	while(0);
+
+	return V3_LICENSE_OK;
+}
+#else
 
 void usage(const char *argv0)
 {
@@ -127,3 +268,4 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+#endif /* V3_LICENSING */

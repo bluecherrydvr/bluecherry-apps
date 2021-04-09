@@ -82,6 +82,16 @@ class licenses extends Controller {
             $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
             data::responseJSON(true);
         }
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'v3license'){
+            if (bc_v3license_check()) {
+                data::responseJSON(true, L_LICENSE_ADDED);
+                exit();
+            } else {
+                data::responseJSON(false, false);
+                exit();
+            }
+        }
+
     }
 
     private function sendHttpReq($url)
