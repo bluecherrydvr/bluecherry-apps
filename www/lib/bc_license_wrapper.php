@@ -59,4 +59,20 @@ function bc_license_devices_allowed()
 	return $output[0];
 }
 
+function bc_v3license_check()
+{
+	$output = array();
+	$ret = 0;
+	exec("/usr/lib/bluecherry/licensecmd bc_v3license_check", $output, $ret);
+
+	//echo ($ret);
+	//echo ($output[0]);
+
+	if ($ret != 0)
+		return false;
+
+	return $output[0];
+
+}
+
 ?>

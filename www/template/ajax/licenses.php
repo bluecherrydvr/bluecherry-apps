@@ -23,6 +23,11 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
                     <button class="btn btn-success send-req-form" type="submit" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
                 </div>
             </form>
+            <form action="/licenses?mode=v3license" method="POST">
+                <div class="form-group">
+                    <button class="btn btn-success send-req-form" type="submit" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_V3LICENSE; ?></button>
+                </div>
+            </form>
         </div>
     </div>
     </div>

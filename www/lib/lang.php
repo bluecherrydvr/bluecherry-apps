@@ -592,6 +592,7 @@ define('BACKUP_B_SUCCESS', 'Created');
 #licensing
 define('L_ADDCODE', 'Add a license code');
 define('L_ADD', 'Add');
+define('L_V3LICENSE', 'V3License');
 define('L_PORTS', 'Ports');
 define('L_CONFIRMCODE', 'Confirm a code');
 define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');

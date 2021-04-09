@@ -1,6 +1,13 @@
 CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
+CFLAGS      += -Wno-error=format-truncation -Wno-unused-result
+DESTDIR?=/usr/local/lib
+pre-install:
+		  cp -a libLexActivator.so ${DESTDIR}
+LDFLAGS		+= -L/lib -lLexActivator
+
+
 TARGETS		= pelcocmd ptzcmd \
 		  bc-license licensecmd
 
@@ -18,7 +25,7 @@ $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 clean:
 	rm -f $(TARGETS) *.o
 
-install: licensecmd ptzcmd
+install: libLexActivator.so licensecmd ptzcmd
+	$(INSTALL_PROG) -D lib/libLexActivator.so $(DESTDIR)$(libexec_dir)/libLexActivator.so
 	$(INSTALL_PROG) -D licensecmd $(DESTDIR)$(libexec_dir)/licensecmd
 	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
-	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool
