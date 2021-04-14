@@ -332,8 +332,13 @@ void bc_record::run()
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_LAVF) {
+				char full_err[128];
+
 				const char *err = reinterpret_cast<lavf_device*>(bc->input)->get_error_message();
-				log.log(Error, "Read error from stream: %s", *err ? err : "Unknown error");
+				snprintf(full_err, sizeof(full_err), "Read error from stream: %s", *err ? err : "Unknown error");
+
+				log.log(Error, "%s", full_err);
+				notify_device_state(full_err);
 			}
 
 			stop_handle_properly(this);

@@ -415,7 +415,13 @@ static void bc_stop_threads(void)
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
 		bc_record *bc_rec = *it;
 		pthread_join(bc_rec->thread, (void **)&errmsg);
-		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
+
+		char message[128];
+		snprintf(message, sizeof(message), "Device stopped: %s", errmsg);
+
+		bc_rec->log.log(Info, message);
+		bc_rec->notify_device_state(message);
+
 		delete bc_rec;
 		cur_threads--;
 	}
@@ -435,7 +441,12 @@ static void bc_check_threads(void)
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;
 
-		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
+		char message[128];
+		snprintf(message, sizeof(message), "Device stopped: %s", errmsg);
+
+		bc_rec->log.log(Info, message);
+		bc_rec->notify_device_state(message);
+
 		delete bc_rec;
 		cur_threads--;
 
