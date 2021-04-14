@@ -39,6 +39,10 @@ extern "C" {
 #include "trigger_server.h"
 #include "vaapi.h"
 
+#ifdef V3_LICENSING
+#include "v3license_server.h"
+#endif /* V3_LICENSING */
+
 #include <queue>
 
 /* Global Mutexes */
@@ -86,6 +90,9 @@ static std::queue<struct media_record> abandoned_media_to_update;
 static std::queue<struct media_record> abandoned_media_updated;
 
 static rtsp_server *rtsp = NULL;
+#ifdef V3_LICENSING
+static v3license_server *v3license = NULL;
+#endif /* V3_LICENSING */
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -1162,6 +1169,14 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+#ifdef V3_LICENSING
+	v3license = new v3license_server;
+	if (v3license->setup(7003)) {
+		bc_log(Error, "Failed to setup V3LICENSE server");
+		return 1;
+	}
+#endif /* V3_LICENSING */
+
 	if (open_db_loop(config_file))
 		return 1;
 
@@ -1182,6 +1197,11 @@ int main(int argc, char **argv)
 
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
+
+#ifdef V3_LICENSING
+	pthread_t v3license_thread;
+	pthread_create(&v3license_thread, NULL, v3license_server::runThread, v3license);
+#endif /* V3_LICENSING */
 
 	/* Main loop */
 	for (unsigned int loops = 0 ;; sleep(1), loops++) {

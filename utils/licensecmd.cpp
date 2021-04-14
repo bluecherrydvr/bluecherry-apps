@@ -38,17 +38,20 @@ int bc_license_v3_init()
 	status = SetProductData(PRODUCT_DATA);
 	if (LA_OK != status)
 	{
+		printf("%s\n", "SetProductData");
 		return V3_LICENSE_FAIL;
 	}
-	status = SetProductId(PRODUCT_ID, LA_USER);
+	status = SetProductId(PRODUCT_ID, LA_SYSTEM);
 	if (LA_OK != status)
 	{
+		printf("%s error code = %d\n", "SetProductId", status);
 		return V3_LICENSE_FAIL;
 	}
 
 	status = SetAppVersion(PRODUCT_VERSION);
 	if (LA_OK != status)
 	{
+		printf("%s\n", "PRODUCT_VERSION");
 		return V3_LICENSE_FAIL;
 	}
 
@@ -71,10 +74,12 @@ int activate()
 			|| LA_EXPIRED == status 
 			|| LA_SUSPENDED == status)
 	{
+		printf("%s\n", "V3_LICENSE_OK");
 		return V3_LICENSE_OK;
 	}
 	else
 	{
+		printf("%s\n", "V3_LICENSE_FAIL");
 		return V3_LICENSE_FAIL;
 	}
 }
@@ -99,19 +104,22 @@ int bc_license_v3_check()
 {
 	if (bc_license_v3_init() != LA_OK)
 	{
+		printf("%s\n", "bc_license_v3_init");
 		return V3_LICENSE_FAIL;
 	}
 
 	int status = IsLicenseGenuine();
 	if (LA_OK == status)
 	{
+		printf("%s\n", "IsLicenseGenuine");
 		return V3_LICENSE_OK;
 	}
 	else if (LA_EXPIRED == status 
 			|| LA_SUSPENDED == status 
 			|| LA_GRACE_PERIOD_OVER == status)
 	{
-		return V3_LICENSE_FAIL;
+		printf("%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
+		return V3_LICENSE_OK;
 	}
 	else
 	{
@@ -119,7 +127,7 @@ int bc_license_v3_check()
 		trialStatus = IsTrialGenuine();
 		if (LA_OK == trialStatus)
 		{
-			//printf("Trial days left: %d", daysLeft);
+			printf("Trial days left: %s", "IsTrialGenuine");
 			return V3_LICENSE_OK;
 		}
 		else if (LA_TRIAL_EXPIRED == trialStatus)
