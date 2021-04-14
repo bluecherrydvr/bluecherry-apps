@@ -304,7 +304,7 @@ int motion_processor::set_max_motion_frames(int max)
 int motion_processor::set_min_motion_frames(int min)
 {
     if (min > m_maxMotionFrames)
-        min = min > m_maxMotionFrames ? min = m_maxMotionFrames * 0.75 : 15;
+        min = min > m_maxMotionFrames ? (m_maxMotionFrames * 0.75) : 15;
         //return 0;
     if (min > 255 || min < 1)
         min = 15;

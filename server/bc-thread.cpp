@@ -78,7 +78,7 @@ static void update_osd(struct bc_record *bc_rec)
 {
 #define OSD_TEXT_MAX 44
 #define DATE_LEN 19
-#define OSD_NAME_MAX_LEN (OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
+#define OSD_NAME_MAX_LEN 256 /* sizeof(bc_rec->cfg.name) == 256 */ //(OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
 	input_device *d = bc_rec->bc->input;
 	time_t t = time(NULL);
 	char buf[DATE_LEN + 1 /* for null-termination */];
@@ -383,6 +383,7 @@ void bc_record::run()
 		if (bc_streaming_is_active(this) && !bc->substream_mode) {
 
 			if (bc_streaming_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet to streaming clients");
 				goto error;
 			}
 		}
