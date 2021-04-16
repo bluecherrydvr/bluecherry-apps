@@ -119,7 +119,6 @@ void * socketThread(void *arg)
 	strcpy(buffer,message);
 	free(message);
 	pthread_mutex_unlock(&lock);
-	sleep(1);
 	send(newSocket,buffer,13,0);
 	printf("Exit socketThread \n");
 	close(newSocket);
