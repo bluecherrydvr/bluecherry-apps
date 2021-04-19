@@ -30,6 +30,12 @@
 
 #define FD_MAX 256
 #define BUF_MAX 1024
+#define QUEUE_MAX_V3LICENSE_SOCK 10
+
+typedef struct {
+    int socket = -1;
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+} license_thread_context_t;
 
 class v3license_server
 {
@@ -42,6 +48,7 @@ public:
 	int setup(int port);
 	void run();
 
+	static license_thread_context_t *thread_context;
 	static void *runThread(void *p);
 
 private:

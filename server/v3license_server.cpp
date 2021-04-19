@@ -35,17 +35,25 @@
 #include "v3license_processor.h"
 
 v3license_server *v3license_server::instance = 0;
+license_thread_context_t *v3license_server::thread_context = 0;
 
 v3license_server::v3license_server()
 	: serverfd(-1)
 {
 	if (!instance)
+	{
 		instance = this;
+	}
+	thread_context = new license_thread_context_t();
 }
 
 v3license_server::~v3license_server()
 {
 	close(serverfd);
+	if (thread_context)
+	{
+		free(thread_context);
+	}
 }
 
 int v3license_server::setup(int port)
@@ -61,15 +69,24 @@ int v3license_server::setup(int port)
 		serverfd = socket(domain, SOCK_STREAM, 0);
 	}
 	if (serverfd < 0)
+	{
+		bc_log(Error, "Failed to create license server socket: %s", strerror(errno));
 		return -1;
+	}
 
 	const int yes = 1, no = 0;
 	if (setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) < 0)
+	{
+		bc_log(Error, "Failed to set SO_REUSEADDR option on the license server socket: %s", strerror(errno));
 		goto error;
+	}
 
 	if (domain == AF_INET6) {
 		if (setsockopt(serverfd, IPPROTO_IPV6, IPV6_V6ONLY, &no, sizeof(no)) < 0)
+		{
+			bc_log(Error, "Failed to set IPV6_V6ONLY option on the license server socket: %s", strerror(errno));
 			goto error;
+		}
 
 		struct sockaddr_in6 *addr = (sockaddr_in6 *) &addr_stor;
 		addr->sin6_port   = htons(port);
@@ -82,10 +99,16 @@ int v3license_server::setup(int port)
 		addr->sin_addr.s_addr = htonl(INADDR_ANY);
 	}
 	if (bind(serverfd, addr_ptr, addr_len) < 0)
+	{
+		bc_log(Error, "Failed to bind license server socket: %s", strerror(errno));
 		goto error;
+	}
 
-	if (listen(serverfd, 10) < 0)
+	if (listen(serverfd, QUEUE_MAX_V3LICENSE_SOCK) < 0)
+	{
+		bc_log(Error, "Failed to listen license server socket: %s", strerror(errno));
 		goto error;
+	}
 
 	return 0;
 
@@ -94,33 +117,40 @@ error:
 	serverfd = -1;
 	return -1;
 }
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 void * socketThread(void *arg)
 {
-	int newSocket = *((int *)arg);
+	license_thread_context_t *context = (license_thread_context_t*)arg;
+	pthread_mutex_t *lock = &context->lock;
+	int newSocket = context->socket;
 	char client_message[BUF_MAX];
-	char buffer[BUF_MAX];
-	recv(newSocket , client_message , BUF_MAX, 0);
+	char message[BUF_MAX];
+
+	int size = recv(newSocket , client_message , BUF_MAX, 0);
+	if (size <= 0)
+	{
+		bc_log(Error, "Failed to receive message from client socket: %s", strerror(errno));
+		return NULL;
+	}
 
 	// Send message to the client socket 
-	pthread_mutex_lock(&lock);
-	char *message = (char*)malloc(sizeof(client_message)+20);
+	pthread_mutex_lock(lock);
 	if (V3_LICENSE_OK == bc_license_v3_check())
 	{
-		strcpy(message,"license is OK: ");
+		snprintf(message, sizeof(message), "license is OK: %s\n", client_message);
 	}
 	else
 	{
-		strcpy(message,"license is FAIL : ");
+		snprintf(message, sizeof(message), "license is FAIL: %s\n", client_message);
 	}
-	strcat(message,client_message);
-	strcat(message,"\n");
-	strcpy(buffer,message);
-	free(message);
-	pthread_mutex_unlock(&lock);
-	send(newSocket,buffer,13,0);
-	printf("Exit socketThread \n");
+	pthread_mutex_unlock(lock);
+
+	if (send(newSocket, message, strlen(message), 0) < 0)
+	{
+		bc_log(Error, "Failed to send message from client socket: %s", strerror(errno));
+
+	}
+	bc_log(Info, "Exit socketThread %d.", newSocket);
 	close(newSocket);
 	pthread_exit(NULL);
 }
@@ -128,22 +158,29 @@ void * socketThread(void *arg)
 
 void *v3license_server::runThread(void *p)
 {
+	int server = static_cast<v3license_server*>(p)->serverfd;
+
+	if (server < 0)
+	{
+		bc_log(Error, "v3license server cast failed: %s", strerror(errno));
+		return NULL;
+	}
+
 	while (true)
 	{
-		int server = static_cast<v3license_server*>(p)->serverfd;
-
-		if (server < 0)
-			return NULL;
-
 		int client = accept(server, NULL, NULL);
 		if (client < 0) {
 			bc_log(Error, "accept() failed: %s", strerror(errno));
 			return NULL;
 		}
+
+		thread_context->socket = client;
+
 		pthread_t thread;
-		if( pthread_create(&thread, NULL, socketThread, &client) != 0 )
-			printf("Failed to create thread\n");
-		usleep(10);
+		if( pthread_create(&thread, NULL, socketThread, thread_context) != 0 )
+		{
+			bc_log(Error, "Failed to create v3license thread: %s", strerror(errno));
+		}
 	}
 
 	return NULL;
