@@ -123,9 +123,10 @@ void * socketThread(void *arg)
 	license_thread_context_t *context = (license_thread_context_t*)arg;
 	pthread_mutex_t *lock = &context->lock;
 	int newSocket = context->socket;
-	char client_message[BUF_MAX];
-	char message[BUF_MAX];
+	char client_message[BUF_MAX] = { 0 };
+	char message[BUF_MAX] = { 0 };
 
+	// Receive the message from the client socket
 	int size = recv(newSocket , client_message , BUF_MAX, 0);
 	if (size <= 0)
 	{
@@ -135,26 +136,20 @@ void * socketThread(void *arg)
 
 	// Send message to the client socket 
 	pthread_mutex_lock(lock);
-	if (V3_LICENSE_OK == bc_license_v3_check())
-	{
-		snprintf(message, sizeof(message), "license is OK: %s\n", client_message);
-	}
-	else
-	{
-		snprintf(message, sizeof(message), "license is FAIL: %s\n", client_message);
-	}
+	int status = bc_license_v3_check();
+	snprintf(message, sizeof(message), "%d", status);
 	pthread_mutex_unlock(lock);
 
 	if (send(newSocket, message, strlen(message), 0) < 0)
 	{
 		bc_log(Error, "Failed to send message from client socket: %s", strerror(errno));
-
 	}
+
+	// Exit the thread
 	bc_log(Info, "Exit socketThread %d.", newSocket);
 	close(newSocket);
 	pthread_exit(NULL);
 }
-
 
 void *v3license_server::runThread(void *p)
 {
