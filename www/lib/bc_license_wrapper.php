@@ -80,7 +80,7 @@ function bc_v3license_check()
 		return -1;
 	}
 
-	$message = "GET / HTTP/1.1\r\n\r\n";
+	$message = "bc_v3_license_isActivated";
 
 	//Send the message to the server
 	if (!socket_send($sock, $message, strlen($message), 0))

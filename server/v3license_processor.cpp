@@ -10,6 +10,76 @@
 #ifdef V3_LICENSING
 #include "v3license_processor.h"
 
+V3LICENSE_API int bc_license_v3_Init(CSTRTYPE productData, CSTRTYPE productId, CSTRTYPE productVersion)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_IsActivated()
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_IsTrialGenuine()
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_IsProductKeyValid()
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetProductMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetLicenseMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetLicenseTotalActivations(uint32_t *totalActivations)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *trialExpiryDate)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE productKey)
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_IsLicenseValid()
+{
+	return LA_OK;
+}
+
+V3LICENSE_API int bc_license_v3_ActivateTrial()
+{
+	return LA_OK;
+}
+
 int bc_license_v3_init()
 {
 	int status;

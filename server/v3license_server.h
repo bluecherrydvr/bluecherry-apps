@@ -29,8 +29,10 @@
 #include <inttypes.h>
 
 #define FD_MAX 256
-#define BUF_MAX 1024
+#define BUF_MAX 256
 #define QUEUE_MAX_V3LICENSE_SOCK 10
+#define MIN_ARG_CNT_V3LICENSE 1
+#define MAX_ARG_CNT_V3LICENSE 4
 
 typedef struct {
     int socket = -1;
@@ -50,6 +52,7 @@ public:
 
 	static license_thread_context_t *thread_context;
 	static void *runThread(void *p);
+	size_t splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch);
 
 private:
 

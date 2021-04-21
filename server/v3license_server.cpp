@@ -118,15 +118,39 @@ error:
 	return -1;
 }
 
+size_t v3license_server::splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch)
+{
+    size_t pos = txt.find( ch );
+    size_t initialPos = 0;
+    strs.clear();
+
+    // Decompose statement
+    while( pos != std::string::npos ) {
+        strs.push_back( txt.substr( initialPos, pos - initialPos ) );
+        initialPos = pos + 1;
+
+        pos = txt.find( ch, initialPos );
+    }
+
+    // Add the last one
+    strs.push_back( txt.substr( initialPos, std::min( pos, txt.size() ) - initialPos + 1 ) );
+
+    return strs.size();
+}
+
 void * socketThread(void *arg)
 {
 	license_thread_context_t *context = (license_thread_context_t*)arg;
 	pthread_mutex_t *lock = &context->lock;
 	int newSocket = context->socket;
-	char client_message[BUF_MAX] = { 0 };
-	char message[BUF_MAX] = { 0 };
+	char client_message[BUF_MAX] = {0};
+	char command[BUF_MAX] = {0};
+	char message[BUF_MAX] = {0};
+	std::vector<std::string> vec;
+	size_t argCount = 0;
 
-	// Receive the message from the client socket
+	char *param[MAX_ARG_CNT_V3LICENSE];
+
 	int size = recv(newSocket , client_message , BUF_MAX, 0);
 	if (size <= 0)
 	{
@@ -136,8 +160,80 @@ void * socketThread(void *arg)
 
 	// Send message to the client socket 
 	pthread_mutex_lock(lock);
-	int status = bc_license_v3_check();
-	snprintf(message, sizeof(message), "%d", status);
+
+	if (!v3license_server::instance)
+	{
+		bc_log(Error, "Failed to get the v3license server instance: %s", strerror(errno));
+		return NULL;
+	}
+	argCount = v3license_server::instance->splitArgument(client_message, vec, ' ');
+	if (argCount > MAX_ARG_CNT_V3LICENSE || argCount < MIN_ARG_CNT_V3LICENSE)
+	{
+		bc_log(Error, "Failed to get the v3license command argument: %s", strerror(errno));
+		return NULL;
+	}
+
+	for (int i = 0; i < vec.size(); i++)
+	{
+		param[i] = (char*) malloc(BUF_MAX);
+		snprintf(param[i], BUF_MAX, "%s", vec.at(i).c_str());
+	}
+
+	snprintf(command, sizeof(command), "%s", param[0]);
+
+	//snprintf(message, sizeof(message), "received command: %s\n", vec.at(0).c_str());
+
+	if (strcmp(command, "bc_v3_license_isActivated") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+	}
+	if (strcmp(command, "bc_v3_license_isLicenseGenuine") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+	}
+	if (strcmp(command, "bc_v3_license_IsTrialGenuine") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+	}
+	if (strcmp(command, "bc_v3_license_GetLicenseMetadata") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 10);
+	}
+	if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 30);
+	}
+	if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 30);
+	}
+	if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+	}
+	if (strcmp(command, "bc_v3_license_ActivateTrial") == 0)
+	{
+		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+	}
+
+#if 0
+	if (V3_LICENSE_OK == bc_license_v3_check())
+	{
+		snprintf(message, sizeof(message), "license is OK: %s\n", client_message);
+	}
+	else
+	{
+		snprintf(message, sizeof(message), "license is FAIL: %s\n", client_message);
+	}
+#endif
+	for (int i = 0; i < vec.size(); i++)
+	{
+		if (param[i])
+		{
+			free (param[i]);
+			param[i] = NULL;
+		}
+	}
 	pthread_mutex_unlock(lock);
 
 	if (send(newSocket, message, strlen(message), 0) < 0)
@@ -148,8 +244,9 @@ void * socketThread(void *arg)
 	// Exit the thread
 	bc_log(Info, "Exit socketThread %d.", newSocket);
 	close(newSocket);
-	pthread_exit(NULL);
+	pthread_exit(0);
 }
+
 
 void *v3license_server::runThread(void *p)
 {

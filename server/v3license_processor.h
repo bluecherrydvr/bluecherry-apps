@@ -14,5 +14,26 @@
 #define V3_LICENSE_FAIL -1
 
 int bc_license_v3_check();
+/*
+   Checks whether the computer has been activated.
+   Returns: LA_OK on success. Handle all other return codes as failures.
+   Possible return codes: LA_OK, TA_FAIL, TA_E_GUID, TA_E_PDETS, TA_E_COM,
+                          TA_E_IN_VM, TA_E_ANDROID_NOT_INIT
+*/
+#define V3LICENSE_API extern "C"
+V3LICENSE_API int bc_license_v3_Init(CSTRTYPE productData, CSTRTYPE productId, CSTRTYPE productVersion);
+V3LICENSE_API int bc_license_v3_IsActivated();
+V3LICENSE_API int bc_license_v3_IsLicenseGenuine();
+V3LICENSE_API int bc_license_v3_IsTrialGenuine();
+V3LICENSE_API int bc_license_v3_IsProductKeyValid();
+V3LICENSE_API int bc_license_v3_GetProductMetadata(CSTRTYPE key, STRTYPE value, uint32_t length);
+V3LICENSE_API int bc_license_v3_GetLicenseMetadata(CSTRTYPE key, STRTYPE value, uint32_t length);
+V3LICENSE_API int bc_license_v3_GetLicenseTotalActivations(uint32_t *totalActivations);
+V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate);
+V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(CSTRTYPE key, STRTYPE value, uint32_t length);
+V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *trialExpiryDate);
+V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE productKey);
+V3LICENSE_API int bc_license_v3_IsLicenseValid();
+V3LICENSE_API int bc_license_v3_ActivateTrial();
 #endif /* V3LICENSE_PROCESSOR_H */
 
