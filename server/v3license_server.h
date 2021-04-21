@@ -53,6 +53,7 @@ public:
 	static license_thread_context_t *thread_context;
 	static void *runThread(void *p);
 	size_t splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch);
+	static int initedLex;
 
 private:
 

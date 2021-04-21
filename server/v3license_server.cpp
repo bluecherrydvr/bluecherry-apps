@@ -36,6 +36,7 @@
 
 v3license_server *v3license_server::instance = 0;
 license_thread_context_t *v3license_server::thread_context = 0;
+int v3license_server::initedLex = LA_FAIL;
 
 v3license_server::v3license_server()
 	: serverfd(-1)
@@ -44,6 +45,8 @@ v3license_server::v3license_server()
 	{
 		instance = this;
 	}
+	
+	initedLex = bc_license_v3_Init();
 	thread_context = new license_thread_context_t();
 }
 
@@ -148,6 +151,7 @@ void * socketThread(void *arg)
 	char message[BUF_MAX] = {0};
 	std::vector<std::string> vec;
 	size_t argCount = 0;
+    int status = LA_FAIL;
 
 	char *param[MAX_ARG_CNT_V3LICENSE];
 
@@ -173,7 +177,7 @@ void * socketThread(void *arg)
 		return NULL;
 	}
 
-	for (int i = 0; i < vec.size(); i++)
+	for (uint32_t i = 0; i < vec.size(); i++)
 	{
 		param[i] = (char*) malloc(BUF_MAX);
 		snprintf(param[i], BUF_MAX, "%s", vec.at(i).c_str());
@@ -185,48 +189,54 @@ void * socketThread(void *arg)
 
 	if (strcmp(command, "bc_v3_license_isActivated") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+        status = bc_license_v3_IsActivated();
+		snprintf(message, sizeof(message), "%s %d\n", command, status);
 	}
 	if (strcmp(command, "bc_v3_license_isLicenseGenuine") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+        status = bc_license_v3_IsLicenseGenuine();
+		snprintf(message, sizeof(message), "%s %d\n", command, status);
 	}
 	if (strcmp(command, "bc_v3_license_IsTrialGenuine") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+        status = bc_license_v3_IsTrialGenuine();
+		snprintf(message, sizeof(message), "%s %d\n", command, status);
 	}
 	if (strcmp(command, "bc_v3_license_GetLicenseMetadata") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 10);
+        char licenseMeta[BUF_MAX] = {0};
+        status = bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
+		snprintf(message, sizeof(message), "%s %d %s\n", command, status, licenseMeta);
 	}
 	if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 30);
+        uint32_t date = 0;
+        status = bc_license_v3_GetLicenseExpiryDate(&date);
+		snprintf(message, sizeof(message), "%s %d %d\n", command, status, date);
 	}
 	if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d %d\n", command, LA_OK, 30);
+        uint32_t trialDate = 0;
+        status = bc_license_v3_GetTrialExpiryDate(&trialDate);
+		snprintf(message, sizeof(message), "%s %d %d\n", command, status, trialDate);
 	}
 	if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
-	{
-		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
-	}
+    {
+        if (!param[1]){
+            snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
+        }
+        else {
+            status = bc_license_v3_ActivateLicense(param[1]);
+            snprintf(message, sizeof(message), "%s %d\n", command, status);
+        }
+    }
 	if (strcmp(command, "bc_v3_license_ActivateTrial") == 0)
 	{
-		snprintf(message, sizeof(message), "%s %d\n", command, LA_OK);
+        status = bc_license_v3_ActivateTrial();
+		snprintf(message, sizeof(message), "%s %d\n", command, status);
 	}
 
-#if 0
-	if (V3_LICENSE_OK == bc_license_v3_check())
-	{
-		snprintf(message, sizeof(message), "license is OK: %s\n", client_message);
-	}
-	else
-	{
-		snprintf(message, sizeof(message), "license is FAIL: %s\n", client_message);
-	}
-#endif
-	for (int i = 0; i < vec.size(); i++)
+	for (uint32_t i = 0; i < vec.size(); i++)
 	{
 		if (param[i])
 		{

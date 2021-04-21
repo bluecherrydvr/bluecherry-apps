@@ -10,74 +10,149 @@
 #ifdef V3_LICENSING
 #include "v3license_processor.h"
 
-V3LICENSE_API int bc_license_v3_Init(CSTRTYPE productData, CSTRTYPE productId, CSTRTYPE productVersion)
+V3LICENSE_API int bc_license_v3_Init()
 {
+	int status;
+
+	status = SetProductData(PRODUCT_DATA);
+	if (LA_OK != status)
+	{
+		return LA_FAIL;
+	}
+	status = SetProductId(PRODUCT_ID, LA_USER);
+	if (LA_OK != status)
+	{
+		return LA_FAIL;
+	}
+
+	status = SetAppVersion(PRODUCT_VERSION);
+	if (LA_OK != status)
+	{
+		return LA_FAIL;
+	}
+
 	return LA_OK;
 }
 
 V3LICENSE_API int bc_license_v3_IsActivated()
 {
-	return LA_OK;
+    int status = IsLicenseGenuine();
+    if (LA_OK == status)
+    {
+        bc_log(Info, "IsLicenseGenuine OK: %s", strerror(status));
+        return LA_OK;
+    }
+    else if (LA_EXPIRED == status 
+            || LA_SUSPENDED == status 
+            || LA_GRACE_PERIOD_OVER == status)
+    {
+        bc_log(Info, "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER: %s", strerror(status));
+        return LA_OK;
+    }
+    else
+    {
+        int trialStatus;
+        trialStatus = IsTrialGenuine();
+        if (LA_OK == trialStatus)
+        {
+            bc_log(Info, "IsTrialGenuine: %s", strerror(status));
+            return LA_OK;
+        }
+        else
+        {
+            bc_log(Error, "FAIL License: %s", strerror(status));
+            return LA_FAIL;
+        }
+    }
+    return LA_OK;
 }
 
 V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
 {
-	return LA_OK;
+	return IsLicenseGenuine();
 }
 
 V3LICENSE_API int bc_license_v3_IsTrialGenuine()
 {
-	return LA_OK;
+	return IsTrialGenuine();
 }
 
-V3LICENSE_API int bc_license_v3_IsProductKeyValid()
+V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t length)
 {
-	return LA_OK;
-}
-
-V3LICENSE_API int bc_license_v3_GetProductMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
-{
-	return LA_OK;
-}
-
-V3LICENSE_API int bc_license_v3_GetLicenseMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
-{
-	return LA_OK;
-}
-
-V3LICENSE_API int bc_license_v3_GetLicenseTotalActivations(uint32_t *totalActivations)
-{
-	return LA_OK;
+	return GetLicenseMetadata(METADATA_KEY, value, length);
 }
 
 V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate)
 {
-	return LA_OK;
+    if (!expiryDate)
+        return LA_FAIL;
+
+    unsigned int date = 0;
+    GetLicenseExpiryDate(&date);
+    int daysLeft = (date - time(NULL)) / 86400;
+    printf("Days left: %d\n", daysLeft);
+    printf("License is genuinely activated!");
+    *expiryDate = daysLeft;
+
+    return LA_OK;
 }
 
-V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(CSTRTYPE key, STRTYPE value, uint32_t length)
+V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(STRTYPE value, uint32_t length)
 {
-	return LA_OK;
+    return GetTrialActivationMetadata(METADATA_KEY, value, length);
 }
 
-V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *trialExpiryDate)
+V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *expiryDate)
 {
-	return LA_OK;
+    if (!expiryDate)
+        return LA_FAIL;
+
+    unsigned int trialExpiryDate = 0;
+    GetTrialExpiryDate(&trialExpiryDate);
+    int daysLeft = (trialExpiryDate - time(NULL)) / 86400;
+    bc_log(Info, "Trial days left: %d", daysLeft);
+
+    *expiryDate = daysLeft;
+
+    return LA_OK;
 }
 
-V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE productKey)
+V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE licenseKey)
 {
-	return LA_OK;
+    int status;
+
+    status = SetLicenseKey(licenseKey);
+    if (LA_OK != status)
+    {
+		bc_log(Error, "V3_LICENSE_KEY_SETUP_FAIL: %s", strerror(status));
+        return LA_FAIL;
+    }
+
+    status = ActivateLicense();
+    if (LA_OK == status 
+            || LA_EXPIRED == status 
+            || LA_SUSPENDED == status)
+    {
+		bc_log(Info, "V3_LICENSE_OK: %s", strerror(status));
+        return LA_OK;
+    }
+    else
+    {
+		bc_log(Error, "V3_LICENSE_FAIL: %s", strerror(status));
+        return LA_FAIL;
+    }
+
+    return LA_OK;
 }
 
 V3LICENSE_API int bc_license_v3_IsLicenseValid()
 {
-	return LA_OK;
+	return IsLicenseValid();
 }
 
 V3LICENSE_API int bc_license_v3_ActivateTrial()
 {
-	return LA_OK;
+	return ActivateTrial();
 }
 
 int bc_license_v3_init()
@@ -87,20 +162,21 @@ int bc_license_v3_init()
 	status = SetProductData(PRODUCT_DATA);
 	if (LA_OK != status)
 	{
+		bc_log(Info, "SetProductData: %s", strerror(status));
 		printf("%s\n", "SetProductData");
 		return V3_LICENSE_FAIL;
 	}
 	status = SetProductId(PRODUCT_ID, LA_USER);
 	if (LA_OK != status)
 	{
-		printf("%s error code = %d\n", "SetProductId", status);
+		bc_log(Error, "SetProductId: %s", strerror(status));
 		return V3_LICENSE_FAIL;
 	}
 
 	status = SetAppVersion(PRODUCT_VERSION);
 	if (LA_OK != status)
 	{
-		printf("%s\n", "PRODUCT_VERSION");
+		bc_log(Error, "SetAppVersion: %s", strerror(status));
 		return V3_LICENSE_FAIL;
 	}
 
@@ -112,7 +188,7 @@ int activate()
 {
 	int status;
 
-	status = SetLicenseKey(PRODCUT_KEY);
+	status = SetLicenseKey(LICENSE_KEY);
 	if (LA_OK != status)
 	{
 		return V3_LICENSE_FAIL;
@@ -123,12 +199,12 @@ int activate()
 			|| LA_EXPIRED == status 
 			|| LA_SUSPENDED == status)
 	{
-		printf("%s\n", "V3_LICENSE_OK");
+		bc_log(Error, "V3_LICENSE_OK: %s", strerror(errno));
 		return V3_LICENSE_OK;
 	}
 	else
 	{
-		printf("%s\n", "V3_LICENSE_FAIL");
+		bc_log(Error, "V3_LICENSE_FAIL: %s", strerror(errno));
 		return V3_LICENSE_FAIL;
 	}
 }
