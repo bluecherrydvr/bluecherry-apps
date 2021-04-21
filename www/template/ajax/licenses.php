@@ -61,7 +61,7 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
     		<?php foreach($licenses as $license){ ?>
                 <tr>
                     <td><?php echo $license['license']; ?></td>
-                    <td><?php echo bc_license_check($license['license'])." ".L_PORTS; ?></td>
+                    <td><?php echo bc_license_devices_allowed()." ".L_PORTS; ?></td>
                     <td class="col-lg-2 col-md-licensing">
                         <form action="/licenses?mode=delete&license=<?php echo $license['license']; ?>" method="POST" style="display: inline-block;">
                             <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/licenses"><i class="fa fa-times fa-fw"></i> <?php echo L_DELETE; ?></button>

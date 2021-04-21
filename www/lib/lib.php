@@ -786,9 +786,9 @@ class ipCamera{
 				if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
 				if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
 			}
-				empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
-				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
-				
+			empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
+			$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
+
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
 			if ($self_id === false) { # check this only in case of creation, don't check on edit

@@ -21,17 +21,17 @@ class licenses extends Controller {
     {
         if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
         	$ret = bc_v3license_check(LA_ACTIVATE_LICENSE, $_POST['licenseCode']);
-			$status = (int)$ret[1];
-        	if ($status != -1) {
-        		$message = $this->getLicenseStatusMessage($status);
-        		if ($status != Constant('LA_OK')) {
-        			data::responseJSON(false, $message, $ret); // L_INVALID_LICENSE
-					exit();
-        		}
-        	} else {
-        		data::responseJSON(false, false);
+			if (is_null($ret)) {
+				data::responseJSON(false, false);
         		exit();
-        	}
+			}
+
+			$status = (int)$ret[1];
+			$message = $this->getLicenseStatusMessage($status);
+			if ($status != Constant('LA_OK')) {
+				data::responseJSON(false, $message, $ret); // L_INVALID_LICENSE
+				exit();
+			}
 
         	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
         	if (!empty($exists)){
@@ -50,27 +50,28 @@ class licenses extends Controller {
 
         }
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
-        	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
-        		$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-        		if (!empty($exists)){
-        			data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-        			exit();
-        		} else {
-        			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$_POST['confirmLicense']}', UNIX_TIMESTAMP())", true);
-        			if ($result){
-        				data::responseJSON(true, L_LICENSE_ADDED);
-        				exit();
-        			} else {
-        				data::responseJSON(false, false);
-        				exit();
-        			}
-        		}
-        	} else {
-        		data::responseJSON(false, L_INVALID_CONFIRMATION);
-        		exit();
-        	}
-        }
+        // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
+        // 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
+        // 		$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
+        // 		if (!empty($exists)){
+        // 			data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
+        // 			exit();
+        // 		} else {
+        // 			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$_POST['confirmLicense']}', UNIX_TIMESTAMP())", true);
+        // 			if ($result){
+        // 				data::responseJSON(true, L_LICENSE_ADDED);
+        // 				exit();
+        // 			} else {
+        // 				data::responseJSON(false, false);
+        // 				exit();
+        // 			}
+        // 		}
+        // 	} else {
+        // 		data::responseJSON(false, L_INVALID_CONFIRMATION);
+        // 		exit();
+        // 	}
+        // }
+
         if (!empty($_GET['mode']) && $_GET['mode'] == 'delete'){
 			$result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
 			data::responseJSON(true);

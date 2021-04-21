@@ -49,14 +49,11 @@ function bc_license_check_auth($key, $auth)
 
 function bc_license_devices_allowed()
 {
-	$output = array();
-	$ret = 0;
-	exec("/usr/lib/bluecherry/licensecmd bc_license_devices_allowed", $output, $ret);
+	$output = bc_v3license_check(LA_GET_LICENSE_METADATA, "devices");
+	if (is_null($output))
+		return 0;
 
-	if ($ret != 0)
-		return false;
-
-	return $output[0];
+	return $output[2];
 }
 
 function bc_v3license_check($command, $key)
@@ -67,7 +64,7 @@ function bc_v3license_check($command, $key)
 		$errormsg = socket_strerror($errorcode);
 
 		die("Couldn't create socket: [$errorcode] $errormsg \n");
-		return -1;
+		return null;
 	}
 
 	// Connect socket to remote server
@@ -77,7 +74,7 @@ function bc_v3license_check($command, $key)
 		$errormsg = socket_strerror($errorcode);
 
 		die("Could not connect: [$errorcode] $errormsg \n");
-		return -1;
+		return null;
 	}
 
 	// Make a message
@@ -90,7 +87,7 @@ function bc_v3license_check($command, $key)
 		$errormsg = socket_strerror($errorcode);
 
 		die("Could not send data: [$errorcode] $errormsg \n");
-		return -1;
+		return null;
 	}
 
 	// Now receive reply from server
@@ -100,7 +97,7 @@ function bc_v3license_check($command, $key)
 		$errormsg = socket_strerror($errorcode);
 
 		die("Could not receive data: [$errorcode] $errormsg \n");
-		return -1;
+		return null;
 	}
 
 	// Close socket
@@ -108,6 +105,10 @@ function bc_v3license_check($command, $key)
 
 	// Split the reply
 	$output = explode(" ", $buf);
+
+	// Compare command
+	if ($output[0] != $command)
+		return null;
 
 	return $output;
 
