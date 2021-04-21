@@ -173,3 +173,13 @@ define('LA_E_IP', 82);
 define('LA_E_RATE_LIMIT', 90);
 define('LA_E_SERVER', 91);
 define('LA_E_CLIENT', 92);
+
+#License Command
+define('LA_IS_ACTIVATED',           'bc_v3_license_isActivated');
+define('LA_IS_LICENSE_GENUINE',     'bc_v3_license_isLicenseGenuine');
+define('LA_IS_TRIAL_GENUINE',       'bc_v3_license_IsTrialGenuine');
+define('LA_GET_LICENSE_METADATA',   'bc_v3_license_GetLicenseMetadata');
+define('LA_GET_LICENSE_EXPIRYDATE', 'bc_v3_license_GetLicenseExpiryDate');
+define('LA_GET_TRIAL_EXPIRYDATE',   'bc_v3_license_GetTrialExpiryDate');
+define('LA_ACTIVATE_LICENSE',       'bc_v3_license_ActivateLicense');
+define('LA_ACTIVATE_TRIAL',         'bc_v3_license_ActivateTrial');

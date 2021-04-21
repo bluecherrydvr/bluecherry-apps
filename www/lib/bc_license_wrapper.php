@@ -59,7 +59,7 @@ function bc_license_devices_allowed()
 	return $output[0];
 }
 
-function bc_v3license_check()
+function bc_v3license_check($command, $key)
 {
 	if(!($sock = socket_create(AF_INET, SOCK_STREAM, 0)))
 	{
@@ -70,7 +70,7 @@ function bc_v3license_check()
 		return -1;
 	}
 
-	//Connect socket to remote server
+	// Connect socket to remote server
 	if (!socket_connect($sock, '127.0.0.1', 7003))
 	{
 		$errorcode = socket_last_error();
@@ -80,9 +80,10 @@ function bc_v3license_check()
 		return -1;
 	}
 
-	$message = "bc_v3_license_isActivated";
+	// Make a message
+	$message = $command . " " . $key;
 
-	//Send the message to the server
+	// Send the message to the server
 	if (!socket_send($sock, $message, strlen($message), 0))
 	{
 		$errorcode = socket_last_error();
@@ -92,7 +93,7 @@ function bc_v3license_check()
 		return -1;
 	}
 
-	//Now receive reply from server
+	// Now receive reply from server
 	if (socket_recv($sock, $buf, 2045, MSG_WAITALL) === FALSE)
 	{
 		$errorcode = socket_last_error();
@@ -102,7 +103,13 @@ function bc_v3license_check()
 		return -1;
 	}
 
-	return (int)$buf;
+	// Close socket
+	socket_close($sock);
+
+	// Split the reply
+	$output = explode(" ", $buf);
+
+	return $output;
 
 }
 
