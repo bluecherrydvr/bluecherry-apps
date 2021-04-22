@@ -615,8 +615,8 @@ define('L_LA_FAIL', 'Failure code.');
 define('L_LA_EXPIRED', 'The license has expired or system time has been tampered with. Ensure your date and time settings are correct.');
 define('L_LA_SUSPENDED', 'The license has been suspended.');
 define('L_LA_GRACE_PERIOD_OVER', 'The grace period for server sync is over.');
-define('L_LA_TRIAL_EXPIRED', 'The local trial has expired or system time has been tampered with. Ensure your date and time settings are correct.');
-define('L_LA_LOCAL_TRIAL_EXPIRED', 'he local trial has expired or system time has been tampered with. Ensure your date and time settings are correct.');
+define('L_LA_TRIAL_EXPIRED', 'The trial has expired or system time has been tampered with. Ensure your date and time settings are correct.<br>If your date and time settings are correct, please buy the license and activate this application.');
+define('L_LA_LOCAL_TRIAL_EXPIRED', 'The local trial has expired or system time has been tampered with. Ensure your date and time settings are correct.');
 define('L_LA_RELEASE_UPDATE_AVAILABLE', 'A new update is available for the product. This means a new release has been published for the product.');
 define('L_LA_RELEASE_NO_UPDATE_AVAILABLE', 'No new update is available for the product. The current version is latest.');
 define('L_LA_E_FILE_PATH', 'Invalid file path.');
@@ -660,6 +660,11 @@ define('L_LA_E_IP', 'IP address is not allowed.');
 define('L_LA_E_RATE_LIMIT', 'Rate limit for API has reached, try again later.');
 define('L_LA_E_SERVER', 'Server error.');
 define('L_LA_E_CLIENT', 'Client error.');
+
+define('L_LA_E_BC_SERVER', 'A problem occured while connecting bc-server.');
+define('L_LA_E_TRIAL_ACTIVATED', 'Trial is activated. Trial days left: ');
+define('L_LA_E_TRIAL_ACTIVATE_REQUIRE', 'Either trial has not started or has been tampered, for activating trial please click here.<br><form action="/licenses?mode=activate_trial" method="POST"><button class="link-button send-req-form" type="submit" data-redirect-success="/licenses">Activate trial.</button></form>');
+define('L_LA_E_TRIAL_ACTIVATE_SUCCESS', 'Trial is successfully activated.');
 define('L_LA_E_UNKNOWN', 'Unknown error.');
 
 #Cam specific

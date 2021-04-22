@@ -20,7 +20,7 @@ class licenses extends Controller {
     public function postData()
     {
         if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
-        	$ret = bc_license_activate($_POST['licenseCode']);
+        	$ret = bc_license_activate_key($_POST['licenseCode']);
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
         		exit();
@@ -47,7 +47,25 @@ class licenses extends Controller {
 				data::responseJSON(false, false);
 				exit();
 			}
+        }
 
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
+        	$ret = bc_license_activate_trial();
+			if (is_null($ret)) {
+				data::responseJSON(false, false);
+        		exit();
+			}
+
+			$status = (int)$ret[1];
+			$message = $this->getLicenseStatusMessage($status);
+			if ($status == Constant('LA_OK')) {
+				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS);
+				exit();
+			}
+			else {
+				data::responseJSON(false, $message, $ret);
+				exit();
+			}
         }
 
         // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){

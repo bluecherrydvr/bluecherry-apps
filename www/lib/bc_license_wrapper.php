@@ -12,11 +12,11 @@ function bc_license_machine_id()
 	return $output[0];
 }
 
-function bc_license_activate($key)
+function bc_license_activate_key($key)
 {
-	$ret = bc_license_command(LA_ACTIVATE_LICENSE, $key);
+	$output = bc_license_command(LA_ACTIVATE_LICENSE, $key);
 
-	return $ret;
+	return $output;
 }
 
 function bc_license_check_auth($key, $auth)
@@ -41,6 +41,56 @@ function bc_license_check_auth($key, $auth)
 function bc_license_devices_allowed()
 {
 	$output = bc_license_command(LA_GET_LICENSE_METADATA);
+	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
+		return 0;
+
+	return (int)$output[2];
+}
+
+function bc_license_check_trial()
+{
+	$ret = array();
+
+	// Check if the license is trial genuine
+	$output = bc_license_command(LA_IS_TRIAL_GENUINE);
+	if (is_null($output)) {
+		$ret[0] = false;
+		$ret[1] = L_LA_E_BC_SERVER;
+		return $ret;
+	}
+
+	// If the command is OK
+	if ((int)$output[1] == Constant('LA_OK')) {
+		$left_days = bc_license_trial_expirydate();
+
+		$ret[0] = true;
+		$ret[1] = L_LA_E_TRIAL_ACTIVATED . strval($left_days);
+		return $ret;
+	}
+
+	// If the trial is expired or isn't activated
+	if ((int)$output[1] == Constant('LA_TRIAL_EXPIRED')) {
+		$ret[0] = false;
+		$ret[1] = L_LA_TRIAL_EXPIRED;
+	}
+	else {
+		$ret[0] = false;
+		$ret[1] = L_LA_E_TRIAL_ACTIVATE_REQUIRE;
+	}
+
+	return $ret;
+}
+
+function bc_license_activate_trial()
+{
+	$output = bc_license_command(LA_ACTIVATE_TRIAL);
+
+	return $output;
+}
+
+function bc_license_trial_expirydate()
+{
+	$output = bc_license_command(LA_GET_TRIAL_EXPIRYDATE);
 	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
 		return 0;
 
