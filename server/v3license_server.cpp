@@ -17,7 +17,6 @@
 
 #include <bsd/string.h>
 #include <unistd.h>
-#include "bc-server.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/fcntl.h>
@@ -28,7 +27,9 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+
 #include "libbluecherry.h"
+#include "bc-server.h"
 
 #ifdef V3_LICENSING
 #include "v3license_server.h"
@@ -223,6 +224,7 @@ void * socketThread(void *arg)
 	if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
     {
         if (!param[1]){
+            bc_log(Error, "parameter is null: %s",param[1]);
             snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
         }
         else {

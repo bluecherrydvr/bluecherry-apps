@@ -39,15 +39,15 @@ V3LICENSE_API int bc_license_v3_IsActivated()
     int status = IsLicenseGenuine();
     if (LA_OK == status)
     {
-        bc_log(Info, "IsLicenseGenuine OK: %s", strerror(status));
-        return LA_OK;
+        bc_log(Info, "IsLicenseGenuine OK: %d", status);
+        return status;
     }
     else if (LA_EXPIRED == status 
             || LA_SUSPENDED == status 
             || LA_GRACE_PERIOD_OVER == status)
     {
-        bc_log(Info, "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER: %s", strerror(status));
-        return LA_OK;
+        bc_log(Info, "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER: %d", status);
+        return status;
     }
     else
     {
@@ -55,14 +55,13 @@ V3LICENSE_API int bc_license_v3_IsActivated()
         trialStatus = IsTrialGenuine();
         if (LA_OK == trialStatus)
         {
-            bc_log(Info, "IsTrialGenuine: %s", strerror(status));
-            return LA_OK;
+            bc_log(Info, "IsTrialGenuine: %d", trialStatus);
         }
         else
         {
-            bc_log(Error, "FAIL License: %s", strerror(status));
-            return LA_FAIL;
+            bc_log(Error, "FAIL License: %d", trialStatus);
         }
+        return trialStatus;
     }
     return LA_OK;
 }
@@ -117,15 +116,49 @@ V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *expiryDate)
     return LA_OK;
 }
 
-V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE licenseKey)
+// Ideally on a button click inside a dialog
+int activate()
+{
+	int status;
+
+	status = SetLicenseKey(LICENSE_KEY);
+	if (LA_OK != status)
+	{
+		bc_log(Error, "V3_LICENSE_SETLICENSEKEY FAIL: %d", status);
+		return status;
+	}
+
+	status = ActivateLicense();
+	if (LA_OK == status 
+			|| LA_EXPIRED == status 
+			|| LA_SUSPENDED == status)
+	{
+		bc_log(Info, "V3_LICENSE_OK: %d", status);
+	}
+	else
+	{
+		bc_log(Error, "V3_LICENSE_FAIL: %d", status);
+	}
+    return status;
+}
+
+V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
 {
     int status;
+
+    bc_log(Error, "licenseKey: %s", licenseKey);
+    status = bc_license_v3_Init();
+    if (LA_OK != status)
+    {
+        bc_log(Error, "V3_LICENSE_INITFAIL: %d", status);
+        return status;
+    }
 
     status = SetLicenseKey(licenseKey);
     if (LA_OK != status)
     {
-		bc_log(Error, "V3_LICENSE_KEY_SETUP_FAIL: %s", strerror(status));
-        return LA_FAIL;
+        bc_log(Error, "V3_LICENSE_KEY_SETUP_FAIL: %d", status);
+        return status;
     }
 
     status = ActivateLicense();
@@ -133,13 +166,12 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE licenseKey)
             || LA_EXPIRED == status 
             || LA_SUSPENDED == status)
     {
-		bc_log(Info, "V3_LICENSE_OK: %s", strerror(status));
-        return LA_OK;
+        bc_log(Info, "V3_LICENSE_OK: %d", status);
+        return status;
     }
     else
     {
-		bc_log(Error, "V3_LICENSE_FAIL: %s", strerror(status));
-        return LA_FAIL;
+        return status;
     }
 
     return LA_OK;
@@ -155,6 +187,7 @@ V3LICENSE_API int bc_license_v3_ActivateTrial()
 	return ActivateTrial();
 }
 
+#if 0
 int bc_license_v3_init()
 {
 	int status;
@@ -163,7 +196,6 @@ int bc_license_v3_init()
 	if (LA_OK != status)
 	{
 		bc_log(Info, "SetProductData: %s", strerror(status));
-		printf("%s\n", "SetProductData");
 		return V3_LICENSE_FAIL;
 	}
 	status = SetProductId(PRODUCT_ID, LA_USER);
@@ -183,31 +215,6 @@ int bc_license_v3_init()
 	return V3_LICENSE_OK;
 }
 
-// Ideally on a button click inside a dialog
-int activate()
-{
-	int status;
-
-	status = SetLicenseKey(LICENSE_KEY);
-	if (LA_OK != status)
-	{
-		return V3_LICENSE_FAIL;
-	}
-
-	status = ActivateLicense();
-	if (LA_OK == status 
-			|| LA_EXPIRED == status 
-			|| LA_SUSPENDED == status)
-	{
-		bc_log(Error, "V3_LICENSE_OK: %s", strerror(errno));
-		return V3_LICENSE_OK;
-	}
-	else
-	{
-		bc_log(Error, "V3_LICENSE_FAIL: %s", strerror(errno));
-		return V3_LICENSE_FAIL;
-	}
-}
 
 // Ideally on a button click inside a dialog
 int activateTrial()
@@ -268,5 +275,6 @@ int bc_license_v3_check()
 	}
 	return V3_LICENSE_OK;
 }
+#endif /*  if 0 */
 
 #endif /* V3_LICENSING */
