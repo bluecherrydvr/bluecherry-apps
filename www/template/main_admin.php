@@ -263,7 +263,7 @@
                 <div class="col-lg-12">
                     <div class="alert alert-warning <?php echo $general_error['type']; ?>">
                         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-                        <?php echo $general_error['text']; ?>
+                        <span id="general_error"><?php echo $general_error['text']; ?></span>
                     </div>
                 </div>
             </div>

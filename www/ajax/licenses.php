@@ -41,7 +41,8 @@ class licenses extends Controller {
 
 			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', 'EMPTY', UNIX_TIMESTAMP())", true);
 			if ($result){
-				data::responseJSON(true, L_LICENSE_ADDED);
+				$ret = bc_license_check_genuine();
+				data::responseJSON(true, L_LICENSE_ADDED, $ret);
 				exit();
 			} else {
 				data::responseJSON(false, false);
