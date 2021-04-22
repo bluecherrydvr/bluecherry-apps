@@ -12,20 +12,11 @@ function bc_license_machine_id()
 	return $output[0];
 }
 
-function bc_license_check($key)
+function bc_license_activate($key)
 {
-	$output = array();
-	$ret = 0;
-	
-	if(!preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $key))
-		return false;
+	$ret = bc_license_command(LA_ACTIVATE_LICENSE, $key);
 
-	exec("/usr/lib/bluecherry/licensecmd bc_license_check ".$key, $output, $ret);
-
-	if ($ret != 0)
-		return false;
-
-	return $output[0];
+	return $ret;
 }
 
 function bc_license_check_auth($key, $auth)
@@ -49,14 +40,14 @@ function bc_license_check_auth($key, $auth)
 
 function bc_license_devices_allowed()
 {
-	$output = bc_v3license_check(LA_GET_LICENSE_METADATA);
+	$output = bc_license_command(LA_GET_LICENSE_METADATA);
 	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
 		return 0;
 
 	return (int)$output[2];
 }
 
-function bc_v3license_check($command, $key = "")
+function bc_license_command($command, $key = "")
 {
 	if(!($sock = socket_create(AF_INET, SOCK_STREAM, 0)))
 	{

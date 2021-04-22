@@ -20,7 +20,7 @@ class licenses extends Controller {
     public function postData()
     {
         if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
-        	$ret = bc_v3license_check(LA_ACTIVATE_LICENSE, $_POST['licenseCode']);
+        	$ret = bc_license_activate($_POST['licenseCode']);
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
         		exit();
