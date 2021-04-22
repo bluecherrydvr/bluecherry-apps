@@ -663,6 +663,7 @@ define('L_LA_E_CLIENT', 'Client error.');
 
 define('L_LA_E_BC_SERVER', 'A problem occured while connecting bc-server.');
 define('L_LA_E_TRIAL_ACTIVATED', 'Trial is activated. Trial days left: ');
+define('L_LA_E_LICENSE_ACTIVATED', 'License is genuinely activated. Days left: ');
 define('L_LA_E_TRIAL_ACTIVATE_REQUIRE', 'Either trial has not started or has been tampered, for activating trial please click here.<br><form action="/licenses?mode=activate_trial" method="POST"><button class="link-button send-req-form" type="submit" data-redirect-success="/licenses">Activate trial.</button></form>');
 define('L_LA_E_TRIAL_ACTIVATE_SUCCESS', 'Trial is successfully activated.');
 define('L_LA_E_UNKNOWN', 'Unknown error.');

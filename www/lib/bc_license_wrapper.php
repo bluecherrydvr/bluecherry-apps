@@ -47,6 +47,63 @@ function bc_license_devices_allowed()
 	return (int)$output[2];
 }
 
+function bc_license_check_genuine()
+{
+	$ret = array();
+
+	// Check if the license is genuine
+	$output = bc_license_command(LA_IS_LICENSE_GENUINE);
+	if (is_null($output)) {
+		$ret[0] = false;
+		$ret[1] = L_LA_E_BC_SERVER;
+		return $ret;
+	}
+
+	// If the command is OK
+	if ((int)$output[1] == Constant('LA_OK')) {
+		$left_days = bc_license_genuine_expirydate();
+
+		$ret[0] = true;
+		$ret[1] = L_LA_E_LICENSE_ACTIVATED . strval($left_days);
+		return $ret;
+	}
+
+	// If the genuine is expired or isn't activated
+	if ((int)$output[1] == Constant('LA_EXPIRED')) {
+		$ret[0] = false;
+		$ret[1] = L_LA_EXPIRED;
+	}
+	else if ((int)$output[1] == Constant('LA_SUSPENDED')) {
+		$ret[0] = false;
+		$ret[1] = L_LA_SUSPENDED;
+	}
+	else if ((int)$output[1] == Constant('LA_GRACE_PERIOD_OVER')) {
+		$ret[0] = false;
+		$ret[1] = L_LA_GRACE_PERIOD_OVER;
+	}
+	else {
+		$ret = bc_license_check_trial();
+	}
+
+	return $ret;
+}
+
+function bc_license_activate_genuine()
+{
+	$output = bc_license_command(LA_ACTIVATE_LICENSE);
+
+	return $output;
+}
+
+function bc_license_genuine_expirydate()
+{
+	$output = bc_license_command(LA_GET_TRIAL_EXPIRYDATE);
+	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
+		return 0;
+
+	return (int)$output[2];
+}
+
 function bc_license_check_trial()
 {
 	$ret = array();
