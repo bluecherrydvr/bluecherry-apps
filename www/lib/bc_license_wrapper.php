@@ -49,14 +49,14 @@ function bc_license_check_auth($key, $auth)
 
 function bc_license_devices_allowed()
 {
-	$output = bc_v3license_check(LA_GET_LICENSE_METADATA, "devices");
-	if (is_null($output))
+	$output = bc_v3license_check(LA_GET_LICENSE_METADATA);
+	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
 		return 0;
 
-	return $output[2];
+	return (int)$output[2];
 }
 
-function bc_v3license_check($command, $key)
+function bc_v3license_check($command, $key = "")
 {
 	if(!($sock = socket_create(AF_INET, SOCK_STREAM, 0)))
 	{

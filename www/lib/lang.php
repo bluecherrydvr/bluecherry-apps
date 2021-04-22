@@ -375,6 +375,7 @@ define('AIP_ONVIF_PORT', 'ONVIF port');
 define('AIP_CHECK_ONVIF_PORT', 'ONVIF Probe & Autoconfigure');
 define('AIP_CHECK_ONVIF_SUCCESS', 'Successfull');
 define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
+define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the limit of the allowed devices.');
 
 #ip cam lib
 define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');

@@ -842,6 +842,9 @@ class ipCamera{
 		return array($result, false);
 	}
 	public static function create($rawData){
+		#check the number of the allowed devices
+		if (!self::checkLimitDevices()) { return array(false, AIP_LIMIT_ALLOWED_DEVICES); };
+
 		#get the data ready
 		
 		$data = self::prepareData($rawData);
@@ -886,6 +889,13 @@ class ipCamera{
 	public function changeState(){
 		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
 		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
+	}
+	private function checkLimitDevices(){
+		$info = data::query("SELECT COUNT(*) as n FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
+		$total_devices = $info[0]['n'];
+		$allowed_devices = bc_license_devices_allowed();
+
+		return ((int)$total_devices < $allowed_devices);
 	}
 }
 
