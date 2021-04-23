@@ -20,12 +20,21 @@ class licenses extends Controller {
     public function postData()
     {
         if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
+			//  Check if the license to be activated already exits in database
+        	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
+        	if (!empty($exists)){
+        		data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
+        		exit();
+        	};
+
+			// Activate the license key
         	$ret = bc_license_activate_key($_POST['licenseCode']);
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
         		exit();
 			}
 
+			// Show status message if activation fails
 			$status = (int)$ret[1];
 			$message = $this->getLicenseStatusMessage($status);
 			if ($status != Constant('LA_OK')) {
@@ -33,13 +42,19 @@ class licenses extends Controller {
 				exit();
 			}
 
-        	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-        	if (!empty($exists)){
-        		data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-        		exit();
-        	};
+			// Add the activated license to database
+			$licenses = data::getObject('Licenses');
+			$result = false;
 
-			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', 'EMPTY', UNIX_TIMESTAMP())", true);
+			if (empty($licenses)) {
+				$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '', UNIX_TIMESTAMP())", true);
+			}
+			else {
+				$current = $licenses[0]['license'];
+				$result = data::query("UPDATE  Licenses SET license='{$_POST['licenseCode']}', added=UNIX_TIMESTAMP() WHERE license='$current'", true);
+			}
+
+			// Update the general notification in the page
 			if ($result){
 				$ret = bc_license_check_genuine();
 				data::responseJSON(true, L_LICENSE_ADDED, $ret);
@@ -51,12 +66,14 @@ class licenses extends Controller {
         }
 
         if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
+			// Activate trial
         	$ret = bc_license_activate_trial();
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
         		exit();
 			}
 
+			// Show the relevant message
 			$status = (int)$ret[1];
 			$message = $this->getLicenseStatusMessage($status);
 			if ($status == Constant('LA_OK')) {
