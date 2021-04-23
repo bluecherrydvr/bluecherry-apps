@@ -183,3 +183,6 @@ define('LA_GET_LICENSE_EXPIRYDATE', 'bc_v3_license_GetLicenseExpiryDate');
 define('LA_GET_TRIAL_EXPIRYDATE',   'bc_v3_license_GetTrialExpiryDate');
 define('LA_ACTIVATE_LICENSE',       'bc_v3_license_ActivateLicense');
 define('LA_ACTIVATE_TRIAL',         'bc_v3_license_ActivateTrial');
+
+#License Other
+define('NO_LICENSE_DEFAULT_ALLOWED', 4);
