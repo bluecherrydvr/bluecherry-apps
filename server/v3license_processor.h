@@ -18,9 +18,9 @@
 int bc_license_v3_check();
 /*
    Checks whether the computer has been activated.
-   Returns: LA_OK on success. Handle all other return codes as failures.
-   Possible return codes: LA_OK, TA_FAIL, TA_E_GUID, TA_E_PDETS, TA_E_COM,
-                          TA_E_IN_VM, TA_E_ANDROID_NOT_INIT
+Returns: LA_OK on success. Handle all other return codes as failures.
+Possible return codes: LA_OK, TA_FAIL, TA_E_GUID, TA_E_PDETS, TA_E_COM,
+TA_E_IN_VM, TA_E_ANDROID_NOT_INIT
 */
 #define V3LICENSE_API extern "C"
 V3LICENSE_API int bc_license_v3_Init();

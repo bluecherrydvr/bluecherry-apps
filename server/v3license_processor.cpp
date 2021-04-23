@@ -12,26 +12,26 @@
 
 V3LICENSE_API int bc_license_v3_Init()
 {
-	int status;
+    int status;
 
-	status = SetProductData(PRODUCT_DATA);
-	if (LA_OK != status)
-	{
-		return LA_FAIL;
-	}
-	status = SetProductId(PRODUCT_ID, LA_USER);
-	if (LA_OK != status)
-	{
-		return LA_FAIL;
-	}
+    status = SetProductData(PRODUCT_DATA);
+    if (LA_OK != status)
+    {
+        return LA_FAIL;
+    }
+    status = SetProductId(PRODUCT_ID, LA_USER);
+    if (LA_OK != status)
+    {
+        return LA_FAIL;
+    }
 
-	status = SetAppVersion(PRODUCT_VERSION);
-	if (LA_OK != status)
-	{
-		return LA_FAIL;
-	}
+    status = SetAppVersion(PRODUCT_VERSION);
+    if (LA_OK != status)
+    {
+        return LA_FAIL;
+    }
 
-	return LA_OK;
+    return LA_OK;
 }
 
 V3LICENSE_API int bc_license_v3_IsActivated()
@@ -68,17 +68,17 @@ V3LICENSE_API int bc_license_v3_IsActivated()
 
 V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
 {
-	return IsLicenseGenuine();
+    return IsLicenseGenuine();
 }
 
 V3LICENSE_API int bc_license_v3_IsTrialGenuine()
 {
-	return IsTrialGenuine();
+    return IsTrialGenuine();
 }
 
 V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t length)
 {
-	return GetLicenseMetadata(METADATA_KEY, value, length);
+    return GetLicenseMetadata(METADATA_KEY, value, length);
 }
 
 V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate)
@@ -119,26 +119,26 @@ V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *expiryDate)
 // Ideally on a button click inside a dialog
 int activate()
 {
-	int status;
+    int status;
 
-	status = SetLicenseKey(LICENSE_KEY);
-	if (LA_OK != status)
-	{
-		bc_log(Error, "V3_LICENSE_SETLICENSEKEY FAIL: %d", status);
-		return status;
-	}
+    status = SetLicenseKey(LICENSE_KEY);
+    if (LA_OK != status)
+    {
+        bc_log(Error, "V3_LICENSE_SETLICENSEKEY FAIL: %d", status);
+        return status;
+    }
 
-	status = ActivateLicense();
-	if (LA_OK == status 
-			|| LA_EXPIRED == status 
-			|| LA_SUSPENDED == status)
-	{
-		bc_log(Info, "V3_LICENSE_OK: %d", status);
-	}
-	else
-	{
-		bc_log(Error, "V3_LICENSE_FAIL: %d", status);
-	}
+    status = ActivateLicense();
+    if (LA_OK == status 
+            || LA_EXPIRED == status 
+            || LA_SUSPENDED == status)
+    {
+        bc_log(Info, "V3_LICENSE_OK: %d", status);
+    }
+    else
+    {
+        bc_log(Error, "V3_LICENSE_FAIL: %d", status);
+    }
     return status;
 }
 
@@ -179,101 +179,101 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
 
 V3LICENSE_API int bc_license_v3_IsLicenseValid()
 {
-	return IsLicenseValid();
+    return IsLicenseValid();
 }
 
 V3LICENSE_API int bc_license_v3_ActivateTrial()
 {
-	return ActivateTrial();
+    return ActivateTrial();
 }
 
 #if 0
 int bc_license_v3_init()
 {
-	int status;
+    int status;
 
-	status = SetProductData(PRODUCT_DATA);
-	if (LA_OK != status)
-	{
-		bc_log(Info, "SetProductData: %s", strerror(status));
-		return V3_LICENSE_FAIL;
-	}
-	status = SetProductId(PRODUCT_ID, LA_USER);
-	if (LA_OK != status)
-	{
-		bc_log(Error, "SetProductId: %s", strerror(status));
-		return V3_LICENSE_FAIL;
-	}
+    status = SetProductData(PRODUCT_DATA);
+    if (LA_OK != status)
+    {
+        bc_log(Info, "SetProductData: %s", strerror(status));
+        return V3_LICENSE_FAIL;
+    }
+    status = SetProductId(PRODUCT_ID, LA_USER);
+    if (LA_OK != status)
+    {
+        bc_log(Error, "SetProductId: %s", strerror(status));
+        return V3_LICENSE_FAIL;
+    }
 
-	status = SetAppVersion(PRODUCT_VERSION);
-	if (LA_OK != status)
-	{
-		bc_log(Error, "SetAppVersion: %s", strerror(status));
-		return V3_LICENSE_FAIL;
-	}
+    status = SetAppVersion(PRODUCT_VERSION);
+    if (LA_OK != status)
+    {
+        bc_log(Error, "SetAppVersion: %s", strerror(status));
+        return V3_LICENSE_FAIL;
+    }
 
-	return V3_LICENSE_OK;
+    return V3_LICENSE_OK;
 }
 
 
 // Ideally on a button click inside a dialog
 int activateTrial()
 {
-	int status;
+    int status;
 
-	status = ActivateTrial();
-	if (LA_OK == status)
-	{
-		return V3_LICENSE_OK;
-	}
-	else
-	{
-		return V3_LICENSE_FAIL;
-	}
+    status = ActivateTrial();
+    if (LA_OK == status)
+    {
+        return V3_LICENSE_OK;
+    }
+    else
+    {
+        return V3_LICENSE_FAIL;
+    }
 }
 
 int bc_license_v3_check()
 {
-	if (bc_license_v3_init() != LA_OK)
-	{
-		printf("%s\n", "bc_license_v3_init");
-		return V3_LICENSE_FAIL;
-	}
+    if (bc_license_v3_init() != LA_OK)
+    {
+        printf("%s\n", "bc_license_v3_init");
+        return V3_LICENSE_FAIL;
+    }
 
-	int status = IsLicenseGenuine();
-	if (LA_OK == status)
-	{
-		printf("%s\n", "IsLicenseGenuine");
-		return V3_LICENSE_OK;
-	}
-	else if (LA_EXPIRED == status 
-			|| LA_SUSPENDED == status 
-			|| LA_GRACE_PERIOD_OVER == status)
-	{
-		printf("%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
-		return V3_LICENSE_OK;
-	}
-	else
-	{
-		int trialStatus;
-		trialStatus = IsTrialGenuine();
-		if (LA_OK == trialStatus)
-		{
-			printf("Trial days left: %s", "IsTrialGenuine");
-			return V3_LICENSE_OK;
-		}
-		else if (LA_TRIAL_EXPIRED == trialStatus)
-		{
-			// Time to buy the license and activate the app
-			return activate();
-		}
-		else
-		{
-			// Activating the trial
-			return activateTrial();
-		}
-	}
-	return V3_LICENSE_OK;
+    int status = IsLicenseGenuine();
+    if (LA_OK == status)
+    {
+        printf("%s\n", "IsLicenseGenuine");
+        return V3_LICENSE_OK;
+    }
+    else if (LA_EXPIRED == status 
+            || LA_SUSPENDED == status 
+            || LA_GRACE_PERIOD_OVER == status)
+    {
+        printf("%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
+        return V3_LICENSE_OK;
+    }
+    else
+    {
+        int trialStatus;
+        trialStatus = IsTrialGenuine();
+        if (LA_OK == trialStatus)
+        {
+            printf("Trial days left: %s", "IsTrialGenuine");
+            return V3_LICENSE_OK;
+        }
+        else if (LA_TRIAL_EXPIRED == trialStatus)
+        {
+            // Time to buy the license and activate the app
+            return activate();
+        }
+        else
+        {
+            // Activating the trial
+            return activateTrial();
+        }
+    }
+    return V3_LICENSE_OK;
 }
 #endif /*  if 0 */
 
