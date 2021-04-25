@@ -178,7 +178,7 @@ void recorder::event_trigger_notifications(bc_event_cam_t event)
 static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id, bc_event_cam_type_t rec_type)
 {
 	struct tm tm;
-	char date[12], fname[14];
+	char date[12], fname[32];
 	char basepath[PATH_MAX];
 	int ret;
 
