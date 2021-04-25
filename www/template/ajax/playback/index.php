@@ -61,7 +61,7 @@
     </div>
     <div class="col-md-8 col-lg-9">
         <div id="playback-player-bl" style="display: none;">
-<div class="panel panel-default">
+        <div class="panel panel-default">
             <div class="panel-heading"></div>
             <div class="panel-body">
                 <div id="playback-player"></div>
@@ -73,7 +73,7 @@
                 </div>
             </div>
         </div>
-	</div>
+	    </div>
         <div id="playback-results"></div>
     </div>
 </div>

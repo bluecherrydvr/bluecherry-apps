@@ -89,7 +89,7 @@ function dateFormat($unix_time, $locale_en = true) {
 
     if ($locale_en) {
         $res->format_php = 'm/d/Y h:i A';
-        $res->format_js = 'mm/dd/yyyy hh:ii P';
+        $res->format_js = 'mm/dd/yyyy HH:ii P';
         $res->time = date($res->format_php, $unix_time);
     } else {
         $res->format_php = 'd.m.Y H:i';

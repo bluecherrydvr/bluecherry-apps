@@ -80,16 +80,14 @@ function getRenderNodes() {
 }
 
 function getVaapiOptions() {
-	$ret = array();
-	$ret[0] = "Autodetect";
+    $ret = array();
+    $ret[0] = "None";
+    $nodes = getRenderNodes();
+    if (!empty($nodes))
+        array_push($ret, $nodes);
+    $ret[] = "Autodetect";
 
-	$nodes = getRenderNodes();
-
-	if (!empty($nodes))
-		array_push($ret, $nodes);
-	$ret[] = "None";
-
-	return $ret;
+    return $ret;
 }
 
 function checkVaapiSupport($renderNode, $profile) {
