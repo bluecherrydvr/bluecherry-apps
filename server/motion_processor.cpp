@@ -418,9 +418,9 @@ bool motion_processor::check_for_new_debug_event(bool md) {
         bc_log(Info, "Debug motion event has started: %s", date_time);
     } else if (in_event && cur_count <= -10) {
         time_t now = time(NULL);
-		localtime_r(&now, &m_debugEventTime);
-		
-		//std::time_t now = std::time(NULL);
+        localtime_r(&now, &m_debugEventTime);
+
+        //std::time_t now = std::time(NULL);
         //m_debugEventTime = std::localtime(&now);
         //std::strftime(m_debugEventTime, sizeof(m_debugEventTime), "%Y-%m-%d/%H.%M.%S", ptm);
 
@@ -439,13 +439,12 @@ bool motion_processor::check_for_new_debug_event(bool md) {
 void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
 {
     char date[24], stime[24], fname[128];
-	struct tm tempTm;
 
     if (m_debugEventTime.tm_sec < 0) {
         time_t now = time(NULL);
-		localtime_r(&now, &m_debugEventTime);
-		
-		//std::time_t now = std::time(NULL);
+        localtime_r(&now, &m_debugEventTime);
+
+        //std::time_t now = std::time(NULL);
         //m_debugEventTime = std::localtime(&now);
     }
 
