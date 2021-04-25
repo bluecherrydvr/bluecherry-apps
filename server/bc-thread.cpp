@@ -274,6 +274,9 @@ void bc_record::run()
 						m_processor->set_logging_context(log);
 						update_motion_thresholds();
 
+						if (sched_cur == 'X')
+							m_processor->set_input_source(motion_processor::input_source::BC_IS_FRAME);
+
 						m_processor->set_motion_algorithm(cfg.motion_algorithm);
 						m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
 						m_processor->set_min_motion_area_percent(cfg.min_motion_area);

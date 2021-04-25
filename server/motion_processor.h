@@ -34,12 +34,20 @@ public:
 		CV_MULTIFRAME
 	};
 
+	enum input_source
+	{
+		BC_IS_DEFAULT,
+		BC_IS_PACKET,
+		BC_IS_FRAME
+	};
+
 	motion_processor(bc_record *bcRecord);
 	virtual ~motion_processor();
 
 	int set_motion_thresh(const char *map, size_t size);
 	int set_motion_thresh_global(char value);
 
+	void set_input_source(int input);
 	void set_motion_algorithm(int algo);
 	int set_frame_downscale_factor(double f);
 	int set_min_motion_area_percent(int p);
@@ -81,6 +89,7 @@ private:
     int convert_AVFrame_to_grayMat(AVFrame *srcFrame, cv::Mat &dstFrame);
     int match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, int w, int h);
 	detection_algorithm m_alg;
+	input_source m_src;
 
 	pthread_t m_thread;
 	cv::Mat m_refFrames[2];
