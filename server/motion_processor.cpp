@@ -35,6 +35,8 @@ motion_processor::motion_processor(bc_record *bcRecord)
 
 	md_frame_pool_index = 0;
 	memset(md_frame_pool, 0, 255);
+
+	m_debugEventTime.tm_sec = -1;
 }
 
 motion_processor::~motion_processor()
@@ -412,17 +414,20 @@ bool motion_processor::check_for_new_debug_event(bool md) {
 
     if (!in_event && cur_count >= 10) {
         in_event = true;
-        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", m_debugEventTime);
+        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", &m_debugEventTime);
         bc_log(Info, "Debug motion event has started: %s", date_time);
     } else if (in_event && cur_count <= -10) {
-        std::time_t now = std::time(NULL);
-        m_debugEventTime = std::localtime(&now);
+        time_t now = time(NULL);
+		localtime_r(&now, &m_debugEventTime);
+		
+		//std::time_t now = std::time(NULL);
+        //m_debugEventTime = std::localtime(&now);
         //std::strftime(m_debugEventTime, sizeof(m_debugEventTime), "%Y-%m-%d/%H.%M.%S", ptm);
 
         m_debugEventNum++;
         m_debugFrameNum = 0;
         in_event = false;
-        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", m_debugEventTime);
+        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", &m_debugEventTime);
         bc_log(Info, "Debug motion event has ended: %s", date_time);
     }
 
@@ -433,19 +438,23 @@ bool motion_processor::check_for_new_debug_event(bool md) {
 
 void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
 {
-    char date[24], time[24], fname[128];
+    char date[24], stime[24], fname[128];
+	struct tm tempTm;
 
-    if (m_debugEventTime == NULL) {
-        std::time_t now = std::time(NULL);
-        m_debugEventTime = std::localtime(&now);
+    if (m_debugEventTime.tm_sec < 0) {
+        time_t now = time(NULL);
+		localtime_r(&now, &m_debugEventTime);
+		
+		//std::time_t now = std::time(NULL);
+        //m_debugEventTime = std::localtime(&now);
     }
 
     bc_get_media_loc(fname, sizeof(fname));
-    strftime(date, sizeof(date), "%Y/%m/%d", m_debugEventTime);
-    strftime(time, sizeof(time), "%H-%M-%S", m_debugEventTime);
+    strftime(date, sizeof(date), "%Y/%m/%d", &m_debugEventTime);
+    strftime(stime, sizeof(stime), "%H-%M-%S", &m_debugEventTime);
 
     // append to the end of fname to get the entire pathname
-    snprintf(fname + strlen(fname), sizeof(fname)-1, "/%s/%06d/%s.debug", date, m_recorder->id, time);
+    snprintf(fname + strlen(fname), sizeof(fname)-1, "/%s/%06d/%s.debug", date, m_recorder->id, stime);
     mkdir_p(fname, S_IRWXU | S_IRWXG | S_IRWXO);
 
     // append again to the end of fname to get the absolute filename
