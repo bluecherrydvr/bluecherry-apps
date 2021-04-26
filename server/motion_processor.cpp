@@ -25,10 +25,9 @@ extern "C" {
 
 motion_processor::motion_processor(bc_record *bcRecord)
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_src(BC_IS_DEFAULT),
-	  m_refFrameUpdateCounters({0, 0}), m_downscaleFactor(0.5), m_minMotionAreaPercent(5),
-	  m_maxMotionAreaPercent(90), m_maxMotionFrames(20), m_minMotionFrames(15),
-	  m_motionBlendRatio(0.9), m_motionDebug(true), m_recorder(bcRecord)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}),
+	  m_downscaleFactor(0.5), m_minMotionAreaPercent(5), m_maxMotionAreaPercent(90), m_maxMotionFrames(20),
+	  m_minMotionFrames(15), m_motionBlendRatio(0.9), m_motionDebug(true), m_recorder(bcRecord)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -85,26 +84,6 @@ void motion_processor::thread_cleanup(void *data)
 	mp->lock.unlock();
 	bt("monitor_processor unexpectedly cancelled", RET_ADDR);
 }
-
-/*
-// S.K> note: Will need in future
-static AVFrame* av_frame_deep_copy(static AVFrame *source)
-{
-    AVFrame *dest = av_frame_alloc();
-    if (dest == NULL) return NULL;
-
-    dest->format = source->format;
-    dest->width = source->width;
-    dest->height = sourc->height;
-    dest->channels = source->channels;
-    dest->channel_layout = source->channel_layout;
-    dest->nb_samples = source->nb_samples;
-    av_frame_get_buffer(dest, 32);
-    av_frame_copy(dest, source);
-    av_frame_copy_props(dest, source);
-    return dest;
-}
-*/
 
 void motion_processor::run()
 {
@@ -267,13 +246,6 @@ void motion_processor::set_motion_algorithm(int algo)
 	m_alg = (enum detection_algorithm)algo;
 
 	bc_log(Info, "motion algorithm is set to %i", algo);
-}
-
-void motion_processor::set_input_source(int input)
-{
-	m_src = (enum input_source)input;
-
-	bc_log(Info, "motion input source is set to %i", input);
 }
 
 int motion_processor::set_frame_downscale_factor(double f)

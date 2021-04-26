@@ -235,11 +235,8 @@ void bc_record::run()
 
 			destroy_elements();
 
-			/* S.K> note: Temporary hardcode continuous + motion */
-			char sched_old = sched_cur;
-			sched_cur = 'X';
-
 			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
+
 				if (sched_cur == 'X' || sched_cur == 'C') {
 					rec_continuous = new recorder(this);
 					rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
@@ -274,9 +271,6 @@ void bc_record::run()
 						m_processor->set_logging_context(log);
 						update_motion_thresholds();
 
-						if (sched_cur == 'X')
-							m_processor->set_input_source(motion_processor::input_source::BC_IS_FRAME);
-
 						m_processor->set_motion_algorithm(cfg.motion_algorithm);
 						m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
 						m_processor->set_min_motion_area_percent(cfg.min_motion_area);
@@ -295,9 +289,6 @@ void bc_record::run()
 					std::thread th(&motion_handler::run, m_handler);
 					th.detach();
 				}
-
-				/* S.K> note: Restore sched_curr (Temporary) */
-				sched_cur = sched_old;
 			} else if (sched_cur == 'T') {
 				/*
 				 * source ==> trigger_processor (data passthru, flag setting) ==> motion_handler_m ==> recorder

@@ -267,6 +267,7 @@ define('SCHED_SELECTOR_TITLE', 'Use these selectors to fill in the schedule belo
 define('SCHED_OFF', 'Off');
 define('SCHED_CONT', 'Continuous');
 define('SCHED_MOTION', 'Motion');
+define('SCHED_CONTMOTION', 'Continuous+Motion');
 define('SCHED_SENSOR', 'Sensor');
 define('SCHED_TRIGGER', 'Trigger');
 define('SCHED_FILLALL', 'Fill');
