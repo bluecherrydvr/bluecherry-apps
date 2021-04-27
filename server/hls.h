@@ -1,0 +1,184 @@
+/*
+ * Copyright 2010-2019 Bluecherry, LLC
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of
+ * the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#ifndef __HLS_H
+#define __HLS_H
+
+#include <sys/epoll.h>
+#include <vector>
+#include <deque>
+
+#define HLS_REQUEST_MAX             4096
+#define HLS_EVENTS_MAX              120000
+
+#define HLS_EVENT_ERROR             1
+#define HLS_EVENT_USER              2
+#define HLS_EVENT_READ              3
+#define HLS_EVENT_WRITE             4
+#define HLS_EVENT_HUNGED            5
+#define HLS_EVENT_CLOSED            6
+#define HLS_EVENT_CLEAR             7
+#define HLS_EVENT_DESTROY           8
+#define HLS_EVENT_EXCEPTION         9
+
+typedef struct hls_event_data_ {
+    void *ptr;      // Data pointer
+    int events;     // Ready events
+    int type;       // Event type
+    int fd;         // Socket descriptor
+} hls_event_data;
+
+typedef int(*event_callback_t)(void *events, void* data, int reason);
+
+class hls_events
+{
+public:
+    ~hls_events();
+
+    bool create(size_t max, void *userptr, event_callback_t callBack);
+    hls_event_data* register_event(void *ctx, int fd, int events, int type);
+
+    bool add(hls_event_data* data, int events);
+    bool modify(hls_event_data *data, int events);
+    bool remove(hls_event_data *data);
+    bool service(int timeout_ms);
+
+    void service_callback(hls_event_data *data);
+    void clear_callback(hls_event_data *data);
+    void *get_user_data() { return user_data; }
+
+private:
+    event_callback_t        event_callback = NULL;  /* Service callback */
+    struct epoll_event*     event_array = NULL;     /* EPOLL event array */
+    void*                   user_data = NULL;       /* User data pointer */
+    uint32_t                events_max = 0;         /* Max allowed file descriptors */
+    int                     event_fd = -1;          /* EPOLL File decriptor */
+};
+
+typedef std::vector<uint8_t> tx_buffer_t;
+
+// Forward declaration
+class hls_listener;
+
+class hls_session
+{
+public:
+
+    enum request_type
+    {
+        unknown = 0,
+        bitrates,
+        playlist,
+        payload
+    };
+
+    ~hls_session();
+
+    std::string get_request();
+    bool handle_request(const std::string &request);
+
+    void tx_buffer_append(uint8_t *data, size_t size);
+    size_t tx_buffer_advance(size_t size);
+
+    void rx_buffer_append(const char *data) { _rx_buffer.append(data); }
+    void rx_buffer_advance(size_t size) { _rx_buffer.erase(0, size); }
+
+    void set_hls_event_data(hls_event_data *data) { _ev_data = data; }
+    void set_event_handler(hls_events *events) { _events = events; }
+
+    void set_listener(hls_listener *listener) { _listener = listener; } 
+    hls_listener* get_listener() { return _listener; }
+
+    const char *get_addr() { return _address.c_str(); }
+    void set_addr(const struct in_addr addr);
+    void set_fd(int fd) { _fd = fd; }
+    int get_fd() { return _fd; }
+
+private:
+    request_type    _type = unknown;
+    hls_listener*   _listener = NULL;
+    hls_event_data* _ev_data = NULL;
+    hls_events*     _events = NULL;
+    tx_buffer_t     _tx_buffer;
+    std::string     _rx_buffer;
+    std::string     _address;
+    int             _fd = -1;
+};
+
+class hls_segment 
+{
+public:
+    ~hls_segment()
+    {
+        free(_data);
+        _data = NULL;
+    }
+
+    bool add_data(uint8_t *data, size_t size);
+    void set_first(bool first) { _is_first = first; }
+    void set_last(bool last) { _is_last = last; }
+    void set_key(bool key) { _is_key = key; }
+    void set_id(uint32_t id) { _id = id; }
+
+    uint8_t* data() { return _data; }
+    size_t size() { return _size; }
+
+    double duration() { return _duration; }
+    uint32_t id() { return _id; }
+
+    bool is_first() { return _is_first; }
+    bool is_last() { return _is_last; }
+    bool is_key() { return _is_key; }
+
+private:
+	uint8_t*    _data = NULL;
+	size_t      _size = 0;
+    uint32_t    _id = 0;
+    double      _duration = 0;
+
+	bool        _is_first = false;
+	bool        _is_last = false;
+	bool        _is_key = false;
+};
+
+typedef std::deque<hls_segment*> hls_window;
+
+class hls_listener
+{
+    hls_listener();
+    ~hls_listener();
+
+    void run();
+    bool create_socket();
+    bool clear_window();
+
+    void set_port(uint16_t port) { _port = port; }
+    void set_window_size(size_t size) { _window_size = size; }
+
+    hls_segment *get_segment(uint32_t id);
+    bool append_segment(hls_segment *segment);
+
+private:
+    pthread_mutex_t _mutex;
+    hls_window      _buffer;
+    size_t          _window_size = 0;
+    uint16_t        _port = 0;
+    int             _fd = -1;
+    bool            _init = false;
+};
+
+#endif /* __HLS_H */ 
