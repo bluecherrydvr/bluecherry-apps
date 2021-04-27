@@ -145,14 +145,14 @@ public:
     bool is_key() { return _is_key; }
 
 private:
-	uint8_t*    _data = NULL;
-	size_t      _size = 0;
+    uint8_t*    _data = NULL;
+    size_t      _size = 0;
     uint32_t    _id = 0;
     double      _duration = 0;
 
-	bool        _is_first = false;
-	bool        _is_last = false;
-	bool        _is_key = false;
+    bool        _is_first = false;
+    bool        _is_last = false;
+    bool        _is_key = false;
 };
 
 typedef std::deque<hls_segment*> hls_window;

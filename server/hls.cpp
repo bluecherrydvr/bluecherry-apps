@@ -251,7 +251,7 @@ std::string hls_session::get_request()
     {
         posit += 4; // skip \r\n\r\n
         request = _rx_buffer.substr(0, posit);
-        rx_buffer_advance(posit);
+        rx_buffer_advance(posit + 4);
     }
 
     return request;
@@ -259,8 +259,9 @@ std::string hls_session::get_request()
 
 void hls_session::tx_buffer_append(uint8_t *data, size_t size) 
 {
-    size_t new_size = _tx_buffer.size() + size;
-    _tx_buffer.resize(new_size);
+    size_t old_size = _tx_buffer.size();
+    _tx_buffer.resize(old_size + size);
+    memcpy(_tx_buffer.data() + old_size, data, size);
 }
 
 size_t hls_session::tx_buffer_advance(size_t size)
