@@ -83,6 +83,7 @@ function bc_license_check_genuine()
 	}
 	else {
 		$ret = bc_license_check_trial();
+		$ret[0] = false;
 	}
 
 	return $ret;
