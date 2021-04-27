@@ -33,6 +33,19 @@
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
+static void std_string_append(std::string &source, const char *data, ...)
+{
+    char buffer[4048];
+    size_t length = 0;
+    va_list args;
+
+    va_start(args, data);
+    length += vsnprintf(buffer, sizeof(buffer), data, args);
+    va_end(args);
+
+    source.append(buffer, length);
+}
+
 //////////////////////////////////////////////////
 // HLS EVENT HANDLER
 //////////////////////////////////////////////////
@@ -226,6 +239,12 @@ hls_session::~hls_session()
     }
 }
 
+int hls_session::writeable()
+{
+    int events = EPOLLRDHUP | EPOLLIN | EPOLLOUT;
+    return _events->modify(_ev_data, events) ? 1 : -1;
+}
+
 void hls_session::set_addr(const struct in_addr addr)
 {
     char address[64];
@@ -249,9 +268,8 @@ std::string hls_session::get_request()
     size_t posit = _rx_buffer.find("\r\n\r\n");
     if (posit != std::string::npos)
     {
-        posit += 4; // skip \r\n\r\n
-        request = _rx_buffer.substr(0, posit);
-        rx_buffer_advance(posit + 4);
+        request = _rx_buffer.substr(0, posit + 4);
+        rx_buffer_advance(request.length());
     }
 
     return request;
@@ -270,27 +288,155 @@ size_t hls_session::tx_buffer_advance(size_t size)
     return _tx_buffer.size();
 }
 
-bool hls_session::handle_request(const std::string &request)
+size_t hls_session::tx_buffer_flush()
 {
-    if (request.find("/bitrates.m3u8") != std::string::npos)
+    if (!_tx_buffer.size()) return 0;
+
+    int sent = send(_fd, _tx_buffer.data(), _tx_buffer.size(), MSG_NOSIGNAL);
+    if (sent <= 0)
     {
-        _type = request_type::bitrates;
-    }
-    else if (request.find("/playlist.m3u8") != std::string::npos)
-    {
-        _type = request_type::playlist;
-    }
-    else if (request.find("/payload.ts") != std::string::npos)
-    {
-        _type = request_type::payload;
-    }
-    else
-    {
-        bc_log(Warning, "Invalid HLS request: (%s) %s", this->get_addr(), request);
-        return false;
+        bc_log(Error, "Can not send data to HLS client: %s (%s)", get_addr(), strerror(errno));
+        return 0;
     }
 
-    return true;
+    tx_buffer_advance(sent);
+    return _tx_buffer.size();
+}
+
+bool hls_session::create_response()
+{
+    if (_type == hls_session::request_type::bitrates)
+    {
+        std::string body;
+        std_string_append(body, "#EXTM3U\n");
+        std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
+        std_string_append(body, "#EXT-X-STREAM-INF:BANDWIDTH=90000\n");
+        std_string_append(body, "0/playlist.m3u8\n");
+
+        std::string response = std::string("HTTP/1.1 200 OK\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: %s", "application/vnd.apple.mpegurl\r\n");
+        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
+        response.append(body);
+
+        _tx_buffer.resize(response.length());
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+        return true;
+    }
+    else if (_type == hls_session::request_type::playlist)
+    {
+        hls_segments segments;
+        size_t count = _listener->get_segment_ids(segments);
+        uint32_t sequence = count ? segments[0] : 0;
+
+        std::string body;
+        std_string_append(body, "#EXTM3U\n");
+        std_string_append(body, "#EXT-X-TARGETDURATION: 1\n"); // TODO: Get from segment
+        std_string_append(body, "#EXT-X-ALLOW-CACHE: NO\n"); // TODO: YES if VOD
+        std_string_append(body, "#EXT-X-VERSION: 5\n");
+        std_string_append(body, "#EXT-X-MEDIA=SEQUENCE: %u\n", sequence);
+
+        for (int i = 0; i < count; i++)
+        {
+            std_string_append(body, "#EXTINF:1,\n");
+            std_string_append(body, "%u/payload.ts\n", segments[0]);
+        }
+
+        std::string response = std::string("HTTP/1.1 200 OK\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: %s", "application/vnd.apple.mpegurl\r\n");
+        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
+        response.append(body);
+
+        _tx_buffer.resize(response.length());
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+        return true;
+    }
+    else if (_type == hls_session::request_type::payload)
+    {
+        hls_segment *segment = _listener->get_segment(_segment_id);
+        if (segment == NULL)
+        {
+            bc_log(Warning, "HLS payload not found for requested id: %u", _segment_id);
+
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+            return true;
+        }
+
+        std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: %s", "video/MP2T\r\n");
+        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Accept-Ranges: bytes\r\n");
+        std_string_append(response, "Connection: close\r\n");
+        std_string_append(response, "Server: bluechery\r\n");
+        std_string_append(response, "Content-Length: %zu\r\n\r\n", segment->size());
+
+        size_t response_size = response.length() + segment->size();
+        _tx_buffer.resize(response_size);
+
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        memcpy(_tx_buffer.data() + response.length(), segment->data(), segment->size());
+
+        return true;
+    }
+
+    return false;
+}
+
+bool hls_session::handle_request(const std::string &request)
+{
+	size_t start_posit = request.find("/");
+	if (start_posit == std::string::npos) return false;
+
+	size_t end_posit = request.find(" ", start_posit);
+	if (end_posit == std::string::npos) return false;
+
+	size_t url_length = end_posit - start_posit;
+	std::string url = request.substr(start_posit, url_length);
+
+    if (url.find("/bitrates.m3u8") != std::string::npos)
+    {
+        _type = request_type::bitrates;
+        return true;
+    }
+    else if (url.find("/playlist.m3u8") != std::string::npos)
+    {
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return false;
+        _stream_id = std::stoi(url.substr(1, posit));
+        _type = request_type::playlist;
+        return true;
+    }
+    else if (url.find("/payload.ts") != std::string::npos)
+    {
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return false;
+        _stream_id = std::stoi(url.substr(1, posit));
+
+        size_t new_posit = url.find("/", posit + 1);
+        if (new_posit == std::string::npos) return false;
+
+        size_t length = new_posit - posit;
+        _segment_id = std::stoi(url.substr(posit, length));
+        _type = request_type::payload;
+        return true;
+    }
+
+    return create_response();
 }
 
 //////////////////////////////////////////////////
@@ -338,8 +484,8 @@ bool hls_listener::clear_window()
     while (_buffer.size())
     {
         hls_segment *front = _buffer.front();
-        if (front != NULL) delete front;
         _buffer.pop_front();
+        delete front;
     }
 
     if (pthread_mutex_unlock(&_mutex))
@@ -439,6 +585,29 @@ hls_segment* hls_listener::get_segment(uint32_t id)
     return segment;
 }
 
+size_t hls_listener::get_segment_ids(hls_segments &segments)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return 0;
+    }
+
+    for (size_t i = 0; i < _buffer.size(); i++)
+    {
+        hls_segment *temp = _buffer[i];
+        segments.push_back(temp->id());
+    }
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return 0;
+    }
+
+    return segments.size();
+}
+
 void hls_clear_event(hls_event_data *ev_data)
 {
     if (ev_data != NULL)
@@ -529,9 +698,6 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         {
             if (!bytes) bc_log(Info, "Disconnected client: %s[%d]", session->get_addr(), client_fd);
             else bc_log(Error, "Can not read data from client: %s (%s)", session->get_addr(), strerror(errno));
-
-            /* Delete client from the event instance */
-            events->remove(ev_data);
             return -1;
         }
 
@@ -539,23 +705,25 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         rx_buffer[bytes] = '\0';
         session->rx_buffer_append(rx_buffer);
 
+        /* Get completed request */
         std::string request = session->get_request();
         if (!request.length()) return 0;
 
-        bc_log(Debug, "Received request from: client(%s)[%d]: %s", 
-            session->get_addr(), client_fd, request.c_str());
+        /* Parse and handle the request */
+        if (!session->handle_request(request)) bc_log(Warning, "Rejecting HLS request: (%s) %s", session->get_addr(), request.c_str());
+        else bc_log(Debug, "Received request from: client(%s)[%d]: %s", session->get_addr(), client_fd, request.c_str());
 
-        return session->handle_request(request);
+        /* Callback on writeable */
+        return session->writeable();
     }
 
-    return 0;
+    return 1;
 }
 
 int hls_write_event(hls_events *events, hls_event_data *ev_data)
 {
-    // TODO
-
-    return 0;
+    hls_session *session = (hls_session*)ev_data->ptr;
+    return session->tx_buffer_flush() ? 1 : -1;
 }
 
 int hls_event_callback(void *events, void* data, int reason)
@@ -579,6 +747,10 @@ int hls_event_callback(void *events, void* data, int reason)
             break;
         case HLS_EVENT_CLOSED:
             bc_log(Info, "HLS Connection closed: fd(%d)", ev_data->fd);
+            pevents->remove(ev_data);
+            break;
+        case HLS_EVENT_USER:
+            bc_log(Info, "Finishing HLS session: fd(%d)", ev_data->fd);
             pevents->remove(ev_data);
             break;
         case HLS_EVENT_DESTROY:

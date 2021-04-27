@@ -80,7 +80,7 @@ public:
 
     enum request_type
     {
-        unknown = 0,
+        invalid = 0,
         bitrates,
         playlist,
         payload
@@ -88,11 +88,16 @@ public:
 
     ~hls_session();
 
+    int writeable();
+    int readable();
+
     std::string get_request();
     bool handle_request(const std::string &request);
+    bool create_response();
 
     void tx_buffer_append(uint8_t *data, size_t size);
     size_t tx_buffer_advance(size_t size);
+    size_t tx_buffer_flush();
 
     void rx_buffer_append(const char *data) { _rx_buffer.append(data); }
     void rx_buffer_advance(size_t size) { _rx_buffer.erase(0, size); }
@@ -109,10 +114,17 @@ public:
     int get_fd() { return _fd; }
 
 private:
-    request_type    _type = unknown;
+    /* Request */
+    request_type    _type = invalid;
+    uint32_t        _segment_id = 0;
+    uint8_t         _stream_id = 0;
+
+    /* Objects */
     hls_listener*   _listener = NULL;
     hls_event_data* _ev_data = NULL;
     hls_events*     _events = NULL;
+
+    /* rx/tx */
     tx_buffer_t     _tx_buffer;
     std::string     _rx_buffer;
     std::string     _address;
@@ -156,9 +168,11 @@ private:
 };
 
 typedef std::deque<hls_segment*> hls_window;
+typedef std::vector<uint32_t> hls_segments;
 
 class hls_listener
 {
+public:
     hls_listener();
     ~hls_listener();
 
@@ -170,6 +184,7 @@ class hls_listener
     void set_window_size(size_t size) { _window_size = size; }
 
     hls_segment *get_segment(uint32_t id);
+    size_t get_segment_ids(hls_segments &ids);
     bool append_segment(hls_segment *segment);
 
 private:
