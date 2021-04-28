@@ -42,17 +42,8 @@ class licenses extends Controller {
 				exit();
 			}
 
-			// Add the activated license to database
-			$licenses = data::getObject('Licenses');
-			$result = false;
-
-			if (empty($licenses)) {
-				$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '', UNIX_TIMESTAMP())", true);
-			}
-			else {
-				$current = $licenses[0]['license'];
-				$result = data::query("UPDATE  Licenses SET license='{$_POST['licenseCode']}', added=UNIX_TIMESTAMP() WHERE license='$current'", true);
-			}
+			// Add the verified license to database
+			$result = $this->updateVerifiedLicense($_POST['licenseCode']);
 
 			// Update the general notification in the page
 			if ($result){
@@ -114,6 +105,21 @@ class licenses extends Controller {
 		}
 
     }
+
+	private function updateVerifiedLicense($licenseCode) {
+		$licenses = data::getObject('Licenses');
+		$result = false;
+
+		if (empty($licenses)) {
+			$result = data::query("INSERT INTO Licenses VALUES ('{$licenseCode}', '', UNIX_TIMESTAMP())", true);
+		}
+		else {
+			$current = $licenses[0]['license'];
+			$result = data::query("UPDATE  Licenses SET license='{$licenseCode}', added=UNIX_TIMESTAMP() WHERE license='$current'", true);
+		}
+
+		return $result;
+	}
 
     private function sendHttpReq($url)
     {
