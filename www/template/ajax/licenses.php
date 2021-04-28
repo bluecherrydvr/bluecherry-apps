@@ -20,8 +20,15 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
                     <input class="form-control" type="text" class="license" name="licenseCode">
                 </div>
                 <div class="form-group">
-                    <button class="btn btn-success send-req-form" type="submit" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
+                    <button class="btn btn-success send-req-form" type="submit" style="width: 80px;" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
                 </div>
+            </form>
+            <form action="/licenses?mode=getToken" style="position:relative;" method="POST">
+                <?php if (!empty($licenses)){ ?>
+                    <button class="btn btn-success token-button send-req-form" type="submit"> <?php echo L_GET_TOKEN; ?></button>
+                <?php } else { ?>
+                    <button class="btn btn-disabled token-button" disabled> <?php echo L_GET_TOKEN; ?></button>
+                <?php } ?>
             </form>
         </div>
     </div>

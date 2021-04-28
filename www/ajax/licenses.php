@@ -3,6 +3,10 @@
 require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
+
+	const SUBDOMAIN_PROVIDER_BASE_URL = 'http://23.236.180.59:3000/subdomain-provider';
+	const SUBDOMAIN_API_GET_TOKEN = '/generate-token';
+	const SUBDOMAIN_ADMIN_TOKEN = '8532871313';
 	
     public function __construct()
     {
@@ -44,17 +48,15 @@ class licenses extends Controller {
 
 			// Add the verified license to database
 			$result = $this->updateVerifiedLicense($_POST['licenseCode']);
-
-			// Update the general notification in the page
-			if ($result){
-				$ret = bc_license_check_genuine();
-				data::responseJSON(true, L_LICENSE_ADDED, $ret);
-				exit();
-			} else {
+			if (!$result){
 				data::responseJSON(false, false);
 				exit();
 			}
-        }
+
+			// Update the general notification in the page
+			$ret = bc_license_check_genuine();
+			data::responseJSON(true, L_LICENSE_ADDED, $ret);
+		}
 
         if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
 			// Activate trial
@@ -104,6 +106,26 @@ class licenses extends Controller {
 			data::responseJSON(true);
 		}
 
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'getToken'){
+			// Get a new subdomain token from the subdomain provider
+			$result = $this->getSubdomainToken();
+			if ($result[0] == false) {
+				data::responseJSON(false, $result[1]);
+				exit();
+			}
+
+			// Add the new subdomain token to database
+			$result = $this->updateSubdomainToken($result[1]);
+			if ($result) {
+				data::responseJSON(true, L_LA_E_SUBDOMAIN_TOKEN_GOT);
+				exit();
+			}
+			else {
+				data::responseJSON(false, L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE);
+				exit();
+			}
+		}
+
     }
 
 	private function updateVerifiedLicense($licenseCode) {
@@ -121,23 +143,70 @@ class licenses extends Controller {
 		return $result;
 	}
 
+	private function updateSubdomainToken($token) {
+		$status = true;
+		$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('G_SUBDOMAIN_TOKEN', '{$token}') ON DUPLICATE KEY UPDATE value='{$token}'", true)) ? $status : false;
+
+		return $status;
+	}
+
+	private function getSubdomainToken() {
+		$result = array();
+
+		$url = self::SUBDOMAIN_PROVIDER_BASE_URL . self::SUBDOMAIN_API_GET_TOKEN;
+		$response = $this->sendHttpReq($url);
+
+		if ($response[0] === false) {
+			$result[0] = false;
+			$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $response[1] . ')';
+		}
+		else {
+			$arr = json_decode($response[1]);
+			if ($arr === null) {
+				$result[0] = false;
+				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (Invalid repsonse)';
+			}
+			else if ($arr->token === null) {
+				$result[0] = false;
+				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $arr->message . ')';
+			}
+			else {
+				$result[0] = true;
+				$result[1] = $arr->token;
+			}
+		}
+
+		return $result;
+	}
+
     private function sendHttpReq($url)
     {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt ($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt ($ch, CURLOPT_HTTPHEADER, array('Expect:'));
+		$result = array();
+		$curl = curl_init();
+		curl_setopt($curl, CURLOPT_URL, $url);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		
+		$headers = array(
+		   "Accept: application/json",
+		   "Authorization: Bearer " . self::SUBDOMAIN_ADMIN_TOKEN,
+		);
+		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+		//for debug only!
+		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+		
+		$resp = curl_exec($curl);
+		if ($resp === false) {
+			$result[0] = false;
+			$result[1] = curl_error($curl);
+		}
+		else {
+			$result[0] = true;
+			$result[1] = $resp;
+		}
+		curl_close($curl);
 
-        $res = curl_exec($ch);
-
-        curl_close($ch);
-
-        return $res;
+        return $result;
     }
 
 	private function getLicenseStatusMessage($status)

@@ -339,3 +339,9 @@ span.input-group-unstyled {
 	text-decoration: underline;
 	cursor: pointer; 
 }
+
+.token-button {
+    position: absolute;
+    top: -49px;
+    left: 90px;
+}
