@@ -1,4 +1,4 @@
-bluecherry (3:3.0.5) focal bionic buster; urgency=low
+bluecherry (3:3.0.5) focal bionic buster groovy; urgency=low
 
 
   * FIX: Web playback - AJAX error caused by the wrong time format (#388)
