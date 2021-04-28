@@ -11,7 +11,7 @@ bluecherry (3:3.0.5) focal bionic buster; urgency=low
   * FEATURE: Adds temporal-based motion detection algorithm - Added by Kyle Mallory <kylemallory@yahoo.com>
   * FEATURE: Minor improvements to Experimental motion detection algorithm, specifically support for "max motion area". - Added by Kyle Mallory <kylemallory@yahoo.com>
 
- -- Kyle Mallory <kylemallory@yahoo.com>  Wed, 2 Mar 2021 19:00:00 -0700
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 28 Apr 2021 12:57:28 -0600 
 
 bluecherry (3:3.0.4) focal bionic buster; urgency=low
 
