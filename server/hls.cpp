@@ -206,7 +206,7 @@ bool hls_events::service(int timeout_ms)
 // HLS SEGMENT
 //////////////////////////////////////////////////
 
-bool hls_segment::add_data(uint8_t *data, size_t size)
+bool hls_segment::add_data(const uint8_t *data, size_t size)
 {
     if (_data != NULL)
     {
@@ -222,7 +222,19 @@ bool hls_segment::add_data(uint8_t *data, size_t size)
     }
 
     memcpy(_data, data, size);
+    _size = size;
     return true;
+}
+
+hls_segment* hls_segment::copy()
+{
+    hls_segment *segment = new hls_segment;
+    segment->set_duration(duration());
+    segment->set_first(is_first());
+    segment->set_last(is_last());
+    segment->set_key(is_key());
+    segment->set_id(id());
+    return segment->add_data(data(), size()) ? segment : NULL;
 }
 
 //////////////////////////////////////////////////
@@ -339,7 +351,7 @@ bool hls_session::create_response()
         std_string_append(body, "#EXT-X-VERSION: 5\n");
         std_string_append(body, "#EXT-X-MEDIA=SEQUENCE: %u\n", sequence);
 
-        for (int i = 0; i < count; i++)
+        for (size_t i = 0; i < count; i++)
         {
             std_string_append(body, "#EXTINF:1,\n");
             std_string_append(body, "%u/payload.ts\n", segments[0]);
@@ -391,6 +403,7 @@ bool hls_session::create_response()
         memcpy(_tx_buffer.data(), response.c_str(), response.length());
         memcpy(_tx_buffer.data() + response.length(), segment->data(), segment->size());
 
+        delete segment;
         return true;
     }
 
@@ -411,7 +424,6 @@ bool hls_session::handle_request(const std::string &request)
     if (url.find("/bitrates.m3u8") != std::string::npos)
     {
         _type = request_type::bitrates;
-        return true;
     }
     else if (url.find("/playlist.m3u8") != std::string::npos)
     {
@@ -419,7 +431,6 @@ bool hls_session::handle_request(const std::string &request)
         if (posit == std::string::npos) return false;
         _stream_id = std::stoi(url.substr(1, posit));
         _type = request_type::playlist;
-        return true;
     }
     else if (url.find("/payload.ts") != std::string::npos)
     {
@@ -427,13 +438,13 @@ bool hls_session::handle_request(const std::string &request)
         if (posit == std::string::npos) return false;
         _stream_id = std::stoi(url.substr(1, posit));
 
-        size_t new_posit = url.find("/", posit + 1);
+        posit++;
+        size_t new_posit = url.find("/", posit);
         if (new_posit == std::string::npos) return false;
 
         size_t length = new_posit - posit;
         _segment_id = std::stoi(url.substr(posit, length));
         _type = request_type::payload;
-        return true;
     }
 
     return create_response();
@@ -539,8 +550,11 @@ bool hls_listener::append_segment(hls_segment *segment)
         return false;
     }
 
+    _cc++; // Continuity counter
+    segment->set_id(_cc);
     _buffer.push_back(segment);
-    while (_window_size && _buffer.size() >= _window_size)
+
+    while (_window_size && _buffer.size() > _window_size)
     {
         hls_segment *front = _buffer.front();
         _buffer.pop_front();
@@ -553,6 +567,19 @@ bool hls_listener::append_segment(hls_segment *segment)
         return false;
     }
 
+    return true;
+}
+
+bool hls_listener::add_packet(const stream_packet &packet)
+{
+    // Temporary use raw data of the packet
+    hls_segment *segment = new hls_segment;
+    segment->add_data(packet.data(), packet.size);
+
+    // TODO: encode packet with mpegts muxer, must be:
+    // hls_segment *segment = mux_packet(packet);
+
+    this->append_segment(segment);
     return true;
 }
 
@@ -571,7 +598,7 @@ hls_segment* hls_listener::get_segment(uint32_t id)
         hls_segment *temp = _buffer[i];
         if (temp->id() == id)
         {
-            segment = temp;
+            segment = temp->copy();
             break;
         }
     }
@@ -773,7 +800,7 @@ void hls_listener::run()
     }
 
     /* Create socket and start listen */
-    if (this->create_socket()) return;
+    if (!this->create_socket()) return;
 
     bool status = true;
     hls_events events;

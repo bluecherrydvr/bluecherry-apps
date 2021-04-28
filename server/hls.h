@@ -19,6 +19,7 @@
 #define __HLS_H
 
 #include <sys/epoll.h>
+#include <string>
 #include <vector>
 #include <deque>
 
@@ -89,7 +90,6 @@ public:
     ~hls_session();
 
     int writeable();
-    int readable();
 
     std::string get_request();
     bool handle_request(const std::string &request);
@@ -140,7 +140,8 @@ public:
         _data = NULL;
     }
 
-    bool add_data(uint8_t *data, size_t size);
+    bool add_data(const uint8_t *data, size_t size);
+    void set_duration(double duration) { _duration = duration; }
     void set_first(bool first) { _is_first = first; }
     void set_last(bool last) { _is_last = last; }
     void set_key(bool key) { _is_key = key; }
@@ -155,6 +156,8 @@ public:
     bool is_first() { return _is_first; }
     bool is_last() { return _is_last; }
     bool is_key() { return _is_key; }
+
+    hls_segment* copy();
 
 private:
     uint8_t*    _data = NULL;
@@ -186,12 +189,14 @@ public:
     hls_segment *get_segment(uint32_t id);
     size_t get_segment_ids(hls_segments &ids);
     bool append_segment(hls_segment *segment);
+    bool add_packet(const stream_packet &packet);
 
 private:
     pthread_mutex_t _mutex;
     hls_window      _buffer;
     size_t          _window_size = 0;
     uint16_t        _port = 0;
+    uint32_t        _cc = 0;
     int             _fd = -1;
     bool            _init = false;
 };
