@@ -23,7 +23,7 @@ class mediaMjpeg extends Controller {
         }
         
         if (!isset($_GET['id']))
-        	image_err("No device ID supplied");
+        	image_err(MJPEG_DEVICE_ID_NOT_SUPPLIED);
         
         $id = intval($_GET['id']);
         
