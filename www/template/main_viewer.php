@@ -9,6 +9,7 @@
 	<script type="text/javascript" src="./lib/mootools-plugins.js"></script>
 	<script type="text/javascript" src="./lib/js/viewer.js"></script>
 	<script type="text/javascript" src="/vars"></script>
+	<script type="text/javascript" src="//cdn.jsdelivr.net/hls.js/latest/hls.min.js"></script>
 </head>
 <body>
 <div>
