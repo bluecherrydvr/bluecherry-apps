@@ -19,19 +19,31 @@
 #include <unistd.h>
 #include "bc-server.h"
 #include "rtsp.h"
+#include "hls.h"
 
 extern "C" {
 #include <libavutil/mathematics.h>
 #include <libavutil/dict.h>
 }
 
-#define RTP_MAX_PACKET_SIZE 1472
+#define RTP_MAX_PACKET_SIZE 1316
 
 static int io_write(void *opaque, uint8_t *buf, int buf_size)
 {
 	struct bc_record *bc_rec = (struct bc_record *)opaque;
 	bc_rec->rtsp_stream->sendPackets(buf, buf_size, bc_rec->cur_pkt_flags,
 		bc_rec->cur_stream_index);
+
+	return buf_size;
+}
+
+static int hls_io_write(void *opaque, uint8_t *buf, int buf_size)
+{
+	struct bc_record *bc_rec = (struct bc_record *)opaque;
+
+	if (bc_rec->hls_stream)
+		bc_rec->hls_stream->add_data(buf, buf_size, bc_rec->cur_pkt_flags);
+
 	return buf_size;
 }
 
@@ -75,7 +87,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		goto error;
 	}
 
-	ctx->oformat = av_guess_format("rtp", NULL, NULL);
+	ctx->oformat = av_guess_format("mpegts", NULL, NULL);
 	if (!ctx->oformat) {
 		bc_rec->log.log(Error, "RTP output format not available");
 		goto error;
@@ -113,7 +125,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 			/* write flag */1,
 			/* context pointer passed to functions */bc_rec,
 			/* read function */NULL,
-			/* write function */io_write,
+			/* write function */hls_io_write, // Temporary for HLS PoC
 			/* seek function */NULL);
 	bufptr = NULL;  // ctx->pb now owns it
 	if (!ctx->pb) {
@@ -122,8 +134,8 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 	}
 	ctx->pb->seekable = 0;  // Adjust accordingly
 
-	av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
-	if ((ret = avformat_write_header(ctx, &muxer_opts)) < 0) {
+	//av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
+	if ((ret = avformat_write_header(ctx, NULL)) < 0) {
 		bc_rec->log.log(Error, "Initializing muxer for RTP streaming failed");
 		goto mux_open_error;
 	}
@@ -225,3 +237,47 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	return 1;
 }
 
+int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pkt)
+{
+	AVPacket opkt;
+	int re;
+	int ctx_index;
+
+	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
+		ctx_index = 0;
+	} else if (pkt.type == AVMEDIA_TYPE_AUDIO) {
+		ctx_index = 1;
+	} else {
+		bc_rec->log.log(Warning, "Got unknown packet type, ignoring.");
+		return 0;
+	}
+
+	av_init_packet(&opkt);
+	opkt.flags        = pkt.flags;
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+
+	opkt.data         = const_cast<uint8_t*>(pkt.data());
+	opkt.size         = pkt.size;
+	opkt.stream_index = 0;
+
+	bc_rec->cur_pkt_flags = pkt.flags;
+	bc_rec->cur_stream_index = ctx_index;
+	bc_rec->pkt_first_chunk = true;
+
+	re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
+	if (re < 0) {
+		if (re == AVERROR(EINVAL)) {
+			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
+			return 1;
+		}
+		char err[512] = { 0 };
+		av_strerror(re, err, sizeof(err));
+		bc_rec->log.log(Error, "Can't write to live stream: %s", err);
+
+		/* Cleanup */
+		stop_handle_properly(bc_rec);
+		return -1;
+	}
+	return 1;
+}

@@ -31,6 +31,7 @@ extern "C" {
 
 #include "reencoder.h"
 #include "recorder.h"
+#include "hls.h"
 
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
@@ -76,6 +77,8 @@ public:
 	AVFormatContext *stream_ctx[2];
 
 	class rtsp_stream *rtsp_stream;
+
+	hls_listener *hls_stream;
 
 	time_t			osd_time;
 	unsigned int		start_failed;

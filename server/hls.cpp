@@ -33,6 +33,8 @@
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
+#define HLS_SEGMENT_SIZE (188 * 7 * 1024)
+
 static void std_string_append(std::string &source, const char *data, ...)
 {
     char buffer[4048];
@@ -353,8 +355,8 @@ bool hls_session::create_response()
 
         for (size_t i = 0; i < count; i++)
         {
-            std_string_append(body, "#EXTINF:1,\n");
-            std_string_append(body, "%u/payload.ts\n", segments[0]);
+            std_string_append(body, "#EXTINF:1.0000,\n");
+            std_string_append(body, "%u/payload.ts\n", segments[i]);
         }
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
@@ -510,6 +512,12 @@ bool hls_listener::clear_window()
 
 bool hls_listener::create_socket()
 {
+    if (!_init)
+    {
+        bc_log(Error, "HLS listener is not initialized");
+        return false;
+    }
+
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(_port);
@@ -570,17 +578,26 @@ bool hls_listener::append_segment(hls_segment *segment)
     return true;
 }
 
-bool hls_listener::add_packet(const stream_packet &packet)
+bool hls_listener::add_data(uint8_t *data, size_t size, int flags)
 {
-    // Temporary use raw data of the packet
-    hls_segment *segment = new hls_segment;
-    segment->add_data(packet.data(), packet.size);
+    bool is_key = flags & AV_PKT_FLAG_KEY;
+    bool status = true;
 
-    // TODO: encode packet with mpegts muxer, must be:
-    // hls_segment *segment = mux_packet(packet);
+    if (is_key && _in_buffer.size() >= HLS_SEGMENT_SIZE)
+    {
+        hls_segment *segment = new hls_segment;
+        segment->add_data(_in_buffer.data(), _in_buffer.size());
+        segment->set_key(is_key);
+        status = append_segment(segment);
+        _in_buffer.clear();
+    }
 
-    this->append_segment(segment);
-    return true;
+    size_t buff_size = _in_buffer.size();
+    _in_buffer.resize(buff_size + size);
+    uint8_t *offset = _in_buffer.data();
+    memcpy(offset + buff_size, data, size);
+
+    return status;
 }
 
 hls_segment* hls_listener::get_segment(uint32_t id)
@@ -791,6 +808,18 @@ int hls_event_callback(void *events, void* data, int reason)
     return 0;
 }
 
+bool hls_listener::register_listener()
+{
+    /* Create socket and start listen */
+    if (!this->create_socket()) return false;
+
+    /* Create event instance and add listener socket to the instance  */
+    if (!_events.create(0, &_fd, hls_event_callback) ||
+        !_events.register_event(this, _fd, EPOLLIN, 0)) return false;
+
+    return true;
+}
+
 void hls_listener::run()
 {
     if (!_init)
@@ -799,18 +828,9 @@ void hls_listener::run()
         return;
     }
 
-    /* Create socket and start listen */
-    if (!this->create_socket()) return;
-
     bool status = true;
-    hls_events events;
-
-    /* Create event instance and add listener socket to the instance  */
-    if (!events.create(0, &_fd, hls_event_callback) ||
-        !events.register_event(this, _fd, EPOLLIN, 0)) return;
-
     while (status) /* Main service loop */
-        status = events.service(100);
+        status = _events.service(100);
 
     /* Thats all */
     close(_fd);

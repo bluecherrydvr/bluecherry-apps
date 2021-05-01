@@ -36,6 +36,8 @@
 #include "recorder.h"
 #include "substream-thread.h"
 
+#include "hls.h"
+
 #define DEF_TH_LOG_LEVEL Warning
 
 /* For Ubuntu Lucid */
@@ -156,6 +158,8 @@ void bc_record::notify_device_state(const char *state)
 	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", "device_state", id_str, state, NULL);
 	exit(1);
 }
+
+int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pkt);
 
 void bc_record::run()
 {
@@ -374,6 +378,28 @@ void bc_record::run()
 			continue;
 		}
 
+		if (!hls_stream)
+		{
+			hls_stream = new hls_listener;
+			hls_stream->set_port(7002 + id); // temporary
+			hls_stream->set_window_size(20);
+
+			if (!hls_stream->register_listener())
+			{
+				delete hls_stream;
+				hls_stream = 0;
+			}
+			else
+			{
+				std::thread hls_th(&hls_listener::run, hls_stream);
+				hls_th.detach();
+			}
+		}
+
+		if (hls_stream) {
+			bc_streaming_packet_write2(this, packet);
+		}
+
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(this) && !bc->substream_mode) {
 
@@ -410,6 +436,7 @@ bc_record::bc_record(int i)
 	stream_ctx[0] = 0;
 	stream_ctx[1] = 0;
 	rtsp_stream = 0;
+	hls_stream = 0;
 
 	osd_time = 0;
 	start_failed = 0;
@@ -523,6 +550,12 @@ void bc_record::destroy_elements()
 		rec->disconnect();
 		rec->destroy();
 		rec = 0;
+	}
+
+	if (hls_stream)
+	{
+		delete hls_stream;
+		hls_stream = 0;
 	}
 
 	if (m_processor) {

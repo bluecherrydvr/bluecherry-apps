@@ -70,7 +70,7 @@ private:
     int                     event_fd = -1;          /* EPOLL File decriptor */
 };
 
-typedef std::vector<uint8_t> tx_buffer_t;
+typedef std::vector<uint8_t> hls_byte_buffer;
 
 // Forward declaration
 class hls_listener;
@@ -125,7 +125,7 @@ private:
     hls_events*     _events = NULL;
 
     /* rx/tx */
-    tx_buffer_t     _tx_buffer;
+    hls_byte_buffer _tx_buffer;
     std::string     _rx_buffer;
     std::string     _address;
     int             _fd = -1;
@@ -180,6 +180,7 @@ public:
     ~hls_listener();
 
     void run();
+    bool register_listener();
     bool create_socket();
     bool clear_window();
 
@@ -189,12 +190,19 @@ public:
     hls_segment *get_segment(uint32_t id);
     size_t get_segment_ids(hls_segments &ids);
     bool append_segment(hls_segment *segment);
-    bool add_packet(const stream_packet &packet);
+    bool add_data(uint8_t *data, size_t size, int flags);
 
 private:
+    /* MPEGTS input buffer */
+    hls_byte_buffer _in_buffer;
     pthread_mutex_t _mutex;
+
+    /* HLS window buffer */
     hls_window      _buffer;
     size_t          _window_size = 0;
+
+    /* HLS listener context */
+    hls_events      _events;
     uint16_t        _port = 0;
     uint32_t        _cc = 0;
     int             _fd = -1;
