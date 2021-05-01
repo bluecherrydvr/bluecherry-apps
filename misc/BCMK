@@ -114,6 +114,8 @@ libav/config.mak:
 		--enable-filter=aresample \
 		--enable-filter=hwupload \
 		--enable-filter=hwdownload \
+		--enable-muxer=hls \
+		--enable-muxer=mpegts \
 		\
 
 
