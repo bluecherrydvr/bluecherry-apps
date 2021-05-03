@@ -1,4 +1,4 @@
-
+const HLS_BASE_PORT = 7002;
 
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
@@ -171,6 +171,7 @@ makeGrid = function(){
 	var gridTable = new Element('table', {
            	'id' : 'lvGridTable'
     });
+	var videoSrc = []
 	for (row = 1; row <= lvRows; row++) {
        	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
        	for(col = 1; col <= lvCols; col++){
@@ -178,13 +179,16 @@ makeGrid = function(){
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
 			var imgClass = 'noImg';
 			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
+			var port = HLS_BASE_PORT + parseInt(id);
+			videoLink = "http://127.0.0.1:" + port + "/bitrates.m3u8";
+			videoSrc[row, col] = videoLink;
 			// If assigned device, then m3u8 files will be displayed
 			// Else a fixed image will be displayed to select camera
 			var lvSource;
 			if (imgSrcId === 'none') {
 				lvSource = new Element('img', {'class': imgClass, 'src': '/img/icons/layouts/none.png'});
 			} else {
-				lvSource = new Element('video', {'id': 'video' + row + col, 'controls': '', 'autoplay': 'false', 'width': '100%', 'height': 'auto'});
+				lvSource = new Element('video', {'id': 'video' + row + col, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
 			}
 			lvSource.inject(thisCol);
 			if (thisCam  && (thisCam.get('id')==id)) {
@@ -197,13 +201,12 @@ makeGrid = function(){
     gridTable.inject($('liveViewContainer'));
 	
 	// Create video instance
-	var videoSrcInHls = "https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8";
 	if(Hls.isSupported()) {
 		for (row = 1; row <= lvRows; row++) {
 			for(col = 1; col <= lvCols; col++){
 				var video = document.getElementById("video" + row + col);
 				var hls = new Hls();
-				hls.loadSource(videoSrcInHls);
+				hls.loadSource(videoSrc[row, col]);
 				hls.attachMedia(video);
 				hls.on(Hls.Events.MANIFEST_PARSED,function() {
 					video.play();
