@@ -178,44 +178,28 @@ makeGrid = function(){
 			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
 			var imgClass = 'noImg';
-			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
-			var port = HLS_BASE_PORT + parseInt(id);
-			videoLink = "http://127.0.0.1:" + port + "/bitrates.m3u8";
-			videoSrc[row, col] = videoLink;
-			// If assigned device, then m3u8 files will be displayed
-			// Else a fixed image will be displayed to select camera
-			var lvSource;
+			var thisCam = $$('.ptz'+'#'+imgSrcId);
+			var id = imgSrcId;
+			var lvSource = null;
+
 			if (imgSrcId === 'none') {
 				lvSource = new Element('img', {'class': imgClass, 'src': '/img/icons/layouts/none.png'});
 			} else {
-				lvSource = new Element('video', {'id': 'video' + row + col, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
+				imgSrcId = '/media/mjpeg?multipart=true&id=' + id;
+				lvSource = createHlsVideoElement(id, 'video' + row + col, imgSrcId, imgClass);
 			}
+
 			lvSource.inject(thisCol);
-			if (thisCam  && (thisCam.get('id')==id)) {
-				addPtz(lvImg, id);
+
+			if (thisCam  && (thisCam.get('id') == id)) {
+				addPtz(lvSource, id);
 			}
+
             thisCol.inject(thisRow, 'bottom');
 		};
   	    thisRow.inject(gridTable, 'bottom');
 	};
     gridTable.inject($('liveViewContainer'));
-	
-	// Create video instance
-	if(Hls.isSupported()) {
-		for (row = 1; row <= lvRows; row++) {
-			for(col = 1; col <= lvCols; col++){
-				var video = document.getElementById("video" + row + col);
-				var hls = new Hls();
-				hls.loadSource(videoSrc[row, col]);
-				hls.attachMedia(video);
-				hls.on(Hls.Events.MANIFEST_PARSED,function() {
-					video.play();
-				});
-			}
-		}
-	} else {
-		//
-	}
 }
 
 adjustImageSize = function(){
@@ -252,6 +236,7 @@ adjustImageSize = function(){
 		adjustImageSize();
 	});
 }
+
 addDelRowColumn = function(n, t){
 	var tp = ((n)=='c' ? 'lvCols' : 'lvRows');
 	var v = parseInt(Cookie.read(tp) || 2);
@@ -263,7 +248,6 @@ setLayout = function(tp){
 	Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
 	window.location.reload(true);
 }
-
 
 sendPtzCommand = function(camId, command, d, cont, speed){
 	if (!speed) var speed = 32;
@@ -293,4 +277,29 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 	}).send();
 };
 
+createHlsVideoElement = function(deviceId, videoId, imgSrcId, imgClass) {
+	var element = null;
+	var port = HLS_BASE_PORT + parseInt(deviceId);
+	var videoLink = "http://127.0.0.1:" + port + "/bitrates.m3u8";
 
+	if(Hls.isSupported()) {
+		var hls = new Hls();
+
+		element = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
+		hls.loadSource(videoLink);
+		hls.attachMedia(element);
+		hls.on(Hls.Events.MANIFEST_PARSED,function() {
+			video.play();
+		});
+	} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+		element = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
+		element.src = videoLink;
+		element.addEventListener('loadedmetadata',function() {
+			element.play();
+		});
+	} else {
+		element = new Element('img', {'class': imgClass, 'src': imgSrcId});
+	}
+
+	return element;
+}
