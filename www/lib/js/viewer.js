@@ -231,6 +231,19 @@ adjustImageSize = function(){
 			el.setStyle('min-width', maxWidth);
 		}
 	});
+	
+	$$('#liveViewContainer table tr td video').each(function(el){
+		if ((el.width/el.height) > (704/480)){
+			el.setStyle('width', maxWidth);
+			el.setStyle('height', '');
+			el.setStyle('min-height', maxHeight);
+		}
+		else {
+			el.setStyle('height', maxHeight);
+			el.setStyle('width', '');
+			el.setStyle('min-width', maxWidth);
+		}
+	});
 
 	window.addEvent('resize', function(){
 		adjustImageSize();
