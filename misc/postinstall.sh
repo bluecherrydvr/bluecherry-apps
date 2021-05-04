@@ -47,35 +47,35 @@ then
 	. /usr/share/debconf/confmodule
 fi
 
-function start_apache
+function start_nginx
 {
 	if [[ $IN_DEB ]]
 	then
 
-		# Start back the Apache, just in case we have jumped into here from the middle of upgrade procedure
+		# Start nginx, just in case we have jumped into here from the middle of upgrade procedure
 		if [ ! -z `which service` ]; then
-			service apache2 start || true
+			service nginx start || true
 		else
-			invoke-rc.d apache2 start || true
+			invoke-rc.d nginx start || true
 		fi
 	fi
 	if [[ $IN_RPM ]]
 	then
-		systemctl start httpd.service
+		systemctl start nginx
 	fi
 }
-function stop_apache
+function stop_nginx
 {
 	if [[ $IN_DEB ]]
 	then
 		if [ ! -z `which service` ]
 		then
-			service apache2 stop || true
+			service nginx stop || true
 		else
-			invoke-rc.d apache2 stop || true
+			invoke-rc.d nginx stop || true
 		fi
 	else
-		systemctl stop httpd.service
+		systemctl stop nginx
 	fi
 }
 
@@ -117,44 +117,29 @@ case "$1" in
 			sed -i 's/ syslog / root /' /etc/logrotate.d/bluecherry
 		fi
 
-		if [[ $IN_DEB ]]
-		then
-			# Apache modules and sites
-			a2enmod ssl
-			a2enmod rewrite
-			if [[ "$UBUNTU_CODENAME" == 'xenial' || "$VERSION" == "9 (stretch)" ]]
-			then
-				a2enmod php7.0
-			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
-			then
-				a2enmod php7.2
-			elif [[ "$UBUNTU_CODENAME" == 'focal' || "$UBUNTU_CODENAME" == 'groovy' ]]
-			then
-				a2enmod php7.4
-			elif [[ "$VERSION" == "10 (buster)" ]]
-			then
-				a2enmod php7.3
-			else
-				a2enmod php5
-			fi
-		fi
 
 		if [[ $IN_DEB ]]
 		then
-			# Remove a file prefiously tracked as conffile from old place
-			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
+# Don't remove bluecherry config file in case of custom SSL certificates			
+#			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
+# Backup nginx configuration file in case of Bad Things (tm)
 
-			a2ensite bluecherry.conf
-		else
-			install -d /etc/httpd/sites-enabled
-			if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
-			then
-				rm /etc/httpd/sites-enabled/bluecherry.conf
-			fi
-			ln -s /etc/httpd/sites-available/bluecherry.conf /etc/httpd/sites-enabled/bluecherry.conf
-			grep -q -E '^[[:space:]]*IncludeOptional .*sites-enabled.*' /etc/httpd/conf/httpd.conf || \
-				echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
-		fi
+
+		mkdir -p /usr/share/bluecherry/backups/nginx/
+		tar -czvf /usr/share/bluecherry/backups/nginx/nginx_$(date +'%F_%H-%M-%S').tar.gz /etc/nginx.conf /etc/sites-available/ /etc/sites-enabled/ /etc/nginxconfig.io/
+
+# Clean this up for centos...if we ever decide to support CentOS in the future....
+
+#		else
+#			install -d /etc/httpd/sites-enabled
+#			if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
+#			then
+#				rm /etc/httpd/sites-enabled/bluecherry.conf
+#			fi
+#			ln -s /etc/httpd/sites-available/bluecherry.conf /etc/httpd/sites-enabled/bluecherry.conf
+#			grep -q -E '^[[:space:]]*IncludeOptional .*sites-enabled.*' /etc/httpd/conf/httpd.conf || \
+#				echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
+#		fi
 		
 		if [[ $IN_DEB ]]
 		then
@@ -170,11 +155,13 @@ case "$1" in
 			systemctl restart rsyslog.service
 		fi
 		
-		stop_apache
+		stop_nginx
+		
+# Can be removed in v3...no longer needed
 
-		if [ ! -e /var/lib/.bcins ]; then
-			date +'%s' > /var/lib/.bcins
-		fi
+#		if [ ! -e /var/lib/.bcins ]; then
+#			date +'%s' > /var/lib/.bcins
+#		fi
 
 		if [ -x /sbin/apparmor_parser ]; then
 			: #apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
@@ -265,7 +252,7 @@ case "$1" in
 			fi
 
 			DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
-			echo "Going to updgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
+			echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
 			# Backup the DB
 			mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
 
@@ -289,7 +276,7 @@ case "$1" in
 		then
 			chown www-data /usr/share/bluecherry/sqlite  # to allow creation of lock file for sqlite db
 		else
-			chown apache /usr/share/bluecherry/sqlite
+			chown www-data /usr/share/bluecherry/sqlite
 		fi
 		cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db
 
@@ -328,7 +315,7 @@ case "$1" in
 			fi
 		fi
 
-		# Reenable our site in Apache
-		start_apache
+		# Reenable our site in nginx
+		start_nginx
 		;;
 esac
