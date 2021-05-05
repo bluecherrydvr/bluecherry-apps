@@ -60,7 +60,9 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 void stop_handle_properly(struct bc_record *bc_rec)
 {
 	if (!bc_rec->bc->substream_mode)
-		bc_streaming_destroy(bc_rec);
+		bc_streaming_destroy_rtp(bc_rec);
+
+	bc_streaming_destroy_hls(bc_rec);
 
 	if (bc_rec->liveview_substream)
 	{
@@ -216,8 +218,13 @@ void bc_record::run()
 			}
 
 			if (bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT)
-				if (bc_streaming_setup(this, this->bc->input->properties()))
+			{
+				if (bc_streaming_setup(this, BC_RTP, this->bc->input->properties()))
 					log.log(Error, "Unable to setup live broadcast of device stream");
+
+				if (bc_streaming_setup(this, BC_HLS, this->bc->input->properties()))
+					log.log(Error, "Unable to setup HLS live of device stream");
+			}
 		}
 
 		if (sched_last) {
@@ -323,7 +330,7 @@ void bc_record::run()
 				/* Reencoded stream has different properties, they'll be set later when
 				 * the first packet comes out from encoder */
 				if (bc_streaming_is_setup(this))
-					bc_streaming_destroy(this);
+					bc_streaming_destroy_rtp(this);
 			}
 
 			sched_last = 0;
@@ -363,7 +370,7 @@ void bc_record::run()
 					packet = reenc->streaming_packet();
 
 					if (!bc_streaming_is_setup(this)) {
-						if (bc_streaming_setup(this, packet.properties()))
+						if (bc_streaming_setup(this, BC_RTP, packet.properties()))
 							log.log(Error, "Unable to reinitialize reencoded live view stream");
 					}
 
@@ -381,7 +388,7 @@ void bc_record::run()
 			continue;
 		}
 
-		if (hls_stream) { /* Send packet to HLS streaming clients */
+		if (bc_streaming_is_active_hls(this)) {
 			if (bc_streaming_hls_packet_write(this, packet) == -1) { 
 				goto error;
 			}
@@ -420,9 +427,12 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
-	stream_ctx[0] = 0;
-	stream_ctx[1] = 0;
+	rtp_stream_ctx[0] = 0;
+	rtp_stream_ctx[1] = 0;
 	rtsp_stream = 0;
+
+	hls_stream_ctx[0] = 0;
+	hls_stream_ctx[1] = 0;
 	hls_stream = 0;
 
 	osd_time = 0;

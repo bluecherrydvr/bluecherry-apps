@@ -36,7 +36,7 @@ void substream::run(struct bc_record *r)
 			}
 
 			if (r->bc->substream_input->is_started())
-				if (bc_streaming_setup(r, r->bc->substream_input->properties()))
+				if (bc_streaming_setup(r, BC_RTP, r->bc->substream_input->properties()))
 					r->log.log(Error, "Unable to setup live broadcast from substream");
 		}
 
@@ -67,12 +67,12 @@ void substream::run(struct bc_record *r)
 
 		continue;
 	error:
-		bc_streaming_destroy(r);
+		bc_streaming_destroy_rtp(r);
 		r->bc->substream_input->stop();
 		sleep(3);
 	}
 
-	bc_streaming_destroy(r);
+	bc_streaming_destroy_rtp(r);
 	r->bc->substream_input->stop();
 }
 
