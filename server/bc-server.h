@@ -69,6 +69,7 @@ public:
 	pthread_mutex_t		    cfg_mutex;
 
 	const int id;
+	int64_t cur_pts;
 
 	log_context log;
 
@@ -182,6 +183,7 @@ void bc_streaming_destroy(struct bc_record *bc_rec);
 int bc_streaming_is_setup(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_is_active(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
+int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);

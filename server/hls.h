@@ -19,6 +19,8 @@
 #define __HLS_H
 
 #include <sys/epoll.h>
+
+#include <unordered_map>
 #include <string>
 #include <vector>
 #include <deque>
@@ -82,9 +84,10 @@ public:
     enum request_type
     {
         invalid = 0,
-        bitrates,
         playlist,
-        payload
+        initial,
+        payload,
+        index
     };
 
     ~hls_session();
@@ -118,6 +121,7 @@ private:
     request_type    _type = invalid;
     uint32_t        _segment_id = 0;
     uint8_t         _stream_id = 0;
+    int             _device_id = 0;
 
     /* Objects */
     hls_listener*   _listener = NULL;
@@ -145,12 +149,14 @@ public:
     void set_first(bool first) { _is_first = first; }
     void set_last(bool last) { _is_last = last; }
     void set_key(bool key) { _is_key = key; }
+    void set_pts(int64_t pts) { _pts = pts; }
     void set_id(uint32_t id) { _id = id; }
 
     uint8_t* data() { return _data; }
     size_t size() { return _size; }
 
     double duration() { return _duration; }
+    int64_t pts() { return _pts; }
     uint32_t id() { return _id; }
 
     bool is_first() { return _is_first; }
@@ -163,6 +169,7 @@ private:
     uint8_t*    _data = NULL;
     size_t      _size = 0;
     uint32_t    _id = 0;
+    int64_t     _pts = 0;
     double      _duration = 0;
 
     bool        _is_first = false;
@@ -173,6 +180,49 @@ private:
 typedef std::deque<hls_segment*> hls_window;
 typedef std::vector<uint32_t> hls_segments;
 
+class hls_content
+{
+public:
+    hls_content();
+    ~hls_content();
+
+    void set_window_size(size_t size) { _window_size = size; }
+    bool clear_window();
+
+    bool add_data(uint8_t *data, size_t size, int64_t pts, int flags);
+    bool append_segment(hls_segment *segment);
+
+    hls_segment *get_segment(uint32_t id);
+    size_t get_segment_ids(hls_segments &ids);
+
+    bool have_initial_segment() { return _use_initial ? true : false; }
+    void use_initial_segment(bool use) { _use_initial = use; }
+    void set_initial_segment(hls_segment *segment);
+    hls_segment* get_initial_segment();
+
+    void set_id(int id) { _device_id = id; }
+    void update_pts(int64_t pts) { _pts = pts; };
+    int64_t get_last_pts() { return _pts; };
+
+    pthread_mutex_t _mutex;
+    hls_window      _window;
+    bool            _init = false;
+
+private:
+    hls_byte_buffer _in_buffer;
+
+    bool            _use_initial = false;
+    hls_segment*    _init_segment = NULL;
+
+    size_t          _window_size = 0;
+    int             _device_id = 0;
+    int64_t         _pts = 0;
+    uint32_t        _cc = 0;
+};
+
+typedef std::unordered_map<int, hls_content*> hls_content_map;
+typedef std::unordered_map<int, hls_content*>::iterator hls_content_it;
+
 class hls_listener
 {
 public:
@@ -180,31 +230,19 @@ public:
     ~hls_listener();
 
     void run();
-    bool register_listener();
-    bool create_socket();
-    bool clear_window();
-
-    void set_port(uint16_t port) { _port = port; }
-    void set_window_size(size_t size) { _window_size = size; }
-
-    hls_segment *get_segment(uint32_t id);
-    size_t get_segment_ids(hls_segments &ids);
-    bool append_segment(hls_segment *segment);
-    bool add_data(uint8_t *data, size_t size, int flags);
+    bool register_listener(uint16_t port);
+    hls_content *get_hls_content(int id);
 
 private:
-    /* MPEGTS input buffer */
-    hls_byte_buffer _in_buffer;
-    pthread_mutex_t _mutex;
+    bool create_socket(uint16_t port);
 
     /* HLS window buffer */
-    hls_window      _buffer;
-    size_t          _window_size = 0;
+    hls_content_map  _content;
+    pthread_mutex_t  _mutex;
 
     /* HLS listener context */
     hls_events      _events;
     uint16_t        _port = 0;
-    uint32_t        _cc = 0;
     int             _fd = -1;
     bool            _init = false;
 };

@@ -26,7 +26,7 @@ extern "C" {
 #include <libavutil/dict.h>
 }
 
-#define RTP_MAX_PACKET_SIZE 1316
+#define RTP_MAX_PACKET_SIZE 50000//1316
 
 static int io_write(void *opaque, uint8_t *buf, int buf_size)
 {
@@ -42,7 +42,10 @@ static int hls_io_write(void *opaque, uint8_t *buf, int buf_size)
 	struct bc_record *bc_rec = (struct bc_record *)opaque;
 
 	if (bc_rec->hls_stream)
-		bc_rec->hls_stream->add_data(buf, buf_size, bc_rec->cur_pkt_flags);
+	{
+		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+		if (content) content->add_data(buf, buf_size, bc_rec->cur_pts, bc_rec->cur_pkt_flags);
+	}
 
 	return buf_size;
 }
@@ -87,7 +90,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		goto error;
 	}
 
-	ctx->oformat = av_guess_format("mpegts", NULL, NULL);
+	ctx->oformat = av_guess_format("mp4", NULL, NULL);
 	if (!ctx->oformat) {
 		bc_rec->log.log(Error, "RTP output format not available");
 		goto error;
@@ -132,10 +135,10 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		fprintf(stderr, "Failed to allocate I/O context\n");
 		goto error;
 	}
-	ctx->pb->seekable = 0;  // Adjust accordingly
+	//ctx->pb->seekable = 0;  // Adjust accordingly
 
-	//av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
-	if ((ret = avformat_write_header(ctx, NULL)) < 0) {
+	av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+	if ((ret = avformat_write_header(ctx, &muxer_opts)) < 0) {
 		bc_rec->log.log(Error, "Initializing muxer for RTP streaming failed");
 		goto mux_open_error;
 	}
@@ -234,10 +237,11 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 		stop_handle_properly(bc_rec);
 		return -1;
 	}
+
 	return 1;
 }
 
-int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pkt)
+int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 {
 	AVPacket opkt;
 	int re;
@@ -264,6 +268,7 @@ int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pk
 	bc_rec->cur_pkt_flags = pkt.flags;
 	bc_rec->cur_stream_index = ctx_index;
 	bc_rec->pkt_first_chunk = true;
+	bc_rec->cur_pts = opkt.pts;
 
 	re = av_write_frame(bc_rec->stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
@@ -279,5 +284,13 @@ int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pk
 		stop_handle_properly(bc_rec);
 		return -1;
 	}
+
+	AVDictionary *muxer_opts = NULL;
+	av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+	if (avformat_write_header(bc_rec->stream_ctx[ctx_index], &muxer_opts) < 0) {
+		bc_rec->log.log(Error, "Initializing muxer for RTP streaming failed");
+		return -1;
+	}
+
 	return 1;
 }

@@ -159,8 +159,6 @@ void bc_record::notify_device_state(const char *state)
 	exit(1);
 }
 
-int bc_streaming_packet_write2(struct bc_record *bc_rec, const stream_packet &pkt);
-
 void bc_record::run()
 {
 	stream_packet packet;
@@ -369,6 +367,11 @@ void bc_record::run()
 							log.log(Error, "Unable to reinitialize reencoded live view stream");
 					}
 
+					if (hls_stream) {
+						if (bc_streaming_hls_packet_write(this, packet) == -1)
+							log.log(Error, "Failed to stream reencoded HLS");
+					}
+
 					if (bc_streaming_is_active(this))
 						if (bc_streaming_packet_write(this, packet) == -1)
 							log.log(Error, "Failed to stream reencoded live view");
@@ -378,26 +381,10 @@ void bc_record::run()
 			continue;
 		}
 
-		if (!hls_stream)
-		{
-			hls_stream = new hls_listener;
-			hls_stream->set_port(7002 + id); // temporary
-			hls_stream->set_window_size(20);
-
-			if (!hls_stream->register_listener())
-			{
-				delete hls_stream;
-				hls_stream = 0;
+		if (hls_stream) { /* Send packet to HLS streaming clients */
+			if (bc_streaming_hls_packet_write(this, packet) == -1) { 
+				goto error;
 			}
-			else
-			{
-				std::thread hls_th(&hls_listener::run, hls_stream);
-				hls_th.detach();
-			}
-		}
-
-		if (hls_stream) {
-			bc_streaming_packet_write2(this, packet);
 		}
 
 		/* Send packet to streaming clients */
@@ -550,12 +537,6 @@ void bc_record::destroy_elements()
 		rec->disconnect();
 		rec->destroy();
 		rec = 0;
-	}
-
-	if (hls_stream)
-	{
-		delete hls_stream;
-		hls_stream = 0;
 	}
 
 	if (m_processor) {

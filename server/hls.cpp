@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "libbluecherry.h"
+#include "decoder.h"
 #include "hls.h"
 
 #ifndef PTHREAD_MUTEX_RECURSIVE
@@ -66,7 +67,8 @@ hls_events::~hls_events()
         event_array = NULL;
     }
 
-    event_callback(this, NULL, HLS_EVENT_DESTROY);
+    if (event_callback)
+        event_callback(this, NULL, HLS_EVENT_DESTROY);
 }
 
 bool hls_events::create(size_t max, void *userptr, event_callback_t callback)
@@ -235,8 +237,92 @@ hls_segment* hls_segment::copy()
     segment->set_first(is_first());
     segment->set_last(is_last());
     segment->set_key(is_key());
+    segment->set_pts(pts());
     segment->set_id(id());
     return segment->add_data(data(), size()) ? segment : NULL;
+}
+
+//////////////////////////////////////////////////////
+// HLS DATE
+//////////////////////////////////////////////////////
+
+class hls_date 
+{
+public:
+    hls_date();
+
+    void to_tm(struct tm *tm);
+    void from_tm(const struct tm *tm);
+
+    time_t to_epoch();
+    void to_http(char *dst, size_t size);
+    void make();
+    void inc_sec(int sec);
+
+    int _year; 
+    int _month; 
+    int _day;
+    int _hour;
+    int _min;
+    int _sec;
+};
+
+hls_date::hls_date()
+{
+    struct tm timeinfo;
+    time_t rawtime = time(NULL);
+    localtime_r(&rawtime, &timeinfo);
+    this->from_tm(&timeinfo);
+}
+
+void hls_date::to_tm(struct tm *tm)
+{
+    tm->tm_year = _year - 1900;
+    tm->tm_mon = _month - 1;
+    tm->tm_mday = _day;
+    tm->tm_hour = _hour;
+    tm->tm_min = _min;
+    tm->tm_sec = _sec;
+    tm->tm_isdst = -1;  
+}
+
+void hls_date::from_tm(const struct tm *tm) 
+{
+    _year = tm->tm_year+1900;
+    _month = tm->tm_mon+1;
+    _day = tm->tm_mday;
+    _hour = tm->tm_hour;
+    _min = tm->tm_min;
+    _sec = tm->tm_sec;
+}
+
+time_t hls_date::to_epoch()
+{
+    struct tm tminf;
+    to_tm(&tminf);
+    return mktime(&tminf);
+}
+
+void hls_date::to_http(char *dst, size_t size)
+{
+    struct tm timeinfo;
+	time_t raw_time = to_epoch();
+    gmtime_r(&raw_time, &timeinfo);
+	strftime(dst, size, "%a, %d %b %G %H:%M:%S GMT", &timeinfo);
+}
+
+void hls_date::make()
+{
+    struct tm timeinfo;
+    to_tm(&timeinfo);
+    mktime(&timeinfo);
+    from_tm(&timeinfo);
+}
+
+void hls_date::inc_sec(int sec)
+{
+    _sec += sec;
+    this->make();
 }
 
 //////////////////////////////////////////////////
@@ -319,12 +405,23 @@ size_t hls_session::tx_buffer_flush()
 
 bool hls_session::create_response()
 {
-    if (_type == hls_session::request_type::bitrates)
+    if (_type == hls_session::request_type::invalid)
+    {
+        bc_log(Warning, "Invalid HLS request for device: %d id(%u)", _device_id, _segment_id);
+        std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+        _tx_buffer.resize(response.length());
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        return true;
+    }
+    else if (_type == hls_session::request_type::index)
     {
         std::string body;
         std_string_append(body, "#EXTM3U\n");
         std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
-        std_string_append(body, "#EXT-X-STREAM-INF:BANDWIDTH=90000\n");
+        std_string_append(body, "#EXT-X-STREAM-INF:BANDWIDTH=%d\n", 90000);
         std_string_append(body, "0/playlist.m3u8\n");
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
@@ -342,28 +439,64 @@ bool hls_session::create_response()
     }
     else if (_type == hls_session::request_type::playlist)
     {
-        hls_segments segments;
-        size_t count = _listener->get_segment_ids(segments);
-        uint32_t sequence = count ? segments[0] : 0;
+        hls_content *content = _listener->get_hls_content(_device_id);
+        if (content == NULL)
+        {
+            bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        if (pthread_mutex_lock(&content->_mutex))
+        {
+            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+            return false;
+        }
+
+        uint32_t sequence = content->_window.size() ? content->_window[0]->id() : 0;
+        double duration = content->_window.size() ? content->_window[0]->duration() : 0.;
 
         std::string body;
         std_string_append(body, "#EXTM3U\n");
-        std_string_append(body, "#EXT-X-TARGETDURATION: 1\n"); // TODO: Get from segment
-        std_string_append(body, "#EXT-X-ALLOW-CACHE: NO\n"); // TODO: YES if VOD
         std_string_append(body, "#EXT-X-VERSION: 5\n");
+        std_string_append(body, "#EXT-X-ALLOW-CACHE: NO\n");
+        std_string_append(body, "#EXT-X-TARGETDURATION: %.f\n", duration + 1);
         std_string_append(body, "#EXT-X-MEDIA=SEQUENCE: %u\n", sequence);
+        std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
 
-        for (size_t i = 0; i < count; i++)
+        if (content->have_initial_segment())
+            std_string_append(body, "#EXT-X-MAP:URI=\"init.mp4\"\n");
+
+        for (size_t i = 0; i < content->_window.size(); i++)
         {
-            std_string_append(body, "#EXTINF:1.0000,\n");
-            std_string_append(body, "%u/payload.ts\n", segments[i]);
+            std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->duration());
+            std_string_append(body, "%u/payload.m4s\n", content->_window[i]->id());
         }
+
+        if (pthread_mutex_unlock(&content->_mutex))
+        {
+            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+            return false;
+        }
+
+        hls_date date;
+        char curr_date[128], exp_date[128];
+        date.to_http(curr_date, sizeof(curr_date));
+        date.inc_sec(5);
+        date.to_http(exp_date, sizeof(exp_date));
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
         std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
         std_string_append(response, "Content-Type: %s", "application/vnd.apple.mpegurl\r\n");
         std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Date: %s\r\n", curr_date);
+        std_string_append(response, "Expires: %s\r\n", exp_date);
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
         response.append(body);
 
@@ -372,27 +505,98 @@ bool hls_session::create_response()
 
         return true;
     }
-    else if (_type == hls_session::request_type::payload)
+    else if (_type == hls_session::request_type::initial)
     {
-        hls_segment *segment = _listener->get_segment(_segment_id);
-        if (segment == NULL)
+        hls_content *content = _listener->get_hls_content(_device_id);
+        if (content == NULL)
         {
-            bc_log(Warning, "HLS payload not found for requested id: %u", _segment_id);
-
+            bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
 
             _tx_buffer.resize(response.length());
             memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
 
+        if (pthread_mutex_lock(&content->_mutex))
+        {
+            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+            return false;
+        }
+
+        hls_segment *segment = content->get_initial_segment();
+
+        if (pthread_mutex_unlock(&content->_mutex))
+        {
+            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+            return false;
+        }        
+
+        if (segment == NULL)
+        {
+            bc_log(Warning, "HLS initial payload not found for requested device: %d id(%u)", _device_id, _segment_id);
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
             return true;
         }
 
         std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
         std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
-        std_string_append(response, "Content-Type: %s", "video/MP2T\r\n");
+        std_string_append(response, "Content-Type: %s", "video/mp4\r\n");
+        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Accept-Ranges: bytes\r\n");
+        std_string_append(response, "Connection: close\r\n");
+        std_string_append(response, "Server: bluechery\r\n");
+        std_string_append(response, "Content-Length: %zu\r\n\r\n", segment->size());
+
+        size_t response_size = response.length() + segment->size();
+        _tx_buffer.resize(response_size);
+
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        memcpy(_tx_buffer.data() + response.length(), segment->data(), segment->size());
+
+        delete segment;
+        return true;
+    }
+    else if (_type == hls_session::request_type::payload)
+    {
+        hls_content *content = _listener->get_hls_content(_device_id);
+        if (content == NULL)
+        {
+            bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        hls_segment *segment = content->get_segment(_segment_id);
+        if (segment == NULL)
+        {
+            bc_log(Warning, "HLS payload not found for requested device: %d id(%u)", _device_id, _segment_id);
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: %s", "video/mp4\r\n");
         std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
         std_string_append(response, "Accept-Ranges: bytes\r\n");
         std_string_append(response, "Connection: close\r\n");
@@ -423,28 +627,38 @@ bool hls_session::handle_request(const std::string &request)
 	size_t url_length = end_posit - start_posit;
 	std::string url = request.substr(start_posit, url_length);
 
-    if (url.find("/bitrates.m3u8") != std::string::npos)
+    size_t posit = url.find("/", 1);
+    if (posit == std::string::npos) return create_response();
+    _device_id = std::stoi(url.substr(1, posit));
+
+    if (url.find("/index.m3u8") != std::string::npos)
     {
-        _type = request_type::bitrates;
+        _type = request_type::index;
+    }
+    if (url.find("/init.mp4") != std::string::npos)
+    {
+        _type = request_type::initial;
     }
     else if (url.find("/playlist.m3u8") != std::string::npos)
     {
-        size_t posit = url.find("/", 1);
-        if (posit == std::string::npos) return false;
-        _stream_id = std::stoi(url.substr(1, posit));
+        size_t offset = posit + 1;
+        posit = url.find("/", offset);
+        if (posit == std::string::npos) return create_response();
+        _stream_id = std::stoi(url.substr(offset, posit));
         _type = request_type::playlist;
     }
-    else if (url.find("/payload.ts") != std::string::npos)
+    else if (url.find("/payload.m4s") != std::string::npos)
     {
-        size_t posit = url.find("/", 1);
-        if (posit == std::string::npos) return false;
-        _stream_id = std::stoi(url.substr(1, posit));
+        size_t offset = posit + 1;
+        posit = url.find("/", offset);
+        if (posit == std::string::npos) return create_response();
+        _stream_id = std::stoi(url.substr(offset, posit));
 
         posit++;
-        size_t new_posit = url.find("/", posit);
-        if (new_posit == std::string::npos) return false;
+        offset = url.find("/", posit);
+        if (offset == std::string::npos) return create_response();
 
-        size_t length = new_posit - posit;
+        size_t length = offset - posit;
         _segment_id = std::stoi(url.substr(posit, length));
         _type = request_type::payload;
     }
@@ -453,10 +667,10 @@ bool hls_session::handle_request(const std::string &request)
 }
 
 //////////////////////////////////////////////////
-// HLS LISTENER
+// HLS CONTENT
 //////////////////////////////////////////////////
 
-hls_listener::hls_listener()
+hls_content::hls_content()
 {
     pthread_mutexattr_t attr;
 
@@ -469,24 +683,19 @@ hls_listener::hls_listener()
         return;
     }
 
+    set_window_size(20);
     _init = true;
 }
 
-hls_listener::~hls_listener()
+hls_content::~hls_content()
 {
     if (!_init) return;
 
     clear_window();
     pthread_mutex_destroy(&_mutex);
-
-    if (_fd >= 0)
-    {
-        close(_fd);
-        _fd = -1;
-    }
 }
 
-bool hls_listener::clear_window()
+bool hls_content::clear_window()
 {
     if (pthread_mutex_lock(&_mutex))
     {
@@ -494,11 +703,17 @@ bool hls_listener::clear_window()
         return false;
     }
 
-    while (_buffer.size())
+    while (_window.size())
     {
-        hls_segment *front = _buffer.front();
-        _buffer.pop_front();
+        hls_segment *front = _window.front();
+        _window.pop_front();
         delete front;
+    }
+
+    if (_init_segment)
+    {
+        delete _init_segment;
+        _init_segment = NULL;
     }
 
     if (pthread_mutex_unlock(&_mutex))
@@ -510,47 +725,7 @@ bool hls_listener::clear_window()
     return true;
 }
 
-bool hls_listener::create_socket()
-{
-    if (!_init)
-    {
-        bc_log(Error, "HLS listener is not initialized");
-        return false;
-    }
-
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(_port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);;
-
-    _fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (_fd < 0)
-    {
-        bc_log(Error, "Failed to create listener socket: (%s)", strerror(errno));
-        return false;
-    }
-
-    /* Bind the socket on port */
-    if (bind(_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-    {
-        bc_log(Error, "Failed to bind socket on port: %u (%s)", _port, strerror(errno));
-        close(_fd);
-        return false;
-    }
-
-    /* Listen to the socket */
-    if (listen(_fd, HLS_EVENTS_MAX) < 0) 
-    {
-        bc_log(Error, "Failed to listen port: %u (%s)", _port, strerror(errno));
-        close(_fd);
-        return false;
-    }
-
-    bc_log(Info, "HLS server started listen to port: %d", _port);
-    return true;
-}
-
-bool hls_listener::append_segment(hls_segment *segment)
+bool hls_content::append_segment(hls_segment *segment)
 {
     if (pthread_mutex_lock(&_mutex))
     {
@@ -560,13 +735,28 @@ bool hls_listener::append_segment(hls_segment *segment)
 
     _cc++; // Continuity counter
     segment->set_id(_cc);
-    _buffer.push_back(segment);
+    _window.push_back(segment);
 
-    while (_window_size && _buffer.size() > _window_size)
+    this->update_pts(segment->pts());
+    bool buffer_moved = false;
+
+    if (_use_initial && !_init_segment) 
+        set_initial_segment(segment);
+
+    while (_window_size && _window.size() > _window_size)
     {
-        hls_segment *front = _buffer.front();
-        _buffer.pop_front();
+        hls_segment *front = _window.front();
         delete front;
+
+        _window.pop_front();
+        buffer_moved = true;
+    }
+
+    if (_use_initial && _window.size() && 
+        (!_init_segment || buffer_moved))
+    {
+        hls_segment *front = _window.front();
+        if (front) set_initial_segment(front);
     }
 
     if (pthread_mutex_unlock(&_mutex))
@@ -578,29 +768,47 @@ bool hls_listener::append_segment(hls_segment *segment)
     return true;
 }
 
-bool hls_listener::add_data(uint8_t *data, size_t size, int flags)
+void hls_content::set_initial_segment(hls_segment *segment)
+{
+    if (_init_segment) delete _init_segment; 
+    _init_segment = segment->copy();
+}
+
+hls_segment* hls_content::get_initial_segment()
+{
+    if (!_init_segment) return NULL; 
+    return _init_segment->copy();
+}
+
+bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, int flags)
 {
     bool is_key = flags & AV_PKT_FLAG_KEY;
-    bool status = true;
-
-    if (is_key && _in_buffer.size() >= HLS_SEGMENT_SIZE)
-    {
-        hls_segment *segment = new hls_segment;
-        segment->add_data(_in_buffer.data(), _in_buffer.size());
-        segment->set_key(is_key);
-        status = append_segment(segment);
-        _in_buffer.clear();
-    }
+    int64_t pts_diff = (pts - get_last_pts());
+    double duration = (double)pts_diff / (double)90000;
 
     size_t buff_size = _in_buffer.size();
     _in_buffer.resize(buff_size + size);
     uint8_t *offset = _in_buffer.data();
     memcpy(offset + buff_size, data, size);
 
-    return status;
+    //if (is_key && _in_buffer.size() >= HLS_SEGMENT_SIZE)
+    if (is_key && pts_diff >= 90000) // 1 sec in pts terms 
+    {
+        hls_segment *segment = new hls_segment;
+        segment->add_data(_in_buffer.data(), _in_buffer.size());
+        segment->set_duration(duration);
+        segment->set_key(is_key);
+        segment->set_pts(pts);
+
+        _in_buffer.clear();
+        return append_segment(segment);
+
+    }
+
+    return false;
 }
 
-hls_segment* hls_listener::get_segment(uint32_t id)
+hls_segment* hls_content::get_segment(uint32_t id)
 {
     hls_segment *segment = NULL;
 
@@ -610,9 +818,9 @@ hls_segment* hls_listener::get_segment(uint32_t id)
         return NULL;
     }
 
-    for (size_t i = 0; i < _buffer.size(); i++)
+    for (size_t i = 0; i < _window.size(); i++)
     {
-        hls_segment *temp = _buffer[i];
+        hls_segment *temp = _window[i];
         if (temp->id() == id)
         {
             segment = temp->copy();
@@ -629,7 +837,7 @@ hls_segment* hls_listener::get_segment(uint32_t id)
     return segment;
 }
 
-size_t hls_listener::get_segment_ids(hls_segments &segments)
+size_t hls_content::get_segment_ids(hls_segments &segments)
 {
     if (pthread_mutex_lock(&_mutex))
     {
@@ -637,9 +845,9 @@ size_t hls_listener::get_segment_ids(hls_segments &segments)
         return 0;
     }
 
-    for (size_t i = 0; i < _buffer.size(); i++)
+    for (size_t i = 0; i < _window.size(); i++)
     {
-        hls_segment *temp = _buffer[i];
+        hls_segment *temp = _window[i];
         segments.push_back(temp->id());
     }
 
@@ -651,6 +859,10 @@ size_t hls_listener::get_segment_ids(hls_segments &segments)
 
     return segments.size();
 }
+
+//////////////////////////////////////////////////
+// HLS EVENTS
+//////////////////////////////////////////////////
 
 void hls_clear_event(hls_event_data *ev_data)
 {
@@ -728,7 +940,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         session->set_hls_event_data(sess_data);
         session->set_event_handler(events);
 
-        bc_log(Info, "Connected HLS client: %s (%d)", session->get_addr(), client_fd);
+        bc_log(Debug, "Connected HLS client: %s (%d)", session->get_addr(), client_fd);
     }
     else
     {
@@ -740,7 +952,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         int bytes = read(client_fd, rx_buffer, sizeof(rx_buffer));
         if (bytes <= 0)
         {
-            if (!bytes) bc_log(Info, "Disconnected client: %s[%d]", session->get_addr(), client_fd);
+            if (!bytes) bc_log(Debug, "Disconnected client: %s[%d]", session->get_addr(), client_fd);
             else bc_log(Error, "Can not read data from client: %s (%s)", session->get_addr(), strerror(errno));
             return -1;
         }
@@ -786,15 +998,15 @@ int hls_event_callback(void *events, void* data, int reason)
             hls_clear_event(ev_data);
             break;
         case HLS_EVENT_HUNGED:
-            bc_log(Info, "HLS Connection hunged: fd(%d)", ev_data->fd);
+            bc_log(Warning, "HLS Connection hunged: fd(%d)", ev_data->fd);
             pevents->remove(ev_data);
             break;
         case HLS_EVENT_CLOSED:
-            bc_log(Info, "HLS Connection closed: fd(%d)", ev_data->fd);
+            bc_log(Debug, "HLS Connection closed: fd(%d)", ev_data->fd);
             pevents->remove(ev_data);
             break;
         case HLS_EVENT_USER:
-            bc_log(Info, "Finishing HLS session: fd(%d)", ev_data->fd);
+            bc_log(Debug, "Finishing HLS session: fd(%d)", ev_data->fd);
             pevents->remove(ev_data);
             break;
         case HLS_EVENT_DESTROY:
@@ -808,10 +1020,139 @@ int hls_event_callback(void *events, void* data, int reason)
     return 0;
 }
 
-bool hls_listener::register_listener()
+//////////////////////////////////////////////////
+// HLS LISTENER
+//////////////////////////////////////////////////
+
+hls_listener::hls_listener()
+{
+    pthread_mutexattr_t attr;
+
+    if (pthread_mutexattr_init(&attr) ||
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) ||
+        pthread_mutex_init(&_mutex, &attr) ||
+        pthread_mutexattr_destroy(&attr))
+    {
+        bc_log(Error, "Can not init pthread mutex: %s", strerror(errno));
+        return;
+    }
+
+    _init = true;
+}
+
+hls_listener::~hls_listener()
+{
+    if (!_init) return;
+
+//    clear_window();
+    pthread_mutex_destroy(&_mutex);
+
+    if (_fd >= 0)
+    {
+        shutdown(_fd, SHUT_RDWR);
+        close(_fd);
+        _fd = -1;
+    }
+}
+
+hls_content* hls_listener::get_hls_content(int id)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return NULL;
+    }
+
+    hls_content *content = NULL;
+    hls_content_it it = _content.find(id);
+
+    if (it == _content.end())
+    {
+        content = new hls_content;
+        if (!content->_init)
+        {
+            delete content;
+            content = NULL;
+        }
+        else
+        {
+            content->set_id(id);
+            _content[id] = content;
+        }
+    }
+    else
+    {
+        content = it->second;
+    }
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return NULL;
+    }
+
+    return content;
+}
+
+bool hls_listener::create_socket(uint16_t port)
+{
+    if (!_init)
+    {
+        bc_log(Error, "HLS listener is not initialized");
+        return false;
+    }
+
+     _port = port;
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(_port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);;
+
+    _fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (_fd < 0)
+    {
+        bc_log(Error, "Failed to create listener socket: (%s)", strerror(errno));
+        return false;
+    }
+
+	const int opt = 1;
+	if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        bc_log(Error, "Failed to set SO_REUSEADDR on the HLS socket: (%s)", strerror(errno));
+        shutdown(_fd, SHUT_RDWR);
+        close(_fd);
+        _fd = -1;
+        return false;
+    }
+
+    /* Bind the socket on port */
+    if (bind(_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+    {
+        bc_log(Error, "Failed to bind socket on port: %u (%s)", _port, strerror(errno));
+        shutdown(_fd, SHUT_RDWR);
+        close(_fd);
+        _fd = -1;
+        return false;
+    }
+
+    /* Listen to the socket */
+    if (listen(_fd, HLS_EVENTS_MAX) < 0) 
+    {
+        bc_log(Error, "Failed to listen port: %u (%s)", _port, strerror(errno));
+        shutdown(_fd, SHUT_RDWR);
+        close(_fd);
+        _fd = -1;
+        return false;
+    }
+
+    bc_log(Info, "HLS server started listen to port: %d", _port);
+    return true;
+}
+
+bool hls_listener::register_listener(uint16_t port)
 {
     /* Create socket and start listen */
-    if (!this->create_socket()) return false;
+    if (!this->create_socket(port)) return false;
 
     /* Create event instance and add listener socket to the instance  */
     if (!_events.create(0, &_fd, hls_event_callback) ||
