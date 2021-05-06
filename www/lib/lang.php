@@ -438,6 +438,8 @@ define('WRITE_FAILED', 'Failed to write to storage folder at: ');
 define('MJPEG_DISABLED', 'This device was disabled.');
 define('MJPEG_DEVICE_NOT_FOUND', 'Device with ID %ID% was not found.');
 define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %ID%.');
+define('MJPEG_DEVICE_ID_NOT_SUPPLIED', 'No device ID supplied.');
+
 #storage 
 define('STRAGE_HEADER', 'Manage storage locations');
 define('ADD_LOCATION', 'Add location');
