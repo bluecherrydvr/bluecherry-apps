@@ -1,4 +1,4 @@
-const HLS_BASE_PORT = 7002;
+const HLS_BASE_PORT = 7003;
 
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
@@ -292,8 +292,7 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 
 createHlsVideoElement = function(deviceId, videoId, imgSrcId, imgClass) {
 	var element = null;
-	var port = HLS_BASE_PORT + parseInt(deviceId);
-	var videoLink = "http://127.0.0.1:" + port + "/bitrates.m3u8";
+	var videoLink = "http://127.0.0.1:" + HLS_BASE_PORT + "/" + deviceId + "/index.m3u8";
 
 	if(Hls.isSupported()) {
 		var hls = new Hls();
