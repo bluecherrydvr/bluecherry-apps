@@ -495,7 +495,7 @@ bool hls_session::create_response()
         hls_date date;
         char curr_date[128], exp_date[128];
         date.to_http(curr_date, sizeof(curr_date));
-        date.inc_sec(1);
+        date.inc_sec(5);
         date.to_http(exp_date, sizeof(exp_date));
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
