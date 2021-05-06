@@ -144,37 +144,26 @@ public:
         _data = NULL;
     }
 
-    bool add_data(const uint8_t *data, size_t size);
-    void set_duration(double duration) { _duration = duration; }
-    void set_first(bool first) { _is_first = first; }
-    void set_last(bool last) { _is_last = last; }
-    void set_key(bool key) { _is_key = key; }
-    void set_pts(int64_t pts) { _pts = pts; }
-    void set_id(uint32_t id) { _id = id; }
+    enum class type {
+        mpegts,
+        fmp4
+    };
 
+    bool add_data(const uint8_t *data, size_t size);
     uint8_t* data() { return _data; }
     size_t size() { return _size; }
-
-    double duration() { return _duration; }
-    int64_t pts() { return _pts; }
-    uint32_t id() { return _id; }
-
-    bool is_first() { return _is_first; }
-    bool is_last() { return _is_last; }
-    bool is_key() { return _is_key; }
-
     hls_segment* copy();
 
-private:
-    uint8_t*    _data = NULL;
-    size_t      _size = 0;
-    uint32_t    _id = 0;
-    int64_t     _pts = 0;
-    double      _duration = 0;
+    hls_segment::type   _type = type::mpegts;
+    uint32_t            _id = 0;
+    int64_t             _pts = 0;
+    double              _duration = 0;
+    bool                _is_last = false;
+    bool                _is_key = false;
 
-    bool        _is_first = false;
-    bool        _is_last = false;
-    bool        _is_key = false;
+private:
+    uint8_t*            _data = NULL;
+    size_t              _size = 0;
 };
 
 typedef std::deque<hls_segment*> hls_window;
@@ -189,7 +178,7 @@ public:
     void set_window_size(size_t size) { _window_size = size; }
     bool clear_window();
 
-    bool add_data(uint8_t *data, size_t size, int64_t pts, int flags);
+    bool add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags);
     bool append_segment(hls_segment *segment);
 
     hls_segment *get_segment(uint32_t id);
@@ -206,6 +195,7 @@ public:
 
     pthread_mutex_t _mutex;
     hls_window      _window;
+    bool            _fmp4 = false;
     bool            _init = false;
 
 private:

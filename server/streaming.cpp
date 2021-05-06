@@ -28,6 +28,7 @@ extern "C" {
 
 #define MP4_MAX_PACKET_SIZE 50000
 #define RTP_MAX_PACKET_SIZE 1472
+#define TS_MAX_PACKET_SIZE 	1316
 
 static int rtp_io_write(void *opaque, uint8_t *buf, int buf_size)
 {
@@ -42,10 +43,10 @@ static int hls_io_write(void *opaque, uint8_t *buf, int buf_size)
 {
 	struct bc_record *bc_rec = (struct bc_record *)opaque;
 
-	if (bc_rec->hls_stream)
-	{
+	if (bc_rec->hls_stream) {
+		hls_segment::type type = bc_rec->hls_segment_type;
 		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
-		if (content) content->add_data(buf, buf_size, bc_rec->cur_pts, bc_rec->cur_pkt_flags);
+		if (content) content->add_data(buf, buf_size, bc_rec->cur_pts, type, bc_rec->cur_pkt_flags);
 	}
 
 	return buf_size;
@@ -86,6 +87,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 	int ret = -1;
 	uint8_t *bufptr;
 	AVRational bkp_ts;
+	bool remux_mp4 = (props->video.codec_id == AV_CODEC_ID_MPEG4);
 
 	ctx = avformat_alloc_context();
 	if (!ctx) {
@@ -101,10 +103,16 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		packet_size = RTP_MAX_PACKET_SIZE;
 		io_callback = rtp_io_write;
 		format_name = "rtp";
-	} else {
+	} else if (remux_mp4) {
+		bc_rec->hls_segment_type = hls_segment::type::fmp4;
 		packet_size = MP4_MAX_PACKET_SIZE;
 		io_callback = hls_io_write;
 		format_name = "mp4";
+	} else {
+		bc_rec->hls_segment_type = hls_segment::type::mpegts;
+		packet_size = TS_MAX_PACKET_SIZE;
+		io_callback = hls_io_write;
+		format_name = "mpegts";
 	}
 
 	ctx->oformat = av_guess_format(format_name, NULL, NULL);
@@ -112,6 +120,9 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		bc_rec->log.log(Error, "%s output format not available", format_name);
 		goto error;
 	}
+
+	bc_rec->log.log(Debug, "Using %s muxer for %s restreaming for device: %d",
+		format_name, (bc_type == BC_RTP) ? "rtsp" : "hls", bc_rec->id);
 
 	st = avformat_new_stream(ctx, NULL);
 	if (!st) {
@@ -155,14 +166,17 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		goto error;
 	}
 
-	if (bc_type == BC_RTP)
-	{
+	if (bc_type == BC_RTP) {
 		ctx->pb->seekable = 0;  // Adjust accordingly
 		av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
-	}
-	else
-	{
+	} else if (remux_mp4) {
+		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+	} else {
+		char period[32]; // Only PAT/PMT required per TS segment
+		snprintf(period, sizeof(period), "%d", (INT_MAX / 2) - 1);
+		av_dict_set(&muxer_opts, "sdt_period", period, 0);
+		av_dict_set(&muxer_opts, "pat_period", period, 0);
 	}
 
 	if ((ret = avformat_write_header(ctx, &muxer_opts)) < 0) {
@@ -341,11 +355,14 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return -1;
 	}
 
-	/* Write header for every MP4 fragment to be used as independent segments in HLS playlist */
-	av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
-	if (avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts) < 0) {
-		bc_rec->log.log(Error, "Failed to write header in fragmented MP4 payload");
-		return -1;
+
+	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codec->codec_id == AV_CODEC_ID_MPEG4) {
+		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
+		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+		if (avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts) < 0) {
+			bc_rec->log.log(Error, "Failed to write header in fragmented MP4 payload");
+			return -1;
+		}
 	}
 
 	return 1;

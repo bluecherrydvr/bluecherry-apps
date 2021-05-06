@@ -79,8 +79,9 @@ public:
 	class rtsp_stream *rtsp_stream;
 
 	/* HLS muxing contexts */
-	AVFormatContext *hls_stream_ctx[2];
-	hls_listener *hls_stream;
+	AVFormatContext 	*hls_stream_ctx[2];
+	hls_listener	 	*hls_stream;
+	hls_segment::type 	hls_segment_type;
 
 	time_t			osd_time;
 	unsigned int		start_failed;

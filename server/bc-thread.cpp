@@ -431,6 +431,7 @@ bc_record::bc_record(int i)
 	rtp_stream_ctx[1] = 0;
 	rtsp_stream = 0;
 
+	hls_segment_type = hls_segment::type::mpegts;
 	hls_stream_ctx[0] = 0;
 	hls_stream_ctx[1] = 0;
 	hls_stream = 0;

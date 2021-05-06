@@ -233,13 +233,20 @@ bool hls_segment::add_data(const uint8_t *data, size_t size)
 hls_segment* hls_segment::copy()
 {
     hls_segment *segment = new hls_segment;
-    segment->set_duration(duration());
-    segment->set_first(is_first());
-    segment->set_last(is_last());
-    segment->set_key(is_key());
-    segment->set_pts(pts());
-    segment->set_id(id());
-    return segment->add_data(data(), size()) ? segment : NULL;
+    segment->_duration = this->_duration;
+    segment->_is_last = this->_is_last;
+    segment->_is_key = this->_is_key;
+    segment->_type = this->_type;
+    segment->_pts = this->_pts;
+    segment->_id = this->_id;
+
+    if (!segment->add_data(_data, _size))
+    {
+        delete segment;
+        return NULL;
+    }
+
+    return segment;
 }
 
 //////////////////////////////////////////////////////
@@ -425,10 +432,10 @@ bool hls_session::create_response()
         std_string_append(body, "0/playlist.m3u8\n");
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
-        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
-        std_string_append(response, "Content-Type: %s", "application/vnd.apple.mpegurl\r\n");
-        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Type: %s\r\n", "application/vnd.apple.mpegurl");
+        std_string_append(response, "Cache-Control: %s\r\n", "no-cache");
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
         response.append(body);
 
@@ -458,8 +465,9 @@ bool hls_session::create_response()
             return false;
         }
 
-        uint32_t sequence = content->_window.size() ? content->_window[0]->id() : 0;
-        double duration = content->_window.size() ? content->_window[0]->duration() : 0.;
+        uint32_t sequence = content->_window.size() ? content->_window[0]->_id : 0;
+        double duration = content->_window.size() ? content->_window[0]->_duration : 0.;
+        const char* segment_extension = content->_fmp4 ? "m4s" : "ts";
 
         std::string body;
         std_string_append(body, "#EXTM3U\n");
@@ -469,13 +477,13 @@ bool hls_session::create_response()
         std_string_append(body, "#EXT-X-MEDIA=SEQUENCE: %u\n", sequence);
         std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
 
-        if (content->have_initial_segment())
+        if (content->_fmp4 && content->have_initial_segment())
             std_string_append(body, "#EXT-X-MAP:URI=\"init.mp4\"\n");
 
         for (size_t i = 0; i < content->_window.size(); i++)
         {
-            std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->duration());
-            std_string_append(body, "%u/payload.m4s\n", content->_window[i]->id());
+            std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->_duration);
+            std_string_append(body, "%u/payload.%s\n", content->_window[i]->_id, segment_extension);
         }
 
         if (pthread_mutex_unlock(&content->_mutex))
@@ -487,14 +495,14 @@ bool hls_session::create_response()
         hls_date date;
         char curr_date[128], exp_date[128];
         date.to_http(curr_date, sizeof(curr_date));
-        date.inc_sec(5);
+        date.inc_sec(1);
         date.to_http(exp_date, sizeof(exp_date));
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
-        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
-        std_string_append(response, "Content-Type: %s", "application/vnd.apple.mpegurl\r\n");
-        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Type: %s\r\n", "application/vnd.apple.mpegurl");
+        std_string_append(response, "Cache-Control: %s\r\n", "no-cache");
         std_string_append(response, "Date: %s\r\n", curr_date);
         std_string_append(response, "Expires: %s\r\n", exp_date);
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
@@ -526,13 +534,14 @@ bool hls_session::create_response()
             return false;
         }
 
+        const char* content_type = content->_fmp4 ? "mp4" : "MP2T";
         hls_segment *segment = content->get_initial_segment();
 
         if (pthread_mutex_unlock(&content->_mutex))
         {
             bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
             return false;
-        }        
+        }
 
         if (segment == NULL)
         {
@@ -547,10 +556,10 @@ bool hls_session::create_response()
         }
 
         std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
-        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
-        std_string_append(response, "Content-Type: %s", "video/mp4\r\n");
-        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Type: video/%s\r\n", content_type);
+        std_string_append(response, "Cache-Control: no-cache\r\n");
         std_string_append(response, "Accept-Ranges: bytes\r\n");
         std_string_append(response, "Connection: close\r\n");
         std_string_append(response, "Server: bluechery\r\n");
@@ -592,12 +601,13 @@ bool hls_session::create_response()
             memcpy(_tx_buffer.data(), response.c_str(), response.length());
             return true;
         }
-
+        
+        const char* content_type = content->_fmp4 ? "mp4" : "MP2T";
         std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
-        std_string_append(response, "Access-Control-Allow-Origin: %s", "*\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
-        std_string_append(response, "Content-Type: %s", "video/mp4\r\n");
-        std_string_append(response, "Cache-Control: %s", "no-cache\r\n");
+        std_string_append(response, "Content-Type: video/%s\r\n", content_type);
+        std_string_append(response, "Cache-Control: no-cache\r\n");
         std_string_append(response, "Accept-Ranges: bytes\r\n");
         std_string_append(response, "Connection: close\r\n");
         std_string_append(response, "Server: bluechery\r\n");
@@ -635,7 +645,7 @@ bool hls_session::handle_request(const std::string &request)
     {
         _type = request_type::index;
     }
-    if (url.find("/init.mp4") != std::string::npos)
+    else if (url.find("/init.mp4") != std::string::npos)
     {
         _type = request_type::initial;
     }
@@ -647,7 +657,8 @@ bool hls_session::handle_request(const std::string &request)
         _stream_id = std::stoi(url.substr(offset, posit));
         _type = request_type::playlist;
     }
-    else if (url.find("/payload.m4s") != std::string::npos)
+    else if ((url.find("/payload.m4s") != std::string::npos) ||
+            (url.find("/payload.ts") != std::string::npos))
     {
         size_t offset = posit + 1;
         posit = url.find("/", offset);
@@ -733,14 +744,15 @@ bool hls_content::append_segment(hls_segment *segment)
         return false;
     }
 
-    _cc++; // Continuity counter
-    segment->set_id(_cc);
+    this->_cc++; // Continuity counter
+    segment->_id = this->_cc;
     _window.push_back(segment);
 
-    this->update_pts(segment->pts());
+    _fmp4 = (segment->_type == hls_segment::type::fmp4);
+    this->update_pts(segment->_pts);
     bool buffer_moved = false;
 
-    if (_use_initial && !_init_segment) 
+    if (_fmp4 && _use_initial && !_init_segment) 
         set_initial_segment(segment);
 
     while (_window_size && _window.size() > _window_size)
@@ -752,7 +764,7 @@ bool hls_content::append_segment(hls_segment *segment)
         buffer_moved = true;
     }
 
-    if (_use_initial && _window.size() && 
+    if (_fmp4 && _use_initial && _window.size() && 
         (!_init_segment || buffer_moved))
     {
         hls_segment *front = _window.front();
@@ -780,7 +792,7 @@ hls_segment* hls_content::get_initial_segment()
     return _init_segment->copy();
 }
 
-bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, int flags)
+bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags)
 {
     bool is_key = flags & AV_PKT_FLAG_KEY;
     int64_t pts_diff = (pts - get_last_pts());
@@ -796,9 +808,10 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, int flags)
     {
         hls_segment *segment = new hls_segment;
         segment->add_data(_in_buffer.data(), _in_buffer.size());
-        segment->set_duration(duration);
-        segment->set_key(is_key);
-        segment->set_pts(pts);
+        segment->_duration = duration;
+        segment->_is_key = is_key;
+        segment->_type = type;
+        segment->_pts = pts;
 
         _in_buffer.clear();
         return append_segment(segment);
@@ -821,7 +834,7 @@ hls_segment* hls_content::get_segment(uint32_t id)
     for (size_t i = 0; i < _window.size(); i++)
     {
         hls_segment *temp = _window[i];
-        if (temp->id() == id)
+        if (temp->_id == id)
         {
             segment = temp->copy();
             break;
@@ -848,7 +861,7 @@ size_t hls_content::get_segment_ids(hls_segments &segments)
     for (size_t i = 0; i < _window.size(); i++)
     {
         hls_segment *temp = _window[i];
-        segments.push_back(temp->id());
+        segments.push_back(temp->_id);
     }
 
     if (pthread_mutex_unlock(&_mutex))
