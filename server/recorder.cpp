@@ -241,6 +241,7 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	if (!nevent) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+		unlink(outfile); // this file will be untracked anyway
 		return -1;
 	}
 

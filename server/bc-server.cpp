@@ -26,6 +26,7 @@
 #include <grp.h>
 #include <signal.h>
 #include <limits.h>
+#include <dirent.h>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -662,6 +663,82 @@ static void bc_cleanup_media_retry()
 	}
 }
 
+/*
+	Delete everything in the directory thats older than current cleanup file.
+	At this case those files are untracked anyway (i.e. not recognized in DB)
+*/
+static int bc_cleanup_older_media(const char *filepath)
+{
+	int dir_length = strlen(filepath) - 12;
+	std::string path = std::string(filepath);
+	std::string file = path.substr(dir_length, 12);
+	path.resize(dir_length);
+
+	char timestr[9];
+	int hour = 0, min = 0, sec = 0;
+	int removed = 0, error_count = 0;
+
+	snprintf(timestr, sizeof(timestr), "%s", file.c_str());
+	sscanf(timestr, "%02d-%02d-%02d", (int*)&hour, (int*)&min, (int*)&sec);
+
+	DIR *pdir = opendir(path.c_str());
+	if (pdir == NULL) {
+		bc_log(Warning, "Can not open directory %s: %s", path.c_str(), strerror(errno));
+		return -1;
+	}
+
+	struct dirent *entry = readdir(pdir);
+	while (entry != NULL)
+	{
+		/* Found an entry, but ignore . and .. */
+		if (strcmp(".", entry->d_name) == 0 ||
+			strcmp("..", entry->d_name) == 0) {
+			entry = readdir(pdir);
+			continue;
+		}
+
+		timestr[0] = '\0';
+		bool entry_is_old = false;
+		int found_hour = 0, found_min = 0, found_sec = 0;
+
+		snprintf(timestr, sizeof(timestr), "%s", entry->d_name);
+		sscanf(timestr, "%02d-%02d-%02d", (int*)&found_hour, (int*)&found_min, (int*)&found_sec);
+
+		/* Check if found entry is older than last deleted file */
+		if (found_hour < hour) entry_is_old = true;
+		else if (found_hour == hour && found_min < min) entry_is_old = true;
+		else if (found_hour == hour && found_min == min && found_sec < sec) entry_is_old = true;
+
+		if (entry_is_old) {
+			std::string full_path = path + std::string(entry->d_name);
+
+			if (unlink(full_path.c_str()) < 0) {
+				bc_log(Warning, "Cannot remove old file %s for cleanup: %s",
+			       full_path.c_str(), strerror(errno));
+
+				entry = readdir(pdir);
+				error_count++;
+				continue;
+			}
+
+			/* Remove file from retry list if exists */
+			bc_media_files_it it = g_media_files.find(full_path);
+			if (it != g_media_files.end()) g_media_files.erase(it);
+
+			removed++;
+		}
+
+		/* Move forward */
+		entry = readdir(pdir);
+	}
+
+	if (removed || error_count)
+		bc_log(Info, "Cleaned up %d older files, errors(%d)", removed, error_count);
+
+	closedir(pdir);
+	return 0;
+}
+
 static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
@@ -719,6 +796,9 @@ static int bc_cleanup_media()
 		if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
 			bc_status_component_error("Database error during Media cleanup");
 		}
+
+		/* Delete older files than last deleted file */
+		bc_cleanup_older_media(filepath);
 
 		/* Check if the conditions changed */
 		bool enough_space_available = false;
