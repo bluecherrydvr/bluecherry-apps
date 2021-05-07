@@ -39,6 +39,7 @@ extern "C" {
 #include "trigger_server.h"
 #include "vaapi.h"
 
+#include <unordered_map>
 #include <queue>
 
 /* Global Mutexes */
@@ -91,6 +92,19 @@ static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
 /* XXX XXX XXX thread-local */
 static bc_status_component status_component_active = (bc_status_component)-1;
+
+
+typedef struct {
+	int timestamp = 0;
+	int try_count = 0;
+} bc_media_file_t;
+
+typedef std::unordered_map<std::string, bc_media_file_t> bc_media_files;
+typedef std::unordered_map<std::string, bc_media_file_t>::iterator bc_media_files_it;
+
+static bc_media_files g_media_files;
+#define BC_CLEANUP_RETRY_COUNT	5
+#define BC_CLEANUP_RETRY_SEC	5
 
 void bc_status_component_begin(bc_status_component c)
 {
@@ -606,10 +620,56 @@ static bool is_media_max_age_exceeded()
 	return exceeds_max_age;
 }
 
+/*
+	Sidecars maybe created with delay and they will no exist during cleanup 
+	in main loop. We need to remember sidecar path and try again few times.
+*/
+static void bc_cleanup_media_retry()
+{
+	bc_media_files_it it = g_media_files.begin();
+	int removed = 0, error_count = 0;
+
+	while (it != g_media_files.end())
+	{
+		const std::string &filepath = it->first;
+		bc_media_file_t &file = it->second;
+		int now_time = time(NULL);
+		bool deleted = false;
+
+		if (now_time - file.timestamp >= BC_CLEANUP_RETRY_SEC) {
+			if (unlink(filepath.c_str()) < 0 && errno != ENOENT) {
+				bc_log(Warning, "Cannot remove file %s: %s", filepath.c_str(), strerror(errno));
+				error_count++;
+			} else if (errno == ENOENT) {
+				file.timestamp = now_time;
+				file.try_count++;
+			} else {
+				deleted = true;
+				removed++;
+			}
+		}
+
+		if (deleted || file.try_count >= BC_CLEANUP_RETRY_COUNT) {
+			it = g_media_files.erase(it);
+			continue;
+		}
+
+		++it;
+	}
+
+	if (removed || error_count) {
+		bc_log(Info, "Cleaned up %d files on retry, errors(%d), remaining(%zu)", 
+			removed, error_count, g_media_files.size());
+	}
+}
+
 static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
 	int removed = 0, error_count = 0;
+
+	/* Retry last cleanup list first */
+	bc_cleanup_media_retry();
 
 	/* XXX: We limit the files to 100 because otherwise updating the db
 	 * would take too long */
@@ -633,6 +693,10 @@ static int bc_cleanup_media()
 			       filepath, strerror(errno));
 			error_count++;
 			continue;
+		} else if (errno == ENOENT) {
+			// Maybe dangling link caused by buisy mount, try again
+			g_media_files[filepath].timestamp = time(NULL);
+			g_media_files[filepath].try_count = 0;
 		}
 
 		std::string sidecar = filepath;
@@ -643,6 +707,10 @@ static int bc_cleanup_media()
 			       sidecar.c_str(), strerror(errno));
 			error_count++;
 			continue;
+		} else if (errno == ENOENT) {
+			// Maybe sidecar is not created yet, try again
+			g_media_files[sidecar].timestamp = time(NULL);
+			g_media_files[sidecar].try_count = 0;
 		}
 
 		sync();
