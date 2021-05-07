@@ -669,21 +669,21 @@ static void bc_cleanup_media_retry()
 */
 static int bc_cleanup_older_media(const char *filepath)
 {
-	int dir_length = strlen(filepath) - 12;
-	std::string path = std::string(filepath);
-	std::string file = path.substr(dir_length, 12);
-	path.resize(dir_length);
+	int dir_length = strlen(filepath) - 12; // 8 for file name, 4 for extension
+	std::string dir_path = std::string(filepath);
+	std::string file_path = dir_path.substr(dir_length, 12);
+	dir_path.resize(dir_length);
 
 	char timestr[9];
 	int hour = 0, min = 0, sec = 0;
-	int removed = 0, error_count = 0;
+	int archived = 0, removed = 0, error_count = 0;
 
-	snprintf(timestr, sizeof(timestr), "%s", file.c_str());
+	snprintf(timestr, sizeof(timestr), "%s", file_path.c_str());
 	sscanf(timestr, "%02d-%02d-%02d", (int*)&hour, (int*)&min, (int*)&sec);
 
-	DIR *pdir = opendir(path.c_str());
+	DIR *pdir = opendir(dir_path.c_str());
 	if (pdir == NULL) {
-		bc_log(Warning, "Can not open directory %s: %s", path.c_str(), strerror(errno));
+		bc_log(Warning, "Can not open directory %s: %s", dir_path.c_str(), strerror(errno));
 		return -1;
 	}
 
@@ -710,7 +710,20 @@ static int bc_cleanup_older_media(const char *filepath)
 		else if (found_hour == hour && found_min == min && found_sec < sec) entry_is_old = true;
 
 		if (entry_is_old) {
-			std::string full_path = path + std::string(entry->d_name);
+			std::string full_path = dir_path + std::string(entry->d_name);
+
+			BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=1 AND "
+				"filepath='%s'", full_path.c_str());
+
+			if (dbres) {
+				if (!bc_db_fetch_row(dbres)) {
+					bc_db_free_table(dbres);
+					archived++;
+					continue; // This file is archived
+				}
+
+				bc_db_free_table(dbres);
+			}
 
 			if (unlink(full_path.c_str()) < 0) {
 				bc_log(Warning, "Cannot remove old file %s for cleanup: %s",
@@ -732,8 +745,10 @@ static int bc_cleanup_older_media(const char *filepath)
 		entry = readdir(pdir);
 	}
 
-	if (removed || error_count)
-		bc_log(Info, "Cleaned up %d older files, errors(%d)", removed, error_count);
+	if (removed || error_count) {
+		bc_log(Info, "Cleaned up %d older files, archived(%d), errors(%d)",
+			removed, archived, error_count);
+	}
 
 	closedir(pdir);
 	return 0;
@@ -998,7 +1013,11 @@ static void bc_check_abandoned_media_updates()
 			bc_log(Info, "Deleting empty media %s", m.filepath.c_str());
 			bc_db_query("DELETE FROM Media WHERE id=%u", m.media_id);
 
-			unlink(m.filepath.c_str());
+			if (unlink(m.filepath.c_str()) < 0) {
+				g_media_files[m.filepath].timestamp = time(NULL);
+				g_media_files[m.filepath].try_count = 0;
+			}
+
 		} else {
 			bc_log(Info, "Updating length of abandoned media %s to %d", m.filepath.c_str(), m.duration);
 			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
