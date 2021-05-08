@@ -84,6 +84,7 @@ public:
     enum request_type
     {
         invalid = 0,
+        unauthorized,
         playlist,
         initial,
         payload,
@@ -95,6 +96,7 @@ public:
     int writeable();
 
     std::string get_request();
+    bool authenticate(const std::string &uri, const std::string &request);
     bool handle_request(const std::string &request);
     bool create_response();
 

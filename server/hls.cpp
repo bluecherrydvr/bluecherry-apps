@@ -30,6 +30,12 @@
 #include "decoder.h"
 #include "hls.h"
 
+extern "C" {
+#include <libavutil/avstring.h>
+#include <libavutil/intreadwrite.h>
+#include <libavutil/base64.h>
+}
+
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
@@ -412,7 +418,19 @@ size_t hls_session::tx_buffer_flush()
 
 bool hls_session::create_response()
 {
-    if (_type == hls_session::request_type::invalid)
+    if (_type == hls_session::request_type::unauthorized) 
+    {
+        bc_log(Debug, "Authorization failure for HLS playback for device %d", _device_id);
+        std::string response = std::string("HTTP/1.1 401 Unauthorized\r\n");
+        std_string_append(response, "WWW-Authenticate: Basic realm=\"HLS Server\"\r\n");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+        _tx_buffer.resize(response.length());
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        return true;
+    }
+    else if (_type == hls_session::request_type::invalid)
     {
         bc_log(Warning, "Invalid HLS request for device: %d id(%u)", _device_id, _segment_id);
         std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
@@ -626,6 +644,71 @@ bool hls_session::create_response()
     return false;
 }
 
+bool hls_session::authenticate(const std::string &uri, const std::string &request)
+{
+	if (uri.find("authtoken=") != std::string::npos)
+    {
+		std::string token = uri.substr(uri.find("authtoken=") + 10);
+		token = token.substr(0, token.find('/'));  // Drop possible trailing '/streamid=0' etc.
+		BC_DB_RES dbres = bc_db_get_table("SELECT * FROM HlsAuthTokens JOIN Users ON "
+            "HlsAuthTokens.user_id = Users.id WHERE HlsAuthTokens.token='%s'", token.c_str());
+
+        if (dbres)
+        {
+			if (!bc_db_fetch_row(dbres)) 
+            {
+				bc_db_free_table(dbres);
+                return true;
+			}
+
+            bc_db_free_table(dbres);
+		}
+	}
+
+    size_t posit = request.find("Authorization");
+    if (posit == std::string::npos)
+    {
+        /* Try lowercase (lazy case sensitivity) */
+        posit = request.find("authorization");
+        if (posit == std::string::npos) return false;
+    }
+
+    posit = request.find(":", posit + 13) + 1;
+    if (posit == std::string::npos) return false;
+
+    size_t end_posit = request.find("\r\n", posit);
+    if (end_posit == std::string::npos) return false;
+
+    std::string auth = request.substr(posit, end_posit - posit);
+    while (auth.length() && auth.at(0) == ' ') auth.erase(0, 1);
+    if (!auth.length()) return false;
+
+	if (auth.size() > 6 && auth.substr(0, 6) == "Basic ")
+    {
+		auth = auth.substr(6);
+		char *buf = new char[auth.size()];
+		int ret = av_base64_decode((uint8_t*)buf, auth.c_str(), auth.size());
+
+		if (ret > 0)
+        {
+			buf[ret] = 0;
+			char *password = buf;
+			char *username = strsep(&password, ":");
+
+			if (username && password &&
+			    bc_user_auth(username, password, ACCESS_REMOTE, _device_id) == 1)
+			{
+				delete[] buf;
+				return true;
+			}
+		}
+
+		delete[] buf;
+	}
+
+	return false;
+}
+
 bool hls_session::handle_request(const std::string &request)
 {
 	size_t start_posit = request.find("/");
@@ -673,6 +756,9 @@ bool hls_session::handle_request(const std::string &request)
         _segment_id = std::stoi(url.substr(posit, length));
         _type = request_type::payload;
     }
+
+    if (_type != request_type::payload && !authenticate(url, request))
+        _type = request_type::unauthorized;
 
     return create_response();
 }

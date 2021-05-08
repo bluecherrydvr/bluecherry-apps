@@ -264,6 +264,16 @@ CREATE TABLE `RtspAuthTokens` (
   UNIQUE KEY `uniq_session` (`user_id`,`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `HlsAuthTokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `HlsAuthTokens` (
+  `user_id` int(11) NOT NULL,
+  `token` varchar(100) NOT NULL,
+  `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uniq_session` (`user_id`,`token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ServerStatus`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
