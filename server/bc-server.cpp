@@ -40,6 +40,7 @@ extern "C" {
 #include "trigger_server.h"
 
 #include <unordered_map>
+#include <vector>
 #include <queue>
 
 /* Global Mutexes */
@@ -85,6 +86,7 @@ struct media_record {
 static bool abandoned_media_update_in_progress = false;
 static std::queue<struct media_record> abandoned_media_to_update;
 static std::queue<struct media_record> abandoned_media_updated;
+typedef std::vector<std::string> bc_string_array;
 
 static rtsp_server *rtsp = NULL;
 
@@ -93,14 +95,32 @@ static char *component_error_tmp;
 /* XXX XXX XXX thread-local */
 static bc_status_component status_component_active = (bc_status_component)-1;
 
-
 typedef struct {
 	int timestamp = 0;
 	int try_count = 0;
-} bc_media_file_t;
+} bc_cleanup_ctx_t;
 
-typedef std::unordered_map<std::string, bc_media_file_t> bc_media_files;
-typedef std::unordered_map<std::string, bc_media_file_t>::iterator bc_media_files_it;
+typedef struct {
+	/* Cleanup file list */
+	bc_string_array files;
+
+	/* Counters */
+	int archived = 0;
+	int removed = 0;
+	int errors = 0;
+	int others = 0;
+
+	/* Oldest media date */
+	int year = 0;
+	int month = 0;
+	int day = 0;
+	int hour = 0;
+	int min = 0;
+	int sec = 0;
+} bc_oldest_media_t;
+
+typedef std::unordered_map<std::string, bc_cleanup_ctx_t> bc_media_files;
+typedef std::unordered_map<std::string, bc_cleanup_ctx_t>::iterator bc_media_files_it;
 
 static bc_media_files g_media_files;
 #define BC_CLEANUP_RETRY_COUNT	5
@@ -542,6 +562,18 @@ const char *select_best_path(void)
 	return ret ? ret->path : NULL;
 }
 
+size_t bc_get_media_locations(bc_string_array &locations)
+{
+	pthread_rwlock_rdlock(&media_lock);
+	struct bc_storage *p;
+
+	for (p = media_stor; p < media_stor+MAX_STOR_LOCS && p->max_thresh; p++)
+		locations.push_back(std::string(p->path));
+
+	pthread_rwlock_unlock(&media_lock);
+	return locations.size();
+}
+
 int bc_get_media_loc(char *dest, size_t size)
 {
 	int ret = 0;
@@ -632,7 +664,7 @@ static void bc_cleanup_media_retry()
 	while (it != g_media_files.end())
 	{
 		const std::string &filepath = it->first;
-		bc_media_file_t &file = it->second;
+		bc_cleanup_ctx_t &file = it->second;
 		int now_time = time(NULL);
 		bool deleted = false;
 
@@ -661,6 +693,201 @@ static void bc_cleanup_media_retry()
 		bc_log(Info, "Cleaned up %d files on retry, errors(%d), remaining(%zu)", 
 			removed, error_count, g_media_files.size());
 	}
+}
+
+static int bc_media_is_archived(const char *filepath)
+{
+	int archived = 0;
+	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=1 AND " 
+		"filepath='%s'", filepath);
+
+	if (!dbres) {
+		bc_log(Warning, "Failed to get media entry from database");
+		return -1;
+	}
+
+	if (!bc_db_fetch_row(dbres)) archived = 1;
+	bc_db_free_table(dbres);
+
+	return archived;
+}
+
+/*
+	Recursively read media directory and delete every untracked file.
+	This may take a while but will only happen at startup once.
+*/
+static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::string dir_path)
+{
+	if (dir_path.back() != '/') dir_path.append("/");
+	DIR *pdir = opendir(dir_path.c_str());
+
+	if (pdir == NULL) {
+		bc_log(Warning, "Can not open directory %s: %s", dir_path.c_str(), strerror(errno));
+		ctx.errors++;
+		return -1;
+	}
+
+	struct dirent *entry = readdir(pdir);
+	while (entry != NULL)
+	{
+		/* Found an entry, but ignore . and .. */
+		if (strcmp(".", entry->d_name) == 0 ||
+			strcmp("..", entry->d_name) == 0) {
+			entry = readdir(pdir);
+			continue;
+		}
+
+		struct stat statbuf;
+		std::string entry_name = entry->d_name;
+		std::string full_path = dir_path + entry_name;
+
+		if (lstat(full_path.c_str(), &statbuf) < 0) {
+			bc_log(Error, "Can not stat file: %s", full_path.c_str());
+			entry = readdir(pdir);
+			ctx.errors++;
+			continue;
+		}
+
+		if (S_ISDIR(statbuf.st_mode)) { // Recursive read directory
+			bc_recursive_cleanup_untracked_media(ctx, full_path);
+			entry = readdir(pdir);
+			continue;
+		}
+
+		if (entry_name.compare(entry_name.size()-3, 3, "mkv") && 
+			entry_name.compare(entry_name.size()-3, 3, "jpg")) {
+			/* Not a bc media file, leave it unchanged */
+			entry = readdir(pdir);
+			ctx.others++;
+			continue;
+		}
+
+		int year = 0, month = 0, day = 0, id = 0, hour = 0, min = 0, sec = 0;
+		std::string timed_path = full_path.substr(full_path.size() - 30, 26);
+
+		int count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d", 
+			(int*)&year, (int*)&month, (int*)&day, (int*)&id, (int*)&hour, (int*)&min, (int*)&sec);
+
+		if (count != 7) {
+			bc_log(Error, "Can not parse date from media file: %s", timed_path.c_str());
+			entry = readdir(pdir);
+			ctx.errors++;
+			continue;
+		}
+
+		bool entry_is_old = false;
+
+		/* Check if found entry is older than oldest media record in DB */
+		if (year < ctx.year) entry_is_old = true;
+		else if (year == ctx.year) {
+			if (month < ctx.month) entry_is_old = true;
+			else if (month == ctx.month) {
+				if (day < ctx.day) entry_is_old = true;
+				else if (day == ctx.day) {
+					if (hour < ctx.hour) entry_is_old = true;
+					else if (hour == ctx.hour) {
+						if (min < ctx.min) entry_is_old = true;
+						else if (min == ctx.min && sec < ctx.sec) entry_is_old = true;
+					}
+				}
+			}
+		}
+
+		if (entry_is_old) {
+			std::string video_file = full_path;
+			video_file.replace(video_file.size()-3, 3, "mkv");
+
+			int rv = bc_media_is_archived(video_file.c_str());
+			if (rv > 0) {
+				entry = readdir(pdir);
+				ctx.archived++;
+				continue;
+			} else if (rv < 0) {
+				entry = readdir(pdir);
+				ctx.errors++;
+				continue;
+			}
+
+			if (unlink(full_path.c_str()) < 0) {
+				bc_log(Warning, "Cannot remove old file %s: %s",
+			       full_path.c_str(), strerror(errno));
+
+				entry = readdir(pdir);
+				ctx.errors++;
+				continue;
+			}
+
+			ctx.removed++;
+		}
+
+		/* Move forward */
+		entry = readdir(pdir);
+	}
+
+	closedir(pdir);
+	return 0;
+}
+
+/*
+	Determine tame of oldest media entry in database and delete older files on it. 
+	At this case those files are untracked anyway (i.e. not recognized in database).
+*/
+static int bc_initial_cleanup_untracked_media()
+{
+	/* Get oldest not archived media entry from database */
+	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND filepath!='' ORDER BY id ASC LIMIT 1");
+
+	if (!dbres) {
+		bc_log(Warning, "Failed to get oldest media entry from database");
+		return -1;
+	}
+
+	if (bc_db_fetch_row(dbres)) {
+		bc_log(Info, "Database doesnot contain oldest media file entry");
+		bc_db_free_table(dbres);
+		return -1;
+	}
+
+	const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+	bc_db_free_table(dbres);
+
+	if (!filepath || !*filepath) {
+		bc_log(Warning, "Failed to read oldest file path");
+		return -1;
+	}
+
+	std::string full_path = std::string(filepath);
+	std::string timed_path = full_path.substr(full_path.size()-30, 26);
+
+	bc_string_array locations;
+	bc_oldest_media_t ctx;
+	int count, id;
+
+	/* Determine date and time of the oldest media file */
+	count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d", 
+		(int*)&ctx.year, (int*)&ctx.month, (int*)&ctx.day, (int*)&id,
+		(int*)&ctx.hour, (int*)&ctx.min, (int*)&ctx.sec);
+
+	if (count != 7) {
+		bc_log(Warning, "Failed determine oldest media time");
+		return -1;
+	}
+
+	bc_log(Info, "Determined oldest media time: %04d/%02d/%02d %02d-%02d-%02d", 
+		ctx.year, ctx.month, ctx.day, ctx.hour, ctx.min, ctx.sec);
+
+	if (!bc_get_media_locations(locations)) {
+		bc_log(Warning, "No media locations available for cleanup");
+		return -1;
+	}
+
+	for (size_t i = 0; i < locations.size(); i++)
+		bc_recursive_cleanup_untracked_media(ctx, locations[i]);
+
+	bc_log(Info, "Initial media cleanup finished: removed(%d), archived(%d), errors(%d), others(%d)",
+		ctx.removed, ctx.archived, ctx.errors, ctx.others);
+
+	return 0;
 }
 
 /*
@@ -711,22 +938,22 @@ static int bc_cleanup_older_media(const char *filepath)
 
 		if (entry_is_old) {
 			std::string full_path = dir_path + std::string(entry->d_name);
+			std::string video_file = full_path;
+			video_file.replace(video_file.size()-3, 3, "mkv");
 
-			BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=1 AND "
-				"filepath='%s'", full_path.c_str());
-
-			if (dbres) {
-				if (!bc_db_fetch_row(dbres)) {
-					bc_db_free_table(dbres);
-					archived++;
-					continue; // This file is archived
-				}
-
-				bc_db_free_table(dbres);
+			int rv = bc_media_is_archived(video_file.c_str());
+			if (rv > 0) {
+				entry = readdir(pdir);
+				archived++;
+				continue;
+			} else if (rv < 0) {
+				entry = readdir(pdir);
+				error_count++;
+				continue;
 			}
 
 			if (unlink(full_path.c_str()) < 0) {
-				bc_log(Warning, "Cannot remove old file %s for cleanup: %s",
+				bc_log(Warning, "Cannot remove old file %s: %s",
 			       full_path.c_str(), strerror(errno));
 
 				entry = readdir(pdir);
@@ -785,7 +1012,7 @@ static int bc_cleanup_media()
 			error_count++;
 			continue;
 		} else if (errno == ENOENT) {
-			// Maybe dangling link caused by buisy mount, try again
+			// Maybe dangling link caused by mount error or permission issue, try again
 			g_media_files[filepath].timestamp = time(NULL);
 			g_media_files[filepath].try_count = 0;
 		}
@@ -1290,6 +1517,9 @@ int main(int argc, char **argv)
 		bc_check_inprogress();
 		bc_status_component_end(STATUS_DB_POLLING1, ret == 0);
 	}
+
+	/* Delete untracked media files */
+	bc_initial_cleanup_untracked_media();
 
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
