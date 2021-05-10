@@ -109,6 +109,9 @@ define('G_SUBDOMAIN_TITLE', 'SSL / CNAME setup');
 define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
 define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
 
+define('G_LIVEVIEW_VIDEO_TITLE', 'LiveView Configuration');
+define('G_LIVEVIEW_VIDEO_METHOD', 'Video method');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');

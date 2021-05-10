@@ -258,6 +258,22 @@
     </div>
 </div>
 
+<div class="panel panel-default">
+    <div class="panel-heading"><?php echo G_LIVEVIEW_VIDEO_TITLE; ?></div>
+
+    <div class="panel-body">
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_LIVEVIEW_VIDEO_METHOD; ?></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect(getLiveViewVideoOptions(), $global_settings->data['G_LIVEVIEW_VIDEO_METHOD'], 'G_LIVEVIEW_VIDEO_METHOD'); ?>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <input type="hidden" name="mode" value="global" />
 
 <div class="form-group">
