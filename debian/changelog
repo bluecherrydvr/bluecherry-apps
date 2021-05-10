@@ -1,5 +1,13 @@
-bluecherry (3:3.0.5) focal bionic buster groovy; urgency=low
+bluecherry (3:3.0.6) focal bionic buster groovy; urgency=low
 
+  * FIX: Lack of string etiquette in the trigger server, resolve buffer overrun (#434)
+  * FIX: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to compontents (#433)
+  * FIX: Web: Layout problem when cameras are disabled (#227)
+  * FEATURE: Auto-expand IP Cameras in Devices page (#430)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 10 May 2021 13:21:52 -0600 
+
+bluecherry (3:3.0.5) focal bionic buster groovy; urgency=low
 
   * FIX: Web playback - AJAX error caused by the wrong time format (#388)
   * FIX: Fixed segment violation bug in recording schedule (#425)
