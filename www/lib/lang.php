@@ -442,7 +442,7 @@ define('QUERY_FAILED', 'Could not execute query. Please check <i>/var/log/apache
 define('LOGOUT', 'logout');
 define('WRITE_FAILED', 'Failed to write to storage folder at: ');
 
-#mjpeg
+#mjpeg & hls
 define('MJPEG_DISABLED', 'This device was disabled.');
 define('MJPEG_DEVICE_NOT_FOUND', 'Device with ID %ID% was not found.');
 define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %ID%.');

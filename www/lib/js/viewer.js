@@ -178,13 +178,17 @@ makeGrid = function(){
 			var thisCam = $$('.ptz'+'#'+imgSrcId);
 			var id = imgSrcId;
 			var lvSource = null;
-			var video_method = $$('#video_method').get('value')[0];
+			var videoMethod = $$('#video_method').get('value')[0];
 
 			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
 
-			if (video_method === 'HLS' && id != 'none') {
-				var video_link = '/media/hls?id=' + id;
-				lvSource = createHlsVideoElement(video_link, 'video' + row + col, imgSrcId, imgClass);
+			if (videoMethod === 'HLS') {
+				if (id != 'none') {
+					imgSrcId = '/img/icons/layouts/loading.png';
+				}
+
+				var videoId = 'video' + row + col;
+				lvSource = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto', 'poster': imgSrcId});
 			}
 			else {
 				lvSource = new Element('img', {'class': imgClass, 'src': imgSrcId});
@@ -291,7 +295,14 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 	}).send();
 };
 
-createHlsVideoElement = function(videoLink, videoId, imgSrcId, imgClass) {
+createHlsVideoElement = function(videoId, imgSrcId, imgClass) {
+	var element = null;
+	element = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto', 'poster': imgSrcId});
+
+	return element;
+}
+
+setHlsLink = function(videoLink, videoId, imgSrcId, imgClass) {
 	var element = null;
 
 	if(Hls.isSupported()) {
@@ -314,4 +325,30 @@ createHlsVideoElement = function(videoLink, videoId, imgSrcId, imgClass) {
 	}
 
 	return element;
+}
+
+createHlsLink = function(device_id) {
+	var data = 'id=' + device_id;
+	var request = new Request.HTML({
+		url: 'media/hls',
+		data: data,
+		method: 'get',
+		onRequest: function(){
+			console.log('onRequest');
+		},
+		onComplete: function(){
+			console.log('onComplete');
+		},
+		onFailure: function(xhr){
+			console.log(xhr);
+		},
+		onSuccess: function(json){
+			var ret = JSON.parse(json[0].data);
+			if (ret.status == 6) {
+				var hls_link = ret.msg[0];
+				console.log(hls_link);
+			}
+		}
+	}).send();
+
 }
