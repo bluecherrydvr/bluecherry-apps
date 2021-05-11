@@ -297,6 +297,18 @@ setHlsLink = function(videoLink, videoId, imgClass) {
 
 	var element = document.getElementById(videoId);
 	var parent = element.parentNode;
+	var cssText = document.defaultView.getComputedStyle(element, "").cssText;
+
+	if (cssText === '') {
+		const styles = window.getComputedStyle(element);
+		cssText = Object.values(styles).reduce(
+			(css, propertyName) =>
+				`${css}${propertyName}:${styles.getPropertyValue(
+					propertyName
+				)};`
+		);
+	}
+
 	parent.removeChild(element);
 
 	if(Hls.isSupported()) {
@@ -318,6 +330,7 @@ setHlsLink = function(videoLink, videoId, imgClass) {
 		element = new Element('img', {'class': imgClass, 'id': videoId, 'src': '/img/icons/layouts/hls-not-support.png'});
 	}
 
+	element.style.cssText = cssText;
 	parent.appendChild(element);
 }
 
