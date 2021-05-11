@@ -1,5 +1,3 @@
-const HLS_BASE_PORT = 7003;
-
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
 		menu:	'layoutsMenu',
@@ -171,7 +169,6 @@ makeGrid = function(){
 	var gridTable = new Element('table', {
            	'id' : 'lvGridTable'
     });
-	var videoSrc = []
 	for (row = 1; row <= lvRows; row++) {
        	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
        	for(col = 1; col <= lvCols; col++){
@@ -181,12 +178,16 @@ makeGrid = function(){
 			var thisCam = $$('.ptz'+'#'+imgSrcId);
 			var id = imgSrcId;
 			var lvSource = null;
+			var video_method = $$('#video_method').get('value')[0];
 
-			if (imgSrcId === 'none') {
-				lvSource = new Element('img', {'class': imgClass, 'src': '/img/icons/layouts/none.png'});
-			} else {
-				imgSrcId = '/media/mjpeg?multipart=true&id=' + id;
-				lvSource = createHlsVideoElement(id, 'video' + row + col, imgSrcId, imgClass);
+			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
+
+			if (video_method === 'HLS' && id != 'none') {
+				var video_link = '/media/hls?id=' + id;
+				lvSource = createHlsVideoElement(video_link, 'video' + row + col, imgSrcId, imgClass);
+			}
+			else {
+				lvSource = new Element('img', {'class': imgClass, 'src': imgSrcId});
 			}
 
 			lvSource.inject(thisCol);
@@ -290,9 +291,8 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 	}).send();
 };
 
-createHlsVideoElement = function(deviceId, videoId, imgSrcId, imgClass) {
+createHlsVideoElement = function(videoLink, videoId, imgSrcId, imgClass) {
 	var element = null;
-	var videoLink = "http://127.0.0.1:" + HLS_BASE_PORT + "/" + deviceId + "/index.m3u8";
 
 	if(Hls.isSupported()) {
 		var hls = new Hls();
