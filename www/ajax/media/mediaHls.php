@@ -18,21 +18,24 @@ class mediaHls extends Controller {
         if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id'])) {
 			$status = false;
 			$message = str_replace('%ID%', $_GET['id'], MJPEG_NO_PERMISSION);
+			$data = "no_permission";
 		}
 
         $this_camera = data::getObject('Devices', 'id', $_GET['id']);
         if ($this_camera[0]['disabled'] == true){
 			$status = false;
 			$message = MJPEG_DISABLED;
-			$data = "disbled";
+			$data = "disabled";
         } elseif (!$this_camera){
 			$status = false;
 			$message = str_replace('%ID%', $_GET['id'], MJPEG_DEVICE_NOT_FOUND);
+			$data = "not_found";
         }
         
         if (!isset($_GET['id'])) {
 			$status = false;
 			$message = MJPEG_DEVICE_ID_NOT_SUPPLIED;
+			$data = "not_id";
 		}
 
 		if ($status === true) {
@@ -54,7 +57,7 @@ function createLink($id, $current_user) {
 	data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
 	// Cleanup old tokens from DB
 	data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
-	$hls_link = "http://127.0.0.1/$id/index.m3u8?authtoken=$token";
+	$hls_link = "https://127.0.0.1:7003/$id/index.m3u8?authtoken=$token";
 
 	return $hls_link;
 }
