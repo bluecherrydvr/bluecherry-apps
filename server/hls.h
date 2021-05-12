@@ -120,6 +120,7 @@ public:
 
 private:
     /* Request */
+    std::string     _auth_token;
     request_type    _type = invalid;
     uint32_t        _segment_id = 0;
     uint8_t         _stream_id = 0;
@@ -225,6 +226,9 @@ public:
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);
 
+    void set_auth(bool auth) { _auth = auth; }
+    bool get_auth() { return _auth; }
+
 private:
     bool create_socket(uint16_t port);
 
@@ -236,6 +240,7 @@ private:
     hls_events      _events;
     uint16_t        _port = 0;
     int             _fd = -1;
+    bool            _auth = false;
     bool            _init = false;
 };
 

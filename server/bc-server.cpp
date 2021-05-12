@@ -1574,6 +1574,7 @@ int main(int argc, char **argv)
 		delete hls;
 		return 1;
 	} else {
+		hls->set_auth(true); // enable authentication
 		std::thread hls_th(&hls_listener::run, hls);
 		hls_th.detach();
 	}

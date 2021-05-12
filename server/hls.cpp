@@ -41,6 +41,7 @@ extern "C" {
 #endif
 
 #define HLS_SEGMENT_SIZE (188 * 7 * 1024)
+#define HLS_SEGMENT_DURATION 3.0 // Most accepted HLS segment duration
 
 static void std_string_append(std::string &source, const char *data, ...)
 {
@@ -319,9 +320,9 @@ time_t hls_date::to_epoch()
 void hls_date::to_http(char *dst, size_t size)
 {
     struct tm timeinfo;
-	time_t raw_time = to_epoch();
+    time_t raw_time = to_epoch();
     gmtime_r(&raw_time, &timeinfo);
-	strftime(dst, size, "%a, %d %b %G %H:%M:%S GMT", &timeinfo);
+    strftime(dst, size, "%a, %d %b %G %H:%M:%S GMT", &timeinfo);
 }
 
 void hls_date::make()
@@ -422,6 +423,7 @@ bool hls_session::create_response()
     {
         bc_log(Debug, "Authorization failure for HLS playback for device %d", _device_id);
         std::string response = std::string("HTTP/1.1 401 Unauthorized\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
         std_string_append(response, "WWW-Authenticate: Basic realm=\"HLS Server\"\r\n");
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
         std_string_append(response, "Content-Length: 0\r\n\r\n");
@@ -447,7 +449,10 @@ bool hls_session::create_response()
         std_string_append(body, "#EXTM3U\n");
         std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
         std_string_append(body, "#EXT-X-STREAM-INF:BANDWIDTH=%d\n", 90000);
-        std_string_append(body, "0/playlist.m3u8\n");
+        std_string_append(body, "0/playlist.m3u8");
+
+        if (!get_listener()->get_auth()) std_string_append(body, "\n");
+        else std_string_append(body, "?authtoken=%s\n", _auth_token.c_str());
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
         std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
@@ -492,11 +497,13 @@ bool hls_session::create_response()
         std_string_append(body, "#EXT-X-VERSION: 5\n");
         std_string_append(body, "#EXT-X-ALLOW-CACHE: NO\n");
         std_string_append(body, "#EXT-X-TARGETDURATION: %.f\n", duration + 1);
-        std_string_append(body, "#EXT-X-MEDIA=SEQUENCE: %u\n", sequence);
-        std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
+        std_string_append(body, "#EXT-X-MEDIA-SEQUENCE: %u\n", sequence);
 
         if (content->_fmp4 && content->have_initial_segment())
+        {
+            std_string_append(body, "#EXT-X-INDEPENDENT-SEGMENTS\n");
             std_string_append(body, "#EXT-X-MAP:URI=\"init.mp4\"\n");
+        }
 
         for (size_t i = 0; i < content->_window.size(); i++)
         {
@@ -646,24 +653,28 @@ bool hls_session::create_response()
 
 bool hls_session::authenticate(const std::string &uri, const std::string &request)
 {
-	if (uri.find("authtoken=") != std::string::npos)
+    if (_type == request_type::payload ||
+        !get_listener()->get_auth()) return true;
+
+    if (uri.find("authtoken=") != std::string::npos)
     {
-		std::string token = uri.substr(uri.find("authtoken=") + 10);
-		token = token.substr(0, token.find('/'));  // Drop possible trailing '/streamid=0' etc.
-		BC_DB_RES dbres = bc_db_get_table("SELECT * FROM HlsAuthTokens JOIN Users ON "
+        std::string token = uri.substr(uri.find("authtoken=") + 10);
+        token = token.substr(0, token.find('/'));  // Drop possible trailing '/streamid=0' etc.
+        BC_DB_RES dbres = bc_db_get_table("SELECT * FROM HlsAuthTokens JOIN Users ON "
             "HlsAuthTokens.user_id = Users.id WHERE HlsAuthTokens.token='%s'", token.c_str());
 
         if (dbres)
         {
-			if (!bc_db_fetch_row(dbres)) 
+            if (!bc_db_fetch_row(dbres)) 
             {
-				bc_db_free_table(dbres);
+                bc_db_free_table(dbres);
+                _auth_token = token;
                 return true;
-			}
+            }
 
             bc_db_free_table(dbres);
-		}
-	}
+        }
+    }
 
     size_t posit = request.find("Authorization");
     if (posit == std::string::npos)
@@ -683,42 +694,42 @@ bool hls_session::authenticate(const std::string &uri, const std::string &reques
     while (auth.length() && auth.at(0) == ' ') auth.erase(0, 1);
     if (!auth.length()) return false;
 
-	if (auth.size() > 6 && auth.substr(0, 6) == "Basic ")
+    if (auth.size() > 6 && auth.substr(0, 6) == "Basic ")
     {
-		auth = auth.substr(6);
-		char *buf = new char[auth.size()];
-		int ret = av_base64_decode((uint8_t*)buf, auth.c_str(), auth.size());
+        auth = auth.substr(6);
+        char *buf = new char[auth.size()];
+        int ret = av_base64_decode((uint8_t*)buf, auth.c_str(), auth.size());
 
-		if (ret > 0)
+        if (ret > 0)
         {
-			buf[ret] = 0;
-			char *password = buf;
-			char *username = strsep(&password, ":");
+            buf[ret] = 0;
+            char *password = buf;
+            char *username = strsep(&password, ":");
 
-			if (username && password &&
-			    bc_user_auth(username, password, ACCESS_REMOTE, _device_id) == 1)
-			{
-				delete[] buf;
-				return true;
-			}
-		}
+            if (username && password &&
+                bc_user_auth(username, password, ACCESS_REMOTE, _device_id) == 1)
+            {
+                delete[] buf;
+                return true;
+            }
+        }
 
-		delete[] buf;
-	}
+        delete[] buf;
+    }
 
-	return false;
+    return false;
 }
 
 bool hls_session::handle_request(const std::string &request)
 {
-	size_t start_posit = request.find("/");
-	if (start_posit == std::string::npos) return false;
+    size_t start_posit = request.find("/");
+    if (start_posit == std::string::npos) return false;
 
-	size_t end_posit = request.find(" ", start_posit);
-	if (end_posit == std::string::npos) return false;
+    size_t end_posit = request.find(" ", start_posit);
+    if (end_posit == std::string::npos) return false;
 
-	size_t url_length = end_posit - start_posit;
-	std::string url = request.substr(start_posit, url_length);
+    size_t url_length = end_posit - start_posit;
+    std::string url = request.substr(start_posit, url_length);
 
     size_t posit = url.find("/", 1);
     if (posit == std::string::npos) return create_response();
@@ -757,7 +768,7 @@ bool hls_session::handle_request(const std::string &request)
         _type = request_type::payload;
     }
 
-    if (_type != request_type::payload && !authenticate(url, request))
+    if (!authenticate(url, request))
         _type = request_type::unauthorized;
 
     return create_response();
@@ -780,7 +791,11 @@ hls_content::hls_content()
         return;
     }
 
-    set_window_size(20);
+    /*
+        using only 2 segments in playlist is enough since we are using sliding window
+        also it will decrease usage of RAM (less segments in window = less RAM usage)
+    */
+    set_window_size(2);
     _init = true;
 }
 
@@ -882,7 +897,7 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
 {
     bool is_key = flags & AV_PKT_FLAG_KEY;
     int64_t pts_diff = (pts - get_last_pts());
-    double duration = (double)pts_diff / (double)90000;
+    double duration = (double)pts_diff / (double)(90000 * 3);
 
     size_t buff_size = _in_buffer.size();
     _in_buffer.resize(buff_size + size);
@@ -890,7 +905,7 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     memcpy(offset + buff_size, data, size);
 
     //if (is_key && _in_buffer.size() >= HLS_SEGMENT_SIZE)
-    if (is_key && pts_diff >= 90000) // 1 sec in pts terms 
+    if (is_key && duration >= HLS_SEGMENT_DURATION)
     {
         hls_segment *segment = new hls_segment;
         segment->add_data(_in_buffer.data(), _in_buffer.size());
@@ -901,7 +916,6 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
 
         _in_buffer.clear();
         return append_segment(segment);
-
     }
 
     return false;
@@ -993,9 +1007,9 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         socklen_t len = sizeof(struct sockaddr);
         struct sockaddr_in addr;
     
-        /* Acceot to the new connection request */
+        /* Accept to the new connection request */
         int client_fd = accept(server_fd, (struct sockaddr*)&addr, &len);
-        if (client_fd < 0) 
+        if (client_fd < 0)
         {
             bc_log(Error, "Can not accept to the socket: %s", strerror(errno));
             return 0;
@@ -1051,7 +1065,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         int bytes = read(client_fd, rx_buffer, sizeof(rx_buffer));
         if (bytes <= 0)
         {
-            if (!bytes) bc_log(Debug, "Disconnected client: %s[%d]", session->get_addr(), client_fd);
+            if (!bytes) bc_log(Debug, "Disconnected HLS client: %s[%d]", session->get_addr(), client_fd);
             else bc_log(Error, "Can not read data from client: %s (%s)", session->get_addr(), strerror(errno));
             return -1;
         }
@@ -1066,7 +1080,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
 
         /* Parse and handle the request */
         if (!session->handle_request(request)) bc_log(Warning, "Rejecting HLS request: (%s) %s", session->get_addr(), request.c_str());
-        else bc_log(Debug, "Received request from: client(%s)[%d]: %s", session->get_addr(), client_fd, request.c_str());
+        else bc_log(Debug, "Received HLS request from: client(%s)[%d]: %s", session->get_addr(), client_fd, request.c_str());
 
         /* Callback on writeable */
         return session->writeable();
@@ -1078,7 +1092,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
 int hls_write_event(hls_events *events, hls_event_data *ev_data)
 {
     hls_session *session = (hls_session*)ev_data->ptr;
-    return session->tx_buffer_flush() ? 1 : -1;
+    return session->tx_buffer_flush() ? 1 : -1; // -1 means disconnect
 }
 
 int hls_event_callback(void *events, void* data, int reason)
@@ -1142,8 +1156,6 @@ hls_listener::hls_listener()
 hls_listener::~hls_listener()
 {
     if (!_init) return;
-
-//    clear_window();
     pthread_mutex_destroy(&_mutex);
 
     if (_fd >= 0)
@@ -1214,8 +1226,8 @@ bool hls_listener::create_socket(uint16_t port)
         return false;
     }
 
-	const int opt = 1;
-	if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    const int opt = 1;
+    if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
         bc_log(Error, "Failed to set SO_REUSEADDR on the HLS socket: (%s)", strerror(errno));
         shutdown(_fd, SHUT_RDWR);

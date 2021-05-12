@@ -355,7 +355,6 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return -1;
 	}
 
-
 	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codec->codec_id == AV_CODEC_ID_MPEG4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
