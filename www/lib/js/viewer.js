@@ -35,12 +35,22 @@ window.addEvent('load', function(){
 		trigger: 'click',
 		actions: {
 			'loadCam' : function(el, ref, item){
-				var id = item.get('id');
+				var device_id = item.get('id');
 				var elParent = el.getParent();
-				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
-				el.set('src', '/media/mjpeg?multipart=true&id='+id);
+				var videoMethod = $$('#video_method').get('value')[0];
+
+				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), device_id);
+
+				if (videoMethod === 'HLS') {
+					el.set('src', '/img/icons/layouts/loading.png');
+					createHlsLink(device_id, el.get('id'), 'noImg');
+				}
+				else {
+					el.set('src', '/media/mjpeg?multipart=true&id='+device_id);
+				}
+
 				if (item.get('class')){
-					addPtz(el, id);
+					addPtz(el, device_id);
 				};
 			}
 		}
