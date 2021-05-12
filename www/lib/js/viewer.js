@@ -307,17 +307,11 @@ setHlsLink = function(videoLink, videoId, imgClass) {
 
 	var element = document.getElementById(videoId);
 	var parent = element.parentNode;
-	var cssText = document.defaultView.getComputedStyle(element, "").cssText;
 
-	if (cssText === '') {
-		const styles = window.getComputedStyle(element);
-		cssText = Object.values(styles).reduce(
-			(css, propertyName) =>
-				`${css}${propertyName}:${styles.getPropertyValue(
-					propertyName
-				)};`
-		);
-	}
+	var width     = element.style.width;
+	var height    = element.style.height;
+	var minWidth  = element.style.minWidth;
+	var minHeight = element.style.minHeight;
 
 	parent.removeChild(element);
 
@@ -340,7 +334,11 @@ setHlsLink = function(videoLink, videoId, imgClass) {
 		element = new Element('img', {'class': imgClass, 'id': videoId, 'src': '/img/icons/layouts/hls-not-support.png'});
 	}
 
-	element.style.cssText = cssText;
+	element.style.width     = width;
+	element.style.height    = height;
+	element.style.minWidth  = minWidth;
+	element.style.minHeight = minHeight;
+	
 	parent.appendChild(element);
 }
 
