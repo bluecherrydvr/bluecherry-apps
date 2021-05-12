@@ -897,7 +897,7 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
 {
     bool is_key = flags & AV_PKT_FLAG_KEY;
     int64_t pts_diff = (pts - get_last_pts());
-    double duration = (double)pts_diff / (double)(90000 * 3);
+    double duration = (double)pts_diff / (double)90000;
 
     size_t buff_size = _in_buffer.size();
     _in_buffer.resize(buff_size + size);
