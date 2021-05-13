@@ -1,6 +1,8 @@
 bluecherry (3:3.1.0-rc1) focal bionic buster groovy; urgency=low
 
   * FEATURE: Allow trial licenses
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 12 May 2021 21:43:01 -0600   
 
 bluecherry (3:3.0.6) focal bionic buster groovy; urgency=low
 
