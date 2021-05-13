@@ -20,8 +20,15 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
                     <input class="form-control" type="text" class="license" name="licenseCode">
                 </div>
                 <div class="form-group">
-                    <button class="btn btn-success send-req-form" type="submit" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
+                    <button class="btn btn-success send-req-form" type="submit" style="width: 80px;" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
                 </div>
+            </form>
+            <form action="/licenses?mode=getToken" style="position:relative;" method="POST">
+                <?php if (!empty($licenses)){ ?>
+                    <button class="btn btn-success token-button send-req-form" type="submit"> <?php echo L_GET_TOKEN; ?></button>
+                <?php } else { ?>
+                    <button class="btn btn-disabled token-button" disabled> <?php echo L_GET_TOKEN; ?></button>
+                <?php } ?>
             </form>
         </div>
     </div>
@@ -61,7 +68,7 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
     		<?php foreach($licenses as $license){ ?>
                 <tr>
                     <td><?php echo $license['license']; ?></td>
-                    <td><?php echo bc_license_check($license['license'])." ".L_PORTS; ?></td>
+                    <td><?php echo bc_license_devices_allowed()." ".L_PORTS; ?></td>
                     <td class="col-lg-2 col-md-licensing">
                         <form action="/licenses?mode=delete&license=<?php echo $license['license']; ?>" method="POST" style="display: inline-block;">
                             <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/licenses"><i class="fa fa-times fa-fw"></i> <?php echo L_DELETE; ?></button>

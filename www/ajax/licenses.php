@@ -3,6 +3,10 @@
 require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
+
+	const SUBDOMAIN_PROVIDER_BASE_URL = 'http://23.236.180.59:3000/subdomain-provider';
+	const SUBDOMAIN_API_GET_TOKEN = '/generate-token';
+	const SUBDOMAIN_ADMIN_TOKEN = '8532871313';
 	
     public function __construct()
     {
@@ -20,88 +24,353 @@ class licenses extends Controller {
     public function postData()
     {
         if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
-        	if (!bc_license_check($_POST['licenseCode'])){
-        		data::responseJSON(false, L_INVALID_LICENSE);
-        		exit();
-        	};
+			//  Check if the license to be activated already exits in database
         	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
         	if (!empty($exists)){
         		data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
         		exit();
         	};
-        	$machine_id = bc_license_machine_id();
 
-        	$url = VAR_LICENSE_AUTH."/?license_code={$_POST['licenseCode']}&id=".$machine_id;
-        	$confirmation = trim($this->sendHttpReq($url));
-
-        	#if auto ok,
-        	if ((strlen($confirmation) < 9) && (is_numeric($confirmation))){
-        		data::responseJSON('F', constant('L_AUTO_RESP_'.$confirmation));
+			// Activate the license key
+        	$ret = bc_license_activate_key($_POST['licenseCode']);
+			if (is_null($ret)) {
+				data::responseJSON(false, false);
         		exit();
-        	} else {
-        		if (preg_match("/^[a-zA-Z0-9]{4}\-[a-zA-Z0-9]{4}$/", $confirmation, $matches)) {
-        			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$matches[0]}', UNIX_TIMESTAMP())", true);
-        			if ($result){
-        				data::responseJSON(true, L_LICENSE_ADDED);
-        				exit();
-        			} else {
-        				data::responseJSON(false, false);
-        				exit();
-        			}
-        		} else {
-        			#if auto auth fails, show message, opt to confirm manually
-        			data::responseJSON('CONF', $machine_id);
-        			exit();
-        		}
-        	}
-        	exit();
+			}
+
+			// Show status message if activation fails
+			$status = (int)$ret[1];
+			$message = $this->getLicenseStatusMessage($status);
+			if ($status != Constant('LA_OK')) {
+				data::responseJSON(false, $message, $ret); // L_INVALID_LICENSE
+				exit();
+			}
+
+			// Add the verified license to database
+			$result = $this->updateVerifiedLicense($_POST['licenseCode']);
+			if (!$result){
+				data::responseJSON(false, false);
+				exit();
+			}
+
+			// Update the general notification in the page
+			$ret = bc_license_check_genuine();
+			data::responseJSON(true, L_LICENSE_ADDED, $ret);
+		}
+
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
+			// Activate trial
+        	$ret = bc_license_activate_trial();
+			if (is_null($ret)) {
+				data::responseJSON(false, false);
+        		exit();
+			}
+
+			// Show the relevant message
+			$status = (int)$ret[1];
+			$message = $this->getLicenseStatusMessage($status);
+			if ($status == Constant('LA_OK')) {
+				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS);
+				exit();
+			}
+			else {
+				data::responseJSON(false, $message, $ret);
+				exit();
+			}
         }
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
-        	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
-        		$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-        		if (!empty($exists)){
-        			data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-        			exit();
-        		} else {
-        			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$_POST['confirmLicense']}', UNIX_TIMESTAMP())", true);
-        			if ($result){
-        				data::responseJSON(true, L_LICENSE_ADDED);
-        				exit();
-        			} else {
-        				data::responseJSON(false, false);
-        				exit();
-        			}
-        		}
-        	} else {
-        		data::responseJSON(false, L_INVALID_CONFIRMATION);
-        		exit();
-        	}
-        }
+        // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
+        // 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
+        // 		$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
+        // 		if (!empty($exists)){
+        // 			data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
+        // 			exit();
+        // 		} else {
+        // 			$result = data::query("INSERT INTO Licenses VALUES ('{$_POST['licenseCode']}', '{$_POST['confirmLicense']}', UNIX_TIMESTAMP())", true);
+        // 			if ($result){
+        // 				data::responseJSON(true, L_LICENSE_ADDED);
+        // 				exit();
+        // 			} else {
+        // 				data::responseJSON(false, false);
+        // 				exit();
+        // 			}
+        // 		}
+        // 	} else {
+        // 		data::responseJSON(false, L_INVALID_CONFIRMATION);
+        // 		exit();
+        // 	}
+        // }
+
         if (!empty($_GET['mode']) && $_GET['mode'] == 'delete'){
-            $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
-            data::responseJSON(true);
-        }
+			$result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
+			data::responseJSON(true);
+		}
+
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'getToken'){
+			// Get a new subdomain token from the subdomain provider
+			$result = $this->getSubdomainToken();
+			if ($result[0] == false) {
+				data::responseJSON(false, $result[1]);
+				exit();
+			}
+
+			// Add the new subdomain token to database
+			$result = $this->updateSubdomainToken($result[1]);
+			if ($result) {
+				data::responseJSON(true, L_LA_E_SUBDOMAIN_TOKEN_GOT);
+				exit();
+			}
+			else {
+				data::responseJSON(false, L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE);
+				exit();
+			}
+		}
+
     }
+
+	private function updateVerifiedLicense($licenseCode) {
+		$licenses = data::getObject('Licenses');
+		$result = false;
+
+		if (empty($licenses)) {
+			$result = data::query("INSERT INTO Licenses VALUES ('{$licenseCode}', '', UNIX_TIMESTAMP())", true);
+		}
+		else {
+			$current = $licenses[0]['license'];
+			$result = data::query("UPDATE  Licenses SET license='{$licenseCode}', added=UNIX_TIMESTAMP() WHERE license='$current'", true);
+		}
+
+		return $result;
+	}
+
+	private function updateSubdomainToken($token) {
+		$status = true;
+		$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('G_SUBDOMAIN_TOKEN', '{$token}') ON DUPLICATE KEY UPDATE value='{$token}'", true)) ? $status : false;
+
+		return $status;
+	}
+
+	private function getSubdomainToken() {
+		$result = array();
+
+		$url = self::SUBDOMAIN_PROVIDER_BASE_URL . self::SUBDOMAIN_API_GET_TOKEN;
+		$response = $this->sendHttpReq($url);
+
+		if ($response[0] === false) {
+			$result[0] = false;
+			$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $response[1] . ')';
+		}
+		else {
+			$arr = json_decode($response[1]);
+			if ($arr === null) {
+				$result[0] = false;
+				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (Invalid repsonse)';
+			}
+			else if ($arr->token === null) {
+				$result[0] = false;
+				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $arr->message . ')';
+			}
+			else {
+				$result[0] = true;
+				$result[1] = $arr->token;
+			}
+		}
+
+		return $result;
+	}
 
     private function sendHttpReq($url)
     {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt ($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt ($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt ($ch, CURLOPT_HTTPHEADER, array('Expect:'));
+		$result = array();
+		$curl = curl_init();
+		curl_setopt($curl, CURLOPT_URL, $url);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+		
+		$headers = array(
+		   "Accept: application/json",
+		   "Authorization: Bearer " . self::SUBDOMAIN_ADMIN_TOKEN,
+		);
+		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+		//for debug only!
+		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+		
+		$resp = curl_exec($curl);
+		if ($resp === false) {
+			$result[0] = false;
+			$result[1] = curl_error($curl);
+		}
+		else {
+			$result[0] = true;
+			$result[1] = $resp;
+		}
+		curl_close($curl);
 
-        $res = curl_exec($ch);
-
-        curl_close($ch);
-
-        return $res;
+        return $result;
     }
+
+	private function getLicenseStatusMessage($status)
+	{
+		$message = L_LA_OK;
+
+		switch($status) {
+			case Constant('LA_OK'):
+				$message = L_LA_OK;
+				break;
+			case Constant('LA_FAIL'):
+				$message = L_LA_FAIL;
+				break;
+			case Constant('LA_EXPIRED'):
+				$message = L_LA_EXPIRED;
+				break;
+			case Constant('LA_SUSPENDED'):
+				$message = L_LA_SUSPENDED;
+				break;
+			case Constant('LA_GRACE_PERIOD_OVER'):
+				$message = L_LA_GRACE_PERIOD_OVER;
+				break;
+			case Constant('LA_TRIAL_EXPIRED'):
+				$message = L_LA_TRIAL_EXPIRED;
+				break;
+			case Constant('LA_LOCAL_TRIAL_EXPIRED'):
+				$message = L_LA_LOCAL_TRIAL_EXPIRED;
+				break;
+			case Constant('LA_RELEASE_UPDATE_AVAILABLE'):
+				$message = L_LA_RELEASE_UPDATE_AVAILABLE;
+				break;
+			case Constant('LA_RELEASE_NO_UPDATE_AVAILABLE'):
+				$message = L_LA_RELEASE_NO_UPDATE_AVAILABLE;
+				break;
+			case Constant('LA_E_FILE_PATH'):
+				$message = L_LA_E_FILE_PATH;
+				break;
+			case Constant('LA_E_PRODUCT_FILE'):
+				$message = L_LA_E_PRODUCT_FILE;
+				break;
+			case Constant('LA_E_PRODUCT_DATA'):
+				$message = L_LA_E_PRODUCT_DATA;
+				break;
+			case Constant('LA_E_PRODUCT_ID'):
+				$message = L_LA_E_PRODUCT_ID;
+				break;
+			case Constant('LA_E_SYSTEM_PERMISSION'):
+				$message = L_LA_E_SYSTEM_PERMISSION;
+				break;
+			case Constant('LA_E_FILE_PERMISSION'):
+				$message = L_LA_E_FILE_PERMISSION;
+				break;
+			case Constant('LA_E_WMIC'):
+				$message = L_LA_E_WMIC;
+				break;
+			case Constant('LA_E_TIME'):
+				$message = L_LA_E_TIME;
+				break;
+			case Constant('LA_E_INET'):
+				$message = L_LA_E_INET;
+				break;
+			case Constant('LA_E_NET_PROXY'):
+				$message = L_LA_E_NET_PROXY;
+				break;
+			case Constant('LA_E_HOST_URL'):
+				$message = L_LA_E_HOST_URL;
+				break;
+			case Constant('LA_E_BUFFER_SIZE'):
+				$message = L_LA_E_BUFFER_SIZE;
+				break;
+			case Constant('LA_E_APP_VERSION_LENGTH'):
+				$message = L_LA_E_APP_VERSION_LENGTH;
+				break;
+			case Constant('LA_E_REVOKED'):
+				$message = L_LA_E_REVOKED;
+				break;
+			case Constant('LA_E_LICENSE_KEY'):
+				$message = L_LA_E_LICENSE_KEY;
+				break;
+			case Constant('LA_E_LICENSE_TYPE'):
+				$message = L_LA_E_LICENSE_TYPE;
+				break;
+			case Constant('LA_E_OFFLINE_RESPONSE_FILE'):
+				$message = L_LA_E_OFFLINE_RESPONSE_FILE;
+				break;
+			case Constant('LA_E_OFFLINE_RESPONSE_FILE_EXPIRED'):
+				$message = L_LA_E_OFFLINE_RESPONSE_FILE_EXPIRED;
+				break;
+			case Constant('LA_E_ACTIVATION_LIMIT'):
+				$message = L_LA_E_ACTIVATION_LIMIT;
+				break;
+			case Constant('LA_E_ACTIVATION_NOT_FOUND'):
+				$message = L_LA_E_ACTIVATION_NOT_FOUND;
+				break;
+			case Constant('LA_E_DEACTIVATION_LIMIT'):
+				$message = L_LA_E_DEACTIVATION_LIMIT;
+				break;
+			case Constant('LA_E_TRIAL_NOT_ALLOWED'):
+				$message = L_LA_E_TRIAL_NOT_ALLOWED;
+				break;
+			case Constant('LA_E_TRIAL_ACTIVATION_LIMIT'):
+				$message = L_LA_E_TRIAL_ACTIVATION_LIMIT;
+				break;
+			case Constant('LA_E_MACHINE_FINGERPRINT'):
+				$message = L_LA_E_MACHINE_FINGERPRINT;
+				break;
+			case Constant('LA_E_METADATA_KEY_LENGTH'):
+				$message = L_LA_E_METADATA_KEY_LENGTH;
+				break;
+			case Constant('LA_E_METADATA_VALUE_LENGTH'):
+				$message = L_LA_E_METADATA_VALUE_LENGTH;
+				break;
+			case Constant('LA_E_ACTIVATION_METADATA_LIMIT'):
+				$message = L_LA_E_ACTIVATION_METADATA_LIMIT;
+				break;
+			case Constant('LA_E_TRIAL_ACTIVATION_METADATA_LIMIT'):
+				$message = L_LA_E_TRIAL_ACTIVATION_METADATA_LIMIT;
+				break;
+			case Constant('LA_E_METADATA_KEY_NOT_FOUND'):
+				$message = L_LA_E_METADATA_KEY_NOT_FOUND;
+				break;
+			case Constant('LA_E_TIME_MODIFIED'):
+				$message = L_LA_E_TIME_MODIFIED;
+				break;
+			case Constant('LA_E_RELEASE_VERSION_FORMAT'):
+				$message = L_LA_E_RELEASE_VERSION_FORMAT;
+				break;
+			case Constant('LA_E_AUTHENTICATION_FAILED'):
+				$message = L_LA_E_AUTHENTICATION_FAILED;
+				break;
+			case Constant('LA_E_METER_ATTRIBUTE_NOT_FOUND'):
+				$message = L_LA_E_METER_ATTRIBUTE_NOT_FOUND;
+				break;
+			case Constant('LA_E_METER_ATTRIBUTE_USES_LIMIT_REACHED'):
+				$message = L_LA_E_METER_ATTRIBUTE_USES_LIMIT_REACHED;
+				break;
+			case Constant('LA_E_CUSTOM_FINGERPRINT_LENGTH'):
+				$message = L_LA_E_CUSTOM_FINGERPRINT_LENGTH;
+				break;
+			case Constant('LA_E_VM'):
+				$message = L_LA_E_VM;
+				break;
+			case Constant('LA_E_COUNTRY'):
+				$message = L_LA_E_COUNTRY;
+				break;
+			case Constant('LA_E_IP'):
+				$message = L_LA_E_IP;
+				break;
+			case Constant('LA_E_RATE_LIMIT'):
+				$message = L_LA_E_RATE_LIMIT;
+				break;
+			case Constant('LA_E_SERVER'):
+				$message = L_LA_E_SERVER;
+				break;
+			case Constant('LA_E_CLIENT'):
+				$message = L_LA_E_CLIENT;
+				break;
+			default:
+				$message = L_LA_E_UNKNOWN;
+		}
+
+		return $message;
+
+	}
 }
 
 

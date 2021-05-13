@@ -375,6 +375,7 @@ define('AIP_ONVIF_PORT', 'ONVIF port');
 define('AIP_CHECK_ONVIF_PORT', 'ONVIF Probe & Autoconfigure');
 define('AIP_CHECK_ONVIF_SUCCESS', 'Successfull');
 define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
+define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the limit of the allowed devices.');
 
 #ip cam lib
 define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');
@@ -596,6 +597,8 @@ define('L_ADDCODE', 'Add a license code');
 define('L_ADD', 'Add');
 define('L_PORTS', 'Ports');
 define('L_CONFIRMCODE', 'Confirm a code');
+define('L_GET_TOKEN', 'Get token');
+
 define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
 define('L_INVALID_LICENSE', 'The code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_INVALID_LICENSE_EXISTS', 'The code you entered is already in use on this system.');
@@ -611,6 +614,67 @@ define('L_AUTO_RESP_3', 'Sorry, you made too many unsuccessful authorization att
 define('L_AUTO_RESP_4', 'Sorry, you need to contact Bluecherry via phone or email to obtain authorization.');
 define('L_AUTO_RESP_5', 'Sorry, an error was encountered while authorizing your license. Please try again later or <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a>.');
 
+define('L_LA_OK', 'Success code.');
+define('L_LA_FAIL', 'Failure code.');
+define('L_LA_EXPIRED', 'The license has expired or system time has been tampered with. Ensure your date and time settings are correct.');
+define('L_LA_SUSPENDED', 'The license has been suspended.');
+define('L_LA_GRACE_PERIOD_OVER', 'The grace period for server sync is over.');
+define('L_LA_TRIAL_EXPIRED', 'The trial has expired or system time has been tampered with. Ensure your date and time settings are correct.<br>If your date and time settings are correct, please buy the license and activate this application.');
+define('L_LA_LOCAL_TRIAL_EXPIRED', 'The local trial has expired or system time has been tampered with. Ensure your date and time settings are correct.');
+define('L_LA_RELEASE_UPDATE_AVAILABLE', 'A new update is available for the product. This means a new release has been published for the product.');
+define('L_LA_RELEASE_NO_UPDATE_AVAILABLE', 'No new update is available for the product. The current version is latest.');
+define('L_LA_E_FILE_PATH', 'Invalid file path.');
+define('L_LA_E_PRODUCT_FILE', 'Invalid or corrupted product file.');
+define('L_LA_E_PRODUCT_DATA', 'Invalid product data.');
+define('L_LA_E_PRODUCT_ID', 'The product id is incorrect.');
+define('L_LA_E_SYSTEM_PERMISSION', 'Insufficient system permissions. Occurs when LA_SYSTEM flag is used but application is not run with admin privileges.');
+define('L_LA_E_FILE_PERMISSION', 'No permission to write to file.');
+define('L_LA_E_WMIC', 'Fingerprint couldn\'t be generated.');
+define('L_LA_E_TIME', 'The difference between the network time and the system time is more than allowed clock offset.');
+define('L_LA_E_INET', 'Failed to connect to the server due to network error.');
+define('L_LA_E_NET_PROXY', 'Invalid network proxy.');
+define('L_LA_E_HOST_URL', 'Invalid Cryptlex host url.');
+define('L_LA_E_BUFFER_SIZE', 'The buffer size was smaller than required.');
+define('L_LA_E_APP_VERSION_LENGTH', 'App version length is more than 256 characters.');
+define('L_LA_E_REVOKED', 'The license has been revoked.');
+define('L_LA_E_LICENSE_KEY', 'Invalid license key.');
+define('L_LA_E_LICENSE_TYPE', 'Invalid license type. Make sure floating license is not being used.');
+define('L_LA_E_OFFLINE_RESPONSE_FILE', 'Invalid offline activation response file.');
+define('L_LA_E_OFFLINE_RESPONSE_FILE_EXPIRED', 'The offline activation response has expired.');
+define('L_LA_E_ACTIVATION_LIMIT', 'The license has reached it\'s allowed activations limit.');
+define('L_LA_E_ACTIVATION_NOT_FOUND', 'The license activation was deleted on the server.');
+define('L_LA_E_DEACTIVATION_LIMIT', 'The license has reached it\'s allowed deactivations limit.');
+define('L_LA_E_TRIAL_NOT_ALLOWED', 'Trial not allowed for the product.');
+define('L_LA_E_TRIAL_ACTIVATION_LIMIT', 'Your account has reached it\'s trial activations limit.');
+define('L_LA_E_MACHINE_FINGERPRINT', 'Machine fingerprint has changed since activation.');
+define('L_LA_E_METADATA_KEY_LENGTH', 'Metadata key length is more than 256 characters.');
+define('L_LA_E_METADATA_VALUE_LENGTH', 'Metadata value length is more than 256 characters.');
+define('L_LA_E_ACTIVATION_METADATA_LIMIT', 'The license has reached it\'s metadata fields limit');
+define('L_LA_E_TRIAL_ACTIVATION_METADATA_LIMIT', 'The trial has reached it\'s metadata fields limit.');
+define('L_LA_E_METADATA_KEY_NOT_FOUND', 'The metadata key does not exist.');
+define('L_LA_E_TIME_MODIFIED', 'The system time has been tampered (backdated).');
+define('L_LA_E_RELEASE_VERSION_FORMAT', 'Invalid version format.');
+define('L_LA_E_AUTHENTICATION_FAILED', 'Incorrect email or password.');
+define('L_LA_E_METER_ATTRIBUTE_NOT_FOUND', 'The meter attribute does not exist.');
+define('L_LA_E_METER_ATTRIBUTE_USES_LIMIT_REACHED', 'The meter attribute has reached it\'s usage limit.');
+define('L_LA_E_CUSTOM_FINGERPRINT_LENGTH', 'Custom device fingerprint length is less than 64 characters or more than 256 characters.');
+define('L_LA_E_VM', 'Application is being run inside a virtual machine / hypervisor, and activation has been disallowed in the VM.');
+define('L_LA_E_COUNTRY', 'Country is not allowed.');
+define('L_LA_E_IP', 'IP address is not allowed.');
+define('L_LA_E_RATE_LIMIT', 'Rate limit for API has reached, try again later.');
+define('L_LA_E_SERVER', 'Server error.');
+define('L_LA_E_CLIENT', 'Client error.');
+
+define('L_LA_E_BC_SERVER', 'A problem occured while connecting bc-server.');
+define('L_LA_E_TRIAL_ACTIVATED', 'Trial is activated. Trial days left: ');
+define('L_LA_E_LICENSE_ACTIVATED', 'License is genuinely activated. Days left: ');
+define('L_LA_E_TRIAL_ACTIVATE_REQUIRE', 'Either trial has not started or has been tampered, for activating trial please click here.<br><form action="/licenses?mode=activate_trial" method="POST"><button class="link-button send-req-form" type="submit" data-redirect-success="/licenses">Activate trial.</button></form>');
+define('L_LA_E_TRIAL_ACTIVATE_SUCCESS', 'Trial is successfully activated.');
+define('L_LA_E_UNKNOWN', 'Unknown error.');
+
+define('L_LA_E_SUBDOMAIN_TOKEN_GOT', 'Successfully got a new token from the subdomain provider.');
+define('L_LA_E_SUBDOMAIN_TOKEN_NOT_GET', 'Could not get a new token from the subdomain provider.');
+define('L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE', 'Could not add a new token to database.');
 
 #Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
