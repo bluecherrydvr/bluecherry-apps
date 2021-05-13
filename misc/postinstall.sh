@@ -128,7 +128,7 @@ case "$1" in
 			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
 			then
 				a2enmod php7.2
-			elif [[ "$UBUNTU_CODENAME" == 'focal' ]]
+			elif [[ "$UBUNTU_CODENAME" == 'focal' || "$UBUNTU_CODENAME" == 'groovy' ]]
 			then
 				a2enmod php7.4
 			elif [[ "$VERSION" == "10 (buster)" ]]

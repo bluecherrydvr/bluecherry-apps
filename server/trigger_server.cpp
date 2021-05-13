@@ -137,14 +137,16 @@ void trigger_server::serveClient(int fd) {
 	char *description = NULL;
 
 	// In spite of simplification, there's no loop, just assume that sent data arrives at once
-	input_len = read(fd, input, sizeof(input));
+	input_len = read(fd, input, sizeof(input)-1);
 	bc_log(Error, "trigger_server: read ret %d", input_len);
-	if (input_len == -1) {
+	if (input_len < 0) {
 		bc_log(Error, "trigger_server: errno %d", errno);
 		close(fd);
 		return;
 	}
 
+	// Stringize the input
+	input[input_len] = NULL;
 
 	// Parse input
 	errno = 0;

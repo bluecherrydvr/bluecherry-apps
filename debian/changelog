@@ -1,9 +1,25 @@
-bluecherry (3:3.0.5) focal bionic buster; urgency=low
+bluecherry (3:3.0.6) focal bionic buster groovy; urgency=low
 
-  * Adds temporal-based motion detection algorithm
-  * Minor improvements to Experimental motion detection algorithm, specifically support for "max motion area".
+  * FIX: Lack of string etiquette in the trigger server, resolve buffer overrun (#434)
+  * FIX: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to compontents (#433)
+  * FIX: Web: Layout problem when cameras are disabled (#227)
+  * FEATURE: Auto-expand IP Cameras in Devices page (#430)
 
- -- Kyle Mallory <kylemallory@yahoo.com>  Wed, 2 Mar 2021 19:00:00 -0700
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 10 May 2021 13:21:52 -0600 
+
+bluecherry (3:3.0.5) focal bionic buster groovy; urgency=low
+
+  * FIX: Web playback - AJAX error caused by the wrong time format (#388)
+  * FIX: Fixed segment violation bug in recording schedule (#425)
+  * FIX: Change VAAPI to 'None' by default (#421)
+  * FIX: Web backup / restore - Fixed problem where backup and restore would always fail (#414 / #409)
+  * FIX: Fix mailer.php (attachments were broken) (#405)
+  * FIX: TLS / SASL improvements (#366)
+  * FEATURE: Support systemd (allowing for newer Ubuntu distributions) (#406)
+  * FEATURE: Adds temporal-based motion detection algorithm - Added by Kyle Mallory <kylemallory@yahoo.com>
+  * FEATURE: Minor improvements to Experimental motion detection algorithm, specifically support for "max motion area". - Added by Kyle Mallory <kylemallory@yahoo.com>
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 28 Apr 2021 12:57:28 -0600 
 
 bluecherry (3:3.0.4) focal bionic buster; urgency=low
 
