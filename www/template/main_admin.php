@@ -127,7 +127,7 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/news" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?></a>
+                            <a href="/news" class="ajax-content announcekit-widget" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp;</a>
                         </li>
 
                         <li class="divider"></li>
@@ -326,6 +326,18 @@
     <script src="/template/dist/js/discoverCameras.js"></script>
     <script src="/template/dist/js/profile.js"></script>
     <script src="/template/dist/js/ptz.js"></script>
+    <script src="/template/dist/js/webhook.js"></script>
+    <script>
+        window.announcekit = (window.announcekit || { queue: [], on: function(n, x) { 
+            window.announcekit.queue.push([n, x]); }, push: function(x) { window.announcekit.queue.push(x); } 
+        });
+        
+        window.announcekit.push({
+            "widget": "https://announcekit.co/widgets/v2/SznKU",
+            "selector": ".announcekit-widget"
+        })
+    </script>
+    <script async src="https://cdn.announcekit.app/widget-v2.js"></script>
 
     <?php echo getJs(); ?>
 </body>
