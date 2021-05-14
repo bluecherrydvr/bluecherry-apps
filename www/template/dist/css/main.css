@@ -345,3 +345,7 @@ span.input-group-unstyled {
     top: -49px;
     left: 90px;
 }
+
+.visible-inline-block {
+	display: inline-block !important;
+}

@@ -127,7 +127,7 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/news" class="ajax-content announcekit-widget" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp;</a>
+                            <a href="/news" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp; <div class="visible-inline-block announcekit-widget"> </div></a>
                         </li>
 
                         <li class="divider"></li>
@@ -337,6 +337,12 @@
         window.announcekit.push({
             "widget": "https://announcekit.co/widgets/v2/SznKU",
             "selector": ".announcekit-widget"
+        })
+
+        window.announcekit.push({
+            "widget": "https://changelog.bluecherrydvr.com/widgets/v2/1fhia4",
+            "selector": ".announcekit-widget-embed",
+            "embed": true
         })
     </script>
     <script async src="https://cdn.announcekit.app/widget-v2.js"></script>
