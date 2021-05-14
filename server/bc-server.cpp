@@ -34,7 +34,7 @@ extern "C" {
 
 #include "bc-server.h"
 #include "rtsp.h"
-#include "bc-syslog.hf"
+#include "bc-syslog.h"
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
