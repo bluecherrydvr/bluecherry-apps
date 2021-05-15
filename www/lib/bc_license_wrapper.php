@@ -166,8 +166,8 @@ function bc_license_command($command, $key = "")
 		return null;
 	}
 
-	// Connect socket to remote server
-	if (!socket_connect($sock, '127.0.0.1', 7003))
+	// Connect socket to bc-server
+	if (!socket_connect($sock, '127.0.0.1', 7004))
 	{
 		$errorcode = socket_last_error();
 		$errormsg = socket_strerror($errorcode);

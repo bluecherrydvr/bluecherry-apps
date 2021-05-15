@@ -1565,7 +1565,7 @@ int main(int argc, char **argv)
 
 #ifdef V3_LICENSING
 	v3license = new v3license_server;
-	if (v3license->setup(7003)) {
+	if (v3license->setup(7004)) {
 		bc_log(Error, "Failed to setup V3LICENSE server");
 		return 1;
 	}

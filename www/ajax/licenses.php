@@ -23,19 +23,19 @@ class licenses extends Controller {
 
     public function postData()
     {
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
+		if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
 			//  Check if the license to be activated already exits in database
-        	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-        	if (!empty($exists)){
-        		data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-        		exit();
-        	};
+			$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
+			if (!empty($exists)){
+				data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
+				exit();
+			};
 
 			// Activate the license key
-        	$ret = bc_license_activate_key($_POST['licenseCode']);
+			$ret = bc_license_activate_key($_POST['licenseCode']);
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
-        		exit();
+				exit();
 			}
 
 			// Show status message if activation fails
@@ -58,12 +58,12 @@ class licenses extends Controller {
 			data::responseJSON(true, L_LICENSE_ADDED, $ret);
 		}
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
+		if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
 			// Activate trial
-        	$ret = bc_license_activate_trial();
+			$ret = bc_license_activate_trial();
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
-        		exit();
+				exit();
 			}
 
 			// Show the relevant message
@@ -77,7 +77,7 @@ class licenses extends Controller {
 				data::responseJSON(false, $message, $ret);
 				exit();
 			}
-        }
+		}
 
         // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
         // 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
