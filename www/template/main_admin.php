@@ -127,7 +127,7 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/news" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp; <div class="visible-inline-block announcekit-widget"> </div></a>
+                            <a href="/news" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp; <div class="visible-inline-block announcekit-widget"> </div></a>
                         </li>
 
                         <li class="divider"></li>
