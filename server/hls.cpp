@@ -73,7 +73,6 @@ static void std_string_append(std::string &source, const char *data, ...)
 //////////////////////////////////////////////////
 
 #ifdef HLS_WITH_SSL
-
 void hls_ssl::global_init()
 {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -292,7 +291,6 @@ bool hls_ssl::get_peer_cert(std::string &subject, std::string &issuer)
     X509_free(cert);
     return true;
 }
-
 #endif /* HLS_WITH_SSL */
 
 //////////////////////////////////////////////////
@@ -690,7 +688,7 @@ bool hls_session::create_response()
         std_string_append(body, "#EXT-X-STREAM-INF:BANDWIDTH=%d\n", 90000);
         std_string_append(body, "0/playlist.m3u8");
 
-        if (!get_listener()->get_auth()) std_string_append(body, "\n");
+        if (!get_listener()->get_auth() || !_auth_token.length()) std_string_append(body, "\n");
         else std_string_append(body, "?authtoken=%s\n", _auth_token.c_str());
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
