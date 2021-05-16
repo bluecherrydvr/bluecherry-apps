@@ -25,6 +25,56 @@
 #include <vector>
 #include <deque>
 
+#ifdef HLS_WITH_SSL
+#include <openssl/x509.h>
+#include <openssl/ssl.h>
+
+class hls_ssl
+{
+public:
+    struct cert
+    {
+        int verify_flags = SSL_VERIFY_PEER;
+        const char *cert_path = NULL;
+        const char *key_path = NULL;
+        const char *ca_path = NULL;
+    };
+
+    static void global_init();
+    static void global_destroy();
+
+    hls_ssl() {};
+    hls_ssl(int sock, hls_ssl::cert *cert);
+    ~hls_ssl() { shutdown(); }
+
+    bool get_peer_cert(std::string &subject, std::string &issuer);
+    int ssl_read(uint8_t* buffer, int size, bool exact);
+    int ssl_write(const uint8_t *buffer, int length);
+
+    hls_ssl* accept_new();
+    void shutdown();
+
+    SSL* get_ssl() { return _ssl; }
+    void set_ssl(SSL *ssl) { _ssl = ssl; }
+    void set_fd(int fd) { SSL_set_fd(_ssl, fd); _sock = fd; }
+    int get_fd() { return _sock; }
+
+    std::string get_last_error();
+    std::string last_ssl_error();
+
+protected:
+    std::string     _last_error;
+    SSL_CTX*        _ssl_ctx = NULL;
+    SSL*            _ssl = NULL;
+    int             _sock = -1;
+    bool            _init = false;
+
+    STACK_OF(X509)* _ca = NULL;
+    EVP_PKEY*       _key = NULL;
+    X509*           _cert = NULL;
+};
+#endif /* HLS_WITH_SSL */
+
 #define HLS_REQUEST_MAX             4096
 #define HLS_EVENTS_MAX              120000
 

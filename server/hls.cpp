@@ -36,6 +36,18 @@ extern "C" {
 #include <libavutil/base64.h>
 }
 
+#ifdef HLS_WITH_SSL
+#include <openssl/opensslv.h>
+#include <openssl/rsa.h>
+#include <openssl/evp.h>
+#include <openssl/err.h>
+
+#include <netinet/in.h>
+#include <sys/fcntl.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#endif /* HLS_WITH_SSL */
+
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
@@ -55,6 +67,233 @@ static void std_string_append(std::string &source, const char *data, ...)
 
     source.append(buffer, length);
 }
+
+//////////////////////////////////////////////////
+// SSL SUPPORT
+//////////////////////////////////////////////////
+
+#ifdef HLS_WITH_SSL
+
+void hls_ssl::global_init()
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_library_init();
+    SSL_load_error_strings();
+    ERR_load_crypto_strings();
+    OpenSSL_add_all_algorithms();
+#else
+    OPENSSL_init_ssl(0, NULL);
+#endif
+}
+
+void hls_ssl::global_destroy()
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ENGINE_cleanup();
+    ERR_free_strings();
+#else
+    EVP_PBE_cleanup();
+#endif
+    EVP_cleanup();
+    CRYPTO_cleanup_all_ex_data();
+}
+
+hls_ssl::hls_ssl(int sock, hls_ssl::cert *cert)
+{
+    if (_sock < 0)
+    {
+        _last_error = "Invalid TCP socket";
+        return;
+    }
+
+    _ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+    if (_ssl_ctx == NULL)
+    {
+        _last_error = "Can not create server SSL context";
+        this->shutdown();
+        return;
+    }
+
+    SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
+    if (cert == NULL) return;
+
+    /* Note: If verify is enabled, client must send its sertificate */
+    if (cert->verify_flags >= 0) SSL_CTX_set_verify(_ssl_ctx, cert->verify_flags, NULL);
+
+    if (cert->ca_path != NULL)
+    {
+        /* Note: Tell the client what certificates to use for verification */
+        if (SSL_CTX_load_verify_locations(_ssl_ctx, cert->ca_path, NULL) <= 0)
+        {
+            _last_error = "Can not load root ca file (" + std::string(cert->ca_path) + ")";
+            this->shutdown();
+            return;
+        }
+
+        SSL_CTX_set_client_CA_list(_ssl_ctx, SSL_load_client_CA_file(cert->ca_path));
+    }
+
+    if (cert->cert_path != NULL && cert->key_path != NULL)
+    {
+        if (SSL_CTX_use_certificate_file(_ssl_ctx, cert->cert_path, SSL_FILETYPE_PEM) <= 0 ||
+            SSL_CTX_use_PrivateKey_file(_ssl_ctx, cert->key_path, SSL_FILETYPE_PEM) <= 0)
+        {
+            _last_error = "Failet to setup SSL cert/key";
+            this->shutdown();
+            return;
+        }
+    }
+
+    _init = true;
+}
+
+void hls_ssl::shutdown()
+{
+    if (_ssl)
+    {
+        SSL_shutdown(_ssl);
+        SSL_free(_ssl);
+        _ssl = NULL;
+    }
+
+    if (_ssl_ctx)
+    {
+        SSL_CTX_free(_ssl_ctx);
+        _ssl_ctx = NULL;
+    }
+
+    if (_sock >= 0)
+    {
+        close(_sock);
+        _sock = -1;
+    }
+}
+
+std::string hls_ssl::last_ssl_error()
+{
+    BIO *bio = BIO_new(BIO_s_mem());
+    ERR_print_errors(bio);
+
+    char *err_buff = NULL;
+    size_t len = BIO_get_mem_data(bio, &err_buff);
+    if (!len) return std::string(strerror(errno));
+
+    std::string errstr = std::string("\n");
+    errstr.append(err_buff, len - 1);
+
+    BIO_free(bio);
+    return errstr;
+}
+
+std::string hls_ssl::get_last_error()
+{
+    std::string errstr = _last_error;
+    errstr.append(": " + last_ssl_error());
+    return errstr;
+}
+
+hls_ssl* hls_ssl::accept_new()
+{
+    hls_ssl *client_ssl = new hls_ssl;
+    struct sockaddr_in inaddr;
+    socklen_t len = sizeof(inaddr);
+
+    int sock = accept(_sock, (struct sockaddr*)&inaddr, &len);
+    if (sock < 0)
+    {
+        _last_error = "Can not accept to the HLS (SSL) socket";
+        delete client_ssl;
+        return NULL;
+    }
+
+    client_ssl->set_ssl(SSL_new(_ssl_ctx));
+    client_ssl->set_fd(sock);
+
+    if (SSL_accept(client_ssl->get_ssl()) <= 0)
+    {
+        _last_error = "SSL_accept failed";
+        delete client_ssl;
+        return NULL;
+    }
+
+    char peer_addr[64];
+    inet_ntop(AF_INET, &inaddr.sin_addr, peer_addr, sizeof(peer_addr));
+    bc_log(Debug, "Accepted HLS (SSL) connection: %s", peer_addr);
+
+    return client_ssl;
+}
+
+int hls_ssl::ssl_read(uint8_t *buffer, int size, bool exact)
+{
+    if (_ssl == NULL) return false;
+    int received = 0;
+    int left = size;
+
+    while ((left > 0 && exact) || !received)
+    {
+        int bytes = SSL_read(_ssl, &buffer[received], left);
+        if (bytes <= 0 && SSL_get_error(_ssl, bytes) != SSL_ERROR_WANT_READ)
+        {
+            _last_error = "SSL_read failed";
+            this->shutdown();
+            return bytes;
+        }
+
+        received += bytes;
+        left -= bytes;
+    }
+
+    buffer[received] = 0;
+    return received;
+}
+
+int hls_ssl::ssl_write(const uint8_t *buffer, int length)
+{
+    if (_ssl == NULL) return false;
+    int left = length;
+    int sent = 0;
+
+    while (left > 0)
+    {
+        int bytes = SSL_write(_ssl, &buffer[sent], left);
+        if (bytes <= 0 && SSL_get_error(_ssl, bytes) != SSL_ERROR_WANT_WRITE)
+        {
+            _last_error = "SSL_write failed";
+            this->shutdown();
+            return bytes;
+        }
+
+        sent += bytes;
+        left -= bytes;
+    }
+
+    return sent;
+}
+
+bool hls_ssl::get_peer_cert(std::string &subject, std::string &issuer)
+{
+    X509 *cert = SSL_get_peer_certificate(_ssl);
+    if (cert == NULL) return false;
+
+    char *line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+    if (line != NULL)
+    {
+        subject = std::string(line);
+        delete line;
+    }
+
+    line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+    if (line != NULL)
+    {
+        issuer = std::string(line);
+        delete line;
+    }
+
+    X509_free(cert);
+    return true;
+}
+
+#endif /* HLS_WITH_SSL */
 
 //////////////////////////////////////////////////
 // HLS EVENT HANDLER
@@ -626,7 +865,7 @@ bool hls_session::create_response()
             memcpy(_tx_buffer.data(), response.c_str(), response.length());
             return true;
         }
-        
+
         const char* content_type = content->_fmp4 ? "mp4" : "MP2T";
         std::string response = std::string("HTTP/1.1 206 Partial Content\r\n");
         std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
@@ -1219,7 +1458,7 @@ bool hls_listener::create_socket(uint16_t port)
     addr.sin_port = htons(_port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);;
 
-    _fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    _fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, IPPROTO_TCP);
     if (_fd < 0)
     {
         bc_log(Error, "Failed to create listener socket: (%s)", strerror(errno));
