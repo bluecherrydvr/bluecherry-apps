@@ -36,7 +36,7 @@ extern "C" {
 #include <libavutil/base64.h>
 }
 
-#ifdef HLS_WITH_SSL
+#ifdef BC_HLS_WITH_SSL
 #include <openssl/opensslv.h>
 #include <openssl/rsa.h>
 #include <openssl/evp.h>
@@ -46,7 +46,7 @@ extern "C" {
 #include <sys/fcntl.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#endif /* HLS_WITH_SSL */
+#endif /* BC_HLS_WITH_SSL */
 
 #ifndef PTHREAD_MUTEX_RECURSIVE
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
@@ -72,7 +72,7 @@ static void std_string_append(std::string &source, const char *data, ...)
 // SSL SUPPORT
 //////////////////////////////////////////////////
 
-#ifdef HLS_WITH_SSL
+#ifdef BC_HLS_WITH_SSL
 void hls_ssl::global_init()
 {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -97,12 +97,12 @@ void hls_ssl::global_destroy()
     CRYPTO_cleanup_all_ex_data();
 }
 
-hls_ssl::hls_ssl(int sock, hls_ssl::cert *cert)
+bool hls_ssl::init_server(int sock, hls_ssl::cert *cert)
 {
-    if (_sock < 0)
+    if (sock < 0)
     {
         _last_error = "Invalid TCP socket";
-        return;
+        return false;
     }
 
     _ssl_ctx = SSL_CTX_new(SSLv23_server_method());
@@ -110,40 +110,42 @@ hls_ssl::hls_ssl(int sock, hls_ssl::cert *cert)
     {
         _last_error = "Can not create server SSL context";
         this->shutdown();
-        return;
+        return false;
     }
 
     SSL_CTX_set_ecdh_auto(_ssl_ctx, 1);
-    if (cert == NULL) return;
-
-    /* Note: If verify is enabled, client must send its sertificate */
-    if (cert->verify_flags >= 0) SSL_CTX_set_verify(_ssl_ctx, cert->verify_flags, NULL);
-
-    if (cert->ca_path != NULL)
+    if (cert != NULL)
     {
-        /* Note: Tell the client what certificates to use for verification */
-        if (SSL_CTX_load_verify_locations(_ssl_ctx, cert->ca_path, NULL) <= 0)
+        /* Note: If verify is enabled, client must send its sertificate */
+        if (cert->verify_flags >= 0) SSL_CTX_set_verify(_ssl_ctx, cert->verify_flags, NULL);
+
+        if (cert->ca_path.length())
         {
-            _last_error = "Can not load root ca file (" + std::string(cert->ca_path) + ")";
-            this->shutdown();
-            return;
+            /* Note: Tell the client what certificates to use for verification */
+            if (SSL_CTX_load_verify_locations(_ssl_ctx, cert->ca_path.c_str(), NULL) <= 0)
+            {
+                _last_error = "Can not load root ca file (" + cert->ca_path + ")";
+                this->shutdown();
+                return false;
+            }
+
+            SSL_CTX_set_client_CA_list(_ssl_ctx, SSL_load_client_CA_file(cert->ca_path.c_str()));
         }
 
-        SSL_CTX_set_client_CA_list(_ssl_ctx, SSL_load_client_CA_file(cert->ca_path));
-    }
-
-    if (cert->cert_path != NULL && cert->key_path != NULL)
-    {
-        if (SSL_CTX_use_certificate_file(_ssl_ctx, cert->cert_path, SSL_FILETYPE_PEM) <= 0 ||
-            SSL_CTX_use_PrivateKey_file(_ssl_ctx, cert->key_path, SSL_FILETYPE_PEM) <= 0)
+        if (cert->cert_path.length() && cert->key_path.length())
         {
-            _last_error = "Failet to setup SSL cert/key";
-            this->shutdown();
-            return;
+            if (SSL_CTX_use_certificate_file(_ssl_ctx, cert->cert_path.c_str(), SSL_FILETYPE_PEM) <= 0 ||
+                SSL_CTX_use_PrivateKey_file(_ssl_ctx, cert->key_path.c_str(), SSL_FILETYPE_PEM) <= 0)
+            {
+                _last_error = "Failet to setup SSL cert/key";
+                this->shutdown();
+                return false;
+            }
         }
     }
 
-    _init = true;
+    _sock = sock;
+    return true;
 }
 
 void hls_ssl::shutdown()
@@ -191,13 +193,12 @@ std::string hls_ssl::get_last_error()
     return errstr;
 }
 
-hls_ssl* hls_ssl::accept_new()
+hls_ssl* hls_ssl::accept_new(struct sockaddr_in *inaddr)
 {
     hls_ssl *client_ssl = new hls_ssl;
-    struct sockaddr_in inaddr;
-    socklen_t len = sizeof(inaddr);
+    socklen_t len = sizeof(struct sockaddr_in);
 
-    int sock = accept(_sock, (struct sockaddr*)&inaddr, &len);
+    int sock = accept(_sock, (struct sockaddr*)inaddr, &len);
     if (sock < 0)
     {
         _last_error = "Can not accept to the HLS (SSL) socket";
@@ -215,10 +216,6 @@ hls_ssl* hls_ssl::accept_new()
         return NULL;
     }
 
-    char peer_addr[64];
-    inet_ntop(AF_INET, &inaddr.sin_addr, peer_addr, sizeof(peer_addr));
-    bc_log(Debug, "Accepted HLS (SSL) connection: %s", peer_addr);
-
     return client_ssl;
 }
 
@@ -233,7 +230,9 @@ int hls_ssl::ssl_read(uint8_t *buffer, int size, bool exact)
         int bytes = SSL_read(_ssl, &buffer[received], left);
         if (bytes <= 0 && SSL_get_error(_ssl, bytes) != SSL_ERROR_WANT_READ)
         {
-            _last_error = "SSL_read failed";
+            if (!bytes) _last_error = "Disconnected SSL client";
+            else _last_error = "SSL_read failed";
+
             this->shutdown();
             return bytes;
         }
@@ -291,7 +290,7 @@ bool hls_ssl::get_peer_cert(std::string &subject, std::string &issuer)
     X509_free(cert);
     return true;
 }
-#endif /* HLS_WITH_SSL */
+#endif /* BC_HLS_WITH_SSL */
 
 //////////////////////////////////////////////////
 // HLS EVENT HANDLER
@@ -582,6 +581,14 @@ void hls_date::inc_sec(int sec)
 
 hls_session::~hls_session()
 {
+#ifdef BC_HLS_WITH_SSL
+    if (_ssl != NULL)
+    {
+        delete _ssl;
+        _ssl = NULL;
+    }
+#endif
+
     if (_fd >= 0)
     {
         shutdown(_fd, SHUT_RDWR);
@@ -1010,6 +1017,37 @@ bool hls_session::handle_request(const std::string &request)
 
     return create_response();
 }
+
+#ifdef BC_HLS_WITH_SSL
+static void* hls_session_thread(void *ctx)
+{
+    hls_session *session = (hls_session*)ctx;
+    hls_ssl *ssl = session->get_ssl();
+    uint8_t rx_buffer[HLS_REQUEST_MAX];
+
+    /* Read incomming message from the client */
+    int bytes = ssl->ssl_read(rx_buffer, sizeof(rx_buffer), false);
+    if (bytes <= 0)
+    {
+        bc_log(Error, "%s", ssl->get_last_error().c_str());
+        return NULL;
+    }
+
+    /* Parse and handle the request */
+    std::string request = std::string((char*)rx_buffer, bytes);
+    if (!session->handle_request(request)) bc_log(Warning, "Rejecting HLS request: (%s) %s", session->get_addr(), request.c_str());
+    else bc_log(Debug, "Received HLS request from: client(%s)[%d]: %s", session->get_addr(), ssl->get_fd(), request.c_str());
+
+    /* Send response */
+    const hls_byte_buffer &tx_buffer = session->tx_buffer_get();
+    int sent = ssl->ssl_write(tx_buffer.data(), tx_buffer.size());
+    if (sent <= 0) bc_log(Error, "%s", ssl->get_last_error().c_str());
+
+    /* Finish */
+    delete session;
+    return NULL;
+}
+#endif /* BC_HLS_WITH_SSL */
 
 //////////////////////////////////////////////////
 // HLS CONTENT
@@ -1497,16 +1535,89 @@ bool hls_listener::create_socket(uint16_t port)
     return true;
 }
 
+void hls_listener::set_ssl_ctx(const char *key, const char* crt, const char *ca)
+{
+#ifdef BC_HLS_WITH_SSL
+    /* Mandatory */
+    if (crt != NULL && key != NULL)
+    {
+        _ssl_cert.cert_path = std::string(crt);
+        _ssl_cert.key_path = std::string(key);
+        _use_ssl = true;
+    }
+
+    /* Optional */
+    if (ca != NULL) _ssl_cert.ca_path = std::string(ca);
+#else
+    bc_log(Error, "No SSL support!");
+#endif
+}
+
 bool hls_listener::register_listener(uint16_t port)
 {
     /* Create socket and start listen */
     if (!this->create_socket(port)) return false;
+
+    /* Initialize ssl server context */
+    if (_use_ssl)
+    {
+#ifdef BC_HLS_WITH_SSL
+        bool status = _ssl.init_server(_fd, &_ssl_cert);
+        if (!status) bc_log(Error, "%s", _ssl.get_last_error().c_str());
+        return status;
+#else
+        bc_log(Error, "Requested HTTPS listener without SSL support");
+        return false;
+#endif
+    }
 
     /* Create event instance and add listener socket to the instance  */
     if (!_events.create(0, &_fd, hls_event_callback) ||
         !_events.register_event(this, _fd, EPOLLIN, 0)) return false;
 
     return true;
+}
+
+bool hls_listener::ssl_service()
+{
+#ifdef BC_HLS_WITH_SSL
+    struct sockaddr_in inaddr;
+
+    /* Accept to the new SSL connection request */
+    hls_ssl *client = _ssl.accept_new(&inaddr);
+    if (client == NULL)
+    {
+        bc_log(Error, "%s", _ssl.get_last_error().c_str());
+        sleep(1); // maybe server is too busy, try again
+        return true;
+    }
+
+    /* Initialize new session */
+    hls_session *session = new hls_session;
+    session->set_listener(this);
+    session->set_addr(inaddr.sin_addr);
+    session->set_ssl(client);
+
+    bc_log(Debug, "Connected HLS (SSL) client: %s (%d)", session->get_addr(), client->get_fd());
+
+    pthread_attr_t attr;
+    pthread_t thread_id;
+
+    if (pthread_attr_init(&attr) ||
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) ||
+        pthread_create(&thread_id, &attr, hls_session_thread, session) ||
+        pthread_attr_destroy(&attr))
+    {
+        bc_log(Error, "Can not create HLS session thread: %s", strerror(errno));
+        delete session;
+        return false;
+    }
+
+    return true;
+#endif /* BC_HLS_WITH_SSL */
+
+    bc_log(Error, "No SSL support");
+    return false;
 }
 
 void hls_listener::run()
@@ -1518,8 +1629,8 @@ void hls_listener::run()
     }
 
     bool status = true;
-    while (status) /* Main service loop */
-        status = _events.service(100);
+    if (_use_ssl) while(status) status = ssl_service();
+    else while (status) status = _events.service(100);
 
     /* Thats all */
     close(_fd);

@@ -1569,6 +1569,15 @@ int main(int argc, char **argv)
 	}
 
 	hls = new hls_listener;
+
+	/*
+		Uncomment this lines and provide valid SSL cert and
+		key file paths to enable HLS streaming over HTTPS
+	*/
+	//const char *key_path = "/opt/bluecherry/server.key";
+	//const char *crt_path = "/opt/bluecherry/server.crt";
+	//hls->set_ssl_ctx(key_path, crt_path, NULL);
+
 	if (!hls->register_listener(7003)) {
 		bc_log(Error, "Failed to setup HLS listener");
 		delete hls;

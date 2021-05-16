@@ -25,7 +25,7 @@
 #include <vector>
 #include <deque>
 
-#ifdef HLS_WITH_SSL
+#ifdef BC_HLS_WITH_SSL
 #include <openssl/x509.h>
 #include <openssl/ssl.h>
 
@@ -34,24 +34,25 @@ class hls_ssl
 public:
     struct cert
     {
-        int verify_flags = SSL_VERIFY_PEER;
-        const char *cert_path = NULL;
-        const char *key_path = NULL;
-        const char *ca_path = NULL;
+        int verify_flags = -1; //SSL_VERIFY_PEER;
+        std::string cert_path;
+        std::string key_path;
+        std::string ca_path;
     };
+
+    hls_ssl() {};
+    ~hls_ssl() { shutdown(); }
 
     static void global_init();
     static void global_destroy();
 
-    hls_ssl() {};
-    hls_ssl(int sock, hls_ssl::cert *cert);
-    ~hls_ssl() { shutdown(); }
-
+    bool init_server(int sock, hls_ssl::cert *cert);
     bool get_peer_cert(std::string &subject, std::string &issuer);
+
     int ssl_read(uint8_t* buffer, int size, bool exact);
     int ssl_write(const uint8_t *buffer, int length);
 
-    hls_ssl* accept_new();
+    hls_ssl* accept_new(struct sockaddr_in *inaddr);
     void shutdown();
 
     SSL* get_ssl() { return _ssl; }
@@ -67,13 +68,12 @@ protected:
     SSL_CTX*        _ssl_ctx = NULL;
     SSL*            _ssl = NULL;
     int             _sock = -1;
-    bool            _init = false;
 
     STACK_OF(X509)* _ca = NULL;
     EVP_PKEY*       _key = NULL;
     X509*           _cert = NULL;
 };
-#endif /* HLS_WITH_SSL */
+#endif /* BC_HLS_WITH_SSL */
 
 #define HLS_REQUEST_MAX             4096
 #define HLS_EVENTS_MAX              120000
@@ -150,6 +150,7 @@ public:
     bool handle_request(const std::string &request);
     bool create_response();
 
+    const hls_byte_buffer& tx_buffer_get() { return _tx_buffer; }
     void tx_buffer_append(uint8_t *data, size_t size);
     size_t tx_buffer_advance(size_t size);
     size_t tx_buffer_flush();
@@ -168,6 +169,11 @@ public:
     void set_fd(int fd) { _fd = fd; }
     int get_fd() { return _fd; }
 
+#ifdef BC_HLS_WITH_SSL
+    void set_ssl(hls_ssl* ssl) { _ssl = ssl; }
+    hls_ssl* get_ssl() { return _ssl; }
+#endif
+
 private:
     /* Request */
     std::string     _auth_token;
@@ -180,6 +186,11 @@ private:
     hls_listener*   _listener = NULL;
     hls_event_data* _ev_data = NULL;
     hls_events*     _events = NULL;
+
+#ifdef BC_HLS_WITH_SSL
+    /* SSL support */
+    hls_ssl*         _ssl = NULL;
+#endif
 
     /* rx/tx */
     hls_byte_buffer _tx_buffer;
@@ -276,6 +287,9 @@ public:
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);
 
+    void set_ssl_ctx(const char *key, const char* crt, const char *ca);
+    bool ssl_service();
+
     void set_auth(bool auth) { _auth = auth; }
     bool get_auth() { return _auth; }
 
@@ -285,6 +299,13 @@ private:
     /* HLS window buffer */
     hls_content_map  _content;
     pthread_mutex_t  _mutex;
+
+    /* SSL configuration */
+#ifdef BC_HLS_WITH_SSL
+    hls_ssl::cert   _ssl_cert;
+    hls_ssl         _ssl;
+#endif
+    bool            _use_ssl = false;
 
     /* HLS listener context */
     hls_events      _events;
