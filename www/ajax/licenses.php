@@ -70,7 +70,8 @@ class licenses extends Controller {
 			$status = (int)$ret[1];
 			$message = $this->getLicenseStatusMessage($status);
 			if ($status == Constant('LA_OK')) {
-				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS);
+				$ret = bc_license_check_genuine();
+				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS, $ret);
 				exit();
 			}
 			else {
