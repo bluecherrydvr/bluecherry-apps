@@ -34,7 +34,7 @@ install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_DATA) -D rsyslog.conf \
 		$(DESTDIR)$(etc_dir)/rsyslog.d/10-bluecherry.conf
-	$(INSTALL_DATA) -D lexapi/libLexActivator.so /usr/lib/libLexActivator.so
+	$(INSTALL_DATA) -D lexapi/libLexActivator.so $(DESTDIR)$(lib_dir)/libLexActivator.so
 
 
 clean: FORCE
