@@ -92,13 +92,13 @@ case "$1" in
 		if ! [[ -d /var/lib/bluecherry ]]
 		then
 			mkdir -p /var/lib/bluecherry
-		fi	
+		fi
 		chown -R bluecherry:bluecherry /var/lib/bluecherry
-		chmod -R 770 /var/lib/bluecherry
+		su bluecherry -c "chmod -R 770 /var/lib/bluecherry"
 		if [[ $IN_DEB ]]
 		then
 			chown -R bluecherry:bluecherry /var/run/bluecherry
-			chmod -R 750 /var/run/bluecherry
+			su bluecherry -c "chmod -R 750 /var/run/bluecherry"
 		fi
 
 		# Create the logfile, because rsyslog might not be able to
