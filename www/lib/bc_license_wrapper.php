@@ -61,10 +61,27 @@ function bc_license_check_genuine()
 
 	// If the command is OK
 	if ((int)$output[1] == Constant('LA_OK')) {
-		$left_days = bc_license_genuine_expirydate();
+		$output = bc_license_genuine_expirydate();
+		if (is_null($output)) {
+			$ret[0] = false;
+			$ret[1] = L_LA_E_BC_SERVER;
+		}
+		else if ((int)$output[1] == Constant('LA_OK')) {
+			$ret[0] = true;
+			$left_days = (int)$output[3];
 
-		$ret[0] = true;
-		$ret[1] = L_LA_E_LICENSE_ACTIVATED . strval($left_days);
+			if ((int)$output[2] == 1) { // unlimited
+				$ret[1] = L_LA_E_LICENSE_ACTIVATED;
+			}
+			else {
+				$ret[1] = L_LA_E_LICENSE_ACTIVATED . " Days left: " . strval($left_days);
+			}
+		}
+		else {
+			$ret[0] = false;
+			$ret[1] = licenses::getLicenseStatusMessage((int)$output[1]);
+		}
+
 		return $ret;
 	}
 
@@ -98,11 +115,9 @@ function bc_license_activate_genuine()
 
 function bc_license_genuine_expirydate()
 {
-	$output = bc_license_command(LA_GET_TRIAL_EXPIRYDATE);
-	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
-		return 0;
+	$output = bc_license_command(LA_GET_LICENSE_EXPIRYDATE);
 
-	return (int)$output[2];
+	return $output;
 }
 
 function bc_license_check_trial()

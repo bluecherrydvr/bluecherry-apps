@@ -23,16 +23,18 @@ Possible return codes: LA_OK, TA_FAIL, TA_E_GUID, TA_E_PDETS, TA_E_COM,
 TA_E_IN_VM, TA_E_ANDROID_NOT_INIT
 */
 #define V3LICENSE_API extern "C"
+
 V3LICENSE_API int bc_license_v3_Init();
 V3LICENSE_API int bc_license_v3_IsActivated();
 V3LICENSE_API int bc_license_v3_IsLicenseGenuine();
 V3LICENSE_API int bc_license_v3_IsTrialGenuine();
 V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t length);
-V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate);
+V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(int32_t *isUnlimited, int32_t *expiryDate);
 V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(STRTYPE value, uint32_t length);
 V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *trialExpiryDate);
 V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE productKey);
 V3LICENSE_API int bc_license_v3_IsLicenseValid();
 V3LICENSE_API int bc_license_v3_ActivateTrial();
+
 #endif /* V3LICENSE_PROCESSOR_H */
 

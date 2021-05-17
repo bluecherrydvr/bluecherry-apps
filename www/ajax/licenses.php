@@ -40,7 +40,7 @@ class licenses extends Controller {
 
 			// Show status message if activation fails
 			$status = (int)$ret[1];
-			$message = $this->getLicenseStatusMessage($status);
+			$message = licenses::getLicenseStatusMessage($status);
 			if ($status != Constant('LA_OK')) {
 				data::responseJSON(false, $message, $ret); // L_INVALID_LICENSE
 				exit();
@@ -68,7 +68,7 @@ class licenses extends Controller {
 
 			// Show the relevant message
 			$status = (int)$ret[1];
-			$message = $this->getLicenseStatusMessage($status);
+			$message = licenses::getLicenseStatusMessage($status);
 			if ($status == Constant('LA_OK')) {
 				$ret = bc_license_check_genuine();
 				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS, $ret);
@@ -210,7 +210,7 @@ class licenses extends Controller {
         return $result;
     }
 
-	private function getLicenseStatusMessage($status)
+	public static function getLicenseStatusMessage($status)
 	{
 		$message = L_LA_OK;
 
