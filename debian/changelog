@@ -3,7 +3,7 @@ bluecherry (2:2.8.9) trusty xenial bionic jessie stretch; urgency=medium
  * Fix: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to components (#433)
  * Feature: Implement new announcement / changeling system (#445)
  
-  -- Curtis Hall <chall@corp.bluecherry.net>  Tues, 18 May 2021 17:02:32 +0400
+  -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 18 May 2021 17:02:32 -0600
 
 bluecherry (2:2.8.8) trusty xenial bionic jessie stretch; urgency=low
 
