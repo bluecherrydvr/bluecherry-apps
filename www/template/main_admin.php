@@ -161,6 +161,9 @@
                         <li>
                             <a href="/webhook"><i class="fa fa-cog fa-fw"></i> Webhooks</a>
                         </li>
+                        <li>
+                            <a href="/subdomainprovider"><i class="fa fa-cog fa-fw"></i> Subdomain Provider</a>
+                        </li>
                         <li class="divider"></li>
                         <li class="divider"></li>
 
@@ -307,6 +310,9 @@
     <!-- bootstrap table -->
     <script src="/template/bower_components/bootstrap-table/bootstrap-table.min.js"></script>
 
+    <!-- jquery validation plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.2/jquery.validate.min.js"></script>
+
     <!-- Custom Theme JavaScript -->
     <script type="text/javascript" src="/vars"></script>
     <script src="/template/dist/js/main.js?v=<?php echo time(); ?>"></script>
@@ -329,6 +335,7 @@
     <script src="/template/dist/js/profile.js"></script>
     <script src="/template/dist/js/ptz.js"></script>
     <script src="/template/dist/js/webhook.js"></script>
+    <script src="/template/dist/js/subdomainprovider.js"></script>
 
     <?php echo getJs(); ?>
 </body>
