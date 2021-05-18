@@ -2,8 +2,6 @@
 
 class subdomainproviderbase extends Controller {
 
-    const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
-
     public function __construct() {
         parent::__construct();
         $this->chAccess('admin');
@@ -25,12 +23,12 @@ class subdomainproviderbase extends Controller {
     }
 
     protected function getSubdomainApiBaseUrl() {
-        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
-            self::API_BASE_URL_NAME . '\' LIMIT 1');
+        $subdomain_info = subdomain::getInstance();
+        $result = $subdomain_info->provide_base_url;
 
         if (empty($result)) {
-            throw new \RuntimeException(self::API_BASE_URL_NAME .
-                ' parameter is not defined in global settings');
+            throw new \RuntimeException('subdomain_provide_base_url' .
+                ' parameter is not defined in bluecherry configuration');
         }
 
         return $result;
@@ -48,7 +46,7 @@ class subdomainproviderbase extends Controller {
         $curl = curl_init($baseUrl . $path);
 
         curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 4);
-        curl_setopt($curl,CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($body));
         curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge(['Content-Type: application/json'], $headers));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
