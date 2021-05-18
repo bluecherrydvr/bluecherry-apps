@@ -309,8 +309,6 @@ class data{
         Reply::ajaxDie($status, $message, $data);
 	}
 
-
-
 	public static function last_id(){ #wrapper instead of mysql_insert_id
 		$db = database::getInstance();
 		return $db->last_id();
@@ -1495,9 +1493,6 @@ class Cameras
         data::responseJSON(true, true, $data_r);
     }
 
-
-
-    
     /**
      * Function to be used as array_walk callback for preparing data
      * 
@@ -1522,6 +1517,49 @@ class Cameras
             );
         }
     }
+}
+
+#subdomain
+class subdomain{
+	public static $instance;
+
+	public $provide_base_url;
+	public $admin_token;
+	public $get_token_api;
+
+	private function __construct() {
+		$this->load_config();
+	}
+	public static function getInstance() {
+		self::$instance or self::$instance = new subdomain();
+		return self::$instance;
+	}
+
+    public static function read_config() {
+		$config_file = fopen("/etc/bluecherry.conf", 'r') or die(LANG_DIE_COULDNOTOPENCONF);
+		$config_text = fread($config_file, filesize("/etc/bluecherry.conf"));
+		fclose($config_file);
+
+		$matches = array();
+
+		preg_match("/provide_base_url[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+		$provide_base_url = $matches[1];
+
+		preg_match("/admin_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+		$admin_token = $matches[1];
+
+		preg_match("/get_token_api[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
+		$get_token_api = $matches[1];
+
+        return array($provide_base_url, $admin_token, $get_token_api);
+    }
+
+	private function load_config() {
+        list($provide_base_url, $admin_token, $get_token_api) = subdomain::read_config();
+		$this->provide_base_url = stripslashes($provide_base_url);
+		$this->admin_token      = stripslashes($admin_token);
+		$this->get_token_api    = stripslashes($get_token_api);
+	}
 }
 
 $global_settings = new globalSettings;

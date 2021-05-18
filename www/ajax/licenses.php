@@ -4,10 +4,8 @@ require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 
-	const SUBDOMAIN_PROVIDER_BASE_URL = 'http://23.236.180.59:3000/subdomain-provider';
-	const SUBDOMAIN_API_GET_TOKEN = '/generate-token';
-	const SUBDOMAIN_ADMIN_TOKEN = '8532871313';
-	
+	private $subdomain_info;
+
     public function __construct()
     {
         parent::__construct();
@@ -154,7 +152,8 @@ class licenses extends Controller {
 	private function getSubdomainToken() {
 		$result = array();
 
-		$url = self::SUBDOMAIN_PROVIDER_BASE_URL . self::SUBDOMAIN_API_GET_TOKEN;
+		$this->subdomain_info = subdomain::getInstance();
+		$url = $this->subdomain_info->provide_base_url . $this->subdomain_info->get_token_api;
 		$response = $this->sendHttpReq($url);
 
 		if ($response[0] === false) {
@@ -189,8 +188,9 @@ class licenses extends Controller {
 		
 		$headers = array(
 		   "Accept: application/json",
-		   "Authorization: Bearer " . self::SUBDOMAIN_ADMIN_TOKEN,
+		   "Authorization: Bearer " . $this->subdomain_info->admin_token,
 		);
+
 		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 		//for debug only!
 		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
