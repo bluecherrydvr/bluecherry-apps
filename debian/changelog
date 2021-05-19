@@ -1,21 +1,18 @@
-bluecherry (2:2.8.9) trusty xenial bionic jessie stretch; urgency=medium
+bluecherry (2:2.8.9) trusty xenial bionic jessie stretch; urgency=low
 
- * Fix: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to components (#433)
- * Feature: Implement new announcement / changeling system (#445)
- 
-  -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 18 May 2021 17:02:32 -0600
+  * Fix: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to components (#433)
+
+  * Feature: Implement new announcement / changelog system (#445)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 18 May 2021 17:02:32 -0600
 
 bluecherry (2:2.8.8) trusty xenial bionic jessie stretch; urgency=low
 
-  * Enable 'aresample' filter in ffmpeg build. Fixes issues with playback
-    of recordings having soundtrack in the web UI.
+  * Enable 'aresample' filter in ffmpeg build. Fixes issues with playback of recordings having soundtrack in the web UI.
 
   * Fixed frame downscale precision in the database.
 
-  * Add some hints about checking storage permissions and mounting network
-    storage on in the storage section of web UI. 
-
- -- Anton Sviridenko <anton@corp.bluecherry.net>  Fri, 06 Sep 2019 18:20:00 +0400
+  * Add some hints about checking storage permissions and mounting network storage on in the storage section of web UI.
 
 bluecherry (2:2.8.7) trusty xenial bionic jessie stretch; urgency=low
 
