@@ -216,9 +216,10 @@ void * socketThread(void *arg)
     }
     if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0)
     {
-        uint32_t date = 0;
-        status = bc_license_v3_GetLicenseExpiryDate(&date);
-        snprintf(message, sizeof(message), "%s %d %d\n", command, status, date);
+        int32_t isUnlimited = 0;
+        int32_t date = 0;
+        status = bc_license_v3_GetLicenseExpiryDate(&isUnlimited, &date);
+        snprintf(message, sizeof(message), "%s %d %d %d\n", command, status, isUnlimited, date);
     }
     if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0)
     {

@@ -68,7 +68,15 @@ V3LICENSE_API int bc_license_v3_IsActivated()
 
 V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
 {
-    return IsLicenseGenuine();
+    int status = IsLicenseGenuine();
+    if (status == LA_OK) {
+        bc_log(Info, "License is genuinely activated!\n");
+    }
+    else {
+        bc_log(Info, "License isn't genuinely activated! (status=%d)\n", status);
+    }
+
+    return status;
 }
 
 V3LICENSE_API int bc_license_v3_IsTrialGenuine()
@@ -81,16 +89,28 @@ V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t lengt
     return GetLicenseMetadata(METADATA_KEY, value, length);
 }
 
-V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(uint32_t *expiryDate)
+V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(int32_t *isUnlimited, int32_t *expiryDate)
 {
-    if (!expiryDate)
+    if (!expiryDate || !isUnlimited)
         return LA_FAIL;
 
-    unsigned int date = 0;
-    GetLicenseExpiryDate(&date);
-    int daysLeft = (date - time(NULL)) / 86400;
-    printf("Days left: %d\n", daysLeft);
-    printf("License is genuinely activated!");
+    uint32_t date = 0;
+    int status = GetLicenseExpiryDate(&date);
+    if (status != LA_OK)
+        return status;
+
+    int daysLeft = 0;
+    if (date == 0) {
+        *isUnlimited = 1;
+        daysLeft = -1;
+        bc_log(Info, "Genuine Days left: unlimited\n");
+    }
+    else {
+        *isUnlimited = 0;
+        daysLeft = (date - time(NULL)) / 86400;
+        bc_log(Info, "Genuine Days left: %d\n", daysLeft);
+    }
+
     *expiryDate = daysLeft;
 
     return LA_OK;
@@ -236,21 +256,21 @@ int bc_license_v3_check()
 {
     if (bc_license_v3_init() != LA_OK)
     {
-        printf("%s\n", "bc_license_v3_init");
+        bc_log(Info, "%s\n", "bc_license_v3_init");
         return V3_LICENSE_FAIL;
     }
 
     int status = IsLicenseGenuine();
     if (LA_OK == status)
     {
-        printf("%s\n", "IsLicenseGenuine");
+        bc_log(Info, "%s\n", "IsLicenseGenuine");
         return V3_LICENSE_OK;
     }
     else if (LA_EXPIRED == status 
             || LA_SUSPENDED == status 
             || LA_GRACE_PERIOD_OVER == status)
     {
-        printf("%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
+        bc_log(Info, "%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
         return V3_LICENSE_OK;
     }
     else
@@ -259,7 +279,7 @@ int bc_license_v3_check()
         trialStatus = IsTrialGenuine();
         if (LA_OK == trialStatus)
         {
-            printf("Trial days left: %s", "IsTrialGenuine");
+            bc_log(Info, "Trial days left: %s", "IsTrialGenuine");
             return V3_LICENSE_OK;
         }
         else if (LA_TRIAL_EXPIRED == trialStatus)

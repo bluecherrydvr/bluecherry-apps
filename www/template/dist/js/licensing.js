@@ -19,3 +19,9 @@ function licensingAdd(form, msg) {
 function licensingBeforeAdd(form) {
     $('#licensing-conf').hide();
 }
+
+function licensingActivateTrial(form, msg) {
+   if (msg.status == 6) {
+        $('#general_error').html(msg.data[1]);
+    }
+}

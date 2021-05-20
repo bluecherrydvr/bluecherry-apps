@@ -4,10 +4,8 @@ require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 
-	const SUBDOMAIN_PROVIDER_BASE_URL = 'http://23.236.180.59:3000/subdomain-provider';
-	const SUBDOMAIN_API_GET_TOKEN = '/generate-token';
-	const SUBDOMAIN_ADMIN_TOKEN = '8532871313';
-	
+	private $subdomain_info;
+
     public function __construct()
     {
         parent::__construct();
@@ -23,24 +21,24 @@ class licenses extends Controller {
 
     public function postData()
     {
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
+		if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
 			//  Check if the license to be activated already exits in database
-        	$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-        	if (!empty($exists)){
-        		data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-        		exit();
-        	};
+			$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
+			if (!empty($exists)){
+				data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
+				exit();
+			};
 
 			// Activate the license key
-        	$ret = bc_license_activate_key($_POST['licenseCode']);
+			$ret = bc_license_activate_key($_POST['licenseCode']);
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
-        		exit();
+				exit();
 			}
 
 			// Show status message if activation fails
 			$status = (int)$ret[1];
-			$message = $this->getLicenseStatusMessage($status);
+			$message = licenses::getLicenseStatusMessage($status);
 			if ($status != Constant('LA_OK')) {
 				data::responseJSON(false, $message, $ret); // L_INVALID_LICENSE
 				exit();
@@ -58,26 +56,27 @@ class licenses extends Controller {
 			data::responseJSON(true, L_LICENSE_ADDED, $ret);
 		}
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
+		if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
 			// Activate trial
-        	$ret = bc_license_activate_trial();
+			$ret = bc_license_activate_trial();
 			if (is_null($ret)) {
 				data::responseJSON(false, false);
-        		exit();
+				exit();
 			}
 
 			// Show the relevant message
 			$status = (int)$ret[1];
-			$message = $this->getLicenseStatusMessage($status);
+			$message = licenses::getLicenseStatusMessage($status);
 			if ($status == Constant('LA_OK')) {
-				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS);
+				$ret = bc_license_check_genuine();
+				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS, $ret);
 				exit();
 			}
 			else {
 				data::responseJSON(false, $message, $ret);
 				exit();
 			}
-        }
+		}
 
         // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
         // 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
@@ -153,7 +152,8 @@ class licenses extends Controller {
 	private function getSubdomainToken() {
 		$result = array();
 
-		$url = self::SUBDOMAIN_PROVIDER_BASE_URL . self::SUBDOMAIN_API_GET_TOKEN;
+		$this->subdomain_info = subdomain::getInstance();
+		$url = $this->subdomain_info->provide_base_url . $this->subdomain_info->get_token_api;
 		$response = $this->sendHttpReq($url);
 
 		if ($response[0] === false) {
@@ -188,8 +188,9 @@ class licenses extends Controller {
 		
 		$headers = array(
 		   "Accept: application/json",
-		   "Authorization: Bearer " . self::SUBDOMAIN_ADMIN_TOKEN,
+		   "Authorization: Bearer " . $this->subdomain_info->admin_token,
 		);
+
 		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
 		//for debug only!
 		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
@@ -209,7 +210,7 @@ class licenses extends Controller {
         return $result;
     }
 
-	private function getLicenseStatusMessage($status)
+	public static function getLicenseStatusMessage($status)
 	{
 		$message = L_LA_OK;
 
