@@ -20,5 +20,6 @@ bluecherry:
     provide_base_url = "_SUBDOMAIN_PROVIDER_BASE_URL_";
     admin_token = "_SUBDOMAIN_ADMIN_TOKEN_";
     get_token_api = "_SUBDOMAIN_GET_TOKEN_API_";
+    cryptlex_access_token = "_CRYPTLEX_ACCESS_TOKEN_";
   };
 };

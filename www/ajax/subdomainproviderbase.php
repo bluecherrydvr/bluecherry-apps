@@ -2,6 +2,9 @@
 
 class subdomainproviderbase extends Controller {
 
+    const CRYPTLEX_BASE_URL = 'https://api.cryptlex.com/v3/licenses';
+    private $subdomain_info;
+
     public function __construct() {
         parent::__construct();
         $this->chAccess('admin');
@@ -35,8 +38,74 @@ class subdomainproviderbase extends Controller {
     }
 
     protected function getLicenseId() {
-        // TODO: get license id from cryptlex configuration
-        // TODO: throw an \RuntimeException if license id is not exists
+        // Get the license key from database
+        $licenses = data::query('SELECT `license` FROM `Licenses` LIMIT 1');
+
+        if (empty($licenses)) {
+            throw new \RuntimeException('Any license isn\'t activated' .
+                ' in bluecherry system');
+        }
+
+		$license_key = $licenses[0]['license'];
+
+        // Get the cryptlex access token
+        $this->subdomain_info = subdomain::getInstance();
+
+        // Get the license list
+        $license_id = null;
+		$result = $this->getLicenseList($license_key, $i, 100);
+		$len = count($result);
+
+		if ($len > 0) {
+			$license_id = $result[0]["id"];
+		}
+
+        // Check the result
+        if ($license_id == null) {
+            throw new \RuntimeException('There is no license id' .
+            ' of the activated license key');
+        }
+
+        return $license_id;
+        
+    }
+
+    private function getLicenseList($license_key, $page, $limit) {
+        // Get the URL of web api for querying the license id
+        $baseUrl = self::CRYPTLEX_BASE_URL;
+        $params = array(
+            'page' => $page,
+            'limit' => $limit,
+            'query' => $license_key,
+        );
+    
+        $url = $baseUrl . "?" . http_build_query($params);
+    
+        // Initialize curl
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    
+        $headers = array(
+            "Accept: application/json",
+            "Authorization: Bearer " . $this->subdomain_info->cryptlex_access_token,
+        );
+    
+        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+
+        // Execute curl
+        $result = curl_exec($curl);
+    
+        curl_close($curl);
+    
+        // Check the result
+        if ($result === false) {
+            throw new \RuntimeException('cryptlex api request is failed');
+        }
+        
+        return json_decode($result, true);    
     }
 
     protected function postToApi($path, $body, $headers = []) {
