@@ -38,7 +38,21 @@ if [[ ${PKG_TYPE} == "deb" ]]
 then
 	mkdir ${DST_DIR}/DEBIAN
 	cp ${SRC_PATH}/debian/templates ${DST_DIR}/DEBIAN/ # TODO How to simplify this?
+
+	mkdir -p ${DST_DIR}/usr/share/bluecherry/nginx-includes/
+	cp ${SRC_PATH}/nginx-configs/php/* ${DST_DIR}/usr/share/bluecherry/nginx-includes/
+	_CODENAME_=`cat /etc/os-release | grep UBUNTU_CODENAME | cut -d = -f 2`
+
+	mkdir -p ${DST_DIR}/etc/nginx/sites-enabled/
+	cat ${SRC_PATH}/nginx-configs/bluecherry.conf | sed \
+		-e "s/__BLUECHERRY_DIST_CODENAME__/$_CODENAME_/" \
+		> ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf
+
+	touch ${DST_DIR}/usr/share/bluecherry/nginx-includes/snakeoil.conf
+	echo "ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;" >> ${DST_DIR}/usr/share/bluecherry/nginx-includes/snakeoil.conf
+	echo "ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;" >> ${DST_DIR}/usr/share/bluecherry/nginx-includes/snakeoil.conf
 fi
+
 if [[ ${PKG_TYPE} == "deb" ]]
 then
 	install -d ${DST_DIR}/etc/apache2/sites-available

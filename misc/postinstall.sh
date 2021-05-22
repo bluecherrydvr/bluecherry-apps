@@ -20,36 +20,6 @@ else
     IN_DEB="1"
 fi
 
-# NGINX installation version
-NGINX_VERSION=1.19.10
-CPU_COUNT=`cat /proc/cpuinfo | grep processor -c`
-
-function install_nginx
-{
-	wget "http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz" -O nginx.tar.gz
-	tar -xzvf nginx.tar.gz
-	cd nginx-$NGINX_VERSION
-	./configure --user=bluecherry --group=bluecherry \
-		--with-http_ssl_module \
-		--prefix=/usr/share/nginx \
-		--pid-path=/usr/nginx/pid \
-		--sbin-path=/usr/sbin/nginx \
-		--conf-path=/etc/nginx.conf \
-		--error-log-path=/var/log/nginx/error.log \
-		--http-log-path=/var/log/nginx/access.log
-
-	make -j $CPU_COUNT && make install && cd ..
-	rm -r nginx-$NGINX_VERSION
-	rm nginx.tar.gz
-
-	nginx -t 2>/dev/null > /dev/null
-	if [[ $? == 0 ]]; then
-		echo "Nginx installed successfully"
-	else
-		echo "Nginx configuration failure"
-	fi
-}
-
 function restore_mysql_backup
 {
     # restore_mysql_backup dbname user password host
@@ -154,9 +124,13 @@ case "$1" in
 #			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
 # Backup nginx configuration file in case of Bad Things (tm)
 
+			if test -f "/etc/apache2/sites-enabled/bluecherry.conf"; then
+				rm /etc/apache2/sites-enabled/bluecherry.conf
+			fi
 
-		mkdir -p /usr/share/bluecherry/backups/nginx/
-		tar -czvf /usr/share/bluecherry/backups/nginx/nginx_$(date +'%F_%H-%M-%S').tar.gz /etc/nginx.conf /etc/sites-available/ /etc/sites-enabled/ /etc/nginxconfig.io/
+			mkdir -p /usr/share/bluecherry/backups/nginx/
+			tar -czvf /usr/share/bluecherry/backups/nginx/nginx_$(date +'%F_%H-%M-%S').tar.gz /etc/nginx/
+		fi
 
 # Clean this up for centos...if we ever decide to support CentOS in the future....
 
@@ -186,19 +160,6 @@ case "$1" in
 		fi
 		
 		stop_nginx
-
-	# Check bluecherry version and manualy install nginx if below than 3.0.9
-	BC_VER_RAW=`cat /usr/share/bluecherry/version`
-	BC_VER_MAJOR=`echo $BC_VER_RAW | cut -d. -f1`
-	BC_VER_MINOR=`echo $BC_VER_RAW | cut -d. -f2`
-	BC_VER_REV=`echo $BC_VER_RAW | cut -d. -f3`
-
-	BC_VER_NUM=$BC_VER_MAJOR$BC_VER_MINOR$BC_VER_REV
-
-	if [ "$BC_VER_NUM" -lt 309 ]
-	then
-		install_nginx
-	fi
 
 # Can be removed in v3...no longer needed
 
