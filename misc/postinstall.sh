@@ -155,7 +155,6 @@ case "$1" in
 		then
 # Don't remove bluecherry config file in case of custom SSL certificates			
 #			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
-# Backup nginx configuration file in case of Bad Things (tm)
 
 			if test -f "/etc/apache2/sites-enabled/bluecherry.conf"; then
 				stop_apache
@@ -163,6 +162,7 @@ case "$1" in
 				start_apache
 			fi
 
+			# Backup nginx configuration file in case of Bad Things (tm)
 			mkdir -p /usr/share/bluecherry/backups/nginx/
 			tar -czvf /usr/share/bluecherry/backups/nginx/nginx_$(date +'%F_%H-%M-%S').tar.gz /etc/nginx/
 		fi
@@ -354,7 +354,13 @@ case "$1" in
 			fi
 		fi
 
-		# Reenable our site in nginx
-		start_nginx
+		nginx -t 2>/dev/null > /dev/null
+		if [[ $? == 0 ]]; then
+			# Reenable our site in nginx
+			start_nginx
+		else
+			echo "Nginx configuration failure"
+		fi
+
 		;;
 esac
