@@ -79,6 +79,39 @@ function stop_nginx
 	fi
 }
 
+function start_apache
+{
+	if [[ $IN_DEB ]]
+	then
+
+		# Start back the Apache, just in case we have jumped into here from the middle of upgrade procedure
+		if [ ! -z `which service` ]; then
+			service apache2 start || true
+		else
+			invoke-rc.d apache2 start || true
+		fi
+	fi
+	if [[ $IN_RPM ]]
+	then
+		systemctl start httpd.service
+	fi
+}
+
+function stop_apache
+{
+	if [[ $IN_DEB ]]
+	then
+		if [ ! -z `which service` ]
+		then
+			service apache2 stop || true
+		else
+			invoke-rc.d apache2 stop || true
+		fi
+	else
+		systemctl stop httpd.service
+	fi
+}
+
 # 1 - rpm install, 2 - rpm upgrade
 case "$1" in
 	configure|reconfigure|1|2)
@@ -125,7 +158,9 @@ case "$1" in
 # Backup nginx configuration file in case of Bad Things (tm)
 
 			if test -f "/etc/apache2/sites-enabled/bluecherry.conf"; then
+				stop_apache
 				rm /etc/apache2/sites-enabled/bluecherry.conf
+				start_apache
 			fi
 
 			mkdir -p /usr/share/bluecherry/backups/nginx/
