@@ -51,7 +51,7 @@ class licenses extends Controller {
 
 			// Update the general notification in the page
 			$ret = bc_license_check_genuine();
-			data::responseJSON(true, L_LICENSE_ADDED, $ret);
+			data::responseJSON(true, L_LICENSE_ACTIVATED, $ret);
 		}
 
 		if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
