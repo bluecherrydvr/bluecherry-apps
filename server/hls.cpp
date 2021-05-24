@@ -1035,7 +1035,6 @@ bool hls_session::create_response()
 
 bool hls_session::authenticate(const std::string &uri, const std::string &request)
 {
-    return true;
     if (_type == request_type::payload ||
         !get_listener()->get_auth()) return true;
 
