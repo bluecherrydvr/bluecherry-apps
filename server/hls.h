@@ -135,6 +135,8 @@ public:
     {
         invalid = 0,
         unauthorized,
+        rec_playlist,
+        recording,
         playlist,
         initial,
         payload,
@@ -176,6 +178,7 @@ public:
 
 private:
     /* Request */
+    std::string     _recording;
     std::string     _auth_token;
     request_type    _type = invalid;
     uint32_t        _segment_id = 0;

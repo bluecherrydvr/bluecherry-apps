@@ -21,6 +21,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 
 #include <string>
@@ -782,6 +783,92 @@ bool hls_session::create_response()
 
         return true;
     }
+    else if (_type == hls_session::request_type::rec_playlist)
+    {
+        struct stat buffer;
+        if (stat(_recording.c_str(), &buffer) != 0)
+        {
+            bc_log(Warning, "Requested HLS recording is not found: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        AVFormatContext* pFormatCtx = avformat_alloc_context();
+        if (pFormatCtx == NULL)
+        {
+            bc_log(Error, "Failed to allocate av format context for recording: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        int ret = avformat_open_input(&pFormatCtx, _recording.c_str(), NULL, NULL);
+        if (ret != 0)
+        {
+            bc_log(Error, "HLS Failed to open input: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+            avformat_free_context(pFormatCtx);
+            return true;
+        }
+
+        ret = avformat_find_stream_info(pFormatCtx,NULL);
+        if (ret < 0)
+        {
+            bc_log(Error, "HLS Failed analyze file: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+            avformat_close_input(&pFormatCtx);
+            avformat_free_context(pFormatCtx);
+            return true;
+        }
+
+        double duration = (double)pFormatCtx->duration / (double)1000000;
+        avformat_close_input(&pFormatCtx);
+        avformat_free_context(pFormatCtx);
+
+        std::string body;
+        std_string_append(body, "#EXTM3U\n");
+        std_string_append(body, "#EXT-X-VERSION: 7\n");
+        std_string_append(body, "#EXT-X-TARGETDURATION: %.f\n", duration + 1);
+        std_string_append(body, "#EXT-X-MEDIA-SEQUENCE: %u\n", 0);
+        std_string_append(body, "#EXT-X-PLAYLIST-TYPE:VOD\n");
+
+        std_string_append(body, "#EXTINF:%f,\n", duration);
+        std_string_append(body, "%s\n", _recording.c_str());
+        std_string_append(body, "#EXT-X-ENDLIST\n");
+
+        std::string response = std::string("HTTP/1.1 200 OK\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: %s\r\n", "application/vnd.apple.mpegurl");
+        std_string_append(response, "Cache-Control: %s\r\n", "no-cache");
+        std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
+        response.append(body);
+
+        _tx_buffer.resize(response.length());
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        return true;
+    }
     else if (_type == hls_session::request_type::initial)
     {
         hls_content *content = _listener->get_hls_content(_device_id);
@@ -891,12 +978,64 @@ bool hls_session::create_response()
         delete segment;
         return true;
     }
+    else if (_type == hls_session::request_type::recording)
+    {
+        struct stat buffer;
+        if (stat(_recording.c_str(), &buffer) != 0)
+        {
+            bc_log(Warning, "Requested HLS recording is not found: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        FILE *fp = fopen(_recording.c_str(), "rb");
+        if (fp == NULL)
+        {
+            bc_log(Error, "HLS Failed to open recording: %s", _recording.c_str());
+            std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+
+            _tx_buffer.resize(response.length());
+            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            return true;
+        }
+
+        fseek(fp, 0, SEEK_END);
+        long fsize = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+
+        std::string response = std::string("HTTP/1.1 200 OK\r\n");
+        std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
+        std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+        std_string_append(response, "Content-Type: video/mp4\r\n");
+        std_string_append(response, "Cache-Control: no-cache\r\n");
+        std_string_append(response, "Accept-Ranges: bytes\r\n");
+        std_string_append(response, "Connection: close\r\n");
+        std_string_append(response, "Server: bluechery\r\n");
+        std_string_append(response, "Content-Length: %ld\r\n\r\n", fsize);
+
+        size_t response_size = response.length() + fsize;
+        _tx_buffer.resize(response_size);
+
+        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        fread(_tx_buffer.data() + response.length(), 1, fsize, fp);
+
+        fclose(fp);
+        return true;
+    }
 
     return false;
 }
 
 bool hls_session::authenticate(const std::string &uri, const std::string &request)
 {
+    return true;
     if (_type == request_type::payload ||
         !get_listener()->get_auth()) return true;
 
@@ -966,29 +1105,58 @@ bool hls_session::authenticate(const std::string &uri, const std::string &reques
 
 bool hls_session::handle_request(const std::string &request)
 {
+    /* Get start position of URL */
     size_t start_posit = request.find("/");
     if (start_posit == std::string::npos) return false;
 
+    /* Get end position of URL */
     size_t end_posit = request.find(" ", start_posit);
     if (end_posit == std::string::npos) return false;
 
+    /* Calculate URL length */
     size_t url_length = end_posit - start_posit;
     std::string url = request.substr(start_posit, url_length);
 
-    size_t posit = url.find("/", 1);
-    if (posit == std::string::npos) return create_response();
-    _device_id = std::stoi(url.substr(1, posit));
+    /* Authenticate request */
+    if (!authenticate(url, request))
+    {
+        _type = request_type::unauthorized;
+        return create_response();
+    }
+
+    /* TODO: This is a temporary log */
+    bc_log(Info, "HLS URL: %s", url.c_str());
 
     if (url.find("/index.m3u8") != std::string::npos)
     {
-        _type = request_type::index;
+        size_t posit = url.find("recording=");
+        if (posit != std::string::npos)
+        {
+            /* Requested recording playlist */
+            posit += 10; // length of recording=
+            _recording = url.substr(posit, std::string::npos);
+            if (!_recording.length()) return create_response();
+
+            _type = request_type::rec_playlist;
+            return create_response();
+        }
+        else
+        {
+            /* Requested live view index */
+            _type = request_type::index;
+        }
     }
     else if (url.find("/init.mp4") != std::string::npos)
     {
+        /* Requested live view initial segment */
         _type = request_type::initial;
     }
     else if (url.find("/playlist.m3u8") != std::string::npos)
     {
+        /* Requested live view playlist */
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return create_response();
+
         size_t offset = posit + 1;
         posit = url.find("/", offset);
         if (posit == std::string::npos) return create_response();
@@ -998,6 +1166,10 @@ bool hls_session::handle_request(const std::string &request)
     else if ((url.find("/payload.m4s") != std::string::npos) ||
             (url.find("/payload.ts") != std::string::npos))
     {
+        /* Requested live view payload */
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return create_response();
+
         size_t offset = posit + 1;
         posit = url.find("/", offset);
         if (posit == std::string::npos) return create_response();
@@ -1011,10 +1183,19 @@ bool hls_session::handle_request(const std::string &request)
         _segment_id = std::stoi(url.substr(posit, length));
         _type = request_type::payload;
     }
+    else if (url.find(".mp4") != std::string::npos)
+    {
+        /* Requested recording file */
+        _recording = url;
+        _type = request_type::recording;
+        return create_response();
+    }
+    
+    size_t posit = url.find("/", 1);
+    if (posit == std::string::npos) return create_response();
+    _device_id = std::stoi(url.substr(1, url.find("/", 1)));
 
-    if (!authenticate(url, request))
-        _type = request_type::unauthorized;
-
+    /* At this condition, live view request is valid */
     return create_response();
 }
 
