@@ -2,9 +2,7 @@
 
 class subdomainproviderbase extends Controller {
 
-    const CRYPTLEX_BASE_URL = 'https://api.cryptlex.com/v3/licenses';
     const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
-    private $subdomain_info;
 
     public function __construct() {
         parent::__construct();
@@ -35,7 +33,7 @@ class subdomainproviderbase extends Controller {
                 ' parameter is not defined in global settings');
         }
 
-        return $result;
+        return $result[0]['value'];
     }
 
     protected function getLicenseId() {
@@ -49,64 +47,20 @@ class subdomainproviderbase extends Controller {
 
 		$license_key = $licenses[0]['license'];
 
-        // Get the cryptlex access token
-        $this->subdomain_info = subdomain::getInstance();
-
-        // Get the license list
-        $license_id = null;
-		$result = $this->getLicenseList($license_key, $i, 100);
-		$len = count($result);
-
-		if ($len > 0) {
-			$license_id = $result[0]["id"];
-		}
-
-        // Check the result
-        if ($license_id == null) {
-            throw new \RuntimeException('There is no license id' .
-            ' of the activated license key');
+        // Get the license id
+        $result = $this->postToApi('/get-license-id', [
+            'licenseKey' => $license_key
+        ]);
+    
+        if (empty($result['success'])) {
+            throw new \RuntimeException($license_key .
+                '\'s id not found in cryptlex');
         }
+
+        $license_id = $result['licenseId'];
 
         return $license_id;
         
-    }
-
-    private function getLicenseList($license_key, $page, $limit) {
-        // Get the URL of web api for querying the license id
-        $baseUrl = self::CRYPTLEX_BASE_URL;
-        $params = array(
-            'page' => $page,
-            'limit' => $limit,
-            'query' => $license_key,
-        );
-    
-        $url = $baseUrl . "?" . http_build_query($params);
-    
-        // Initialize curl
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    
-        $headers = array(
-            "Accept: application/json",
-            "Authorization: Bearer " . $this->subdomain_info->cryptlex_access_token,
-        );
-    
-        curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-
-        // Execute curl
-        $result = curl_exec($curl);
-    
-        curl_close($curl);
-    
-        // Check the result
-        if ($result === false) {
-            throw new \RuntimeException('cryptlex api request is failed');
-        }
-        
-        return json_decode($result, true);    
     }
 
     protected function postToApi($path, $body, $headers = []) {
@@ -125,7 +79,6 @@ class subdomainproviderbase extends Controller {
         $result = curl_exec($curl);
 
         curl_close($curl);
-
 
         if ($result === false) {
             throw new \RuntimeException('api request is failed');

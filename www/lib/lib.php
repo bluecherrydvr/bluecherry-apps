@@ -1544,16 +1544,12 @@ class subdomain{
 		preg_match("/admin_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
 		$admin_token = $matches[1];
 
-		preg_match("/cryptlex_access_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
-		$cryptlex_access_token = $matches[1];
-
         return array($admin_token, $cryptlex_access_token);
     }
 
 	private function load_config() {
-        list($admin_token, $cryptlex_access_token) = subdomain::read_config();
-		$this->admin_token           = stripslashes($admin_token);
-		$this->cryptlex_access_token = stripslashes($cryptlex_access_token);
+        list($admin_token) = subdomain::read_config();
+		$this->admin_token = stripslashes($admin_token);
 	}
 }
 

@@ -18,6 +18,5 @@ bluecherry:
   subdomain:
   {
     admin_token = "_SUBDOMAIN_ADMIN_TOKEN_";
-    cryptlex_access_token = "_CRYPTLEX_ACCESS_TOKEN_";
   };
 };
