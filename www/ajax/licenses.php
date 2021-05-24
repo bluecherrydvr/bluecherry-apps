@@ -4,6 +4,9 @@ require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 
+    const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
+    const GET_TOKEN_API = '/generate-token';
+
 	private $subdomain_info;
 
     public function __construct()
@@ -149,11 +152,25 @@ class licenses extends Controller {
 		return $status;
 	}
 
+    private function getSubdomainApiBaseUrl() {
+        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
+            self::API_BASE_URL_NAME . '\' LIMIT 1');
+
+        if (empty($result)) {
+            throw new \RuntimeException(self::API_BASE_URL_NAME .
+                ' parameter is not defined in global settings');
+        }
+
+        return $result[0]['value'];
+    }
+
 	private function getSubdomainToken() {
 		$result = array();
 
 		$this->subdomain_info = subdomain::getInstance();
-		$url = $this->subdomain_info->provide_base_url . $this->subdomain_info->get_token_api;
+		$baseUrl = $this->getSubdomainApiBaseUrl();
+		$url = $baseUrl . self::GET_TOKEN_API;
+
 		$response = $this->sendHttpReq($url);
 
 		if ($response[0] === false) {

@@ -105,6 +105,10 @@ define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given
 define('G_VAAPI_DEVICE', 'VAAPI device');
 define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of video decoding and encoding');
 
+define('G_SUBDOMAIN_TITLE', 'Subdomain Provider');
+define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
+define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');

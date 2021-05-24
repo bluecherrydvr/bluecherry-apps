@@ -3,6 +3,7 @@
 class subdomainproviderbase extends Controller {
 
     const CRYPTLEX_BASE_URL = 'https://api.cryptlex.com/v3/licenses';
+    const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
     private $subdomain_info;
 
     public function __construct() {
@@ -26,12 +27,12 @@ class subdomainproviderbase extends Controller {
     }
 
     protected function getSubdomainApiBaseUrl() {
-        $subdomain_info = subdomain::getInstance();
-        $result = $subdomain_info->provide_base_url;
+        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
+            self::API_BASE_URL_NAME . '\' LIMIT 1');
 
         if (empty($result)) {
-            throw new \RuntimeException('subdomain_provide_base_url' .
-                ' parameter is not defined in bluecherry configuration');
+            throw new \RuntimeException(self::API_BASE_URL_NAME .
+                ' parameter is not defined in global settings');
         }
 
         return $result;

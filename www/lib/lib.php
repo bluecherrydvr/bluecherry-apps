@@ -1523,9 +1523,7 @@ class Cameras
 class subdomain{
 	public static $instance;
 
-	public $provide_base_url;
 	public $admin_token;
-	public $get_token_api;
 	public $cryptlex_access_token;
 
 	private function __construct() {
@@ -1543,26 +1541,18 @@ class subdomain{
 
 		$matches = array();
 
-		preg_match("/provide_base_url[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
-		$provide_base_url = $matches[1];
-
 		preg_match("/admin_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
 		$admin_token = $matches[1];
-
-		preg_match("/get_token_api[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
-		$get_token_api = $matches[1];
 
 		preg_match("/cryptlex_access_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
 		$cryptlex_access_token = $matches[1];
 
-        return array($provide_base_url, $admin_token, $get_token_api, $cryptlex_access_token);
+        return array($admin_token, $cryptlex_access_token);
     }
 
 	private function load_config() {
-        list($provide_base_url, $admin_token, $get_token_api, $cryptlex_access_token) = subdomain::read_config();
-		$this->provide_base_url      = stripslashes($provide_base_url);
+        list($admin_token, $cryptlex_access_token) = subdomain::read_config();
 		$this->admin_token           = stripslashes($admin_token);
-		$this->get_token_api         = stripslashes($get_token_api);
 		$this->cryptlex_access_token = stripslashes($cryptlex_access_token);
 	}
 }
