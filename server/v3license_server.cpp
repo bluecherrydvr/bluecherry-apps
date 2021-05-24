@@ -230,12 +230,21 @@ void * socketThread(void *arg)
     if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
     {
         if (!param[1]){
-            bc_log(Error, "parameter is null: %s",param[1]);
+            bc_log(Error, "license key is null or empty");
             snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
         }
         else {
             status = bc_license_v3_ActivateLicense(param[1]);
             snprintf(message, sizeof(message), "%s %d\n", command, status);
+
+            if (status == LA_OK) {
+                char licenseMeta[BUF_MAX] = {0};
+                status = bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
+
+                if (status == LA_OK) {
+                    bc_log(Info, "License authorized for %s cameras", licenseMeta);
+                }
+            }
         }
     }
     if (strcmp(command, "bc_v3_license_ActivateTrial") == 0)
@@ -260,7 +269,6 @@ void * socketThread(void *arg)
     }
 
     // Exit the thread
-    bc_log(Info, "Exit socketThread %d.", newSocket);
     close(newSocket);
     pthread_exit(0);
 }

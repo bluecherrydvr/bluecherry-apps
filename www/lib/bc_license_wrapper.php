@@ -106,13 +106,6 @@ function bc_license_check_genuine()
 	return $ret;
 }
 
-function bc_license_activate_genuine()
-{
-	$output = bc_license_command(LA_ACTIVATE_LICENSE);
-
-	return $output;
-}
-
 function bc_license_genuine_expirydate()
 {
 	$output = bc_license_command(LA_GET_LICENSE_EXPIRYDATE);
