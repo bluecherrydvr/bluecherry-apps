@@ -4,11 +4,6 @@ require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 
-    const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
-    const GET_TOKEN_API = '/generate-token';
-
-	private $subdomain_info;
-
     public function __construct()
     {
         parent::__construct();
@@ -108,26 +103,6 @@ class licenses extends Controller {
 			data::responseJSON(true);
 		}
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'getToken'){
-			// Get a new subdomain token from the subdomain provider
-			$result = $this->getSubdomainToken();
-			if ($result[0] == false) {
-				data::responseJSON(false, $result[1]);
-				exit();
-			}
-
-			// Add the new subdomain token to database
-			$result = $this->updateSubdomainToken($result[1]);
-			if ($result) {
-				data::responseJSON(true, L_LA_E_SUBDOMAIN_TOKEN_GOT);
-				exit();
-			}
-			else {
-				data::responseJSON(false, L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE);
-				exit();
-			}
-		}
-
     }
 
 	private function updateVerifiedLicense($licenseCode) {
@@ -144,88 +119,6 @@ class licenses extends Controller {
 
 		return $result;
 	}
-
-	private function updateSubdomainToken($token) {
-		$status = true;
-		$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('G_SUBDOMAIN_TOKEN', '{$token}') ON DUPLICATE KEY UPDATE value='{$token}'", true)) ? $status : false;
-
-		return $status;
-	}
-
-    private function getSubdomainApiBaseUrl() {
-        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
-            self::API_BASE_URL_NAME . '\' LIMIT 1');
-
-        if (empty($result)) {
-            throw new \RuntimeException(self::API_BASE_URL_NAME .
-                ' parameter is not defined in global settings');
-        }
-
-        return $result[0]['value'];
-    }
-
-	private function getSubdomainToken() {
-		$result = array();
-
-		$this->subdomain_info = subdomain::getInstance();
-		$baseUrl = $this->getSubdomainApiBaseUrl();
-		$url = $baseUrl . self::GET_TOKEN_API;
-
-		$response = $this->sendHttpReq($url);
-
-		if ($response[0] === false) {
-			$result[0] = false;
-			$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $response[1] . ')';
-		}
-		else {
-			$arr = json_decode($response[1]);
-			if ($arr === null) {
-				$result[0] = false;
-				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (Invalid repsonse)';
-			}
-			else if ($arr->token === null) {
-				$result[0] = false;
-				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $arr->message . ')';
-			}
-			else {
-				$result[0] = true;
-				$result[1] = $arr->token;
-			}
-		}
-
-		return $result;
-	}
-
-    private function sendHttpReq($url)
-    {
-		$result = array();
-		$curl = curl_init();
-		curl_setopt($curl, CURLOPT_URL, $url);
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		
-		$headers = array(
-		   "Accept: application/json",
-		   "Authorization: Bearer " . $this->subdomain_info->admin_token,
-		);
-
-		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-		//for debug only!
-		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		
-		$resp = curl_exec($curl);
-		if ($resp === false) {
-			$result[0] = false;
-			$result[1] = curl_error($curl);
-		}
-		else {
-			$result[0] = true;
-			$result[1] = $resp;
-		}
-		curl_close($curl);
-
-        return $result;
-    }
 
 	public static function getLicenseStatusMessage($status)
 	{

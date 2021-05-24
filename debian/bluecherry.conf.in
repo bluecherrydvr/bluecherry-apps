@@ -15,8 +15,4 @@ bluecherry:
     host = "_DBC_HOST_";
     userhost = "_DBC_USERHOST_";
   };
-  subdomain:
-  {
-    admin_token = "_SUBDOMAIN_ADMIN_TOKEN_";
-  };
 };

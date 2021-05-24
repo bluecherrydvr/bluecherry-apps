@@ -1519,43 +1519,8 @@ class Cameras
     }
 }
 
-#subdomain
-class subdomain{
-	public static $instance;
-
-	public $admin_token;
-	public $cryptlex_access_token;
-
-	private function __construct() {
-		$this->load_config();
-	}
-	public static function getInstance() {
-		self::$instance or self::$instance = new subdomain();
-		return self::$instance;
-	}
-
-    public static function read_config() {
-		$config_file = fopen("/etc/bluecherry.conf", 'r') or die(LANG_DIE_COULDNOTOPENCONF);
-		$config_text = fread($config_file, filesize("/etc/bluecherry.conf"));
-		fclose($config_file);
-
-		$matches = array();
-
-		preg_match("/admin_token[[:blank:]]*=[[:blank:]]*\"(.*)\";/", $config_text, $matches) or die(LANG_DIE_COULDNOTOPENCONF);
-		$admin_token = $matches[1];
-
-        return array($admin_token, $cryptlex_access_token);
-    }
-
-	private function load_config() {
-        list($admin_token) = subdomain::read_config();
-		$this->admin_token = stripslashes($admin_token);
-	}
-}
-
 $global_settings = new globalSettings;
 $varpub = VarPub::get();
 $varpub->global_settings = $global_settings;
-
 
 ?>

@@ -340,12 +340,6 @@ span.input-group-unstyled {
 	cursor: pointer; 
 }
 
-.token-button {
-    position: absolute;
-    top: -49px;
-    left: 90px;
-}
-
 .visible-inline-block {
 	display: inline-block !important;
 }

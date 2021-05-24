@@ -601,7 +601,6 @@ define('L_ADDCODE', 'Add a license code');
 define('L_ADD', 'Add');
 define('L_PORTS', 'Ports');
 define('L_CONFIRMCODE', 'Confirm a code');
-define('L_GET_TOKEN', 'Get token');
 
 define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
 define('L_INVALID_LICENSE', 'The code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
@@ -675,10 +674,6 @@ define('L_LA_E_LICENSE_ACTIVATED', 'License is genuinely activated.');
 define('L_LA_E_TRIAL_ACTIVATE_REQUIRE', 'Either trial has not started or has been tampered, for activating trial please click here.<br><form action="/licenses?mode=activate_trial" method="POST"><button class="link-button send-req-form" type="submit" data-func-after="licensingActivateTrial">Activate trial.</button></form>');
 define('L_LA_E_TRIAL_ACTIVATE_SUCCESS', 'Trial is successfully activated.');
 define('L_LA_E_UNKNOWN', 'Unknown error.');
-
-define('L_LA_E_SUBDOMAIN_TOKEN_GOT', 'Successfully got a new token from the subdomain provider.');
-define('L_LA_E_SUBDOMAIN_TOKEN_NOT_GET', 'Could not get a new token from the subdomain provider.');
-define('L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE', 'Could not add a new token to database.');
 
 #Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');
