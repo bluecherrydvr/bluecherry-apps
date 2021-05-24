@@ -45,5 +45,5 @@ apt-get update
 
 apt-get upgrade -y -V
 
-apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo $ADDITIONAL_PKGS
+apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev $ADDITIONAL_PKGS
 
