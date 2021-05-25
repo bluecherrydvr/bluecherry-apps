@@ -87,7 +87,6 @@ class subdomainprovider extends subdomainproviderbase
             return;
         }
 
-
         header('Location: /subdomainprovider?status=1');
     }
 

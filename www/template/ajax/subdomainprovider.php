@@ -7,7 +7,9 @@
             if (!empty($_GET['status'])) {
                 echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
             } else {
-                echo '<div class="alert alert-success" role="alert">An error occured during configuration save!</div>';
+                echo '<div class="alert alert-success" role="alert">An error occured during book!
+                        <br>Please check that the relevant API is available or network connection.
+                      </div>';
             }
 
         } ?>
