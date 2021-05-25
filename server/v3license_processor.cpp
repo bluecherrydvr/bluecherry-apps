@@ -144,7 +144,7 @@ int activate()
     status = SetLicenseKey(LICENSE_KEY);
     if (LA_OK != status)
     {
-        bc_log(Error, "V3_LICENSE_SETLICENSEKEY FAIL: %d", status);
+        bc_log(Error, "Setting license key failed (Error code: %d)", status);
         return status;
     }
 
@@ -153,11 +153,11 @@ int activate()
             || LA_EXPIRED == status 
             || LA_SUSPENDED == status)
     {
-        bc_log(Info, "V3_LICENSE_OK: %d", status);
+        bc_log(Info, "Activating license successed (Status code: %d)", status);
     }
     else
     {
-        bc_log(Error, "V3_LICENSE_FAIL: %d", status);
+        bc_log(Error, "Activating license failed (Error code: %d)", status);
     }
     return status;
 }
@@ -170,14 +170,14 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
     status = bc_license_v3_Init();
     if (LA_OK != status)
     {
-        bc_log(Error, "V3_LICENSE_INITFAIL: %d", status);
+        bc_log(Error, "Initializing license failed (Error code: %d)", status);
         return status;
     }
 
     status = SetLicenseKey(licenseKey);
     if (LA_OK != status)
     {
-        bc_log(Error, "V3_LICENSE_KEY_SETUP_FAIL: %d", status);
+        bc_log(Error, "Setting license key failed (Error code: %d)", status);
         return status;
     }
 
@@ -186,7 +186,7 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
             || LA_EXPIRED == status 
             || LA_SUSPENDED == status)
     {
-        bc_log(Info, "V3_LICENSE_OK: %d", status);
+        bc_log(Info, "Activating license successed (Status code: %d)", status);
         return status;
     }
     else
@@ -206,95 +206,5 @@ V3LICENSE_API int bc_license_v3_ActivateTrial()
 {
     return ActivateTrial();
 }
-
-#if 0
-int bc_license_v3_init()
-{
-    int status;
-
-    status = SetProductData(PRODUCT_DATA);
-    if (LA_OK != status)
-    {
-        bc_log(Info, "SetProductData: %s", strerror(status));
-        return V3_LICENSE_FAIL;
-    }
-    status = SetProductId(PRODUCT_ID, LA_USER);
-    if (LA_OK != status)
-    {
-        bc_log(Error, "SetProductId: %s", strerror(status));
-        return V3_LICENSE_FAIL;
-    }
-
-    status = SetAppVersion(PRODUCT_VERSION);
-    if (LA_OK != status)
-    {
-        bc_log(Error, "SetAppVersion: %s", strerror(status));
-        return V3_LICENSE_FAIL;
-    }
-
-    return V3_LICENSE_OK;
-}
-
-
-// Ideally on a button click inside a dialog
-int activateTrial()
-{
-    int status;
-
-    status = ActivateTrial();
-    if (LA_OK == status)
-    {
-        return V3_LICENSE_OK;
-    }
-    else
-    {
-        return V3_LICENSE_FAIL;
-    }
-}
-
-int bc_license_v3_check()
-{
-    if (bc_license_v3_init() != LA_OK)
-    {
-        bc_log(Info, "%s\n", "bc_license_v3_init");
-        return V3_LICENSE_FAIL;
-    }
-
-    int status = IsLicenseGenuine();
-    if (LA_OK == status)
-    {
-        bc_log(Info, "%s\n", "IsLicenseGenuine");
-        return V3_LICENSE_OK;
-    }
-    else if (LA_EXPIRED == status 
-            || LA_SUSPENDED == status 
-            || LA_GRACE_PERIOD_OVER == status)
-    {
-        bc_log(Info, "%s\n", "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER");
-        return V3_LICENSE_OK;
-    }
-    else
-    {
-        int trialStatus;
-        trialStatus = IsTrialGenuine();
-        if (LA_OK == trialStatus)
-        {
-            bc_log(Info, "Trial days left: %s", "IsTrialGenuine");
-            return V3_LICENSE_OK;
-        }
-        else if (LA_TRIAL_EXPIRED == trialStatus)
-        {
-            // Time to buy the license and activate the app
-            return activate();
-        }
-        else
-        {
-            // Activating the trial
-            return activateTrial();
-        }
-    }
-    return V3_LICENSE_OK;
-}
-#endif /*  if 0 */
 
 #endif /* V3_LICENSING */

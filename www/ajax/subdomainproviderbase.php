@@ -2,6 +2,8 @@
 
 class subdomainproviderbase extends Controller {
 
+    const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
+
     public function __construct() {
         parent::__construct();
         $this->chAccess('admin');
@@ -23,20 +25,42 @@ class subdomainproviderbase extends Controller {
     }
 
     protected function getSubdomainApiBaseUrl() {
-        $subdomain_info = subdomain::getInstance();
-        $result = $subdomain_info->provide_base_url;
+        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
+            self::API_BASE_URL_NAME . '\' LIMIT 1');
 
         if (empty($result)) {
-            throw new \RuntimeException('subdomain_provide_base_url' .
-                ' parameter is not defined in bluecherry configuration');
+            throw new \RuntimeException(self::API_BASE_URL_NAME .
+                ' parameter is not defined in global settings');
         }
 
-        return $result;
+        return $result[0]['value'];
     }
 
     protected function getLicenseId() {
-        // TODO: get license id from cryptlex configuration
-        // TODO: throw an \RuntimeException if license id is not exists
+        // Get the license key from database
+        $licenses = data::query('SELECT `license` FROM `Licenses` LIMIT 1');
+
+        if (empty($licenses)) {
+            throw new \RuntimeException('Any license isn\'t activated' .
+                ' in bluecherry system');
+        }
+
+		$license_key = $licenses[0]['license'];
+
+        // Get the license id
+        $result = $this->postToApi('/get-license-id', [
+            'licenseKey' => $license_key
+        ]);
+    
+        if (empty($result['success'])) {
+            throw new \RuntimeException($license_key .
+                '\'s id not found in cryptlex');
+        }
+
+        $license_id = $result['licenseId'];
+
+        return $license_id;
+        
     }
 
     protected function postToApi($path, $body, $headers = []) {
@@ -55,7 +79,6 @@ class subdomainproviderbase extends Controller {
         $result = curl_exec($curl);
 
         curl_close($curl);
-
 
         if ($result === false) {
             throw new \RuntimeException('api request is failed');

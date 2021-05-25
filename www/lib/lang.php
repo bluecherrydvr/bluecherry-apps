@@ -105,6 +105,10 @@ define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given
 define('G_VAAPI_DEVICE', 'VAAPI device');
 define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of video decoding and encoding');
 
+define('G_SUBDOMAIN_TITLE', 'Subdomain Provider');
+define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
+define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');
@@ -593,22 +597,22 @@ define('BACKUP_DOWNLOAD', 'Download backup file');
 define('BACKUP_B_SUCCESS', 'Created');
 
 #licensing
-define('L_ADDCODE', 'Add a license code');
-define('L_ADD', 'Add');
+define('L_ADD_LICENSE_KEY_TITLE', 'Add a license key');
+define('L_ADD_LICENSE_KEY', 'Add');
 define('L_PORTS', 'Ports');
-define('L_CONFIRMCODE', 'Confirm a code');
-define('L_GET_TOKEN', 'Get token');
+define('L_CONFIRM_LICENSE_KEY', 'Confirm a license key');
+define('L_DELETE_LICENSE_KEY', 'Delete');
 
-define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the code automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization code using this unique id: ');
-define('L_INVALID_LICENSE', 'The code you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_INVALID_LICENSE_EXISTS', 'The code you entered is already in use on this system.');
-define('L_INVALID_CONFIRMATION', 'Confirmation code you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_LICENSE_ADDED', 'The code was successfully activated.');
-define('L_CURRENT',  'Active  codes');
+define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the license key automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization license key using this unique id: ');
+define('L_INVALID_LICENSE', 'The license key you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
+define('L_INVALID_LICENSE_EXISTS', 'The license key you entered is already in use on this system.');
+define('L_INVALID_CONFIRMATION', 'Confirmation license key you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
+define('L_LICENSE_ACTIVATED', 'The license key was successfully activated.');
+define('L_CURRENT',  'Active license key');
 define('L_CONFIRM', 'Confirm');
-define('L_CONFIRM_DELETE', 'Are you sure you want to remove this code?');
-define('L_NO_LICENSES', 'You have no active support ID keys');
-define('L_AUTO_RESP_1', 'This code does not exist.');
+define('L_CONFIRM_DELETE', 'Are you sure you want to remove this license key?');
+define('L_NO_LICENSES', 'You have no active License keys');
+define('L_AUTO_RESP_1', 'This license key does not exist.');
 define('L_AUTO_RESP_2', 'This key was already used on a different machine. If you recently made changes to your computer configuration, please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> to reset your license.');
 define('L_AUTO_RESP_3', 'Sorry, you made too many unsuccessful authorization attempts per day. Please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> or try again later.');
 define('L_AUTO_RESP_4', 'Sorry, you need to contact Bluecherry via phone or email to obtain authorization.');
@@ -671,10 +675,6 @@ define('L_LA_E_LICENSE_ACTIVATED', 'License is genuinely activated.');
 define('L_LA_E_TRIAL_ACTIVATE_REQUIRE', 'Either trial has not started or has been tampered, for activating trial please click here.<br><form action="/licenses?mode=activate_trial" method="POST"><button class="link-button send-req-form" type="submit" data-func-after="licensingActivateTrial">Activate trial.</button></form>');
 define('L_LA_E_TRIAL_ACTIVATE_SUCCESS', 'Trial is successfully activated.');
 define('L_LA_E_UNKNOWN', 'Unknown error.');
-
-define('L_LA_E_SUBDOMAIN_TOKEN_GOT', 'Successfully got a new token from the subdomain provider.');
-define('L_LA_E_SUBDOMAIN_TOKEN_NOT_GET', 'Could not get a new token from the subdomain provider.');
-define('L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE', 'Could not add a new token to database.');
 
 #Cam specific
 define('ACTI_STREAMING_SET_3', 'Your ACTi camera has been automatically configured for RTP over UDP streaming.');

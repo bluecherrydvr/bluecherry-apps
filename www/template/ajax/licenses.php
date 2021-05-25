@@ -13,22 +13,15 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
 <div class="row">
     <div class="col-lg-12">
     <div class="panel panel-default">
-        <div class="panel-heading"><?php echo L_ADDCODE; ?></div>
+        <div class="panel-heading"><?php echo L_ADD_LICENSE_KEY_TITLE; ?></div>
         <div class="panel-body">
             <form action="/licenses?mode=add" method="POST">
                 <div class="form-group">
                     <input class="form-control" type="text" class="license" name="licenseCode">
                 </div>
                 <div class="form-group">
-                    <button class="btn btn-success send-req-form" type="submit" style="width: 80px;" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD; ?></button>
+                    <button class="btn btn-success send-req-form" type="submit" data-func="licensingBeforeAdd" data-func-after="licensingAdd"> <?php echo L_ADD_LICENSE_KEY; ?></button>
                 </div>
-            </form>
-            <form action="/licenses?mode=getToken" style="position:relative;" method="POST">
-                <?php if (!empty($licenses)){ ?>
-                    <button class="btn btn-success token-button send-req-form" type="submit"> <?php echo L_GET_TOKEN; ?></button>
-                <?php } else { ?>
-                    <button class="btn btn-disabled token-button" disabled> <?php echo L_GET_TOKEN; ?></button>
-                <?php } ?>
             </form>
         </div>
     </div>
@@ -38,7 +31,7 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
 <div class="row" id="licensing-conf" style="display: none;">
     <div class="col-lg-12">
     <div class="panel panel-default">
-        <div class="panel-heading"><?php echo L_CONFIRMCODE; ?></div>
+        <div class="panel-heading"><?php echo L_CONFIRM_LICENSE_KEY; ?></div>
         <div class="panel-body">
 		    <div class='alert alert-warning'><?php echo L_CONFIRMCODE_MSG; ?><span id="licensing-machine-id"></span></div>
             <form action="/licenses?mode=confirm" method="POST">
@@ -71,7 +64,7 @@ $mode = (empty($_GET['mode'])) ? false : $_GET['mode'];
                     <td><?php echo bc_license_devices_allowed()." ".L_PORTS; ?></td>
                     <td class="col-lg-2 col-md-licensing">
                         <form action="/licenses?mode=delete&license=<?php echo $license['license']; ?>" method="POST" style="display: inline-block;">
-                            <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/licenses"><i class="fa fa-times fa-fw"></i> <?php echo L_DELETE; ?></button>
+                            <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/licenses"><i class="fa fa-times fa-fw"></i> <?php echo L_DELETE_LICENSE_KEY; ?></button>
                         </form>
                     </td>
                 </tr>

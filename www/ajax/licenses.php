@@ -4,8 +4,6 @@ require_once('/usr/share/bluecherry/www/lib/bc_license_wrapper.php');
 
 class licenses extends Controller {
 
-	private $subdomain_info;
-
     public function __construct()
     {
         parent::__construct();
@@ -53,7 +51,7 @@ class licenses extends Controller {
 
 			// Update the general notification in the page
 			$ret = bc_license_check_genuine();
-			data::responseJSON(true, L_LICENSE_ADDED, $ret);
+			data::responseJSON(true, L_LICENSE_ACTIVATED, $ret);
 		}
 
 		if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
@@ -105,26 +103,6 @@ class licenses extends Controller {
 			data::responseJSON(true);
 		}
 
-        if (!empty($_GET['mode']) && $_GET['mode'] == 'getToken'){
-			// Get a new subdomain token from the subdomain provider
-			$result = $this->getSubdomainToken();
-			if ($result[0] == false) {
-				data::responseJSON(false, $result[1]);
-				exit();
-			}
-
-			// Add the new subdomain token to database
-			$result = $this->updateSubdomainToken($result[1]);
-			if ($result) {
-				data::responseJSON(true, L_LA_E_SUBDOMAIN_TOKEN_GOT);
-				exit();
-			}
-			else {
-				data::responseJSON(false, L_LA_E_SUBDOMAIN_TOKEN_NOT_UPDATE);
-				exit();
-			}
-		}
-
     }
 
 	private function updateVerifiedLicense($licenseCode) {
@@ -141,74 +119,6 @@ class licenses extends Controller {
 
 		return $result;
 	}
-
-	private function updateSubdomainToken($token) {
-		$status = true;
-		$status = (data::query("INSERT INTO GlobalSettings (parameter, value) VALUES ('G_SUBDOMAIN_TOKEN', '{$token}') ON DUPLICATE KEY UPDATE value='{$token}'", true)) ? $status : false;
-
-		return $status;
-	}
-
-	private function getSubdomainToken() {
-		$result = array();
-
-		$this->subdomain_info = subdomain::getInstance();
-		$url = $this->subdomain_info->provide_base_url . $this->subdomain_info->get_token_api;
-		$response = $this->sendHttpReq($url);
-
-		if ($response[0] === false) {
-			$result[0] = false;
-			$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $response[1] . ')';
-		}
-		else {
-			$arr = json_decode($response[1]);
-			if ($arr === null) {
-				$result[0] = false;
-				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (Invalid repsonse)';
-			}
-			else if ($arr->token === null) {
-				$result[0] = false;
-				$result[1] = L_LA_E_SUBDOMAIN_TOKEN_NOT_GET . ' (' . $arr->message . ')';
-			}
-			else {
-				$result[0] = true;
-				$result[1] = $arr->token;
-			}
-		}
-
-		return $result;
-	}
-
-    private function sendHttpReq($url)
-    {
-		$result = array();
-		$curl = curl_init();
-		curl_setopt($curl, CURLOPT_URL, $url);
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		
-		$headers = array(
-		   "Accept: application/json",
-		   "Authorization: Bearer " . $this->subdomain_info->admin_token,
-		);
-
-		curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-		//for debug only!
-		curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-		
-		$resp = curl_exec($curl);
-		if ($resp === false) {
-			$result[0] = false;
-			$result[1] = curl_error($curl);
-		}
-		else {
-			$result[0] = true;
-			$result[1] = $resp;
-		}
-		curl_close($curl);
-
-        return $result;
-    }
 
 	public static function getLicenseStatusMessage($status)
 	{
