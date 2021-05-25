@@ -15,15 +15,24 @@ class subdomainprovider extends subdomainproviderbase
         $this->view->actualSubdomain = '';
         $this->view->actualIpv4Value = $this->getRemoteIp();
         $this->view->actualIpv6Value = '';
+        $this->view->licenseIdExists = false;
 
+        // Check licensekey
         try {
-            $actualConfig = $this->getFromApiWithToken('/actual-configuration');
-        } catch (\RuntimeException $ex) {
+            $licenseKey = $this->getLicenseKey();
+        } catch (\RuntimeException $exception) {
             $this->view->licenseIdExists = false;
             return;
         }
 
         $this->view->licenseIdExists = true;
+
+        // Call '/actual-configuration' api
+        try {
+            $actualConfig = $this->getFromApiWithToken('/actual-configuration');
+        } catch (\RuntimeException $ex) {
+            return;
+        }
 
         if (!empty($actualConfig)) {
             $this->view->actualSubdomain = $actualConfig['subdomain'];

@@ -40,17 +40,22 @@ $('#subdomain-provider-register').validate({
         }, function (data) {
 
             if (!data.success) {
+                let message = 'This subdomain name is not available.';
+                if (data.message === 'API request is failed.') {
+                    message = data.message + ' \r\nPlease check Global settings or network connection.';
+                }
+
                 that.showErrors({
-                    subdomain_name: 'This subdomain name is not available'
+                    subdomain_name: message
                 });
             }
-
-            if (licenseIdExists) {
-                form.submit();
-            } else {
-                alert('you need a license id to use a subdomain');
+            else {
+                if (licenseIdExists) {
+                    form.submit();
+                } else {
+                    alert('You need a license id to use a subdomain');
+                }
             }
-
 
         }, 'json');
 

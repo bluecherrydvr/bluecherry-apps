@@ -5,9 +5,9 @@
         <?php if (isset($_GET['status'])) {
 
             if (!empty($_GET['status'])) {
-                echo '<div class="alert alert-success" role="alert">Configuration successful</div>';
+                echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
             } else {
-                echo '<div class="alert alert-success" role="alert">An error occured during configuration save</div>';
+                echo '<div class="alert alert-success" role="alert">An error occured during configuration save!</div>';
             }
 
         } ?>
