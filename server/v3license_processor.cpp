@@ -207,4 +207,9 @@ V3LICENSE_API int bc_license_v3_ActivateTrial()
     return ActivateTrial();
 }
 
+V3LICENSE_API int bc_license_v3_DeactivateLicense()
+{
+    return DeactivateLicense();
+}
+
 #endif /* V3_LICENSING */

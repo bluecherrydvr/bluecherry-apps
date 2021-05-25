@@ -161,7 +161,7 @@ void * socketThread(void *arg)
     }
 
     // Send message to the client socket 
-    if ( 0 != pthread_mutex_lock(lock))
+    if (0 != pthread_mutex_lock(lock))
     {
         bc_log(Error, "Failed to mutex lock for thread: %s", strerror(errno));
         pthread_mutex_unlock(lock);
@@ -176,6 +176,7 @@ void * socketThread(void *arg)
 
         return NULL;
     }
+
     argCount = v3license_server::instance->splitArgument(client_message, vec, ' ');
     if (argCount > MAX_ARG_CNT_V3LICENSE || argCount < MIN_ARG_CNT_V3LICENSE)
     {
@@ -198,22 +199,26 @@ void * socketThread(void *arg)
         status = bc_license_v3_IsActivated();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
+
     if (strcmp(command, "bc_v3_license_isLicenseGenuine") == 0)
     {
         status = bc_license_v3_IsLicenseGenuine();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
+
     if (strcmp(command, "bc_v3_license_IsTrialGenuine") == 0)
     {
         status = bc_license_v3_IsTrialGenuine();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
+
     if (strcmp(command, "bc_v3_license_GetLicenseMetadata") == 0)
     {
         char licenseMeta[BUF_MAX] = {0};
         status = bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
         snprintf(message, sizeof(message), "%s %d %s\n", command, status, licenseMeta);
     }
+
     if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0)
     {
         int32_t isUnlimited = 0;
@@ -221,15 +226,17 @@ void * socketThread(void *arg)
         status = bc_license_v3_GetLicenseExpiryDate(&isUnlimited, &date);
         snprintf(message, sizeof(message), "%s %d %d %d\n", command, status, isUnlimited, date);
     }
+
     if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0)
     {
         uint32_t trialDate = 0;
         status = bc_license_v3_GetTrialExpiryDate(&trialDate);
         snprintf(message, sizeof(message), "%s %d %d\n", command, status, trialDate);
     }
+
     if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
     {
-        if (!param[1]){
+        if (!param[1]) {
             bc_log(Error, "license key is null or empty");
             snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
         }
@@ -247,9 +254,16 @@ void * socketThread(void *arg)
             }
         }
     }
+
     if (strcmp(command, "bc_v3_license_ActivateTrial") == 0)
     {
         status = bc_license_v3_ActivateTrial();
+        snprintf(message, sizeof(message), "%s %d\n", command, status);
+    }
+
+    if (strcmp(command, "bc_v3_license_DeactivateLicense") == 0)
+    {
+        status = bc_license_v3_DeactivateLicense();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
 
@@ -261,6 +275,7 @@ void * socketThread(void *arg)
             param[i] = NULL;
         }
     }
+
     pthread_mutex_unlock(lock);
 
     if (send(newSocket, message, strlen(message), 0) < 0)

@@ -19,6 +19,13 @@ function bc_license_activate_key($key)
 	return $output;
 }
 
+function bc_license_deactivate_key()
+{
+	$output = bc_license_command(LA_DEACTIVATE_LICENSE);
+
+	return $output;
+}
+
 function bc_license_check_auth($key, $auth)
 {
 	$output = array();

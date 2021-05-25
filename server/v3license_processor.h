@@ -35,6 +35,7 @@ V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *trialExpiryDate);
 V3LICENSE_API int bc_license_v3_ActivateLicense(CSTRTYPE productKey);
 V3LICENSE_API int bc_license_v3_IsLicenseValid();
 V3LICENSE_API int bc_license_v3_ActivateTrial();
+V3LICENSE_API int bc_license_v3_DeactivateLicense();
 
 #endif /* V3LICENSE_PROCESSOR_H */
 
