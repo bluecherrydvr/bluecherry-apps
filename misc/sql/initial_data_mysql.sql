@@ -18,7 +18,7 @@ INSERT INTO GlobalSettings VALUES ('G_SMTP_SSL', 'none');
 INSERT INTO GlobalSettings VALUES ('G_SMTP_FAIL', NULL);
 INSERT INTO GlobalSettings VALUES ('G_SMTP_SERVICE', 'default');
 INSERT INTO GlobalSettings VALUES ('G_VAAPI_DEVICE', 'None');
-INSERT INTO GlobalSettings VALUES ('G_SUBDOMAIN_API_BASE_URL', 'http://localhost:3000/subdomain-provider');
+INSERT INTO GlobalSettings VALUES ('G_SUBDOMAIN_API_BASE_URL', NULL);
 
 INSERT INTO Storage VALUES (1, '/var/lib/bluecherry/recordings', 95.00, 90.00);
 
