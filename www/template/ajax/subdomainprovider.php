@@ -13,7 +13,7 @@
         } ?>
 
         <div class="panel panel-default" style="margin-top:20px;">
-            <div class="panel-heading">Subdomain Provider</div>
+            <div class="panel-heading"><?php echo G_SUBDOMAIN_TITLE; ?></div>
             <div class="panel-body">
                 <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider">
                     <div class="form-group">
