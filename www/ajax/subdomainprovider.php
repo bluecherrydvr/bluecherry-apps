@@ -48,9 +48,21 @@ class subdomainprovider extends subdomainproviderbase
 
     public function postData() {
 
-        $subdomain = $_POST['subdomain_name'];
-        $ipv4Value = $_POST['server_ip_address_4'];
-        $ipv6Value = $_POST['server_ip_address_6'];
+        $subdomain = '';
+        $ipv4Value = '';
+        $ipv6Value = '';
+
+        if (!empty($_POST['subdomain_name'])) {
+            $subdomain = $_POST['subdomain_name'];
+        }
+
+        if (!empty($_POST['server_ip_address_4'])) {
+            $ipv4Value = $_POST['server_ip_address_4'];
+        }
+
+        if (!empty($_POST['server_ip_address_6'])) {
+            $ipv6Value = $_POST['server_ip_address_6'];
+        }
 
         if (empty($subdomain) || empty($ipv4Value)) {
             header('Location: /subdomainprovider?status=0');
