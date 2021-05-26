@@ -162,7 +162,7 @@
                             <a href="/webhook"><i class="fa fa-cog fa-fw"></i> Webhooks</a>
                         </li>
                         <li>
-                            <a href="/subdomainprovider"><i class="fa fa-cog fa-fw"></i> Subdomain Provider</a>
+                            <a href="/subdomainprovider"><i class="fa fa-briefcase fa-fw"></i> <?php echo G_SUBDOMAIN_TITLE; ?></a>
                         </li>
                         <li class="divider"></li>
                         <li class="divider"></li>

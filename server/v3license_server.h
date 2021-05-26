@@ -41,25 +41,28 @@ typedef struct {
 
 class v3license_server
 {
-    public:
-        static v3license_server *instance;
+public:
+    static v3license_server *instance;
 
-        v3license_server();
-        ~v3license_server();
+    v3license_server();
+    ~v3license_server();
 
-        int setup(int port);
-        void run();
+    int setup(int port);
+    void run();
 
-        static license_thread_context_t *thread_context;
-        static void *runThread(void *p);
-        size_t splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch);
-        static int initedLex;
+    static license_thread_context_t *thread_context;
+    static void *runThread(void *p);
+    size_t splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch);
 
-    private:
-        int serverfd;
-        void acceptConnection();
+public:
+    static int initedLex;
+    static void stopThread();
+    static int running;
+
+private:
+    int serverfd;
+    void acceptConnection();
 };
-
 
 #endif /* V3_LICENSING */
 #endif /* __V3LICENSE_SERVER_H */

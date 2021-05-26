@@ -5,15 +5,17 @@
         <?php if (isset($_GET['status'])) {
 
             if (!empty($_GET['status'])) {
-                echo '<div class="alert alert-success" role="alert">Configuration successful</div>';
+                echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
             } else {
-                echo '<div class="alert alert-success" role="alert">An error occured during configuration save</div>';
+                echo '<div class="alert alert-success" role="alert">An error occured during operaion!
+                        <br>Please check that the relevant API is available or network connection.
+                      </div>';
             }
 
         } ?>
 
         <div class="panel panel-default" style="margin-top:20px;">
-            <div class="panel-heading">Subdomain Provider</div>
+            <div class="panel-heading"><?php echo G_SUBDOMAIN_TITLE; ?></div>
             <div class="panel-body">
                 <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider">
                     <div class="form-group">

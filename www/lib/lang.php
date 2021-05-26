@@ -105,7 +105,7 @@ define('G_MAX_RECORD_AGE_EX', 'Let system remove all recordings older than given
 define('G_VAAPI_DEVICE', 'VAAPI device');
 define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of video decoding and encoding');
 
-define('G_SUBDOMAIN_TITLE', 'Subdomain Provider');
+define('G_SUBDOMAIN_TITLE', 'SSL / CNAME setup');
 define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
 define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
 
@@ -598,20 +598,22 @@ define('BACKUP_B_SUCCESS', 'Created');
 
 #licensing
 define('L_ADD_LICENSE_KEY_TITLE', 'Add a license key');
-define('L_ADD_LICENSE_KEY', 'Add');
+define('L_ACTIVATE', 'Activate');
 define('L_PORTS', 'Ports');
 define('L_CONFIRM_LICENSE_KEY', 'Confirm a license key');
-define('L_DELETE_LICENSE_KEY', 'Delete');
+define('L_DEACTIVATE', 'Deactivate');
 
 define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the license key automatically. Please check your internet connection and try again, or <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry to obtain authorization license key using this unique id: ');
 define('L_INVALID_LICENSE', 'The license key you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_INVALID_LICENSE_EXISTS', 'The license key you entered is already in use on this system.');
 define('L_INVALID_CONFIRMATION', 'Confirmation license key you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_LICENSE_ACTIVATED', 'The license key was successfully activated.');
+define('L_LICENSE_DEACTIVATED', 'The license key was deactivated.');
+define('L_LICENSE_DEACTIVATED_DB_FAIL', 'The license key was deactivated.<br> But this license key isn\'t removed from database due to database problem.<br>Please remove this manually later.');
 define('L_CURRENT',  'Active license key');
 define('L_CONFIRM', 'Confirm');
-define('L_CONFIRM_DELETE', 'Are you sure you want to remove this license key?');
-define('L_NO_LICENSES', 'You have no active License keys');
+define('L_CONFIRM_DELETE', 'Are you sure you want to deactivate this license key?');
+define('L_NO_LICENSES', 'You have no active License key.');
 define('L_AUTO_RESP_1', 'This license key does not exist.');
 define('L_AUTO_RESP_2', 'This key was already used on a different machine. If you recently made changes to your computer configuration, please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> to reset your license.');
 define('L_AUTO_RESP_3', 'Sorry, you made too many unsuccessful authorization attempts per day. Please <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a> or try again later.');
@@ -619,7 +621,7 @@ define('L_AUTO_RESP_4', 'Sorry, you need to contact Bluecherry via phone or emai
 define('L_AUTO_RESP_5', 'Sorry, an error was encountered while authorizing your license. Please try again later or <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a>.');
 
 define('L_LA_OK', 'Success code.');
-define('L_LA_FAIL', 'Failure code.');
+define('L_LA_FAIL', 'Operation failed.');
 define('L_LA_EXPIRED', 'The license has expired or system time has been tampered with. Ensure your date and time settings are correct.');
 define('L_LA_SUSPENDED', 'The license has been suspended.');
 define('L_LA_GRACE_PERIOD_OVER', 'The grace period for server sync is over.');

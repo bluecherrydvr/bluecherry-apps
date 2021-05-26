@@ -7,9 +7,9 @@ class subdomainproviderquery extends subdomainproviderbase
     protected function querySubdomainName($name) {
 
         try {
-            $response = $this->postToApiWithToken('/check-subdomain-availability', [
+            $response = $this->postToApi('/check-subdomain-availability', [
                 'subdomain' => $name
-            ], [], true);
+            ], []);
         } catch (\RuntimeException $exception) {
             $response = [
                 'success' => false,

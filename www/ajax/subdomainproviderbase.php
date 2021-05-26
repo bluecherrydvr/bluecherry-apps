@@ -36,7 +36,7 @@ class subdomainproviderbase extends Controller {
         return $result[0]['value'];
     }
 
-    protected function getLicenseId() {
+    protected function getLicenseKey() {
         // Get the license key from database
         $licenses = data::query('SELECT `license` FROM `Licenses` LIMIT 1');
 
@@ -46,6 +46,12 @@ class subdomainproviderbase extends Controller {
         }
 
 		$license_key = $licenses[0]['license'];
+        return $license_key;
+    }
+
+    protected function getLicenseId() {
+        // Get the license key
+        $license_key = $this->getLicenseKey();
 
         // Get the license id
         $result = $this->postToApi('/get-license-id', [
@@ -81,7 +87,7 @@ class subdomainproviderbase extends Controller {
         curl_close($curl);
 
         if ($result === false) {
-            throw new \RuntimeException('api request is failed');
+            throw new \RuntimeException('API request is failed.');
         }
 
         return json_decode($result, true);
@@ -125,7 +131,7 @@ class subdomainproviderbase extends Controller {
 
 
         if ($result === false) {
-            throw new \RuntimeException('api request is failed');
+            throw new \RuntimeException('API request is failed.');
         }
 
         return json_decode($result, true);

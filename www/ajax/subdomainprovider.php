@@ -15,15 +15,24 @@ class subdomainprovider extends subdomainproviderbase
         $this->view->actualSubdomain = '';
         $this->view->actualIpv4Value = $this->getRemoteIp();
         $this->view->actualIpv6Value = '';
+        $this->view->licenseIdExists = false;
 
+        // Check licensekey
         try {
-            $actualConfig = $this->getFromApiWithToken('/actual-configuration');
-        } catch (\RuntimeException $ex) {
+            $licenseKey = $this->getLicenseKey();
+        } catch (\RuntimeException $exception) {
             $this->view->licenseIdExists = false;
             return;
         }
 
         $this->view->licenseIdExists = true;
+
+        // Call '/actual-configuration' api
+        try {
+            $actualConfig = $this->getFromApiWithToken('/actual-configuration');
+        } catch (\RuntimeException $ex) {
+            return;
+        }
 
         if (!empty($actualConfig)) {
             $this->view->actualSubdomain = $actualConfig['subdomain'];
@@ -39,9 +48,21 @@ class subdomainprovider extends subdomainproviderbase
 
     public function postData() {
 
-        $subdomain = $_POST['subdomain_name'];
-        $ipv4Value = $_POST['server_ip_address_4'];
-        $ipv6Value = $_POST['server_ip_address_6'];
+        $subdomain = '';
+        $ipv4Value = '';
+        $ipv6Value = '';
+
+        if (!empty($_POST['subdomain_name'])) {
+            $subdomain = $_POST['subdomain_name'];
+        }
+
+        if (!empty($_POST['server_ip_address_4'])) {
+            $ipv4Value = $_POST['server_ip_address_4'];
+        }
+
+        if (!empty($_POST['server_ip_address_6'])) {
+            $ipv6Value = $_POST['server_ip_address_6'];
+        }
 
         if (empty($subdomain) || empty($ipv4Value)) {
             header('Location: /subdomainprovider?status=0');
@@ -77,7 +98,6 @@ class subdomainprovider extends subdomainproviderbase
             header('Location: /subdomainprovider?status=0');
             return;
         }
-
 
         header('Location: /subdomainprovider?status=1');
     }
