@@ -1559,6 +1559,9 @@ int main(int argc, char **argv)
 
 	rtsp = new rtsp_server;
 	if (rtsp->setup(7002)) {
+		delete rtsp;
+		rtsp = NULL;
+
 		bc_log(Error, "Failed to setup RTSP server");
 		return 1;
 	}
@@ -1566,6 +1569,12 @@ int main(int argc, char **argv)
 #ifdef V3_LICENSING
 	v3license = new v3license_server;
 	if (v3license->setup(7004)) {
+		delete rtsp;
+		rtsp = NULL;
+
+		delete v3license;
+		v3license = NULL;
+
 		bc_log(Error, "Failed to setup V3LICENSE server");
 		return 1;
 	}
@@ -1663,6 +1672,10 @@ int main(int argc, char **argv)
 		if (!(loops & 63))
 			bc_update_server_status();
 	}
+
+#ifdef V3_LICENSING
+	pthread_join(v3license_thread, NULL);
+#endif /* V3_LICENSING */
 
 	bc_stop_threads();
 	bc_db_close();

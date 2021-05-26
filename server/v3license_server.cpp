@@ -35,9 +35,10 @@
 #include "v3license_server.h"
 #include "v3license_processor.h"
 
-v3license_server *v3license_server::instance = 0;
+v3license_server *v3license_server::instance = NULL;
 license_thread_context_t *v3license_server::thread_context = 0;
 int v3license_server::initedLex = LA_FAIL;
+int v3license_server::running = 0;
 
 v3license_server::v3license_server()
     : serverfd(-1)
@@ -49,6 +50,7 @@ v3license_server::v3license_server()
 
     initedLex = bc_license_v3_Init();
     thread_context = new license_thread_context_t();
+    running = 0;
 }
 
 v3license_server::~v3license_server()
@@ -59,6 +61,11 @@ v3license_server::~v3license_server()
 
 int v3license_server::setup(int port)
 {
+    if (initedLex != LA_OK) {
+        bc_log(Error, "Failed to initialize v3license feature (Error code: %d)", initedLex);
+        return -1;
+    }
+
     int domain = AF_INET6;
     struct sockaddr_storage addr_stor = {0, };
     const struct sockaddr *addr_ptr = (const sockaddr *) &addr_stor;
@@ -288,7 +295,6 @@ void * socketThread(void *arg)
     pthread_exit(0);
 }
 
-
 void *v3license_server::runThread(void *p)
 {
     int server = static_cast<v3license_server*>(p)->serverfd;
@@ -299,7 +305,10 @@ void *v3license_server::runThread(void *p)
         return NULL;
     }
 
-    while (true)
+    running = 1;
+    bc_log(Info, "v3license server started");
+
+    while (running)
     {
         int client = accept(server, NULL, NULL);
         if (client < 0) {
@@ -317,7 +326,14 @@ void *v3license_server::runThread(void *p)
         }
     }
 
+    bc_log(Info, "v3license server stopped");
+
     return NULL;
+}
+
+void v3license_server::stopThread()
+{
+    running = 0;
 }
 
 #endif /* V3_LICENSING */
