@@ -621,7 +621,7 @@ define('L_AUTO_RESP_4', 'Sorry, you need to contact Bluecherry via phone or emai
 define('L_AUTO_RESP_5', 'Sorry, an error was encountered while authorizing your license. Please try again later or <a href="mailto:support@bluecherrydvr.com">contact Bluecherry</a>.');
 
 define('L_LA_OK', 'Success code.');
-define('L_LA_FAIL', 'Failure code.');
+define('L_LA_FAIL', 'Operation failed.');
 define('L_LA_EXPIRED', 'The license has expired or system time has been tampered with. Ensure your date and time settings are correct.');
 define('L_LA_SUSPENDED', 'The license has been suspended.');
 define('L_LA_GRACE_PERIOD_OVER', 'The grace period for server sync is over.');

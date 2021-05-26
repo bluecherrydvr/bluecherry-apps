@@ -244,7 +244,7 @@ void * socketThread(void *arg)
     if (strcmp(command, "bc_v3_license_ActivateLicense") == 0)
     {
         if (!param[1]) {
-            bc_log(Error, "license key is null or empty");
+            bc_log(Error, "License key is null or empty");
             snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
         }
         else {
@@ -253,11 +253,7 @@ void * socketThread(void *arg)
 
             if (status == LA_OK) {
                 char licenseMeta[BUF_MAX] = {0};
-                status = bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
-
-                if (status == LA_OK) {
-                    bc_log(Info, "License authorized for %s cameras", licenseMeta);
-                }
+                bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
             }
         }
     }

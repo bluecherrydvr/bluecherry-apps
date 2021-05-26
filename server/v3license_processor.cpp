@@ -70,10 +70,10 @@ V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
 {
     int status = IsLicenseGenuine();
     if (status == LA_OK) {
-        bc_log(Info, "License is genuinely activated!\n");
+        bc_log(Info, "License is genuinely activated");
     }
     else {
-        bc_log(Info, "License isn't genuinely activated! (status=%d)\n", status);
+        bc_log(Info, "License isn't genuinely activated");
     }
 
     return status;
@@ -81,12 +81,28 @@ V3LICENSE_API int bc_license_v3_IsLicenseGenuine()
 
 V3LICENSE_API int bc_license_v3_IsTrialGenuine()
 {
-    return IsTrialGenuine();
+    int status = IsTrialGenuine();
+    if (status == LA_OK) {
+        bc_log(Info, "License is trially activated\n");
+    }
+    else {
+        bc_log(Info, "License isn't trially activated");
+    }
+
+    return status;
 }
 
 V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t length)
 {
-    return GetLicenseMetadata(METADATA_KEY, value, length);
+    int status = GetLicenseMetadata(METADATA_KEY, value, length);
+    if (status == LA_OK) {
+        bc_log(Info, "License authorized for %s cameras", value);
+    }
+    else {
+        bc_log(Error, "Getting the number of allowed cameras failed (Error code: %d)\n", status);
+    }
+
+    return status;
 }
 
 V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(int32_t *isUnlimited, int32_t *expiryDate)
@@ -136,43 +152,17 @@ V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *expiryDate)
     return LA_OK;
 }
 
-// Ideally on a button click inside a dialog
-int activate()
-{
-    int status;
-
-    status = SetLicenseKey(LICENSE_KEY);
-    if (LA_OK != status)
-    {
-        bc_log(Error, "Setting license key failed (Error code: %d)", status);
-        return status;
-    }
-
-    status = ActivateLicense();
-    if (LA_OK == status 
-            || LA_EXPIRED == status 
-            || LA_SUSPENDED == status)
-    {
-        bc_log(Info, "Activating license successed (Status code: %d)", status);
-    }
-    else
-    {
-        bc_log(Error, "Activating license failed (Error code: %d)", status);
-    }
-    return status;
-}
-
 V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
 {
     int status;
 
-    bc_log(Error, "licenseKey: %s", licenseKey);
-    status = bc_license_v3_Init();
-    if (LA_OK != status)
-    {
-        bc_log(Error, "Initializing license failed (Error code: %d)", status);
-        return status;
-    }
+    bc_log(Error, "Activating license key(%s) ...", licenseKey);
+    // status = bc_license_v3_Init();
+    // if (LA_OK != status)
+    // {
+    //     bc_log(Error, "Initializing license failed (Error code: %d)", status);
+    //     return status;
+    // }
 
     status = SetLicenseKey(licenseKey);
     if (LA_OK != status)
@@ -182,15 +172,14 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
     }
 
     status = ActivateLicense();
-    if (LA_OK == status 
-            || LA_EXPIRED == status 
-            || LA_SUSPENDED == status)
+    if (LA_OK == status)
     {
-        bc_log(Info, "Activating license successed (Status code: %d)", status);
+        bc_log(Info, "Activating license successed");
         return status;
     }
     else
     {
+        bc_log(Error, "Activating license failed (Error code: %d)", status);
         return status;
     }
 
@@ -204,12 +193,30 @@ V3LICENSE_API int bc_license_v3_IsLicenseValid()
 
 V3LICENSE_API int bc_license_v3_ActivateTrial()
 {
-    return ActivateTrial();
+    int status = ActivateTrial();
+
+    if (LA_OK == status) {
+        bc_log(Info, "Activating trial successed");
+    }
+    else {
+        bc_log(Error, "Activating trial failed (Error code: %d)", status);
+    }
+
+    return status;
 }
 
 V3LICENSE_API int bc_license_v3_DeactivateLicense()
 {
-    return DeactivateLicense();
+    int status = DeactivateLicense();
+
+    if (LA_OK == status) {
+        bc_log(Info, "Deactivating license successed");
+    }
+    else {
+        bc_log(Error, "Deactivating license failed (Error code: %d)", status);
+    }
+
+    return status;
 }
 
 #endif /* V3_LICENSING */
