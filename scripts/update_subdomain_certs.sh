@@ -1,11 +1,15 @@
+subdomain=$1
+email=$2
+token=$3
+
+if [ "$#" -ne 3 ]; then
+    echo "Invalid or missing arguments"
+    exit 1
+fi
+
 pip3 install setuptools_rust certbot certbot-dns-subdomain-provider
 pip3 install --upgrade pip
 pip3 install --upgrade cryptography
-
-subdomain_conf=/usr/share/bluecherry/nginx-includes/subdomain.conf
-snakeoil_conf=/usr/share/bluecherry/nginx-includes/snakeoil.conf
-subdomain=$1
-token=$2
 
 function start_nginx
 {
@@ -31,19 +35,27 @@ if test -f "dns-subdomain-credintials.ini"; then
     rm dns-subdomain-credintials.ini
 fi
 
+subdomain_conf=/usr/share/bluecherry/nginx-includes/subdomain.conf
+snakeoil_conf=/usr/share/bluecherry/nginx-includes/snakeoil.conf
+endpoint=https://domains.bluecherrydvr.com/subdomain-provider
+
 echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credintials.ini
 echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
 
 # Generate certificates
-sudo certbot certonly --authenticator dns-subdomain-provider \
+sudo certbot certonly --non-interactive --agree-tos \
+    -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
     ./dns-subdomain-credintials.ini \
     -d $subdomain.bluecherry.app
 
+# No more required
+rm dns-subdomain-credintials.ini
+
 if [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/cert.pem" ] || \
    [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
     echo "No certificates found"
-    exit
+    exit 1
 fi
 
 # Stop nginx before changing configuration
@@ -68,6 +80,8 @@ if [[ $? == 0 ]]; then
     start_nginx
 else
     echo "Nginx configuration failure"
+    exit 1
 fi
 
+exit 0
 
