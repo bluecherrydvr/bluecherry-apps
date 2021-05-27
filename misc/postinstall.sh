@@ -134,6 +134,13 @@ case "$1" in
 			su bluecherry -c "chmod -R 750 /var/run/bluecherry"
 		fi
 
+		# Allow update_subdomain_certs.sh script to run as www-data
+		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
+		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
+		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
+			> /etc/sudoers.d/bluecherry
+		chmod 0440 /etc/sudoers.d/bluecherry
+
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
 

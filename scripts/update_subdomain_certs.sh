@@ -1,3 +1,5 @@
+#!/bin/sh
+
 subdomain=$1
 email=$2
 token=$3
@@ -43,7 +45,7 @@ echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credintial
 echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
 
 # Generate certificates
-sudo certbot certonly --non-interactive --agree-tos \
+certbot certonly --non-interactive --agree-tos \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
     ./dns-subdomain-credintials.ini \
