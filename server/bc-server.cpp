@@ -94,6 +94,7 @@ static std::queue<struct media_record> abandoned_media_updated;
 typedef std::vector<std::string> bc_string_array;
 
 static rtsp_server *rtsp = NULL;
+static hls_listener *hls = NULL;
 #ifdef V3_LICENSING
 static v3license_server *v3license = NULL;
 #endif /* V3_LICENSING */
@@ -1158,6 +1159,7 @@ static int bc_check_db(void)
 		cur_threads++;
 		bc_rec->cfg_just_updated = true;
 		pthread_mutex_lock(&bc_rec_list_lock);
+		bc_rec->hls_stream = hls;
 		bc_rec_list.push_back(bc_rec);
 		pthread_mutex_unlock(&bc_rec_list_lock);
 	}
@@ -1564,6 +1566,26 @@ int main(int argc, char **argv)
 
 		bc_log(Error, "Failed to setup RTSP server");
 		return 1;
+	}
+
+	hls = new hls_listener;
+
+	/*
+		Uncomment this lines and provide valid SSL cert and
+		key file paths to enable HLS streaming over HTTPS
+	*/
+	//const char *key_path = "/opt/bluecherry/server.key";
+	//const char *crt_path = "/opt/bluecherry/server.crt";
+	//hls->set_ssl_ctx(key_path, crt_path, NULL);
+
+	if (!hls->register_listener(7003)) {
+		bc_log(Error, "Failed to setup HLS listener");
+		delete hls;
+		return 1;
+	} else {
+		hls->set_auth(true); // enable authentication
+		std::thread hls_th(&hls_listener::run, hls);
+		hls_th.detach();
 	}
 
 #ifdef V3_LICENSING

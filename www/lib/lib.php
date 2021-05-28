@@ -132,6 +132,15 @@ function autoDetectVaapiSetup() {
 	return $nodes[$max_score_id];
 }
 
+function getLiveViewVideoOptions() {
+    $ret = array();
+    $ret[0] = "HLS";
+    $ret[1] = "MJPEG";
+
+    return $ret;
+}
+
+
 /**
  * Returns SQLite Database connection
  * 

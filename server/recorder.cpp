@@ -190,7 +190,7 @@ static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id
 
 	localtime_r(&start_ts, &tm);
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
-	strftime(fname, sizeof(fname), "/%H-%M-%S.mkv", &tm);
+	strftime(fname, sizeof(fname), "/%H-%M-%S.mp4", &tm);
 
 	/* Construct full path except final file name, for mkdir */
 	size_t dir_len = snprintf(dst, len, "%s/%s/%06d",

@@ -109,6 +109,9 @@ define('G_SUBDOMAIN_TITLE', 'SSL / CNAME setup');
 define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
 define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
 
+define('G_LIVEVIEW_VIDEO_TITLE', 'LiveView Configuration');
+define('G_LIVEVIEW_VIDEO_METHOD', 'Video method');
+
 #mail
 define('G_SMTP_SERVICE', 'Mailing service');
 define('G_SMTP_EMAIL_FROM', 'SMTP From value');
@@ -439,7 +442,7 @@ define('QUERY_FAILED', 'Could not execute query. Please check <i>/var/log/apache
 define('LOGOUT', 'logout');
 define('WRITE_FAILED', 'Failed to write to storage folder at: ');
 
-#mjpeg
+#mjpeg & hls
 define('MJPEG_DISABLED', 'This device was disabled.');
 define('MJPEG_DEVICE_NOT_FOUND', 'Device with ID %ID% was not found.');
 define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %ID%.');

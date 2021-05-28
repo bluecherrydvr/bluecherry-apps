@@ -155,7 +155,7 @@ void stream_keyframe_buffer::apply_bound()
 
 stream_properties::video_properties::video_properties()
 	: codec_id(AV_CODEC_ID_NONE), pix_fmt(AV_PIX_FMT_NONE), width(0), height(0),
-	  time_base({ 1, 1 }), profile(FF_PROFILE_UNKNOWN)
+	  time_base({ 1, 1 }), profile(FF_PROFILE_UNKNOWN), bit_rate(0)
 {
 }
 
