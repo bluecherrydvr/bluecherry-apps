@@ -1116,16 +1116,6 @@ bool hls_session::handle_request(const std::string &request)
     size_t url_length = end_posit - start_posit;
     std::string url = request.substr(start_posit, url_length);
 
-    /* Authenticate request */
-    if (!authenticate(url, request))
-    {
-        _type = request_type::unauthorized;
-        return create_response();
-    }
-
-    /* TODO: This is a temporary log */
-    bc_log(Info, "HLS URL: %s", url.c_str());
-
     if (url.find("/index.m3u8") != std::string::npos)
     {
         size_t posit = url.find("recording=");
@@ -1135,9 +1125,7 @@ bool hls_session::handle_request(const std::string &request)
             posit += 10; // length of recording=
             _recording = url.substr(posit, std::string::npos);
             if (!_recording.length()) return create_response();
-
             _type = request_type::rec_playlist;
-            return create_response();
         }
         else
         {
@@ -1189,10 +1177,20 @@ bool hls_session::handle_request(const std::string &request)
         _type = request_type::recording;
         return create_response();
     }
-    
-    size_t posit = url.find("/", 1);
-    if (posit == std::string::npos) return create_response();
-    _device_id = std::stoi(url.substr(1, url.find("/", 1)));
+
+    /* Authenticate request */
+    if (!authenticate(url, request))
+    {
+        _type = request_type::unauthorized;
+        return create_response();
+    }
+
+    if (_type != request_type::rec_playlist)
+    {
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return create_response();
+        _device_id = std::stoi(url.substr(1, url.find("/", 1)));
+    }
 
     /* At this condition, live view request is valid */
     return create_response();
