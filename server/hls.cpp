@@ -55,6 +55,7 @@ extern "C" {
 
 #define HLS_SEGMENT_SIZE (188 * 7 * 1024)
 #define HLS_SEGMENT_DURATION 3.0 // Most accepted HLS segment duration
+#define HLS_SERVER_CHUNK_MAX 65535
 
 static void std_string_append(std::string &source, const char *data, ...)
 {
@@ -342,7 +343,7 @@ bool hls_events::create(size_t max, void *userptr, event_callback_t callback)
     return true;
 }
 
-void hls_events::service_callback(hls_event_data *data)
+void hls_events::service_callback(hls_events::event_data *data)
 {
     /* Check error condition */
     if (data->events & EPOLLRDHUP) { event_callback(this, data, HLS_EVENT_CLOSED); return; }
@@ -359,7 +360,7 @@ void hls_events::service_callback(hls_event_data *data)
         { event_callback(this, data, HLS_EVENT_USER); return; } // User requested callback
 }
 
-void hls_events::clear_callback(hls_event_data *data)
+void hls_events::clear_callback(hls_events::event_data *data)
 {
     if (data != NULL)
     {
@@ -368,10 +369,10 @@ void hls_events::clear_callback(hls_event_data *data)
     }
 }
 
-hls_event_data* hls_events::register_event(void *ctx, int fd, int events, int type)
+hls_events::event_data* hls_events::register_event(void *ctx, int fd, int events, hls_events::type type)
 {
     /* Allocate memory for event data */
-    hls_event_data* data = (hls_event_data*)malloc(sizeof(hls_event_data));
+    hls_events::event_data* data = (hls_events::event_data*)malloc(sizeof(hls_events::event_data));
     if (data == NULL)
     {
         bc_log(Error, "Can not allocate memory for event: %s", strerror(errno));
@@ -394,7 +395,7 @@ hls_event_data* hls_events::register_event(void *ctx, int fd, int events, int ty
     return data;
 }
 
-bool hls_events::add(hls_event_data* data, int events)
+bool hls_events::add(hls_events::event_data* data, int events)
 {
     struct epoll_event event;
     event.data.ptr = data;
@@ -402,14 +403,14 @@ bool hls_events::add(hls_event_data* data, int events)
 
     if (epoll_ctl(event_fd, EPOLL_CTL_ADD, data->fd, &event) < 0)
     {
-        bc_log(Error, "epoll_ctl() failed: %s", strerror(errno));
+        bc_log(Error, "epoll_ctl() add failed: %s: %d", strerror(errno), data->fd);
         return false;
     }
 
     return true;
 }
 
-bool hls_events::modify(hls_event_data *data, int events)
+bool hls_events::modify(hls_events::event_data *data, int events)
 {
     struct epoll_event event;
     event.data.ptr = data;
@@ -417,14 +418,14 @@ bool hls_events::modify(hls_event_data *data, int events)
 
     if (epoll_ctl(event_fd, EPOLL_CTL_MOD, data->fd, &event) < 0)
     {
-        bc_log(Error, "epoll_ctl() failed: %s", strerror(errno));
+        bc_log(Error, "epoll_ctl() mod failed: %s", strerror(errno));
         return false;
     }
 
     return true;
 }
 
-bool hls_events::remove(hls_event_data *data)
+bool hls_events::remove(hls_events::event_data *data)
 {
     int efd = data->fd;
     clear_callback(data);
@@ -442,7 +443,7 @@ bool hls_events::service(int timeout_ms)
     for (int i = 0; i < count; i++)
     {
         /* Call callback for each ready event */
-        hls_event_data *data = (hls_event_data*)event_array[i].data.ptr;
+        hls_events::event_data *data = (hls_events::event_data*)event_array[i].data.ptr;
         data->events = event_array[i].events;
         service_callback(data);
     }
@@ -600,7 +601,7 @@ hls_session::~hls_session()
 
 int hls_session::writeable()
 {
-    int events = EPOLLRDHUP | EPOLLIN | EPOLLOUT;
+    int events = EPOLLRDHUP | EPOLLOUT;
     return _events->modify(_ev_data, events) ? 1 : -1;
 }
 
@@ -647,15 +648,15 @@ size_t hls_session::tx_buffer_advance(size_t size)
     return _tx_buffer.size();
 }
 
-size_t hls_session::tx_buffer_flush()
+ssize_t hls_session::tx_buffer_flush()
 {
     if (!_tx_buffer.size()) return 0;
 
-    int sent = send(_fd, _tx_buffer.data(), _tx_buffer.size(), MSG_NOSIGNAL);
-    if (sent <= 0)
+    ssize_t sent = send(_fd, _tx_buffer.data(), _tx_buffer.size(), MSG_NOSIGNAL);
+    if (sent < 0)
     {
         bc_log(Error, "Can not send data to HLS client: %s (%s)", get_addr(), strerror(errno));
-        return 0;
+        return sent;
     }
 
     tx_buffer_advance(sent);
@@ -854,7 +855,9 @@ bool hls_session::create_response()
         std_string_append(body, "#EXT-X-PLAYLIST-TYPE:VOD\n");
 
         std_string_append(body, "#EXTINF:%f,\n", duration);
-        std_string_append(body, "%s\n", _recording.c_str());
+        std_string_append(body, "%s", _recording.c_str());
+        if (!get_listener()->get_auth() || !_auth_token.length()) std_string_append(body, "\n");
+        else std_string_append(body, "?authtoken=%s\n", _auth_token.c_str());
         std_string_append(body, "#EXT-X-ENDLIST\n");
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
@@ -993,22 +996,20 @@ bool hls_session::create_response()
             return true;
         }
 
-        FILE *fp = fopen(_recording.c_str(), "rb");
-        if (fp == NULL)
+        hls_filestream *fstream = new hls_filestream;
+        if (!fstream->open_file(_recording.c_str()))
         {
-            bc_log(Error, "HLS Failed to open recording: %s", _recording.c_str());
+            bc_log(Error, "HLS Failed to open recording: %s (%s)", _recording.c_str(), strerror(errno));
             std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
 
             _tx_buffer.resize(response.length());
             memcpy(_tx_buffer.data(), response.c_str(), response.length());
+
+            delete fstream;
             return true;
         }
-
-        fseek(fp, 0, SEEK_END);
-        long fsize = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
         std_string_append(response, "Access-Control-Allow-Origin: %s\r\n", "*");
@@ -1018,15 +1019,12 @@ bool hls_session::create_response()
         std_string_append(response, "Accept-Ranges: bytes\r\n");
         std_string_append(response, "Connection: close\r\n");
         std_string_append(response, "Server: bluechery\r\n");
-        std_string_append(response, "Content-Length: %ld\r\n\r\n", fsize);
+        std_string_append(response, "Content-Length: %ld\r\n\r\n", fstream->get_size());
 
-        size_t response_size = response.length() + fsize;
-        _tx_buffer.resize(response_size);
-
+        _tx_buffer.resize(response.length());
         memcpy(_tx_buffer.data(), response.c_str(), response.length());
-        fread(_tx_buffer.data() + response.length(), 1, fsize, fp);
 
-        fclose(fp);
+        set_fstream(fstream);
         return true;
     }
 
@@ -1173,9 +1171,18 @@ bool hls_session::handle_request(const std::string &request)
     else if (url.find(".mp4") != std::string::npos)
     {
         /* Requested recording file */
-        _recording = url;
+        size_t posit = url.find("?", 0);
+        if (posit == std::string::npos) _recording = url;
+        else _recording = url.substr(0, posit);
         _type = request_type::recording;
-        return create_response();
+    }
+
+    if (_type != request_type::rec_playlist &&
+        _type != request_type::recording)
+    {
+        size_t posit = url.find("/", 1);
+        if (posit == std::string::npos) return create_response();
+        _device_id = std::stoi(url.substr(1, url.find("/", 1)));
     }
 
     /* Authenticate request */
@@ -1183,13 +1190,6 @@ bool hls_session::handle_request(const std::string &request)
     {
         _type = request_type::unauthorized;
         return create_response();
-    }
-
-    if (_type != request_type::rec_playlist)
-    {
-        size_t posit = url.find("/", 1);
-        if (posit == std::string::npos) return create_response();
-        _device_id = std::stoi(url.substr(1, url.find("/", 1)));
     }
 
     /* At this condition, live view request is valid */
@@ -1226,6 +1226,44 @@ static void* hls_session_thread(void *ctx)
     return NULL;
 }
 #endif /* BC_HLS_WITH_SSL */
+
+//////////////////////////////////////////////////
+// HLS FILE STREAM
+//////////////////////////////////////////////////
+
+bool hls_filestream::open_file(const char *path)
+{
+    _fd = open(path, O_RDONLY);
+    if (_fd < 0) return false;
+
+    _size = lseek(_fd, 0, SEEK_END);
+    lseek(_fd, 0, SEEK_SET);
+
+    return true;
+}
+
+ssize_t hls_filestream::read_data(uint8_t *data, size_t size)
+{
+    if (!is_active()) return 0;
+
+    ssize_t bytes = read(_fd, data, size);
+    size_t posit = bytes < 0 ? 0 : bytes;
+    data[posit] = '\0';
+
+    _read += posit;
+    _eof = (_read >= _size) ? true : false;
+
+    return bytes;
+}
+
+void hls_filestream::finish()
+{
+    if (_fd >= 0)
+    {
+        close(_fd);
+        _fd = -1;
+    }
+}
 
 //////////////////////////////////////////////////
 // HLS CONTENT
@@ -1430,13 +1468,15 @@ size_t hls_content::get_segment_ids(hls_segments &segments)
 // HLS EVENTS
 //////////////////////////////////////////////////
 
-void hls_clear_event(hls_event_data *ev_data)
+void hls_clear_event(hls_events::event_data *ev_data)
 {
     if (ev_data != NULL)
     {
         if (ev_data->ptr != NULL)
         {
-            free(ev_data->ptr);
+            if (ev_data->type == hls_events::type::session)
+                delete (hls_session*)ev_data->ptr;
+
             ev_data->ptr = NULL;
         }
 
@@ -1449,19 +1489,16 @@ void hls_clear_event(hls_event_data *ev_data)
     }
 }
 
-int hls_read_event(hls_events *events, hls_event_data *ev_data)
+int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
 {
-    /* Get server socket descriptor */
-    int server_fd = (*(int*)events->get_user_data());
-
-    if (server_fd == ev_data->fd)
+    if (ev_data->type == hls_events::type::listener)
     {
         hls_listener *listener = (hls_listener*)ev_data->ptr;
         socklen_t len = sizeof(struct sockaddr);
         struct sockaddr_in addr;
     
         /* Accept to the new connection request */
-        int client_fd = accept(server_fd, (struct sockaddr*)&addr, &len);
+        int client_fd = accept(ev_data->fd, (struct sockaddr*)&addr, &len);
         if (client_fd < 0)
         {
             bc_log(Error, "Can not accept to the socket: %s", strerror(errno));
@@ -1495,7 +1532,7 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         session->set_fd(client_fd);
 
         /* Register client into the event instance */
-        hls_event_data *sess_data = events->register_event(session, client_fd, EPOLLIN, 0);
+        hls_events::event_data *sess_data = events->register_event(session, client_fd, EPOLLIN, hls_events::type::session);
         if (sess_data == NULL)
         {
             delete session;
@@ -1507,8 +1544,9 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         session->set_event_handler(events);
 
         bc_log(Debug, "Connected HLS client: %s (%d)", session->get_addr(), client_fd);
+        return 1;
     }
-    else
+    else if (ev_data->type == hls_events::type::session)
     {
         hls_session *session = (hls_session*)ev_data->ptr;
         int client_fd = ev_data->fd;
@@ -1539,18 +1577,36 @@ int hls_read_event(hls_events *events, hls_event_data *ev_data)
         return session->writeable();
     }
 
-    return 1;
+    return -1;
 }
 
-int hls_write_event(hls_events *events, hls_event_data *ev_data)
+int hls_write_event(hls_events *events, hls_events::event_data *ev_data)
 {
     hls_session *session = (hls_session*)ev_data->ptr;
-    return session->tx_buffer_flush() ? 1 : -1; // -1 means disconnect
+    ssize_t sent = session->tx_buffer_flush();
+
+    if (sent < 0) return -1;
+    else if (sent) return 1;
+
+    hls_filestream *fstream = session->get_fstream();
+    if (fstream == NULL) return -1;
+
+    uint8_t buffer[HLS_SERVER_CHUNK_MAX];
+    ssize_t size = fstream->read_data(buffer, sizeof(buffer));
+    if (size) session->tx_buffer_append(buffer, size);
+
+    if (fstream->eof_reached() || size <= 0)
+    {
+        delete fstream;
+        session->set_fstream(NULL);
+    }
+
+    return session->tx_buffer_get().size() ? 1 : -1;
 }
 
 int hls_event_callback(void *events, void* data, int reason)
 {
-    hls_event_data *ev_data = (hls_event_data*)data;
+    hls_events::event_data *ev_data = (hls_events::event_data*)data;
     hls_events *pevents = (hls_events*)events;
     int server_fd = (*(int*)pevents->get_user_data());
 
@@ -1751,7 +1807,7 @@ bool hls_listener::register_listener(uint16_t port)
 
     /* Create event instance and add listener socket to the instance  */
     if (!_events.create(0, &_fd, hls_event_callback) ||
-        !_events.register_event(this, _fd, EPOLLIN, 0)) return false;
+        !_events.register_event(this, _fd, EPOLLIN, hls_events::type::listener)) return false;
 
     return true;
 }

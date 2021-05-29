@@ -88,30 +88,37 @@ protected:
 #define HLS_EVENT_DESTROY           8
 #define HLS_EVENT_EXCEPTION         9
 
-typedef struct hls_event_data_ {
-    void *ptr;      // Data pointer
-    int events;     // Ready events
-    int type;       // Event type
-    int fd;         // Socket descriptor
-} hls_event_data;
-
 typedef int(*event_callback_t)(void *events, void* data, int reason);
 
 class hls_events
 {
 public:
+
+    typedef enum {
+        listener = (int)0,
+        session,
+        fstream
+    } type;
+
+    typedef struct {
+        hls_events::type type;  // Event type
+        void *ptr;              // Data pointer
+        int events;             // Ready events
+        int fd;                 // Socket descriptor
+    } event_data;
+
     ~hls_events();
 
     bool create(size_t max, void *userptr, event_callback_t callBack);
-    hls_event_data* register_event(void *ctx, int fd, int events, int type);
+    hls_events::event_data* register_event(void *ctx, int fd, int events, hls_events::type type);
 
-    bool add(hls_event_data* data, int events);
-    bool modify(hls_event_data *data, int events);
-    bool remove(hls_event_data *data);
+    bool add(hls_events::event_data* data, int events);
+    bool modify(hls_events::event_data *data, int events);
+    bool remove(hls_events::event_data *data);
     bool service(int timeout_ms);
 
-    void service_callback(hls_event_data *data);
-    void clear_callback(hls_event_data *data);
+    void service_callback(hls_events::event_data *data);
+    void clear_callback(hls_events::event_data *data);
     void *get_user_data() { return user_data; }
 
 private:
@@ -123,6 +130,28 @@ private:
 };
 
 typedef std::vector<uint8_t> hls_byte_buffer;
+
+class hls_filestream 
+{
+public:
+    ~hls_filestream() { finish(); }
+    void finish();
+
+    bool open_file(const char *path);
+    ssize_t read_data(uint8_t *data, size_t size);
+    size_t get_size() { return _size; }
+    int get_fd() { return _fd; }
+
+    bool is_active() { return (_fd >= 0); }
+    bool eof_reached() { return _eof; }
+
+private:
+    size_t  _size = 0;
+    size_t  _read = 0;
+    bool    _eof = false;
+    int     _fd = -1;
+};
+
 
 // Forward declaration
 class hls_listener;
@@ -155,13 +184,14 @@ public:
     const hls_byte_buffer& tx_buffer_get() { return _tx_buffer; }
     void tx_buffer_append(uint8_t *data, size_t size);
     size_t tx_buffer_advance(size_t size);
-    size_t tx_buffer_flush();
+    ssize_t tx_buffer_flush();
 
     void rx_buffer_append(const char *data) { _rx_buffer.append(data); }
     void rx_buffer_advance(size_t size) { _rx_buffer.erase(0, size); }
 
-    void set_hls_event_data(hls_event_data *data) { _ev_data = data; }
+    void set_hls_event_data(hls_events::event_data *data) { _ev_data = data; }
     void set_event_handler(hls_events *events) { _events = events; }
+    hls_events* get_event_handler() { return _events; }
 
     void set_listener(hls_listener *listener) { _listener = listener; } 
     hls_listener* get_listener() { return _listener; }
@@ -170,6 +200,9 @@ public:
     void set_addr(const struct in_addr addr);
     void set_fd(int fd) { _fd = fd; }
     int get_fd() { return _fd; }
+
+    void set_fstream(hls_filestream *fstream) { _fstream = fstream; } 
+    hls_filestream* get_fstream() { return _fstream; } 
 
 #ifdef BC_HLS_WITH_SSL
     void set_ssl(hls_ssl* ssl) { _ssl = ssl; }
@@ -186,9 +219,10 @@ private:
     int             _device_id = 0;
 
     /* Objects */
-    hls_listener*   _listener = NULL;
-    hls_event_data* _ev_data = NULL;
-    hls_events*     _events = NULL;
+    hls_events::event_data* _ev_data = NULL;
+    hls_filestream*         _fstream = NULL;
+    hls_listener*           _listener = NULL;
+    hls_events*             _events = NULL;
 
 #ifdef BC_HLS_WITH_SSL
     /* SSL support */
@@ -229,8 +263,8 @@ public:
     bool                _is_key = false;
 
 private:
-    uint8_t*            _data = NULL;
-    size_t              _size = 0;
+    uint8_t*                _data = NULL;
+    size_t                  _size = 0;
 };
 
 typedef std::deque<hls_segment*> hls_window;
