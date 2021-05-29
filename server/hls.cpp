@@ -403,7 +403,7 @@ bool hls_events::add(hls_events::event_data* data, int events)
 
     if (epoll_ctl(event_fd, EPOLL_CTL_ADD, data->fd, &event) < 0)
     {
-        bc_log(Error, "epoll_ctl() add failed: %s: %d", strerror(errno), data->fd);
+        bc_log(Error, "epoll_ctl() add failed: %s", strerror(errno));
         return false;
     }
 
@@ -1583,17 +1583,17 @@ int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
 int hls_write_event(hls_events *events, hls_events::event_data *ev_data)
 {
     hls_session *session = (hls_session*)ev_data->ptr;
-    ssize_t sent = session->tx_buffer_flush();
+    ssize_t data_left = session->tx_buffer_flush();
 
-    if (sent < 0) return -1;
-    else if (sent) return 1;
+    if (data_left < 0) return -1;
+    else if (data_left) return 1;
 
     hls_filestream *fstream = session->get_fstream();
     if (fstream == NULL) return -1;
 
     uint8_t buffer[HLS_SERVER_CHUNK_MAX];
     ssize_t size = fstream->read_data(buffer, sizeof(buffer));
-    if (size) session->tx_buffer_append(buffer, size);
+    if (size > 0) session->tx_buffer_append(buffer, size);
 
     if (fstream->eof_reached() || size <= 0)
     {
