@@ -1571,11 +1571,10 @@ int main(int argc, char **argv)
 	hls = new hls_listener;
 
 	/*
-		Uncomment this lines and provide valid SSL cert and
-		key file paths to enable HLS streaming over HTTPS
+		Uncomment those 3 lines to enable SSL over HLS
 	*/
-	//const char *key_path = "/opt/bluecherry/server.key";
-	//const char *crt_path = "/opt/bluecherry/server.crt";
+	//const char *key_path = "/usr/share/bluecherry/ssl/bluecherry-snakeoil.key";
+	//const char *crt_path = "/usr/share/bluecherry/ssl/bluecherry-snakeoil.pem";
 	//hls->set_ssl_ctx(key_path, crt_path, NULL);
 
 	if (!hls->register_listener(7003)) {

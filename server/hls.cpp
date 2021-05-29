@@ -591,6 +591,12 @@ hls_session::~hls_session()
     }
 #endif
 
+    if (_fstream != NULL)
+    {
+        delete _fstream;
+        _fstream = NULL;
+    }
+
     if (_fd >= 0)
     {
         shutdown(_fd, SHUT_RDWR);
@@ -787,7 +793,7 @@ bool hls_session::create_response()
     else if (_type == hls_session::request_type::rec_playlist)
     {
         struct stat buffer;
-        if (stat(_recording.c_str(), &buffer) != 0)
+        if (lstat(_recording.c_str(), &buffer) < 0)
         {
             bc_log(Warning, "Requested HLS recording is not found: %s", _recording.c_str());
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
@@ -984,7 +990,7 @@ bool hls_session::create_response()
     else if (_type == hls_session::request_type::recording)
     {
         struct stat buffer;
-        if (stat(_recording.c_str(), &buffer) != 0)
+        if (lstat(_recording.c_str(), &buffer) < 0)
         {
             bc_log(Warning, "Requested HLS recording is not found: %s", _recording.c_str());
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
@@ -1218,8 +1224,30 @@ static void* hls_session_thread(void *ctx)
 
     /* Send response */
     const hls_byte_buffer &tx_buffer = session->tx_buffer_get();
-    int sent = ssl->ssl_write(tx_buffer.data(), tx_buffer.size());
-    if (sent <= 0) bc_log(Error, "%s", ssl->get_last_error().c_str());
+    if (tx_buffer.size() && ssl->ssl_write(tx_buffer.data(), tx_buffer.size()) <= 0)
+    {
+        bc_log(Error, "%s", ssl->get_last_error().c_str());
+        delete session;
+        return NULL;
+    }
+
+    /* Start recording file streaming if requested */
+    hls_filestream *fstream = session->get_fstream();
+    while (fstream != NULL)
+    {
+        uint8_t buffer[HLS_SERVER_CHUNK_MAX]; // Read data from file
+        ssize_t size = fstream->read_data(buffer, sizeof(buffer));
+
+        /* Send data to the client */
+        if (size > 0 && (ssl->ssl_write(buffer, size) <= 0))
+        {
+            bc_log(Error, "%s", ssl->get_last_error().c_str());
+            break;
+        }
+
+        /* Check if while file is streamed to client */
+        if (fstream->eof_reached() || size <= 0) break;
+    }
 
     /* Finish */
     delete session;
@@ -1765,7 +1793,7 @@ bool hls_listener::create_socket(uint16_t port)
         return false;
     }
 
-    bc_log(Info, "HLS server started listen to port: %d", _port);
+    bc_log(Info, "HLS server started listen to port: %d (SSL=%d)", _port, _use_ssl ? 1 : 0);
     return true;
 }
 
@@ -1775,6 +1803,19 @@ void hls_listener::set_ssl_ctx(const char *key, const char* crt, const char *ca)
     /* Mandatory */
     if (crt != NULL && key != NULL)
     {
+        struct stat buffer;
+        if (lstat(key, &buffer) < 0)
+        {
+            bc_log(Error, "Can not find SSL key: %s", key);
+            return;
+        }
+
+        if (lstat(crt, &buffer) < 0)
+        {
+            bc_log(Error, "Can not find SSL cert: %s", crt);
+            return;
+        }
+
         _ssl_cert.cert_path = std::string(crt);
         _ssl_cert.key_path = std::string(key);
         _use_ssl = true;

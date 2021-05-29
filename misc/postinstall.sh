@@ -141,6 +141,12 @@ case "$1" in
 			> /etc/sudoers.d/bluecherry
 		chmod 0440 /etc/sudoers.d/bluecherry
 
+		mkdir -p /usr/share/bluecherry/ssl
+		cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem
+		cp /etc/ssl/private/ssl-cert-snakeoil.key /usr/share/bluecherry/ssl/bluecherry-snakeoil.key
+		chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem
+		chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.key
+
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
 
@@ -150,7 +156,7 @@ case "$1" in
 			chown root:bluecherry /var/log/bluecherry.log
 		fi
 		chmod 640 /var/log/bluecherry.log
-		
+
 		# Use the correct user for rsyslog under debian
 		if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) ]]
 		then

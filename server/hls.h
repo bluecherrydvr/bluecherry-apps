@@ -152,7 +152,6 @@ private:
     int     _fd = -1;
 };
 
-
 // Forward declaration
 class hls_listener;
 
@@ -263,8 +262,8 @@ public:
     bool                _is_key = false;
 
 private:
-    uint8_t*                _data = NULL;
-    size_t                  _size = 0;
+    uint8_t*            _data = NULL;
+    size_t              _size = 0;
 };
 
 typedef std::deque<hls_segment*> hls_window;
