@@ -1364,8 +1364,7 @@ bool hls_content::append_segment(hls_segment *segment)
         return false;
     }
 
-    this->_cc++; // Continuity counter
-    segment->_id = this->_cc;
+    segment->_id = ++this->_cc;
     _window.push_back(segment);
 
     _fmp4 = (segment->_type == hls_segment::type::fmp4);
@@ -1427,7 +1426,14 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     if (is_key && duration >= HLS_SEGMENT_DURATION)
     {
         hls_segment *segment = new hls_segment;
-        segment->add_data(_in_buffer.data(), _in_buffer.size());
+        if (segment == NULL) return false;
+
+        if (!segment->add_data(_in_buffer.data(), _in_buffer.size()))
+        {
+            delete segment;
+            return false;
+        }
+
         segment->_duration = duration;
         segment->_is_key = is_key;
         segment->_type = type;
