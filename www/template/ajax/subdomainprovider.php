@@ -1,5 +1,21 @@
 
 <div class="row" style="padding: 20px 0;">
+    <div class="col-md-offset-3 col-md-6">
+        <div class="alert alert-info" role="alert">By default, Bluecherry uses the standard 'snakeoil' automated SSL 
+        certificates installed by your operating system. These keys are inherently not secure as there is no third party 
+        authentication to validate the keys.
+        <br>
+        Starting in 3.1.0 Bluecherry supports automatic creation of secure (TLS) certificates via Lets Encrypt (letsencrypt.
+        org). Additionally, we provide you a cname DNS entry (i.e - smithcams.bluecherry.app) that is associated with your 
+        purchased license key.
+        <br>
+        To enable this, you need the following:
+            <li>At least port 7001 opened to the outside world on your firewall.</li>
+            <li>An email address for LetsEncrypt to contact you if there is some issue (we do not collect this email address).</li>
+            <li>A paid Bluecherry license, the community edition is not supported in this automated setup.</li>
+        </div>
+    </div>
+
     <div class="col-md-offset-4 col-md-4">
 
         <?php if (isset($_GET['status'])) {
