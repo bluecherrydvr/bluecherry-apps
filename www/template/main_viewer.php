@@ -70,7 +70,7 @@
 			</ul>
 		</div>
 	</div>
-	<input type="hidden" id='video_method' value='<?php echo $lv->video_method ?>' />
+	<input type="hidden" id='video_method' value='<?php echo $lv->video_method; ?>' />
 	<div id='liveViewContainer'></div>
 </div>
 </body>

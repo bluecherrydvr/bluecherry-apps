@@ -1528,6 +1528,25 @@ class Cameras
     }
 }
 
+class util {
+	public static function getRemoteIp()
+    {
+        $output = array();
+        $ret = 0;
+        exec("wget -qO - icanhazip.com", $output, $ret);
+
+        if ($ret != 0) {
+            exec("curl ifconfig.me", $output, $ret);
+        }
+
+        if ($ret != 0) {
+            return '';
+        }
+
+        return $output[0];    
+    }
+}
+
 $global_settings = new globalSettings;
 $varpub = VarPub::get();
 $varpub->global_settings = $global_settings;

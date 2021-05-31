@@ -13,7 +13,7 @@ class subdomainprovider extends subdomainproviderbase
 
     protected function initForm() {
         $this->view->actualSubdomain = '';
-        $this->view->actualIpv4Value = $this->getRemoteIp();
+        $this->view->actualIpv4Value = util::getRemoteIp();
         $this->view->actualIpv6Value = '';
         $this->view->licenseIdExists = false;
 
@@ -100,23 +100,6 @@ class subdomainprovider extends subdomainproviderbase
         }
 
         header('Location: /subdomainprovider?status=1');
-    }
-
-    private function getRemoteIp()
-    {
-        $output = array();
-        $ret = 0;
-        exec("wget -qO - icanhazip.com", $output, $ret);
-
-        if ($ret != 0) {
-            exec("curl ifconfig.me", $output, $ret);
-        }
-
-        if ($ret != 0) {
-            return '';
-        }
-
-        return $output[0];    
     }
 
 }
