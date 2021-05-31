@@ -1569,14 +1569,6 @@ int main(int argc, char **argv)
 	}
 
 	hls = new hls_listener;
-
-	/*
-		Uncomment those 3 lines to enable SSL over HLS
-	*/
-	//const char *key_path = "/usr/share/bluecherry/ssl/bluecherry-snakeoil.key";
-	//const char *crt_path = "/usr/share/bluecherry/ssl/bluecherry-snakeoil.pem";
-	//hls->set_ssl_ctx(key_path, crt_path, NULL);
-
 	if (!hls->register_listener(7003)) {
 		bc_log(Error, "Failed to setup HLS listener");
 		delete hls;

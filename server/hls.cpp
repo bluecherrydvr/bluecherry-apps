@@ -1109,8 +1109,13 @@ bool hls_session::authenticate(const std::string &uri, const std::string &reques
 bool hls_session::handle_request(const std::string &request)
 {
     /* Get start position of URL */
-    size_t start_posit = request.find("/");
-    if (start_posit == std::string::npos) return false;
+    size_t start_posit = request.find("/hls");
+    if (start_posit == std::string::npos)
+    {
+        start_posit = request.find("/");
+        if (start_posit == std::string::npos) return false;
+    }
+    else start_posit += 4; // skip /hls
 
     /* Get end position of URL */
     size_t end_posit = request.find(" ", start_posit);
@@ -1184,7 +1189,8 @@ bool hls_session::handle_request(const std::string &request)
     }
 
     if (_type != request_type::rec_playlist &&
-        _type != request_type::recording)
+        _type != request_type::recording &&
+        _type != request_type::invalid)
     {
         size_t posit = url.find("/", 1);
         if (posit == std::string::npos) return create_response();

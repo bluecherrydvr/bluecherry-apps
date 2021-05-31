@@ -58,7 +58,7 @@ function createLink($id, $current_user) {
 	data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
 	// Cleanup old tokens from DB
 	data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
-	$hls_link = "http://$ip:7003/$id/index.m3u8?authtoken=$token";
+	$hls_link = "http://$ip:7001/hls/$id/index.m3u8?authtoken=$token";
 
 	return $hls_link;
 }
