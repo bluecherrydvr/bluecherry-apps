@@ -54,7 +54,7 @@ function createLink($id, $current_user) {
 	// Generate auth token for DB, insert into DB
 	$token = session_id();  // Lazy way of unique token generation
 	$user_id = $current_user->info['id'];
-	$ip = $_SERVER['REMOTE_ADDR'];
+	$ip = $_GET['hostname'];
 	data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
 	// Cleanup old tokens from DB
 	data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
