@@ -13,6 +13,7 @@ class subdomainprovider extends subdomainproviderbase
 
     protected function initForm() {
         $this->view->actualSubdomain = '';
+        $this->view->actualEmail     = $this->varpub->global_settings->data['G_SUBDOMAIN_EMAIL_ACCOUNT'];
         $this->view->actualIpv4Value = util::getRemoteIp();
         $this->view->actualIpv6Value = '';
         $this->view->licenseIdExists = false;
@@ -49,11 +50,16 @@ class subdomainprovider extends subdomainproviderbase
     public function postData() {
 
         $subdomain = '';
+        $email     = '';
         $ipv4Value = '';
         $ipv6Value = '';
 
         if (!empty($_POST['subdomain_name'])) {
             $subdomain = $_POST['subdomain_name'];
+        }
+
+        if (!empty($_POST['subdomain_email'])) {
+            $email = $_POST['subdomain_email'];
         }
 
         if (!empty($_POST['server_ip_address_4'])) {
@@ -99,6 +105,7 @@ class subdomainprovider extends subdomainproviderbase
             return;
         }
 
+        data::query("UPDATE GlobalSettings SET value='$email' WHERE parameter='G_SUBDOMAIN_EMAIL_ACCOUNT'");
         header('Location: /subdomainprovider?status=1');
     }
 

@@ -50,6 +50,16 @@
                     <?php if(!empty($licenseIdExists)) { ?>
                     <div class="form-group">
                         <div class="col-sm-4 text-right">
+                            <label for="subdomain_email" class="control-label">Email:</label>
+                            <br /><em>Mandatory</em>
+                        </div>
+                        <div class="col-sm-8 validation-field">
+                            <input type="text" class="form-control" name="subdomain_email" id="subdomain_email"
+                                   value="<?php echo $actualEmail; ?>" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-sm-4 text-right">
                             <label for="server_ip_address_4" class="control-label">Server IP Address (IPv4):</label>
                             <br /><em>Mandatory</em>
                         </div>

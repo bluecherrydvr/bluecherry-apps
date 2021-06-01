@@ -11,6 +11,9 @@ $.validator.addMethod('subdomain', function(value, element) {
     return this.optional( element ) || /^[a-z0-9][a-z0-9\-]{2,49}$/i.test(value);
 }, 'Invalid subdomain name');
 
+$.validator.addMethod('email', function(value, element) {
+    return this.optional( element ) || /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/i.test(value);
+}, 'Please enter a valid email address');
 
 $('#subdomain-provider-register').validate({
     rules: {
@@ -19,6 +22,10 @@ $('#subdomain-provider-register').validate({
             subdomain: true,
             minlength: 3,
             maxlength: 50
+        },
+        subdomain_email: {
+            required: true,
+            email: true
         },
         server_ip_address_4: {
             required: true,
@@ -39,7 +46,12 @@ $('#subdomain-provider-register').validate({
             name: $('#subdomain_name').val()
         }, function (data) {
 
-            if (!data.success) {
+            if (!data) {
+                that.showErrors({
+                    subdomain_name: "API request is failed.\r\nPlease check Global settings or network connection."
+                });
+            }
+            else if (!data.success) {
                 let message = 'This subdomain name is not available.';
                 if (data.message === 'API request is failed.') {
                     message = data.message + ' \r\nPlease check Global settings or network connection.';
