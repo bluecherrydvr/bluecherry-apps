@@ -8,7 +8,7 @@
 
 #define LICENSE_KEY "36E898-AC0FD0-46D28E-F4D165-8E9743-07934E"
 #define PRODUCT_ID "9c5dcb22-b7a8-4f0c-9deb-c5426bfe6ae6"
-#define PRODUCT_VERSION "1.0.0"
+#define PRODUCT_VERSION "3.1.0-rc1"
 
 #define METADATA_KEY "streams"
 
