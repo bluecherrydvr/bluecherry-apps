@@ -1317,10 +1317,10 @@ hls_content::hls_content()
     }
 
     /*
-        using only 2 segments in playlist is enough since we are using sliding window
+        using only 4 segments in playlist is enough since we are using sliding window
         also it will decrease usage of RAM (less segments in window = less RAM usage)
     */
-    set_window_size(2);
+    set_window_size(4);
     _init = true;
 }
 
@@ -1515,7 +1515,10 @@ void hls_clear_event(hls_events::event_data *ev_data)
         if (ev_data->ptr != NULL)
         {
             if (ev_data->type == hls_events::type::session)
-                delete (hls_session*)ev_data->ptr;
+            {
+                hls_session *session = (hls_session*)ev_data->ptr;
+                if (session) delete session;
+            }
 
             ev_data->ptr = NULL;
         }
