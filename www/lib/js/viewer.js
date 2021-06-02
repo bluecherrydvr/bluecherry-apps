@@ -177,14 +177,14 @@ makeGrid = function(){
 	var lvRows = (Cookie.read('lvRows') || 2);
 	var lvCols = (Cookie.read('lvCols') || 2);
 	var gridTable = new Element('table', {
-           	'id' : 'lvGridTable'
+           	'id' : 'lvGridTable', 'class': 'webcamsTable'
     });
 	for (row = 1; row <= lvRows; row++) {
        	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
        	for(col = 1; col <= lvCols; col++){
 			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
-			var imgClass = 'noImg';
+			var imgClass = 'noImg gridImage';
 			var thisCam = $$('.ptz'+'#'+imgSrcId);
 			var id = imgSrcId;
 			var videoMethod = $$('#video_method').get('value')[0];
