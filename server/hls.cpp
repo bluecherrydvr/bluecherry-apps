@@ -1428,8 +1428,8 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     uint8_t *offset = _in_buffer.data();
     memcpy(offset + buff_size, data, size);
 
-    //if (is_key && _in_buffer.size() >= HLS_SEGMENT_SIZE)
-    if (is_key && duration >= HLS_SEGMENT_DURATION)
+    if (duration >= HLS_SEGMENT_DURATION && 
+       (_in_buffer.size() >= HLS_SEGMENT_SIZE || is_key))
     {
         hls_segment *segment = new hls_segment;
         if (segment == NULL) return false;
