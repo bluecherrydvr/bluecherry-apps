@@ -70,6 +70,17 @@ static void std_string_append(std::string &source, const char *data, ...)
     source.append(buffer, length);
 }
 
+static int sock_shutdown(int fd)
+{
+    if (fd >= 0)
+    {
+        shutdown(fd, SHUT_RDWR);
+        close(fd);
+    }
+
+    return -1;
+}
+
 //////////////////////////////////////////////////
 // SSL SUPPORT
 //////////////////////////////////////////////////
@@ -427,10 +438,8 @@ bool hls_events::modify(hls_events::event_data *data, int events)
 
 bool hls_events::remove(hls_events::event_data *data)
 {
-    int efd = data->fd;
+    if (epoll_ctl(event_fd, EPOLL_CTL_DEL, data->fd, NULL) < 0) return false;
     clear_callback(data);
-
-    if (epoll_ctl(event_fd, EPOLL_CTL_DEL, efd, NULL) < 0) return false;
     return true;
 }
 
@@ -597,12 +606,7 @@ hls_session::~hls_session()
         _fstream = NULL;
     }
 
-    if (_fd >= 0)
-    {
-        shutdown(_fd, SHUT_RDWR);
-        close(_fd);
-        _fd = -1;
-    }
+    _fd = sock_shutdown(_fd);
 }
 
 int hls_session::writeable()
@@ -1510,26 +1514,27 @@ size_t hls_content::get_segment_ids(hls_segments &segments)
 
 void hls_clear_event(hls_events::event_data *ev_data)
 {
-    if (ev_data != NULL)
+    if (ev_data->ptr != NULL)
     {
-        if (ev_data->ptr != NULL)
+        if (ev_data->type == hls_events::type::session)
         {
-            if (ev_data->type == hls_events::type::session)
+            hls_session *session = (hls_session*)ev_data->ptr;
+            if (session != NULL)
             {
-                hls_session *session = (hls_session*)ev_data->ptr;
-                if (session) delete session;
+                delete session;
+                /*
+                    This socket will be closed in the session destructor and we must
+                    set -1 on it just because we don't need to close it twice below.
+                */
+                ev_data->fd = -1;
             }
-
-            ev_data->ptr = NULL;
         }
 
-        if (ev_data->fd >= 0) 
-        {
-            shutdown(ev_data->fd, SHUT_RDWR);
-            close(ev_data->fd);
-            ev_data->fd = -1;
-        }
+        ev_data->ptr = NULL;
     }
+
+    /* Shutdown and close file descriptor */
+    ev_data->fd = sock_shutdown(ev_data->fd)
 }
 
 int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
@@ -1553,8 +1558,7 @@ int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
         if (fl < 0)
         {
             bc_log(Error, "Failed fcntl(): %s", strerror(errno));
-            shutdown(client_fd, SHUT_RDWR);
-            close(client_fd);
+            client_fd = sock_shutdown(client_fd);
             return 0;
         }
 
@@ -1563,8 +1567,7 @@ int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
         if (fl < 0)
         {
             bc_log(Error, "Failed to non-block socket: %s", strerror(errno));
-            shutdown(client_fd, SHUT_RDWR);
-            close(client_fd);
+            client_fd = sock_shutdown(client_fd);
             return 0;
         }
 
@@ -1653,7 +1656,7 @@ int hls_event_callback(void *events, void* data, int reason)
     hls_events *pevents = (hls_events*)events;
     int server_fd = (*(int*)pevents->get_user_data());
 
-    switch(reason)
+    switch (reason)
     {
         case HLS_EVENT_READ:
             return hls_read_event(pevents, ev_data);
@@ -1709,13 +1712,7 @@ hls_listener::~hls_listener()
 {
     if (!_init) return;
     pthread_mutex_destroy(&_mutex);
-
-    if (_fd >= 0)
-    {
-        shutdown(_fd, SHUT_RDWR);
-        close(_fd);
-        _fd = -1;
-    }
+    _fd = sock_shutdown(_fd);
 }
 
 hls_content* hls_listener::get_hls_content(int id)
@@ -1782,9 +1779,7 @@ bool hls_listener::create_socket(uint16_t port)
     if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
         bc_log(Error, "Failed to set SO_REUSEADDR on the HLS socket: (%s)", strerror(errno));
-        shutdown(_fd, SHUT_RDWR);
-        close(_fd);
-        _fd = -1;
+        _fd = sock_shutdown(_fd);
         return false;
     }
 
@@ -1792,9 +1787,7 @@ bool hls_listener::create_socket(uint16_t port)
     if (bind(_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
     {
         bc_log(Error, "Failed to bind socket on port: %u (%s)", _port, strerror(errno));
-        shutdown(_fd, SHUT_RDWR);
-        close(_fd);
-        _fd = -1;
+        _fd = sock_shutdown(_fd);
         return false;
     }
 
@@ -1802,9 +1795,7 @@ bool hls_listener::create_socket(uint16_t port)
     if (listen(_fd, HLS_EVENTS_MAX) < 0) 
     {
         bc_log(Error, "Failed to listen port: %u (%s)", _port, strerror(errno));
-        shutdown(_fd, SHUT_RDWR);
-        close(_fd);
-        _fd = -1;
+        _fd = sock_shutdown(_fd);
         return false;
     }
 
