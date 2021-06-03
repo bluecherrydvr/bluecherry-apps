@@ -1534,7 +1534,7 @@ void hls_clear_event(hls_events::event_data *ev_data)
     }
 
     /* Shutdown and close file descriptor */
-    ev_data->fd = sock_shutdown(ev_data->fd)
+    ev_data->fd = sock_shutdown(ev_data->fd);
 }
 
 int hls_read_event(hls_events *events, hls_events::event_data *ev_data)
