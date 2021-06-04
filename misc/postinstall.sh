@@ -170,9 +170,7 @@ case "$1" in
 #			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
 
 			if test -f "/etc/apache2/sites-enabled/bluecherry.conf"; then
-				stop_apache
 				rm /etc/apache2/sites-enabled/bluecherry.conf
-				start_apache
 			fi
 
 			# Backup nginx configuration file in case of Bad Things (tm)
@@ -207,6 +205,7 @@ case "$1" in
 			systemctl restart rsyslog.service
 		fi
 		
+		stop_apache
 		stop_nginx
 
 # Can be removed in v3...no longer needed
