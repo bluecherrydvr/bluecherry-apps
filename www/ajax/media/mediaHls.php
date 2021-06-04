@@ -54,11 +54,12 @@ function createLink($id, $current_user) {
 	// Generate auth token for DB, insert into DB
 	$token = session_id();  // Lazy way of unique token generation
 	$user_id = $current_user->info['id'];
-	$ip = $_GET['hostname'];
+	$hostname = $_GET['hostname'];
+	$port = $_GET['port'];
 	data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
 	// Cleanup old tokens from DB
 	data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
-	$hls_link = "https://$ip:7001/hls/$id/index.m3u8?authtoken=$token";
+	$hls_link = "https://$hostname:$port/hls/$id/index.m3u8?authtoken=$token";
 
 	return $hls_link;
 }

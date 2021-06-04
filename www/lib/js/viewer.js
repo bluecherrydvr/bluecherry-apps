@@ -43,7 +43,7 @@ window.addEvent('load', function(){
 
 				if (videoMethod === 'HLS') {
 					el.set('src', '/img/icons/layouts/loading.png');
-					createHlsLink(device_id, el.get('id'), 'noImg', window.location.hostname);
+					createHlsLink(device_id, el.get('id'), 'noImg', window.location.hostname, window.location.port);
 				}
 				else {
 					el.set('src', '/media/mjpeg?multipart=true&id='+device_id);
@@ -207,7 +207,7 @@ makeGrid = function(){
             thisCol.inject(thisRow, 'bottom');
 
 			if (videoMethod === 'HLS' && id != 'none') {
-				createHlsLink(id, elementId, imgClass, window.location.hostname);
+				createHlsLink(id, elementId, imgClass, window.location.hostname, window.location.port);
 			}
 		};
   	    thisRow.inject(gridTable, 'bottom');
@@ -362,8 +362,8 @@ setHlsErrorImage = function(elementId, message) {
 	} 
 }
 
-createHlsLink = function(deviceId, elementId, elementClass, hostname) {
-	var data = 'id=' + deviceId + '&hostname=' + hostname;
+createHlsLink = function(deviceId, elementId, elementClass, hostname, port) {
+	var data = 'id=' + deviceId + '&hostname=' + hostname + '&port=' + port;
 	var request = new Request.HTML({
 		url: 'media/hls',
 		data: data,
