@@ -36,7 +36,7 @@ if [[ $VERSION == "9 (stretch)" || $VERSION == "10 (buster)" ]]
 then
         ADDITIONAL_PKGS="$ADDITIONAL_PKGS default-libmysqlclient-dev"
 else
-        ADDITIONAL_PKGS="$ADDITIONAL_PKGS libmysqlclient-dev"
+        ADDITIONAL_PKGS="$ADDITIONAL_PKGS "
 fi
 
 export DEBIAN_FRONTEND=noninteractive
