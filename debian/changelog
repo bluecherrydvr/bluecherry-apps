@@ -1,8 +1,11 @@
 bluecherry (3:3.1.0-rc1) focal bionic buster groovy; urgency=low
 
+  * FEATURE: Migrate completely to nginx instead of Apache (#436)
+  * FEATURE: Support HLS web streaming for live view (#437)
   * FEATURE: Allow trial licenses
+  * FEATURE: Start initial work to support Lets Encrypt SSL (will be fully added in -RC2) -- Requires paid license.
   
- -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 12 May 2021 21:43:01 -0600   
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 6 June 2021 19:25:00 -0600   
 
 bluecherry (3:3.0.6) focal bionic buster groovy; urgency=low
 
