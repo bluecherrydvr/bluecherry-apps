@@ -38,7 +38,7 @@ class mediaMjpeg extends Controller {
         // For multi, let's do some weird stuff
         if ($out_multipart) {
         	set_time_limit(0);
-        	@apache_setenv('no-gzip', 1);
+  //      	@apache_setenv('no-gzip', 1);
         	@ini_set('zlib.output_compression', 0);
         }
 
@@ -136,6 +136,7 @@ function print_image($id, $out_multipart, $current_user) {
 		if ($out_multipart) {
 			$boundary = "--boundary";
 			header("Content-Type: multipart/x-mixed-replace; boundary=$boundary");
+			header('X-Accel-Buffering: no'); 
 			$stream = popen($cmd, "r");
 			$buffer = "";
 			if (!$stream)

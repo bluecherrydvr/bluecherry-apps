@@ -2,8 +2,12 @@ CFLAGS		+= -pthread -MMD
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lavfilter -lswscale -lavdevice -lswresample -lpugixml
 
+CFLAGS		+= -DV3_LICENSING
 # Required by our call-tracing implementation
 LDFLAGS		+= -ldl
+CURRENT_DIR     = $(shell pwd)
+CFLAGS		+= -I/$(CURRENT_DIR)/lexapi
+LDFLAGS		+= -L/$(CURRENT_DIR)/lexapi -lLexActivator
 
 # OpenCV libraries
 LDFLAGS		+= -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
@@ -11,12 +15,16 @@ LDFLAGS		+= -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*//;s/).*//;q' $(TOPDIR)/debian/changelog)
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 
+# Enable SSL/TLS support for HLS
+CFLAGS		+= -DBC_HLS_WITH_SSL=y
+
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  bc-detect.o streaming.o rtsp.o signals.o motion_processor.o trigger_processor.o \
 		  decoder.o encoder.o reencoder.o vaapi.o scaler.o \
 		  recorder.o motion_handler.o ffmpeg-init.o bt.o status_server.o \
-		  trigger_server.o substream-thread.o onvif_events.o
+		  trigger_server.o substream-thread.o onvif_events.o \
+		  v3license_server.o v3license_processor.o hls.o
 
 all: $(TARGETS) FORCE
 
@@ -29,6 +37,8 @@ install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_DATA) -D rsyslog.conf \
 		$(DESTDIR)$(etc_dir)/rsyslog.d/10-bluecherry.conf
+	$(INSTALL_DATA) -D lexapi/libLexActivator.so $(DESTDIR)$(lib_dir)/libLexActivator.so
+
 
 clean: FORCE
 	rm -f $(SERVER_OBJS) $(SERVER_OBJS:%.o=%.d) $(TARGETS)

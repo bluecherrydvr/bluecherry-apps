@@ -47,6 +47,38 @@ then
 	. /usr/share/debconf/confmodule
 fi
 
+function start_nginx
+{
+	if [[ $IN_DEB ]]
+	then
+
+		# Start nginx, just in case we have jumped into here from the middle of upgrade procedure
+		if [ ! -z `which service` ]; then
+			service nginx start || true
+		else
+			invoke-rc.d nginx start || true
+		fi
+	fi
+	if [[ $IN_RPM ]]
+	then
+		systemctl start nginx
+	fi
+}
+function stop_nginx
+{
+	if [[ $IN_DEB ]]
+	then
+		if [ ! -z `which service` ]
+		then
+			service nginx stop || true
+		else
+			invoke-rc.d nginx stop || true
+		fi
+	else
+		systemctl stop nginx
+	fi
+}
+
 function start_apache
 {
 	if [[ $IN_DEB ]]
@@ -64,6 +96,7 @@ function start_apache
 		systemctl start httpd.service
 	fi
 }
+
 function stop_apache
 {
 	if [[ $IN_DEB ]]
@@ -92,14 +125,27 @@ case "$1" in
 		if ! [[ -d /var/lib/bluecherry ]]
 		then
 			mkdir -p /var/lib/bluecherry
-		fi	
+		fi
 		chown -R bluecherry:bluecherry /var/lib/bluecherry
-		chmod -R 770 /var/lib/bluecherry
+		su bluecherry -c "chmod -R 770 /var/lib/bluecherry"
 		if [[ $IN_DEB ]]
 		then
 			chown -R bluecherry:bluecherry /var/run/bluecherry
-			chmod -R 750 /var/run/bluecherry
+			su bluecherry -c "chmod -R 750 /var/run/bluecherry"
 		fi
+
+		# Allow update_subdomain_certs.sh script to run as www-data
+		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
+		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
+		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
+			> /etc/sudoers.d/bluecherry
+		chmod 0440 /etc/sudoers.d/bluecherry
+
+		mkdir -p /usr/share/bluecherry/ssl
+		cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem
+		cp /etc/ssl/private/ssl-cert-snakeoil.key /usr/share/bluecherry/ssl/bluecherry-snakeoil.key
+		chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem
+		chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.key
 
 		# Create the logfile, because rsyslog might not be able to
 		touch /var/log/bluecherry.log
@@ -110,51 +156,40 @@ case "$1" in
 			chown root:bluecherry /var/log/bluecherry.log
 		fi
 		chmod 640 /var/log/bluecherry.log
-		
+
 		# Use the correct user for rsyslog under debian
 		if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) ]]
 		then
 			sed -i 's/ syslog / root /' /etc/logrotate.d/bluecherry
 		fi
 
-		if [[ $IN_DEB ]]
-		then
-			# Apache modules and sites
-			a2enmod ssl
-			a2enmod rewrite
-			if [[ "$UBUNTU_CODENAME" == 'xenial' || "$VERSION" == "9 (stretch)" ]]
-			then
-				a2enmod php7.0
-			elif [[ "$UBUNTU_CODENAME" == 'bionic' ]]
-			then
-				a2enmod php7.2
-			elif [[ "$UBUNTU_CODENAME" == 'focal' || "$UBUNTU_CODENAME" == 'groovy' ]]
-			then
-				a2enmod php7.4
-			elif [[ "$VERSION" == "10 (buster)" ]]
-			then
-				a2enmod php7.3
-			else
-				a2enmod php5
-			fi
-		fi
 
 		if [[ $IN_DEB ]]
 		then
-			# Remove a file prefiously tracked as conffile from old place
-			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
+# Don't remove bluecherry config file in case of custom SSL certificates			
+#			rm /etc/apache2/sites-{enabled,available}/bluecherry || true
 
-			a2ensite bluecherry.conf
-		else
-			install -d /etc/httpd/sites-enabled
-			if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
-			then
-				rm /etc/httpd/sites-enabled/bluecherry.conf
+			if test -f "/etc/apache2/sites-enabled/bluecherry.conf"; then
+				rm /etc/apache2/sites-enabled/bluecherry.conf
 			fi
-			ln -s /etc/httpd/sites-available/bluecherry.conf /etc/httpd/sites-enabled/bluecherry.conf
-			grep -q -E '^[[:space:]]*IncludeOptional .*sites-enabled.*' /etc/httpd/conf/httpd.conf || \
-				echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
+
+			# Backup nginx configuration file in case of Bad Things (tm)
+			mkdir -p /usr/share/bluecherry/backups/nginx/
+			tar -czvf /usr/share/bluecherry/backups/nginx/nginx_$(date +'%F_%H-%M-%S').tar.gz /etc/nginx/
 		fi
+
+# Clean this up for centos...if we ever decide to support CentOS in the future....
+
+#		else
+#			install -d /etc/httpd/sites-enabled
+#			if [[ -e /etc/httpd/sites-enabled/bluecherry.conf ]]
+#			then
+#				rm /etc/httpd/sites-enabled/bluecherry.conf
+#			fi
+#			ln -s /etc/httpd/sites-available/bluecherry.conf /etc/httpd/sites-enabled/bluecherry.conf
+#			grep -q -E '^[[:space:]]*IncludeOptional .*sites-enabled.*' /etc/httpd/conf/httpd.conf || \
+#				echo 'IncludeOptional sites-enabled/*.conf' >> /etc/httpd/conf/httpd.conf
+#		fi
 		
 		if [[ $IN_DEB ]]
 		then
@@ -171,10 +206,13 @@ case "$1" in
 		fi
 		
 		stop_apache
+		stop_nginx
 
-		if [ ! -e /var/lib/.bcins ]; then
-			date +'%s' > /var/lib/.bcins
-		fi
+# Can be removed in v3...no longer needed
+
+#		if [ ! -e /var/lib/.bcins ]; then
+#			date +'%s' > /var/lib/.bcins
+#		fi
 
 		if [ -x /sbin/apparmor_parser ]; then
 			: #apparmor_parser -r < /etc/apparmor.d/usr.sbin.bc-server || true
@@ -265,7 +303,7 @@ case "$1" in
 			fi
 
 			DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
-			echo "Going to updgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
+			echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
 			# Backup the DB
 			mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
 
@@ -289,7 +327,7 @@ case "$1" in
 		then
 			chown www-data /usr/share/bluecherry/sqlite  # to allow creation of lock file for sqlite db
 		else
-			chown apache /usr/share/bluecherry/sqlite
+			chown www-data /usr/share/bluecherry/sqlite
 		fi
 		cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db
 
@@ -328,7 +366,13 @@ case "$1" in
 			fi
 		fi
 
-		# Reenable our site in Apache
-		start_apache
+		nginx -t 2>/dev/null > /dev/null
+		if [[ $? == 0 ]]; then
+			# Reenable our site in nginx
+			start_nginx
+		else
+			echo "Nginx configuration failure"
+		fi
+
 		;;
 esac
