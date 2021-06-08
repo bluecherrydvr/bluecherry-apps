@@ -647,30 +647,22 @@ std::string hls_session::get_request()
 
 void hls_session::tx_buffer_append(uint8_t *data, size_t size) 
 {
-    size_t old_size = _tx_buffer.size();
-    _tx_buffer.resize(old_size + size);
-    memcpy(_tx_buffer.data() + old_size, data, size);
-}
-
-size_t hls_session::tx_buffer_advance(size_t size)
-{
-    _tx_buffer.erase(_tx_buffer.begin(), _tx_buffer.begin() + size);
-    return _tx_buffer.size();
+    _tx_buffer.append(data, size);
 }
 
 ssize_t hls_session::tx_buffer_flush()
 {
-    if (!_tx_buffer.size()) return 0;
+    if (!_tx_buffer.used()) return 0;
 
-    ssize_t sent = send(_fd, _tx_buffer.data(), _tx_buffer.size(), MSG_NOSIGNAL);
+    ssize_t sent = send(_fd, _tx_buffer.data(), _tx_buffer.used(), MSG_NOSIGNAL);
     if (sent < 0)
     {
         bc_log(Error, "Can not send data to HLS client: %s (%s)", get_addr(), strerror(errno));
         return sent;
     }
 
-    tx_buffer_advance(sent);
-    return _tx_buffer.size();
+    _tx_buffer.advance(sent);
+    return _tx_buffer.used();
 }
 
 bool hls_session::create_response()
@@ -684,8 +676,7 @@ bool hls_session::create_response()
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
         std_string_append(response, "Content-Length: 0\r\n\r\n");
 
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
         return true;
     }
     else if (_type == hls_session::request_type::invalid)
@@ -695,8 +686,7 @@ bool hls_session::create_response()
         std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
         std_string_append(response, "Content-Length: 0\r\n\r\n");
 
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
         return true;
     }
     else if (_type == hls_session::request_type::index)
@@ -718,9 +708,7 @@ bool hls_session::create_response()
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
         response.append(body);
 
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
-
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
         return true;
     }
     else if (_type == hls_session::request_type::playlist)
@@ -733,8 +721,7 @@ bool hls_session::create_response()
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
 
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -789,9 +776,7 @@ bool hls_session::create_response()
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
         response.append(body);
 
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
-
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
         return true;
     }
     else if (_type == hls_session::request_type::rec_playlist)
@@ -804,8 +789,7 @@ bool hls_session::create_response()
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
 
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -817,8 +801,7 @@ bool hls_session::create_response()
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
 
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -829,9 +812,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
 
             avformat_free_context(pFormatCtx);
             return true;
@@ -844,9 +825,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
 
             avformat_close_input(&pFormatCtx);
             avformat_free_context(pFormatCtx);
@@ -878,8 +857,7 @@ bool hls_session::create_response()
         std_string_append(response, "Content-Length: %zu\r\n\r\n", body.length());
         response.append(body);
 
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
         return true;
     }
     else if (_type == hls_session::request_type::initial)
@@ -891,9 +869,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -918,9 +894,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -934,11 +908,8 @@ bool hls_session::create_response()
         std_string_append(response, "Server: bluechery\r\n");
         std_string_append(response, "Content-Length: %zu\r\n\r\n", segment->size());
 
-        size_t response_size = response.length() + segment->size();
-        _tx_buffer.resize(response_size);
-
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
-        memcpy(_tx_buffer.data() + response.length(), segment->data(), segment->size());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+        _tx_buffer.append(segment->data(), segment->size());
 
         delete segment;
         return true;
@@ -952,9 +923,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -965,9 +934,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -982,11 +949,8 @@ bool hls_session::create_response()
         std_string_append(response, "Server: bluechery\r\n");
         std_string_append(response, "Content-Length: %zu\r\n\r\n", segment->size());
 
-        size_t response_size = response.length() + segment->size();
-        _tx_buffer.resize(response_size);
-
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
-        memcpy(_tx_buffer.data() + response.length(), segment->data(), segment->size());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+        _tx_buffer.append(segment->data(), segment->size());
 
         delete segment;
         return true;
@@ -1000,9 +964,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 404 Not Fount\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
             return true;
         }
 
@@ -1013,9 +975,7 @@ bool hls_session::create_response()
             std::string response = std::string("HTTP/1.1 500 Internal server error\r\n");
             std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
             std_string_append(response, "Content-Length: 0\r\n\r\n");
-
-            _tx_buffer.resize(response.length());
-            memcpy(_tx_buffer.data(), response.c_str(), response.length());
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
 
             delete fstream;
             return true;
@@ -1030,9 +990,7 @@ bool hls_session::create_response()
         std_string_append(response, "Connection: close\r\n");
         std_string_append(response, "Server: bluechery\r\n");
         std_string_append(response, "Content-Length: %ld\r\n\r\n", fstream->get_size());
-
-        _tx_buffer.resize(response.length());
-        memcpy(_tx_buffer.data(), response.c_str(), response.length());
+        _tx_buffer.append((uint8_t*)response.c_str(), response.length());
 
         set_fstream(fstream);
         return true;
@@ -1233,8 +1191,8 @@ static void* hls_session_thread(void *ctx)
     else bc_log(Debug, "Received HLS request from: client(%s)[%d]: %s", session->get_addr(), ssl->get_fd(), request.c_str());
 
     /* Send response */
-    const hls_byte_buffer &tx_buffer = session->tx_buffer_get();
-    if (tx_buffer.size() && ssl->ssl_write(tx_buffer.data(), tx_buffer.size()) <= 0)
+    hls_byte_buffer &tx_buffer = session->tx_buffer_get();
+    if (tx_buffer.used() && ssl->ssl_write(tx_buffer.data(), tx_buffer.used()) <= 0)
     {
         bc_log(Error, "%s", ssl->get_last_error().c_str());
         delete session;
@@ -1304,6 +1262,97 @@ void hls_filestream::finish()
 }
 
 //////////////////////////////////////////////////
+// BYTE BUFFER
+//////////////////////////////////////////////////
+
+void hls_byte_buffer::clear()
+{
+    if (_data != NULL)
+    {
+        free(_data);
+        _data = NULL;
+        _size = 0;
+        _used = 0;
+    }
+}
+
+size_t hls_byte_buffer::advance(size_t size)
+{
+    this->erase(0, size);
+    return _size;
+}
+
+size_t hls_byte_buffer::erase(size_t posit, size_t size)
+{
+    if (!size || posit >= _used) return 0;
+    size = ((posit + size) > _used) ? 
+            _used - posit : size;
+
+    size_t tail_offset = posit + size;
+    if (tail_offset >= _used)
+    {
+        _used = posit;
+        return _used;
+    }
+
+    size_t tail_size = _used - tail_offset;
+    const uint8_t *tail = &_data[tail_offset];
+    memmove(&_data[posit], tail, tail_size);
+
+    _used -= size;
+    return size;
+}
+
+size_t hls_byte_buffer::resize(size_t size)
+{
+    if (_data == NULL && size)
+    {
+        _data = (uint8_t*)malloc(size);
+        if (_data == NULL)
+        {
+            bc_log(Error, "Failed to allocate memory for HLS byte buffer: %s", strerror(errno));
+            return 0;
+        }
+
+        _size = size;
+        _used = 0;
+        return size;
+    }
+    else if (_data != NULL && !size)
+    {
+        this->clear();
+        return 0;
+    }
+
+    if (!_size || _data == NULL) return 0;
+    _used = (size < _used) ? size : _used;
+    _data = (uint8_t*)realloc(_data, size);
+
+    if (size && _data == NULL)
+    {
+        bc_log(Error, "Failed to reallocate memory for HLS byte buffer: %s", strerror(errno));
+        _size = 0;
+        _used = 0;
+        return 0;
+    }
+
+    _size = size;
+    return _size;
+}
+
+size_t hls_byte_buffer::append(uint8_t *data, size_t size)
+{
+    if (data == NULL || !size) return 0;
+
+    if (_used + size > _size)
+        this->resize(_used + size + 1);
+
+    memcpy(&_data[_used], data, size);
+    _used += size;
+    return _used;
+}
+
+//////////////////////////////////////////////////
 // HLS CONTENT
 //////////////////////////////////////////////////
 
@@ -1321,10 +1370,10 @@ hls_content::hls_content()
     }
 
     /*
-        using only 4 segments in playlist is enough since we are using sliding window
+        using only 3 segments in playlist is enough since we are using sliding window
         also it will decrease usage of RAM (less segments in window = less RAM usage)
     */
-    set_window_size(4);
+    set_window_size(3);
     _init = true;
 }
 
@@ -1423,22 +1472,18 @@ hls_segment* hls_content::get_initial_segment()
 
 bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags)
 {
+    if (!_in_buffer.append(data, size)) return false;
+
     bool is_key = flags & AV_PKT_FLAG_KEY;
     int64_t pts_diff = (pts - get_last_pts());
     double duration = (double)pts_diff / (double)90000;
 
-    size_t buff_size = _in_buffer.size();
-    _in_buffer.resize(buff_size + size);
-    uint8_t *offset = _in_buffer.data();
-    memcpy(offset + buff_size, data, size);
-
-    if (duration >= HLS_SEGMENT_DURATION && 
-       (_in_buffer.size() >= HLS_SEGMENT_SIZE || is_key))
+    if (duration >= HLS_SEGMENT_DURATION && (_in_buffer.used() >= HLS_SEGMENT_SIZE || is_key))
     {
         hls_segment *segment = new hls_segment;
         if (segment == NULL) return false;
 
-        if (!segment->add_data(_in_buffer.data(), _in_buffer.size()))
+        if (!segment->add_data(_in_buffer.data(), _in_buffer.used()))
         {
             delete segment;
             return false;
@@ -1639,7 +1684,7 @@ int hls_write_event(hls_events *events, hls_events::event_data *ev_data)
 
     uint8_t buffer[HLS_SERVER_CHUNK_MAX];
     ssize_t size = fstream->read_data(buffer, sizeof(buffer));
-    if (size > 0) session->tx_buffer_append(buffer, size);
+    session->tx_buffer_append(buffer, size);
 
     if (fstream->eof_reached() || size <= 0)
     {
@@ -1647,7 +1692,7 @@ int hls_write_event(hls_events *events, hls_events::event_data *ev_data)
         session->set_fstream(NULL);
     }
 
-    return session->tx_buffer_get().size() ? 1 : -1;
+    return session->tx_buffer_get().used() ? 1 : -1;
 }
 
 int hls_event_callback(void *events, void* data, int reason)

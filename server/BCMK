@@ -16,7 +16,7 @@ BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*//;s/).*//;q' $(TOPDIR)/debian
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 
 # Enable SSL/TLS support for HLS
-CFLAGS		+= -DBC_HLS_WITH_SSL=y
+#CFLAGS		+= -DBC_HLS_WITH_SSL=y
 
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
