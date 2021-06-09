@@ -1,4 +1,11 @@
-LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient -lconfig -lm -lrt -lbsd
+ifeq ($(BC_DEBIAN_BULLSEYE),y)
+	CFLAGS		+= -DBC_USE_MARIADB=y
+	LDFLAGS		+= -L/usr/lib64/mariadb -lmariadbclient
+else
+	LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient
+endif
+
+LDFLAGS		+= -lconfig -lm -lrt -lbsd
 LDFLAGS		+= -lavutil -lavformat -lavcodec -lpugixml
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
