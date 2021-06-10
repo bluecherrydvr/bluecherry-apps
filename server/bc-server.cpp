@@ -858,10 +858,10 @@ static int bc_initial_cleanup_untracked_media()
 	}
 
 	const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-	bc_db_free_table(dbres);
 
 	if (!filepath || !*filepath) {
 		bc_log(Warning, "Failed to read oldest file path");
+		bc_db_free_table(dbres);
 		return -1;
 	}
 
@@ -879,6 +879,7 @@ static int bc_initial_cleanup_untracked_media()
 
 	if (count != 7) {
 		bc_log(Warning, "Failed determine oldest media time");
+		bc_db_free_table(dbres);
 		return -1;
 	}
 
@@ -887,6 +888,7 @@ static int bc_initial_cleanup_untracked_media()
 
 	if (!bc_get_media_locations(locations)) {
 		bc_log(Warning, "No media locations available for cleanup");
+		bc_db_free_table(dbres);
 		return -1;
 	}
 
@@ -896,6 +898,7 @@ static int bc_initial_cleanup_untracked_media()
 	bc_log(Info, "Initial media cleanup finished: removed(%d), archived(%d), errors(%d), others(%d)",
 		ctx.removed, ctx.archived, ctx.errors, ctx.others);
 
+	bc_db_free_table(dbres);
 	return 0;
 }
 

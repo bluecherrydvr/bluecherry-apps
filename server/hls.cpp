@@ -438,9 +438,10 @@ bool hls_events::modify(hls_events::event_data *data, int events)
 
 bool hls_events::remove(hls_events::event_data *data)
 {
-    if (epoll_ctl(event_fd, EPOLL_CTL_DEL, data->fd, NULL) < 0) return false;
+    bool status = true;
+    if (data->fd >= 0 && epoll_ctl(event_fd, EPOLL_CTL_DEL, data->fd, NULL) < 0) status = false;
     clear_callback(data);
-    return true;
+    return status;
 }
 
 bool hls_events::service(int timeout_ms)
