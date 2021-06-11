@@ -53,9 +53,11 @@ extern "C" {
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
-#define HLS_SEGMENT_SIZE (188 * 7 * 1024)
-#define HLS_SEGMENT_DURATION 3.0 // Most accepted HLS segment duration
-#define HLS_SERVER_CHUNK_MAX 65535
+#define HLS_SEGMENT_SIZE            (188 * 7 * 1024)        // Most accepted HLS segment size
+#define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximal HLS segment duration
+#define HLS_SEGMENT_DURATION        3.0                     // Most accepted HLS segment duration
+#define HLS_SEGMENT_DURATION_MAX    6.0                     // Maximal HLS segment duration
+#define HLS_SERVER_CHUNK_MAX        65535                   // RX chunk size to send per one call
 
 static void std_string_append(std::string &source, const char *data, ...)
 {
@@ -1280,6 +1282,7 @@ void hls_byte_buffer::clear()
 size_t hls_byte_buffer::advance(size_t size)
 {
     this->erase(0, size);
+    this->resize(_used);
     return _size;
 }
 
@@ -1407,6 +1410,10 @@ bool hls_content::clear_window()
         _init_segment = NULL;
     }
 
+    _in_buffer.clear();
+    _pts = 0;
+    _cc = 0;
+
     if (pthread_mutex_unlock(&_mutex))
     {
         bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
@@ -1476,16 +1483,29 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     if (!_in_buffer.append(data, size)) return false;
 
     bool is_key = flags & AV_PKT_FLAG_KEY;
-    int64_t pts_diff = (pts - get_last_pts());
-    double duration = (double)pts_diff / (double)90000;
+    int64_t last_pts = get_last_pts();
+    if (last_pts <= 0) update_pts(pts);
 
-    if (duration >= HLS_SEGMENT_DURATION && (_in_buffer.used() >= HLS_SEGMENT_SIZE || is_key))
+    int64_t pts_diff = pts - get_last_pts();
+    double duration = pts_diff > 0 ? (double)pts_diff / (double)90000 : 0;
+
+    if ((is_key && duration >= HLS_SEGMENT_DURATION) ||
+        (_in_buffer.used() > HLS_SEGMENT_SIZE_MAX ||
+        duration > HLS_SEGMENT_DURATION_MAX))
     {
         hls_segment *segment = new hls_segment;
-        if (segment == NULL) return false;
+        if (segment == NULL)
+        {
+            bc_log(Error, "Can not allocate data for HLS segment obj");
+            clear_window();
+            update_pts(pts);
+            return false;
+        }
 
         if (!segment->add_data(_in_buffer.data(), _in_buffer.used()))
         {
+            clear_window();
+            update_pts(pts);
             delete segment;
             return false;
         }

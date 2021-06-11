@@ -194,8 +194,10 @@ void stream_properties::video_properties::apply(AVCodecContext *cc) const
 	cc->profile = profile;
 	if (!extradata.empty()) {
 		cc->extradata_size = extradata.size();
-		cc->extradata = (uint8_t*)av_malloc(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE);
+		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;
+		cc->extradata = (uint8_t*)av_malloc(size);
 		memcpy(cc->extradata, &extradata.front(), extradata.size());
+		memset(cc->extradata + extradata.size(), 0, AV_INPUT_BUFFER_PADDING_SIZE);
 	} else {
 		cc->extradata_size = 0;
 		cc->extradata = 0;
@@ -221,8 +223,10 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	cc->bits_per_coded_sample = bits_per_coded_sample;
 	if (!extradata.empty()) {
 		cc->extradata_size = extradata.size();
-		cc->extradata = (uint8_t*)av_malloc(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE);
+		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;
+		cc->extradata = (uint8_t*)av_malloc(size);
 		memcpy(cc->extradata, &extradata.front(), extradata.size());
+		memset(cc->extradata + extradata.size(), 0, AV_INPUT_BUFFER_PADDING_SIZE);
 	} else {
 		cc->extradata_size = 0;
 		cc->extradata = 0;
