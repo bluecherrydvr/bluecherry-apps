@@ -3,6 +3,18 @@
 # Note: this template file is prepended with misc/sql/load_db_creds.sh at packaging stage.
 # So "$dbname", "$user", "$password" variables are available.
 
+if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
+then 
+    systemctl stop httpd.service
+else
+	if [ ! -z `which service` ]
+	then
+		service apache2 stop || true
+	else
+		invoke-rc.d apache2 stop || true
+	fi
+fi
+
 if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.3"; then
 	echo "UPGRADES WILL NOT WORK!!"
 	echo "Please 'dpkg -P bluecherry' before installing this new package"

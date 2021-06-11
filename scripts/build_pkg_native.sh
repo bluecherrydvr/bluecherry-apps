@@ -12,6 +12,13 @@ else
 	sudo `dirname $0`/install_prereqs_native.sh
 fi
 
+if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) && \
+	$(cat /etc/os-release | grep "^VERSION=" | grep 11) ]]
+then
+	apt-get install -y libmariadb-dev
+	export BC_DEBIAN_BULLSEYE=y
+fi
+
 # TODO Implement building outside of sources tree
 
 # Safety measures. TODO quick compilation without spare rebuilds
