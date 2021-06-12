@@ -1,3 +1,10 @@
+bluecherry (3:3.1.0-rc2) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Resolve large memory leak, causing OOM failure sometimes as soon as 1 hour. (https://github.com/bluecherrydvr/bluecherry-apps/commit/01328270cba757fd853c84826402d44dc0d3eb61) / #01328270cba757fd853c84826402d44dc0d3eb61
+  * FIX: Resolve buffer append crash (#6bc8ceed0b5bd6385991bd1dea65f36bffeea782)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 12 Jun 2021 15:52:04 -0600   
+
 bluecherry (3:3.1.0-rc1) focal bionic buster groovy; urgency=low
 
   * FEATURE: Migrate completely to nginx instead of Apache (#436)
