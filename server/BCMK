@@ -15,9 +15,6 @@ LDFLAGS		+= -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 BC_VERSION	:= $(shell sed 's/.*([^:]*://;s/-[^()]*//;s/).*//;q' $(TOPDIR)/debian/changelog)
 CFLAGS		+= -DBC_VERSION='"$(BC_VERSION)"'
 
-# Enable SSL/TLS support for HLS
-CFLAGS		+= -DBC_HLS_WITH_SSL=y
-
 TARGETS		= bc-server
 SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  bc-detect.o streaming.o rtsp.o signals.o motion_processor.o trigger_processor.o \

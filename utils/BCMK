@@ -19,13 +19,13 @@ $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 clean:
 	rm -f $(TARGETS) *.o
 
-onvif_tool/onvif_tool:
-	cd onvif_tool/ && autoreconf -i \
-	&& ./configure \
-	&& $(MAKE) $(MAKEARGS) \
-	&& $(STRIP) onvif_tool
+#onvif_tool/onvif_tool:
+#	cd onvif_tool/ && autoreconf -i \
+#	&& ./configure \
+#	&& $(MAKE) $(MAKEARGS) \
+#	&& $(STRIP) onvif_tool
 
 install: licensecmd ptzcmd
 	$(INSTALL_PROG) -D licensecmd $(DESTDIR)$(libexec_dir)/licensecmd
 	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
-	$(INSTALL_PROG) -D onvif_tool/onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool
+	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool

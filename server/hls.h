@@ -129,7 +129,26 @@ private:
     int                     event_fd = -1;          /* EPOLL File decriptor */
 };
 
-typedef std::vector<uint8_t> hls_byte_buffer;
+class hls_byte_buffer
+{
+public:
+    ~hls_byte_buffer() { this->clear(); }
+
+    size_t append(uint8_t *data, size_t size);
+    size_t erase(size_t posit, size_t size);
+    size_t advance(size_t size);
+    size_t resize(size_t size);
+    void clear();
+
+    uint8_t* data() { return _data; }
+    size_t size() { return _size; }
+    size_t used() { return _used; }
+
+private:
+    uint8_t *_data = NULL;
+    size_t _size = 0;
+    size_t _used = 0;
+};
 
 class hls_filestream 
 {
@@ -180,7 +199,7 @@ public:
     bool handle_request(const std::string &request);
     bool create_response();
 
-    const hls_byte_buffer& tx_buffer_get() { return _tx_buffer; }
+    hls_byte_buffer& tx_buffer_get() { return _tx_buffer; }
     void tx_buffer_append(uint8_t *data, size_t size);
     size_t tx_buffer_advance(size_t size);
     ssize_t tx_buffer_flush();
