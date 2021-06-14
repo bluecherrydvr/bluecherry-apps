@@ -227,7 +227,7 @@ void rtsp_server::wake()
 {
 	pthread_mutex_lock(&wake_lock);
 	if (!awakening) {
-		uint8_t v;
+		uint8_t v = 1;
 		if (write(wakeupfd[1], &v, 1) < 0)
 			bc_log(Error, "Error writing to wakeup fd: %s", strerror(errno));
 		awakening = true;

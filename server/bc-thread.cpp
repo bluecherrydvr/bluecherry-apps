@@ -64,6 +64,12 @@ void stop_handle_properly(struct bc_record *bc_rec)
 
 	bc_streaming_destroy_hls(bc_rec);
 
+	if (bc_rec->hls_stream)
+	{
+		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+		if (content) content->clear_window();
+	}
+
 	if (bc_rec->liveview_substream)
 	{
 		bc_rec->liveview_substream->stop();

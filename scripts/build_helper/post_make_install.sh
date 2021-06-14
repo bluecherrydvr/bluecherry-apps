@@ -43,7 +43,13 @@ then
 
 	mkdir -p ${DST_DIR}/usr/share/bluecherry/nginx-includes/
 	cp ${SRC_PATH}/nginx-configs/php/* ${DST_DIR}/usr/share/bluecherry/nginx-includes/
-	_CODENAME_=`cat /etc/os-release | grep UBUNTU_CODENAME | cut -d = -f 2`
+
+	if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) ]]
+	then
+		_CODENAME_=`cat /etc/os-release | grep VERSION_CODENAME | cut -d = -f 2`
+	else
+		_CODENAME_=`cat /etc/os-release | grep UBUNTU_CODENAME | cut -d = -f 2`
+	fi
 
 	mkdir -p ${DST_DIR}/etc/nginx/sites-enabled/
 	cat ${SRC_PATH}/nginx-configs/bluecherry.conf | sed \
