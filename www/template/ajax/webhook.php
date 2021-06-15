@@ -23,16 +23,29 @@
                 <label for="webhook_events"><?php echo WEBHOOK_FORM_FIELD_EVENTS; ?></label>
                 <select type="text" class="form-control" name="events[]" id="webhook_events" multiple="" size="3">
                     <?php foreach($events as $event): ?>
-                        <option value="<?php echo $event; ?>" <?php echo (in_array($event, $currentFormData['events']) ? 'selected="selected"' : '') ?>><?php echo constant('WEBHOOK_FORM_FIELD_EVENT_' . strtoupper($event)); ?></option>
+                        <option
+                            value="<?php echo $event; ?>"
+                            <?php if (isset($currentFormData)) echo (in_array($event, $currentFormData['events']) ? 'selected="selected"' : '') ?>
+                        >
+                            <?php echo constant('WEBHOOK_FORM_FIELD_EVENT_' . strtoupper($event)); ?>
+                        </option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group">
                 <label for="webhook_cameras"><?php echo WEBHOOK_FORM_FIELD_CAMERAS; ?></label>
                 <select type="text" class="form-control" name="cameras[]" id="webhook_cameras" multiple="" size="7">
-                    <?php foreach($cameras as $camera): ?>
-                    <option value="<?php echo $camera['id']; ?>" <?php echo (in_array($camera['id'], $currentFormData['cameras']) ? 'selected="selected"' : '') ?>><?php echo $camera['device_name']; ?></option>
-                    <?php endforeach; ?>
+                    <?php if (is_array($cameras) || is_object($cameras)): ?>
+                        <?php foreach($cameras as $camera): ?>
+                            <option
+                                value="<?php echo $camera['id']; ?>"
+                                
+                                <?php if (isset($currentFormData)) echo (in_array($camera['id'], $currentFormData['cameras']) ? 'selected="selected"' : '') ?>
+                            >
+                                <?php echo $camera['device_name']; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </select>
             </div>
             <div class="checkbox">
