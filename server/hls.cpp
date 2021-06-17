@@ -54,7 +54,7 @@ extern "C" {
 #endif
 
 #define HLS_SEGMENT_SIZE            (188 * 7 * 1024)        // Most accepted HLS segment size
-#define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximal HLS segment duration
+#define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximal HLS segment size
 #define HLS_SEGMENT_DURATION        3.0                     // Most accepted HLS segment duration
 #define HLS_SEGMENT_DURATION_MAX    6.0                     // Maximal HLS segment duration
 #define HLS_SERVER_CHUNK_MAX        65535                   // RX chunk size to send per one call
