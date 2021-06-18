@@ -479,7 +479,9 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		bc_status_component_error("Database error while initializing device %d", id);
 		goto fail;
 	}
-	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+
+	//memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+	bc_rec->cfg_update = bc_rec->cfg; // no need memcpy()
 
 	bc_rec->log = log_context("%d/%s", id, bc_rec->cfg.name);
 	bc_rec->log.set_level(bc_rec->cfg.debug_level ? DEF_TH_LOG_LEVEL : (log_level)-1);
