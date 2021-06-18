@@ -67,7 +67,7 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	if (bc_rec->hls_stream)
 	{
 		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
-		if (content) content->clear_window();
+		if (content != NULL) content->clear_window();
 	}
 
 	if (bc_rec->liveview_substream)
@@ -337,6 +337,9 @@ void bc_record::run()
 				 * the first packet comes out from encoder */
 				if (bc_streaming_is_setup(this))
 					bc_streaming_destroy_rtp(this);
+
+				if (bc_streaming_is_active_hls(this))
+					bc_streaming_destroy_hls(this);
 			}
 
 			sched_last = 0;
@@ -380,9 +383,14 @@ void bc_record::run()
 							log.log(Error, "Unable to reinitialize reencoded live view stream");
 					}
 
-					if (hls_stream) {
+					if (!bc_streaming_is_active_hls(this)) {
+						if (bc_streaming_setup(this, BC_HLS, packet.properties()))
+							log.log(Error, "Unable to reinitialize reencoded live HLS stream");
+					}
+
+					if (bc_streaming_is_active_hls(this)) {
 						if (bc_streaming_hls_packet_write(this, packet) == -1)
-							log.log(Error, "Failed to stream reencoded HLS");
+							log.log(Error, "Failed to stream reencoded HLS live view");
 					}
 
 					if (bc_streaming_is_active(this))
@@ -394,16 +402,18 @@ void bc_record::run()
 			continue;
 		}
 
-		if (bc_streaming_is_active_hls(this)) {
-			if (bc_streaming_hls_packet_write(this, packet) == -1) { 
+		if (!bc->substream_mode) {
+			/* Send packet to HLS streaming clients */
+			if (bc_streaming_is_active_hls(this) &&
+				bc_streaming_hls_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for HLS live view");
 				goto error;
 			}
-		}
 
-		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this) && !bc->substream_mode) {
-
-			if (bc_streaming_packet_write(this, packet) == -1) {
+			/* Send packet to streaming clients */
+			if (bc_streaming_is_active(this) &&
+				bc_streaming_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for live view");
 				goto error;
 			}
 		}

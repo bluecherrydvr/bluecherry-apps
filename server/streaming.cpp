@@ -255,7 +255,7 @@ int bc_streaming_is_active(struct bc_record *bc_rec)
 
 int bc_streaming_is_active_hls(struct bc_record *bc_rec)
 {
-	return bc_rec->hls_stream ? 1 : 0;
+	return bc_rec->hls_stream != NULL ? 1 : 0;
 }
 
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
