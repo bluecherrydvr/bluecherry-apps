@@ -900,8 +900,11 @@ class ipCamera{
 	private function checkLimitDevices(){
 		$info = data::query("SELECT COUNT(*) as n FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
 		$total_devices = $info[0]['n'];
-		$allowed_devices = bc_license_devices_allowed() + Constant('NO_LICENSE_DEFAULT_ALLOWED');
 
+		$allowed_by_license = bc_license_devices_allowed();
+		if ((int)$allowed_by_license == -1) return true; // -1 for unlimited
+
+		$allowed_devices = (int)$allowed_by_license + Constant('NO_LICENSE_DEFAULT_ALLOWED');
 		return ((int)$total_devices < $allowed_devices);
 	}
 }
