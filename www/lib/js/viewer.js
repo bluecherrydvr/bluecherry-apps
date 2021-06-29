@@ -31,10 +31,11 @@ window.addEvent('load', function(){
 	adjustImageSize();
 	var cameraMenu = new ContextMenu({
 		menu:	'cameraList',
-		targets: '.noImg',
+		targets: '.noImageTd',
 		trigger: 'click',
 		actions: {
 			'loadCam' : function(el, ref, item){
+				el = el.children[0];
 				var device_id = item.get('id');
 				var elParent = el.getParent();
 				var videoMethod = $$('#video_method').get('value')[0];
@@ -43,7 +44,7 @@ window.addEvent('load', function(){
 
 				if (videoMethod === 'HLS') {
 					el.set('src', '/img/icons/layouts/loading.png');
-					createHlsLink(device_id, el.get('id'), 'noImg', window.location.hostname, window.location.port);
+					createHlsLink(device_id, el.get('id'), 'noImg gridImage', window.location.hostname, window.location.port);
 				}
 				else {
 					el.set('src', '/media/mjpeg?multipart=true&id='+device_id);
@@ -182,7 +183,7 @@ makeGrid = function(){
 	for (row = 1; row <= lvRows; row++) {
        	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
        	for(col = 1; col <= lvCols; col++){
-			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
+			var thisCol = new Element('td', {'id' : col, 'class' : 'noImageTd x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
 			var imgClass = 'noImg gridImage';
 			var thisCam = $$('.ptz'+'#'+imgSrcId);
