@@ -14,7 +14,7 @@ class subdomainprovider extends subdomainproviderbase
     protected function initForm() {
         $this->view->actualSubdomain = '';
         $this->view->actualEmail     = $this->varpub->global_settings->data['G_SUBDOMAIN_EMAIL_ACCOUNT'];
-        $this->view->actualIpv4Value = util::getRemoteIp();
+        $this->view->actualIpv4Value = '';
         $this->view->actualIpv6Value = '';
         $this->view->licenseIdExists = false;
 

@@ -10,13 +10,12 @@
         purchased license key.
         <br>
         To enable this, you need the following:
-            <li>At least port 7001 opened to the outside world on your firewall.</li>
-            <li>An email address for LetsEncrypt to contact you if there is some issue (we do not collect this email address).</li>
-            <li>A paid Bluecherry license, the community edition is not supported in this automated setup.</li>
+            <ul>
+                <li>At least port 7001 opened to the outside world on your firewall.</li>
+                <li>An email address for LetsEncrypt to contact you if there is some issue (we do not collect this email address).</li>
+                <li>A paid Bluecherry license, the community edition is not supported in this automated setup.</li>
+            </ul>
         </div>
-    </div>
-
-    <div class="col-md-offset-4 col-md-4">
 
         <?php if (isset($_GET['status'])) {
 
@@ -64,8 +63,13 @@
                             <br /><em>Mandatory</em>
                         </div>
                         <div class="col-sm-8 validation-field">
+                            <div class="input-group">
                             <input type="text" class="form-control" name="server_ip_address_4" id="server_ip_address_4"
                                    value="<?php echo $actualIpv4Value; ?>" required />
+                                <span class="input-group-btn">
+                                    <button class="btn btn-info btn-get-server-ip-address" type="button">Get Server Public IPv4</button>
+                                </span>
+                            </div>
                         </div>
 
                     </div>
@@ -75,8 +79,13 @@
                             <br /><em>Optional</em>
                         </div>
                         <div class="col-sm-8 validation-field">
+                            <div class="input-group">
                             <input type="text" class="form-control" name="server_ip_address_6" id="server_ip_address_6"
                                    value="<?php echo $actualIpv6Value; ?>" />
+                                <span class="input-group-btn">
+                                    <button class="btn btn-info btn-get-server-ip-address" type="button" data-type-ipv6="true">Get Server Public IPv6</button>
+                                </span>
+                            </div>
                         </div>
 
                     </div>
