@@ -66,9 +66,9 @@ class backup extends Controller {
 	        			}
 				
 	        		}
-				
+				// TODO - Add web UI form for user to select $dbhost, right now default to localhost.
 					$_POST['pwd'] = escapeshellarg($_POST['pwd']);
-	        		shell_exec("mysqldump --single-transaction -h$dbhost -u root --password={$_POST['pwd']} {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
+	        		shell_exec("mysqldump --single-transaction -u $dbuser --password={$_POST['pwd']} {$database_parameters['db']} {$ignore_tables}> /tmp/bcbackup.sql");
 	        		if (filesize("/tmp/bcbackup.sql")==0){
 	        			data::responseJSON(false, BACKUP_FAILED);
 	        		} else {
@@ -76,7 +76,7 @@ class backup extends Controller {
 	        			$backup_info = time().'|'.((!empty($_POST['noevents'])) ? '0' : '1').'|'.((!empty($_POST['nodevices'])) ? '0' : '1').'|'.((!empty($_POST['nousers'])) ? '0' : '1');
 	        			$info_file = fopen('/tmp/bcbackupinfo', 'w');
 	        			fwrite($info_file, $backup_info);
-	        			shell_exec('tar --directory="/tmp" -zcvf '.VAR_MYSQLDUMP_TMP_LOCATION.' bcbackup.sql bcbackupinfo');
+	        			shell_exec('tar --directory="/tmp" -czvf '.VAR_MYSQLDUMP_TMP_LOCATION.' bcbackup.sql bcbackupinfo');
 	        			#clean up
 	        			unlink('/tmp/bcbackupinfo');
 	        			unlink('/tmp/bcbackup.sql');
@@ -117,8 +117,10 @@ class backup extends Controller {
 	        		};
 	        	break;
 	        	case 'confirmRestore': #run restore
+				// TODO - Add web UI form for dbhost, right now default to localhost.
+				// TODO - We should ask for the password before importing the database, or reuse the password from export....
 				$_POST['pwd'] = escapeshellarg($_POST['pwd']);
-				$response = shell_exec("mysql -h$dbhost -u root --password={$_POST['pwd']} {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
+				$response = shell_exec("mysql -u $dbuser --password={$_POST['pwd']} {$database_parameters['db']} < /tmp/bcbackup.sql 2>&1 1> /dev/null");
 				if (!empty($response) && strstr($response, "ERROR")){
 	        			data::responseJSON(false, BACKUP_R_FAILED.$response);
 	        		} else {

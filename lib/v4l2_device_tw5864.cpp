@@ -101,6 +101,8 @@ v4l2_device_tw5864::v4l2_device_tw5864(BC_DB_RES dbres)
 	: dev_fd(-1), cam_caps(BC_CAM_CAP_V4L2_MOTION), dev_id(0), demuxer(NULL)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
+	if (!p) return;
+
 	int input_number;
 	const char *needed_signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 	int ret;

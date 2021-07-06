@@ -80,16 +80,14 @@ function getRenderNodes() {
 }
 
 function getVaapiOptions() {
-	$ret = array();
-	$ret[0] = "Autodetect";
+    $ret = array();
+    $ret[0] = "None";
+    $nodes = getRenderNodes();
+    if (!empty($nodes))
+        array_push($ret, $nodes);
+    $ret[] = "Autodetect";
 
-	$nodes = getRenderNodes();
-
-	if (!empty($nodes))
-		array_push($ret, $nodes);
-	$ret[] = "None";
-
-	return $ret;
+    return $ret;
 }
 
 function checkVaapiSupport($renderNode, $profile) {
@@ -133,6 +131,15 @@ function autoDetectVaapiSetup() {
 
 	return $nodes[$max_score_id];
 }
+
+function getLiveViewVideoOptions() {
+    $ret = array();
+    $ret[0] = "HLS";
+    $ret[1] = "MJPEG";
+
+    return $ret;
+}
+
 
 /**
  * Returns SQLite Database connection
@@ -310,8 +317,6 @@ class data{
 
         Reply::ajaxDie($status, $message, $data);
 	}
-
-
 
 	public static function last_id(){ #wrapper instead of mysql_insert_id
 		$db = database::getInstance();
@@ -788,9 +793,9 @@ class ipCamera{
 				if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
 				if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
 			}
-				empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
-				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
-				
+			empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
+			$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
+
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
 			if ($self_id === false) { # check this only in case of creation, don't check on edit
@@ -844,6 +849,9 @@ class ipCamera{
 		return array($result, false);
 	}
 	public static function create($rawData){
+		#check the number of the allowed devices
+		if (!self::checkLimitDevices()) { return array(false, AIP_LIMIT_ALLOWED_DEVICES); };
+
 		#get the data ready
 		
 		$data = self::prepareData($rawData);
@@ -888,6 +896,16 @@ class ipCamera{
 	public function changeState(){
 		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
 		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
+	}
+	private function checkLimitDevices(){
+		$info = data::query("SELECT COUNT(*) as n FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
+		$total_devices = $info[0]['n'];
+
+		$allowed_by_license = bc_license_devices_allowed();
+		if ((int)$allowed_by_license == -1) return true; // -1 for unlimited
+
+		$allowed_devices = (int)$allowed_by_license + Constant('NO_LICENSE_DEFAULT_ALLOWED');
+		return ((int)$total_devices < $allowed_devices);
 	}
 }
 
@@ -1487,9 +1505,6 @@ class Cameras
         data::responseJSON(true, true, $data_r);
     }
 
-
-
-    
     /**
      * Function to be used as array_walk callback for preparing data
      * 
@@ -1519,6 +1534,5 @@ class Cameras
 $global_settings = new globalSettings;
 $varpub = VarPub::get();
 $varpub->global_settings = $global_settings;
-
 
 ?>

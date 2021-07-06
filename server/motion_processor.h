@@ -98,7 +98,7 @@ private:
     bool m_motionDebug = true;
     int m_debugEventNum = 0;
     uint64_t m_debugFrameNum = 0;
-    std::tm *m_debugEventTime;
+    struct tm m_debugEventTime;
 
 	static void thread_cleanup(void *data);
 };

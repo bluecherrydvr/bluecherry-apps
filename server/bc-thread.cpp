@@ -36,6 +36,8 @@
 #include "recorder.h"
 #include "substream-thread.h"
 
+#include "hls.h"
+
 #define DEF_TH_LOG_LEVEL Warning
 
 /* For Ubuntu Lucid */
@@ -58,7 +60,15 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 void stop_handle_properly(struct bc_record *bc_rec)
 {
 	if (!bc_rec->bc->substream_mode)
-		bc_streaming_destroy(bc_rec);
+		bc_streaming_destroy_rtp(bc_rec);
+
+	bc_streaming_destroy_hls(bc_rec);
+
+	if (bc_rec->hls_stream)
+	{
+		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+		if (content != NULL) content->clear_window();
+	}
 
 	if (bc_rec->liveview_substream)
 	{
@@ -214,8 +224,13 @@ void bc_record::run()
 			}
 
 			if (bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT)
-				if (bc_streaming_setup(this, this->bc->input->properties()))
+			{
+				if (bc_streaming_setup(this, BC_RTP, this->bc->input->properties()))
 					log.log(Error, "Unable to setup live broadcast of device stream");
+
+				if (bc_streaming_setup(this, BC_HLS, this->bc->input->properties()))
+					log.log(Error, "Unable to setup HLS live of device stream");
+			}
 		}
 
 		if (sched_last) {
@@ -321,7 +336,10 @@ void bc_record::run()
 				/* Reencoded stream has different properties, they'll be set later when
 				 * the first packet comes out from encoder */
 				if (bc_streaming_is_setup(this))
-					bc_streaming_destroy(this);
+					bc_streaming_destroy_rtp(this);
+
+				if (bc_streaming_is_active_hls(this))
+					bc_streaming_destroy_hls(this);
 			}
 
 			sched_last = 0;
@@ -366,8 +384,18 @@ void bc_record::run()
 					packet = reenc->streaming_packet();
 
 					if (!bc_streaming_is_setup(this)) {
-						if (bc_streaming_setup(this, packet.properties()))
+						if (bc_streaming_setup(this, BC_RTP, packet.properties()))
 							log.log(Error, "Unable to reinitialize reencoded live view stream");
+					}
+
+					if (!bc_streaming_is_active_hls(this)) {
+						if (bc_streaming_setup(this, BC_HLS, packet.properties()))
+							log.log(Error, "Unable to reinitialize reencoded live HLS stream");
+					}
+
+					if (bc_streaming_is_active_hls(this)) {
+						if (bc_streaming_hls_packet_write(this, packet) == -1)
+							log.log(Error, "Failed to stream reencoded HLS live view");
 					}
 
 					if (bc_streaming_is_active(this))
@@ -379,11 +407,18 @@ void bc_record::run()
 			continue;
 		}
 
-		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this) && !bc->substream_mode) {
+		if (!bc->substream_mode) {
+			/* Send packet to HLS streaming clients */
+			if (bc_streaming_is_active_hls(this) &&
+				bc_streaming_hls_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for HLS live view");
+				goto error;
+			}
 
-			if (bc_streaming_packet_write(this, packet) == -1) {
-				log.log(Error, "Failed to stream packet to streaming clients");
+			/* Send packet to streaming clients */
+			if (bc_streaming_is_active(this) &&
+				bc_streaming_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for live view");
 				goto error;
 			}
 		}
@@ -413,9 +448,14 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
-	stream_ctx[0] = 0;
-	stream_ctx[1] = 0;
+	rtp_stream_ctx[0] = 0;
+	rtp_stream_ctx[1] = 0;
 	rtsp_stream = 0;
+
+	hls_segment_type = hls_segment::type::mpegts;
+	hls_stream_ctx[0] = 0;
+	hls_stream_ctx[1] = 0;
+	hls_stream = 0;
 
 	osd_time = 0;
 	start_failed = 0;
@@ -454,7 +494,9 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		bc_status_component_error("Database error while initializing device %d", id);
 		goto fail;
 	}
-	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+
+	//memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+	bc_rec->cfg_update = bc_rec->cfg; // no need memcpy()
 
 	bc_rec->log = log_context("%d/%s", id, bc_rec->cfg.name);
 	bc_rec->log.set_level(bc_rec->cfg.debug_level ? DEF_TH_LOG_LEVEL : (log_level)-1);

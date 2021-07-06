@@ -16,6 +16,7 @@
   /dev/video* rw,
 
   /usr/lib/libbluecherry.so.0 mr,
+  /usr/lib/libLexActivator.so mr,
   /usr/lib/bluecherry/ r,
   /usr/lib/bluecherry/* mr,
 }

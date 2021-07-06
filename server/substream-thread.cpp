@@ -36,8 +36,13 @@ void substream::run(struct bc_record *r)
 			}
 
 			if (r->bc->substream_input->is_started())
-				if (bc_streaming_setup(r, r->bc->substream_input->properties()))
+			{
+				if (bc_streaming_setup(r, BC_RTP, r->bc->substream_input->properties()))
 					r->log.log(Error, "Unable to setup live broadcast from substream");
+
+				if (bc_streaming_setup(r, BC_HLS, r->bc->substream_input->properties()))
+					r->log.log(Error, "Unable to setup HLS stream from substream");
+			}
 		}
 
 		ret = r->bc->substream_input->read_packet();
@@ -53,26 +58,35 @@ void substream::run(struct bc_record *r)
 		}
 
 		liveview_packet = r->bc->substream_input->packet();
+
+		if (bc_streaming_is_active_hls(r)) {
+			if (bc_streaming_hls_packet_write(r, liveview_packet) == -1) {
+				r->log.log(Error, "Failed to write HLS substream packet");
+				goto error;
+			}
+		}
+
 		/* Send packet to streaming clients */
 		if (bc_streaming_is_active(r)) {
 			if (bc_streaming_packet_write(r, liveview_packet) == -1) {
 				r->log.log(Error, "Failed to write substream packet");
 				goto error;
 			}
-		} else {
-			r->log.log(Debug, "Substream: no active RTSP clients, sleeping...");
+		} else if (!bc_streaming_is_active_hls(r)) { // Dont sleep if HLS is active
+			r->log.log(Debug, "Substream: no active RTSP or HLS clients, sleeping...");
 			sleep(1);
 		}
 
-
 		continue;
 	error:
-		bc_streaming_destroy(r);
+		bc_streaming_destroy_rtp(r);
+		bc_streaming_destroy_hls(r);
 		r->bc->substream_input->stop();
 		sleep(3);
 	}
 
-	bc_streaming_destroy(r);
+	bc_streaming_destroy_rtp(r);
+	bc_streaming_destroy_hls(r);
 	r->bc->substream_input->stop();
 }
 

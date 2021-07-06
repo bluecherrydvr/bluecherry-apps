@@ -2,7 +2,8 @@ CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= pelcocmd ptzcmd \
-		  bc-license licensecmd
+		  bc-license licensecmd 
+		  #onvif_tool/onvif_tool
 
 all: $(TARGETS)
 
@@ -17,6 +18,12 @@ $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 
 clean:
 	rm -f $(TARGETS) *.o
+
+#onvif_tool/onvif_tool:
+#	cd onvif_tool/ && autoreconf -i \
+#	&& ./configure \
+#	&& $(MAKE) $(MAKEARGS) \
+#	&& $(STRIP) onvif_tool
 
 install: licensecmd ptzcmd
 	$(INSTALL_PROG) -D licensecmd $(DESTDIR)$(libexec_dir)/licensecmd

@@ -19,20 +19,25 @@ Architecture: any
 Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  mkvtoolnix, php-mail, php-mail-mime, php-net-smtp, sqlite3, nmap,
- apache2,
+ nginx,
+ php-fpm,
+ php-mysql,
+ php-sqlite3,
  v4l-utils,
  vainfo,
  i965-va-driver,
-#focal   php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#xenial  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#bionic  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#buster  php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#stretch php-sqlite3, libapache2-mod-php, php-gd, php-curl, php-mysql
-#precise php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
-#trusty  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
-#wily    php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
-#wheezy  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
-#jessie  php5-sqlite, libapache2-mod-php5, php5-gd, php5-curl, php5-mysqlnd
+ python3-pip,
+#focal   php-sqlite3, php-gd, php-curl, php-mysql
+#xenial  php-sqlite3, php-gd, php-curl, php-mysql
+#bionic  php-sqlite3, php-gd, php-curl, php-mysql
+#buster  php-sqlite3, php-gd, php-curl, php-mysql
+#stretch php-sqlite3, php-gd, php-curl, php-mysql
+#precise php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
+#trusty  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
+#wily    php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
+#wheezy  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
+#jessie  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
+#groovy libapache2-mod-php7.4, mariadb-server, php-mysql, php-curl, php-gd, php-sqlite3
 Recommends: mysql-server
 Suggests: monit, mail-transport-agent
 Conflicts: solo6010-dkms

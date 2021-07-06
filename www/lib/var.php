@@ -121,3 +121,69 @@ $GLOBALS['reencode_resolutions'] = array(
 $varpub_globals['reencode_resolutions'] = $GLOBALS['reencode_resolutions'];
 
 $varpub->globals = $varpub_globals;
+
+#LexActivator status code
+define('LA_OK', 0);
+define('LA_FAIL', 1);
+define('LA_EXPIRED', 20);
+define('LA_SUSPENDED', 21);
+define('LA_GRACE_PERIOD_OVER', 22);
+define('LA_TRIAL_EXPIRED', 25);
+define('LA_LOCAL_TRIAL_EXPIRED', 26);
+define('LA_RELEASE_UPDATE_AVAILABLE', 30);
+define('LA_RELEASE_NO_UPDATE_AVAILABLE', 31);
+define('LA_E_FILE_PATH', 40);
+define('LA_E_PRODUCT_FILE', 41);
+define('LA_E_PRODUCT_DATA', 42);
+define('LA_E_PRODUCT_ID', 43);
+define('LA_E_SYSTEM_PERMISSION', 44);
+define('LA_E_FILE_PERMISSION', 45);
+define('LA_E_WMIC', 46);
+define('LA_E_TIME', 47);
+define('LA_E_INET', 48);
+define('LA_E_NET_PROXY', 49);
+define('LA_E_HOST_URL', 50);
+define('LA_E_BUFFER_SIZE', 51);
+define('LA_E_APP_VERSION_LENGTH', 52);
+define('LA_E_REVOKED', 53);
+define('LA_E_LICENSE_KEY', 54);
+define('LA_E_LICENSE_TYPE', 55);
+define('LA_E_OFFLINE_RESPONSE_FILE', 56);
+define('LA_E_OFFLINE_RESPONSE_FILE_EXPIRED', 57);
+define('LA_E_ACTIVATION_LIMIT', 58);
+define('LA_E_ACTIVATION_NOT_FOUND', 59);
+define('LA_E_DEACTIVATION_LIMIT', 60);
+define('LA_E_TRIAL_NOT_ALLOWED', 61);
+define('LA_E_TRIAL_ACTIVATION_LIMIT', 62);
+define('LA_E_MACHINE_FINGERPRINT', 63);
+define('LA_E_METADATA_KEY_LENGTH', 64);
+define('LA_E_METADATA_VALUE_LENGTH', 65);
+define('LA_E_ACTIVATION_METADATA_LIMIT', 66);
+define('LA_E_TRIAL_ACTIVATION_METADATA_LIMIT', 67);
+define('LA_E_METADATA_KEY_NOT_FOUND', 68);
+define('LA_E_TIME_MODIFIED', 69);
+define('LA_E_RELEASE_VERSION_FORMAT', 70);
+define('LA_E_AUTHENTICATION_FAILED', 71);
+define('LA_E_METER_ATTRIBUTE_NOT_FOUND', 72);
+define('LA_E_METER_ATTRIBUTE_USES_LIMIT_REACHED', 73);
+define('LA_E_CUSTOM_FINGERPRINT_LENGTH', 74);
+define('LA_E_VM', 80);
+define('LA_E_COUNTRY', 81);
+define('LA_E_IP', 82);
+define('LA_E_RATE_LIMIT', 90);
+define('LA_E_SERVER', 91);
+define('LA_E_CLIENT', 92);
+
+#License Command
+define('LA_IS_ACTIVATED',           'bc_v3_license_isActivated');
+define('LA_IS_LICENSE_GENUINE',     'bc_v3_license_isLicenseGenuine');
+define('LA_IS_TRIAL_GENUINE',       'bc_v3_license_IsTrialGenuine');
+define('LA_GET_LICENSE_METADATA',   'bc_v3_license_GetLicenseMetadata');
+define('LA_GET_LICENSE_EXPIRYDATE', 'bc_v3_license_GetLicenseExpiryDate');
+define('LA_GET_TRIAL_EXPIRYDATE',   'bc_v3_license_GetTrialExpiryDate');
+define('LA_ACTIVATE_LICENSE',       'bc_v3_license_ActivateLicense');
+define('LA_ACTIVATE_TRIAL',         'bc_v3_license_ActivateTrial');
+define('LA_DEACTIVATE_LICENSE',     'bc_v3_license_DeactivateLicense');
+
+#License Other
+define('NO_LICENSE_DEFAULT_ALLOWED', 4);
