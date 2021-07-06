@@ -236,6 +236,7 @@ void bc_record::run()
 		if (sched_last) {
 			char *sched_str;
 			switch (sched_cur) {
+				case 'X': sched_str = "continuous + motion"; break;
 				case 'C': sched_str = "continuous"; break;
 				case 'M': sched_str = "motion"; break;
 				case 'N': sched_str = "stopped"; break;
@@ -249,55 +250,60 @@ void bc_record::run()
 
 			destroy_elements();
 
-			if (sched_cur == 'C') {
-				rec = new recorder(this);
-				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
-				rec->set_logging_context(log);
-				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-				std::thread th(&recorder::run, rec);
-				th.detach();
-			} else if (sched_cur == 'M') {
-				m_handler = new motion_handler;
-				m_handler->set_logging_context(log);
-				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
-				m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
-				m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
+			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
 
-				rec = new recorder(this);
-				rec->set_logging_context(log);
-				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
-
-				rec->set_buffer_time(cfg.prerecord);
-
-				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
-				rec_th.detach();
-
-				if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
-					bc->input->set_motion(true);
-					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
-				} else {
-					m_processor = new motion_processor(this);
-					m_processor->set_logging_context(log);
-					update_motion_thresholds();
-
-					m_processor->set_motion_algorithm(cfg.motion_algorithm);
-					m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
-					m_processor->set_min_motion_area_percent(cfg.min_motion_area);
-                    m_processor->set_max_motion_area_percent(cfg.max_motion_area);
-
-                    m_processor->set_max_motion_frames(cfg.max_motion_frames);
-                    m_processor->set_min_motion_frames(cfg.min_motion_frames);
-                    m_processor->set_motion_blend_ratio(cfg.motion_blend_ratio);
-                    m_processor->set_motion_debug(cfg.motion_debug);
-
-					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
-					m_processor->output()->connect(m_handler->input_consumer());
-					m_processor->start_thread();
+				if (sched_cur == 'X' || sched_cur == 'C') {
+					rec_continuous = new recorder(this);
+					rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
+					rec_continuous->set_logging_context(log);
+					bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
+					std::thread rec_th(&recorder::run, rec_continuous);
+					rec_th.detach();
 				}
 
-				std::thread th(&motion_handler::run, m_handler);
-				th.detach();
+				if (sched_cur == 'X' || sched_cur == 'M') {
+					m_handler = new motion_handler;
+					m_handler->set_logging_context(log);
+					m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
+					m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
+					m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
+
+					rec_motion = new recorder(this);
+					rec_motion->set_logging_context(log);
+					rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
+
+					rec_motion->set_buffer_time(cfg.prerecord);
+
+					m_handler->connect(rec_motion);
+					std::thread rec_th(&recorder::run, rec_motion);
+					rec_th.detach();
+
+					if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
+						bc->input->set_motion(true);
+						bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
+					} else {
+						m_processor = new motion_processor(this);
+						m_processor->set_logging_context(log);
+						update_motion_thresholds();
+
+						m_processor->set_motion_algorithm(cfg.motion_algorithm);
+						m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
+						m_processor->set_min_motion_area_percent(cfg.min_motion_area);
+						m_processor->set_max_motion_area_percent(cfg.max_motion_area);
+
+						m_processor->set_max_motion_frames(cfg.max_motion_frames);
+						m_processor->set_min_motion_frames(cfg.min_motion_frames);
+						m_processor->set_motion_blend_ratio(cfg.motion_blend_ratio);
+						m_processor->set_motion_debug(cfg.motion_debug);
+
+						bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
+						m_processor->output()->connect(m_handler->input_consumer());
+						m_processor->start_thread();
+					}
+
+					std::thread th(&motion_handler::run, m_handler);
+					th.detach();
+				}
 			} else if (sched_cur == 'T') {
 				/*
 				 * source ==> trigger_processor (data passthru, flag setting) ==> motion_handler_m ==> recorder
@@ -306,14 +312,14 @@ void bc_record::run()
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 
-				rec = new recorder(this);
-				rec->set_logging_context(log);
-				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
+				rec_motion = new recorder(this);
+				rec_motion->set_logging_context(log);
+				rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
 
-				rec->set_buffer_time(cfg.prerecord);
+				rec_motion->set_buffer_time(cfg.prerecord);
 
-				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
+				m_handler->connect(rec_motion);
+				std::thread rec_th(&recorder::run, rec_motion);
 				rec_th.detach();
 
 				t_processor = new trigger_processor(id);
@@ -469,10 +475,12 @@ bc_record::bc_record(int i)
 	onvif_ev = 0;
 	onvif_ev_thread = 0;
 
+	rec_continuous = 0;
+	rec_motion = 0;
+
 	m_processor = 0;
 	t_processor = 0;
 	m_handler = 0;
-	rec = 0;
 	reenc = 0;
 	liveview_substream = 0;
 	liveview_substream_thread = 0;
@@ -567,10 +575,16 @@ bc_record::~bc_record()
 
 void bc_record::destroy_elements()
 {
-	if (rec) {
-		rec->disconnect();
-		rec->destroy();
-		rec = 0;
+	if (rec_continuous) {
+		rec_continuous->disconnect();
+		rec_continuous->destroy();
+		rec_continuous = 0;
+	}
+
+	if (rec_motion) {
+		rec_motion->disconnect();
+		rec_motion->destroy();
+		rec_motion = 0;
 	}
 
 	if (m_processor) {

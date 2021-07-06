@@ -175,10 +175,10 @@ void recorder::event_trigger_notifications(bc_event_cam_t event)
  * time, creating folders if necessary. Repeated calls may return different
  * results; use writer to get the current media file's path.
  */
-static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id)
+static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id, bc_event_cam_type_t rec_type)
 {
 	struct tm tm;
-	char date[12], fname[14];
+	char date[12], fname[32];
 	char basepath[PATH_MAX];
 	int ret;
 
@@ -190,7 +190,11 @@ static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id
 
 	localtime_r(&start_ts, &tm);
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
-	strftime(fname, sizeof(fname), "/%H-%M-%S.mp4", &tm);
+
+	if (rec_type == BC_EVENT_CAM_T_MOTION)
+		strftime(fname, sizeof(fname), "/%H-%M-%S-motion.mp4", &tm);
+	else
+		strftime(fname, sizeof(fname), "/%H-%M-%S.mp4", &tm);
 
 	/* Construct full path except final file name, for mkdir */
 	size_t dir_len = snprintf(dst, len, "%s/%s/%06d",
@@ -224,10 +228,10 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	snapshots_limit = 1;  /* TODO Optionize */
 	snapshots_done = 0;
 	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
-    event_notification_executed = false;
+	event_notification_executed = false;
 
 	char outfile[PATH_MAX];
-	int ret = media_file_path(outfile, sizeof(outfile), start_ts, device_id);
+	int ret = media_file_path(outfile, sizeof(outfile), start_ts, device_id, get_recording_type());
 	if (ret < 0) {
 		do_error_event(BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
 		return -1;
@@ -267,11 +271,11 @@ void recorder::recording_end()
 {
 	/* Close the media entry in the db */
 	if (current_event && bc_event_has_media(current_event)) {
-        if (recording_type == BC_EVENT_CAM_T_MOTION
-                && !event_notification_executed)
-            event_trigger_notifications(current_event);
+		if (recording_type == BC_EVENT_CAM_T_MOTION
+			&& !event_notification_executed)
+		event_trigger_notifications(current_event);
 		bc_event_cam_end(&current_event);
-    }
+	}
 
 	if (writer)
 		writer->close();
