@@ -144,6 +144,7 @@ public:
 		enum AVPixelFormat pix_fmt;
 		int width;
 		int height;
+		int64_t bit_rate;
 		/* Note that this is codec time_base; you should NOT use it other than
 		 * setting on an AVCodecContext. See stream_packet doc. */
 		AVRational time_base;

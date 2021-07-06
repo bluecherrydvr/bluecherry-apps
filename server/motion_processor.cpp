@@ -35,6 +35,7 @@ motion_processor::motion_processor(bc_record *bcRecord)
 	md_frame_pool_index = 0;
 	memset(md_frame_pool, 0, 255);
 
+	memset(&m_debugEventTime, 0, sizeof(struct tm));
 	m_debugEventTime.tm_sec = -1;
 }
 
@@ -305,7 +306,7 @@ int motion_processor::set_max_motion_frames(int max)
 int motion_processor::set_min_motion_frames(int min)
 {
     if (min > m_maxMotionFrames)
-        min = min > m_maxMotionFrames ? min = m_maxMotionFrames * 0.75 : 15;
+        min = min > m_maxMotionFrames ? (m_maxMotionFrames * 0.75) : 15;
         //return 0;
     if (min > 255 || min < 1)
         min = 15;
@@ -420,8 +421,8 @@ bool motion_processor::check_for_new_debug_event(bool md) {
         localtime_r(&now, &m_debugEventTime);
 
         //std::time_t now = std::time(NULL);
-        //m_debugEventTime = std::localtime(&now);
-        //std::strftime(m_debugEventTime, sizeof(m_debugEventTime), "%Y-%m-%d/%H.%M.%S", ptm);
+        //&m_debugEventTime = std::localtime(&now);
+        //std::strftime(&m_debugEventTime, sizeof(&m_debugEventTime), "%Y-%m-%d/%H.%M.%S", ptm);
 
         m_debugEventNum++;
         m_debugFrameNum = 0;
@@ -442,7 +443,6 @@ void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
     if (m_debugEventTime.tm_sec < 0) {
         time_t now = time(NULL);
         localtime_r(&now, &m_debugEventTime);
-
         //std::time_t now = std::time(NULL);
         //m_debugEventTime = std::localtime(&now);
     }

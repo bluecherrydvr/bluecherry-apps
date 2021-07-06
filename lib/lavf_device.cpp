@@ -244,6 +244,7 @@ void lavf_device::update_properties()
 		p->video.pix_fmt = ic->pix_fmt;
 		p->video.width = ic->width;
 		p->video.height = ic->height;
+		p->video.bit_rate = ic->bit_rate;
 		p->video.time_base = ic->time_base;
 		p->video.profile = ic->profile;
 		if (ic->extradata && ic->extradata_size)

@@ -129,7 +129,7 @@ bool encoder::encode()
 
 bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width, int height, AVBufferRef* hw_frames_ctx)
 {
-	AVCodec *encoder;
+	AVCodec *encoder = NULL;
 
 	type = media_type;
 	current_bitrate = bitrate;
@@ -154,7 +154,7 @@ bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width,
 		encoder = avcodec_find_encoder_by_name("h264_vaapi");
 	}
 
-	if (!encoder)
+	if (encoder == NULL)
 	{
 		bc_log(Error, "Failed to find encoder");
 		return false;

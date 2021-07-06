@@ -29,6 +29,7 @@ bool decoder::init_decoder()
 		codec_id = saved_properties.get()->video.codec_id;
 	else if (type == AVMEDIA_TYPE_AUDIO)
 		codec_id = saved_properties.get()->audio.codec_id;
+	else return false; // may be used uninitialized
 
 	AVCodec *codec = avcodec_find_decoder(codec_id);
 

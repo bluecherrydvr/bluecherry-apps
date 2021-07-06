@@ -55,6 +55,7 @@ int get_solo_driver_name(char *buf, size_t bufsize)
 	if (!fd)
 		return -1;
 	fgets(buf, bufsize, fd);
+	pclose(fd);
 	return 0;
 }
 
@@ -83,7 +84,7 @@ static int get_creds(BC_DB_RES dbres, char *creds, size_t size)
 	if (!user || !pass)
 		return -1;
 
-	if (*user || *pass) {
+	if (*user && *pass) {
 		size_t s = snprintf(creds, size, "%s:%s@", user, pass);
 		if (s >= size)
 			return -1;
@@ -147,7 +148,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	bool rtsp_rtp_prefer_tcp = true;
 	const char *protocol = bc_db_get_val(dbres, "protocol", NULL);
 	const char *uri_schema;
-	if (!strcmp(protocol, "IP-MJPEG")) {
+	if (protocol && !strncmp(protocol, "IP-MJPEG", 8)) {
 		uri_schema = "http";
 		val = bc_db_get_val(dbres, "mjpeg_path", NULL);
 	} else {
@@ -180,24 +181,29 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		if (bc->substream_mode) {
 			val = bc_db_get_val(dbres, "substream_path", NULL);
 
-			/* substream_path format should be same as device, 'hostname|port|path' */
-			r = parse_dev_path(url, sizeof(url), val, creds,
-                                "XXX", /* host should be always present, this default doesn't matter */
-                                "554", /* port should be always present, this default doesn't matter */
-                                uri_schema);
-	                if (r)
-				return -1;
+			if (val && *val) {
+				/* substream_path format should be same as device, 'hostname|port|path' */
+				r = parse_dev_path(url, sizeof(url), val, creds,
+									"XXX", /* host should be always present, this default doesn't matter */
+									"554", /* port should be always present, this default doesn't matter */
+									uri_schema);
+				if (r)
+					return -1;
 
-			bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+				bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+			}
 		}
 	}
 
-	/* This `defhost` is a workaround for empty host part in mjpeg_path */
-	char *defhost = strdupa(val);
-	{
-		char *p = strchr(defhost, '|');
-		if (p)
-			*p = 0;
+	/* Check it again because substream_path may damage this variable */
+	if (val && *val) {
+		/* This `defhost` is a workaround for empty host part in mjpeg_path */
+		char *defhost = strdupa(val);
+		{
+			char *p = strchr(defhost, '|');
+			if (p)
+				*p = 0;
+		}
 	}
 
 	return 0;
@@ -218,24 +224,30 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 	device = bc_db_get_val(dbres, "device", NULL);
 	driver = bc_db_get_val(dbres, "driver", NULL);
 	protocol = bc_db_get_val(dbres, "protocol", NULL);
-	if (!device || !protocol) {
+	if (!device || !protocol || !driver) {
 		errno = EINVAL;
 		return NULL;
 	}
 
-	bc = (struct bc_handle*) malloc(sizeof(*bc));
+	bc = (struct bc_handle*) malloc(sizeof(struct bc_handle));
 	if (bc == NULL) {
 		errno = ENOMEM;
 		return NULL;
 	}
-	memset(bc, 0, sizeof(*bc));
+	memset(bc, 0, sizeof(struct bc_handle));
+	bc->substream_input = NULL;
+	bc->input = NULL;
 
-	strcpy(bc->device, device);
-	strcpy(bc->driver, driver);
+	snprintf(bc->device, sizeof(bc->device), "%s", device);
+	snprintf(bc->driver, sizeof(bc->driver), "%s", driver);
+	bc_log(Debug, "bc_handle_get(): device: %s, driver: %s, protocol: %s", bc->device, bc->driver, protocol);
 
 	bc_ptz_check(bc, dbres);
+	bc_log(Debug, "bc_handle_get(): ptz check done");
 
-	bc->substream_mode = (bc_streaming_substream_mode_t) bc_db_get_val_int(dbres, "substream_mode");
+	int substream_mode = bc_db_get_val_int(dbres, "substream_mode");
+	if (substream_mode < 0) substream_mode = 0;
+	bc->substream_mode = (bc_streaming_substream_mode_t)substream_mode;
 
 	if (!strncmp(protocol, "IP", 2)) {
 		ret = lavf_handle_init(bc, dbres);
@@ -246,15 +258,20 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 
 		/* TODO Add variant for GENERIC */
 	} else {
-		char solo_driver_name[32] = "";
+		char solo_driver_name[32];
+		solo_driver_name[0] = '\0';
 		get_solo_driver_name(solo_driver_name, sizeof(solo_driver_name));
-		if (!strcmp(solo_driver_name, "solo6x10_edge")) {
+
+		if (!strncmp(solo_driver_name, "solo6x10_edge", 13)) {
+			bc_log(Debug, "v4l2_device: solo6010_dkms");
 			bc->type = BC_DEVICE_V4L2_SOLO6010_DKMS;
 			bc->input = new v4l2_device_solo6010_dkms(dbres);
 		} else {
+			bc_log(Debug, "v4l2_device: solo6x10");
 			bc->type = BC_DEVICE_V4L2_SOLO6X10;
 			bc->input = new v4l2_device_solo6x10(dbres);
 		}
+
 		ret = bc->input->has_error();
 	}
 
@@ -265,6 +282,7 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		return NULL;
 	}
 
+	bc_log(Debug, "bc_handle_get(): done");
 	return bc;
 }
 
@@ -279,10 +297,12 @@ void bc_handle_free(struct bc_handle *bc)
 	if (bc->input)
 		bc->input->stop();
 
-	delete bc->input;
+	if (bc->input)
+		delete bc->input;
+
 	delete bc->source;
 
-	if (bc->substream_mode) {
+	if (bc->substream_mode && bc->substream_input) {
 		bc->substream_input->stop();
 		delete bc->substream_input;
 	}
@@ -342,7 +362,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	if (cfg->motion_analysis_ssw_length == -1) {
 		bc_log(Debug, "motion_analysis_ssw_length field is set to -1. Using default value");
 		cfg->motion_analysis_ssw_length = 1;  // 1 frame, considering no false positives by default
-		if (!strcmp(driver, "tw5864"))
+		if (!strncmp(driver, "tw5864", 6))
 			cfg->motion_analysis_ssw_length = 10;  // 10 frames, considering high false-positives rate
 
 	}
@@ -350,7 +370,7 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 	if (cfg->motion_analysis_percentage == -1) {
 		bc_log(Debug, "motion_analysis_percentage field is set to -1. Using default value");
 		cfg->motion_analysis_percentage = 1;  // 1%, considering no false positives by default
-		if (!strcmp(driver, "tw5864"))
+		if (!strncmp(driver, "tw5864", 6))
 			cfg->motion_analysis_percentage = 25;  // 25% (I-frames are not flagged), considering high false-positives rate
 	}
 	cfg->debug_level = (int8_t)bc_db_get_val_int(dbres, "debug_level");

@@ -35,6 +35,7 @@ class liveview extends Controller {
         $lv->access_list = $this->access_list;
         $lv->layout_list = $this->layout_list;
         $lv->layout_values = $this->layout_values;
+		$lv->video_method = $this->varpub->global_settings->data['G_LIVEVIEW_VIDEO_METHOD'];
 
         $this->view->lv = $lv;
     }

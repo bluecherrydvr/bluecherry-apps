@@ -76,9 +76,10 @@ class Controller {
     		if ($this->user->info['default_password'] && !empty($_COOKIE['default_password_warning_dismiss'])) {
     			$main_page->general_error = array('type' => 'INFO', 'text' => WARN_DEFAULT_PASSWORD);
     		}
-    		if (bc_license_devices_allowed() == 0){
-    			$main_page->general_error = array('type' => 'INFO', 'text' => BETA_LICENSE_WARNING);
-    		}
+
+            $ret = bc_license_check_genuine();
+            $main_page->general_error = array('type' => 'INFO', 'text' => $ret[1]);
+
     		$status = data::getObject('ServerStatus');
     		if (!empty($status[0]['message'])) {
     			$m = preg_split( '/\r\n|\r|\n/', $status[0]['message']);
