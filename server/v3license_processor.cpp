@@ -94,7 +94,14 @@ V3LICENSE_API int bc_license_v3_IsTrialGenuine()
 
 V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t length)
 {
-    int status = GetLicenseMetadata(METADATA_KEY, value, length);
+    int status = bc_license_v3_IsTrialGenuine();
+    if (status == LA_OK) {
+        snprintf(value, length, "%d", -1); // -1 for unlimited
+        bc_log(Info, "Allowing unlimited cameras for trial license\n");
+        return status;
+    }
+
+    status = GetLicenseMetadata(METADATA_KEY, value, length);
     if (status == LA_OK) {
         bc_log(Info, "License authorized for %s cameras", value);
     }
