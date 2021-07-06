@@ -229,8 +229,8 @@ static void bc_update_server_status()
 			         component_str, component_error[i]);
 			full_error_sz += nl + 128;
 		} else {
-			asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			full_error_sz = strlen(full_error);
+			full_error_sz = asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
+			if (full_error_sz < 0) full_error = NULL; // Failed to allocate
 		}
 
 		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
@@ -458,7 +458,13 @@ static void bc_stop_threads(void)
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
 		bc_record *bc_rec = *it;
 		pthread_join(bc_rec->thread, (void **)&errmsg);
-		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
+
+		char message[128];
+		snprintf(message, sizeof(message), "Device stopped: %s", errmsg);
+
+		bc_rec->log.log(Info, "%s", message);
+		bc_rec->notify_device_state(message);
+
 		delete bc_rec;
 		cur_threads--;
 	}
@@ -478,7 +484,12 @@ static void bc_check_threads(void)
 		if (pthread_tryjoin_np(bc_rec->thread, (void **)&errmsg))
 			continue;
 
-		bc_rec->log.log(Info, "Device stopped: %s", errmsg);
+		char message[128];
+		snprintf(message, sizeof(message), "Device stopped: %s", errmsg);
+
+		bc_rec->log.log(Info, "%s", message);
+		bc_rec->notify_device_state(message);
+
 		delete bc_rec;
 		cur_threads--;
 

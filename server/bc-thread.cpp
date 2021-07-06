@@ -88,7 +88,7 @@ static void update_osd(struct bc_record *bc_rec)
 {
 #define OSD_TEXT_MAX 44
 #define DATE_LEN 19
-#define OSD_NAME_MAX_LEN (OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
+#define OSD_NAME_MAX_LEN 256 /* sizeof(bc_rec->cfg.name) == 256 */ //(OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
 	input_device *d = bc_rec->bc->input;
 	time_t t = time(NULL);
 	char buf[DATE_LEN + 1 /* for null-termination */];
@@ -350,8 +350,13 @@ void bc_record::run()
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_LAVF) {
+				char full_err[128];
+
 				const char *err = reinterpret_cast<lavf_device*>(bc->input)->get_error_message();
-				log.log(Error, "Read error from stream: %s", *err ? err : "Unknown error");
+				snprintf(full_err, sizeof(full_err), "Read error from stream: %s", *err ? err : "Unknown error");
+
+				log.log(Error, "%s", full_err);
+				notify_device_state(full_err);
 			}
 
 			stop_handle_properly(this);

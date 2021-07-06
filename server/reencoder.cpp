@@ -198,7 +198,7 @@ bool reencoder::run_loop()
 
 	incoming_fps_ctr++;
 
-	bc_log(Debug, "reencoder: got frame %dx%d from decoder, bitrate %d", frame->width, frame->height,  dec->get_ctx()->bit_rate);
+	bc_log(Debug, "reencoder: got frame %dx%d from decoder, bitrate %ld", frame->width, frame->height,  dec->get_ctx()->bit_rate);
 #ifdef WATERMARKING_ENABLED
 	/* 2) ADD WATERMARK */
 	if (watermarking)
