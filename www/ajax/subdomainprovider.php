@@ -40,8 +40,8 @@ class subdomainprovider extends subdomainproviderbase
 
             foreach ($actualConfig['records'] as $record) {
                 switch ($record['type']) {
-                    case 'a': $this->view->actualIpv4Value = $record['value']; break;
-                    case 'aaaa' : $this->view->actualIpv6Value = $record['value']; break;
+                    case 'a' && $record['value'] != "": $this->view->actualIpv4Value = $record['value']; break;
+                    case 'aaaa' && $record['value'] != "": $this->view->actualIpv6Value = $record['value']; break;
                 }
             }
         }
@@ -49,64 +49,71 @@ class subdomainprovider extends subdomainproviderbase
 
     public function postData() {
 
-        $subdomain = '';
-        $email     = '';
-        $ipv4Value = '';
-        $ipv6Value = '';
-
-        if (!empty($_POST['subdomain_name'])) {
-            $subdomain = $_POST['subdomain_name'];
-        }
-
-        if (!empty($_POST['subdomain_email'])) {
-            $email = $_POST['subdomain_email'];
-        }
-
-        if (!empty($_POST['server_ip_address_4'])) {
-            $ipv4Value = $_POST['server_ip_address_4'];
-        }
-
-        if (!empty($_POST['server_ip_address_6'])) {
-            $ipv6Value = $_POST['server_ip_address_6'];
-        }
-
-        if (empty($subdomain) || empty($ipv4Value)) {
-            header('Location: /subdomainprovider?status=0');
-            return;
-        }
-
-        try {
-            $result = $this->postToApiWithToken('/assign-ip-address', [
-                'subdomain' => $subdomain,
-                'ip_address' => $ipv4Value,
-                'type' => 4
-            ]);
-
-            if (empty($result['success'])) {
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
+            $subdomain = '';
+            $email     = '';
+            $ipv4Value = '';
+            $ipv6Value = '';
+    
+            if (!empty($_POST['subdomain_name'])) {
+                $subdomain = $_POST['subdomain_name'];
+            }
+    
+            if (!empty($_POST['subdomain_email'])) {
+                $email = $_POST['subdomain_email'];
+            }
+    
+            if (!empty($_POST['server_ip_address_4'])) {
+                $ipv4Value = $_POST['server_ip_address_4'];
+            }
+    
+            if (!empty($_POST['server_ip_address_6'])) {
+                $ipv6Value = $_POST['server_ip_address_6'];
+            }
+    
+            if (empty($subdomain) || empty($ipv4Value)) {
                 header('Location: /subdomainprovider?status=0');
                 return;
             }
-
-            if (!empty($ipv6Value)) {
+    
+            try {
                 $result = $this->postToApiWithToken('/assign-ip-address', [
                     'subdomain' => $subdomain,
-                    'ip_address' => $ipv6Value,
-                    'type' => 6
+                    'ip_address' => $ipv4Value,
+                    'type' => 4
                 ]);
-
+    
                 if (empty($result['success'])) {
                     header('Location: /subdomainprovider?status=0');
                     return;
                 }
+    
+                if (!empty($ipv6Value)) {
+                    $result = $this->postToApiWithToken('/assign-ip-address', [
+                        'subdomain' => $subdomain,
+                        'ip_address' => $ipv6Value,
+                        'type' => 6
+                    ]);
+    
+                    if (empty($result['success'])) {
+                        header('Location: /subdomainprovider?status=0');
+                        return;
+                    }
+                }
+    
+            } catch (\RuntimeException $exception) {
+                header('Location: /subdomainprovider?status=0');
+                return;
             }
-
-        } catch (\RuntimeException $exception) {
-            header('Location: /subdomainprovider?status=0');
-            return;
+    
+            data::query("UPDATE GlobalSettings SET value='$email' WHERE parameter='G_SUBDOMAIN_EMAIL_ACCOUNT'");
+            header('Location: /subdomainprovider?status=1');
         }
 
-        data::query("UPDATE GlobalSettings SET value='$email' WHERE parameter='G_SUBDOMAIN_EMAIL_ACCOUNT'");
-        header('Location: /subdomainprovider?status=1');
+        // Deleting subdomain
+        if (!empty($_GET['mode']) && $_GET['mode'] == 'delete') {
+
+        }
     }
 
 }

@@ -33,7 +33,7 @@
         <div class="panel panel-default" style="margin-top:20px;">
             <div class="panel-heading"><?php echo G_SUBDOMAIN_TITLE; ?></div>
             <div class="panel-body">
-                <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider">
+                <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider?mode=add">
                     <div class="form-group">
                         <div class="col-sm-4 text-right">
                             <label for="subdomain_name" class="control-label">Subdomain Name:</label>
@@ -95,6 +95,30 @@
                 </form>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+    <div class="panel panel-default">
+        <div class="panel-heading"><?php echo G_SUBDOMAIN_CURRENT_NAME; ?></div>
+        <div class="panel-body">
+	    <?php if (empty($actualSubdomain)){ ?>
+            <div class="alert alert-warning"><?php echo G_SUBDOMAIN_CURRENT_NO_ACTUAL; ?></div>
+        <?php } else { ?>
+            <table class="table table-striped">
+                <tr>
+                    <td><?php echo $actualSubdomain; ?></td>
+                    <td class="col-lg-2 col-md-licensing">
+                        <form action="/subdomainprovider?mode=delete=<?php echo $license['license']; ?>" method="POST" style="display: inline-block;">
+                            <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/subdomainprovider" data-func-after="afterDecitvatingLicense"><i class="fa fa-times fa-fw"></i> <?php echo G_SUBDOMAIN_CURRENT_DELETE; ?></button>
+                        </form>
+                    </td>
+                </tr>
+            </table> 
+        <?php } ?>
+        </div>
+    </div>
     </div>
 </div>
 

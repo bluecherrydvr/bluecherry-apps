@@ -108,6 +108,9 @@ define('G_VAAPI_DEVICE_EX', 'Render node used for VAAPI hardware acceleration of
 define('G_SUBDOMAIN_TITLE', 'SSL / CNAME setup');
 define('G_SUBDOMAIN_API_BASE_URL_NAME', 'Subdomain Base URL');
 define('G_SUBDOMAIN_API_BASE_URL_NAME_EX', 'You can input the base url of subdomain provider');
+define('G_SUBDOMAIN_CURRENT_NAME',  'Current subdomain');
+define('G_SUBDOMAIN_CURRENT_NO_ACTUAL',  'No actual configuration');
+define('G_SUBDOMAIN_CURRENT_DELETE',  'Delete');
 
 define('G_LIVEVIEW_VIDEO_TITLE', 'LiveView Configuration');
 define('G_LIVEVIEW_VIDEO_METHOD', 'Video method');
