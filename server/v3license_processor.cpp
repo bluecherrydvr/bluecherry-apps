@@ -105,8 +105,8 @@ V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t lengt
     if (status == LA_OK) {
         bc_log(Info, "License authorized for %s cameras", value);
     }
-    else {
-# TODO - Throw better error code when trial is expired...currently we throw error code 1        
+// TODO - Throw better error code when trial is expired...currently we throw error code 1 
+    else {       
         bc_log(Error, "Getting the number of allowed cameras failed (Error code: %d) - Is trial expired?\n", status);
     }
 
