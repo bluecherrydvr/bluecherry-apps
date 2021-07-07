@@ -35,6 +35,7 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 #include "bc-syslog.h"
+#include "bc-stats.h"
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
@@ -1572,6 +1573,10 @@ int main(int argc, char **argv)
 
 	/* Mutex */
 	bc_initialize_mutexes();
+
+	/* Start monitoring */
+	bc_stats stats;
+	stats.start_monithoring();
 
 	rtsp = new rtsp_server;
 	if (rtsp->setup(7002)) {

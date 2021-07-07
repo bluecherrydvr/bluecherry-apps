@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <thread>
 
 #include "bc-stats.h"
 #include "logc.h"
@@ -14,6 +15,7 @@
 #define BC_FILE_MEMINFO          "/proc/meminfo"
 #define BC_FILE_LOADAVG          "/proc/loadavg"
 #define BC_FILE_STAT             "/proc/stat"
+#define BC_FILE_MAX              8192
 
 uint32_t bc_stats::bc_float_to_u32(float value)
 {
@@ -36,40 +38,26 @@ float bc_stats::bc_u32_to_float(uint32_t value)
     return (float)((float)integral + balance);
 }
 
-char* bc_stats::load_file(const char *path, size_t *size)
+int bc_stats::load_file(const char *path, char *buffer, size_t size)
 {
     /* Open target file for reading only */
 	int fd = open(path, O_RDONLY, S_IRUSR | S_IRGRP | S_IROTH);
 	if (fd < 0) return 0;
 
-    /* Get file size */
-    size_t length = lseek(fd, 0, SEEK_END);
-    lseek(fd, 0, SEEK_SET); // rewind back
-
-    char *buffer = (char*)malloc(length + 1);
-    if (buffer == NULL)
-    {
-        bc_log(Error, "Can not allocate memory for reading file: %s", path);
-        close(fd);
-        return NULL;
-    }
-
     /* Read whole file buffer from descriptor */
-	int bytes = read(fd, buffer, length);
+	int bytes = read(fd, buffer, size);
     if (bytes <= 0)
     {
-        bc_log(Error, "Can not read file: %s (%s)", path, strerror(errno));
-        free(buffer);
+        bc_log(Error, "Can not read file: %s (%s): %u", path, strerror(errno));
         close(fd);
-        return NULL;
+        return 0;
     }
 
     /* Null terminate buffer */
 	buffer[bytes] = '\0';
 	close(fd);
 
-    *size = bytes;
-	return buffer;
+	return bytes;
 }
 
 uint64_t bc_stats::parse_info(char *buffer, size_t size, const char *field)
@@ -95,29 +83,25 @@ void bc_stats::get_mem_info(bc_stats::memory *mem)
 
 bool bc_stats::update_mem_info()
 {
-    size_t file_size = 0;
-    char *buffer = NULL;
-
-    /* Load /proc/meminfo file */
-    buffer = load_file(BC_FILE_MEMINFO, &file_size);
-    if (buffer == NULL) return false;
+    char buffer[BC_FILE_MAX]; /* Load /proc/meminfo file */
+    int length = load_file(BC_FILE_MEMINFO, buffer, sizeof(buffer));
+    if (length <= 0) return false;
 
     /* Parse memory statistics */
-    __sync_lock_test_and_set(&_memory.total, parse_info(buffer, file_size, "MemTotal"));
-    __sync_lock_test_and_set(&_memory.free, parse_info(buffer, file_size, "MemFree"));
-    __sync_lock_test_and_set(&_memory.avail, parse_info(buffer, file_size, "MemAvailable"));
-    __sync_lock_test_and_set(&_memory.buff, parse_info(buffer, file_size, "Buffers"));
-    __sync_lock_test_and_set(&_memory.swap, parse_info(buffer, file_size, "SwapCached"));
+    __sync_lock_test_and_set(&_memory.total, parse_info(buffer, length, "MemTotal"));
+    __sync_lock_test_and_set(&_memory.free, parse_info(buffer, length, "MemFree"));
+    __sync_lock_test_and_set(&_memory.avail, parse_info(buffer, length, "MemAvailable"));
+    __sync_lock_test_and_set(&_memory.buff, parse_info(buffer, length, "Buffers"));
+    __sync_lock_test_and_set(&_memory.swap, parse_info(buffer, length, "SwapCached"));
 
-    free(buffer); /* Load /proc/self/status file */
-    buffer = load_file(BC_FILE_SELFSTATUS, &file_size);
-    if (buffer == NULL) return false;
+    /* Load /proc/self/status file */
+    length = load_file(BC_FILE_SELFSTATUS, buffer, sizeof(buffer));
+    if (length <= 0) return false;
 
     /* Parse memory statistics for current process */
-    __sync_lock_test_and_set(&_memory.resident, parse_info(buffer, file_size, "VmRSS"));
-    __sync_lock_test_and_set(&_memory.virt, parse_info(buffer, file_size, "VmSize"));
+    __sync_lock_test_and_set(&_memory.resident, parse_info(buffer, length, "VmRSS"));
+    __sync_lock_test_and_set(&_memory.virt, parse_info(buffer, length, "VmSize"));
 
-    free(buffer);
     return true;
 }
 
@@ -154,12 +138,8 @@ void bc_stats::copy_cpu_info(bc_stats::cpu_info *dst, bc_stats::cpu_info *src)
 
 bool bc_stats::update_cpu_info()
 {
-    size_t file_size = 0;
-    char *buffer = NULL;
-
-    /* Load /proc/stat file */
-    buffer = load_file(BC_FILE_STAT, &file_size);
-    if (buffer == NULL) return false;
+    char buffer[BC_FILE_MAX]; /* Load /proc/stat file */
+    if (load_file(BC_FILE_STAT, buffer, sizeof(buffer)) <= 0) return false;
 
     /* Get last CPU usage by process */
     bc_stats::cpu::process last_usage;
@@ -182,23 +162,18 @@ bool bc_stats::update_cpu_info()
         info.total_raw = info.kernel_space_raw + info.user_space_raw + info.user_niced_raw;
         info.total_raw += info.hard_ints_raw + info.soft_ints_raw;
         info.total_raw += info.idle_time_raw + info.io_wait_raw;
-
         info.cpu_id = cpu_id++;
+
         if (!core_count && info.cpu_id >= 0)
         {
-            bc_stats::cpu_info *pinfo = new bc_stats::cpu_info;
-            if (pinfo != NULL)
-            {
-                memcpy(pinfo, &info, sizeof(bc_stats::cpu_info));
-                _cpu.cores.push_back(pinfo);
-            }
+            _cpu.cores.push_back(info);
         }
         else
         {
             bc_stats::cpu_info last_info, *curr_info;
 
             if (info.cpu_id < 0) curr_info = &_cpu.sum;
-            else curr_info = _cpu.cores[info.cpu_id];
+            else curr_info = &_cpu.cores[info.cpu_id];
 
             copy_cpu_info(&last_info, curr_info);
             uint32_t total_diff = info.total_raw - last_info.total_raw;
@@ -234,11 +209,8 @@ bool bc_stats::update_cpu_info()
         ptr = strtok_r(NULL, "\n", &save_ptr);
     }
 
-    free(buffer);
     __sync_lock_test_and_set(&_cpu.core_count, _cpu.cores.size());
-
-    buffer = load_file(BC_FILE_SELFSTAT, &file_size);
-    if (buffer == NULL) return false;
+    if (load_file(BC_FILE_SELFSTAT, buffer, sizeof(buffer)) <= 0) return false;
 
     bc_stats::cpu::process curr_usage;
     sscanf(buffer, "%*u %*s %*c %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %lu %lu %ld %ld",
@@ -262,17 +234,102 @@ bool bc_stats::update_cpu_info()
     __sync_lock_test_and_set(&_cpu.proc.user_space_usg, bc_float_to_u32(nUserCPU));
     __sync_lock_test_and_set(&_cpu.proc.kernel_space_usg, bc_float_to_u32(nSystemCPU));
 
-    free(buffer);
-    buffer = load_file(BC_FILE_LOADAVG, &file_size);
-    if (buffer == NULL) return false;
-
     float one_min_int, five_min_int, ten_min_int;
+    if (load_file(BC_FILE_LOADAVG, buffer, sizeof(buffer)) <= 0) return false;
     sscanf(buffer, "%f %f %f", &one_min_int, &five_min_int, &ten_min_int);
 
     __sync_lock_test_and_set(&_cpu.load_avg[0], bc_float_to_u32(one_min_int));
     __sync_lock_test_and_set(&_cpu.load_avg[1], bc_float_to_u32(five_min_int));
     __sync_lock_test_and_set(&_cpu.load_avg[2], bc_float_to_u32(ten_min_int));
 
-    free(buffer);
     return true;
+}
+
+bool bc_stats::get_cpu_info(bc_stats::cpu *cpu)
+{
+    cpu->load_avg[0] = cpu->load_avg[1] = cpu->load_avg[2] = 0;
+    int i, core_count = __sync_add_and_fetch(&_cpu.core_count, 0);
+    if (core_count <= 0) return false;
+
+    get_proc_usage(&cpu->proc);
+    copy_cpu_info(&cpu->sum, &_cpu.sum);
+
+    for (i = 0; i < core_count; i++)
+    {
+        bc_stats::cpu_info dst_info;
+        copy_cpu_info(&dst_info, &_cpu.cores[i]);
+        cpu->cores.push_back(dst_info);
+    }
+
+    cpu->core_count = cpu->cores.size();
+    cpu->load_avg[0] = __sync_add_and_fetch(&_cpu.load_avg[0], 0);
+    cpu->load_avg[1] = __sync_add_and_fetch(&_cpu.load_avg[1], 0);
+    cpu->load_avg[2] = __sync_add_and_fetch(&_cpu.load_avg[2], 0);
+    return cpu->core_count ? true : false;
+}
+
+void bc_stats::display()
+{
+    bc_stats::memory mem;
+    get_mem_info(&mem);
+
+    bc_log(Debug, "memory: avail(%lu), total(%lu), free(%lu), swap(%lu), buff(%lu)",
+        mem.avail, mem.total, mem.free, mem.swap, mem.buff);
+
+    bc_stats::cpu cpu;
+    get_cpu_info(&cpu);
+
+    bc_log(Debug, "process: mem-res(%lu), mem-virt(%lu), cpu-us(%.2f), cpu-ks(%.2f)", 
+        mem.resident, mem.virt,
+        bc_u32_to_float(cpu.proc.user_space_usg), 
+        bc_u32_to_float(cpu.proc.kernel_space_usg));
+
+    bc_log(Debug, "loadavg: 5m(%.2f), 10m(%.2f), 15m(%.2f),\n", bc_u32_to_float(cpu.load_avg[0]), 
+        bc_u32_to_float(cpu.load_avg[1]), bc_u32_to_float(cpu.load_avg[2]));
+    
+    bc_log(Debug, "core(s): us(%.2f), un(%.2f), ks(%.2f), idl(%.2f), si(%.2f), hi(%.2f), io(%.2f)", 
+        bc_u32_to_float(cpu.sum.user_space), bc_u32_to_float(cpu.sum.user_niced), 
+        bc_u32_to_float(cpu.sum.kernel_space), bc_u32_to_float(cpu.sum.idle_time), 
+        bc_u32_to_float(cpu.sum.hard_ints), bc_u32_to_float(cpu.sum.soft_ints), 
+        bc_u32_to_float(cpu.sum.io_wait));
+
+    for (uint i = 0; i < cpu.cores.size(); i++)
+    {
+        bc_stats::cpu_info *core = &cpu.cores[i];
+        bc_log(Debug, "core(%d): us(%.2f), un(%.2f), ks(%.2f), idl(%.2f), si(%.2f), hi(%.2f), io(%.2f)", 
+            core->cpu_id, bc_u32_to_float(core->user_space), bc_u32_to_float(core->user_niced), 
+            bc_u32_to_float(core->kernel_space), bc_u32_to_float(core->idle_time), 
+            bc_u32_to_float(core->hard_ints), bc_u32_to_float(core->soft_ints), 
+            bc_u32_to_float(core->io_wait));
+    }
+}
+
+void bc_stats::monithoring_thread()
+{
+    while (!__sync_add_and_fetch(&_cancel, 0))
+    {
+        update_mem_info();
+        update_cpu_info();
+
+        //display();
+        sleep(1);
+    }
+
+    __sync_lock_test_and_set(&_active, 0);
+}
+
+void bc_stats::start_monithoring()
+{
+    __sync_lock_test_and_set(&_active, 1);
+    std::thread thread_id(&bc_stats::monithoring_thread, this);
+    thread_id.detach();
+}
+
+void bc_stats::stop_monithoring()
+{
+    /* Notify thread about finish processing */
+    __sync_lock_test_and_set(&_cancel, 1);
+
+    while (__sync_add_and_fetch(&_active, 0)) 
+        usleep(10000); // Wait for thread termination
 }

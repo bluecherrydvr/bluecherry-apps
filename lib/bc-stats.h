@@ -46,12 +46,12 @@ public:
 
     static void copy_cpu_info(bc_stats::cpu_info *dst, bc_stats::cpu_info *src);
     static uint64_t parse_info(char *buffer, size_t size, const char *field);
-    static char* load_file(const char *path, size_t *size);
+    static int load_file(const char *path, char *buffer, size_t size);
 
     static uint32_t bc_float_to_u32(float value);
     static float bc_u32_to_float(uint32_t value);
 
-    typedef std::vector<cpu_info*> cpu_infos;
+    typedef std::vector<cpu_info> cpu_infos;
 
     struct cpu {
         struct process {
@@ -71,13 +71,21 @@ public:
         cpu_info sum;
     };
 
+    void start_monithoring();
+    void stop_monithoring();
+    void display();
+
     void get_proc_usage(bc_stats::cpu::process *proc);
     void get_mem_info(bc_stats::memory *mem);
-    void get_cpu_info(bc_stats::cpu *cpu);
+    bool get_cpu_info(bc_stats::cpu *cpu);
 
 private:
+    void monithoring_thread();
     bool update_mem_info();
     bool update_cpu_info();
+
+    uint8_t _BC_ALIGNED_ _active = 0;
+    uint8_t _BC_ALIGNED_ _cancel = 0;
 
     bc_stats::memory    _memory;
     bc_stats::cpu       _cpu;
