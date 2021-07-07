@@ -26,9 +26,8 @@ extern "C" {
 motion_processor::motion_processor(bc_record *bcRecord)
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
 	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}),
-	  m_downscaleFactor(0.5), m_minMotionAreaPercent(5), m_maxMotionAreaPercent(90),
-	  m_maxMotionFrames(20), m_minMotionFrames(15), m_motionBlendRatio(0.9),
-	  m_motionDebug(true), m_recorder(bcRecord)
+	  m_downscaleFactor(0.5), m_minMotionAreaPercent(5), m_maxMotionAreaPercent(90), m_maxMotionFrames(20),
+	  m_minMotionFrames(15), m_motionBlendRatio(0.9), m_motionDebug(true), m_recorder(bcRecord)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
@@ -307,7 +306,7 @@ int motion_processor::set_max_motion_frames(int max)
 int motion_processor::set_min_motion_frames(int min)
 {
     if (min > m_maxMotionFrames)
-        min = min > m_maxMotionFrames ? min = m_maxMotionFrames * 0.75 : 15;
+        min = min > m_maxMotionFrames ? (m_maxMotionFrames * 0.75) : 15;
         //return 0;
     if (min > 255 || min < 1)
         min = 15;
@@ -470,7 +469,6 @@ void motion_processor::dump_opencv_composite(cv::Mat red, cv::Mat green, cv::Mat
     cv::merge(channels, colorized);
     dump_opencv_frame(colorized, name);
 }
-
 
 int motion_processor::match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, int w, int h)
 {

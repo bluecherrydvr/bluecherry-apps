@@ -103,7 +103,8 @@ public:
 	class motion_processor *m_processor;
 	class trigger_processor *t_processor;
 	class motion_handler *m_handler;
-	class recorder *rec;
+	class recorder *rec_continuous;
+	class recorder *rec_motion;
 
 	/* Live View substream */
 	class substream *liveview_substream;

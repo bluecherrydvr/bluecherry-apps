@@ -148,7 +148,7 @@ var motionGrid = function(el) {
     var grid_color = null;
     var motion_map = null;
     var color_array = { 'bg-default' : 0 , 'bg-success' : 1, 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 4, 'bg-danger' : 5};
-    var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 'T', 'bg-danger' : 'C'};
+    var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 'X', 'bg-warning' : 'T', 'bg-danger' : 'C'};
     var week_days = new Array('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
 
     var getColorClass = function (symb) {

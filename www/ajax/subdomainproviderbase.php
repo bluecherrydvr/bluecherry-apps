@@ -4,6 +4,8 @@ class subdomainproviderbase extends Controller {
 
     const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
 
+
+
     public function __construct() {
         parent::__construct();
         $this->chAccess('admin');
@@ -118,23 +120,7 @@ class subdomainproviderbase extends Controller {
             $path .= http_build_query($query);
         }
 
-        $curl = curl_init($baseUrl . $path);
-
-        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 4);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge(['Content-Type: application/json'], $headers));
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-
-        $result = curl_exec($curl);
-
-        curl_close($curl);
-
-
-        if ($result === false) {
-            throw new \RuntimeException('API request is failed.');
-        }
-
-        return json_decode($result, true);
+        return $this->executeApiGetRequest($baseUrl . $path, $headers);
     }
 
     protected function getFromApiWithToken($path, $query = [], $headers = [], $tokenOptional = false) {
@@ -156,6 +142,30 @@ class subdomainproviderbase extends Controller {
 
     }
 
+    protected function getServerPublicIp($tryIpv6 = false) {
+        return $this->executeApiGetRequest('https://' .  ($tryIpv6 ? 'api64' : 'api') . '.ipify.org/?format=json');
+    }
+
+    protected function executeApiGetRequest($url, $headers = []) {
+
+        $curl = curl_init($url);
+
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge(['Content-Type: application/json'], $headers));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
+        $result = curl_exec($curl);
+
+        curl_close($curl);
+
+
+        if ($result === false) {
+            throw new \RuntimeException('API request is failed.');
+        }
+
+        return json_decode($result, true);
+    }
 }
 
 
