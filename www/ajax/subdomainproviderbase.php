@@ -93,6 +93,44 @@ class subdomainproviderbase extends Controller {
         return json_decode($result, true);
     }
 
+    protected function deleteToApi($path, $headers = []) {
+        $baseUrl = $this->getSubdomainApiBaseUrl();
+
+        $curl = curl_init($baseUrl . $path);
+
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+        curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge(['Content-Type: application/json'], $headers));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+
+        $result = curl_exec($curl);
+
+        curl_close($curl);
+
+        if ($result === false) {
+            throw new \RuntimeException('API request is failed.');
+        }
+
+        return json_decode($result, true);
+    }
+
+    protected function deleteToApiWithToken($path, $headers = [], $tokenOptional = false) {
+        try {
+            $licenseId = $this->getLicenseId();
+        } catch (\RuntimeException $exception) {
+
+            if ($tokenOptional) {
+                return $this->postToApi($path, $body, $headers);
+            }
+
+            throw $exception;
+        }
+
+        return $this->deleteToApi($path, array_merge([
+            'Authorization: Bearer ' . $licenseId
+        ], $headers));
+    }
+
     protected function postToApiWithToken($path, $body, $headers = [], $tokenOptional = false) {
         try {
             $licenseId = $this->getLicenseId();

@@ -110,7 +110,7 @@
                 <tr>
                     <td><?php echo $actualSubdomain; ?></td>
                     <td class="col-lg-2 col-md-licensing">
-                        <form action="/subdomainprovider?mode=delete=<?php echo $license['license']; ?>" method="POST" style="display: inline-block;">
+                        <form action="/subdomainprovider?mode=delete<?php echo $license['license']; ?>" method="GET" style="display: inline-block;">
                             <button type="submit" class="btn btn-danger send-req-form" data-confirm="<?php echo L_CONFIRM_DELETE; ?>" data-redirect-success="/subdomainprovider" data-func-after="afterDecitvatingLicense"><i class="fa fa-times fa-fw"></i> <?php echo G_SUBDOMAIN_CURRENT_DELETE; ?></button>
                         </form>
                     </td>

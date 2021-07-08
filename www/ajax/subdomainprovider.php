@@ -112,7 +112,19 @@ class subdomainprovider extends subdomainproviderbase
 
         // Deleting subdomain
         if (!empty($_GET['mode']) && $_GET['mode'] == 'delete') {
+            try {
+                $result = $this->deleteToApiWithToken('/actual-configuration');
 
+                if (empty($result['success'])) {
+                    header('Location: /subdomainprovider?status=0');
+                    return;
+                }
+
+                header('Location: /subdomainprovider?status=1');
+            } catch (\RuntimeException $exception) {
+                header('Location: /subdomainprovider?status=0');
+                return;
+            }
         }
     }
 
