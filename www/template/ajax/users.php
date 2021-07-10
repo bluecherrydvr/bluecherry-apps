@@ -43,9 +43,9 @@
     	    		$emails = explode('|', $info['email']);
 	    	    	foreach($emails as $id => $email){
     	    			$email = explode(':', $email);
-        				$tmp[$id] = $email[0];
+        				if (!empty($email[0])) $tmp[$id] = $email[0];
         			}
-                    $email_list = implode(', ', $tmp);
+                    if (!empty($tmp)) $email_list = implode(', ', $tmp);
             ?>
                 <tr class="users-list-bl-item ajax-content" data-url="/users?id=<?php echo $info['id']; ?>">
                     <td><?php echo $info['name']; ?></td><td><?php echo $info['username']; ?></td>
