@@ -11,11 +11,9 @@ class mediaHls extends Controller {
     public function getData()
     {
 		$status = true;
-		$message = "";
+		$message = '';
 
-		$current_user = $this->user;
-
-        if (!isset($_GET['id']) or !$current_user->camPermission($_GET['id'])) {
+        if (!isset($_GET['id']) or $this->user->camPermission($_GET['id'])) {
 			$status = false;
 			$message = str_replace('%ID%', $_GET['id'], MJPEG_NO_PERMISSION);
 			$data = "no_permission";
@@ -39,27 +37,44 @@ class mediaHls extends Controller {
 		}
 
 		if ($status === true) {
+
+            session_write_close();
+
+		    if (!empty($_GET['tokenOnly'])) {
+		        return json_encode([
+		            'success' => true,
+                    'token' => $this->createHlsToken()
+                ]);
+            }
+
 			$id = intval($_GET['id']);
-			session_write_close();
-			$message = createLink($id, $current_user);
+			$message = $this->createLink($id);
 		}
 
 		data::responseJSON($status, $message);
     }
 
+    function createLink($id) {
+
+        // Generate auth token for DB, insert into DB
+
+        $hostname = $_GET['hostname'];
+        $port = $_GET['port'];
+
+        $token = $this->createHlsToken();
+        return "https://$hostname:$port/hls/$id/index.m3u8?authtoken=$token";
+    }
+
+    function createHlsToken() {
+        $token = session_id();  // Lazy way of unique token generation
+
+        $user_id = $this->user->info['id'];
+        data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
+        // Cleanup old tokens from DB
+        data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
+
+        return $token;
+    }
 }
 
-function createLink($id, $current_user) {
 
-	// Generate auth token for DB, insert into DB
-	$token = session_id();  // Lazy way of unique token generation
-	$user_id = $current_user->info['id'];
-	$hostname = $_GET['hostname'];
-	$port = $_GET['port'];
-	data::query("INSERT INTO HlsAuthTokens (user_id, token, date) VALUES ($user_id, '$token', now()) ON DUPLICATE KEY UPDATE date = now()", true);
-	// Cleanup old tokens from DB
-	data::query("DELETE FROM HlsAuthTokens WHERE date < now() - INTERVAL 5 MINUTE", true);
-	$hls_link = "https://$hostname:$port/hls/$id/index.m3u8?authtoken=$token";
-
-	return $hls_link;
-}
