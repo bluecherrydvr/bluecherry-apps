@@ -1,3 +1,13 @@
+bluecherry (3:3.1.0-rc3) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: All reported crashes in RC2.
+  * FIX: Firefox UblockOrigin blocks certain menu item clicks (#474)
+  * FIX: Web: 504 Gateway Time-out fix (#470)
+  * FIX: 30 day trial should allow unlimited cameras, however currently limited to 4 (#475)
+  * FIX: Adding a user without an email address causes the web interface to become unresponsive (#484)
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 11 Jul 2021 14:50:00 -0600   
+
 bluecherry (3:3.1.0-rc2) focal bionic buster groovy hirsute bullseye; urgency=low
 
   * FIX: Resolve large memory leak, causing OOM failure sometimes as soon as 1 hour. (https://github.com/bluecherrydvr/bluecherry-apps/commit/01328270cba757fd853c84826402d44dc0d3eb61) / #01328270cba757fd853c84826402d44dc0d3eb61
