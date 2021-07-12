@@ -235,6 +235,7 @@ private:
     uint32_t        _segment_id = 0;
     uint8_t         _stream_id = 0;
     int             _device_id = 0;
+    bool            _substream = false;
 
     /* Objects */
     hls_events::event_data* _ev_data = NULL;
@@ -341,6 +342,7 @@ public:
     void run();
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);
+    hls_content *get_sub_content(int id);
 
     void set_ssl_ctx(const char *key, const char* crt, const char *ca);
     bool ssl_service();
@@ -353,6 +355,7 @@ private:
 
     /* HLS window buffer */
     hls_content_map  _content;
+    hls_content_map  _subs;
     pthread_mutex_t  _mutex;
 
     /* SSL configuration */

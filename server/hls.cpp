@@ -716,7 +716,9 @@ bool hls_session::create_response()
     }
     else if (_type == hls_session::request_type::playlist)
     {
-        hls_content *content = _listener->get_hls_content(_device_id);
+        hls_content *content = _substream ? _listener->get_sub_content(_device_id): 
+                                            _listener->get_hls_content(_device_id);
+
         if (content == NULL)
         {
             bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
@@ -865,7 +867,9 @@ bool hls_session::create_response()
     }
     else if (_type == hls_session::request_type::initial)
     {
-        hls_content *content = _listener->get_hls_content(_device_id);
+        hls_content *content = _substream ? _listener->get_sub_content(_device_id): 
+                                            _listener->get_hls_content(_device_id);
+
         if (content == NULL)
         {
             bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
@@ -919,7 +923,9 @@ bool hls_session::create_response()
     }
     else if (_type == hls_session::request_type::payload)
     {
-        hls_content *content = _listener->get_hls_content(_device_id);
+        hls_content *content = _substream ? _listener->get_sub_content(_device_id): 
+                                            _listener->get_hls_content(_device_id);
+
         if (content == NULL)
         {
             bc_log(Warning, "HLS content not found for requested device: %d id(%u)", _device_id, _segment_id);
@@ -1081,6 +1087,12 @@ bool hls_session::handle_request(const std::string &request)
         if (start_posit == std::string::npos) return false;
     }
     else start_posit += 4; // skip /hls
+
+    if (request.compare(start_posit, 4, "/sub"))
+    {
+        _substream = true; // Substream is requested
+        start_posit += 4; // skip /sub
+    }
 
     /* Get end position of URL */
     size_t end_posit = request.find(" ", start_posit);
@@ -1804,6 +1816,45 @@ hls_content* hls_listener::get_hls_content(int id)
         {
             content->set_id(id);
             _content[id] = content;
+        }
+    }
+    else
+    {
+        content = it->second;
+    }
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return NULL;
+    }
+
+    return content;
+}
+
+hls_content* hls_listener::get_sub_content(int id)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return NULL;
+    }
+
+    hls_content *content = NULL;
+    hls_content_it it = _subs.find(id);
+
+    if (it == _subs.end())
+    {
+        content = new hls_content;
+        if (!content->_init)
+        {
+            delete content;
+            content = NULL;
+        }
+        else
+        {
+            content->set_id(id);
+            _subs[id] = content;
         }
     }
     else
