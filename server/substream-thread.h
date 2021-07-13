@@ -20,6 +20,7 @@ class substream
 {
 public:
 	explicit substream();
+	void run_hls(struct bc_record *r);
 	void run(struct bc_record *r);
 	void stop();
 private:

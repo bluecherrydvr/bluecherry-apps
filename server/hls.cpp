@@ -1088,7 +1088,7 @@ bool hls_session::handle_request(const std::string &request)
     }
     else start_posit += 4; // skip /hls
 
-    if (request.compare(start_posit, 4, "/sub"))
+    if (!request.compare(start_posit, 4, "/sub"))
     {
         _substream = true; // Substream is requested
         start_posit += 4; // skip /sub

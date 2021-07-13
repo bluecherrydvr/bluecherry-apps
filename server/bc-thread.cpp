@@ -63,11 +63,15 @@ void stop_handle_properly(struct bc_record *bc_rec)
 		bc_streaming_destroy_rtp(bc_rec);
 
 	bc_streaming_destroy_hls(bc_rec);
+	bc_streaming_destroy_hls_sub(bc_rec);
 
 	if (bc_rec->hls_stream)
 	{
 		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
 		if (content != NULL) content->clear_window();
+
+		hls_content *sub_content = bc_rec->hls_stream->get_sub_content(bc_rec->id);
+		if (sub_content != NULL) sub_content->clear_window();
 	}
 
 	if (bc_rec->liveview_substream)
@@ -197,6 +201,11 @@ void bc_record::run()
 		if (bc->substream_mode && !liveview_substream) {
 			liveview_substream = new substream();
 			liveview_substream_thread = new std::thread(&substream::run, liveview_substream, this);
+		}
+
+		if (bc->substream_input && !liveview_substream) {
+			liveview_substream = new substream();
+			liveview_substream_thread = new std::thread(&substream::run_hls, liveview_substream, this);
 		}
 
 		update_osd(this);
@@ -459,6 +468,8 @@ bc_record::bc_record(int i)
 	rtsp_stream = 0;
 
 	hls_segment_type = hls_segment::type::mpegts;
+	hls_substream_ctx[0] = 0;
+	hls_substream_ctx[1] = 0;
 	hls_stream_ctx[0] = 0;
 	hls_stream_ctx[1] = 0;
 	hls_stream = 0;

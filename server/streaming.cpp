@@ -52,8 +52,21 @@ static int hls_io_write(void *opaque, uint8_t *buf, int buf_size)
 	return buf_size;
 }
 
+static int hls_io_write_sub(void *opaque, uint8_t *buf, int buf_size)
+{
+	struct bc_record *bc_rec = (struct bc_record *)opaque;
+
+	if (bc_rec->hls_stream) {
+		hls_segment::type type = bc_rec->hls_segment_type;
+		hls_content *content = bc_rec->hls_stream->get_sub_content(bc_rec->id);
+		if (content) content->add_data(buf, buf_size, bc_rec->cur_pts, type, bc_rec->cur_pkt_flags);
+	}
+
+	return buf_size;
+}
+
 static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props,
-	int index, enum AVMediaType type, bc_streaming_type bc_type);
+	int index, enum AVMediaType type, bc_streaming_type bc_type, bool is_sub = false);
 
 int bc_streaming_setup(struct bc_record *bc_rec, bc_streaming_type bc_type, std::shared_ptr<const stream_properties> props)
 {
@@ -77,8 +90,25 @@ int bc_streaming_setup(struct bc_record *bc_rec, bc_streaming_type bc_type, std:
 	return 0;
 }
 
+int bc_streaming_setup_hls_sub(struct bc_record *bc_rec, bc_streaming_type bc_type, std::shared_ptr<const stream_properties> props)
+{
+	int ret = 0;
+
+	if (bc_type == BC_HLS && bc_rec->hls_substream_ctx[0]) {
+		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
+		return 0;
+	}
+
+	ret |= bc_streaming_setup_elementary(bc_rec, props, 0, AVMEDIA_TYPE_VIDEO, bc_type, true);
+
+	if (bc_rec->bc->input->has_audio())
+		ret |= bc_streaming_setup_elementary(bc_rec, props, 1, AVMEDIA_TYPE_AUDIO, bc_type, true);
+
+	return ret ? ret : 0;
+}
+
 static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props,
-	int index, enum AVMediaType type, bc_streaming_type bc_type)
+	int index, enum AVMediaType type, bc_streaming_type bc_type, bool is_sub)
 {
 	AVFormatContext *ctx;
 	AVStream *st;
@@ -106,12 +136,12 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 	} else if (remux_mp4) {
 		bc_rec->hls_segment_type = hls_segment::type::fmp4;
 		packet_size = MP4_MAX_PACKET_SIZE;
-		io_callback = hls_io_write;
+		io_callback = is_sub ? hls_io_write_sub : hls_io_write;
 		format_name = "mp4";
 	} else {
 		bc_rec->hls_segment_type = hls_segment::type::mpegts;
 		packet_size = TS_MAX_PACKET_SIZE;
-		io_callback = hls_io_write;
+		io_callback = is_sub ? hls_io_write_sub : hls_io_write;
 		format_name = "mpegts";
 	}
 
@@ -185,6 +215,7 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 	}
 
 	if (bc_type == BC_RTP) bc_rec->rtp_stream_ctx[index] = ctx;
+	else if (is_sub) bc_rec->hls_substream_ctx[index] = ctx;
 	else bc_rec->hls_stream_ctx[index] = ctx;
 
 	return 0;
@@ -240,6 +271,25 @@ void bc_streaming_destroy_hls(struct bc_record *bc_rec)
 
 		avformat_free_context(ctx);
 		bc_rec->hls_stream_ctx[i] = NULL;
+	}
+}
+
+void bc_streaming_destroy_hls_sub(struct bc_record *bc_rec)
+{
+	for (int i = 0; i < 2; i++) {
+		AVFormatContext *ctx = bc_rec->hls_substream_ctx[i];
+
+		if (!ctx)
+			continue;
+
+		if (ctx->pb) {
+			av_write_trailer(ctx);
+			av_free(ctx->pb->buffer);
+			av_freep(&ctx->pb);
+		}
+
+		avformat_free_context(ctx);
+		bc_rec->hls_substream_ctx[i] = NULL;
 	}
 }
 
@@ -307,7 +357,7 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	return 1;
 }
 
-int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
+int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet &pkt, bool is_sub)
 {
 	AVDictionary *muxer_opts = NULL;
 	AVPacket opkt;
@@ -323,13 +373,17 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return 0;
 	}
 
-	if (!bc_rec->hls_stream_ctx[ctx_index])
+	AVFormatContext *stream_ctx = is_sub ? 
+		bc_rec->hls_substream_ctx[ctx_index]:
+		bc_rec->hls_stream_ctx[ctx_index];
+
+	if (!stream_ctx) 
 		return 0;
 
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, stream_ctx->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
@@ -340,7 +394,7 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	bc_rec->pkt_first_chunk = true;
 	bc_rec->cur_pts = opkt.pts;
 
-	re = av_write_frame(bc_rec->hls_stream_ctx[ctx_index], &opkt);
+	re = av_write_frame(stream_ctx, &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
 			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
@@ -355,10 +409,10 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return -1;
 	}
 
-	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codec->codec_id == AV_CODEC_ID_MPEG4) {
+	if (stream_ctx->streams[0]->codec->codec_id == AV_CODEC_ID_MPEG4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
-		if (avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts) < 0) {
+		if (avformat_write_header(stream_ctx, &muxer_opts) < 0) {
 			bc_rec->log.log(Error, "Failed to write header in fragmented MP4 payload");
 			return -1;
 		}

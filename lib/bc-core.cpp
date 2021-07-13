@@ -178,7 +178,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 		strlcpy(bc->device, url, sizeof(bc->device));
 		bc->input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 
-		if (bc->substream_mode) {
+		if (1) { //bc->substream_mode) {
 			val = bc_db_get_val(dbres, "substream_path", NULL);
 
 			if (val && *val) {
@@ -187,10 +187,8 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 									"XXX", /* host should be always present, this default doesn't matter */
 									"554", /* port should be always present, this default doesn't matter */
 									uri_schema);
-				if (r)
-					return -1;
 
-				bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+				if (!r) bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
 			}
 		}
 	}
