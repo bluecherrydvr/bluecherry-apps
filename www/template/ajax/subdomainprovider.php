@@ -1,6 +1,6 @@
 
 <div class="row" style="padding: 20px 0;">
-    <div class="col-md-offset-3 col-md-6">
+    <div class="col-lg-offset-2 col-lg-8 col-md-offset-0 col-md-12">
         <div class="alert alert-info" role="alert">By default, Bluecherry uses the standard 'snakeoil' automated SSL 
         certificates installed by your operating system. These keys are inherently not secure as there is no third party 
         authentication to validate the keys.
@@ -20,19 +20,31 @@
         <?php if (isset($_GET['status'])) {
 
             if (!empty($_GET['status'])) {
-                echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
+
+                switch (intval($_GET['status'])) {
+                    case 1:
+                        echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
+                        break;
+                    case 2:
+                        echo '<div class="alert alert-info" role="alert">Destroy config successful.</div>';
+                        break;
+                }
+
             } else {
-                echo '<div class="alert alert-success" role="alert">An error occured during operaion!
+                echo '<div class="alert alert-danger" role="alert">An error occured during operaion!
                         <br>Please check that the relevant API is available or network connection.
                       </div>';
             }
 
         } ?>
 
+        <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider">
+
         <div class="panel panel-default" style="margin-top:20px;">
             <div class="panel-heading"><?php echo G_SUBDOMAIN_TITLE; ?></div>
             <div class="panel-body">
-                <form class="form-horizontal" method="post" id="subdomain-provider-register" action="/subdomainprovider">
+                <div class="row">
+                    <div class="col-md-12 col-lg-6">
                     <div class="form-group">
                         <div class="col-sm-4 text-right">
                             <label for="subdomain_name" class="control-label">Subdomain Name:</label>
@@ -46,7 +58,9 @@
                             </div>
                         </div>
                     </div>
+                    </div>
                     <?php if(!empty($licenseIdExists)) { ?>
+                    <div class="col-md-12 col-lg-6">
                     <div class="form-group">
                         <div class="col-sm-4 text-right">
                             <label for="subdomain_email" class="control-label">Email:</label>
@@ -57,53 +71,62 @@
                                    value="<?php echo $actualEmail; ?>" required />
                         </div>
                     </div>
+                    </div>
+                </div><!-- end of row div -->
                     <div class="form-group">
-                        <div class="col-sm-4 text-right">
-                            <label for="server_ip_address_4" class="control-label">Server IP Address (IPv4):</label>
+                        <div class="col-sm-4 col-md-2 text-right">
+                            <label for="server_ip_address_4" class="control-label">Server (IPv4) Address:</label>
                             <br /><em>Mandatory</em>
                         </div>
-                        <div class="col-sm-8 validation-field">
-                            <div class="input-group">
-                            <input type="text" class="form-control" name="server_ip_address_4" id="server_ip_address_4"
+                        <div class="col-sm-4 validation-field">
+                            <input type="text" class="form-control ip-address-field" name="server_ip_address_4" id="server_ip_address_4"
                                    value="<?php echo $actualIpv4Value; ?>" required />
-                                <span class="input-group-btn">
-                                    <button class="btn btn-info btn-get-server-ip-address" type="button">Get Server Public IPv4</button>
-                                </span>
+                        </div>
+                        <div class="col-sm-6 clearfix">
+                            <button class="btn btn-info btn-get-server-ip-address pull-left" type="button">Get Server Public IPv4</button>
+                            <div class="checkbox-inline pull-right">
+                                <label>
+                                    <input type="checkbox" name="update_ip_address_4_auto" value="1" <?php echo (!empty($autoUpdateIpv4) ? 'checked="checked"' : ''); ?>>Update IPv4 Automatically
+                                </label>
                             </div>
                         </div>
-
                     </div>
                     <div class="form-group">
-                        <div class="col-sm-4 text-right">
-                            <label for="server_ip_address_6" class="control-label">Server IP Address (IPv6):</label>
+                        <div class="col-sm-4 col-md-2 text-right">
+                            <label for="server_ip_address_6" class="control-label">Server (IPv6) Address:</label>
                             <br /><em>Optional</em>
                         </div>
-                        <div class="col-sm-8 validation-field">
-                            <div class="input-group">
-                            <input type="text" class="form-control" name="server_ip_address_6" id="server_ip_address_6"
+                        <div class="col-sm-4 validation-field">
+                            <input type="text" class="form-control ip-address-field" name="server_ip_address_6" id="server_ip_address_6"
                                    value="<?php echo $actualIpv6Value; ?>" />
-                                <span class="input-group-btn">
-                                    <button class="btn btn-info btn-get-server-ip-address" type="button" data-type-ipv6="true">Get Server Public IPv6</button>
-                                </span>
-                            </div>
                         </div>
-
-                    </div>
-                    <div class="form-group">
-                        <div class="col-sm-offset-4 col-sm-8">
-                            <button type="submit" class="btn btn-primary">Book</button>
+                        <div class="col-sm-6 clearfix">
+                            <button class="btn btn-info btn-get-server-ip-address pull-left" type="button" data-type-ipv6="true">Get Server Public IPv6</button>
+                            <div class="checkbox-inline pull-right">
+                                <label>
+                                    <input type="checkbox" name="update_ip_address_6_auto" value="1" <?php echo (!empty($autoUpdateIpv6) ? 'checked="checked"' : ''); ?>>Update IPv6 Automatically
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <?php } else { ?>
-                        <div class="form-group">
-                            <div class="col-sm-offset-4 col-sm-8">
-                                <button type="submit" class="btn btn-primary">Query</button>
-                            </div>
-                        </div>
+                    </div><!-- end of row div -->
                     <?php } ?>
-                </form>
+            </div>
+            <div class="panel-footer clearfix">
+                <?php if(!empty($licenseIdExists) && !empty($actualSubdomain)) { ?>
+                    <div class="pull-left">
+                        <button type="button" id="btn-destroy-actual-cname-config" class="btn btn-form-action btn-danger">Destroy</button>
+                    </div>
+                <?php }  ?>
+
+                <div class="pull-right">
+                    <button type="submit" class="btn btn-form-action btn-primary"><?php echo !empty($licenseIdExists) ? 'Book' : 'Query'; ?></button>
+                </div>
             </div>
         </div>
+
+        </form>
     </div>
 </div>
 

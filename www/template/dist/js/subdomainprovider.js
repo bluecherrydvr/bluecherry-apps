@@ -46,6 +46,8 @@ $('#subdomain-provider-register').validate({
 
         var that = this;
 
+        $('.btn-form-action').prop('disabled', true);
+
         $.get('/subdomainproviderquery', {
             name: $('#subdomain_name').val()
         }, function (data) {
@@ -54,6 +56,7 @@ $('#subdomain-provider-register').validate({
                 that.showErrors({
                     subdomain_name: "API request is failed.\r\nPlease check Global settings or network connection."
                 });
+                $('.btn-form-action').prop('disabled', false);
             }
             else if (!data.success) {
                 let message = 'This subdomain name is not available.';
@@ -64,12 +67,15 @@ $('#subdomain-provider-register').validate({
                 that.showErrors({
                     subdomain_name: message
                 });
+
+                $('.btn-form-action').prop('disabled', false);
             }
             else {
                 if (licenseIdExists) {
                     form.submit();
                 } else {
                     alert('You need a license id to use a subdomain');
+                    $('.btn-form-action').prop('disabled', false);
                 }
             }
 
@@ -87,8 +93,6 @@ $('.btn-get-server-ip-address').click(function(){
     $.get('/subdomainprovidergetip' + (ipv6 ? '?ipv6=true' : ''), function (data) {
         t.prop('disabled', false);
 
-        console.log(data);
-
         if (!data.ip) {
             alert('ip data is not available');
             return;
@@ -99,9 +103,23 @@ $('.btn-get-server-ip-address').click(function(){
             return;
         }
 
-        t.closest('.input-group').find('input.form-control').val(data.ip);
+        t.closest('.form-group').find('input.ip-address-field').val(data.ip);
 
     }, 'json');
 });
 
+$('#btn-destroy-actual-cname-config').click(function () {
+    $('.btn-form-action').prop('disabled', true);
+
+    $.post('/subdomainproviderdestroy', function (data) {
+        if (!data || !data.success) {
+            if (data.message) {
+                alert(data.message);
+            }
+            $('.btn-form-action').prop('disabled', false);
+        } else {
+            window.location.reload();
+        }
+    }, 'json');
+});
 
