@@ -13,7 +13,7 @@ class mediaHls extends Controller {
 		$status = true;
 		$message = '';
 
-        if (!isset($_GET['id']) or $this->user->camPermission($_GET['id'])) {
+        if (!isset($_GET['id']) or !$this->user->camPermission($_GET['id'])) {
 			$status = false;
 			$message = str_replace('%ID%', $_GET['id'], MJPEG_NO_PERMISSION);
 			$data = "no_permission";
