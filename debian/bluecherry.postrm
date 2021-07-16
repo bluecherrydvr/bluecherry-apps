@@ -76,3 +76,6 @@ esac
 #DEBHELPER#
 
 db_stop
+
+# Remove cron file
+rm /etc/cron.d/bluecherry

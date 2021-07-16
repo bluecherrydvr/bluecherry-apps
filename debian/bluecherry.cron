@@ -1,2 +1,3 @@
 # m h dom mon dow user          command
 0   0  *   *   *  bluecherry    /usr/share/bluecherry/backup_db.sh
+30   0  *   *   *  bluecherry    curl https://localhost:7001/subdomainprovidercron
