@@ -55,6 +55,7 @@ extern "C" {
 
 #define HLS_WINDOW_SIZE             5                       // Default HLS window size
 #define HLS_SEGMENT_SIZE            (188 * 7 * 1024)        // Most accepted HLS segment size
+#define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximum allowed segment size
 #define HLS_SEGMENT_DURATION        3.0                     // Most accepted HLS segment duration
 #define HLS_HEADER_EXPIRE_SEC       2                       // HLS header expiration seconds
 #define HLS_SERVER_CHUNK_MAX        65535                   // RX chunk size to send per one call
@@ -734,8 +735,11 @@ bool hls_session::create_response()
             return false;
         }
 
-        uint32_t sequence = content->_window.size() ? content->_window[0]->_id : 0;
-        double duration = content->_window.size() ? content->_window[0]->_duration : 0.;
+        size_t window_size = content->_window.size();
+        size_t window_max = content->get_window_size();
+
+        uint32_t sequence = window_size ? content->_window[0]->_id : 0;
+        double duration = window_size ? content->_window[0]->_duration : 0.;
         const char* segment_extension = content->_fmp4 ? "m4s" : "ts";
 
         std::string body;
@@ -751,10 +755,13 @@ bool hls_session::create_response()
             std_string_append(body, "#EXT-X-MAP:URI=\"init.mp4\"\n");
         }
 
-        for (size_t i = 0; i < content->_window.size(); i++)
+        if (window_size >= window_max)
         {
-            std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->_duration);
-            std_string_append(body, "%u/payload.%s\n", content->_window[i]->_id, segment_extension);
+            for (size_t i = 0; i < window_size; i++)
+            {
+                std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->_duration);
+                std_string_append(body, "%u/payload.%s\n", content->_window[i]->_id, segment_extension);
+            }
         }
 
         if (pthread_mutex_unlock(&content->_mutex))
@@ -1525,8 +1532,9 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     int64_t pts_diff = pts - get_last_pts();
     double duration = pts_diff > 0 ? (double)pts_diff / (double)90000 : 0;
 
-    if ((segment_duration > 0. && duration >= segment_duration) ||
-        (segment_size > 0 && _in_buffer.used() >= segment_size))
+    if (_in_buffer.used() > HLS_SEGMENT_SIZE_MAX || (is_key &&
+        ((segment_duration > 0. && duration >= segment_duration) ||
+        (segment_size > 0 && _in_buffer.used() >= segment_size))))
     {
         hls_segment *segment = new hls_segment;
         if (segment == NULL)

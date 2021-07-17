@@ -304,6 +304,7 @@ public:
     bool append_segment(hls_segment *segment);
     bool clear_window();
 
+    size_t get_window_size() { return _config.window_size; };
     void get_config(size_t *segment_size, double *segment_duration);
     void set_config(hls_config *config);
 
