@@ -86,7 +86,7 @@ var cameraProc = function (form) {
         getEl('ipAddr', enabled, true);
         getEl('user', enabled, true);
         getEl('pass', enabled, true);
-	getEl('substream', enabled, true);
+        getEl('substream', enabled, true);
     };
 
     self.setData = function (data) {
@@ -97,7 +97,11 @@ var cameraProc = function (form) {
         getEl('user', true, true, data.user);
         getEl('pass', true, true, data.pass);
         getEl('onvif_port', true, true, '80');
-	getEl('substream', true, true, data.substream);
+        getEl('substream', true, true, data.substream);
+
+        getEl('hls_window_size', true, true, '5');
+        getEl('hls_segment_size', true, true, '1347584');
+        getEl('hls_segment_duration', true, true, '3.0');
 
         getEl('camName', true, true, '');
         getEl('ipAddr', true, true, '');
@@ -127,6 +131,10 @@ var cameraProc = function (form) {
         getEl('mjpeg', true, true, '');
         getEl('portMjpeg', true, true, '80');
         getEl('onvif_port', true, true, '80');
+
+        getEl('hls_window_size', true, true, '5');
+        getEl('hls_segment_size', true, true, '1347584');
+        getEl('hls_segment_duration', true, true, '3.0');
     }
 
     var constructor = function () {

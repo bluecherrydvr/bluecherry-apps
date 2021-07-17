@@ -53,10 +53,10 @@ extern "C" {
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
+#define HLS_WINDOW_SIZE             5                       // Default HLS window size
 #define HLS_SEGMENT_SIZE            (188 * 7 * 1024)        // Most accepted HLS segment size
-#define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximal HLS segment size
 #define HLS_SEGMENT_DURATION        3.0                     // Most accepted HLS segment duration
-#define HLS_SEGMENT_DURATION_MAX    6.0                     // Maximal HLS segment duration
+#define HLS_HEADER_EXPIRE_SEC       2                       // HLS header expiration seconds
 #define HLS_SERVER_CHUNK_MAX        65535                   // RX chunk size to send per one call
 
 static void std_string_append(std::string &source, const char *data, ...)
@@ -766,7 +766,7 @@ bool hls_session::create_response()
         hls_date date;
         char curr_date[128], exp_date[128];
         date.to_http(curr_date, sizeof(curr_date));
-        date.inc_sec(5);
+        date.inc_sec(HLS_HEADER_EXPIRE_SEC);
         date.to_http(exp_date, sizeof(exp_date));
 
         std::string response = std::string("HTTP/1.1 200 OK\r\n");
@@ -1360,7 +1360,7 @@ size_t hls_byte_buffer::append(uint8_t *data, size_t size)
 // HLS CONTENT
 //////////////////////////////////////////////////
 
-hls_content::hls_content()
+hls_content::hls_content(hls_config *cfg)
 {
     pthread_mutexattr_t attr;
 
@@ -1373,11 +1373,7 @@ hls_content::hls_content()
         return;
     }
 
-    /*
-        using only 3 segments in playlist is enough since we are using sliding window
-        also it will decrease usage of RAM (less segments in window = less RAM usage)
-    */
-    set_window_size(3);
+    _config = *cfg;
     _init = true;
 }
 
@@ -1387,6 +1383,41 @@ hls_content::~hls_content()
 
     clear_window();
     pthread_mutex_destroy(&_mutex);
+}
+
+void hls_content::set_config(hls_config *config)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return;
+    }
+
+    _config = *config;
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return;
+    }
+}
+
+void hls_content::get_config(size_t *segment_size, double *segment_duration)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return;
+    }
+
+    *segment_size = _config.segment_size;
+    *segment_duration = _config.segment_duration;
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return;
+    }
 }
 
 bool hls_content::clear_window()
@@ -1441,7 +1472,7 @@ bool hls_content::append_segment(hls_segment *segment)
     if (_fmp4 && _use_initial && !_init_segment) 
         set_initial_segment(segment);
 
-    while (_window_size && _window.size() > _window_size)
+    while (_config.window_size && _window.size() > _config.window_size)
     {
         hls_segment *front = _window.front();
         delete front;
@@ -1480,7 +1511,12 @@ hls_segment* hls_content::get_initial_segment()
 
 bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags)
 {
-    if (!_in_buffer.append(data, size)) return false;
+    size_t segment_size = 0;
+    double segment_duration = 0.;
+    get_config(&segment_size, &segment_duration);
+
+    if (!segment_size || segment_duration == 0.) return false;
+    else if (!_in_buffer.append(data, size)) return false;
 
     bool is_key = flags & AV_PKT_FLAG_KEY;
     int64_t last_pts = get_last_pts();
@@ -1489,9 +1525,8 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     int64_t pts_diff = pts - get_last_pts();
     double duration = pts_diff > 0 ? (double)pts_diff / (double)90000 : 0;
 
-    if ((is_key && duration >= HLS_SEGMENT_DURATION) ||
-        (_in_buffer.used() > HLS_SEGMENT_SIZE_MAX ||
-        duration > HLS_SEGMENT_DURATION_MAX))
+    if ((segment_duration > 0. && duration >= segment_duration) ||
+        (segment_size > 0 && _in_buffer.used() >= segment_size))
     {
         hls_segment *segment = new hls_segment;
         if (segment == NULL)
@@ -1771,6 +1806,10 @@ hls_listener::hls_listener()
         return;
     }
 
+    _config.window_size = HLS_WINDOW_SIZE;
+    _config.segment_size = HLS_SEGMENT_SIZE;
+    _config.segment_duration = HLS_SEGMENT_DURATION;
+
     _init = true;
 }
 
@@ -1779,6 +1818,30 @@ hls_listener::~hls_listener()
     if (!_init) return;
     pthread_mutex_destroy(&_mutex);
     _fd = sock_shutdown(_fd);
+}
+
+void hls_listener::reconfigure(hls_config *config)
+{
+    if (pthread_mutex_lock(&_mutex))
+    {
+        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+        return;
+    }
+
+    _config = *config;
+    hls_content_it it;
+
+    for (it = _content.begin(); it != _content.end(); it++)
+    {
+        hls_content *content = it->second;
+        content->set_config(config);
+    }
+
+    if (pthread_mutex_unlock(&_mutex))
+    {
+        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+        return;
+    }
 }
 
 hls_content* hls_listener::get_hls_content(int id)
@@ -1794,7 +1857,7 @@ hls_content* hls_listener::get_hls_content(int id)
 
     if (it == _content.end())
     {
-        content = new hls_content;
+        content = new hls_content(&_config);
         if (!content->_init)
         {
             delete content;

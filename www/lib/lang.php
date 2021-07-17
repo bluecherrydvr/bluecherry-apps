@@ -385,6 +385,12 @@ define('AIP_CHECK_ONVIF_SUCCESS', 'Successfull');
 define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
 define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the limit of the allowed devices.');
 
+# HLS configuration
+define('AIP_HLS_WINDOW_SIZE', 'HLS window size');
+define('AIP_HLS_SEGMENT_SIZE', 'HLS segment size');
+define('AIP_HLS_SEGMENT_SIZE_EX', 'You can specify HLS segment size in bytes');
+define('AIP_HLS_SEGMENT_DURATION', 'HLS segment duration');
+
 #ip cam lib
 define('COUND_NOT_CONNECT', 'Could not connect to the camera to perform the setup, please do so manually');
 

@@ -288,17 +288,24 @@ private:
 typedef std::deque<hls_segment*> hls_window;
 typedef std::vector<uint32_t> hls_segments;
 
+typedef struct {
+    size_t window_size;
+    size_t segment_size;
+    double segment_duration;
+} hls_config;
+
 class hls_content
 {
 public:
-    hls_content();
+    hls_content(hls_config *cfg);
     ~hls_content();
-
-    void set_window_size(size_t size) { _window_size = size; }
-    bool clear_window();
 
     bool add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags);
     bool append_segment(hls_segment *segment);
+    bool clear_window();
+
+    void get_config(size_t *segment_size, double *segment_duration);
+    void set_config(hls_config *config);
 
     hls_segment *get_segment(uint32_t id);
     size_t get_segment_ids(hls_segments &ids);
@@ -319,11 +326,11 @@ public:
 
 private:
     hls_byte_buffer _in_buffer;
+    hls_config      _config;
 
     bool            _use_initial = false;
     hls_segment*    _init_segment = NULL;
 
-    size_t          _window_size = 0;
     int             _device_id = 0;
     int64_t         _pts = 0;
     uint32_t        _cc = 0;
@@ -339,6 +346,7 @@ public:
     ~hls_listener();
 
     void run();
+    void reconfigure(hls_config *config);
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);
 
@@ -363,6 +371,7 @@ private:
     bool            _use_ssl = false;
 
     /* HLS listener context */
+    hls_config      _config;
     hls_events      _events;
     uint16_t        _port = 0;
     int             _fd = -1;
