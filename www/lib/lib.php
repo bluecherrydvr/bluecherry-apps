@@ -1260,7 +1260,7 @@ class globalSettings{
 
 		if (empty($this->data['G_DATA_SOURCE'])) {
 			data::query("DELETE FROM GlobalSettings where parameter = 'G_DATA_SOURCE'", true);
-			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'local')", true);
+			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'live')", true);
 			$this->data['G_DATA_SOURCE'] = 'local';
 		}
 
