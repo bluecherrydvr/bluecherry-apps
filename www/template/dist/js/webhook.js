@@ -22,6 +22,18 @@ $('#btn-webhook-delete').click(function (event) {
     return false;
 });
 
+$('#btn-webhook-test').click(function (event) {
+    event.preventDefault();
+
+    var t = $(this);
+
+    $.post(t.val(), function (result) {
+        window.location.href = '/webhook';
+    }, 'json');
+
+    return false;
+});
+
 $('#webhook-form').submit(function (event) {
     event.preventDefault();
 
