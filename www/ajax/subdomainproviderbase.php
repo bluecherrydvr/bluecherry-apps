@@ -3,8 +3,12 @@
 class subdomainproviderbase extends Controller {
 
     const API_BASE_URL_NAME = 'G_SUBDOMAIN_API_BASE_URL';
+    const AUTO_UPDATE_IPV4_CONFIG_NAME = 'G_SUBDOMAIN_AUTO_UPDATE_IPV4';
+    const AUTO_UPDATE_IPV6_CONFIG_NAME = 'G_SUBDOMAIN_AUTO_UPDATE_IPV6';
+    const AUTO_UPDATE_IPV4_VALUE_NAME = 'G_SUBDOMAIN_AUTO_UPDATE_IPV4_VALUE';
+    const AUTO_UPDATE_IPV6_VALUE_NAME = 'G_SUBDOMAIN_AUTO_UPDATE_IPV6_VALUE';
 
-
+    protected $subdomainApiBaseUrlCache = null;
 
     public function __construct() {
         parent::__construct();
@@ -27,15 +31,21 @@ class subdomainproviderbase extends Controller {
     }
 
     protected function getSubdomainApiBaseUrl() {
-        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
-            self::API_BASE_URL_NAME . '\' LIMIT 1');
+
+        if (!empty($this->subdomainApiBaseUrlCache)) {
+            return $this->subdomainApiBaseUrlCache;
+        }
+
+        $result = $this->getGlobalSettingsValue(self::API_BASE_URL_NAME);
 
         if (empty($result)) {
             throw new \RuntimeException(self::API_BASE_URL_NAME .
                 ' parameter is not defined in global settings');
         }
 
-        return $result[0]['value'];
+        $this->subdomainApiBaseUrlCache = $result;
+
+        return $result;
     }
 
     protected function getLicenseKey() {
@@ -112,7 +122,7 @@ class subdomainproviderbase extends Controller {
         ], $headers));
     }
 
-    protected function getFromApi($path, $query = [], $headers = []) {
+    protected function getFromApi($path, $query = [], $headers = [], $customRequest = null) {
 
         $baseUrl = $this->getSubdomainApiBaseUrl();
 
@@ -120,10 +130,10 @@ class subdomainproviderbase extends Controller {
             $path .= http_build_query($query);
         }
 
-        return $this->executeApiGetRequest($baseUrl . $path, $headers);
+        return $this->executeApiGetRequest($baseUrl . $path, $headers, $customRequest);
     }
 
-    protected function getFromApiWithToken($path, $query = [], $headers = [], $tokenOptional = false) {
+    protected function getFromApiWithToken($path, $query = [], $headers = [], $tokenOptional = false, $customRequest = null) {
 
         try {
             $licenseId = $this->getLicenseId();
@@ -138,7 +148,7 @@ class subdomainproviderbase extends Controller {
 
         return $this->getFromApi($path, $query, array_merge([
             'Authorization: Bearer ' . $licenseId
-        ], $headers));
+        ], $headers), $customRequest);
 
     }
 
@@ -146,7 +156,7 @@ class subdomainproviderbase extends Controller {
         return $this->executeApiGetRequest('https://' .  ($tryIpv6 ? 'api64' : 'api') . '.ipify.org/?format=json');
     }
 
-    protected function executeApiGetRequest($url, $headers = []) {
+    protected function executeApiGetRequest($url, $headers = [], $customRequest = null) {
 
         $curl = curl_init($url);
 
@@ -154,6 +164,10 @@ class subdomainproviderbase extends Controller {
         curl_setopt($curl, CURLOPT_HTTPHEADER, array_merge(['Content-Type: application/json'], $headers));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+
+        if (!empty($customRequest)) {
+            curl_setopt($curl, CURLOPT_CUSTOMREQUEST, $customRequest);
+        }
 
         $result = curl_exec($curl);
 
@@ -165,6 +179,30 @@ class subdomainproviderbase extends Controller {
         }
 
         return json_decode($result, true);
+    }
+
+    protected function getGlobalSettingsValue($name) {
+        $name = database::escapeString($name);
+
+        $result = data::query('SELECT `value` FROM `GlobalSettings` WHERE `parameter` = \'' .
+            $name . '\' LIMIT 1');
+
+        if (!empty($result)) {
+            return $result[0]['value'];
+        }
+
+        data::query('INSERT INTO `GlobalSettings`(`parameter`, `value`) VALUES(\'' .
+            $name . '\', null)', true);
+
+        return null;
+    }
+
+    protected function setGlobalSettingsValue($name, $value)
+    {
+        $name = database::escapeString($name);
+        $value = database::escapeString($value);
+
+        return data::query("UPDATE GlobalSettings SET value='$value' WHERE parameter='$name' LIMIT 1", true);
     }
 }
 

@@ -5,6 +5,8 @@ require_once 'subdomainproviderbase.php';
 class subdomainprovider extends subdomainproviderbase
 {
 
+    const EMAIL_ACCOUNT_CONFIG_NAME = 'G_SUBDOMAIN_EMAIL_ACCOUNT';
+
     public function getData() {
 
         $this->setView('ajax.subdomainprovider');
@@ -13,9 +15,11 @@ class subdomainprovider extends subdomainproviderbase
 
     protected function initForm() {
         $this->view->actualSubdomain = '';
-        $this->view->actualEmail     = $this->varpub->global_settings->data['G_SUBDOMAIN_EMAIL_ACCOUNT'];
+        $this->view->actualEmail     = $this->varpub->global_settings->data[self::EMAIL_ACCOUNT_CONFIG_NAME];
         $this->view->actualIpv4Value = '';
         $this->view->actualIpv6Value = '';
+        $this->view->autoUpdateIpv4 = $this->getGlobalSettingsValue(self::AUTO_UPDATE_IPV4_CONFIG_NAME );
+        $this->view->autoUpdateIpv6 = $this->getGlobalSettingsValue(self::AUTO_UPDATE_IPV6_CONFIG_NAME );
         $this->view->licenseIdExists = false;
 
         // Check licensekey
@@ -70,6 +74,13 @@ class subdomainprovider extends subdomainproviderbase
             $ipv6Value = $_POST['server_ip_address_6'];
         }
 
+        $this->setGlobalSettingsValue(self::AUTO_UPDATE_IPV4_CONFIG_NAME,
+            empty($_POST['update_ip_address_4_auto']) ? 0 : 1);
+
+        $this->setGlobalSettingsValue(self::AUTO_UPDATE_IPV6_CONFIG_NAME,
+            empty($_POST['update_ip_address_6_auto']) ? 0 : 1);
+
+
         if (empty($subdomain) || empty($ipv4Value)) {
             header('Location: /subdomainprovider?status=0');
             return;
@@ -87,6 +98,8 @@ class subdomainprovider extends subdomainproviderbase
                 return;
             }
 
+            $this->setGlobalSettingsValue(self::AUTO_UPDATE_IPV4_VALUE_NAME, $ipv4Value);
+
             if (!empty($ipv6Value)) {
                 $result = $this->postToApiWithToken('/assign-ip-address', [
                     'subdomain' => $subdomain,
@@ -98,6 +111,8 @@ class subdomainprovider extends subdomainproviderbase
                     header('Location: /subdomainprovider?status=0');
                     return;
                 }
+
+                $this->setGlobalSettingsValue(self::AUTO_UPDATE_IPV6_VALUE_NAME, $ipv6Value);
             }
 
         } catch (\RuntimeException $exception) {
@@ -105,9 +120,10 @@ class subdomainprovider extends subdomainproviderbase
             return;
         }
 
-        data::query("UPDATE GlobalSettings SET value='$email' WHERE parameter='G_SUBDOMAIN_EMAIL_ACCOUNT'");
+        $this->setGlobalSettingsValue(self::EMAIL_ACCOUNT_CONFIG_NAME, $email);
         header('Location: /subdomainprovider?status=1');
     }
+
 
 }
 ?>
