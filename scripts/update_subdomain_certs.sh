@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 subdomain=$1
 email=$2
@@ -13,7 +13,7 @@ pip3 install setuptools_rust certbot certbot-dns-subdomain-provider
 pip3 install --upgrade pip
 pip3 install --upgrade cryptography
 
-function start_nginx
+function start_nginx()
 {
     if [ ! -z `which service` ]
     then
@@ -23,7 +23,7 @@ function start_nginx
     fi
 }
 
-function stop_nginx
+function stop_nginx()
 {
     if [ ! -z `which service` ]
     then
@@ -43,6 +43,7 @@ endpoint=https://domains.bluecherrydvr.com/subdomain-provider
 
 echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credintials.ini
 echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
+chmod 600 dns-subdomain-credintials.ini
 
 # Generate certificates
 certbot certonly --non-interactive --agree-tos \
@@ -54,7 +55,7 @@ certbot certonly --non-interactive --agree-tos \
 # No more required
 rm dns-subdomain-credintials.ini
 
-if [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/cert.pem" ] || \
+if [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem" ] || \
    [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
     echo "No certificates found"
     exit 1
@@ -67,7 +68,7 @@ if test -f $subdomain_conf; then
     rm $subdomain_conf
 fi
 
-echo "ssl_certificate /etc/letsencrypt/live/$subdomain.bluecherry.app/cert.pem;" >> $subdomain_conf
+echo "ssl_certificate /etc/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem;" >> $subdomain_conf
 echo "ssl_certificate_key /etc/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem;" >> $subdomain_conf
 
 # Change existing snakeoil configuration with new one
