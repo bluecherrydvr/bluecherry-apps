@@ -388,7 +388,7 @@ define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the
 # HLS configuration
 define('AIP_HLS_WINDOW_SIZE', 'HLS window size');
 define('AIP_HLS_SEGMENT_SIZE', 'HLS segment size');
-define('AIP_HLS_SEGMENT_SIZE_EX', 'You can specify HLS segment size in bytes');
+define('AIP_HLS_SEGMENT_SIZE_EX', 'You can specify HLS segment size in bytes (0 means unlimited)');
 define('AIP_HLS_SEGMENT_DURATION', 'HLS segment duration');
 
 #ip cam lib

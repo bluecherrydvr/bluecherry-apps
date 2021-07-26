@@ -827,8 +827,8 @@ class ipCamera{
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
 		#prepare hls window
 			$data['hls_window_size'] = (empty($rawData['hls_window_size'])) ? "5" : $rawData['hls_window_size']; //default to hls window size
-			$data['hls_segment_size'] = (empty($rawData['hls_segment_size'])) ? "1347584" : $rawData['hls_segment_size']; //default to hls segment size
-			$data['hls_segment_duration'] = (empty($rawData['hls_segment_duration'])) ? "3.0" : $rawData['hls_segment_duration']; //default to hls segment duration
+			$data['hls_segment_duration'] = $rawData['hls_segment_duration']; //default to hls segment duration
+			$data['hls_segment_size'] = $rawData['hls_segment_size']; //default to hls segment size
 
 			//var_dump_pre($data); exit();
 			

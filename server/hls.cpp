@@ -1522,7 +1522,7 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     double segment_duration = 0.;
     get_config(&segment_size, &segment_duration);
 
-    if (!segment_size || segment_duration == 0.) return false;
+    if (!segment_size && segment_duration == 0.) return false;
     else if (!_in_buffer.append(data, size)) return false;
 
     bool is_key = flags & AV_PKT_FLAG_KEY;
