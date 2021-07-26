@@ -759,7 +759,7 @@ bool hls_session::create_response()
         {
             for (size_t i = 0; i < window_size; i++)
             {
-                std_string_append(body, "#EXTINF:%.4f,\n", content->_window[i]->_duration);
+                std_string_append(body, "#EXTINF:%f,\n", content->_window[i]->_duration);
                 std_string_append(body, "%u/payload.%s\n", content->_window[i]->_id, segment_extension);
             }
         }
