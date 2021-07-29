@@ -46,11 +46,18 @@ echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
 chmod 600 dns-subdomain-credintials.ini
 
 # Generate certificates
+echo "Generating certs..."
+
 certbot certonly --non-interactive --agree-tos \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
     ./dns-subdomain-credintials.ini \
-    -d $subdomain.bluecherry.app
+    -d $subdomain.bluecherry.app -v > subdomain-debug.log
+
+if test -f "subdomain-debug.log"; then
+    cat subdomain-debug.log
+    rm subdomain-debug.log
+fi
 
 # No more required
 rm dns-subdomain-credintials.ini
