@@ -138,8 +138,8 @@ case "$1" in
 		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
-			> /etc/sudoers.d/bluecherry
-		chmod 0440 /etc/sudoers.d/bluecherry
+			> /etc/sudoers.d/www-data
+		chmod 0440 /etc/sudoers.d/www-data
 
 		mkdir -p /usr/share/bluecherry/ssl
 		cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem

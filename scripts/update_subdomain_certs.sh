@@ -50,7 +50,7 @@ certbot certonly --non-interactive --agree-tos \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
     ./dns-subdomain-credintials.ini \
-    -d $subdomain.bluecherry.app
+    -d $subdomain.bluecherry.app -v
 
 # No more required
 rm dns-subdomain-credintials.ini
