@@ -123,7 +123,7 @@ class subdomainprovider extends subdomainproviderbase
         // Update subdomain certs
         $token = $this->getLicenseId();
 
-        exec("nohup /usr/share/bluecherry/scripts/update_subdomain_certs.sh $subdomain $email $token", $output, $return_var);
+        exec("sudo -b /usr/share/bluecherry/scripts/update_subdomain_certs.sh $subdomain $email $token", $output, $return_var);
 
         if ($return_var === 0) {
             $this->setGlobalSettingsValue(self::EMAIL_ACCOUNT_CONFIG_NAME, $email);
