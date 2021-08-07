@@ -33,25 +33,25 @@ function stop_nginx()
     fi
 }
 
-if test -f "dns-subdomain-credintials.ini"; then
-    rm dns-subdomain-credintials.ini
+if test -f "dns-subdomain-credentials.ini"; then
+    rm dns-subdomain-credentials.ini
 fi
 
 subdomain_conf=/usr/share/bluecherry/nginx-includes/subdomain.conf
 snakeoil_conf=/usr/share/bluecherry/nginx-includes/snakeoil.conf
 endpoint=https://domains.bluecherrydvr.com/subdomain-provider
 
-echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credintials.ini
-echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
-chmod 600 dns-subdomain-credintials.ini
+echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credentials.ini
+echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credentials.ini
+chmod 600 dns-subdomain-credentials.ini
 
 # Generate certificates
 echo "Generating certs..."
 
-certbot certonly --non-interactive --agree-tos \
+certbot certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
-    ./dns-subdomain-credintials.ini \
+    ./dns-subdomain-credentials.ini \
     -d $subdomain.bluecherry.app -v
 
 # No more required
