@@ -46,6 +46,8 @@ echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credintials.ini
 chmod 600 dns-subdomain-credintials.ini
 
 # Generate certificates
+echo "Generating certs..."
+
 certbot certonly --non-interactive --agree-tos \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
