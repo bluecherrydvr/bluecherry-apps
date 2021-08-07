@@ -48,7 +48,7 @@ chmod 600 dns-subdomain-credentials.ini
 # Generate certificates
 echo "Generating certs..."
 
-certbot certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
+certbot certonly --non-interactive --agree-tos --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ --work-dir=/tmp --logs-dir=/tmp \
     -m $email --authenticator dns-subdomain-provider \
     --dns-subdomain-provider-credentials \
     ./dns-subdomain-credentials.ini \
@@ -57,8 +57,8 @@ certbot certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
 # No more required
 rm dns-subdomain-credintials.ini
 
-if [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem" ] || \
-   [ ! -f "/etc/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
+if [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem" ] || \
+   [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
     echo "No certificates found"
     exit 1
 fi
@@ -70,13 +70,13 @@ if test -f $subdomain_conf; then
     rm $subdomain_conf
 fi
 
-echo "ssl_certificate /etc/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem;" >> $subdomain_conf
-echo "ssl_certificate_key /etc/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem;" >> $subdomain_conf
+echo "ssl_certificate /usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem;" >> $subdomain_conf
+echo "ssl_certificate_key /usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem;" >> $subdomain_conf
 
 # Change existing snakeoil configuration with new one
 sed -i "s#$snakeoil_conf#$subdomain_conf#g" \
     /etc/nginx/sites-enabled/bluecherry.conf
-
+    
 # Test new configuration
 nginx -t 2>/dev/null > /dev/null
 
@@ -89,4 +89,3 @@ else
 fi
 
 exit 0
-
