@@ -120,8 +120,19 @@ class subdomainprovider extends subdomainproviderbase
             return;
         }
 
+        // Update subdomain certs
+        $token = $this->getLicenseId();
+
+        exec("sudo -b /usr/share/bluecherry/scripts/update_subdomain_certs.sh $subdomain $email $token", $output, $return_var);
+
+        if ($return_var === 0) {
+            $this->setGlobalSettingsValue(self::EMAIL_ACCOUNT_CONFIG_NAME, $email);
+            header('Location: /subdomainprovider?status=1');
+            return;
+        }
+
         $this->setGlobalSettingsValue(self::EMAIL_ACCOUNT_CONFIG_NAME, $email);
-        header('Location: /subdomainprovider?status=1');
+        header('Location: /subdomainprovider?status=3');
     }
 
 

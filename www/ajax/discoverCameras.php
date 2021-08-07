@@ -284,7 +284,7 @@ class discoverCameras extends Controller {
 
         if (!empty($ips_arr)) {
             $ips_str = implode('|', $ips_arr);
-            $list_cam = data::query("SELECT device FROM Devices WHERE device REGEXP '{$ips_str}'");
+            $list_cam = data::query("SELECT device FROM Devices WHERE CAST(device AS BINARY) REGEXP BINARY '{$ips_str}'");
             if (!empty($list_cam)) {
                 foreach ($list_cam as $key => $val) {
                     $tmp = explode('|', $val['device']);

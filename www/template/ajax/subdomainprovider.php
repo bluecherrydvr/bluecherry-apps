@@ -24,9 +24,14 @@
                 switch (intval($_GET['status'])) {
                     case 1:
                         echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
+                        echo '<div class="alert alert-success" role="alert">Updating subdomain certificate successful!</div>';
                         break;
                     case 2:
                         echo '<div class="alert alert-info" role="alert">Destroy config successful.</div>';
+                        break;
+                    case 3:
+                        echo '<div class="alert alert-success" role="alert">Configuration successful.</div>';
+                        echo '<div class="alert alert-danger" role="alert">An error occured during updating subdomain certificate!</div>';
                         break;
                 }
 
