@@ -34,7 +34,7 @@ function stop_nginx()
 }
 
 if test -f "dns-subdomain-credentials.ini"; then
-    rm dns-subdomain-credentials.ini
+    rm subdomain-credentials.ini
 fi
 
 subdomain_conf=/usr/share/bluecherry/nginx-includes/subdomain.conf
@@ -54,9 +54,6 @@ certbot certonly --non-interactive --agree-tos --config-dir=/usr/share/bluecherr
     ./dns-subdomain-credentials.ini \
     -d $subdomain.bluecherry.app -v
 
-# No more required
-rm dns-subdomain-credintials.ini
-
 if [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem" ] || \
    [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
     echo "No certificates found"
@@ -65,6 +62,8 @@ fi
 
 # Stop nginx before changing configuration
 stop_nginx
+
+rm subdomain-credentials.ini
 
 if test -f $subdomain_conf; then
     rm $subdomain_conf
@@ -76,6 +75,8 @@ echo "ssl_certificate_key /usr/share/bluecherry/nginx-includes/letsencrypt/live/
 # Change existing snakeoil configuration with new one
 sed -i "s#$snakeoil_conf#$subdomain_conf#g" \
     /etc/nginx/sites-enabled/bluecherry.conf
+    
+chown www-data.www-data -R "/usr/share/bluecherry/nginx-includes/letsencrypt"    
     
 # Test new configuration
 nginx -t 2>/dev/null > /dev/null
