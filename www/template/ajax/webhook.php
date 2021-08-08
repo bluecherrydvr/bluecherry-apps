@@ -79,6 +79,7 @@
                     <td><?php echo ($item['status'] == 1 ? '✔️ ' : '❌ '), $item['label'] ?><br /><?php echo WEBHOOK_LISTING_TABLE_LAST_UPDATE , ' ', $item['last_update']; ?></td>
                     <td class="text-center" style="width:100px;"><a href="/webhook?action=edit&id=<?php echo $item['id'] ?>" class="btn btn-primary"><?php echo WEBHOOK_LISTING_TABLE_BUTTON_EDIT; ?></a></td>
                     <td class="text-center" style="width:100px;"><button value="/webhook?action=delete&id=<?php echo $item['id'] ?>" class="btn btn-danger" id="btn-webhook-delete"><?php echo WEBHOOK_LISTING_TABLE_BUTTON_DELETE; ?></button></td>
+                    <td class="text-center" style="width:100px;"><button value="/webhook?action=test&id=<?php echo $item['id'] ?>" class="btn btn-info" id="btn-webhook-test"><?php echo WEBHOOK_LISTING_TABLE_BUTTON_TEST; ?></button></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

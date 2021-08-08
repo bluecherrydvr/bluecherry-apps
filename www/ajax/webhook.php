@@ -32,6 +32,7 @@ class webhook extends Controller {
             case 'create': $this->createWebhook(); break;
             case 'edit': $this->editWebhook(); break;
             case 'delete': $this->deleteWebhook(); break;
+            case 'test': $this->testWebhook(); break;
         }
     }
 
@@ -93,6 +94,13 @@ class webhook extends Controller {
         $query = 'DELETE FROM `webhooks` WHERE `id` = ' . $id;
         $result = data::query($query, true);
         data::responseJSON($result);
+    }
+
+    protected function testWebhook()
+    {
+        $device_id = intval($_GET['id']);
+
+        exec("php /usr/share/bluecherry/www/lib/mailer.php motion_event ".$device_id." NULL");
     }
 
     protected function getValues()
