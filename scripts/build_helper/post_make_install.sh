@@ -52,9 +52,12 @@ then
 	fi
 
 	mkdir -p ${DST_DIR}/etc/nginx/sites-enabled/
-	cat ${SRC_PATH}/nginx-configs/bluecherry.conf | sed \
-		-e "s/__BLUECHERRY_DIST_CODENAME__/$_CODENAME_/" \
-		> ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf
+
+	if test ! -f ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf; then
+		cat ${SRC_PATH}/nginx-configs/bluecherry.conf | sed \
+			-e "s/__BLUECHERRY_DIST_CODENAME__/$_CODENAME_/" \
+			> ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf
+	fi
 
 	touch ${DST_DIR}/usr/share/bluecherry/nginx-includes/snakeoil.conf
 	echo "ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;" >> ${DST_DIR}/usr/share/bluecherry/nginx-includes/snakeoil.conf
