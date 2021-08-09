@@ -33,26 +33,30 @@ function stop_nginx()
     fi
 }
 
-if test -f "dns-subdomain-credentials.ini"; then
-    rm subdomain-credentials.ini
+credentials=/tmp/dns-subdomain-credentials.ini
+
+if test -f $credentials; then
+    rm $credentials
 fi
 
 subdomain_conf=/usr/share/bluecherry/nginx-includes/subdomain.conf
 snakeoil_conf=/usr/share/bluecherry/nginx-includes/snakeoil.conf
 endpoint=https://domains.bluecherrydvr.com/subdomain-provider
 
-echo "dns_subdomain_provider_endpoint_url=$endpoint" >> dns-subdomain-credentials.ini
-echo "dns_subdomain_provider_token=$token" >> dns-subdomain-credentials.ini
-chmod 600 dns-subdomain-credentials.ini
+echo "dns_subdomain_provider_endpoint_url=$endpoint" >> $credentials
+echo "dns_subdomain_provider_token=$token" >> $credentials
+chmod 600 $credentials
 
 # Generate certificates
 echo "Generating certs..."
 
-certbot certonly --non-interactive --agree-tos --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ --work-dir=/tmp --logs-dir=/tmp \
+certbot certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
+    --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ \
+    --dns-subdomain-provider-credentials $credentials \
     -m $email --authenticator dns-subdomain-provider \
-    --dns-subdomain-provider-credentials \
-    ./dns-subdomain-credentials.ini \
     -d $subdomain.bluecherry.app -v
+
+rm $credentials
 
 if [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/fullchain.pem" ] || \
    [ ! -f "/usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem" ]; then
@@ -63,8 +67,6 @@ fi
 # Stop nginx before changing configuration
 stop_nginx
 
-rm subdomain-credentials.ini
-
 if test -f $subdomain_conf; then
     rm $subdomain_conf
 fi
@@ -73,11 +75,9 @@ echo "ssl_certificate /usr/share/bluecherry/nginx-includes/letsencrypt/live/$sub
 echo "ssl_certificate_key /usr/share/bluecherry/nginx-includes/letsencrypt/live/$subdomain.bluecherry.app/privkey.pem;" >> $subdomain_conf
 
 # Change existing snakeoil configuration with new one
-sed -i "s#$snakeoil_conf#$subdomain_conf#g" \
-    /etc/nginx/sites-enabled/bluecherry.conf
-    
-chown www-data.www-data -R "/usr/share/bluecherry/nginx-includes/letsencrypt"    
-    
+sed -i "s#$snakeoil_conf#$subdomain_conf#g" /etc/nginx/sites-enabled/bluecherry.conf
+chown -R www-data:www-data "/usr/share/bluecherry/nginx-includes/letsencrypt"    
+
 # Test new configuration
 nginx -t 2>/dev/null > /dev/null
 
