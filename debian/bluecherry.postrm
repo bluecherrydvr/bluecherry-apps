@@ -78,4 +78,7 @@ esac
 db_stop
 
 # Remove cron file
-rm /etc/cron.d/bluecherry
+cronfile=/etc/cron.d/bluecherry
+if test -f $cronfile; then
+	rm $cronfile
+fi

@@ -302,10 +302,35 @@ case "$1" in
 				exit 1
 			fi
 
-			DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
-			echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
-			# Backup the DB
-			mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
+			BC_GENERAL_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DVR_NAME'" \
+				| mysql -h "localhost" -D"bluecherry" -u"bluecherry" -p"bluecherry" | tail -n 1 | tr "Bluecherry DVR v" " "`
+
+			if [ $BC_GENERAL_VERSION == 2 ];
+			then
+				db_fset bluecherry/major_upgrade    seen false || true
+				db_input high bluecherry/major_upgrade  || true
+				db_go  || true
+
+				db_get bluecherry/major_upgrade || true
+				export answer="$RET"
+
+				if [ $answer != "y" ] && [ $answer != "Y" ]; then
+					exit 1
+				fi
+
+				# Backup the DB
+				BACKUP_DB_FILE=/tmp/bluecherry_backup.sql.gz
+				echo "Backup database: $BACKUP_DB_FILE"
+				mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > BACKUP_DB_FILE
+
+				echo "Dropping Licenses"
+				/usr/share/bluecherry/drop_licenses.sh "$dbname" "$user" "$password" "$host"
+			else
+				DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
+				echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
+				# Backup the DB
+				mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
+			fi
 
 			if ! /usr/share/bluecherry/bc_db_tool.sh upgrade_db "$dbname" "$user" "$password" "$host"
 			then
@@ -315,12 +340,12 @@ case "$1" in
 			fi
 
 		fi # Whether there was an upgrade or fresh install
-		
+
 		# database successfully upgraded
 		if [[ -f "$DB_BACKUP_GZ_FILE" ]]
 		then
-	                rm -f "$DB_BACKUP_GZ_FILE"
-	        fi
+			rm -f "$DB_BACKUP_GZ_FILE"
+		fi
 
 		mkdir -p /usr/share/bluecherry/sqlite
 		if [[ $IN_DEB ]]

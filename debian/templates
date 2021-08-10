@@ -42,3 +42,8 @@ Description: Leftover data notice
  database and recorded media files. If you want to remove this data, consider
  purging package data with "apt-get remove --purge bluecherry", this will
  remove config file, database and all recordings
+
+Template: bluecherry/major_upgrade
+Type: string
+Default: N
+Description: It appears that you currently have Version 2 installed. Version 3 is a PAID upgrade, however you can try Version 3 out for free for 30 days. Optionally Bluecherry offers 50% discounts on upgrades from Version 2 to Version 3. Contact Bluecherry for a discount code. By continuing a backup of your Version 2 database will be saved to (/tmp/bluecherry_backup.sql.gz), it is recommend you copy this database to a safe location. Do you want to continue? (Y/N):
