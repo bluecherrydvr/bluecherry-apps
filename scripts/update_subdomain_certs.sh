@@ -1,4 +1,5 @@
 #!/bin/bash
+export PATH=~/.local/bin:${PATH}
 
 subdomain=$1
 email=$2
@@ -9,9 +10,9 @@ if [ "$#" -ne 3 ]; then
     exit 1
 fi
 
-pip3 install setuptools_rust certbot certbot-dns-subdomain-provider
-pip3 install --upgrade pip
-pip3 install --upgrade cryptography
+pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
+pip3 install --user --upgrade pip
+pip3 install --user --upgrade cryptography
 
 function start_nginx()
 {
