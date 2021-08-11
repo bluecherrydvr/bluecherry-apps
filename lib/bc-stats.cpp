@@ -126,8 +126,8 @@ void bc_stats::copy_cpu_info(bc_stats::cpu_info *dst, bc_stats::cpu_info *src)
     dst->idle_time_raw = __sync_add_and_fetch(&src->idle_time_raw, 0);
     dst->io_wait_raw = __sync_add_and_fetch(&src->io_wait_raw, 0);
     dst->total_raw = __sync_add_and_fetch(&src->total_raw, 0);
-    dst->soft_ints_raw = __sync_add_and_fetch(&src->soft_ints_raw, 0);
-    dst->hard_ints_raw = __sync_add_and_fetch(&src->hard_ints_raw, 0);
+    dst->soft_ints = __sync_add_and_fetch(&src->soft_ints, 0);
+    dst->hard_ints = __sync_add_and_fetch(&src->hard_ints, 0);
     dst->kernel_space = __sync_add_and_fetch(&src->kernel_space, 0);
     dst->user_niced = __sync_add_and_fetch(&src->user_niced, 0);
     dst->user_space = __sync_add_and_fetch(&src->user_space, 0);
@@ -170,6 +170,7 @@ bool bc_stats::update_cpu_info()
         }
         else
         {
+            printf("vah: %d\n", info.cpu_id);
             bc_stats::cpu_info last_info, *curr_info;
 
             if (info.cpu_id < 0) curr_info = &_cpu.sum;

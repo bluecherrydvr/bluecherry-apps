@@ -64,8 +64,8 @@ public:
             int64_t _BC_ALIGNED_ user_childs = 0;
         } proc;
 
+        uint16_t _BC_ALIGNED_ core_count = 0;
         uint32_t _BC_ALIGNED_ load_avg[3];
-        uint16_t _BC_ALIGNED_ core_count;
 
         cpu_infos cores;
         cpu_info sum;
