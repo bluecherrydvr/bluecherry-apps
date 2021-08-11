@@ -44,11 +44,13 @@ class subdomainprovider extends subdomainproviderbase
 
             foreach ($actualConfig['records'] as $record) {
                 switch ($record['type']) {
-                    case 'a': $this->view->actualIpv4Value = $record['value']; break;
+//                    case 'a': $this->view->actualIpv4Value = $record['value']; break;
                     case 'aaaa' : $this->view->actualIpv6Value = $record['value']; break;
                 }
             }
         }
+        $ipv4 = $this->getServerPublicIp(false);
+        $this->view->actualIpv4Value = (isset($ipv4) && !empty($ipv4['ip'])) ? $ipv4['ip'] : $this->view->actualIpv4Value;
     }
 
     public function postData() {
