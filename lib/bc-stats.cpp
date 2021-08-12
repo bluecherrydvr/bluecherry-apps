@@ -372,9 +372,7 @@ bool bc_stats::update_net_info()
             if (iface.pkts_sent > it->second.pkts_sent && it->second.pkts_sent > 0)
                 iface.pkts_sent_per_sec = (iface.pkts_sent - it->second.pkts_sent) / _monitoring_interval;
 
-            if (!iface.ipaddr.length()) iface.ipaddr = get_iface_ip_addr(iface.name.c_str());
-    
-            /* Update existing value with copy-assigment */
+            iface.ipaddr = get_iface_ip_addr(iface.name.c_str());
             it->second = iface;
         }
         else

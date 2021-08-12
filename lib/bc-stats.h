@@ -51,16 +51,16 @@ public:
         std::string ipaddr = std::string("");
         std::string name = std::string("");
 
-        uint64_t bytes_recv_per_sec;
-        uint64_t bytes_sent_per_sec;
-        uint64_t pkts_recv_per_sec;
-        uint64_t pkts_sent_per_sec;
+        uint64_t bytes_recv_per_sec = 0;
+        uint64_t bytes_sent_per_sec = 0;
+        uint64_t pkts_recv_per_sec = 0;
+        uint64_t pkts_sent_per_sec = 0;
 
-        int64_t bytes_recv;
-        int64_t bytes_sent;
-        int64_t pkts_recv;
-        int64_t pkts_sent;
-        int32_t type;
+        int64_t bytes_recv = 0;
+        int64_t bytes_sent = 0;
+        int64_t pkts_recv = 0;
+        int64_t pkts_sent = 0;
+        int32_t type = 0;
     };
 
     static void copy_cpu_info(bc_stats::cpu_info *dst, bc_stats::cpu_info *src);
