@@ -401,3 +401,11 @@ case "$1" in
 
 		;;
 esac
+
+# Install pip3, previously we did during subdomain creation however the initial run could take 60-80 seconds depending on hardware and resources.  So for now we install during installation.
+
+pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
+pip3 install --user --upgrade pip
+pip3 install --user --upgrade cryptography 
+
+
