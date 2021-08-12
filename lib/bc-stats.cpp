@@ -1,21 +1,47 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ifaddrs.h>
 #include <unistd.h>
 #include <string.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
 #include <thread>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+
 #include "bc-stats.h"
 #include "logc.h"
 
+#define BC_DIR_NETWORK           "/sys/class/net/"
 #define BC_FILE_SELFSTATUS       "/proc/self/status"
 #define BC_FILE_SELFSTAT         "/proc/self/stat"
 #define BC_FILE_MEMINFO          "/proc/meminfo"
 #define BC_FILE_LOADAVG          "/proc/loadavg"
 #define BC_FILE_STAT             "/proc/stat"
 #define BC_FILE_MAX              8192
+
+static std::string get_iface_ip_addr(const char *iface)
+{
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) std::string("");
+
+    struct ifreq ifr;
+    ifr.ifr_addr.sa_family = AF_INET;
+
+    strncpy(ifr.ifr_name, iface, IFNAMSIZ-1);
+    ioctl(fd, SIOCGIFADDR, &ifr);
+    close(fd);
+
+    char *ip_addr = inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr);
+    return std::string(ip_addr);
+}
 
 uint32_t bc_stats::bc_float_to_u32(float value)
 {
@@ -170,7 +196,6 @@ bool bc_stats::update_cpu_info()
         }
         else
         {
-            printf("vah: %d\n", info.cpu_id);
             bc_stats::cpu_info last_info, *curr_info;
 
             if (info.cpu_id < 0) curr_info = &_cpu.sum;
@@ -269,6 +294,105 @@ bool bc_stats::get_cpu_info(bc_stats::cpu *cpu)
     return cpu->core_count ? true : false;
 }
 
+void bc_stats::get_net_info(bc_stats::network *net)
+{
+    pthread_mutex_lock(&_mutex);
+    *net = _network;
+    pthread_mutex_unlock(&_mutex);
+}
+
+bool bc_stats::update_net_info()
+{
+    pthread_mutex_lock(&_mutex);
+
+    DIR *net_dir = opendir(BC_DIR_NETWORK);
+    if (net_dir == NULL)
+    {
+        pthread_mutex_unlock(&_mutex);
+        return false;
+    }
+
+    struct dirent *dir_entry = readdir(net_dir);
+    while(dir_entry != NULL) 
+    {
+        /* Found an entry, but ignore . and .. */
+        if (!strcmp(".", dir_entry->d_name) || 
+            !strcmp("..", dir_entry->d_name))
+        {
+            dir_entry = readdir(net_dir);
+            continue;
+        }
+
+        char buffer[BC_FILE_MAX];
+        char iface_path[PATH_MAX];
+
+        net_iface iface;
+        iface.name = std::string(dir_entry->d_name);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/address", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0)
+        {
+            char *saveptr = NULL;
+            strtok_r(buffer, "\n", &saveptr);
+            if (buffer[0] == '\n') buffer[0] = 0;
+            iface.hwaddr = std::string(buffer);
+        }
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/type", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.type = atol(buffer);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/statistics/rx_bytes", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.bytes_recv = atol(buffer);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/statistics/tx_bytes", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.bytes_sent = atol(buffer);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/statistics/rx_packets", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.pkts_recv = atol(buffer);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/statistics/tx_packets", BC_DIR_NETWORK, iface.name.c_str());
+        if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.pkts_sent = atol(buffer);
+
+        snprintf(iface_path, sizeof(iface_path), "%s%s/", BC_DIR_NETWORK, iface.name.c_str());
+        DIR *pIfaceDir = opendir(iface_path);
+
+        network_it it = _network.find(iface.name.c_str());
+
+        if (it != _network.end())
+        {
+            if (iface.bytes_recv > it->second.bytes_recv && it->second.bytes_recv > 0)
+                iface.bytes_recv_per_sec = (iface.bytes_recv - it->second.bytes_recv) / _monitoring_interval;
+    
+            if (iface.pkts_recv > it->second.pkts_recv && it->second.pkts_recv > 0)
+                iface.pkts_recv_per_sec = (iface.pkts_recv - it->second.pkts_recv) / _monitoring_interval;
+    
+            if (iface.bytes_sent > it->second.bytes_sent && it->second.bytes_sent > 0)
+                iface.bytes_sent_per_sec = (iface.bytes_sent - it->second.bytes_sent) / _monitoring_interval;
+    
+            if (iface.pkts_sent > it->second.pkts_sent && it->second.pkts_sent > 0)
+                iface.pkts_sent_per_sec = (iface.pkts_sent - it->second.pkts_sent) / _monitoring_interval;
+
+            if (!iface.ipaddr.length()) iface.ipaddr = get_iface_ip_addr(iface.name.c_str());
+    
+            /* Update existing value with copy-assigment */
+            it->second = iface;
+        }
+        else
+        {
+            /* Insert new value into unordered map */
+            iface.ipaddr = get_iface_ip_addr(iface.name.c_str());
+            _network.insert(std::pair<std::string,net_iface>(iface.name.c_str(), iface));
+        }
+
+        dir_entry = readdir(net_dir);
+    }
+
+    closedir(net_dir);
+    pthread_mutex_unlock(&_mutex);
+
+    return true;
+}
+
 void bc_stats::display()
 {
     bc_stats::memory mem;
@@ -311,6 +435,7 @@ void bc_stats::monithoring_thread()
     {
         update_mem_info();
         update_cpu_info();
+        update_net_info();
 
         //display();
         sleep(1);
@@ -321,7 +446,9 @@ void bc_stats::monithoring_thread()
 
 void bc_stats::start_monithoring()
 {
+    pthread_mutex_init(&_mutex, NULL);
     __sync_lock_test_and_set(&_active, 1);
+
     std::thread thread_id(&bc_stats::monithoring_thread, this);
     thread_id.detach();
 }
@@ -333,4 +460,7 @@ void bc_stats::stop_monithoring()
 
     while (__sync_add_and_fetch(&_active, 0)) 
         usleep(10000); // Wait for thread termination
+
+    /* Destroy mutex */
+    pthread_mutex_destroy(&_mutex);
 }

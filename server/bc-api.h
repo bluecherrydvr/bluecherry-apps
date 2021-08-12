@@ -119,6 +119,7 @@ public:
 
     void get_cpu_stats(std::string &outout);
     void get_memory_stats(std::string &outout);
+    void get_network_stats(std::string &outout);
 
 private:
     bc_stats*       _stats;

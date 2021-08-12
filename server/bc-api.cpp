@@ -350,6 +350,11 @@ bool api_session::handle_request(const std::string &request)
         _api->get_memory_stats(_tx_buffer);
         return true;
     }
+    else if (!url.compare(0, 14, "/stats/network"))
+    {
+        _api->get_network_stats(_tx_buffer);
+        return true;
+    }
 
     bc_log(Warning, "Invalid API request: %s", url.c_str());
     _tx_buffer = std::string("HTTP/1.1 501 Not Implemented\r\n");
@@ -476,7 +481,6 @@ int api_read_event(bc_events *events, bc_events::event_data *ev_data)
     return -1;
 }
 
-
 void bc_api::get_cpu_stats(std::string &outout)
 {
     bc_stats::cpu cpu;
@@ -484,23 +488,23 @@ void bc_api::get_cpu_stats(std::string &outout)
 
     char response[BC_REQUEST_MAX];
 	int length = snprintf(response, sizeof(response),
-		"{\"loadAverage\":["
+		"{\"load_average\":["
 			"{\"interval\":\"1m\",\"value\":%.2f},"
 			"{\"interval\":\"5m\",\"value\":%.2f},"
 			"{\"interval\":\"10m\",\"value\":%.2f}"
 		"],"
 		"\"usage\":{"
 			"\"bluecherry\":{"
-				"\"userSpace\":%.2f,"
-				"\"kernelSpace\":%.2f"
+				"\"user_space\":%.2f,"
+				"\"kernel_space\":%.2f"
 			"},"
 			"\"idle\":%.2f,"
-			"\"userSpace\":%.2f,"
-			"\"kernelSpace\":%.2f,"
-			"\"userSpaceNiced\":%.2f,"
-			"\"softInts\":%.2f,"
-			"\"hardInts\":%.2f,"
-			"\"ioWait\":%.2f"
+			"\"user_space\":%.2f,"
+			"\"kernel_space\":%.2f,"
+			"\"user_niced\":%.2f,"
+			"\"soft_ints\":%.2f,"
+			"\"hard_ints\":%.2f,"
+			"\"io_wait\":%.2f"
 		"}}",
 		bc_stats::bc_u32_to_float(cpu.load_avg[0]),
 		bc_stats::bc_u32_to_float(cpu.load_avg[1]),
@@ -560,6 +564,62 @@ void bc_api::get_memory_stats(std::string &outout)
     std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
     std_string_append(outout, "Content-Length: %zu\r\n\r\n", length);
     outout.append(response, length);
+}
+
+void bc_api::get_network_stats(std::string &outout)
+{
+    bc_stats::network netstat;
+    _stats->get_net_info(&netstat);
+
+    std::string body;
+	body = std::string("[");
+
+	for (bc_stats::network_it it = netstat.begin(); it != netstat.end(); it++)
+	{
+		bc_stats::net_iface iface = it->second;
+		char buffer[BC_REQUEST_MAX];
+
+		int length = snprintf(buffer, sizeof(buffer),
+			"{"
+				"\"name\":\"%s\","
+				"\"type\":%d,"
+				"\"hw_addr\":\"%s\","
+				"\"ip_addr\":\"%s\","
+				"\"bytes_received\":%ld,"
+				"\"bytes_sent\":%ld,"
+				"\"packets_received\":%ld,"
+				"\"packets_sent\":%ld,"
+				"\"bytes_received_per_sec\":%lu,"
+				"\"bytes_sent_per_sec\":%lu,"
+				"\"packets_received_per_sec\":%lu,"
+				"\"packets_sent_per_sec\":%lu"
+            "}",
+			iface.name.c_str(),
+			iface.type,
+			iface.hwaddr.c_str(),
+			iface.ipaddr.c_str(),
+			iface.bytes_recv,
+			iface.bytes_sent,
+			iface.pkts_recv,
+			iface.pkts_sent,
+			iface.bytes_recv_per_sec,
+			iface.bytes_sent_per_sec,
+			iface.pkts_recv_per_sec,
+			iface.pkts_sent_per_sec);
+
+		body.append(buffer, length);
+        if (std::next(it) != netstat.end()) body.append(",");
+    }
+
+    body.append("]");
+
+    outout = std::string("HTTP/1.1 200 OK\r\n");
+    std_string_append(outout, "Access-Control-Allow-Origin: %s\r\n", "*");
+    std_string_append(outout, "User-Agent: bluechery/%s\r\n", __VERSION__);
+    std_string_append(outout, "Content-Type: %s\r\n", "application/json");
+    std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
+    std_string_append(outout, "Content-Length: %zu\r\n\r\n", body.length());
+    outout.append(body);
 }
 
 int api_write_event(bc_events *events, bc_events::event_data *ev_data)
