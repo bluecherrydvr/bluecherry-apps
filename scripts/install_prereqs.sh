@@ -70,7 +70,3 @@ echo "nameserver 8.8.8.8" > $LOCATION/etc/resolvconf/resolv.conf.d/head || true
 echo "nameserver 8.8.8.8" > $LOCATION/etc/resolv.conf
 
 apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev $ADDITIONAL_PKGS
-
-pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
-pip3 install --user --upgrade pip
-pip3 install --user --upgrade cryptography

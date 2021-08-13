@@ -391,6 +391,11 @@ case "$1" in
 			fi
 		fi
 
+		# Install pip3 dependencies
+		pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
+		pip3 install --user --upgrade pip
+		pip3 install --user --upgrade cryptography
+
 		nginx -t 2>/dev/null > /dev/null
 		if [[ $? == 0 ]]; then
 			# Reenable our site in nginx
