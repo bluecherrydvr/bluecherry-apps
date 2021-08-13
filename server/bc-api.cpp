@@ -342,17 +342,30 @@ bool api_session::handle_request(const std::string &request)
 
     if (!url.compare(0, 10, "/stats/cpu"))
     {
-        _api->get_cpu_stats(_tx_buffer);
+        std::string body;
+        _api->get_cpu_stats(body);
+        _api->create_http_response(_tx_buffer, body);
         return true;
     }
     else if (!url.compare(0, 13, "/stats/memory"))
     {
-        _api->get_memory_stats(_tx_buffer);
+        std::string body;
+        _api->get_memory_stats(body);
+        _api->create_http_response(_tx_buffer, body);
         return true;
     }
     else if (!url.compare(0, 14, "/stats/network"))
     {
-        _api->get_network_stats(_tx_buffer);
+        std::string body;
+        _api->get_network_stats(body);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 14, "/stats/overall"))
+    {
+        std::string body;
+        _api->get_overall_stats(body);
+        _api->create_http_response(_tx_buffer, body);
         return true;
     }
 
@@ -481,6 +494,17 @@ int api_read_event(bc_events *events, bc_events::event_data *ev_data)
     return -1;
 }
 
+void bc_api::create_http_response(std::string &outout, const std::string &body)
+{
+    outout = std::string("HTTP/1.1 200 OK\r\n");
+    std_string_append(outout, "Access-Control-Allow-Origin: %s\r\n", "*");
+    std_string_append(outout, "User-Agent: bluechery/%s\r\n", __VERSION__);
+    std_string_append(outout, "Content-Type: %s\r\n", "application/json");
+    std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
+    std_string_append(outout, "Content-Length: %zu\r\n\r\n", body.length());
+    outout.append(body);
+}
+
 void bc_api::get_cpu_stats(std::string &outout)
 {
     bc_stats::cpu cpu;
@@ -519,12 +543,6 @@ void bc_api::get_cpu_stats(std::string &outout)
 		bc_stats::bc_u32_to_float(cpu.sum.hard_ints),
 		bc_stats::bc_u32_to_float(cpu.sum.io_wait));
 
-    outout = std::string("HTTP/1.1 200 OK\r\n");
-    std_string_append(outout, "Access-Control-Allow-Origin: %s\r\n", "*");
-    std_string_append(outout, "User-Agent: bluechery/%s\r\n", __VERSION__);
-    std_string_append(outout, "Content-Type: %s\r\n", "application/json");
-    std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
-    std_string_append(outout, "Content-Length: %zu\r\n\r\n", length);
     outout.append(response, length);
 }
 
@@ -557,12 +575,6 @@ void bc_api::get_memory_stats(std::string &outout)
 		meminfo.free
     );
 
-    outout = std::string("HTTP/1.1 200 OK\r\n");
-    std_string_append(outout, "Access-Control-Allow-Origin: %s\r\n", "*");
-    std_string_append(outout, "User-Agent: bluechery/%s\r\n", __VERSION__);
-    std_string_append(outout, "Content-Type: %s\r\n", "application/json");
-    std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
-    std_string_append(outout, "Content-Length: %zu\r\n\r\n", length);
     outout.append(response, length);
 }
 
@@ -570,9 +582,7 @@ void bc_api::get_network_stats(std::string &outout)
 {
     bc_stats::network netstat;
     _stats->get_net_info(&netstat);
-
-    std::string body;
-	body = std::string("[");
+	outout = std::string("[");
 
 	for (bc_stats::network_it it = netstat.begin(); it != netstat.end(); it++)
 	{
@@ -607,19 +617,31 @@ void bc_api::get_network_stats(std::string &outout)
 			iface.pkts_recv_per_sec,
 			iface.pkts_sent_per_sec);
 
-		body.append(buffer, length);
-        if (std::next(it) != netstat.end()) body.append(",");
+		outout.append(buffer, length);
+        if (std::next(it) != netstat.end()) outout.append(",");
     }
 
-    body.append("]");
+    outout.append("]");
+}
 
-    outout = std::string("HTTP/1.1 200 OK\r\n");
-    std_string_append(outout, "Access-Control-Allow-Origin: %s\r\n", "*");
-    std_string_append(outout, "User-Agent: bluechery/%s\r\n", __VERSION__);
-    std_string_append(outout, "Content-Type: %s\r\n", "application/json");
-    std_string_append(outout, "Cache-Control: %s\r\n", "no-cache");
-    std_string_append(outout, "Content-Length: %zu\r\n\r\n", body.length());
-    outout.append(body);
+void bc_api::get_overall_stats(std::string &outout)
+{
+    outout = std::string("{\"cpu\":");
+
+    std::string stats;
+    get_cpu_stats(stats);
+    outout.append(stats);
+    stats.clear();
+
+    outout.append(",\"memory\":");
+    get_memory_stats(stats);
+    outout.append(stats);
+    stats.clear();
+
+    outout.append(",\"network\":");
+    get_network_stats(stats);
+    outout.append(stats);
+    outout.append("}");
 }
 
 int api_write_event(bc_events *events, bc_events::event_data *ev_data)

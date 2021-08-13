@@ -120,6 +120,9 @@ public:
     void get_cpu_stats(std::string &outout);
     void get_memory_stats(std::string &outout);
     void get_network_stats(std::string &outout);
+    void get_overall_stats(std::string &outout);
+
+    void create_http_response(std::string &outout, const std::string &body);
 
 private:
     bc_stats*       _stats;

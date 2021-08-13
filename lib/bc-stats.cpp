@@ -353,11 +353,7 @@ bool bc_stats::update_net_info()
         snprintf(iface_path, sizeof(iface_path), "%s%s/statistics/tx_packets", BC_DIR_NETWORK, iface.name.c_str());
         if (load_file(iface_path, buffer, sizeof(buffer)) > 0) iface.pkts_sent = atol(buffer);
 
-        snprintf(iface_path, sizeof(iface_path), "%s%s/", BC_DIR_NETWORK, iface.name.c_str());
-        DIR *pIfaceDir = opendir(iface_path);
-
         network_it it = _network.find(iface.name.c_str());
-
         if (it != _network.end())
         {
             if (iface.bytes_recv > it->second.bytes_recv && it->second.bytes_recv > 0)
