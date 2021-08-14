@@ -46,3 +46,7 @@ apt-get update
 apt-get upgrade -y -V
 
 apt-get install -y -V autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev $ADDITIONAL_PKGS
+<<<<<<< HEAD
+=======
+
+>>>>>>> parent of 3e350da3 (Install certbot and subdomain related dependencies during package installation)
