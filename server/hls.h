@@ -268,17 +268,21 @@ public:
         fmp4
     };
 
+    struct meta {
+        hls_segment::type   type = type::mpegts;
+        uint32_t            id = 0;
+        int64_t             pts = 0;
+        double              duration = 0;
+        bool                is_last = false;
+        bool                is_key = false;
+    };
+
     bool add_data(const uint8_t *data, size_t size);
     uint8_t* data() { return _data; }
     size_t size() { return _size; }
     hls_segment* copy();
 
-    hls_segment::type   _type = type::mpegts;
-    uint32_t            _id = 0;
-    int64_t             _pts = 0;
-    double              _duration = 0;
-    bool                _is_last = false;
-    bool                _is_key = false;
+    hls_segment::meta   _meta;
 
 private:
     uint8_t*            _data = NULL;
@@ -302,6 +306,7 @@ public:
 
     bool add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags);
     bool append_segment(hls_segment *segment);
+    bool finish_segment(int64_t pts);
     bool clear_window();
 
     size_t get_window_size() { return _config.window_size; };
@@ -320,21 +325,25 @@ public:
     void update_pts(int64_t pts) { _pts = pts; };
     int64_t get_last_pts() { return _pts; };
 
-    pthread_mutex_t _mutex;
-    hls_window      _window;
-    bool            _fmp4 = false;
-    bool            _init = false;
+    pthread_mutex_t     _mutex;
+    hls_window          _window;
+    bool                _fmp4 = false;
+    bool                _init = false;
+
+    bool                _append_criteria = false;
+    hls_segment::meta   _meta;
 
 private:
-    hls_byte_buffer _in_buffer;
-    hls_config      _config;
+    hls_byte_buffer     _in_buffer;
+    hls_config          _config;
 
-    bool            _use_initial = false;
-    hls_segment*    _init_segment = NULL;
+    bool                _use_initial = false;
+    hls_segment*        _init_segment = NULL;
+    
 
-    int             _device_id = 0;
-    int64_t         _pts = 0;
-    uint32_t        _cc = 0;
+    int                 _device_id = 0;
+    int64_t             _pts = 0;
+    uint32_t            _cc = 0;
 };
 
 typedef std::unordered_map<int, hls_content*> hls_content_map;
