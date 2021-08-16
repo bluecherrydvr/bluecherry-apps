@@ -315,7 +315,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	this->file_path = path;
 
 	//av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
-	av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+	av_dict_set(&muxer_opts, "movflags", "faststart", 0);
 
 	ret = avformat_write_header(oc, &muxer_opts);
 	av_dict_free(&muxer_opts);
