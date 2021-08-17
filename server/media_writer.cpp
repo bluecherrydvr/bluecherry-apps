@@ -266,7 +266,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	avctx = avcodec_alloc_context3(NULL);
 
 	/* Get the output format */
-	AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, NULL);
+	AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, "video/mp4");
 	if (!fmt_out) {
 		errno = EINVAL;
 		goto error;
@@ -315,10 +315,15 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	this->file_path = path;
 
 	//av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
-	av_dict_set(&muxer_opts, "movflags", "faststart+empty_moov", 0);
 
-	ret = avformat_write_header(oc, &muxer_opts);
-	av_dict_free(&muxer_opts);
+	if (properties.has_audio()) {
+		ret = avformat_write_header(oc, NULL);
+	} else {
+		av_dict_set(&muxer_opts, "movflags", "faststart+empty_moov", 0);
+		ret = avformat_write_header(oc, &muxer_opts);
+		av_dict_free(&muxer_opts);
+	}
+
 	if (ret) {
 		char error[512];
 		av_strerror(ret, error, sizeof(error));
