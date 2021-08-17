@@ -402,6 +402,10 @@ int bc_device_config_init(struct bc_device_config *cfg, BC_DB_RES dbres)
 
 	cfg->substream_mode = (int8_t)bc_db_get_val_int(dbres, "substream_mode");
 
+	cfg->hls_window_size = bc_db_get_val_int(dbres, "hls_window_size");
+	cfg->hls_segment_size = bc_db_get_val_int(dbres, "hls_segment_size");
+	cfg->hls_segment_duration = bc_db_get_val_float(dbres, "hls_segment_duration");
+
 	return 0;
 }
 

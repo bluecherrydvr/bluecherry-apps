@@ -151,6 +151,30 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_HLS_WINDOW_SIZE; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <input class="form-control" type="text" name="hls_window_size" value="5"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_HLS_SEGMENT_SIZE; ?><p class='help-block'><small><?php echo AIP_HLS_SEGMENT_SIZE_EX; ?></small></p></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <input class="form-control" type="text" name="hls_segment_size" value="2695168"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_HLS_SEGMENT_DURATION; ?></label>
+
+                        <div class="col-lg-6 col-md-6">
+                            <input class="form-control" type="text" name="hls_segment_duration" value="3.0"  />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_SUBSTREAM_PATH; ?></label>
 
                         <div class="col-lg-6 col-md-6">

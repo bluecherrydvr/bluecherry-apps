@@ -135,6 +135,10 @@ struct bc_device_config {
 	int max_motion_frames;
 	int motion_blend_ratio;
 	bool motion_debug;
+
+	int hls_window_size;
+	int hls_segment_size;
+	double hls_segment_duration;
 };
 
 struct bc_license {

@@ -62,7 +62,7 @@ class mediaHls extends Controller {
         $port = $_GET['port'];
 
         $token = $this->createHlsToken();
-        return "https://$hostname:$port/hls/$id/index.m3u8?authtoken=$token";
+        return "https://$hostname:$port/hls/$id/0/playlist.m3u8?authtoken=$token";
     }
 
     function createHlsToken() {
