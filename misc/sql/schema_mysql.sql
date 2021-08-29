@@ -88,9 +88,9 @@ CREATE TABLE `Devices` (
   `max_motion_frames` smallint(5) DEFAULT '20',
   `motion_blend_ratio` smallint(5) DEFAULT '15',
   `motion_debug` tinyint(1) DEFAULT '0',
-  `hls_segment_duration` decimal(6,3) DEFAULT '3.000',
-  `hls_segment_size` int(11) DEFAULT '2695168',
-  `hls_window_size` smallint(5) DEFAULT '5',
+  `hls_segment_duration` decimal(6,3) DEFAULT '1.000',
+  `hls_segment_size` int(11) DEFAULT '1347584',
+  `hls_window_size` smallint(5) DEFAULT '3',
 
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),

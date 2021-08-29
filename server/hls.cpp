@@ -53,10 +53,10 @@ extern "C" {
 #define PTHREAD_MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE_NP
 #endif
 
-#define HLS_WINDOW_SIZE             5                       // Default HLS window size
+#define HLS_WINDOW_SIZE             3                       // Default HLS window size
 #define HLS_SEGMENT_SIZE            (188 * 7 * 1024)        // Most accepted HLS segment size
 #define HLS_SEGMENT_SIZE_MAX        (188 * 7 * 1024 * 5)    // Maximum allowed segment size
-#define HLS_SEGMENT_DURATION        3.0                     // Most accepted HLS segment duration
+#define HLS_SEGMENT_DURATION        1.0                     // Most accepted HLS segment duration
 #define HLS_HEADER_EXPIRE_SEC       2                       // HLS header expiration seconds
 #define HLS_SERVER_CHUNK_MAX        65535                   // RX chunk size to send per one call
 
@@ -1404,7 +1404,7 @@ void hls_content::set_config(hls_config *config)
     }
 }
 
-void hls_content::get_config(size_t *segment_size, double *segment_duration)
+void hls_content::get_config(hls_config *config)
 {
     if (pthread_mutex_lock(&_mutex))
     {
@@ -1412,8 +1412,7 @@ void hls_content::get_config(size_t *segment_size, double *segment_duration)
         return;
     }
 
-    *segment_size = _config.segment_size;
-    *segment_duration = _config.segment_duration;
+    *config = _config;
 
     if (pthread_mutex_unlock(&_mutex))
     {
@@ -1538,11 +1537,9 @@ bool hls_content::finish_segment(int64_t pts)
 
 bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags)
 {
-    size_t segment_size = 0;
-    double segment_duration = 0.;
-
-    get_config(&segment_size, &segment_duration);
-    if (!segment_size && segment_duration == 0.) return false;
+    hls_config config;
+    get_config(&config);
+    if (!config.segment_size && config.segment_duration == 0.) return false;
 
     if (_append_criteria && (_meta.pts != pts))
     {
@@ -1559,8 +1556,8 @@ bool hls_content::add_data(uint8_t *data, size_t size, int64_t pts, hls_segment:
     double duration = pts_diff > 0 ? (double)pts_diff / (double)90000 : 0;
 
     if (_in_buffer.used() > HLS_SEGMENT_SIZE_MAX || (is_key &&
-        ((segment_duration > 0. && duration >= segment_duration) ||
-        (segment_size > 0 && _in_buffer.used() >= segment_size))))
+        ((config.segment_duration > 0. && duration >= config.segment_duration) ||
+        (config.segment_size > 0 && _in_buffer.used() >= config.segment_size))))
     {
         _append_criteria = true;
         _meta.duration = duration;

@@ -826,7 +826,7 @@ class ipCamera{
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
 		#prepare hls window
-			$data['hls_window_size'] = (empty($rawData['hls_window_size'])) ? "5" : $rawData['hls_window_size']; //default to hls window size
+			$data['hls_window_size'] = (empty($rawData['hls_window_size'])) ? "3" : $rawData['hls_window_size']; //default to hls window size
 			$data['hls_segment_duration'] = $rawData['hls_segment_duration']; //default to hls segment duration
 			$data['hls_segment_size'] = $rawData['hls_segment_size']; //default to hls segment size
 
