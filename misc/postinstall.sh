@@ -390,6 +390,12 @@ case "$1" in
 				echo "tw5864" >> /etc/modules
 			fi
 		fi
+		
+		# If subdomain.conf exists don't use snakeoil
+		
+		if test -f "/usr/share/bluecherry/nginx-includes/subdomain.conf"; then
+		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
+		fi
 
 		# Install pip3 dependencies
 		pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
