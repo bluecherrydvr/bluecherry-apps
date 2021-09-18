@@ -35,6 +35,8 @@ extern "C" {
 #include "bc-server.h"
 #include "rtsp.h"
 #include "bc-syslog.h"
+#include "bc-stats.h"
+#include "bc-api.h"
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
@@ -95,6 +97,7 @@ typedef std::vector<std::string> bc_string_array;
 
 static rtsp_server *rtsp = NULL;
 static hls_listener *hls = NULL;
+static bc_api *api = NULL;
 #ifdef V3_LICENSING
 static v3license_server *v3license = NULL;
 #endif /* V3_LICENSING */
@@ -1572,6 +1575,22 @@ int main(int argc, char **argv)
 
 	/* Mutex */
 	bc_initialize_mutexes();
+
+	/* Start monitoring */
+	bc_stats stats;
+	stats.start_monithoring();
+
+	api = new bc_api;
+	api->set_stats(&stats);
+
+	if (!api->start_listener(7005)) {
+		bc_log(Error, "Failed to setup API listener");
+		delete api;
+		return 1;
+	} else {
+		std::thread api_th(&bc_api::run, api);
+		api_th.detach();
+	}
 
 	rtsp = new rtsp_server;
 	if (rtsp->setup(7002)) {
