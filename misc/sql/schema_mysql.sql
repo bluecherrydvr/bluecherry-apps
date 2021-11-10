@@ -84,7 +84,7 @@ CREATE TABLE `Devices` (
   `substream_mode` tinyint(1) DEFAULT '0',
   `substream_path` varchar(255) DEFAULT NULL,
   `onvif_events_enabled` tinyint(1) DEFAULT '0',
-  `min_motion_frames` smallint(5) DEFAULT '25',
+  `min_motion_frames` smallint(5) DEFAULT '15',
   `max_motion_frames` smallint(5) DEFAULT '20',
   `motion_blend_ratio` smallint(5) DEFAULT '15',
   `motion_debug` tinyint(1) DEFAULT '0',
