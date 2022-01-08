@@ -112,11 +112,15 @@ if ($argv[1] == "motion_event") {
 	#get device details
 	$device = data::getObject('Devices', 'id', $device_id);
 
-	webhook_trigger('motion_event', $device_id, array(
-		'device_id' => $device_id,
-		'device_name' => $device[0]['device_name'],
-		'dvr_name' => $global_settings->data['G_DVR_NAME']
-	));
+	$event_cam = data::getObject('EventsCam', 'media_id', $argv[2]);
+
+	if ($event_cam[0]['type_id'] == 'motion') {
+		webhook_trigger('motion_event', $device_id, array(
+			'device_id' => $device_id,
+			'device_name' => $device[0]['device_name'],
+			'dvr_name' => $global_settings->data['G_DVR_NAME']
+		));
+	}
 
 } else if ($argv[1] == "device_state") {
 	$device_id = $argv[2];
