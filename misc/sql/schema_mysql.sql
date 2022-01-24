@@ -221,7 +221,7 @@ CREATE TABLE `Media` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `start` int(11) NOT NULL,
   `end` int(11) NOT NULL DEFAULT '0',
-  `size` int(11) DEFAULT NULL,
+  `size` bigint(20) DEFAULT NULL,
   `device_id` int(11) NOT NULL,
   `filepath` varchar(1024) NOT NULL,
   `archive` tinyint(1) NOT NULL DEFAULT '0',
