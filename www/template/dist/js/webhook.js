@@ -1,5 +1,4 @@
-
-$('#btn-webhook-delete').click(function (event) {
+$('#table-webhook-list').on('click', '.btn-webhook-delete', function (event) {
     event.preventDefault();
 
     if (!confirm('Are you sure you want to delete webhook?')) {
@@ -22,7 +21,7 @@ $('#btn-webhook-delete').click(function (event) {
     return false;
 });
 
-$('#btn-webhook-test').click(function (event) {
+$('#table-webhook-list').on('click', '.btn-webhook-test', function (event) {
     event.preventDefault();
 
     var t = $(this);
