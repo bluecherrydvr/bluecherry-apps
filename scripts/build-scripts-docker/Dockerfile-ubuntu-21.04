@@ -1,0 +1,21 @@
+FROM ubuntu:hirsute
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN set -ex \
+    && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list 
+#    && apt-get update \
+RUN apt-get update
+RUN apt -y install wget gnupg
+RUN wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+RUN echo "deb http://repo.mysql.com/apt/ubuntu hirsute mysql-5.7" >> /etc/apt/sources.list.d/mysql.list
+
+RUN apt-get update
+RUN apt install -y --no-install-recommends libmysqlclient-dev \
+               build-essential \
+               cdbs \
+               devscripts \
+               equivs \
+               fakeroot \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*
