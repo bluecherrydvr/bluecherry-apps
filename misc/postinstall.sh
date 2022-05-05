@@ -390,11 +390,21 @@ case "$1" in
 				echo "tw5864" >> /etc/modules
 			fi
 		fi
+		
+		# If subdomain.conf exists don't use snakeoil
+		
+		if test -f "/usr/share/bluecherry/nginx-includes/subdomain.conf"; then
+		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
+		fi
 
 		# Install pip3 dependencies
 		pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
 		pip3 install --user --upgrade pip
 		pip3 install --user --upgrade cryptography
+		
+		# Install crontabs for subdomain renewal and SSL renewal using certbot
+		crontab -l 2>/dev/null || true; printf "* * */5 * * certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ >/dev/null 2>&1\n*/5 * * * * curl -k https://localhost:7001/subdomainprovidercron >/dev/null 2>&1\n" | crontab -
+
 
 		nginx -t 2>/dev/null > /dev/null
 		if [[ $? == 0 ]]; then

@@ -758,6 +758,25 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		return -1;
 	}
 
+	if (current->hls_segment_duration != update->hls_segment_duration ||
+		current->hls_segment_size != update->hls_segment_size ||
+		current->hls_window_size != update->hls_window_size)
+	{
+		bc_rec->log.log(Info, "Updated HLS configuration for camera: %d", bc_rec->id);
+		if (bc_rec->hls_stream)
+		{
+			hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+			if (content != NULL)
+			{
+				hls_config config;
+				config.segment_duration = update->hls_segment_duration;
+				config.segment_size = update->hls_segment_size;
+				config.window_size = update->hls_window_size;
+				content->set_config(&config);
+			}
+		}
+	}
+
 	motion_map_changed = memcmp(current->motion_map, update->motion_map, sizeof(update->motion_map));
 	format_changed = (current->width != update->width || current->height != update->height ||
 	                  current->interval != update->interval);

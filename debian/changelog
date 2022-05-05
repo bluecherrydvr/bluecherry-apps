@@ -1,3 +1,28 @@
+bluecherry (3:3.1.0-rc5) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Frame based motion randomly stops in the middle of a motion event #(500)
+  * FIX: Constant recordings stop after several seconds (#523)
+  * FIX: Add cronscripts for domain and SSL renewal
+  * FIX: Only send webhook trigger on motion, not constant video (#515) -- Thanks to @mcnelson for this fix
+  * FIX: Increase Media.size limit to fix SQL errors with 1hr+ record segments (0294eef8f22708526b03bd94d8b676954e5d857b) -- Thanks to @mcnelson for this fix
+  * FIX: Web UI fix: can't delete webhooks when there are multiple webhooks configured (b384096819205e5008dd26f02d7e83f7b6abaa85) -- Thanks to @enp6s0 for this fix
+
+-- Curtis Hall <chall@corp.bluecherry.net>  Tues, 01 Mar 2022 15:52:42 -0600   
+
+bluecherry (3:3.1.0-rc4) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Most reported crashes in RC3 (one still remains outstanding)
+  * FIX: Don't overwrite subdomain SSL certificate include in nginx on upgrade (57bea75ac9b1d692b20ed742d69bcd5ecb101be6)
+  * FIX: Add cronscript to check for new IP address and report changes to subdomain API (#507)
+  * FIX: Available licensed ports show -1 (#504)
+  * FIX: HLS stream is unstable (#487)
+  * FIX: Failed to init muxer for output file $filepath invalid argument
+  * FIX: apt-get remove --purge remove does not truncate (remove) the user, prevents reinstallation (2b3d199f814430eb21221525301d077be3b6bc27)
+  * FEATURE: Update devices.xml to show device name (needed in mobile app) (00e2fc1462cc82eb51ec47e1c425685d6f8110fc)
+  * FEATURE: Finished monitoring threads and high performance statistic collector with backend API (#506)
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 17 Sep 2021 20:07:00 -0600   
+
 bluecherry (3:3.1.0-rc3) focal bionic buster groovy hirsute bullseye; urgency=low
 
   * FIX: All reported crashes in RC2.

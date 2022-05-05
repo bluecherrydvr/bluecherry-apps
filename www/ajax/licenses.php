@@ -107,7 +107,7 @@ class licenses extends Controller {
 
 			// Show status message if deactivation fails
 			$status = (int)$ret[1];
-			if ($status != Constant('LA_OK')) {
+			if ($status != Constant('LA_OK') && $status != 63) {
 				$message = licenses::getLicenseStatusMessage($status);
 				data::responseJSON(false, $message, $ret);
 				exit();

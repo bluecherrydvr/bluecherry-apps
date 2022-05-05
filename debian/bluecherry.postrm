@@ -35,6 +35,7 @@ function purge_files() {
 function drop_db() {
 	echo "Dropping database $dbname"
 	echo "DROP DATABASE $dbname" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
+	# echo "DROP USER '$user'@'localhost'" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
 }
 
 case "$1" in

@@ -21,7 +21,7 @@ SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  decoder.o encoder.o reencoder.o vaapi.o scaler.o \
 		  recorder.o motion_handler.o ffmpeg-init.o bt.o status_server.o \
 		  trigger_server.o substream-thread.o onvif_events.o \
-		  v3license_server.o v3license_processor.o hls.o
+		  v3license_server.o v3license_processor.o hls.o bc-api.o
 
 all: $(TARGETS) FORCE
 

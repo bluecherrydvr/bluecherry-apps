@@ -15,7 +15,8 @@ DESC="Bluecherry DVR Server"
 NAME=bc-server
 DAEMON=/usr/sbin/$NAME
 DAEMONUSER=bluecherry
-DAEMON_ARGS="-s -u $DAEMONUSER -g $DAEMONUSER"
+DAEMONGROUP=www-data
+DAEMON_ARGS="-s -u $DAEMONUSER -g $DAEMONGROUP"
 PIDDIR=/var/run/bluecherry
 PIDFILE=$PIDDIR/pid
 

@@ -54,7 +54,10 @@ then
 
 	mkdir -p ${DST_DIR}/etc/nginx/sites-enabled/
 
-	if test ! -f ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf; then
+	if test -f /etc/nginx/sites-enabled/bluecherry.conf; then
+		cp /etc/nginx/sites-enabled/bluecherry.conf \
+			${DST_DIR}/etc/nginx/sites-enabled/
+	else
 		cat ${SRC_PATH}/nginx-configs/bluecherry.conf | sed \
 			-e "s/__BLUECHERRY_DIST_CODENAME__/$_CODENAME_/" \
 			> ${DST_DIR}/etc/nginx/sites-enabled/bluecherry.conf

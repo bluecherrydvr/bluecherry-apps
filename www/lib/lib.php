@@ -140,7 +140,6 @@ function getLiveViewVideoOptions() {
     return $ret;
 }
 
-
 /**
  * Returns SQLite Database connection
  * 
@@ -826,6 +825,11 @@ class ipCamera{
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
+		#prepare hls window
+			$data['hls_window_size'] = (empty($rawData['hls_window_size'])) ? "5" : $rawData['hls_window_size']; //default to hls window size
+			$data['hls_segment_duration'] = $rawData['hls_segment_duration']; //default to hls segment duration
+			$data['hls_segment_size'] = $rawData['hls_segment_size']; //default to hls segment size
+
 			//var_dump_pre($data); exit();
 			
 		$duplicate_path = data::getObject('Devices', 'device', $data['device']);
@@ -858,7 +862,7 @@ class ipCamera{
 		#if errors were detected -- return error
 		if (!$data[0]) { return $data; } else { $data = $data[1]; };
 		#if there were no errors, add the camera
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port,substream_path) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']},'{$data['substream_path']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port, substream_path, hls_window_size, hls_segment_size, hls_segment_duration) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']},'{$data['substream_path']}', {$data['hls_window_size']}, {$data['hls_segment_size']}, {$data['hls_segment_duration']})", true);
 		#try to automatically set the camera up
 		$message = ($result) ? AIP_CAMADDED : false;
 		if ($result)

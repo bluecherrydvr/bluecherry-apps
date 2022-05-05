@@ -26,7 +26,7 @@ extern "C" {
 motion_processor::motion_processor(bc_record *bcRecord)
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
 	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}),
-	  m_downscaleFactor(0.5), m_minMotionAreaPercent(5), m_maxMotionAreaPercent(90), m_maxMotionFrames(20),
+	  m_downscaleFactor(0.5), m_minMotionAreaPercent(3), m_maxMotionAreaPercent(90), m_maxMotionFrames(20),
 	  m_minMotionFrames(15), m_motionBlendRatio(0.9), m_motionDebug(true), m_recorder(bcRecord)
 {
 	output_source = new stream_source("Motion Detection");
@@ -485,7 +485,7 @@ int motion_processor::match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFram
     }
 
     //dump_opencv_frame(deltaFrame, "threshold",  &dbg_cnt4);
-	int iterations = 2;
+	int iterations = 5;
 	cv::dilate(deltaFrame, blobFrame, cv::Mat(), cv::Point(-1,-1), iterations);
 
 	std::vector<std::vector<cv::Point>> contours;

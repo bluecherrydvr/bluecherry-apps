@@ -268,17 +268,21 @@ public:
         fmp4
     };
 
+    struct meta {
+        hls_segment::type   type = type::mpegts;
+        uint32_t            id = 0;
+        int64_t             pts = 0;
+        double              duration = 0;
+        bool                is_last = false;
+        bool                is_key = false;
+    };
+
     bool add_data(const uint8_t *data, size_t size);
     uint8_t* data() { return _data; }
     size_t size() { return _size; }
     hls_segment* copy();
 
-    hls_segment::type   _type = type::mpegts;
-    uint32_t            _id = 0;
-    int64_t             _pts = 0;
-    double              _duration = 0;
-    bool                _is_last = false;
-    bool                _is_key = false;
+    hls_segment::meta   _meta;
 
 private:
     uint8_t*            _data = NULL;
@@ -288,17 +292,26 @@ private:
 typedef std::deque<hls_segment*> hls_window;
 typedef std::vector<uint32_t> hls_segments;
 
+typedef struct {
+    size_t window_size;
+    size_t segment_size;
+    double segment_duration;
+} hls_config;
+
 class hls_content
 {
 public:
-    hls_content();
+    hls_content(hls_config *cfg);
     ~hls_content();
-
-    void set_window_size(size_t size) { _window_size = size; }
-    bool clear_window();
 
     bool add_data(uint8_t *data, size_t size, int64_t pts, hls_segment::type type, int flags);
     bool append_segment(hls_segment *segment);
+    bool finish_segment(int64_t pts);
+    bool clear_window();
+
+    size_t get_window_size() { return _config.window_size; };
+    void get_config(size_t *segment_size, double *segment_duration);
+    void set_config(hls_config *config);
 
     hls_segment *get_segment(uint32_t id);
     size_t get_segment_ids(hls_segments &ids);
@@ -312,21 +325,25 @@ public:
     void update_pts(int64_t pts) { _pts = pts; };
     int64_t get_last_pts() { return _pts; };
 
-    pthread_mutex_t _mutex;
-    hls_window      _window;
-    bool            _fmp4 = false;
-    bool            _init = false;
+    pthread_mutex_t     _mutex;
+    hls_window          _window;
+    bool                _fmp4 = false;
+    bool                _init = false;
+
+    bool                _append_criteria = false;
+    hls_segment::meta   _meta;
 
 private:
-    hls_byte_buffer _in_buffer;
+    hls_byte_buffer     _in_buffer;
+    hls_config          _config;
 
-    bool            _use_initial = false;
-    hls_segment*    _init_segment = NULL;
+    bool                _use_initial = false;
+    hls_segment*        _init_segment = NULL;
+    
 
-    size_t          _window_size = 0;
-    int             _device_id = 0;
-    int64_t         _pts = 0;
-    uint32_t        _cc = 0;
+    int                 _device_id = 0;
+    int64_t             _pts = 0;
+    uint32_t            _cc = 0;
 };
 
 typedef std::unordered_map<int, hls_content*> hls_content_map;
@@ -339,6 +356,7 @@ public:
     ~hls_listener();
 
     void run();
+    void reconfigure(hls_config *config);
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);
 
@@ -363,6 +381,7 @@ private:
     bool            _use_ssl = false;
 
     /* HLS listener context */
+    hls_config      _config;
     hls_events      _events;
     uint16_t        _port = 0;
     int             _fd = -1;

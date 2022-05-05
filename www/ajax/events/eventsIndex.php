@@ -17,8 +17,8 @@ class eventsIndex extends Controller {
 
         $events_portion = 5000;
 
-        $query = "SELECT EventsCam.*, Media.size AS media_size, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
-                 "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
+        $query = "SELECT EventsCam.*, Media.size AS media_size, Devices.device_name, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
+            "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) LEFT JOIN Devices ON (EventsCam.device_id=Devices.id) ".
         	 "WHERE ";
         if (isset($_GET['startDate']))
         	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
@@ -89,7 +89,7 @@ class eventsIndex extends Controller {
         		print "  <entry>\n";
         		print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
         		print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
-        			" event on device " . $item['device_id'] . "</title>\n";
+        			" event on device " . $item['device_name'] . "</title>\n";
         		print "    <published>" . date(DATE_ATOM, $item['time']) .
         			"</published>\n";
 
