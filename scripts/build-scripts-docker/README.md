@@ -23,13 +23,17 @@ Clone the
 (the repository you are reading now).  For the example below we use ~git/bluecherry-apps however modify this to your liking and run the build script to see
 usage:
 
-./build -i ubuntu:20.04 -o output ~/git/bluecherry-apps/
 
     # create destination directory to store the build results
     mkdir output
 
     # build package from source directory
-    ./build -i docker-deb-builder:17.04 -o output ~/my-package-source
+    ./build -i ubuntu:20.04 -o output ~/path-to-bluecherry-apps
+
+Example:
+
+/build -i ubuntu:20.04 -o output ~/git/bluecherry-apps/
+
 
 After successful build you will find the `.deb` files in `output\$distro\$arch`
 directory.
