@@ -12,7 +12,7 @@ RUN wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
 RUN echo "deb http://repo.mysql.com/apt/ubuntu focal mysql-5.7" >> /etc/apt/sources.list.d/mysql.list
 RUN apt-get update
 RUN apt -y install wget
-RUN apt -y install autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev libmysqlclient-dev ibidn11-dev libbsd-dev yasm libudev-dev libopencv-dev libva-dev
+RUN apt -y install autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev libmysqlclient-dev libidn11-dev libbsd-dev yasm libudev-dev libopencv-dev libva-dev
 RUN apt-get install -y --no-install-recommends \
                build-essential \
                cdbs \
