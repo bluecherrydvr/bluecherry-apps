@@ -7,7 +7,7 @@ bluecherry (3:3.1.0-rc5) focal bionic buster groovy hirsute bullseye; urgency=lo
   * FIX: Increase Media.size limit to fix SQL errors with 1hr+ record segments (0294eef8f22708526b03bd94d8b676954e5d857b) -- Thanks to @mcnelson for this fix
   * FIX: Web UI fix: can't delete webhooks when there are multiple webhooks configured (b384096819205e5008dd26f02d7e83f7b6abaa85) -- Thanks to @enp6s0 for this fix
 
--- Curtis Hall <chall@corp.bluecherry.net>  Tues, 01 Mar 2022 15:52:42 -0600   
+ -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 01 Mar 2022 15:52:42 -0600   
 
 bluecherry (3:3.1.0-rc4) focal bionic buster groovy hirsute bullseye; urgency=low
 
