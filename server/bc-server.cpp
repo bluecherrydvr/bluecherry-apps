@@ -1094,8 +1094,6 @@ done:
 
 static int bc_check_media(void)
 {
-	pthread_rwlock_rdlock(&media_lock);
-
 	int ret = 0;
 	bool storage_overloaded = true;
 
@@ -1109,8 +1107,6 @@ static int bc_check_media(void)
 
 	if (storage_overloaded || is_media_max_age_exceeded())
 		ret = bc_cleanup_media();
-
-	pthread_rwlock_unlock(&media_lock);
 
 	return ret;
 }
