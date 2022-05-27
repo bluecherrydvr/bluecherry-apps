@@ -1727,5 +1727,7 @@ int main(int argc, char **argv)
 	bc_db_close();
 	bc_ffmpeg_teardown();
 
+	pthread_rwlock_destroy(&media_lock);
+
 	return 0;
 }
