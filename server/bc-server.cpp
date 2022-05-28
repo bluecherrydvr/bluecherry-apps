@@ -587,13 +587,11 @@ const char *select_best_path(void)
 
 size_t bc_get_media_locations(bc_string_array &locations)
 {
-	pthread_rwlock_rdlock(&media_lock);
 	struct bc_storage *p;
 
 	for (p = media_stor; p < media_stor+MAX_STOR_LOCS && p->max_thresh; p++)
 		locations.push_back(std::string(p->path));
 
-	pthread_rwlock_unlock(&media_lock);
 	return locations.size();
 }
 
