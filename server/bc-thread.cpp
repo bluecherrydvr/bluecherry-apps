@@ -189,6 +189,7 @@ void bc_record::run()
 		pthread_mutex_unlock(&cfg_mutex);
 		if (local_thread_should_die)
 			break;
+
 		if (local_cfg_dirty) {
 			if (apply_device_cfg(this))
 				break;
@@ -529,7 +530,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc_rec->update_motion_thresholds();
 	check_schedule(bc_rec);
 
-
 	/* The following operations are effective only for some V4L2 devices */
 	ret  = bc->input->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
 	ret |= bc->input->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
@@ -542,7 +542,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	ret |= bc->input->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
 	if (ret)
 		bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
-
 
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
