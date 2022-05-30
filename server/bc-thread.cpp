@@ -167,6 +167,19 @@ void bc_record::notify_device_state(const char *state)
 	exit(1);
 }
 
+void msleep(int duration) {
+
+    /* Split milliseconds into equivalent seconds + nanoseconds */
+    struct timespec sleep_period = {
+        .tv_sec  =  duration / 1000,
+        .tv_nsec = (duration % 1000) * 1000000
+    };
+
+    /* Sleep for specified interval */
+    nanosleep(&sleep_period, NULL);
+
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
@@ -411,6 +424,7 @@ void bc_record::run()
 				}
 			}
 
+			msleep(10);
 			continue;
 		}
 
@@ -430,6 +444,7 @@ void bc_record::run()
 			}
 		}
 
+		msleep(10);
 		continue;
 error:
 		sleep(10);
