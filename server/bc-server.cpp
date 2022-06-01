@@ -587,13 +587,11 @@ const char *select_best_path(void)
 
 size_t bc_get_media_locations(bc_string_array &locations)
 {
-	pthread_rwlock_rdlock(&media_lock);
 	struct bc_storage *p;
 
 	for (p = media_stor; p < media_stor+MAX_STOR_LOCS && p->max_thresh; p++)
 		locations.push_back(std::string(p->path));
 
-	pthread_rwlock_unlock(&media_lock);
 	return locations.size();
 }
 
@@ -1094,8 +1092,6 @@ done:
 
 static int bc_check_media(void)
 {
-	pthread_rwlock_rdlock(&media_lock);
-
 	int ret = 0;
 	bool storage_overloaded = true;
 
@@ -1109,8 +1105,6 @@ static int bc_check_media(void)
 
 	if (storage_overloaded || is_media_max_age_exceeded())
 		ret = bc_cleanup_media();
-
-	pthread_rwlock_unlock(&media_lock);
 
 	return ret;
 }
@@ -1726,6 +1720,8 @@ int main(int argc, char **argv)
 	bc_stop_threads();
 	bc_db_close();
 	bc_ffmpeg_teardown();
+
+	pthread_rwlock_destroy(&media_lock);
 
 	return 0;
 }
