@@ -51,17 +51,19 @@ public:
     void run();
 
     static license_thread_context_t *thread_context;
-    static void *runThread(void *p);
+    static void* runThread(void* p);
     size_t splitArgument(const std::string &txt, std::vector<std::string> &strs, char ch);
+    static void stopThread();
+
+private:
+    void acceptConnection();
 
 public:
     static int initedLex;
-    static void stopThread();
     static int running;
 
 private:
     int serverfd;
-    void acceptConnection();
 };
 
 #endif /* V3_LICENSING */
