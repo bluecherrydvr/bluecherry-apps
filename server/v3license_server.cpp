@@ -202,40 +202,34 @@ void* socketThread(void *arg)
         status = bc_license_v3_IsActivated();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
-
-    if (strcmp(command, "bc_v3_license_isLicenseGenuine") == 0) {
+    else if (strcmp(command, "bc_v3_license_isLicenseGenuine") == 0) {
         status = bc_license_v3_IsLicenseGenuine();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
-
-    if (strcmp(command, "bc_v3_license_IsTrialGenuine") == 0) {
+    else if (strcmp(command, "bc_v3_license_IsTrialGenuine") == 0) {
         status = bc_license_v3_IsTrialGenuine();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
-
-    if (strcmp(command, "bc_v3_license_GetLicenseMetadata") == 0) {
+    else if (strcmp(command, "bc_v3_license_GetLicenseMetadata") == 0) {
         char licenseMeta[BUF_MAX] = {0};
         status = bc_license_v3_GetLicenseMetadata(licenseMeta, BUF_MAX);
         snprintf(message, sizeof(message), "%s %d %s\n",
                  command, status, licenseMeta);
     }
-
-    if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0) {
+    else if (strcmp(command, "bc_v3_license_GetLicenseExpiryDate") == 0) {
         int32_t isUnlimited = 0;
         int32_t date = 0;
         status = bc_license_v3_GetLicenseExpiryDate(&isUnlimited, &date);
         snprintf(message, sizeof(message), "%s %d %d %d\n",
                  command, status, isUnlimited, date);
     }
-
-    if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0) {
+    else if (strcmp(command, "bc_v3_license_GetTrialExpiryDate") == 0) {
         uint32_t trialDate = 0;
         status = bc_license_v3_GetTrialExpiryDate(&trialDate);
         snprintf(message, sizeof(message), "%s %d %d\n",
                  command, status, trialDate);
     }
-
-    if (strcmp(command, "bc_v3_license_ActivateLicense") == 0) {
+    else if (strcmp(command, "bc_v3_license_ActivateLicense") == 0) {
         if (!param[1]) {
             bc_log(Error, "License key is null or empty");
             snprintf(message, sizeof(message), "%s %d\n", command, LA_FAIL);
@@ -250,15 +244,16 @@ void* socketThread(void *arg)
             }
         }
     }
-
-    if (strcmp(command, "bc_v3_license_ActivateTrial") == 0) {
+    else if (strcmp(command, "bc_v3_license_ActivateTrial") == 0) {
         status = bc_license_v3_ActivateTrial();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
     }
-
-    if (strcmp(command, "bc_v3_license_DeactivateLicense") == 0) {
+    else if (strcmp(command, "bc_v3_license_DeactivateLicense") == 0) {
         status = bc_license_v3_DeactivateLicense();
         snprintf(message, sizeof(message), "%s %d\n", command, status);
+    }
+    else {
+        bc_log(Error, "The %s license API is unspported", command);
     }
 
     for (uint32_t i = 0; i < vec.size(); i++) {
