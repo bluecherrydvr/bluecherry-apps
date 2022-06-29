@@ -258,7 +258,7 @@ void* socketThread(void *arg)
 
     for (uint32_t i = 0; i < vec.size(); i++) {
         if (param[i]) {
-            free (param[i]);
+            free(param[i]);
             param[i] = NULL;
         }
     }
@@ -272,7 +272,8 @@ void* socketThread(void *arg)
 
     // Exit the thread
     close(newSocket);
-    pthread_exit(0);
+
+    return NULL;
 }
 
 void* v3license_server::runThread(void* p)
@@ -288,6 +289,7 @@ void* v3license_server::runThread(void* p)
     bc_log(Info, "v3license server started");
 
     while (running) {
+        // Accept the new client request
         int client = accept(server, NULL, NULL);
         if (client < 0) {
             bc_log(Error, "accept() failed: %s", strerror(errno));
@@ -296,12 +298,29 @@ void* v3license_server::runThread(void* p)
         }
 
         thread_context->socket = client;
+        bc_log(Info, "A new license request is accepted.");
 
-        pthread_t thread;
-        if (pthread_create(&thread, NULL, socketThread, thread_context) != 0) {
-            bc_log(Error, "Failed to create v3license thread: %s",
+        // Create a new thread to process the client request
+        pthread_t threadId;
+        int err = pthread_create(&threadId, NULL, socketThread, thread_context);
+        if (err != 0) {
+            bc_log(Error, "Failed to create a new v3license thread: %s",
                    strerror(errno));
+            sleep(1);
+            continue;
         }
+
+        bc_log(Debug, "Created a new v3license thread.");
+
+        // Detach the new thread
+        err = pthread_detach(threadId);
+        if (err != 0) {
+            bc_log(Error, "Failed to detach v3license thread: %s",
+                   strerror(errno));
+            sleep(1);
+            continue;
+        }
+
     }
 
     bc_log(Info, "v3license server stopped");
