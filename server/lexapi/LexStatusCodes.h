@@ -322,6 +322,28 @@ enum LexStatusCodes
     LA_E_CUSTOM_FINGERPRINT_LENGTH = 74,
 
     /*
+        CODE: LA_E_PRODUCT_VERSION_NOT_LINKED
+
+        MESSAGE: No product version is linked with the license.
+    */
+    LA_E_PRODUCT_VERSION_NOT_LINKED = 75,
+
+    /*
+        CODE: LA_E_FEATURE_FLAG_NOT_FOUND
+
+        MESSAGE: The product version feature flag does not exist.
+    */
+    LA_E_FEATURE_FLAG_NOT_FOUND = 76,
+
+    /*
+        CODE: LA_E_RELEASE_VERSION_NOT_ALLOWED
+
+        MESSAGE: The release version is not allowed.
+    */
+    LA_E_RELEASE_VERSION_NOT_ALLOWED = 77,
+   
+    /*
+
         CODE: LA_E_VM
 
         MESSAGE: Application is being run inside a virtual machine / hypervisor,
@@ -342,6 +364,14 @@ enum LexStatusCodes
         MESSAGE: IP address is not allowed.
     */
     LA_E_IP = 82,
+
+    /*
+        CODE: LA_E_CONTAINER
+
+        MESSAGE: Application is being run inside a container and
+        activation has been disallowed in the container.
+    */
+    LA_E_CONTAINER = 83,
 
     /*
         CODE: LA_E_RATE_LIMIT
