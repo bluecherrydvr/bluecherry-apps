@@ -15,19 +15,17 @@ V3LICENSE_API int bc_license_v3_Init()
     int status;
 
     status = SetProductData(PRODUCT_DATA);
-    if (LA_OK != status)
-    {
+    if (LA_OK != status) {
         return LA_FAIL;
     }
+
     status = SetProductId(PRODUCT_ID, LA_USER);
-    if (LA_OK != status)
-    {
+    if (LA_OK != status) {
         return LA_FAIL;
     }
 
     status = SetAppVersion(PRODUCT_VERSION);
-    if (LA_OK != status)
-    {
+    if (LA_OK != status) {
         return LA_FAIL;
     }
 
@@ -37,32 +35,31 @@ V3LICENSE_API int bc_license_v3_Init()
 V3LICENSE_API int bc_license_v3_IsActivated()
 {
     int status = IsLicenseGenuine();
-    if (LA_OK == status)
-    {
+    if (LA_OK == status) {
         bc_log(Info, "IsLicenseGenuine OK: %d", status);
         return status;
     }
     else if (LA_EXPIRED == status 
             || LA_SUSPENDED == status 
-            || LA_GRACE_PERIOD_OVER == status)
-    {
+            || LA_GRACE_PERIOD_OVER == status) {
+
         bc_log(Info, "LA_EXPIRED or LA_SUSPENDED or LA_GRACE_PERIOD_OVER: %d", status);
         return status;
     }
-    else
-    {
+    else {
         int trialStatus;
         trialStatus = IsTrialGenuine();
-        if (LA_OK == trialStatus)
-        {
+
+        if (trialStatus == LA_OK) {
             bc_log(Info, "IsTrialGenuine: %d", trialStatus);
         }
-        else
-        {
+        else {
             bc_log(Error, "FAIL License: %d", trialStatus);
         }
+
         return trialStatus;
     }
+
     return LA_OK;
 }
 
@@ -106,7 +103,8 @@ V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t lengt
             return LA_OK;
         }
 
-        bc_log(Error, "Getting the number of allowed cameras failed (Error code: %d) - Is trial expired?\n", status);
+        bc_log(Error, "Getting the number of allowed cameras failed (Error code: %d) - Is trial expired?\n",
+               status);
     }
 
     return status;
@@ -114,13 +112,15 @@ V3LICENSE_API int bc_license_v3_GetLicenseMetadata(STRTYPE value, uint32_t lengt
 
 V3LICENSE_API int bc_license_v3_GetLicenseExpiryDate(int32_t *isUnlimited, int32_t *expiryDate)
 {
-    if (!expiryDate || !isUnlimited)
+    if (!expiryDate || !isUnlimited) {
         return LA_FAIL;
+    }
 
     uint32_t date = 0;
     int status = GetLicenseExpiryDate(&date);
-    if (status != LA_OK)
+    if (status != LA_OK) {
         return status;
+    }
 
     int daysLeft = 0;
     if (date == 0) {
@@ -146,8 +146,9 @@ V3LICENSE_API int bc_license_v3_GetTrialActivationMetadata(STRTYPE value, uint32
 
 V3LICENSE_API int bc_license_v3_GetTrialExpiryDate(uint32_t *expiryDate)
 {
-    if (!expiryDate)
+    if (!expiryDate) {
         return LA_FAIL;
+    }
 
     unsigned int trialExpiryDate = 0;
     GetTrialExpiryDate(&trialExpiryDate);
@@ -172,20 +173,17 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
     // }
 
     status = SetLicenseKey(licenseKey);
-    if (LA_OK != status)
-    {
+    if (LA_OK != status) {
         bc_log(Error, "Setting license key failed (Error code: %d)", status);
         return status;
     }
 
     status = ActivateLicense();
-    if (LA_OK == status)
-    {
+    if (LA_OK == status) {
         bc_log(Info, "Activating license successed");
         return status;
     }
-    else
-    {
+    else    {
         bc_log(Error, "Activating license failed (Error code: %d)", status);
         return status;
     }
