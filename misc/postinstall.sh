@@ -392,7 +392,7 @@ case "$1" in
 		fi
 		
 		# If subdomain.conf exists don't use snakeoil
-		
+#		mkdir -p /usr/share/bluecherry/nginx-includes
 		if test -f "/usr/share/bluecherry/nginx-includes/subdomain.conf"; then
 		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
 		fi

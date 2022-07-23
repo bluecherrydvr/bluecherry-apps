@@ -209,7 +209,7 @@ if (!$rules){
 
     if ($argv[1] == "motion_event") {
         #get path to image
-        $path_to_image = str_replace('mkv', 'jpg', $event[0]['filepath']);
+        $path_to_image = str_replace('mp4', 'jpg', $event[0]['filepath']);
 
         # Check the case of such short recording that snapshotting delay hasn't
         # come, so making a snapshot afterwards

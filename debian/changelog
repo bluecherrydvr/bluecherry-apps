@@ -1,3 +1,14 @@
+bluecherry (3:3.1.0-rc6) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Thumbnails are blank (#550)
+  * FIX: Onvif triggering does not work (#547)
+  * FIX: Onvif scanning does not work (#548)
+  * FIX: Web UI freezes (#550)
+  * FIX: Pulling snapshots via API returns no thumbnails (#551)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 09 Jun 2022 12:34:08 -0600
+
+
 bluecherry (3:3.1.0-rc5) focal bionic buster groovy hirsute bullseye; urgency=low
 
   * FIX: Frame based motion randomly stops in the middle of a motion event #(500)
