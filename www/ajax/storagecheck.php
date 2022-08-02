@@ -35,12 +35,13 @@ class storagecheck extends Controller {
     	}
 
         $file_group = posix_getgrgid(filegroup($path));
-        if ((!isset($file_group['name'])) || (isset($file_group['name']) && ($file_group['name'] != 'bluecherry'))) {
+        $allowed_group = array('bluecherry', 'www-data');
+        if ((!isset($file_group['name'])) || (isset($file_group['name']) && (!in_array($file_group['name'], $allowed_group)))) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
         $file_owner = posix_getpwuid(fileowner($path));
-        if ((!isset($file_owner['name'])) || (isset($file_owner['name']) && ($file_owner['name'] != 'bluecherry'))) {
+        if ((!isset($file_owner['name'])) || (isset($file_owner['name']) && (!in_array($file_group['name'], $allowed_group)))) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
