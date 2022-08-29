@@ -1,0 +1,27 @@
+[Unit]
+Documentation=man:systemd-sysv-generator(8)
+Description=LSB: Bluecherry DVR Server
+Before=multi-user.target
+Before=multi-user.target
+Before=multi-user.target
+Before=graphical.target
+After=remote-fs.target
+
+[Service]
+Type=forking
+Restart=on-failure
+RestartSec=5s
+PIDFile=/var/run/bluecherry/pid
+OOMScoreAdjust=-100
+TimeoutStartSec=5min
+TimeoutStopSec=30s
+WorkingDirectory=/usr/share/bluecherry
+Environment=DAEMONUSER=bluecherry
+Environment=DAEMONGROUP=bluecherry
+Environment=DAEMON_ARGS="-s -u $DAEMONUSER -g $DAEMONGROUP"
+IgnoreSIGPIPE=no
+KillMode=process
+RemainAfterExit=no
+SuccessExitStatus=0
+ExecStart=sh bluecherry.sh start
+ExecStop=sh bluecherry.sh stop
