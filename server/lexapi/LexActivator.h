@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "LexStatusCodes.h"
+#if __ANDROID__
+#include <jni.h>
+#endif
 #ifdef _WIN32
     /*
     Make sure you're using the MSVC or Intel compilers on Windows.
@@ -129,6 +132,46 @@ LEXACTIVATOR_API int LA_CC SetProductData(CSTRTYPE productData);
 LEXACTIVATOR_API int LA_CC SetProductId(CSTRTYPE productId, uint32_t flags);
 
 /*
+    FUNCTION: SetDataDirectory()
+
+    PURPOSE: In case you want to change the default directory used by LexActivator to
+    store the activation data on Linux and macOS, this function can be used to
+    set a different directory.
+
+    If you decide to use this function, then it must be called on every start of
+    your program before calling SetProductFile() or SetProductData() function.
+
+    Please ensure that the directory exists and your app has read and write
+    permissions in the directory.
+
+    PARAMETERS:
+    * directoryPath - absolute path of the directory.
+
+    RETURN CODES: LA_OK, LA_E_FILE_PERMISSION
+
+*/
+LEXACTIVATOR_API int LA_CC SetDataDirectory(CSTRTYPE directoryPath);
+
+#if __ANDROID__
+/*
+    FUNCTION: SetJniEnv()
+
+    PURPOSE: Sets the current thread's JNIEnv pointer. This is needed by LexActivator to
+    call Android specific functions.
+
+    This function must be called on every start of your Android app before calling the
+    SetProductId() function.
+
+    PARAMETERS:
+    * env - pointer to the JNIEnv.
+
+    RETURN CODES: LA_OK
+
+*/
+LEXACTIVATOR_API int LA_CC SetJniEnv(JNIEnv* env);
+#endif
+
+/*
     FUNCTION: SetCustomDeviceFingerprint()
 
     PURPOSE: In case you don't want to use the LexActivator's advanced
@@ -186,7 +229,7 @@ LEXACTIVATOR_API int LA_CC SetLicenseUserCredential(CSTRTYPE email, CSTRTYPE pas
     LA_OK, LA_EXPIRED, LA_SUSPENDED,
     LA_E_REVOKED, LA_E_ACTIVATION_NOT_FOUND, LA_E_MACHINE_FINGERPRINT
     LA_E_AUTHENTICATION_FAILED, LA_E_COUNTRY, LA_E_INET, LA_E_SERVER,
-    LA_E_RATE_LIMIT, LA_E_IP
+    LA_E_RATE_LIMIT, LA_E_IP, LA_E_RELEASE_VERSION_NOT_ALLOWED, LA_E_RELEASE_VERSION_FORMAT
 
     PARAMETERS:
     * callback - name of the callback function
@@ -194,6 +237,22 @@ LEXACTIVATOR_API int LA_CC SetLicenseUserCredential(CSTRTYPE email, CSTRTYPE pas
     RETURN CODES: LA_OK, LA_E_PRODUCT_ID, LA_E_LICENSE_KEY
 */
 LEXACTIVATOR_API int LA_CC SetLicenseCallback(CallbackType callback);
+
+/*
+    FUNCTION: SetActivationLeaseDuration()
+
+    PURPOSE: Sets the lease duration for the activation.
+
+    The activation lease duration is honoured when the allow client
+    lease duration property is enabled.
+
+    PARAMETERS:
+    * leaseDuration - value of the lease duration.
+
+    RETURN CODES: LA_OK, LA_E_PRODUCT_ID, LA_E_LICENSE_KEY
+*/
+LEXACTIVATOR_API int LA_CC SetActivationLeaseDuration(uint32_t leaseDuration);
+
 /*
     FUNCTION: SetActivationMetadata()
 
@@ -242,6 +301,20 @@ LEXACTIVATOR_API int LA_CC SetTrialActivationMetadata(CSTRTYPE key, CSTRTYPE val
     RETURN CODES: LA_OK, LA_E_PRODUCT_ID, LA_E_APP_VERSION_LENGTH
 */
 LEXACTIVATOR_API int LA_CC SetAppVersion(CSTRTYPE appVersion);
+
+/*
+    FUNCTION: SetReleaseVersion()
+
+    PURPOSE: Sets the current release version of your application.
+
+    The release version appears along with the activation details in dashboard. 
+
+    PARAMETERS:
+    * releaseVersion - string in following allowed formats: x.x, x.x.x, x.x.x.x
+
+    RETURN CODES: LA_OK, LA_E_PRODUCT_ID, LA_E_RELEASE_VERSION_FORMAT
+*/
+LEXACTIVATOR_API int LA_CC SetReleaseVersion(CSTRTYPE releaseVersion);
 
 /*
     FUNCTION: SetOfflineActivationRequestMeterAttributeUses()
@@ -312,6 +385,50 @@ LEXACTIVATOR_API int LA_CC SetCryptlexHost(CSTRTYPE host);
 LEXACTIVATOR_API int LA_CC GetProductMetadata(CSTRTYPE key, STRTYPE value, uint32_t length);
 
 /*
+    FUNCTION: GetProductVersionName()
+
+    PURPOSE: Gets the product version name.
+
+    PARAMETERS:
+    * name - pointer to a buffer that receives the value of the string
+    * length - size of the buffer pointed to by the name parameter
+
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_TIME, LA_E_TIME_MODIFIED, LA_E_PRODUCT_VERSION_NOT_LINKED,
+    LA_E_BUFFER_SIZE
+*/
+LEXACTIVATOR_API int LA_CC GetProductVersionName(STRTYPE name, uint32_t length);
+
+/*
+    FUNCTION: GetProductVersionDisplayName()
+
+    PURPOSE: Gets the product version display name.
+
+    PARAMETERS:
+    * displayName - pointer to a buffer that receives the value of the string
+    * length - size of the buffer pointed to by the displayName parameter
+
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_TIME, LA_E_TIME_MODIFIED, LA_E_PRODUCT_VERSION_NOT_LINKED,
+    LA_E_BUFFER_SIZE
+*/
+LEXACTIVATOR_API int LA_CC GetProductVersionDisplayName(STRTYPE displayName, uint32_t length);
+
+/*
+    FUNCTION: GetProductVersionFeatureFlag()
+
+    PURPOSE: Gets the product version feature flag.
+
+    PARAMETERS:
+    * name - name of the feature flag
+    * enabled - pointer to the integer that receives the value - 0 or 1
+    * data - pointer to a buffer that receives the value of the string
+    * length - size of the buffer pointed to by the data parameter
+
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_TIME, LA_E_TIME_MODIFIED, LA_E_PRODUCT_VERSION_NOT_LINKED,
+    LA_E_FEATURE_FLAG_NOT_FOUND, LA_E_BUFFER_SIZE
+*/
+LEXACTIVATOR_API int LA_CC GetProductVersionFeatureFlag(CSTRTYPE name, uint32_t *enabled, STRTYPE data, uint32_t length);
+
+/*
     FUNCTION: GetLicenseMetadata()
 
     PURPOSE: Gets the license metadata as set in the dashboard.
@@ -338,7 +455,7 @@ LEXACTIVATOR_API int LA_CC GetLicenseMetadata(CSTRTYPE key, STRTYPE value, uint3
 
     RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_METER_ATTRIBUTE_NOT_FOUND
 */
-LEXACTIVATOR_API int LA_CC GetLicenseMeterAttribute(CSTRTYPE name, uint32_t *allowedUses, uint32_t *totalUses, uint32_t *grossUses = NULL);
+LEXACTIVATOR_API int LA_CC GetLicenseMeterAttribute(CSTRTYPE name, uint32_t *allowedUses, uint32_t *totalUses, uint32_t *grossUses);
 
 /*
     FUNCTION: GetLicenseKey()
@@ -385,9 +502,21 @@ LEXACTIVATOR_API int LA_CC GetLicenseTotalActivations(uint32_t *totalActivations
     PARAMETERS:
     * expiryDate - pointer to the integer that receives the value
 
-    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_TIME, LA_E_TIME_MODIFIED
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED
 */
 LEXACTIVATOR_API int LA_CC GetLicenseExpiryDate(uint32_t *expiryDate);
+
+/*
+    FUNCTION: GetLicenseMaintenanceExpiryDate()
+
+    PURPOSE: Gets the license maintenance expiry date timestamp.
+
+    PARAMETERS:
+    * maintenanceExpiryDate - pointer to the integer that receives the value
+
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED
+*/
+LEXACTIVATOR_API int LA_CC GetLicenseMaintenanceExpiryDate(uint32_t* maintenanceExpiryDate);
 
 /*
     FUNCTION: GetLicenseUserEmail()
@@ -472,6 +601,22 @@ LEXACTIVATOR_API int LA_CC GetLicenseType(STRTYPE licenseType, uint32_t length);
     RETURN CODES: LA_OK, LA_E_PRODUCT_ID, LA_E_METADATA_KEY_NOT_FOUND, LA_E_BUFFER_SIZE
 */
 LEXACTIVATOR_API int LA_CC GetActivationMetadata(CSTRTYPE key, STRTYPE value, uint32_t length);
+
+/*
+    FUNCTION: GetActivationMode()
+
+    PURPOSE: Gets the mode of activation (online or offline).
+
+    PARAMETERS:
+    * initialMode - pointer to a buffer that receives the initial mode of activation
+    * initialModeLength - size of the buffer pointed to by the initialMode parameter
+    * currentMode - pointer to a buffer that receives the current mode of activation
+    * currentModeLength - size of the buffer pointed to by the currentMode parameter
+
+    RETURN CODES: LA_OK, LA_FAIL, LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME_MODIFIED,
+    LA_E_BUFFER_SIZE
+*/
+LEXACTIVATOR_API int LA_CC GetActivationMode(STRTYPE initialMode, uint32_t initialModeLength, STRTYPE currentMode, uint32_t currentModeLength);
 
 /*
     FUNCTION: GetActivationMeterAttributeUses()
@@ -594,7 +739,9 @@ LEXACTIVATOR_API int LA_CC CheckForReleaseUpdate(CSTRTYPE platform, CSTRTYPE ver
 
     RETURN CODES: LA_OK, LA_EXPIRED, LA_SUSPENDED, LA_E_REVOKED, LA_FAIL, LA_E_PRODUCT_ID,
     LA_E_INET, LA_E_VM, LA_E_TIME, LA_E_ACTIVATION_LIMIT, LA_E_SERVER, LA_E_CLIENT,
-    LA_E_AUTHENTICATION_FAILED, LA_E_LICENSE_TYPE, LA_E_COUNTRY, LA_E_IP, LA_E_RATE_LIMIT, LA_E_LICENSE_KEY
+    LA_E_AUTHENTICATION_FAILED, LA_E_LICENSE_TYPE, LA_E_COUNTRY, LA_E_IP, LA_E_RATE_LIMIT, LA_E_LICENSE_KEY,
+    LA_E_RELEASE_VERSION_NOT_ALLOWED, LA_E_RELEASE_VERSION_FORMAT
+
 */
 LEXACTIVATOR_API int LA_CC ActivateLicense();
 
@@ -672,7 +819,7 @@ LEXACTIVATOR_API int LA_CC GenerateOfflineDeactivationRequest(CSTRTYPE filePath)
     of your app.
 
     RETURN CODES: LA_OK, LA_EXPIRED, LA_SUSPENDED, LA_GRACE_PERIOD_OVER, LA_FAIL,
-    LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED
+    LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED, LA_E_MACHINE_FINGERPRINT
 
     NOTE: If application was activated offline using ActivateLicenseOffline() function, you
     may want to set grace period to 0 to ignore grace period.
@@ -690,7 +837,7 @@ LEXACTIVATOR_API int LA_CC IsLicenseGenuine();
     want to skip the server sync.
 
     RETURN CODES: LA_OK, LA_EXPIRED, LA_SUSPENDED, LA_GRACE_PERIOD_OVER, LA_FAIL,
-    LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED
+    LA_E_PRODUCT_ID, LA_E_LICENSE_KEY, LA_E_TIME, LA_E_TIME_MODIFIED, LA_E_MACHINE_FINGERPRINT
 
     NOTE: You may want to set grace period to 0 to ignore grace period.
 */
