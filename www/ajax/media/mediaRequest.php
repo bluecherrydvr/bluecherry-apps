@@ -27,9 +27,9 @@ class mediaRequest extends Controller {
         	$event = $event[0];
 		!empty($event['filepath']) or requestError('E: No media is associated with this event.');
 	
-        	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
+//        	$path_to_image = str_replace('mkv', 'jpg', $event['filepath']);
+		$path_to_image = str_replace('mp4', 'jpg', $event['filepath']);
 		file_exists($path_to_image) or requestError('E: Screenshot for this event was not found');
-	
         	header('content-type:image/jpeg');
         	readfile($path_to_image);
         	exit();

@@ -80,16 +80,14 @@ function getRenderNodes() {
 }
 
 function getVaapiOptions() {
-	$ret = array();
-	$ret[0] = "Autodetect";
+    $ret = array();
+    $ret[0] = "None";
+    $nodes = getRenderNodes();
+    if (!empty($nodes))
+        array_push($ret, $nodes);
+    $ret[] = "Autodetect";
 
-	$nodes = getRenderNodes();
-
-	if (!empty($nodes))
-		array_push($ret, $nodes);
-	$ret[] = "None";
-
-	return $ret;
+    return $ret;
 }
 
 function checkVaapiSupport($renderNode, $profile) {
@@ -132,6 +130,14 @@ function autoDetectVaapiSetup() {
 	}
 
 	return $nodes[$max_score_id];
+}
+
+function getLiveViewVideoOptions() {
+    $ret = array();
+    $ret[0] = "HLS";
+    $ret[1] = "MJPEG";
+
+    return $ret;
 }
 
 /**
@@ -310,8 +316,6 @@ class data{
 
         Reply::ajaxDie($status, $message, $data);
 	}
-
-
 
 	public static function last_id(){ #wrapper instead of mysql_insert_id
 		$db = database::getInstance();
@@ -788,9 +792,9 @@ class ipCamera{
 				if (empty($rawData['port']))	{ return array(false, AIP_NEEDPORT);};
 				if (empty($rawData['rtsp']))	{ return array(false, AIP_NEEDRTSP); };
 			}
-				empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
-				$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
-				
+			empty ($rawData['rtsp']) or $rawData['rtsp'] = (substr($rawData['rtsp'][0], 0, 1) != '/') ? '/'.$rawData['rtsp'] : $rawData['rtsp'];
+			$data['device'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['rtsp']}";
+
 		#prepare device name
 			$data['device_name'] = (empty($rawData['camName'])) ? $rawData['ipAddr'] : $rawData['camName'];
 			if ($self_id === false) { # check this only in case of creation, don't check on edit
@@ -821,6 +825,11 @@ class ipCamera{
 			$data['rtsp_rtp_prefer_tcp'] = $rawData['prefertcp'];
 			$data['protocol'] = ($rawData['protocol'] == "IP-MJPEG") ? "IP-MJPEG" : "IP-RTSP"; //default to rtsp
 			$data['onvif_port'] = (empty($rawData['onvif_port'])) ? "80" : $rawData['onvif_port']; //default to Onvif port
+		#prepare hls window
+			$data['hls_window_size'] = (empty($rawData['hls_window_size'])) ? "5" : $rawData['hls_window_size']; //default to hls window size
+			$data['hls_segment_duration'] = $rawData['hls_segment_duration']; //default to hls segment duration
+			$data['hls_segment_size'] = $rawData['hls_segment_size']; //default to hls segment size
+
 			//var_dump_pre($data); exit();
 			
 		$duplicate_path = data::getObject('Devices', 'device', $data['device']);
@@ -844,13 +853,16 @@ class ipCamera{
 		return array($result, false);
 	}
 	public static function create($rawData){
+		#check the number of the allowed devices
+		if (!self::checkLimitDevices()) { return array(false, AIP_LIMIT_ALLOWED_DEVICES); };
+
 		#get the data ready
 		
 		$data = self::prepareData($rawData);
 		#if errors were detected -- return error
 		if (!$data[0]) { return $data; } else { $data = $data[1]; };
 		#if there were no errors, add the camera
-		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port,substream_path) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']},'{$data['substream_path']}')", true);
+		$result = data::query("INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port, substream_path, hls_window_size, hls_segment_size, hls_segment_duration) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']},'{$data['substream_path']}', {$data['hls_window_size']}, {$data['hls_segment_size']}, {$data['hls_segment_duration']})", true);
 		#try to automatically set the camera up
 		$message = ($result) ? AIP_CAMADDED : false;
 		if ($result)
@@ -888,6 +900,16 @@ class ipCamera{
 	public function changeState(){
 		if (!$this->info['disabled']) { self::autoConfigure($this->info['driver'], $this->info); }
 		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
+	}
+	private function checkLimitDevices(){
+		$info = data::query("SELECT COUNT(*) as n FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
+		$total_devices = $info[0]['n'];
+
+		$allowed_by_license = bc_license_devices_allowed();
+		if ((int)$allowed_by_license == -1) return true; // -1 for unlimited
+
+		$allowed_devices = (int)$allowed_by_license + Constant('NO_LICENSE_DEFAULT_ALLOWED');
+		return ((int)$total_devices < $allowed_devices);
 	}
 }
 
@@ -1242,7 +1264,7 @@ class globalSettings{
 
 		if (empty($this->data['G_DATA_SOURCE'])) {
 			data::query("DELETE FROM GlobalSettings where parameter = 'G_DATA_SOURCE'", true);
-			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'local')", true);
+			data::query("INSERT INTO GlobalSettings VALUES('G_DATA_SOURCE', 'live')", true);
 			$this->data['G_DATA_SOURCE'] = 'local';
 		}
 
@@ -1487,9 +1509,6 @@ class Cameras
         data::responseJSON(true, true, $data_r);
     }
 
-
-
-    
     /**
      * Function to be used as array_walk callback for preparing data
      * 
@@ -1519,6 +1538,5 @@ class Cameras
 $global_settings = new globalSettings;
 $varpub = VarPub::get();
 $varpub->global_settings = $global_settings;
-
 
 ?>

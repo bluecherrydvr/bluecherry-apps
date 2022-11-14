@@ -2,19 +2,28 @@ $(function() {
 
 });
 
-function licensingAdd(form, msg) {
-    if (msg.status == 'CONF') {
-        $('#licensing-conf').show();
-        $('#licensing-machine-id').html(msg.msg);
-
-        $('#licensing-conf input[name="licenseCode"]').val(form.find('input[name="licenseCode"]').val());
-        $('#licensing-conf input[name="confirmLicense"]').val('');
-    } else if (msg.status == 6) {
+function afterAcitvatingLicense(form, msg) {
+    if (msg.status == 6) {
         var ajax_req = new ajaxReq();
         ajax_req.ajaxContent('/licenses');
+        $('#general_error').html(msg.data[1]);
     }
 }
 
-function licensingBeforeAdd(form) {
-    $('#licensing-conf').hide();
+function beforeAcitvatingLicense(form) {
+    // Empty process
+}
+
+function licensingActivateTrial(form, msg) {
+   if (msg.status == 6) {
+        $('#general_error').html(msg.data[1]);
+    }
+}
+
+function afterDecitvatingLicense(form, msg) {
+    if (msg.status == 6) {
+        var ajax_req = new ajaxReq();
+        ajax_req.ajaxContent('/licenses');
+        $('#general_error').html(msg.data[1]);
+    }
 }

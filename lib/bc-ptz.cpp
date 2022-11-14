@@ -131,7 +131,7 @@ void bc_ptz_check(struct bc_handle *bc, BC_DB_RES dbres)
 	if (addr < 0 || addr > 255)
 		return;
 
-	strcpy(bc->ptz_path, ptz_path);
+	snprintf(bc->ptz_path, sizeof(bc->ptz_path), "%s", ptz_path);
 	bc->ptz_addr = addr;
 	bc->ptz_tio.c_cflag = csbits | CLOCAL | CREAD;
 	if (stopbits == 2)

@@ -54,6 +54,8 @@ v4l2_device_solo6010_dkms::v4l2_device_solo6010_dkms(BC_DB_RES dbres)
 	memset(&p_buf, 0, sizeof(p_buf));
 
 	const char *p = bc_db_get_val(dbres, "device", NULL);
+	if (!p) return;
+
 	char dev_file[PATH_MAX];
 	int id = -1;
 	const char *signal_type = bc_db_get_val(dbres, "signal_type", NULL);
@@ -89,13 +91,16 @@ v4l2_device_solo6010_dkms::v4l2_device_solo6010_dkms(BC_DB_RES dbres)
 		goto error;
 	}
 
-	if (signal_type && strcasecmp(signal_type, "PAL") == 0)
+	if (signal_type && strncasecmp(signal_type, "PAL", 3) == 0)
 		cam_caps |= BC_CAM_CAP_V4L2_PAL;
 
 	/* SOLO, XXX: there should be some way to detect these caps thru V4L2 */
-	if (!strncmp(bc_db_get_val(dbres, "driver", NULL), "solo6", 5)) {
-		cam_caps |= BC_CAM_CAP_V4L2_MOTION | BC_CAM_CAP_OSD
-			| BC_CAM_CAP_SOLO;
+	{
+		const char *driver = bc_db_get_val(dbres, "driver", NULL);
+		if (driver && !strncmp(driver, "solo6", 5)) {
+			cam_caps |= BC_CAM_CAP_V4L2_MOTION | BC_CAM_CAP_OSD
+				| BC_CAM_CAP_SOLO;
+		}
 	}
 
 	/* Select the CODEC */

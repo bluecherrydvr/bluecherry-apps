@@ -35,6 +35,7 @@ function purge_files() {
 function drop_db() {
 	echo "Dropping database $dbname"
 	echo "DROP DATABASE $dbname" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
+#	echo "DROP USER '$user'@'localhost'" | mysql -h"${host:-localhost}" -D"$dbname" -u"$user" -p"$password"
 }
 
 case "$1" in
@@ -76,3 +77,19 @@ esac
 #DEBHELPER#
 
 db_stop
+
+# Remove cron file
+cronfile=/etc/cron.d/bluecherry
+if test -f $cronfile; then
+	rm $cronfile
+fi
+
+function warn_user_db() {
+var_command='Warning!\n\nYou must run this command to finish the removal process or else you will not be able to reinstall Bluechery again\n***\necho DROP USER '$user'@'localhost' | mysql -h'${host:-localhost}' -u root -p\n***\n\n'
+printf "\x1b[31m$var_command\x1b[0m\n";
+}
+
+warn_user_db
+
+
+

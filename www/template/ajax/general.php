@@ -246,6 +246,34 @@
         </div>
     </div>
 
+<div class="panel panel-default">
+    <div class="panel-heading"><?php echo G_SUBDOMAIN_TITLE; ?></div>
+
+    <div class="form-group">
+        <label class="col-lg-4 col-md-4 control-label"><?php echo G_SUBDOMAIN_API_BASE_URL_NAME; ?><p class='help-block'><small><?php echo G_SUBDOMAIN_API_BASE_URL_NAME_EX; ?></small></p></label>
+
+        <div class="col-lg-6 col-md-6">
+            <input class="form-control input-group-unstyled" type='text' name='G_SUBDOMAIN_API_BASE_URL' value='<?php echo $global_settings->data['G_SUBDOMAIN_API_BASE_URL']; ?>' />
+        </div>
+    </div>
+</div>
+
+<div class="panel panel-default">
+    <div class="panel-heading"><?php echo G_LIVEVIEW_VIDEO_TITLE; ?></div>
+
+    <div class="panel-body">
+
+        <div class="form-group">
+            <label class="col-lg-4 control-label"><?php echo G_LIVEVIEW_VIDEO_METHOD; ?></label>
+
+            <div class="col-lg-6 col-md-6">
+                    <?php echo arrayToSelect(getLiveViewVideoOptions(), $global_settings->data['G_LIVEVIEW_VIDEO_METHOD'], 'G_LIVEVIEW_VIDEO_METHOD'); ?>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <input type="hidden" name="mode" value="global" />
 
 <div class="form-group">

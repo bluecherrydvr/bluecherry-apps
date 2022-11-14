@@ -3,6 +3,9 @@
 
 #include "stream_elements.h"
 #include "opencv2/opencv.hpp"
+#include "bc-server.h"
+
+//#define DEBUG_DUMP_MOTION_DATA
 
 struct AVCodecContext;
 
@@ -27,10 +30,11 @@ public:
 	enum detection_algorithm
 	{
 		BC_DEFAULT,
-		OPENCV
+		CV_BASIC,
+		CV_MULTIFRAME
 	};
 
-	motion_processor();
+	motion_processor(bc_record *bcRecord);
 	virtual ~motion_processor();
 
 	int set_motion_thresh(const char *map, size_t size);
@@ -39,6 +43,11 @@ public:
 	void set_motion_algorithm(int algo);
 	int set_frame_downscale_factor(double f);
 	int set_min_motion_area_percent(int p);
+    int set_max_motion_area_percent(int p);
+    int set_max_motion_frames(int max);
+    int set_min_motion_frames(int min);
+    int set_motion_blend_ratio(int ratio);
+    int set_motion_debug(int debug);
 
 	void destroy();
 	void run();
@@ -54,6 +63,8 @@ private:
 	int64_t            last_tested_pts;
 	uint8_t            skip_count;
 	uint8_t            thresholds[768];
+	uint8_t            md_frame_pool[255]; //!< This is basically a ring-buffer of the last n frames, and whether that frame detected motion
+	uint8_t            md_frame_pool_index; //!< our current place in the pool
 
 	bool decode_create(const stream_properties &prop);
 	void decode_destroy();
@@ -61,14 +72,33 @@ private:
 
 	int detect_bc_original(AVFrame *frame);
 	int detect_opencv(AVFrame *frame);
-	int match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, double minMotionArea, int w, int h);
+    int detect_opencv_advanced(AVFrame *frame);
+
+    bool check_for_new_debug_event(bool md);
+    void dump_opencv_frame(cv::Mat &m, const char *name);
+    void dump_opencv_composite(cv::Mat red, cv::Mat green, cv::Mat blue, const char *name);
+
+    int convert_AVFrame_to_grayMat(AVFrame *srcFrame, cv::Mat &dstFrame);
+    int match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, int w, int h);
 	detection_algorithm m_alg;
 
 	pthread_t m_thread;
 	cv::Mat m_refFrames[2];
 	int m_refFrameUpdateCounters[2];
 	double m_downscaleFactor;
-	int m_minMotionAreaPercent;
+	float m_minMotionAreaPercent;
+    float m_maxMotionAreaPercent;
+    int m_maxMotionFrames;
+    int m_minMotionFrames;
+    float m_motionBlendRatio;
+    bool m_motionTriggered = false;
+
+    bc_record *m_recorder;
+
+    bool m_motionDebug = true;
+    int m_debugEventNum = 0;
+    uint64_t m_debugFrameNum = 0;
+    struct tm m_debugEventTime;
 
 	static void thread_cleanup(void *data);
 };

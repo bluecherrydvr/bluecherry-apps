@@ -68,7 +68,8 @@ CREATE TABLE `Devices` (
   `motion_map` varchar(768) NOT NULL DEFAULT '333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333',
   `motion_algorithm` tinyint(1) DEFAULT '1',
   `frame_downscale_factor` decimal(4,3) DEFAULT '0.500',
-  `min_motion_area` smallint(6) DEFAULT '5',
+  `min_motion_area` smallint(6) DEFAULT '3',
+  `max_motion_area` smallint(5) DEFAULT '90',
   `motion_analysis_ssw_length` int(11) DEFAULT '-1',
   `motion_analysis_percentage` int(11) DEFAULT '-1',
   `schedule` varchar(168) NOT NULL DEFAULT 'CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC',
@@ -83,6 +84,14 @@ CREATE TABLE `Devices` (
   `substream_mode` tinyint(1) DEFAULT '0',
   `substream_path` varchar(255) DEFAULT NULL,
   `onvif_events_enabled` tinyint(1) DEFAULT '0',
+  `min_motion_frames` smallint(5) DEFAULT '15',
+  `max_motion_frames` smallint(5) DEFAULT '20',
+  `motion_blend_ratio` smallint(5) DEFAULT '15',
+  `motion_debug` tinyint(1) DEFAULT '0',
+  `hls_segment_duration` decimal(6,3) DEFAULT '3.000',
+  `hls_segment_size` int(11) DEFAULT '2695168',
+  `hls_window_size` smallint(5) DEFAULT '5',
+
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),
   UNIQUE KEY `device` (`device`,`mjpeg_path`,`protocol`,`channel`)
@@ -212,7 +221,7 @@ CREATE TABLE `Media` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `start` int(11) NOT NULL,
   `end` int(11) NOT NULL DEFAULT '0',
-  `size` int(11) DEFAULT NULL,
+  `size` bigint(20) DEFAULT NULL,
   `device_id` int(11) NOT NULL,
   `filepath` varchar(1024) NOT NULL,
   `archive` tinyint(1) NOT NULL DEFAULT '0',
@@ -252,6 +261,16 @@ DROP TABLE IF EXISTS `RtspAuthTokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `RtspAuthTokens` (
+  `user_id` int(11) NOT NULL,
+  `token` varchar(100) NOT NULL,
+  `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY `uniq_session` (`user_id`,`token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `HlsAuthTokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `HlsAuthTokens` (
   `user_id` int(11) NOT NULL,
   `token` varchar(100) NOT NULL,
   `date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,

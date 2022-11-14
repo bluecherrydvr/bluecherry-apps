@@ -1,0 +1,23 @@
+FROM ubuntu:bionic
+#FROM i386/ubuntu:bionic
+
+#RUN echo 'Acquire:http { Proxy "http://192.168.86.20:8000"; }' | sudo tee -a /etc/apt/apt.conf.d/proxy
+RUN export HTTP_PROXY="http://192.168.86.20:8000"
+
+RUN set -ex \
+    && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list 
+RUN export HTTP_PROXY="http://192.168.86.20:8000"
+RUN apt-get update
+RUN apt-get -y install squid-deb-proxy-client
+RUN apt-get install -y --no-install-recommends \
+               build-essential \
+               cdbs \
+               devscripts \
+               equivs \
+               fakeroot \
+        libmysqlclient-dev \
+	       krb5-locales libasn1-8-heimdal libcurl4 libgssapi-krb5-2 libgssapi3-heimdal libhcrypto4-heimdal libheimbase1-heimdal libheimntlm0-heimdal libhx509-5-heimdal \
+               libk5crypto3 libkeyutils1 libkrb5-26-heimdal libkrb5-3 libkrb5support0 libldap-2.4-2 libldap-common libnghttp2-14 libpsl5 libroken18-heimdal librtmp1 libsasl2-2 \
+               libsasl2-modules libsasl2-modules-db libwind0-heimdal publicsuffix libass-dev
+RUN     apt-get clean 
+RUN     rm -rf /tmp/* /var/tmp/*

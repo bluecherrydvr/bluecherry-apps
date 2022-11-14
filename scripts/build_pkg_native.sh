@@ -12,11 +12,18 @@ else
 	sudo `dirname $0`/install_prereqs_native.sh
 fi
 
+if [[ $(cat /etc/os-release | grep "^ID=" | grep debian) && \
+	$(cat /etc/os-release | grep "^VERSION=" | grep 11) ]]
+then
+	apt-get install -y libmariadb-dev
+	export BC_DEBIAN_BULLSEYE=y
+fi
+
 # TODO Implement building outside of sources tree
 
 # Safety measures. TODO quick compilation without spare rebuilds
-git submodule foreach --recursive "git clean -dxf && git reset --hard"
-git submodule update --recursive --init
+#git submodule foreach --recursive "git clean -dxf && git reset --hard"
+#git submodule update --recursive --init
 
 echo "#define GIT_REVISION \"`git describe --dirty --always --long` `git describe --all`\"" > server/version.h
 

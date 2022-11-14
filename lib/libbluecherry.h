@@ -129,6 +129,16 @@ struct bc_device_config {
 	int reencode_frame_height;
 	int8_t substream_mode;
 	char substream_path[256];
+
+	int max_motion_area;
+    int min_motion_frames;
+	int max_motion_frames;
+	int motion_blend_ratio;
+	bool motion_debug;
+
+	int hls_window_size;
+	int hls_segment_size;
+	double hls_segment_duration;
 };
 
 struct bc_license {

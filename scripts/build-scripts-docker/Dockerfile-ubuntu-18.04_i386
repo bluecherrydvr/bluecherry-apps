@@ -1,0 +1,18 @@
+#FROM ubuntu:18.04:88152195106f
+FROM i386/ubuntu:bionic
+
+#RUN echo 'Acquire:http { Proxy "http://192.168.86.20:8000"; }' | sudo tee -a /etc/apt/apt.conf.d/proxy
+RUN export HTTP_PROXY="http://192.168.86.20:8000"
+
+RUN set -ex \
+    && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list 
+RUN export HTTP_PROXY="http://192.168.86.20:8000"
+RUN apt-get update
+RUN apt install -y --no-install-recommends \
+               build-essential \
+               cdbs \
+               devscripts \
+               equivs \
+               fakeroot \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*

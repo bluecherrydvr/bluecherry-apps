@@ -1233,8 +1233,13 @@ var localMotionGrid = new Class({
                         'motion_map' : output, 
                         'motion_algorithm' : $$('input[name=motion_algorithm]:checked').get('value'),
                         'frame_downscale_factor' : $('frame_downscale_factor').get('value'),
-                        'min_motion_area' : $('min_motion_area_value').get('value')
-                    }, $('cameraID').get('value'), false); 
+                        'min_motion_area' : $('min_motion_area_value').get('value'),
+						'max_motion_area' : $('max_motion_area_value').get('value'),
+						'min_motion_frames' : $('min_motion_frames_value').get('value'),
+						'max_motion_frames' : $('max_motion_frames_value').get('value'),
+						'motion_blend_ratio' : $('motion_blend_ratio_value').get('value'),
+						'motion_debug' : $$('input[name=motion_debug]:checked').get('value')
+                    }, $('cameraID').get('value'), false);
                     break;
 				case 'deviceSchedule':
 					if ($('cameraID').get('value')!='global'){

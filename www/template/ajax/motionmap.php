@@ -85,6 +85,12 @@
 				<?php echo $camera->info['motion_algorithm'] == 1 ? ' checked="checked"' : '' ?> />
                                 <?php echo MOTION_EXPERIMENTAL ?>
                             </label>
+
+                            <label class="btn btn-default <?php echo $camera->info['motion_algorithm'] == '2' ? 'active' : '' ?> ">
+				<input type="radio" name="motion_algorithm" value="2" style="width: 30px;"
+				<?php echo $camera->info['motion_algorithm'] == 2 ? ' checked="checked"' : '' ?> />
+                                <?php echo MOTION_CV_TEMPORAL ?>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -101,7 +107,48 @@
                     <label class="col-lg-4 col-md-4 control-label"><?php echo 'Min. motion area %:'; ?></label>
 
                     <div class="col-lg-6 col-md-6">
-                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] == 0 ? ' disabled' : ''; ?>" data-name="min_motion_area" data-min="1" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] == 0 ? ' disabled' : ''; ?>" data-name="min_motion_area" data-min="1" data-max="100" data-value="<?php echo $camera->info['min_motion_area']; ?>"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Max. motion area %:'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] == 0 ? ' disabled' : ''; ?>" data-name="max_motion_area" data-min="1" data-max="100" data-value="<?php echo $camera->info['max_motion_area']; ?>"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Min. motion frames:'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] != 2 ? ' disabled' : ''; ?>" data-name="min_motion_frames" data-min="1" data-max="255" data-value="<?php echo $camera->info['min_motion_frames']; ?>"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Max. motion frames'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] != 2 ? ' disabled' : ''; ?>" data-name="max_motion_frames" data-min="1" data-max="255" data-value="<?php echo $camera->info['max_motion_frames']; ?>"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Reference frame blending ratio:'; ?></label>
+
+                    <div class="col-lg-6 col-md-6">
+                        <div class="bfh-slider<?php echo $camera->info['motion_algorithm'] != 2 ? ' disabled' : ''; ?>" data-name="motion_blend_ratio" data-min="2" data-max="100" data-value="<?php echo $camera->info['motion_blend_ratio']; ?>"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-lg-4 col-md-4 control-label"><?php echo 'Enable debugging snapshots'; ?></label>
+
+                    <div class="col-lg-8 col-md-8 form-control-static">
+                        <input type="checkbox" class="click-event" data-function="toggleMotionDebug" data-id="<?php echo $camera->info['motion_debug']; ?>" <?php echo ($camera->info['motion_debug']) ? ' checked="checked"':''; ?>  />
+                        <input type="hidden" name="motion_debug" value="<?php echo (($camera->info['motion_debug']) ? '1': '0' ); ?>" />
                     </div>
                 </div>
 

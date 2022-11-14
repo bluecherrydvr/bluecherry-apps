@@ -1,0 +1,25 @@
+FROM ubuntu:20.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN set -ex \
+    && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list 
+RUN apt-get update
+RUN apt -y install gnupg wget
+#RUN gpg --keyserver "hkp://keyserver.ubuntu.com:80" --recv-keys "467B942D3A79BD29" 2>&1 && break
+#RUN wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+RUN wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
+RUN echo "deb http://repo.mysql.com/apt/ubuntu focal mysql-5.7" >> /etc/apt/sources.list.d/mysql.list
+RUN apt-get update
+RUN apt -y install wget
+RUN apt -y install autoconf automake libtool git build-essential gcc g++ debhelper ccache bison flex texinfo yasm cmake libbsd-dev libopencv-dev libudev-dev libva-dev rsyslog sudo gsoap libgsoap-dev libmysqlclient-dev libidn11-dev libbsd-dev yasm libudev-dev libopencv-dev libva-dev
+RUN apt-get install -y --no-install-recommends \
+               build-essential \
+               cdbs \
+               devscripts \
+               equivs \
+               fakeroot \
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*
+RUN git config --global --add safe.directory "/build/source"
+RUN git config --global --add safe.directory "/build/source/misc/libav"

@@ -36,6 +36,8 @@
 #include "recorder.h"
 #include "substream-thread.h"
 
+#include "hls.h"
+
 #define DEF_TH_LOG_LEVEL Warning
 
 /* For Ubuntu Lucid */
@@ -58,7 +60,15 @@ static void do_error_event(struct bc_record *bc_rec, bc_event_level_t level,
 void stop_handle_properly(struct bc_record *bc_rec)
 {
 	if (!bc_rec->bc->substream_mode)
-		bc_streaming_destroy(bc_rec);
+		bc_streaming_destroy_rtp(bc_rec);
+
+	bc_streaming_destroy_hls(bc_rec);
+
+	if (bc_rec->hls_stream)
+	{
+		hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+		if (content != NULL) content->clear_window();
+	}
 
 	if (bc_rec->liveview_substream)
 	{
@@ -78,7 +88,7 @@ static void update_osd(struct bc_record *bc_rec)
 {
 #define OSD_TEXT_MAX 44
 #define DATE_LEN 19
-#define OSD_NAME_MAX_LEN (OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
+#define OSD_NAME_MAX_LEN 256 /* sizeof(bc_rec->cfg.name) == 256 */ //(OSD_TEXT_MAX - DATE_LEN - 1 /* space */)
 	input_device *d = bc_rec->bc->input;
 	time_t t = time(NULL);
 	char buf[DATE_LEN + 1 /* for null-termination */];
@@ -157,6 +167,19 @@ void bc_record::notify_device_state(const char *state)
 	exit(1);
 }
 
+void msleep(int duration) {
+
+    /* Split milliseconds into equivalent seconds + nanoseconds */
+    struct timespec sleep_period = {
+        .tv_sec  =  duration / 1000,
+        .tv_nsec = (duration % 1000) * 1000000
+    };
+
+    /* Sleep for specified interval */
+    nanosleep(&sleep_period, NULL);
+
+}
+
 void bc_record::run()
 {
 	stream_packet packet;
@@ -179,6 +202,7 @@ void bc_record::run()
 		pthread_mutex_unlock(&cfg_mutex);
 		if (local_thread_should_die)
 			break;
+
 		if (local_cfg_dirty) {
 			if (apply_device_cfg(this))
 				break;
@@ -214,13 +238,19 @@ void bc_record::run()
 			}
 
 			if (bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT)
-				if (bc_streaming_setup(this, this->bc->input->properties()))
+			{
+				if (bc_streaming_setup(this, BC_RTP, this->bc->input->properties()))
 					log.log(Error, "Unable to setup live broadcast of device stream");
+
+				if (bc_streaming_setup(this, BC_HLS, this->bc->input->properties()))
+					log.log(Error, "Unable to setup HLS live of device stream");
+			}
 		}
 
 		if (sched_last) {
 			char *sched_str;
 			switch (sched_cur) {
+				case 'X': sched_str = "continuous + motion"; break;
 				case 'C': sched_str = "continuous"; break;
 				case 'M': sched_str = "motion"; break;
 				case 'N': sched_str = "stopped"; break;
@@ -234,49 +264,60 @@ void bc_record::run()
 
 			destroy_elements();
 
-			if (sched_cur == 'C') {
-				rec = new recorder(this);
-				rec->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
-				rec->set_logging_context(log);
-				bc->source->connect(rec, stream_source::StartFromLastKeyframe);
-				std::thread th(&recorder::run, rec);
-				th.detach();
-			} else if (sched_cur == 'M') {
-				m_handler = new motion_handler;
-				m_handler->set_logging_context(log);
-				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
-				m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
-				m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
+			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
 
-				rec = new recorder(this);
-				rec->set_logging_context(log);
-				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
-
-				rec->set_buffer_time(cfg.prerecord);
-
-				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
-				rec_th.detach();
-
-				if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
-					bc->input->set_motion(true);
-					bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
-				} else {
-					m_processor = new motion_processor;
-					m_processor->set_logging_context(log);
-					update_motion_thresholds();
-
-					m_processor->set_motion_algorithm(cfg.motion_algorithm);
-					m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
-					m_processor->set_min_motion_area_percent(cfg.min_motion_area);
-
-					bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
-					m_processor->output()->connect(m_handler->input_consumer());
-					m_processor->start_thread();
+				if (sched_cur == 'X' || sched_cur == 'C') {
+					rec_continuous = new recorder(this);
+					rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
+					rec_continuous->set_logging_context(log);
+					bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
+					std::thread rec_th(&recorder::run, rec_continuous);
+					rec_th.detach();
 				}
 
-				std::thread th(&motion_handler::run, m_handler);
-				th.detach();
+				if (sched_cur == 'X' || sched_cur == 'M') {
+					m_handler = new motion_handler;
+					m_handler->set_logging_context(log);
+					m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
+					m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
+					m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
+
+					rec_motion = new recorder(this);
+					rec_motion->set_logging_context(log);
+					rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
+
+					rec_motion->set_buffer_time(cfg.prerecord);
+
+					m_handler->connect(rec_motion);
+					std::thread rec_th(&recorder::run, rec_motion);
+					rec_th.detach();
+
+					if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
+						bc->input->set_motion(true);
+						bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
+					} else {
+						m_processor = new motion_processor(this);
+						m_processor->set_logging_context(log);
+						update_motion_thresholds();
+
+						m_processor->set_motion_algorithm(cfg.motion_algorithm);
+						m_processor->set_frame_downscale_factor(cfg.motion_frame_downscale_factor);
+						m_processor->set_min_motion_area_percent(cfg.min_motion_area);
+						m_processor->set_max_motion_area_percent(cfg.max_motion_area);
+
+						m_processor->set_max_motion_frames(cfg.max_motion_frames);
+						m_processor->set_min_motion_frames(cfg.min_motion_frames);
+						m_processor->set_motion_blend_ratio(cfg.motion_blend_ratio);
+						m_processor->set_motion_debug(cfg.motion_debug);
+
+						bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
+						m_processor->output()->connect(m_handler->input_consumer());
+						m_processor->start_thread();
+					}
+
+					std::thread th(&motion_handler::run, m_handler);
+					th.detach();
+				}
 			} else if (sched_cur == 'T') {
 				/*
 				 * source ==> trigger_processor (data passthru, flag setting) ==> motion_handler_m ==> recorder
@@ -285,14 +326,14 @@ void bc_record::run()
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 
-				rec = new recorder(this);
-				rec->set_logging_context(log);
-				rec->set_recording_type(BC_EVENT_CAM_T_MOTION);
+				rec_motion = new recorder(this);
+				rec_motion->set_logging_context(log);
+				rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
 
-				rec->set_buffer_time(cfg.prerecord);
+				rec_motion->set_buffer_time(cfg.prerecord);
 
-				m_handler->connect(rec);
-				std::thread rec_th(&recorder::run, rec);
+				m_handler->connect(rec_motion);
+				std::thread rec_th(&recorder::run, rec_motion);
 				rec_th.detach();
 
 				t_processor = new trigger_processor(id);
@@ -315,7 +356,10 @@ void bc_record::run()
 				/* Reencoded stream has different properties, they'll be set later when
 				 * the first packet comes out from encoder */
 				if (bc_streaming_is_setup(this))
-					bc_streaming_destroy(this);
+					bc_streaming_destroy_rtp(this);
+
+				if (bc_streaming_is_active_hls(this))
+					bc_streaming_destroy_hls(this);
 			}
 
 			sched_last = 0;
@@ -326,8 +370,13 @@ void bc_record::run()
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_LAVF) {
+				char full_err[128];
+
 				const char *err = reinterpret_cast<lavf_device*>(bc->input)->get_error_message();
-				log.log(Error, "Read error from stream: %s", *err ? err : "Unknown error");
+				snprintf(full_err, sizeof(full_err), "Read error from stream: %s", *err ? err : "Unknown error");
+
+				log.log(Error, "%s", full_err);
+				notify_device_state(full_err);
 			}
 
 			stop_handle_properly(this);
@@ -355,8 +404,18 @@ void bc_record::run()
 					packet = reenc->streaming_packet();
 
 					if (!bc_streaming_is_setup(this)) {
-						if (bc_streaming_setup(this, packet.properties()))
+						if (bc_streaming_setup(this, BC_RTP, packet.properties()))
 							log.log(Error, "Unable to reinitialize reencoded live view stream");
+					}
+
+					if (!bc_streaming_is_active_hls(this)) {
+						if (bc_streaming_setup(this, BC_HLS, packet.properties()))
+							log.log(Error, "Unable to reinitialize reencoded live HLS stream");
+					}
+
+					if (bc_streaming_is_active_hls(this)) {
+						if (bc_streaming_hls_packet_write(this, packet) == -1)
+							log.log(Error, "Failed to stream reencoded HLS live view");
 					}
 
 					if (bc_streaming_is_active(this))
@@ -365,17 +424,27 @@ void bc_record::run()
 				}
 			}
 
+			msleep(10);
 			continue;
 		}
 
-		/* Send packet to streaming clients */
-		if (bc_streaming_is_active(this) && !bc->substream_mode) {
+		if (!bc->substream_mode) {
+			/* Send packet to HLS streaming clients */
+			if (bc_streaming_is_active_hls(this) &&
+				bc_streaming_hls_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for HLS live view");
+				goto error;
+			}
 
-			if (bc_streaming_packet_write(this, packet) == -1) {
+			/* Send packet to streaming clients */
+			if (bc_streaming_is_active(this) &&
+				bc_streaming_packet_write(this, packet) == -1) {
+				log.log(Error, "Failed to stream packet for live view");
 				goto error;
 			}
 		}
 
+		msleep(10);
 		continue;
 error:
 		sleep(10);
@@ -401,9 +470,14 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
-	stream_ctx[0] = 0;
-	stream_ctx[1] = 0;
+	rtp_stream_ctx[0] = 0;
+	rtp_stream_ctx[1] = 0;
 	rtsp_stream = 0;
+
+	hls_segment_type = hls_segment::type::mpegts;
+	hls_stream_ctx[0] = 0;
+	hls_stream_ctx[1] = 0;
+	hls_stream = 0;
 
 	osd_time = 0;
 	start_failed = 0;
@@ -417,10 +491,12 @@ bc_record::bc_record(int i)
 	onvif_ev = 0;
 	onvif_ev_thread = 0;
 
+	rec_continuous = 0;
+	rec_motion = 0;
+
 	m_processor = 0;
 	t_processor = 0;
 	m_handler = 0;
-	rec = 0;
 	reenc = 0;
 	liveview_substream = 0;
 	liveview_substream_thread = 0;
@@ -442,7 +518,9 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 		bc_status_component_error("Database error while initializing device %d", id);
 		goto fail;
 	}
-	memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+
+	//memcpy(&bc_rec->cfg_update, &bc_rec->cfg, sizeof(bc_rec->cfg));
+	bc_rec->cfg_update = bc_rec->cfg; // no need memcpy()
 
 	bc_rec->log = log_context("%d/%s", id, bc_rec->cfg.name);
 	bc_rec->log.set_level(bc_rec->cfg.debug_level ? DEF_TH_LOG_LEVEL : (log_level)-1);
@@ -467,7 +545,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	bc_rec->update_motion_thresholds();
 	check_schedule(bc_rec);
 
-
 	/* The following operations are effective only for some V4L2 devices */
 	ret  = bc->input->set_control(V4L2_CID_HUE, bc_rec->cfg.hue);
 	ret |= bc->input->set_control(V4L2_CID_CONTRAST, bc_rec->cfg.contrast);
@@ -480,7 +557,6 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 	ret |= bc->input->set_control(V4L2_CID_MPEG_VIDEO_H264_MIN_QP, 100 - bc_rec->cfg.video_quality);
 	if (ret)
 		bc_rec->log.log(Warning, "Failed to set H264 quantization, please update solo6x10 driver");
-
 
 	/* Start device processing thread */
 	if (pthread_create(&bc_rec->thread, NULL, bc_device_thread,
@@ -513,10 +589,16 @@ bc_record::~bc_record()
 
 void bc_record::destroy_elements()
 {
-	if (rec) {
-		rec->disconnect();
-		rec->destroy();
-		rec = 0;
+	if (rec_continuous) {
+		rec_continuous->disconnect();
+		rec_continuous->destroy();
+		rec_continuous = 0;
+	}
+
+	if (rec_motion) {
+		rec_motion->disconnect();
+		rec_motion->destroy();
+		rec_motion = 0;
 	}
 
 	if (m_processor) {
@@ -690,6 +772,25 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		return -1;
 	}
 
+	if (current->hls_segment_duration != update->hls_segment_duration ||
+		current->hls_segment_size != update->hls_segment_size ||
+		current->hls_window_size != update->hls_window_size)
+	{
+		bc_rec->log.log(Info, "Updated HLS configuration for camera: %d", bc_rec->id);
+		if (bc_rec->hls_stream)
+		{
+			hls_content *content = bc_rec->hls_stream->get_hls_content(bc_rec->id);
+			if (content != NULL)
+			{
+				hls_config config;
+				config.segment_duration = update->hls_segment_duration;
+				config.segment_size = update->hls_segment_size;
+				config.window_size = update->hls_window_size;
+				content->set_config(&config);
+			}
+		}
+	}
+
 	motion_map_changed = memcmp(current->motion_map, update->motion_map, sizeof(update->motion_map));
 	format_changed = (current->width != update->width || current->height != update->height ||
 	                  current->interval != update->interval);
@@ -704,7 +805,13 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 
 	bool motion_config_changed = (current->motion_algorithm != update->motion_algorithm
 			|| abs(current->motion_frame_downscale_factor - update->motion_frame_downscale_factor) > 0.0625
-			|| current->min_motion_area != update->min_motion_area);
+			|| current->min_motion_area != update->min_motion_area
+            || current->max_motion_area != update->max_motion_area
+            || current->max_motion_frames != update->max_motion_frames
+            || current->min_motion_frames != update->min_motion_frames
+            || current->motion_blend_ratio != update->motion_blend_ratio
+            || current->motion_debug != update->motion_debug
+    );
 
 	memcpy(current, update, sizeof(struct bc_device_config));
 	bc_rec->cfg_dirty = 0;
@@ -740,6 +847,11 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 		bc_rec->m_processor->set_motion_algorithm(bc_rec->cfg.motion_algorithm);
 		bc_rec->m_processor->set_frame_downscale_factor(bc_rec->cfg.motion_frame_downscale_factor);
 		bc_rec->m_processor->set_min_motion_area_percent(bc_rec->cfg.min_motion_area);
+        bc_rec->m_processor->set_max_motion_area_percent(bc_rec->cfg.max_motion_area);
+        bc_rec->m_processor->set_max_motion_frames(bc_rec->cfg.max_motion_frames);
+        bc_rec->m_processor->set_min_motion_frames(bc_rec->cfg.min_motion_frames);
+        bc_rec->m_processor->set_motion_blend_ratio(bc_rec->cfg.motion_blend_ratio);
+        bc_rec->m_processor->set_motion_debug(bc_rec->cfg.motion_debug);
 	}
 
 	if (mrecord_changed && bc_rec->m_handler) {

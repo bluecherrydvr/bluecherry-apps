@@ -71,6 +71,9 @@
                                     <button type="button" class="btn btn-success btn-block motion-btn-sens click-event" data-class="motionGrid.minimal()">Motion</button>
                                 </div>
                                 <div class="col-lg-2 col-md-3">
+                                    <button type="button" class="btn btn-primary btn-block motion-btn-sens click-event disabled" data-class="motionGrid.average()">Continuous+Motion</button>
+                                </div>
+                                <div class="col-lg-2 col-md-3">
                                     <button type="button" class="btn btn-warning btn-block motion-btn-sens click-event disabled" data-class="motionGrid.high()">Trigger</button>
                                 </div>
                             </div>

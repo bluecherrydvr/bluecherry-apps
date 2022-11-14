@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include "bt.h"
+#include "bc-server.h"
 
 #include "motion_processor.h"
 #include "vaapi.h"
@@ -14,15 +15,28 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
+#include <string.h>
+#include <limits.h>     /* PATH_MAX */
+#include <sys/stat.h>   /* mkdir(2) */
+#include <errno.h>
+
 #include "opencv2/opencv.hpp"
 #include <vector>
 
-motion_processor::motion_processor()
+motion_processor::motion_processor(bc_record *bcRecord)
 	: stream_consumer("Motion Detection"), decode_ctx(0), destroy_flag(false), convContext(0), refFrame(0),
-	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}), m_downscaleFactor(0.5), m_minMotionAreaPercent(5)
+	  last_tested_pts(AV_NOPTS_VALUE), skip_count(0), m_alg(BC_DEFAULT), m_refFrameUpdateCounters({0, 0}),
+	  m_downscaleFactor(0.5), m_minMotionAreaPercent(3), m_maxMotionAreaPercent(90), m_maxMotionFrames(20),
+	  m_minMotionFrames(15), m_motionBlendRatio(0.9), m_motionDebug(true), m_recorder(bcRecord)
 {
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
+
+	md_frame_pool_index = 0;
+	memset(md_frame_pool, 0, 255);
+
+	memset(&m_debugEventTime, 0, sizeof(struct tm));
+	m_debugEventTime.tm_sec = -1;
 }
 
 motion_processor::~motion_processor()
@@ -124,7 +138,7 @@ void motion_processor::run()
 		int have_picture = 0;
 		int re = avcodec_decode_video2(decode_ctx, frame, &have_picture, &avpkt);
 		if (re < 0) {
-			bc_log(Info, "Decoding failed for motion processor");
+			bc_log(Warning, "Decoding failed for motion processor");
 		} else if (have_picture) {
 			/* For high framerates, we can achieve the same level of motion detection
 			 * with much less CPU by testing at a reduced framerate. This will only run
@@ -136,7 +150,7 @@ void motion_processor::run()
 				int64_t diff = (frame->pts - last_tested_pts) / (AV_TIME_BASE / 1000);
 				if (diff > 0 && diff < 200) {
 					if (++skip_count > 15) {
-						bc_log(Debug, "Motion detection skipped too many consecutive frames "
+						bc_log(Info, "Motion detection skipped too many consecutive frames "
 						       "(diff: %" PRId64 "); Buggy PTS?", diff);
 					} else
 						skip = true;
@@ -212,13 +226,17 @@ int motion_processor::detect(AVFrame *rawFrame)
 			return 0;
 	}
 
+	m_debugFrameNum++;
 	switch (m_alg)
 	{
 		case BC_DEFAULT:
-		return detect_bc_original(rawFrame);
+    		return detect_bc_original(rawFrame);
 
-		case OPENCV:
-		return detect_opencv(rawFrame);
+		case CV_BASIC:
+            return detect_opencv(rawFrame);
+
+        case CV_MULTIFRAME:
+            return detect_opencv_advanced(rawFrame);
 	}
 
 	return 0;
@@ -228,7 +246,7 @@ void motion_processor::set_motion_algorithm(int algo)
 {
 	m_alg = (enum detection_algorithm)algo;
 
-	bc_log(Debug, "motion algorithm is set to %i", algo);
+	bc_log(Info, "motion algorithm is set to %i", algo);
 }
 
 int motion_processor::set_frame_downscale_factor(double f)
@@ -238,125 +256,316 @@ int motion_processor::set_frame_downscale_factor(double f)
 
 	m_downscaleFactor = f;
 
-	bc_log(Debug, "frame downscale factor is set to %f", f);
+	bc_log(Info, "frame downscale factor is set to %f", f);
 
 	return 1;
 }
 
 int motion_processor::set_min_motion_area_percent(int p)
 {
-	if (p > 100 || p < 0)
-		return 0;
+	if (p > 100 || p < 0 || ( p > m_maxMotionAreaPercent * 100))
+	    p = 5;
+		// return 0;
 
-	m_minMotionAreaPercent = p;
+    m_minMotionAreaPercent = p / 100.;
 
-	bc_log(Debug, "min_motion_area_percent is set to %i", p);
+	bc_log(Info, "min_motion_area_percent is set to %i", p);
 
 	return 1;
 }
 
-/*
-void dump_opencv_frame(cv::Mat &m, const char *name,  int *counter)
-                {//debug
-                        char fname[128];
-
-                        sprintf(fname,"/tmp/%s_dump%d.bmp", name, *counter);
-
-                        bc_log(Info, "Saving deltaFrame to %s", fname);
-
-                        if (!cv::imwrite(fname, m))
-                                bc_log(Error, "Failed to save deltaFrame");
-                        (*counter)++;
-                }
-*/
-
-int motion_processor::match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, double minMotionArea, int w, int h)
+int motion_processor::set_max_motion_area_percent(int p)
 {
-	cv::Mat m, deltaFrame;
+    if (p > 100 || p < 0 || (p < m_minMotionAreaPercent * 100))
+        p = 90;
+        //return 0;
 
+    m_maxMotionAreaPercent = p / 100.;
+
+    bc_log(Info, "max_motion_area_percent is set to %i", p);
+
+    return 1;
+}
+
+int motion_processor::set_max_motion_frames(int max)
+{
+    if (max < m_minMotionFrames)
+        max = max < m_minMotionFrames ? m_minMotionFrames * 1.33339 : 20;
+        //return 0;
+
+    if (max > 255 || max < 1)
+        max = 20;
+
+    m_maxMotionFrames = max;
+
+    bc_log(Info, "max_motion_frames is set to %i", max);
+
+    return 1;
+}
+
+int motion_processor::set_min_motion_frames(int min)
+{
+    if (min > m_maxMotionFrames)
+        min = min > m_maxMotionFrames ? (m_maxMotionFrames * 0.75) : 15;
+        //return 0;
+    if (min > 255 || min < 1)
+        min = 15;
+
+    m_minMotionFrames = min;
+
+    bc_log(Info, "min_motion_frames is set to %i", min);
+
+    return 1;
+}
+
+int motion_processor::set_motion_blend_ratio(int ratio)
+{
+    if (ratio > 100 || ratio < 2)
+        ratio = 10;
+        //return 0;
+
+    m_motionBlendRatio = 1.0 / ratio;
+
+    bc_log(Info, "motion_blend_radio is set to %i:1", ratio);
+
+    return 1;
+}
+
+int motion_processor::set_motion_debug(int debug)
+{
+    if (debug > 1 || debug < 0)
+        return 0;
+
+    m_motionDebug = (debug == 1);
+
+    bc_log(Info, "motion_debug is set to %i", debug);
+
+    return 1;
+}
+
+
+/**
+ * Utility function to create a directory path, creating parents as needed.
+ * @param path
+ * @return 0 on success, -1 on error
+ */
+
+int mkdir_p(const char *path, int perms)
+{
+    /* Adapted from http://stackoverflow.com/a/2336245/119527 */
+    const size_t len = strlen(path);
+    char _path[PATH_MAX];
+    char *p;
+
+    errno = 0;
+
+    /* Copy string so its mutable */
+    if (len > sizeof(_path)-1) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+    strcpy(_path, path);
+
+    /* Iterate the string */
+    for (p = _path + 1; *p; p++) {
+        if (*p == '/') {
+            /* Temporarily truncate */
+            *p = '\0';
+
+            if (mkdir(_path, perms) != 0) {
+                if (errno != EEXIST)
+                    return -1;
+            }
+
+            *p = '/';
+        }
+    }
+
+    if (mkdir(_path, perms) != 0) {
+        if (errno != EEXIST)
+            return -1;
+    }
+
+    return 0;
+}
+
+/**
+ * Checks the number of consecutive motion or non-motion frames.  We look for 30 consecutive frames to try
+ * and avoid trigger lots of events with only a couple frames in each.
+ *
+ * If more than 30 consecutive motion frames, we are 'in event'.
+ * If more than 30 consecutive non-motion frames, we clear 'in event', advance the event counter/date time
+ *
+ * In this function last_count is the number of consecutive frames, + means motion frames, - is non-motion
+ * @param true if the current frame had detected motion, otherwise false.
+ * @return true if we are i"in event", otherwise false.
+ */
+bool motion_processor::check_for_new_debug_event(bool md) {
+    static int last_count = 0;
+    static bool last_md = false;
+    static bool in_event = false;
+    char date_time[32];
+
+    if (md != last_md)
+        last_count = 0;
+
+    int dir = (md ? 1 : -1);
+    int cur_count = (last_count + dir > 10 ? 10 : (last_count + dir < -10 ? -10 : last_count + dir));
+
+    if (!in_event && cur_count >= 10) {
+        in_event = true;
+        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", &m_debugEventTime);
+        bc_log(Info, "Debug motion event has started: %s", date_time);
+    } else if (in_event && cur_count <= -10) {
+        time_t now = time(NULL);
+        localtime_r(&now, &m_debugEventTime);
+
+        //std::time_t now = std::time(NULL);
+        //&m_debugEventTime = std::localtime(&now);
+        //std::strftime(&m_debugEventTime, sizeof(&m_debugEventTime), "%Y-%m-%d/%H.%M.%S", ptm);
+
+        m_debugEventNum++;
+        m_debugFrameNum = 0;
+        in_event = false;
+        strftime(date_time, sizeof(date_time), "%Y/%m/%d - %H:%M:%S", &m_debugEventTime);
+        bc_log(Info, "Debug motion event has ended: %s", date_time);
+    }
+
+    last_md = md;
+    last_count = cur_count;
+    return in_event;
+}
+
+void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
+{
+    char date[24], stime[24], fname[128];
+
+    if (m_debugEventTime.tm_sec < 0) {
+        time_t now = time(NULL);
+        localtime_r(&now, &m_debugEventTime);
+        //std::time_t now = std::time(NULL);
+        //m_debugEventTime = std::localtime(&now);
+    }
+
+    bc_get_media_loc(fname, sizeof(fname));
+    strftime(date, sizeof(date), "%Y/%m/%d", &m_debugEventTime);
+    strftime(stime, sizeof(stime), "%H-%M-%S", &m_debugEventTime);
+
+    // append to the end of fname to get the entire pathname
+    snprintf(fname + strlen(fname), sizeof(fname)-1, "/%s/%06d/%s.debug", date, m_recorder->id, stime);
+    mkdir_p(fname, S_IRWXU | S_IRWXG | S_IRWXO);
+
+    // append again to the end of fname to get the absolute filename
+    sprintf(fname + strlen(fname),"/%06d.%s%s.jpg", m_debugFrameNum, name, (m_motionTriggered ? "-t" : "-p"), name);
+    if (!imwrite(fname, m))
+            bc_log(Error, "Failed to save %s Frame", name);
+}
+
+void motion_processor::dump_opencv_composite(cv::Mat red, cv::Mat green, cv::Mat blue, const char *name)
+{
+    // render all the contours (or perhaps just deltaFrame) in Red, onto the original greay curFrame, and output to file.
+    cv::Mat colorized;
+    std::vector<cv::Mat> channels = { blue, green, red };
+    cv::merge(channels, colorized);
+    dump_opencv_frame(colorized, name);
+}
+
+int motion_processor::match_ref_frame_opencv(cv::Mat &curFrame, cv::Mat &refFrame, int w, int h)
+{
+	cv::Mat m, deltaFrame, blobFrame;
 	cv::absdiff(refFrame, curFrame, deltaFrame);
 
-	for (int i = 0; i < 32; i++)
-		for (int j = 0; j < 24; j++)
-		{
-			int threshmap_cell = i + j *32;
+    //dump_opencv_frame(deltaFrame, "delta",  &dbg_cnt4);
+    for (int i = 0; i < 32; i++) {
+        for (int j = 0; j < 24; j++) {
+            cv::Mat cell(deltaFrame, cv::Range(h / 24 * j, h / 24 * (j + 1)), cv::Range(w / 32 * i, w / 32 * (i + 1)));
+            //according to OpenCV docs, changes to "cell" subarrays are reflected in deltaFrame, no copy-on-write is performed
+            cv::threshold(cell, cell, thresholds[j * 32 + i], 255, cv::THRESH_BINARY);
+        }
+    }
 
-			cv::Mat cell(deltaFrame, cv::Range(h/24 * j, h/24 * (j + 1)), cv::Range(w/32 * i, w/32 * (i + 1)));
-			//according to OpenCV docs, changes to "cell" subarrays are reflected in deltaFrame, no copy-on-write is performed
-			cv::threshold(cell, cell, thresholds[threshmap_cell], 255, cv::THRESH_BINARY);
-		}
-
-	int iterations = 2;
-	cv::dilate(deltaFrame, deltaFrame, cv::Mat(), cv::Point(-1,-1), iterations);
-
+    //dump_opencv_frame(deltaFrame, "threshold",  &dbg_cnt4);
+	int iterations = 5;
+	cv::dilate(deltaFrame, blobFrame, cv::Mat(), cv::Point(-1,-1), iterations);
 
 	std::vector<std::vector<cv::Point>> contours;
+	cv::findContours(blobFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0,0));
+    //dump_opencv_frame(deltaFrame, "contour",  &dbg_cnt4);
 
-	cv::findContours(deltaFrame, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE, cv::Point(0,0));
+    // the old way was looking for the largest blob and comparing against thresholds...
+    // the new way sums the area of all blobs and compares the total against thresholds...
+    double motionArea = 0.;
+    double maxArea = w * h;
 
-	for( int i = 0; i < contours.size(); i++)
-	{
-		if (cv::contourArea(contours[i]) >= minMotionArea)
-		{
-
-			/*{
-			static int dbg_cnt4 = 0;
-
-			cv::Mat df(curFrame);
-
-			cv::Rect boundRect = cv::boundingRect(cv::Mat(contours[i]));
-			cv::rectangle(df, boundRect.tl(), boundRect.br(), cv::Scalar(255, 0, 0), 2, 8, 0);
-			dump_opencv_frame(df, "motion",  &dbg_cnt4);
-			}*/
-
-			//motion is detected
-			return 1;
-		}
+	for( int i = 0; i < (int)contours.size(); i++) {
+        motionArea += cv::contourArea(contours[i]);
 	}
 
+    float motionPercent =  motionArea / maxArea;
+    if (motionPercent >= m_minMotionAreaPercent) {
+        if (m_motionDebug) {
+            bc_log(Info, "Motion-detect contour area is %0.1f%% of frame.", motionPercent * 100.);
+            cv::Mat bgChannel = curFrame-deltaFrame; // do this op once, but we'll use the result twice
+            dump_opencv_composite(curFrame, bgChannel, bgChannel, "motion");
+        }
+        // don't trigger event if the motion has saturated the majority of the frame.
+        return (motionPercent <= m_maxMotionAreaPercent);
+    }
+
 	return 0;
+}
+
+int motion_processor::convert_AVFrame_to_grayMat(AVFrame *srcFrame, cv::Mat &dstFrame)
+{
+    int dst_w = dstFrame.size().width;
+    int dst_h = dstFrame.size().height;
+
+    if (dst_w < 32 || dst_h < 24)
+    {
+        bc_log(Error, "Frame size is too small for motion detection! Increase frame downscale factor if it applies");
+        return 0;
+    }
+
+    convContext = sws_getCachedContext(convContext, srcFrame->width, srcFrame->height,
+                                       fix_pix_fmt(srcFrame->format), dst_w, dst_h,
+                                       AV_PIX_FMT_GRAY8, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+
+    // allocation a new AV frame of the new size/color type. But, we'll use the cv::Mat as the pixel holder
+    AVFrame *frame = av_frame_alloc();
+    frame->format = AV_PIX_FMT_GRAY8;
+    frame->width = dst_w;
+    frame->height = dst_h;
+
+    // setup and pointers, and tmp AVFrame for scaling the src image into
+    av_image_fill_arrays(frame->data, frame->linesize, dstFrame.data, AV_PIX_FMT_GRAY8, dst_w, dst_h, 1);
+
+    // do the copy/scale
+    sws_scale(convContext, (const uint8_t **)srcFrame->data, srcFrame->linesize, 0, srcFrame->height,
+              frame->data, frame->linesize);
+
+    av_frame_free(&frame);
+
+    return 1;
 }
 
 int motion_processor::detect_opencv(AVFrame *rawFrame)
 {
 	int ret = 0;
-	int dst_h, dst_w;
-	double downscaleFactor = m_downscaleFactor;
-	double minMotionArea = rawFrame->height * downscaleFactor * rawFrame->width * downscaleFactor / 100 * m_minMotionAreaPercent;
+    int dst_h = rawFrame->height * m_downscaleFactor;
+    int dst_w = rawFrame->width * m_downscaleFactor;
 
-	dst_h = rawFrame->height * downscaleFactor;
-	dst_w = rawFrame->width * downscaleFactor;
+    // first things first... get the original frame from the AVFrame and convert it to an OpenCV Grayscale Mat, and the "downscale" size.
+    cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
+    if (convert_AVFrame_to_grayMat(rawFrame, m) == 0) {
+        return 0; // error converting frame...
+    }
 
-	cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
-
-	convContext = sws_getCachedContext(convContext, rawFrame->width, rawFrame->height,
-		fix_pix_fmt(rawFrame->format), dst_w, dst_h,
-		AV_PIX_FMT_GRAY8, SWS_FAST_BILINEAR, NULL, NULL, NULL);
-
-	AVFrame *frame = av_frame_alloc();
-	frame->format = AV_PIX_FMT_GRAY8;
-	frame->width = dst_w;
-	frame->height = dst_h;
-
-	if (dst_w < 32 || dst_h < 24)
-	{
-		bc_log(Error, "Frame size is too small for motion detection! Increase frame downscale factor if it applies");
-		return 0;
-	}
-
-	av_image_fill_arrays(frame->data, frame->linesize, m.data, AV_PIX_FMT_GRAY8, dst_w, dst_h, 1);
-
-	sws_scale(convContext, (const uint8_t **)rawFrame->data, rawFrame->linesize, 0,
-		  rawFrame->height, frame->data, frame->linesize);
-
-	//OpenCV stuff goes here...
 	cv::GaussianBlur(m, m, cv::Size(21, 21), 0);
 
 	//match every 2nd reference frame
-	if (!m_refFrames[0].empty() && m_refFrames[0].rows == frame->height && m_refFrames[0].cols == frame->width && m_refFrameUpdateCounters[0] != 0)
+	if (!m_refFrames[0].empty() && m_refFrames[0].rows == dst_h && m_refFrames[0].cols == dst_w && m_refFrameUpdateCounters[0] != 0)
 	{
-
-		ret = this->match_ref_frame_opencv(m, m_refFrames[0], minMotionArea, dst_w, dst_h);
+		ret = this->match_ref_frame_opencv(m, m_refFrames[0], dst_w, dst_h);
 
 		m_refFrameUpdateCounters[0]++;
 
@@ -370,25 +579,73 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 		m_refFrameUpdateCounters[0] = 1;
 	}
 
-	if (ret == 0 && !m_refFrames[1].empty() && m_refFrames[1].rows == frame->height && m_refFrames[1].cols == frame->width && m_refFrameUpdateCounters[1] != 0)
+	if (ret == 0 && !m_refFrames[1].empty() && m_refFrames[1].rows == dst_h && m_refFrames[1].cols == dst_w && m_refFrameUpdateCounters[1] != 0)
 	{
-		ret = this->match_ref_frame_opencv(m, m_refFrames[1], minMotionArea, dst_w, dst_h);
+		ret = this->match_ref_frame_opencv(m, m_refFrames[1], dst_w, dst_h);
 
-                m_refFrameUpdateCounters[1]++;
+        m_refFrameUpdateCounters[1]++;
 
-                if (m_refFrameUpdateCounters[1] % 25 == 0)
-                        m_refFrameUpdateCounters[1] = 0;
+        if (m_refFrameUpdateCounters[1] % 25 == 0)
+                m_refFrameUpdateCounters[1] = 0;
 	}
 	else if (ret == 0)
 	{
-                m_refFrames[1] = m;
-                bc_log(Debug, "opencv motion detection - setting reference frame 2");
-                m_refFrameUpdateCounters[1] = 1;
+        m_refFrames[1] = m;
+        bc_log(Debug, "opencv motion detection - setting reference frame 2");
+        m_refFrameUpdateCounters[1] = 1;
 	}
 
-	av_frame_free(&frame);
+	if (m_motionDebug)
+        check_for_new_debug_event(ret);
 	return ret;
 }
+
+int motion_processor::detect_opencv_advanced(AVFrame *rawFrame)
+{
+    int ret = 0;
+    int dst_h = rawFrame->height * m_downscaleFactor;
+    int dst_w = rawFrame->width * m_downscaleFactor;
+
+    // first things first... get the original frame from the AVFrame and convert it to an OpenCV Grayscale Mat, and the "downscale" size.
+    cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
+    if (convert_AVFrame_to_grayMat(rawFrame, m) == 0)
+        return 0; // error converting frame...
+
+    // do a quick(-ish) blur to reduce noise...
+    cv::GaussianBlur(m, m, cv::Size(21, 21), 0);
+
+    if (m_refFrames[0].empty() || m_refFrames[0].rows != dst_h || m_refFrames[0].cols != dst_w) {
+        m_refFrames[0] = m;
+        bc_log(Debug, "opencv motion detection - setting reference frame");
+    } else {
+        ret = match_ref_frame_opencv(m, m_refFrames[0], dst_w, dst_h);
+        cv::addWeighted(m_refFrames[0], 1.0 - m_motionBlendRatio, m, m_motionBlendRatio, 0.0,  m_refFrames[0]);
+    }
+
+    if (m_motionDebug)
+        check_for_new_debug_event(ret);
+
+    // every frame, update our temporal counters
+    md_frame_pool_index = (md_frame_pool_index + 1) % m_maxMotionFrames;
+    md_frame_pool[md_frame_pool_index] = ret;
+
+    int num_md_frames = 0;
+    for (int i = 0; i < m_maxMotionFrames; i++)
+        num_md_frames += md_frame_pool[i];
+
+    if (num_md_frames >= m_minMotionFrames) {
+        if (!m_motionTriggered) {
+            bc_log(Info, "OpenCV::Temporal detected %d frames of motion. Motion Triggered.", num_md_frames);
+        }
+    } else if (m_motionTriggered) {
+        // we are between trigger events...
+        bc_log(Info, "OpenCV::Temporal motion event has lapsed.");
+    }
+
+    m_motionTriggered = (num_md_frames >= m_minMotionFrames);
+    return m_motionTriggered;
+}
+
 
 int motion_processor::detect_bc_original(AVFrame *rawFrame)
 {
@@ -409,6 +666,7 @@ int motion_processor::detect_bc_original(AVFrame *rawFrame)
 		  rawFrame->height, frame->data, frame->linesize);
 
 #ifdef DEBUG_DUMP_MOTION_DATA
+    dump_opencv_frame()
 	if (!md->dumpfile) {
 		char filename[128];
 		snprintf(filename, sizeof(filename), "/tmp/bc.motion.%d", (int)rand());

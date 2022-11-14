@@ -1,5 +1,3 @@
-
-
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
 		menu:	'layoutsMenu',
@@ -33,16 +31,27 @@ window.addEvent('load', function(){
 	adjustImageSize();
 	var cameraMenu = new ContextMenu({
 		menu:	'cameraList',
-		targets: '.noImg',
+		targets: '.noImageTd',
 		trigger: 'click',
 		actions: {
 			'loadCam' : function(el, ref, item){
-				var id = item.get('id');
+				el = el.children[0];
+				var device_id = item.get('id');
 				var elParent = el.getParent();
-				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), id);
-				el.set('src', '/media/mjpeg?multipart=true&id='+id);
+				var videoMethod = $$('#video_method').get('value')[0];
+
+				Cookie.write('imgSrc'+elParent.getParent().get('class')+elParent.get('class'), device_id);
+
+				if (videoMethod === 'HLS') {
+					el.set('src', '/img/icons/layouts/loading.png');
+					createHlsLink(device_id, el.get('id'), 'noImg gridImage', window.location.hostname, window.location.port);
+				}
+				else {
+					el.set('src', '/media/mjpeg?multipart=true&id='+device_id);
+				}
+
 				if (item.get('class')){
-					addPtz(el, id);
+					addPtz(el, device_id);
 				};
 			}
 		}
@@ -169,28 +178,42 @@ makeGrid = function(){
 	var lvRows = (Cookie.read('lvRows') || 2);
 	var lvCols = (Cookie.read('lvCols') || 2);
 	var gridTable = new Element('table', {
-           	'id' : 'lvGridTable'
+           	'id' : 'lvGridTable', 'class': 'webcamsTable'
     });
-	for (row = 1; row<=lvRows; row++){
+	for (row = 1; row <= lvRows; row++) {
        	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
-       	for(col = 1; col<=lvCols; col++){
-			var thisCol = new Element('td', {'id' : col, 'class' : 'x'+col});
+       	for(col = 1; col <= lvCols; col++){
+			var thisCol = new Element('td', {'id' : col, 'class' : 'noImageTd x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
-			var imgClass = 'noImg'; //(imgSrcId!='none') ? 'lvImg' :
-			var thisCam = $$('.ptz'+'#'+imgSrcId); 	var id = imgSrcId;
-			imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
-			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId});
-			lvImg.inject(thisCol);
+			var imgClass = 'noImg gridImage';
+			var thisCam = $$('.ptz'+'#'+imgSrcId);
+			var id = imgSrcId;
+			var videoMethod = $$('#video_method').get('value')[0];
+			var elementId = 'live_view' + row + col;
+
+			if (videoMethod === 'HLS') {
+				imgSrcId = (imgSrcId!='none') ? '/img/icons/layouts/loading.png' : '/img/icons/layouts/none.png';
+			}
+			else {
+				imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
+			}
 			
-			if (thisCam  && (thisCam.get('id')==id)) {
+			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId, 'id': elementId});
+			lvImg.inject(thisCol);
+
+			if (thisCam  && (thisCam.get('id') == id)) {
 				addPtz(lvImg, id);
 			}
+
             thisCol.inject(thisRow, 'bottom');
+
+			if (videoMethod === 'HLS' && id != 'none') {
+				createHlsLink(id, elementId, imgClass, window.location.hostname, window.location.port);
+			}
 		};
   	    thisRow.inject(gridTable, 'bottom');
 	};
     gridTable.inject($('liveViewContainer'));
-	
 }
 
 adjustImageSize = function(){
@@ -214,16 +237,33 @@ adjustImageSize = function(){
 		if ((el.width/el.height) > (704/480)){
 			el.setStyle('width', maxWidth);
 			el.setStyle('height', '');
+			el.setStyle('min-height', maxHeight);
 		}
 		else {
 			el.setStyle('height', maxHeight);
 			el.setStyle('width', '');
+			el.setStyle('min-width', maxWidth);
 		}
 	});
+	
+	$$('#liveViewContainer table tr td video').each(function(el){
+		if ((el.width/el.height) > (704/480)){
+			el.setStyle('width', maxWidth);
+			el.setStyle('height', '');
+			el.setStyle('min-height', maxHeight);
+		}
+		else {
+			el.setStyle('height', maxHeight);
+			el.setStyle('width', '');
+			el.setStyle('min-width', maxWidth);
+		}
+	});
+
 	window.addEvent('resize', function(){
 		adjustImageSize();
 	});
 }
+
 addDelRowColumn = function(n, t){
 	var tp = ((n)=='c' ? 'lvCols' : 'lvRows');
 	var v = parseInt(Cookie.read(tp) || 2);
@@ -235,7 +275,6 @@ setLayout = function(tp){
 	Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
 	window.location.reload(true);
 }
-
 
 sendPtzCommand = function(camId, command, d, cont, speed){
 	if (!speed) var speed = 32;
@@ -265,4 +304,90 @@ sendPtzCommand = function(camId, command, d, cont, speed){
 	}).send();
 };
 
+setHlsLink = function(videoLink, videoId, imgClass) {
 
+	var element = document.getElementById(videoId);
+	var parent = element.parentNode;
+
+	var width     = element.style.width;
+	var height    = element.style.height;
+	var minWidth  = element.style.minWidth;
+	var minHeight = element.style.minHeight;
+
+	parent.removeChild(element);
+
+	if(Hls.isSupported()) {
+		var hls = new Hls();
+
+		element = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
+		hls.loadSource(videoLink);
+		hls.attachMedia(element);
+		hls.on(Hls.Events.MANIFEST_PARSED,function() {
+			video.play();
+		});
+	} else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+		element = new Element('video', {'class': imgClass, 'id': videoId, 'controls': '', 'autoplay': 'true', 'width': '100%', 'height': 'auto'});
+		element.src = videoLink;
+		element.addEventListener('loadedmetadata',function() {
+			element.play();
+		});
+	} else {
+		element = new Element('img', {'class': imgClass, 'id': videoId, 'src': '/img/icons/layouts/hls-not-support.png'});
+	}
+
+	element.style.width     = width;
+	element.style.height    = height;
+	element.style.minWidth  = minWidth;
+	element.style.minHeight = minHeight;
+	
+	parent.appendChild(element);
+}
+
+setHlsErrorImage = function(elementId, message) {
+
+	var element = document.getElementById(elementId);
+	if (message === "no_permission") {
+		element.src = '/img/icons/layouts/no-permission.png';
+	}
+	else if (message === "disabled") {
+		element.src = '/img/icons/layouts/disabled.png';
+	} 
+	else if (message === "not_found") {
+		element.src = '/img/icons/layouts/not-found.png';
+	} 
+	else if (message === "not_id") {
+		element.src = '/img/icons/layouts/no-device-id.png';
+	} 
+	else {
+		//
+	} 
+}
+
+createHlsLink = function(deviceId, elementId, elementClass, hostname, port) {
+	var data = 'id=' + deviceId + '&hostname=' + hostname + '&port=' + port;
+	var request = new Request.HTML({
+		url: 'media/hls',
+		data: data,
+		method: 'get',
+		onRequest: function(){
+			console.log('onRequest');
+		},
+		onComplete: function(){
+			console.log('onComplete');
+		},
+		onFailure: function(xhr){
+			console.log(xhr);
+		},
+		onSuccess: function(json){
+			var ret = JSON.parse(json[0].data);
+			if (ret.status == 6) {
+				var hls_link = ret.msg[0];
+				setHlsLink(hls_link, elementId, elementClass);
+			}
+			else {
+				setHlsErrorImage(elementId, ret.msg[0]);
+			}
+		}
+	}).send();
+
+}

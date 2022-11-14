@@ -1,3 +1,88 @@
+bluecherry (3:3.1.0-rc6) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Thumbnails are blank (#550)
+  * FIX: Onvif triggering does not work (#547)
+  * FIX: Onvif scanning does not work (#548)
+  * FIX: Web UI freezes (#550)
+  * FIX: Pulling snapshots via API returns no thumbnails (#551)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 09 Jun 2022 12:34:08 -0600
+
+
+bluecherry (3:3.1.0-rc5) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Frame based motion randomly stops in the middle of a motion event #(500)
+  * FIX: Constant recordings stop after several seconds (#523)
+  * FIX: Add cronscripts for domain and SSL renewal
+  * FIX: Only send webhook trigger on motion, not constant video (#515) -- Thanks to @mcnelson for this fix
+  * FIX: Increase Media.size limit to fix SQL errors with 1hr+ record segments (0294eef8f22708526b03bd94d8b676954e5d857b) -- Thanks to @mcnelson for this fix
+  * FIX: Web UI fix: can't delete webhooks when there are multiple webhooks configured (b384096819205e5008dd26f02d7e83f7b6abaa85) -- Thanks to @enp6s0 for this fix
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 01 Mar 2022 15:52:42 -0600   
+
+bluecherry (3:3.1.0-rc4) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Most reported crashes in RC3 (one still remains outstanding)
+  * FIX: Don't overwrite subdomain SSL certificate include in nginx on upgrade (57bea75ac9b1d692b20ed742d69bcd5ecb101be6)
+  * FIX: Add cronscript to check for new IP address and report changes to subdomain API (#507)
+  * FIX: Available licensed ports show -1 (#504)
+  * FIX: HLS stream is unstable (#487)
+  * FIX: Failed to init muxer for output file $filepath invalid argument
+  * FIX: apt-get remove --purge remove does not truncate (remove) the user, prevents reinstallation (2b3d199f814430eb21221525301d077be3b6bc27)
+  * FEATURE: Update devices.xml to show device name (needed in mobile app) (00e2fc1462cc82eb51ec47e1c425685d6f8110fc)
+  * FEATURE: Finished monitoring threads and high performance statistic collector with backend API (#506)
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 17 Sep 2021 20:07:00 -0600   
+
+bluecherry (3:3.1.0-rc3) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: All reported crashes in RC2.
+  * FIX: Firefox UblockOrigin blocks certain menu item clicks (#474)
+  * FIX: Web: 504 Gateway Time-out fix (#470)
+  * FIX: 30 day trial should allow unlimited cameras, however currently limited to 4 (#475)
+  * FIX: Adding a user without an email address causes the web interface to become unresponsive (#484)
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 11 Jul 2021 14:50:00 -0600   
+
+bluecherry (3:3.1.0-rc2) focal bionic buster groovy hirsute bullseye; urgency=low
+
+  * FIX: Resolve large memory leak, causing OOM failure sometimes as soon as 1 hour. (https://github.com/bluecherrydvr/bluecherry-apps/commit/01328270cba757fd853c84826402d44dc0d3eb61) / #01328270cba757fd853c84826402d44dc0d3eb61
+  * FIX: Resolve buffer append crash (#6bc8ceed0b5bd6385991bd1dea65f36bffeea782)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 12 Jun 2021 15:52:04 -0600   
+
+bluecherry (3:3.1.0-rc1) focal bionic buster groovy; urgency=low
+
+  * FEATURE: Migrate completely to nginx instead of Apache (#436)
+  * FEATURE: Support HLS web streaming for live view (#437)
+  * FEATURE: Allow trial licenses
+  * FEATURE: Start initial work to support Lets Encrypt SSL (will be fully added in -RC2) -- Requires paid license.
+  
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 6 Jun 2021 19:25:00 -0600   
+
+bluecherry (3:3.0.6) focal bionic buster groovy; urgency=low
+
+  * FIX: Lack of string etiquette in the trigger server, resolve buffer overrun (#434)
+  * FIX: Nasty storage deletion routine bug where old videos may not be deleted, resulting in 100% disk usage and failure to compontents (#433)
+  * FIX: Web: Layout problem when cameras are disabled (#227)
+  * FEATURE: Auto-expand IP Cameras in Devices page (#430)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 10 May 2021 13:21:52 -0600 
+
+bluecherry (3:3.0.5) focal bionic buster groovy; urgency=low
+
+  * FIX: Web playback - AJAX error caused by the wrong time format (#388)
+  * FIX: Fixed segment violation bug in recording schedule (#425)
+  * FIX: Change VAAPI to 'None' by default (#421)
+  * FIX: Web backup / restore - Fixed problem where backup and restore would always fail (#414 / #409)
+  * FIX: Fix mailer.php (attachments were broken) (#405)
+  * FIX: TLS / SASL improvements (#366)
+  * FEATURE: Support systemd (allowing for newer Ubuntu distributions) (#406)
+  * FEATURE: Adds temporal-based motion detection algorithm - Added by Kyle Mallory <kylemallory@yahoo.com>
+  * FEATURE: Minor improvements to Experimental motion detection algorithm, specifically support for "max motion area". - Added by Kyle Mallory <kylemallory@yahoo.com>
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Wed, 28 Apr 2021 12:57:28 -0600 
+
 bluecherry (3:3.0.4) focal bionic buster; urgency=low
 
   * Restart subscription to ONVIF events if connection is lost

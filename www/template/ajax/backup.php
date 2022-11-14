@@ -25,7 +25,7 @@
             <div class="panel-body">
                 <form action="/backup?mode=prepare" method="post" id="backup-form">
                     <div class="form-group">
-                        <label class=""><?php echo str_replace(array('%USERS%', '%DBNAME%'), array('root', $database_parameters['db']), BACKUP_PWD); ?></label>
+                        <label class=""><?php echo str_replace(array('%USERS%', '%DBNAME%'), array('bluecherry', $database_parameters['db']), BACKUP_PWD); ?></label>
                         <input class="form-control" type="password" name="pwd"  />
                     </div>
                     <div class="form-group">

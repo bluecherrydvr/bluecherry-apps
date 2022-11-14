@@ -44,11 +44,19 @@ body { padding-top:0px; margin-top:0px; }
 #gridAdjustments ul li.separator 	{ width:2px; border-right:1px solid #efefef; cursor:default; }
 
 /*LV*/
-#liveViewContainer {position: relative; float:left; border:1px solid gray; margin-left:10px; }
-#lvGridTable tr td { border:1px dotted gray; margin:3px; position:relative; float:left; }
+#liveViewContainer {position: relative; float:left; border:1px solid gray; margin-left:10px;width: 90%; }
+#lvGridTable tr {vertical-align: unset !important;display: flex !important;}
+#lvGridTable tr td { width: 49%; border:1px dotted gray; margin:3px; position:relative; float:left;display: flex;align-items: center; }
 .lvImg { float:left; }
 .chooseCamera { width:100%; text-align:center; }
-
+.webcamsTable {
+    width: 100%;
+}
+.gridImage {
+    min-width: auto !important;
+    width: 100% !important;
+    min-height: auto !important;
+}
 /*PTZ*/
 #ptzControlsContainer { display: none;  }
 .ptzControls { height:100%; width:100%; position:absolute; float:left; z-order:20; top:0px; left:0px; }

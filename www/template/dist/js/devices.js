@@ -8,13 +8,27 @@ $(function() {
     });
 
     $('body').on("change", "#motionmap-algorithm :input", function() {
-        var min_motion_area_bl = $('.bfh-slider[data-name="min_motion_area"]');
         if ($(this).val() == 0) {
             // default
-            min_motion_area_bl.addClass('disabled');
-        } else {
+            $('.bfh-slider[data-name="min_motion_area"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').addClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').addClass('disabled');
+        } else if ($(this).val() == 1) {
             // experimental
-            min_motion_area_bl.removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').addClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').addClass('disabled');
+        } else if ($(this).val() == 2) {
+            // OpenCV Temporal
+            $('.bfh-slider[data-name="min_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_area"]').removeClass('disabled');
+            $('.bfh-slider[data-name="min_motion_frames"]').removeClass('disabled');
+            $('.bfh-slider[data-name="max_motion_frames"]').removeClass('disabled');
+            $('.bfh-slider[data-name="motion_blend_ratio"]').removeClass('disabled');
         }
     });
 
@@ -99,6 +113,19 @@ function triggerONVIFevents(el) {
     }
 }
 
+function toggleMotionDebug(el) {
+    var par = el.closest('div');
+    var el_val = par.find('input[name="motion_debug"]');
+
+    if (el.prop('checked')) {
+
+        el_val.val('1');
+    } else {
+
+        el_val.val('0');
+    }
+}
+
 function getMotionMap(form) {
     var tds = form.find('.table-grid td');
     var map = '';
@@ -121,7 +148,7 @@ var motionGrid = function(el) {
     var grid_color = null;
     var motion_map = null;
     var color_array = { 'bg-default' : 0 , 'bg-success' : 1, 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 4, 'bg-danger' : 5};
-    var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 3, 'bg-warning' : 'T', 'bg-danger' : 'C'};
+    var color_array_schedule = { 'bg-default' : 'N' , 'bg-success' : 'M', 'bg-info' : 2, 'bg-primary' : 'X', 'bg-warning' : 'T', 'bg-danger' : 'C'};
     var week_days = new Array('', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday');
 
     var getColorClass = function (symb) {

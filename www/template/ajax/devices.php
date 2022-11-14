@@ -30,7 +30,7 @@
                         <a href="#devices-bl-ip" role="button" data-toggle="collapse" data-parent="#devices-bl"><i class="fa fa-list-ul fa-fw"></i>IP Cameras</a>
                     </h4>
                 </div>
-                <div id="devices-bl-ip" class="panel-collapse collapse" role="tabpanel" aria-labelledby="devices-bl-ip">
+                <div id="devices-bl-ip" class="panel-collapse collapse in" role="tabpanel" aria-labelledby="devices-bl-ip">
                     <div class="panel-body">
 
                     <div class="row" id="devices-ip-ok">

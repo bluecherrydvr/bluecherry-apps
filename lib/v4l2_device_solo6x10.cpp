@@ -102,6 +102,8 @@ v4l2_device_solo6x10::v4l2_device_solo6x10(BC_DB_RES dbres)
 	: dev_fd(-1), cam_caps(0), dev_id(0), demuxer(NULL)
 {
 	const char *p = bc_db_get_val(dbres, "device", NULL);
+	if (!p) return;
+
 	int id = -1;
 	const char *needed_signal_type = bc_db_get_val(dbres, "signal_type", NULL);
 	int ret;
@@ -143,7 +145,7 @@ v4l2_device_solo6x10::v4l2_device_solo6x10(BC_DB_RES dbres)
 	if (needed_signal_type) {
 		v4l2_std_id current_std, needed_std;
 
-		if (strcasecmp(needed_signal_type, "PAL") == 0)
+		if (strncasecmp(needed_signal_type, "PAL", 3) == 0)
 			needed_std = V4L2_STD_PAL_B;
 		else
 			needed_std = V4L2_STD_NTSC_M;

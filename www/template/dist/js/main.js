@@ -241,6 +241,10 @@ var ajaxReq = function () {
                 respProc(msg);
             })
             .fail(function(msg) {
+                // This is workaround for ublockORIGIN browser plugin which blocks get HTML requests(logs page - issue #474).
+                console.error('Request failed redirecting to ' + form_act)
+                location.href = location.origin + form_act
+
                 if (error_ajax) alert('err ajax');
 
                 if ((callback_func !== null) && (typeof(callback_func === 'function'))) {

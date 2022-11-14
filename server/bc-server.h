@@ -30,6 +30,8 @@ extern "C" {
 #include <pugixml.hpp>
 
 #include "reencoder.h"
+#include "recorder.h"
+#include "hls.h"
 
 /* Global Mutexes */
 extern pthread_mutex_t mutex_global_sched;
@@ -67,14 +69,19 @@ public:
 	pthread_mutex_t		    cfg_mutex;
 
 	const int id;
+	int64_t cur_pts;
 
 	log_context log;
 
 	/* Streaming */
 	/* RTP muxing contexts */
-	AVFormatContext *stream_ctx[2];
-
+	AVFormatContext *rtp_stream_ctx[2];
 	class rtsp_stream *rtsp_stream;
+
+	/* HLS muxing contexts */
+	AVFormatContext 	*hls_stream_ctx[2];
+	hls_listener	 	*hls_stream;
+	hls_segment::type 	hls_segment_type;
 
 	time_t			osd_time;
 	unsigned int		start_failed;
@@ -96,7 +103,8 @@ public:
 	class motion_processor *m_processor;
 	class trigger_processor *t_processor;
 	class motion_handler *m_handler;
-	class recorder *rec;
+	class recorder *rec_continuous;
+	class recorder *rec_motion;
 
 	/* Live View substream */
 	class substream *liveview_substream;
@@ -134,6 +142,11 @@ typedef enum {
 	STATUS_WATCHDOG,
 	NUM_STATUS_COMPONENTS // must be the last entry
 } bc_status_component;
+
+typedef enum {
+	BC_RTP,
+	BC_HLS
+} bc_streaming_type;
 
 /* Types for aud_format */
 #define AUD_FMT_PCM_U8		0x00000001
@@ -173,11 +186,14 @@ int decode_one_video_packet(struct bc_record *bc_rec, const stream_packet &packe
 int save_event_snapshot(struct bc_record *bc_rec, const stream_packet &packet);
 
 /* Streaming */
-int bc_streaming_setup(struct bc_record *bc_rec, std::shared_ptr<const stream_properties> props);
-void bc_streaming_destroy(struct bc_record *bc_rec);
+int bc_streaming_setup(struct bc_record *bc_rec, bc_streaming_type bc_type, std::shared_ptr<const stream_properties> props);
+void bc_streaming_destroy_rtp(struct bc_record *bc_rec);
+void bc_streaming_destroy_hls(struct bc_record *bc_rec);
 int bc_streaming_is_setup(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_is_active(struct bc_record *bc_rec) __attribute__((pure));
+int bc_streaming_is_active_hls(struct bc_record *bc_rec) __attribute__((pure));
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
+int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet &packet);
 
 void bc_close_avcodec(struct bc_record *bc_rec);
 int bc_open_avcodec(struct bc_record *bc_rec);

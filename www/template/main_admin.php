@@ -127,7 +127,7 @@
                         <li class="divider"></li>
 
                         <li>
-                            <a href="/news" class="ajax-content" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?></a>
+                            <a href="/news" data-left-menu="true"><i class="fa fa-dashboard fa-fw"></i> <?php echo MMENU_NEWS; ?>&nbsp; <div class="visible-inline-block announcekit-widget"> </div></a>
                         </li>
 
                         <li class="divider"></li>
@@ -160,6 +160,9 @@
                         </li>
                         <li>
                             <a href="/webhook"><i class="fa fa-cog fa-fw"></i> Webhooks</a>
+                        </li>
+                        <li>
+                            <a href="/subdomainprovider"><i class="fa fa-briefcase fa-fw"></i> <?php echo G_SUBDOMAIN_TITLE; ?></a>
                         </li>
                         <li class="divider"></li>
                         <li class="divider"></li>
@@ -263,7 +266,7 @@
                 <div class="col-lg-12">
                     <div class="alert alert-warning <?php echo $general_error['type']; ?>">
                         <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
-                        <?php echo $general_error['text']; ?>
+                        <span id="general_error"><?php echo $general_error['text']; ?></span>
                     </div>
                 </div>
             </div>
@@ -307,6 +310,9 @@
     <!-- bootstrap table -->
     <script src="/template/bower_components/bootstrap-table/bootstrap-table.min.js"></script>
 
+    <!-- jquery validation plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.2/jquery.validate.min.js"></script>
+
     <!-- Custom Theme JavaScript -->
     <script type="text/javascript" src="/vars"></script>
     <script src="/template/dist/js/main.js?v=<?php echo time(); ?>"></script>
@@ -329,6 +335,24 @@
     <script src="/template/dist/js/profile.js"></script>
     <script src="/template/dist/js/ptz.js"></script>
     <script src="/template/dist/js/webhook.js"></script>
+    <script src="/template/dist/js/subdomainprovider.js"></script>
+    <script>
+        window.announcekit = (window.announcekit || { queue: [], on: function(n, x) { 
+            window.announcekit.queue.push([n, x]); }, push: function(x) { window.announcekit.queue.push(x); } 
+        });
+        
+        window.announcekit.push({
+            "widget": "https://announcekit.co/widgets/v2/SznKU",
+            "selector": ".announcekit-widget"
+        })
+
+        window.announcekit.push({
+            "widget": "https://changelog.bluecherrydvr.com/widgets/v2/1fhia4",
+            "selector": ".announcekit-widget-embed",
+            "embed": true
+        })
+    </script>
+    <script async src="https://cdn.announcekit.app/widget-v2.js"></script>
 
     <?php echo getJs(); ?>
 </body>

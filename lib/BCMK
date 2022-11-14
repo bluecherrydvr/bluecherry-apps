@@ -1,11 +1,18 @@
-LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient -lconfig -lm -lrt -lbsd
+ifeq ($(BC_DEBIAN_BULLSEYE),y)
+	CFLAGS		+= -DBC_USE_MARIADB=y
+	LDFLAGS		+= -L/usr/lib64/mariadb -lmariadbclient
+else
+	LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient
+endif
+
+LDFLAGS		+= -lconfig -lm -lrt -lbsd
 LDFLAGS		+= -lavutil -lavformat -lavcodec -lpugixml
 CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o lavf_device.o bc-ptz.o \
+		  bc-key.o bc-media.o lavf_device.o bc-ptz.o bc-stats.o \
 		  input_device.o v4l2_device_solo6x10.o stream_elements.o \
 		  logging.o bc-syslog.o sliding_seq_window.o \
 		  v4l2_device_tw5864.o v4l2_device_solo6010-dkms.o

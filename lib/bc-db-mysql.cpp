@@ -20,9 +20,15 @@
 
 #include "bc-db.h"
 
+#ifdef BC_USE_MARIADB
+#include <mariadb/mysql.h>
+#include <mariadb/errmsg.h>
+#include <mariadb/mysqld_error.h>
+#else
 #include <mysql/mysql.h>
 #include <mysql/errmsg.h>
 #include <mysql/mysqld_error.h>
+#endif
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
