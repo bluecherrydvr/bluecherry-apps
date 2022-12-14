@@ -302,7 +302,8 @@ case "$1" in
 				exit 1
 			fi
 
-			BC_GENERAL_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DVR_NAME'" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" | tail -n 1 | tr "Bluecherry DVR v" " "`
+			BC_GENERAL_VERSION=`echo "SELECT value from GlobalSettings WHERE parameter = 'G_DVR_NAME'" \
+				| mysql -h "localhost" -D"bluecherry" -u"bluecherry" -p"bluecherry" | tail -n 1 | tr "Bluecherry DVR v" " "`
 
 			if [ $BC_GENERAL_VERSION == 2 ];
 			then
