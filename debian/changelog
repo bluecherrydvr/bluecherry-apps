@@ -2,6 +2,10 @@ bluecherry (3:3.1.0-rc7) focal bionic buster groovy hirsute bullseye; urgency=lo
 
   * FIX: Web UI freezes (#544)
   * FIX: Upgrade from Ubuntu 18.04 v2 to v3 fails (#b44969fe9a3e4fd5718dd3fd8d8fd7c26a33975c) 
+  * FIX: Fix issues with installation on Ubuntu 20.04 Desktop
+  * Feature: Install pip3 from bootstrap.pypa.io (https://bootstrap.pypa.io/), resolves issue with older python packages required for our intergration with Lets Encrypt
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 21 Jan 2022 14:19:08 -0600
 
 bluecherry (3:3.1.0-rc6) focal bionic buster groovy hirsute bullseye; urgency=low
 

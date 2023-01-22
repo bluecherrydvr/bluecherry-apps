@@ -79,6 +79,13 @@ function stop_nginx
 	fi
 }
 
+function install_pip
+{
+
+	  wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
+	  python3 /tmp/get-pip.py
+}
+
 function start_apache
 {
 	if [[ $IN_DEB ]]
@@ -396,11 +403,15 @@ case "$1" in
 		if test -f "/usr/share/bluecherry/nginx-includes/subdomain.conf"; then
 		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
 		fi
+		
+# Install pip from bootstrap	
+
+		install_pip
 
 		# Install pip3 dependencies
-		pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
-		pip3 install --user --upgrade pip
-		pip3 install --user --upgrade cryptography
+		/usr/local/bin/pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
+		/usr/local/bin/pip3 install --user --upgrade pip
+		/usr/local/bin/pip3 install --user --upgrade cryptography
 		
 		# Install crontabs for subdomain renewal and SSL renewal using certbot
 		crontab -l 2>/dev/null || true; printf "* * */5 * * certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ >/dev/null 2>&1\n*/5 * * * * curl -k https://localhost:7001/subdomainprovidercron >/dev/null 2>&1\n" | crontab -
