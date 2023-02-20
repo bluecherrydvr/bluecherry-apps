@@ -34,6 +34,10 @@ class storagecheck extends Controller {
     		return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
     	}
 
+    	$dir = shell_exec("/usr/share/bluecherry/scripts/check_dir_permission.sh $path");
+        if(!strpos($dir, 'wr')){
+            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
+        }
         $file_group = posix_getgrgid(filegroup($path));
         $allowed_group = array('bluecherry', 'www-data');
         if ((!isset($file_group['name'])) || (isset($file_group['name']) && (!in_array($file_group['name'], $allowed_group)))) {
@@ -43,6 +47,10 @@ class storagecheck extends Controller {
         $file_owner = posix_getpwuid(fileowner($path));
         if ((!isset($file_owner['name'])) || (isset($file_owner['name']) && (!in_array($file_group['name'], $allowed_group)))) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
+        }
+
+        if (!is_writable($path)) {
+            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
         }
 
         if (!is_readable($path)) {

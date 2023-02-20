@@ -462,6 +462,7 @@ define('LOCATION', 'Folder:');
 define('STORAGE_INFO_MESSAGE', 'Please note that if you add a new storage location, you need to make sure that: <br /> - folder exists <br /> - folder is empty <br /> - folder belongs to user bluecherry, group bluecherry.');
 define('DIR_DOES_NOT_EXIST_OR_NOT_READABLE', 'Server could not open the specified directory "<b>%PATH%</b>". See Note 2.
 	');
+define('DIR_NOT_WRITABLE', 'Specified directory "<b>%PATH%</b>" exists, but is not writable See Note 2.');
 define('DIR_NOT_READABLE', 'Specified directory "<b>%PATH%</b>" exists, but is not readable. See Note 2.
 	');
 define('DIR_NOT_EMPTY', 'Specified directory is not empty, all contents will be deleted after it is added.');
