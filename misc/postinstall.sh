@@ -145,7 +145,7 @@ case "$1" in
 		# Allow www-data to run check_dir_permission.sh as the Bluecherry user
 		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
-		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh\nwww-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/check_dir_permissions.sh" \
+		printf "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh\nwww-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/check_dir_permissions.sh\n" \
 			> /etc/sudoers.d/www-data
 		chmod 0440 /etc/sudoers.d/www-data
 	
