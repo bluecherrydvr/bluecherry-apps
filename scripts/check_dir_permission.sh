@@ -6,16 +6,15 @@
 
 FILE="$1"
 
-#if [[ ! -e "${FILE}" ]]; then
-#    mkdir -p "${FILE}"
-##        echo "creating directory..."
-#elif [[ ! -d "${FILE}" ]]; then
-#    echo "FILE already exists but is not a directory"
-#fi
-
-## to remove  write permission of other and group of file
-#chmod 770 "${FILE}"
-#chown -R bluecherry:bluecherry "${FILE}"
+if [[ ! -e "${FILE}" ]]; then
+    #  creating directory...
+    mkdir -p "${FILE}"
+    # write permission of other and group of file
+    chmod 770 "${FILE}"
+    chown -R bluecherry:bluecherry "${FILE}"
+elif [[ ! -d "${FILE}" ]]; then
+    echo "FILE already exists but is not a directory"
+fi
 
 # find out if file has write permission or not
 #[ -w $FILE ] && W="Write = yes" || W="Write = No"
