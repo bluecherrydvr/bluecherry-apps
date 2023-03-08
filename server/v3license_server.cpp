@@ -163,6 +163,7 @@ void* socketThread(void *arg)
     if (size <= 0) {
         bc_log(Error, "Failed to receive message from client socket: %s",
                strerror(errno));
+        close(newSocket);
         return NULL;
     }
 
@@ -170,7 +171,7 @@ void* socketThread(void *arg)
     if (pthread_mutex_lock(lock) != 0) {
         bc_log(Error, "Failed to mutex lock for thread: %s", strerror(errno));
         pthread_mutex_unlock(lock);
-
+        close(newSocket);
         return NULL;
     }
 
@@ -178,7 +179,7 @@ void* socketThread(void *arg)
         bc_log(Error, "Failed to get the v3license server instance: %s",
                strerror(errno));
         pthread_mutex_unlock(lock);
-
+        close(newSocket);
         return NULL;
     }
 
@@ -187,7 +188,7 @@ void* socketThread(void *arg)
         bc_log(Error, "Failed to get the v3license command argument: %s",
                strerror(errno));
         pthread_mutex_unlock(lock);
-
+        close(newSocket);
         return NULL;
     }
 
