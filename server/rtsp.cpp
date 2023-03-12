@@ -243,6 +243,11 @@ void rtsp_server::acceptConnection()
 		return;
 	}
 
+	if (n_fds >= FD_MAX) {
+		bc_log(Error, "Max number of RTSP client connections is reached, rejecting.");
+		close(fd);
+		return;
+	}
 	new rtsp_connection(this, fd);
 }
 

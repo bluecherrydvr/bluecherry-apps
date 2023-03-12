@@ -29,7 +29,7 @@
 
 #include <pugixml.hpp>
 
-#define FD_MAX 256
+#define FD_MAX 1024
 
 class rtsp_connection;
 
