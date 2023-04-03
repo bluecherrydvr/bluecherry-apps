@@ -1,3 +1,13 @@
+bluecherry (3:3.1.0-rc8) focal bionic buster groovy hirsute bullseye jammy; urgency=low
+
+  * FIX: Fix socker descriptions leak (#570)
+  * FIX: Bump number of RTSP connections from 256 to 2048
+  * FIX: Cameras are unable to be added from auto-detection view (#854fcc2)
+  * FEATURE: Full support for systemd (#573)
+  * FEATURE: Add support for Ubuntu Jammy 22.04
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 03 Apr 2023 17:23:00 -0600
+
 bluecherry (3:3.1.0-rc7) focal bionic buster groovy hirsute bullseye; urgency=low
 
   * FIX: Web UI freezes (#544)
