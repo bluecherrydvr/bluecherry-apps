@@ -1,0 +1,15 @@
+[Unit]
+Description=Bluecherry DVR Server
+After=syslog.target network.target mysql.service
+
+[Service]
+Type=simple
+User=bluecherry
+Group=bluecherry
+#ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
+ExecStart=/usr/sbin/bc-server -s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

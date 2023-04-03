@@ -9,16 +9,24 @@ LD_LIBRARY_PATH+=:stage/lib
 RELEASE_NAME := $(shell ./scripts/build_helper/get_distro_release_name.sh)
 
 %:
-	dh --parallel $@
+	dh $@
 
 .PHONY: override_dh_strip debian/control
 
-override_dh_strip:
-	dh_strip --dbg-package=bluecherry-dbg
+# Don't build debug packages anymore
 
-override_dh_installinit: sbin-start=$(wildcard /sbin/start)
-override_dh_installinit:
-	dh_installinit $(if $(sbin-start),--name=bluecherry)
+#override_dh_strip:
+#	dh_strip --dbg-package=bluecherry-dbg
+
+#override_dh_installinit: sbin-start=$(wildcard /sbin/start)
+#override_dh_installinit:
+#	dh_installinit $(if $(sbin-start),--name=bluecherry)
+
+# Add support for systemd
+
+override_dh_installsystemd:
+	dh_installsystemd --name=bluecherry
+
 
 override_dh_installlogrotate:
 	dh_installlogrotate
