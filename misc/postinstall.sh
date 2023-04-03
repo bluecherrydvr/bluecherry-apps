@@ -82,8 +82,14 @@ function stop_nginx
 function install_pip
 {
 
-	  wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
-	  python3 /tmp/get-pip.py
+if [[ $(cat /etc/os-release | grep "UBUNTU" | grep bionic) ]]
+	then
+        	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.6/get-pip.py
+	else
+        	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
+fi
+        python3 /tmp/get-pip.py
+
 }
 
 function start_apache
