@@ -20,6 +20,8 @@ bc.cgi
 /debian/bluecherry-dbg*
 /debian/files
 
+utils/onvif_tool
+
 /stage/
 
 .DS_Store
