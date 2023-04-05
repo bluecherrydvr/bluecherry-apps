@@ -2,7 +2,7 @@ Source: bluecherry
 Section: admin
 Priority: optional
 Maintainer: Bluecherry <maintainers@bluecherrydvr.com>
-Build-Depends: debhelper (>= 7),
+Build-Depends: debhelper (>= 11),
 #focal  libmysqlclient-dev,
 #xenial libmysqlclient-dev,
 #bionic libmysqlclient-dev,
@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 7),
 #buster default-libmysqlclient-dev,
  libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
  libva-dev
-Standards-Version: 3.8.4
+Standards-Version: 3.9.5
 
 Package: bluecherry
 Architecture: any
