@@ -27,13 +27,13 @@
 #include <signal.h>
 #include <limits.h>
 #include <dirent.h>
-#include <libgen.h>
 
 extern "C" {
 #include <libavutil/log.h>
 }
 
 #include "bc-server.h"
+#include "bc-cleaner.h"
 #include "rtsp.h"
 #include "bc-syslog.h"
 #include "bc-stats.h"
@@ -91,15 +91,6 @@ struct media_record {
 	std::string filepath;
 };
 
-struct bc_time {
-	int year = 0;
-	int month = 0;
-	int day = 0;
-	int hour = 0;
-	int min = 0;
-	int sec = 0;
-};
-
 static bool abandoned_media_update_in_progress = false;
 static std::queue<struct media_record> abandoned_media_to_update;
 static std::queue<struct media_record> abandoned_media_updated;
@@ -147,187 +138,6 @@ typedef std::unordered_map<std::string, bc_cleanup_ctx_t>::iterator bc_media_fil
 static bc_media_files g_media_files;
 #define BC_CLEANUP_RETRY_COUNT	5
 #define BC_CLEANUP_RETRY_SEC	5
-
-bool bc_is_leap_year(int year)
-{
-	return (year % 4 == 0 &&
-			(year % 100 != 0 ||
-			year % 400 == 0));
-}
-
-int bc_days_in_month(int year, int month)
-{
-	static const int days_per_month[] =
-		{
-			0, 31, 28, 31,
-			30, 31, 30, 31,
-			31, 30, 31, 30, 31
-		};
-
-	int days = days_per_month[month];
-	if (month == 2 && bc_is_leap_year(year)) days = 29;
-
-	return days;
-}
-
-bool bc_compare_time(const bc_time& tm1, const bc_time& tm2)
-{
-	long long time1 = 0, time2 = 0;
-	int days1 = 0, days2 = 0;
-
-	// Convert years and months to days
-	for (int y = 1; y < tm1.year; y++)
-		days1 += bc_is_leap_year(y) ? 366 : 365;
-
-	for (int m = 1; m < tm1.month; m++)
-		days1 += bc_days_in_month(tm1.year, m);
-
-	for (int y = 1; y < tm2.year; y++)
-		days2 += bc_is_leap_year(y) ? 366 : 365;
-
-	for (int m = 1; m < tm2.month; m++)
-		days2 += bc_days_in_month(tm2.year, m);
-
-	// Add days
-	days1 += tm1.day;
-	days2 += tm2.day;
-
-	// Convert days to seconds
-	time1 = (long long)days1 * 24 * 60 * 60;
-	time2 = (long long)days2 * 24 * 60 * 60;
-
-	// Convert hours to seconds
-	time1 += (long long)tm1.hour * 60 * 60;
-	time2 += (long long)tm2.hour * 60 * 60;
-
-	// Convert minutes to seconds
-	time1 += (long long)tm1.min * 60;
-	time2 += (long long)tm2.min * 60;
-
-	// Add seconds
-	time1 += tm1.sec;
-	time2 += tm2.sec;
-
-	return time1 < time2;
-}
-
-static std::string bc_get_directory_path(const std::string& path, bool first_run = true)
-{
-	char basepath[PATH_MAX];
-
-	if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
-		bc_log(Error, "No free storage locations for new recordings!");
-		return std::string();
-	}
-
-	/* Do not empty or remove base paths */
-	std::string base_path(basepath);
-	if (basepath == path) return std::string();
-
-	if (first_run)
-	{
-		/* Check rectording directory date and ignore if it matches to current time */
-		std::string timed_path = path.substr(path.size() - 30, 26);
-		bc_time rec_time;
-		int id = 0;
-
-		int count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
-			(int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
-			(int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
-		if (count != 7) return std::string();
-
-		struct tm tm;
-		time_t ts = time(NULL);
-		localtime_r(&ts, &tm);
-
-		int day = tm.tm_mday;
-		int month = tm.tm_mon + 1;
-		int year = tm.tm_year + 1900;
-
-		/* Do not remove current recording directory */
-		if (rec_time.year == year &&
-			rec_time.month == month &&
-			rec_time.day == day)
-				return std::string();
-	}
-
-	struct stat path_stat;
-	if (stat(path.c_str(), &path_stat) != 0)
-	{
-		if (errno == ENOENT)
-		{
-			/* If file does not exists, try its directory */
-			std::string dir_path = path;
-			std::size_t last_slash = dir_path.find_last_of('/');
-			if (last_slash != std::string::npos) dir_path.erase(last_slash);
-			return bc_get_directory_path(dir_path, false);
-		}
-
-		bc_log(Error, "Failed to stat: %s (%s)",
-			path.c_str(), strerror(errno));
-
-		return std::string();
-	}
-
-	if (S_ISDIR(path_stat.st_mode))
-		return std::string(path);
-
-	if (S_ISREG(path_stat.st_mode)) {
-		std::string dir_path = path;
-		std::size_t last_slash = dir_path.find_last_of('/');
-		if (last_slash != std::string::npos) dir_path.erase(last_slash);
-		return dir_path;
-	}
-
-	bc_log(Error, "The path is neither a file nor a directory: %s", path.c_str());
-	return std::string();
-}
-
-static bool bc_directory_is_empty(const std::string& path)
-{
-	int file_count = 0;
-	struct dirent *entry;
-
-	bc_log(Info, "Cheking dir: %s", path.c_str());
-	DIR *dir = opendir(path.c_str());
-
-	if (dir == NULL) {
-		bc_log(Warning, "Can not open directory %s: %s",
-			path.c_str(), strerror(errno));
-		return false;
-	}
-
-	// Check if there is something more than "." and ".."
-	while ((entry = readdir(dir)) != NULL)
-		if (++file_count > 2) break;
-
-	closedir(dir);
-
-	return file_count <= 2 ?
-		true : false;
-}
-
-static bool bc_remove_dir_if_empty(const std::string& path)
-{
-	std::string dir = bc_get_directory_path(path);
-	if (!dir.length()) return false;
-
-	// Remove sub directory if its empty
-	if (bc_directory_is_empty(dir))
-	{
-		bc_log(Info, "Deleting empty directory: %s", dir.c_str());
-
-		if (rmdir(dir.c_str()) != 0)
-		{
-			bc_log(Error, "Failed to delete directory: %s (%s)",
-				dir.c_str(), strerror(errno));
-
-			return false;
-		}
-	}
-
-	return true;
-}
 
 void bc_status_component_begin(bc_status_component c)
 {
