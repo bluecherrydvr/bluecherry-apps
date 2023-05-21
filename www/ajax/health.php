@@ -7,73 +7,65 @@ class health extends Controller {
     private $username;
     private $mysqlHost;
     private $dbname;
+    private $accessToken;
 
     public function __construct()
     {
         parent::__construct();
-        // Initialize properties
-        $this->mysqlHost = null;
-        $this->username = null;
-        $this->password = null;
-        $this->dbname = null;
+        // check Access Token
+        $this->accessToken = $this->getAccessToken();
 
-        // Read the configuration file
-        $fileContents = file_get_contents('/etc/bluecherry.conf');
-
-        // Extract host, username, and password using regular expressions
-        $pattern = '/host\s*=\s*"([^"]+)"/';
-        $usernamePattern = '/user\s*=\s*"([^"]+)"/';
-        $passwordPattern = '/password\s*=\s*"([^"]+)"/';
-        $dbnamePattern = '/dbname\s*=\s*"([^"]+)"/';
-        preg_match($usernamePattern, $fileContents, $usernameMatches);
-        preg_match($passwordPattern, $fileContents, $passwordMatches);
-        preg_match($pattern, $fileContents, $matches);
-        preg_match($dbnamePattern, $fileContents, $dbnameMatches);
-
-        if(isset($dbnameMatches[1])) {
-            $this->dbname = trim($dbnameMatches[1]);
+        // Check the access token here
+        if (!$this->isAccessTokenValid()) {
+            http_response_code(401);
+            echo json_encode(['status' => 'Unauthorized']);
+            exit();
         }
 
-        if (isset($matches[1]) && isset($usernameMatches[1]) && isset($passwordMatches[1])) {
-            $this->mysqlHost = trim($matches[1]);
-            $this->username = trim($usernameMatches[1]);
-            $this->password = trim($passwordMatches[1]);
-        }
+        list($dbname, $user, $password, $host) = database::read_config();
+        $this->dbname = stripslashes($dbname);
+        $this->username = stripslashes($user);
+        $this->password = stripslashes($password);
+        $this->mysqlHost = stripslashes($host);
+
     }
 
     public function getping()
     {
-        if (!is_null($this->mysqlHost) && !is_null($this->username) && !is_null($this->password)) {
-            // Step 2: Ping the MySQL host
-            $mysqli = @new mysqli($this->mysqlHost, $this->username, $this->password);
+        http_response_code(200);
+        echo json_encode(['status' => 'ok']);
 
-            if ($mysqli->connect_errno) {
-                // Handle connection errors
-                if ($mysqli->connect_errno == 2002) {
-                    // MySQL service unavailable
-                    http_response_code(503);
-                    echo json_encode(['status' => 'service-unavailable-error']);
-                } elseif ($mysqli->connect_errno == 2003) {
-                    // Bad gateway
-                    http_response_code(502);
-                    echo json_encode(['status' => 'bad-gateway-error']);
-                } else {
-                    // Gateway timeout or other errors
-                    http_response_code(504);
-                    echo json_encode(['status' => 'gateway-timeout-error']);
-                }
-            } else {
-                // Connection successful
-                http_response_code(200);
-                // Close the database connecion
-                $mysqli->close();
-                echo json_encode(['status' => 'ok']);
-            }
-        } else {
-            // Handle the case when MySQL host information is not found in the configuration file
-            http_response_code(503);
-            echo json_encode(['status' => 'service-unavailable-error']);
-        }
+//        if (!is_null($this->mysqlHost) && !is_null($this->username) && !is_null($this->password)) {
+//            // Step 2: Ping the MySQL host
+//            $mysqli = @new mysqli($this->mysqlHost, $this->username, $this->password);
+//
+//            if ($mysqli->connect_errno) {
+//                // Handle connection errors
+//                if ($mysqli->connect_errno == 2002) {
+//                    // MySQL service unavailable
+//                    http_response_code(503);
+//                    echo json_encode(['status' => 'service-unavailable-error']);
+//                } elseif ($mysqli->connect_errno == 2003) {
+//                    // Bad gateway
+//                    http_response_code(502);
+//                    echo json_encode(['status' => 'bad-gateway-error']);
+//                } else {
+//                    // Gateway timeout or other errors
+//                    http_response_code(504);
+//                    echo json_encode(['status' => 'gateway-timeout-error']);
+//                }
+//            } else {
+//                // Connection successful
+//                http_response_code(200);
+//                // Close the database connecion
+//                $mysqli->close();
+//                echo json_encode(['status' => 'ok']);
+//            }
+//        } else {
+//            // Handle the case when MySQL host information is not found in the configuration file
+//            http_response_code(503);
+//            echo json_encode(['status' => 'service-unavailable-error']);
+//        }
 
     }
 
@@ -93,12 +85,10 @@ class health extends Controller {
         echo json_encode(['status' => 'ok']);
     }
 
-    public function postdb()
+    public function getdb()
     {
-        // Ensure query does not contain any treats or potentially harmful content
-        $query = filter_input(INPUT_POST, 'query', FILTER_SANITIZE_STRING);
-
-
+        // Ensure query does not contain any threats or potentially harmful content
+        $query = filter_input(INPUT_GET, 'query', FILTER_SANITIZE_STRING);
         if (!is_null($this->mysqlHost) && !is_null($this->username) && !is_null($this->password)) {
             $mysqli = new mysqli($this->mysqlHost, $this->username, $this->password);
 
@@ -126,7 +116,8 @@ class health extends Controller {
 
             // Check if the query execution was successful
             if ($result === false) {
-                echo "Query execution failed!";
+                http_response_code(503);
+                echo json_encode(['status' => 'Query execution failed!']);
             } else {
                 // Retrieve profiling information
                 $profileResult = $mysqli->query('SHOW PROFILES');
@@ -135,7 +126,7 @@ class health extends Controller {
                 while ($row = $profileResult->fetch_assoc()) {
                     // Get the duration of the query execution
                     $duration = $row['Duration'];
-                    // Check if duration exceeds a threshold (e.g., 0.5 seconds)
+                    // Check if duration exceeds a threshold (e.g., 2 seconds)
                     if ($duration > 2) {
                         // Query is resource-intensive
                         $isResourceIntensive = true;
@@ -145,7 +136,8 @@ class health extends Controller {
 
                 // Check if the query is resource-intensive
                 if ($isResourceIntensive) {
-                    echo "Query is resource-intensive!";
+                    http_response_code(503);
+                    echo json_encode(['status' => 'Query is resource-intensive!']);
                 } else {
                     echo "Query is NOT resource-intensive!";
                 }
@@ -156,8 +148,11 @@ class health extends Controller {
 
             // Close the database connection
             $mysqli->close();
+            http_response_code(200);
+            echo json_encode(['status' => 'ok']);
         }
     }
+
 
     public function getready()
     {
@@ -300,6 +295,24 @@ class health extends Controller {
     public function getData()
     {
         //
+    }
+
+    private function getAccessToken() {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authorizationHeader = $_SERVER['HTTP_AUTHORIZATION'];
+            return  str_replace('Bearer ', '', $authorizationHeader);
+        }
+        return null;
+    }
+
+    private function isAccessTokenValid(): bool
+    {
+        $configFile = '/etc/bluecherry.conf';
+        $fileContents = file_get_contents($configFile);
+        $accessTokenPattern = '/access_token\s*=\s*"([^"]+)"/';
+        preg_match($accessTokenPattern, $fileContents, $matches);
+        $validAccessTokens = isset($matches[1]) ? [$matches[1]] : [];
+        return in_array($this->accessToken, $validAccessTokens);
     }
 }
 

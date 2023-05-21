@@ -214,7 +214,14 @@ class database{
 
 	private function connect() {
 		$this->load_config();
-		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
+		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
+
+		// Check if the database connection was successful
+		if (!$this->dblink) {
+			header('HTTP/1.1 503 Service Unavailable');
+			Reply::ajaxDie('unavailable', LANG_DIE_COULDNOTCONNECT);
+		}
+
 		mysqli_real_query($this->dblink, "set names utf8;");
 	}
 	public static function escapeString(&$string) {
