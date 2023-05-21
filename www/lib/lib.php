@@ -214,7 +214,7 @@ class database{
 
 	private function connect() {
 		$this->load_config();
-		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or die(LANG_DIE_COULDNOTCONNECT);
+		$this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname) or Reply::ajaxDie('service-unavailable-error', LANG_DIE_COULDNOTCONNECT);
 		mysqli_real_query($this->dblink, "set names utf8;");
 	}
 	public static function escapeString(&$string) {
