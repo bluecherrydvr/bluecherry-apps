@@ -9,7 +9,6 @@ class Reply
         
         $res = json_encode($data);
 
-        //die($res);
         return $res;
     }
 
@@ -18,6 +17,8 @@ class Reply
         $data['status'] = $stat;
         $data['msg'] = $msg;
         $data['data'] = $data_tr;
+
+        http_response_code(503);
 
         die(self::ajax($data));
     }
