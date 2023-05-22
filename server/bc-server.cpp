@@ -721,7 +721,7 @@ static void bc_cleanup_media_retry()
 static int bc_media_is_archived(const char *filepath)
 {
 	int archived = 0;
-	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=1 AND " 
+	BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=1 AND "
 		"filepath='%s'", filepath);
 
 	if (!dbres) {
@@ -733,6 +733,40 @@ static int bc_media_is_archived(const char *filepath)
 	bc_db_free_table(dbres);
 
 	return archived;
+}
+
+static int bc_cleanup_motion_debug_folder(bc_oldest_media_t &ctx, const std::string& full_path, const std::string& time_path)
+{
+	bc_time rec_time;
+	int id = 0;
+
+	int count = sscanf(time_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
+		(int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
+		(int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
+
+	if (count != 7) {
+		bc_log(Error, "Can not parse date from path: %s", time_path.c_str());
+		ctx.errors++;
+		return -1;
+	}
+
+	bc_time old_time;
+	old_time.year = ctx.year;
+	old_time.month = ctx.month;
+	old_time.day = ctx.day;
+	old_time.hour = ctx.hour;
+	old_time.min = ctx.min;
+	old_time.sec = ctx.sec;
+
+	/* Check if found entry is older than oldest media record in DB */
+	bool entry_is_old = bc_compare_time(rec_time, old_time);
+
+	if (entry_is_old) {
+		bc_remove_directory(full_path);
+		return 1;
+	}
+
+	return 0;
 }
 
 /*
@@ -773,6 +807,22 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			continue;
 		}
 
+		std::size_t debug_pos = full_path.find(".debug");
+		std::size_t motion_pos = full_path.find(".motion");
+
+		if (debug_pos != std::string::npos ||
+			motion_pos != std::string::npos)
+		{
+			std::string sub_path = full_path.substr(0, debug_pos);
+			std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
+
+			if (S_ISDIR(statbuf.st_mode))
+				bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
+
+			entry = readdir(pdir);
+			continue;
+		}
+
 		if (S_ISDIR(statbuf.st_mode)) { // Recursive read directory
 			bc_recursive_cleanup_untracked_media(ctx, full_path);
 			bc_remove_dir_if_empty(full_path);
@@ -780,16 +830,27 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			continue;
 		}
 
-		if (entry_name.compare(entry_name.size()-3, 3, "mkv") && 
-			entry_name.compare(entry_name.size()-3, 3, "mp4") &&
-			entry_name.compare(entry_name.size()-3, 3, "jpg")) {
+		if (entry_name.compare(entry_name.size()-4, 4, ".mkv") &&
+			entry_name.compare(entry_name.size()-4, 4, ".mp4") &&
+			entry_name.compare(entry_name.size()-4, 4, ".jpg")) {
 			/* Not a bc media file, leave it unchanged */
 			entry = readdir(pdir);
 			ctx.others++;
 			continue;
 		}
 
-		std::string timed_path = full_path.substr(full_path.size() - 30, 26);
+		size_t time_len = 26;
+		size_t suffix_len = 4;
+
+		if (!entry_name.compare(entry_name.size()-11, 11, "-motion.jpg") ||
+			!entry_name.compare(entry_name.size()-11, 11, "-motion.mp4") ||
+			!entry_name.compare(entry_name.size()-11, 11, "-motion.mkv"))
+		{
+			/* Not a bc media file, leave it unchanged */
+			suffix_len = 11;
+		}
+
+		std::string timed_path = full_path.substr(full_path.size() - (time_len + suffix_len), time_len);
 		bc_time rec_time;
 		int id = 0;
 
@@ -798,7 +859,9 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			(int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
 
 		if (count != 7) {
-			bc_log(Error, "Can not parse date from media file: %s", timed_path.c_str());
+			bc_log(Error, "Can not parse date from media file: %s (%s)",
+				full_path.c_str(), timed_path.c_str());
+
 			entry = readdir(pdir);
 			ctx.errors++;
 			continue;
@@ -814,7 +877,6 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 
 		/* Check if found entry is older than oldest media record in DB */
 		bool entry_is_old = bc_compare_time(rec_time, old_time);
-		bc_log(Info, "Recording is old: %s", entry_is_old?"true":"false"); // kala >> temporary
 
 		if (entry_is_old) {
 			std::string video_file = full_path;

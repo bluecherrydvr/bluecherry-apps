@@ -27,5 +27,6 @@ std::string bc_get_dir_path(const std::string& path);
 
 bool bc_is_dir_empty(const std::string& path);
 bool bc_remove_dir_if_empty(const std::string& path);
+int bc_remove_directory(const std::string& path);
 
 #endif /* __BC_CLEANER__ */

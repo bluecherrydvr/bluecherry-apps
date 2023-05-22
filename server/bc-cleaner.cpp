@@ -230,3 +230,49 @@ bool bc_remove_dir_if_empty(const std::string& path)
 
 	return true;
 }
+
+/*
+ * bc_remove_directory - Recursively remove directory. Argument
+ * path is the directory path. On success, zero is returned.
+ * On error, -1 is returned and errno is set appropriately.
+ */
+int bc_remove_directory(const std::string& path)
+{
+	/* Check if path exists */
+	struct stat statbuf = {0};
+	int retval = stat(path.c_str(), &statbuf);
+	if (retval < 0) return -1;
+
+	/* Open directory */
+	DIR *dir = opendir(path.c_str());
+	if (dir)
+	{
+		struct dirent *entry;
+		retval = 0;
+
+		while (!retval && (entry = readdir(dir)))
+		{
+			int xretval = -1;
+
+			/* Skip the names "." and ".." as we don't want to recurse on them. */
+			if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) continue;
+			std::string new_path = path + "/" + std::string(entry->d_name);
+
+			if (!stat(new_path.c_str(), &statbuf))
+			{
+				if (!S_ISDIR(statbuf.st_mode)) xretval = unlink(new_path.c_str());
+				else xretval = bc_remove_directory(new_path.c_str());
+			}
+
+			retval = xretval;
+		}
+
+		/* Close dir pointer */
+		closedir(dir);
+	}
+
+	if (!retval)
+		retval = rmdir(path.c_str());
+
+	return retval;
+}
