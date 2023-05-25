@@ -18,6 +18,7 @@ public:
 	void close();
 
 	bool write_packet(const stream_packet &pkt);
+	void set_ts_fix(bool enable) { fix_timestamps = enable; }
 
 	/* TODO Move snapshotting & decoding functions to separate class */
 	/* Save a JPG snapshot of a frame at file_path. */
@@ -26,6 +27,7 @@ public:
 
 
 protected:
+	bool fix_timestamps;
 	std::string file_path;
 	AVFormatContext *oc;
 	AVStream *video_st, *audio_st;

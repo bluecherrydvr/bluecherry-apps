@@ -276,14 +276,20 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	if (!bc_streaming_is_active(bc_rec))
 		return 0;
 
+	AVRational timeBase = bc_rec->rtp_stream_ctx[ctx_index]->streams[0]->time_base;
+	enum AVRounding flags = (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->rtp_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->rtp_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, timeBase, flags);
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, timeBase, flags);
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0;
+
+	/* Fix timestamping error of starting packets */
+	if (opkt.pts < 0) opkt.pts = 0;
+	if (opkt.dts < 0) opkt.dts = 0;
 
 	bc_rec->cur_pkt_flags = pkt.flags;
 	bc_rec->cur_stream_index = ctx_index;
@@ -326,14 +332,20 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	if (!bc_rec->hls_stream_ctx[ctx_index])
 		return 0;
 
+	AVRational timeBase = bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base;
+	enum AVRounding flags = (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, timeBase, flags);
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, timeBase, flags);
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0;
+
+	/* Fix timestamping error of starting packets */
+	if (opkt.pts < 0) opkt.pts = 0;
+	if (opkt.dts < 0) opkt.dts = 0;
 
 	bc_rec->cur_pkt_flags = pkt.flags;
 	bc_rec->cur_stream_index = ctx_index;

@@ -35,7 +35,8 @@ extern "C" {
 media_writer::media_writer()
 	: oc(0), video_st(0), audio_st(0),
 	last_video_pts(0), last_video_dts(0),
-	last_audio_pts(0), last_audio_dts(0)
+	last_audio_pts(0), last_audio_dts(0),
+	fix_timestamps(false)
 {
 }
 
@@ -61,16 +62,23 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		return true;
 
 	av_init_packet(&opkt);
-	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	enum AVRounding rnd_flags = (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, s->time_base, rnd_flags);
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, s->time_base, rnd_flags);
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
+	opkt.flags        = pkt.flags;
 	opkt.stream_index = s->index;
+
+	/* Fix timestamping error of starting packets */
+	if (opkt.pts < 0) opkt.pts = 0;
+	if (opkt.dts < 0) opkt.dts = 0;
 
 	/* Fix non-increasing timestamps */
 	if (pkt.type == AVMEDIA_TYPE_AUDIO) {
-		if (opkt.pts < last_audio_pts || opkt.dts < last_audio_dts) {
+		if (fix_timestamps &&
+			(opkt.pts < last_audio_pts ||
+			opkt.dts < last_audio_dts)) {
 			opkt.pts = last_audio_pts + 1;
 			opkt.dts = last_audio_dts + 1;
 			bc_log(Debug, "fixing timestamps in audio packet");
@@ -79,8 +87,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		last_audio_pts = opkt.pts;
 		last_audio_dts = opkt.dts;
 	}
+
 	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
-		if (opkt.pts < last_video_pts || opkt.dts < last_video_dts) {
+		if (fix_timestamps &&
+			(opkt.pts < last_video_pts ||
+			opkt.dts < last_video_dts)) {
 			opkt.pts = last_video_pts + 1;
 			opkt.dts = last_video_dts + 1;
 			bc_log(Debug, "fixing timestamps in video packet");
@@ -90,10 +101,16 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		last_video_dts = opkt.dts;
 	}
 
-
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
+
 	re = av_interleaved_write_frame(oc, &opkt);
 	if (re < 0) {
+
+		if (re == AVERROR(EINVAL)) {
+			bc_log(Warning, "Likely timestamping(%ld) error of recording. Ignoring.", opkt.pts);
+			return true;
+		}
+
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
 		bc_log(Error, "Error writing frame to recording: %s", err);
