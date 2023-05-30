@@ -102,6 +102,7 @@ var cameraProc = function (form) {
         getEl('hls_window_size', true, true, '5');
         getEl('hls_segment_size', true, true, '2695168');
         getEl('hls_segment_duration', true, true, '3.0');
+        getEl('connection_retry_seconds', true, true, '10');
 
         getEl('camName', true, true, '');
         getEl('ipAddr', true, true, '');
@@ -135,6 +136,7 @@ var cameraProc = function (form) {
         getEl('hls_window_size', true, true, '5');
         getEl('hls_segment_size', true, true, '2695168');
         getEl('hls_segment_duration', true, true, '3.0');
+        getEl('connection_retry_seconds', true, true, '10');
     }
 
     var constructor = function () {

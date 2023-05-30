@@ -384,6 +384,7 @@ define('AIP_CHECK_ONVIF_PORT', 'ONVIF Probe & Autoconfigure');
 define('AIP_CHECK_ONVIF_SUCCESS', 'Successfull');
 define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
 define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the limit of the allowed devices.');
+define('AIP_CONNECTION_RETRY_SECONDS', 'Connection retry seconds');
 
 # HLS configuration
 define('AIP_HLS_WINDOW_SIZE', 'HLS window size');

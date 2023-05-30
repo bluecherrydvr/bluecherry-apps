@@ -12,7 +12,6 @@ class devices extends Controller {
 
     public function getData()
     {
-
         $this->ipCameras = new StdClass();
         $this->ipCameras->arr = array();
         $this->ipCameras->ok = Array();
