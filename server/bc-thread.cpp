@@ -192,7 +192,7 @@ void bc_record::run()
 	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
 	pthread_cleanup_push(bc_rec_thread_cleanup, NULL);
-	int kvici = 0;
+	int nConnectionAttempts = 0;
 
 	while (1) {
 		const char *local_thread_should_die;
@@ -219,7 +219,8 @@ void bc_record::run()
 			check_schedule(this);
 
 		if (!bc->input->is_started()) {
-			log.log(Info, "Trying to connect: %d", kvici++);
+			log.log(Debug, "Trying to start device stream... total attempts: %d", nConnectionAttempts++);
+
 			if (bc->input->start() < 0) {
 				if ((start_failed & BC_MAINSTREAM_START_FAILED) == 0) {
 					log.log(Error, "Error starting device stream: %s", bc->input->get_error_message());
