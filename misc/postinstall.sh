@@ -148,12 +148,13 @@ case "$1" in
 		fi
 
 		# Allow update_subdomain_certs.sh script to run as www-data
+		# Allow www-data to run check_dir_permission.sh as the Bluecherry user
 		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
-		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
+		printf "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh\nwww-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/check_dir_permissions.sh\n" \
 			> /etc/sudoers.d/www-data
 		chmod 0440 /etc/sudoers.d/www-data
-
+	
 		mkdir -p /usr/share/bluecherry/ssl
 		cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem
 		cp /etc/ssl/private/ssl-cert-snakeoil.key /usr/share/bluecherry/ssl/bluecherry-snakeoil.key
