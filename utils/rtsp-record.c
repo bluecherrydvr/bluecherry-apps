@@ -165,14 +165,14 @@ void setup_output(const char *file)
 
 	int i;
 	for (i = 0; i < in_ctx->nb_streams; ++i) {
-		if (in_ctx->streams[i]->codec->codec_type != AVMEDIA_TYPE_VIDEO)
+		if (in_ctx->streams[i]->codecpar->codec_type != AVMEDIA_TYPE_VIDEO)
 			continue;
 			
 		printf("Found video codec!\n");
 		video_stream_index = i;
 
 		AVCodecContext *ic = in_ctx->streams[i]->codec;
-		codec = avcodec_find_encoder(in_ctx->streams[i]->codec->codec_id);
+		codec = avcodec_find_encoder(in_ctx->streams[i]->codecpar->codec_id);
 		vst->codec->codec_id = ic->codec_id;
 		vst->codec->codec_type = ic->codec_type;
 		vst->codec->pix_fmt = ic->pix_fmt;

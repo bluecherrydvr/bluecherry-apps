@@ -60,14 +60,13 @@ void lavf_device::stop()
 
 	current_packet = stream_packet();
 	current_properties.reset();
-	av_free_packet(&frame);
-	av_init_packet(&frame);
-
+	av_packet_unref(&frame);
+/*
 	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
 		if (ctx->streams[i]->codec->codec)
 			avcodec_close(ctx->streams[i]->codec);
 	}
-
+*/
 	avformat_close_input(&ctx);
 	ctx = 0;
 	video_stream_index = audio_stream_index = -1;
@@ -135,7 +134,7 @@ int lavf_device::start()
 	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
 		AVStream *stream = ctx->streams[i];
 
-		if (stream->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
+		if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			if (video_stream_index >= 0) {
 				bc_log(Warning, "Session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", url);
@@ -148,13 +147,13 @@ int lavf_device::start()
 				bc_log(Info, "Video stream timebase is unusual (%d/%d). This could cause "
 				       "timing issues.", stream->time_base.num, stream->time_base.den);
 			}
-		} else if (stream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+		} else if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
 			if (audio_stream_index >= 0) {
 				bc_log(Warning, "Session for %s has multiple audio streams. Only the "
 				       "first stream will be recorded.", url);
 				stream->discard = AVDISCARD_ALL;
 				continue;
-			} else if (stream->codec->codec_id == AV_CODEC_ID_NONE) {
+			} else if (stream->codecpar->codec_id == AV_CODEC_ID_NONE) {
 				bc_log(Error, "No matching audio codec for stream; ignoring audio");
 				stream->discard = AVDISCARD_ALL;
 				continue;
@@ -182,7 +181,7 @@ int lavf_device::start()
  * not know of libav). Ugly. */
 static void wrap_av_destruct_packet(AVPacket *pkt)
 {
-	av_free_packet(pkt);
+	av_packet_unref(pkt);
 }
 
 int lavf_device::read_packet()
@@ -193,7 +192,7 @@ int lavf_device::read_packet()
 		return -1;
 	}
 
-	av_free_packet(&frame);
+	av_packet_unref(&frame);
 	re = av_read_frame(ctx, &frame);
 	if (re < 0) {
 		av_strerror(re, error_message, sizeof(error_message));
@@ -239,24 +238,25 @@ void lavf_device::update_properties()
 	stream_properties *p = new stream_properties;
 
 	if (video_stream_index >= 0) {
-		AVCodecContext *ic = ctx->streams[video_stream_index]->codec;
+		AVCodecParameters *ic = ctx->streams[video_stream_index]->codecpar;
+		AVRational tb = ctx->streams[video_stream_index]->time_base;
 		p->video.codec_id = ic->codec_id;
-		p->video.pix_fmt = ic->pix_fmt;
+		p->video.pix_fmt = (AVPixelFormat)ic->format;
 		p->video.width = ic->width;
 		p->video.height = ic->height;
 		p->video.bit_rate = ic->bit_rate;
-		p->video.time_base = ic->time_base;
+		p->video.time_base = tb;
 		p->video.profile = ic->profile;
 		if (ic->extradata && ic->extradata_size)
 			p->video.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}
 
 	if (audio_stream_index >= 0) {
-		AVCodecContext *ic = ctx->streams[audio_stream_index]->codec;
+		AVCodecParameters *ic = ctx->streams[audio_stream_index]->codecpar;
 		p->audio.codec_id = ic->codec_id;
 		p->audio.bit_rate = ic->bit_rate;
 		p->audio.sample_rate = ic->sample_rate;
-		p->audio.sample_fmt = ic->sample_fmt;
+		p->audio.sample_fmt = (AVSampleFormat)ic->format;
 		p->audio.channels = ic->channels;
 		p->audio.time_base = (AVRational){1, ic->sample_rate};
 		p->audio.profile = ic->profile;
@@ -281,18 +281,22 @@ const char *lavf_device::stream_info()
 	AVStream *stream = ctx->streams[video_stream_index];
 
 	/* Borrow the error_message field */
-	avcodec_string(buf, size, stream->codec, 0);
+	const AVCodecDescriptor *desc = avcodec_descriptor_get(stream->codecpar->codec_id);
+	if (desc == NULL) snprintf(buf, size, "Unknown");
+	else snprintf(buf, size, "%s", desc->name);
 
 	int off = strlen(buf);
 	off += snprintf(buf+off, size-off, ", %d/%d(s) %d/%d(c)", stream->time_base.num,
-                        stream->time_base.den, stream->codec->time_base.num,
-			stream->codec->time_base.den);
+                stream->time_base.den, stream->time_base.num, stream->time_base.den);
 
 	if (audio_stream_index >= 0 && size - off > 2) {
 		stream = ctx->streams[audio_stream_index];
 		buf[off++] = ';';
 		buf[off++] = ' ';
-		avcodec_string(buf+off, size-off, stream->codec, 0);
+
+		const AVCodecDescriptor *adesc = avcodec_descriptor_get(stream->codecpar->codec_id);
+		if (adesc == NULL) snprintf(buf+off, size-off, "Unknown");
+		else snprintf(buf+off, size-off, "%s", adesc->name);
 	}
 
 	buf[size-1] = 0;
@@ -311,26 +315,29 @@ void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
 		for (i = 0; i < ctx->nb_streams; i++) {
 			AVStream *s = ctx->streams[i];
 			char codec_descr[100];
-			avcodec_string(codec_descr, sizeof(codec_descr), s->codec, 0);
+
+			const AVCodecDescriptor *desc = avcodec_descriptor_get(s->codecpar->codec_id);
+			if (desc == NULL) snprintf(codec_descr, sizeof(codec_descr), "Unknown");
+			else snprintf(codec_descr, sizeof(codec_descr), "%s", desc->name);
 
 			pugi::xml_node es = es_list.append_child("ElementaryStream");
 			es.append_attribute("index") = i;
-			es.append_attribute("codec_type") = av_get_media_type_string(s->codec->codec_type);
+			es.append_attribute("codec_type") = av_get_media_type_string(s->codecpar->codec_type);
 
-			es.append_attribute("codec") = avcodec_get_name(s->codec->codec_id);
+			es.append_attribute("codec") = avcodec_get_name(s->codecpar->codec_id);
 			es.append_attribute("description") = codec_descr;
 
-			switch (s->codec->codec_type) {
+			switch (s->codecpar->codec_type) {
 				case AVMEDIA_TYPE_VIDEO: {
-					es.append_attribute("height") = s->codec->height;
-					es.append_attribute("width") = s->codec->width;
+					es.append_attribute("height") = s->codecpar->height;
+					es.append_attribute("width") = s->codecpar->width;
 					if (s->sample_aspect_ratio.num && s->sample_aspect_ratio.den) {
 						es.append_attribute("sample_aspect_ratio_num") = s->sample_aspect_ratio.num;
 						es.append_attribute("sample_aspect_ratio_den") = s->sample_aspect_ratio.den;
 						AVRational display_aspect_ratio;
 						av_reduce(&display_aspect_ratio.num, &display_aspect_ratio.den,
-								s->codec->width  * s->sample_aspect_ratio.num,
-								s->codec->height * s->sample_aspect_ratio.den,
+								s->codecpar->width  * s->sample_aspect_ratio.num,
+								s->codecpar->height * s->sample_aspect_ratio.den,
 								1024 * 1024);
 						es.append_attribute("display_aspect_ratio_num") = display_aspect_ratio.num;
 						es.append_attribute("display_aspect_ratio_den") = display_aspect_ratio.den;
@@ -340,12 +347,11 @@ void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
 					break;
 				}
 				case AVMEDIA_TYPE_AUDIO: {
-					es.append_attribute("sample_rate") = s->codec->sample_rate;
-					es.append_attribute("channels") = s->codec->channels;
+					es.append_attribute("sample_rate") = s->codecpar->sample_rate;
+					es.append_attribute("channels") = s->codecpar->channels;
 					char channel_layout_descr[50];
 					av_get_channel_layout_string(channel_layout_descr, sizeof(channel_layout_descr),
-							s->codec->channels, s->codec->channel_layout);
-					es.append_attribute("channel_layout") = channel_layout_descr;
+							s->codecpar->channels, s->codecpar->channel_layout);
 					break;
 				}
 				default: break;

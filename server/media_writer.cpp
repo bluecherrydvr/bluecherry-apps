@@ -263,11 +263,12 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	if (oc)
 		return 0;
 
-	avctx = avcodec_alloc_context3(NULL);
+	//avctx = avcodec_alloc_context3(NULL);
 
 	/* Get the output format */
-	AVOutputFormat *fmt_out = av_guess_format("matroska", NULL, "video/mp4");
+	AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, "video/mp4");
 	if (!fmt_out) {
+		bc_log(Error, "media_writer: MP4 output format is not found!");
 		errno = EINVAL;
 		goto error;
 	}
@@ -284,24 +285,26 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	video_st = avformat_new_stream(oc, NULL);
 	if (!video_st)
 		goto error;
-	properties.video.apply(avctx);
-	avcodec_parameters_from_context(video_st->codecpar, avctx);
+	properties.video.apply(video_st->codecpar);
+	//avcodec_parameters_from_context(video_st->codecpar, avctx);
 
 	if (properties.has_audio()) {
 		audio_st = avformat_new_stream(oc, NULL);
 		if (!audio_st)
 			goto error;
-		properties.audio.apply(avctx);
-		avcodec_parameters_from_context(audio_st->codecpar, avctx);
+		properties.audio.apply(audio_st->codecpar);
+		//avcodec_parameters_from_context(audio_st->codecpar, avctx);
 	}
 
-	avcodec_free_context(&avctx);
+	//avcodec_free_context(&avctx);
 
+	/*
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
 		video_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 		if (audio_st)
 			audio_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 	}
+	*/
 
 	/* Open output file */
 	if ((ret = avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE)) < 0) {
@@ -395,10 +398,9 @@ int media_writer::snapshot_feed(const stream_packet &pkt)
 
 int media_writer::snapshot_decoder_init(const stream_packet &pkt)
 {
-	AVDictionary *decoder_opts = NULL;
 	std::shared_ptr<const stream_properties> properties = pkt.properties();
-	AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
-	int ret;
+	const AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
+
 	if (!codec || !(snapshot_decoder = avcodec_alloc_context3(codec))) {
 		bc_log(Error, "Failed to allocate snapshot decoder context");
 		return -1;
@@ -406,13 +408,18 @@ int media_writer::snapshot_decoder_init(const stream_packet &pkt)
 
 	properties->video.apply(snapshot_decoder);
 
+	AVDictionary *decoder_opts = NULL;
 	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
-	ret = avcodec_open2(snapshot_decoder, codec, &decoder_opts);
+
+	int ret = avcodec_open2(snapshot_decoder, codec, &decoder_opts);
 	av_dict_free(&decoder_opts);
+
 	if (ret < 0) {
 		bc_log(Error, "Failed to initialize snapshot decoder context");
 		av_free(snapshot_decoder);
+		snapshot_decoder = NULL;
 	}
+
 	return ret;
 }
 
@@ -423,9 +430,11 @@ int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **fram
 {
 	int ret;
 	int have_picture;
+	char error[512];
+
 	AVPacket packet;
-	AVFrame *frame = av_frame_alloc();
 	av_init_packet(&packet);
+
 	packet.flags        = pkt.is_key_frame() ? AV_PKT_FLAG_KEY : 0;
 	/* Setting DTS from PTS is silly, but in curent scheme DTS is lost.
 	 * Should work for decoding one frame right after keyframe (most of time?) */
@@ -434,25 +443,43 @@ int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **fram
 	packet.data         = const_cast<uint8_t*>(pkt.data());
 	packet.size         = pkt.size;
 
-	if (!frame)
-		return AVERROR(ENOMEM);
-
-	ret = avcodec_decode_video2(snapshot_decoder, frame, &have_picture, &packet);
+	ret = avcodec_send_packet(snapshot_decoder, &packet);
 	if (ret < 0) {
-		char error[512];
 		av_strerror(ret, error, sizeof(error));
-		av_frame_free(&frame);
-		bc_log(Warning, "snapshot_decode_frame: decode video frame failed: %s", error);
+		bc_log(Warning, "avcodec_send_packet failed: %s", error);
 		return ret;
+	}
+
+	AVFrame *frame = av_frame_alloc();
+	if (!frame) return AVERROR(ENOMEM);
+
+	while (ret >= 0)
+	{
+		ret = avcodec_receive_frame(snapshot_decoder, frame);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+		{
+			av_frame_free(&frame);
+			return 1;
+		}
+
+		if (ret < 0) {
+			av_frame_free(&frame);
+			av_strerror(ret, error, sizeof(error));
+			bc_log(Warning, "avcodec_receive_frame failed: %s", error);
+			return ret;
+		}
+
+		have_picture = 1;
+		break;
 	}
 
 	if (have_picture) {
 		*frame_arg = frame;
 		return 0;
-	} else {
-		av_frame_free(&frame);
-		return 1;
 	}
+
+	av_frame_free(&frame);
+	return 1;
 }
 
 /*
@@ -461,7 +488,7 @@ int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **fram
 int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 {
 	AVFrame *frame = av_frame_alloc();
-	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+	const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
 	AVCodecContext *oc = NULL;
 	FILE *file = fopen(snapshot_filename.c_str(), "w");
 	int re = -1;
@@ -520,15 +547,31 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 		av_frame_move_ref(frame, rawFrame);
 	}
 
-	ret = avcodec_encode_video2(oc, &avpkt, frame, &got_pkt);
-	if (avpicture_allocated)
-		av_freep(&frame->data[0]);
+	ret = avcodec_send_frame(oc, frame);
 	if (ret < 0) {
 		char error[512];
 		av_strerror(ret, error, sizeof(error));
 		bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
 		goto end;
 	}
+
+	while (ret >= 0) {
+		ret = avcodec_receive_packet(oc, &avpkt);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+		if (ret < 0) {
+			char error[512];
+			av_strerror(ret, error, sizeof(error));
+			bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
+			goto end;
+		}
+
+		got_pkt = 1;
+		break;
+	}
+
+	if (avpicture_allocated)
+		av_freep(&frame->data[0]);
 
 	if (!got_pkt) {
 		bc_log(Bug, "snapshot: encoded frame, but got no packet on output");
@@ -547,17 +590,18 @@ int media_writer::snapshot_encode_write(AVFrame *rawFrame)
 end:
 	if (file)
 		fclose(file);
-	av_free_packet(&avpkt);
 	av_frame_free(&frame);
+	av_packet_unref(&avpkt);
 	if (oc) {
-		// Flush encoder
-		while (1) {
-			av_init_packet(&avpkt);
-			ret = avcodec_encode_video2(oc, &avpkt, NULL, &got_pkt);
-			if (!got_pkt || ret < 0)
-				break;
-			av_free_packet(&avpkt);
+
+		ret = avcodec_send_frame(oc, NULL);
+
+		while (ret >= 0) {
+			ret = avcodec_receive_packet(oc, &avpkt);
+			if (ret < 0) break;
+			av_packet_unref(&avpkt);
 		}
+
 		avcodec_close(oc);
 		av_free(oc);
 	}

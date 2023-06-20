@@ -112,16 +112,18 @@ int main(int argc, char **argv)
 	if (st == NULL)
 		err("opening new stream");
 
-	st->codec->codec_id = AV_CODEC_ID_MP2;
-	st->codec->codec_type = AVMEDIA_TYPE_AUDIO;
-	st->codec->bit_rate = 32000;
-	st->codec->sample_rate = 16000;
-	st->codec->sample_fmt = AV_SAMPLE_FMT_S16;
-	st->codec->channels = 1;
-	st->codec->time_base = (AVRational){1, 16000};
+	st->codecpar->codec_id = AV_CODEC_ID_MP2;
+	st->codecpar->codec_type = AVMEDIA_TYPE_AUDIO;
+	st->codecpar->bit_rate = 32000;
+	st->codecpar->sample_rate = 16000;
+	st->codecpar->format = AV_SAMPLE_FMT_S16;
+	st->codecpar->channels = 1;
+	st->time_base = (AVRational){1, 16000};
 
+/*
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+*/
 
 	codec = avcodec_find_encoder(st->codec->codec_id);
 	if (codec == NULL)

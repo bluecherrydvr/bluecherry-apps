@@ -124,17 +124,17 @@ void bc_ffmpeg_init()
 		exit(1);
 	}
 
-	avcodec_register(&fake_h264_encoder);
-	av_register_all();
-	avfilter_register_all();
+	avcodec_register(&fake_h264_encoder); // deprecated
+	av_register_all(); // deprecated
+	avfilter_register_all(); // deprecated
 	avformat_network_init();
 	avdevice_register_all();
-	avcodec_register_all();
+	avcodec_register_all(); // deprecated
 
 	av_log_set_callback(av_log_cb);
 }
 
 void bc_ffmpeg_teardown()
 {
-	av_lockmgr_register(NULL);
+	av_lockmgr_register(NULL); // deprecated
 }
