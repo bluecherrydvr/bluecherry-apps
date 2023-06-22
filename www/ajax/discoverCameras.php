@@ -396,7 +396,7 @@ class discoverCameras extends Controller {
                                     'protocol' => 'IP-RTSP',
                                     'rtsp' => $media_uri_parse['path'],
                                     'port' => $media_uri_parse['port'],
-				    'substream' => $sub_stream,
+				                    'substream' => $sub_stream,
                                     'prefertcp' => '1',
                                     'mjpeg' => '',
                                     'portMjpeg' => 80

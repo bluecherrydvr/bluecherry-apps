@@ -145,7 +145,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	if (get_creds(dbres, creds, sizeof(creds)) < 0)
 		return -1;
 
-	bool rtsp_rtp_prefer_tcp = true;
+	int rtsp_rtp_prefer_tcp = 1;
 	const char *protocol = bc_db_get_val(dbres, "protocol", NULL);
 	const char *uri_schema;
 	if (protocol && !strncmp(protocol, "IP-MJPEG", 8)) {
@@ -156,7 +156,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 
 		const char *rtsp_rtp_prefer_tcp_raw = bc_db_get_val(dbres, "rtsp_rtp_prefer_tcp", NULL);
 		if (rtsp_rtp_prefer_tcp_raw && strlen(rtsp_rtp_prefer_tcp_raw)) {
-			rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw) ? true : false;
+			rtsp_rtp_prefer_tcp = atoi(rtsp_rtp_prefer_tcp_raw);
 		} else {
 			bc_log(Error, "rtsp_rtp_prefer_tcp field is absent in Devices table, "
 					"DB schema not updated. Using default field value, \"true\"");

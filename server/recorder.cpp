@@ -13,6 +13,7 @@ recorder::recorder(const bc_record *bc_rec)
 
 recorder::~recorder()
 {
+	stop_snapshot();
 	delete writer;
 }
 
@@ -101,16 +102,16 @@ void recorder::run()
 		 */
 
 		if (recording_type == BC_EVENT_CAM_T_MOTION || recording_type == BC_EVENT_CAM_T_CONTINUOUS) {
-			if (snapshotting_proceeding) {
-				int ret = writer->snapshot_feed(packet);
+			if (snapshot != NULL) {
+				int ret = snapshot->feed(packet);
 				if (ret < 0) {
 					bc_log(Error, "Failed while feeding snapshot saver with more frames");
-					snapshotting_proceeding = false;
+					stop_snapshot();
 				} else if (ret > 0) {
-					bc_log(Debug, "Still need to feed more frames to finish snapshot");
+					bc_log(Info, "Still need to feed more frames to finish snapshot");
 				} else {
-					bc_log(Debug, "Finalized snapshot");
-					snapshotting_proceeding = false;
+					bc_log(Info, "Finalized snapshot");
+					stop_snapshot();
 					snapshots_done++;
 					event_trigger_notifications(current_event);
 				}
@@ -120,20 +121,31 @@ void recorder::run()
 						/* TODO higher precision for time storage */
 						/* TODO support millisecond precision for delay option */
 						+ (snapshotting_delay_since_motion_start_ms/1000))) {
-				bc_log(Debug, "Making a snapshot");
+
+				stop_snapshot();
+				bc_log(Info, "Making a snapshot");
 
 				// Push frames to decoder until picture is taken
 				// In some cases one AVPacket marked as keyframe is not enough, and next
 				// packet must be pushed to decoder, too.
-				int ret = writer->snapshot_create(snapshot_filename.c_str(), packet);
+
+				snapshot = new snapshot_writer(snapshot_filename.c_str());
+				if (snapshot == NULL)
+				{
+					bc_log(Error, "Failed to initialize snapshot writter");
+					goto end;
+				}
+
+				int ret = snapshot->feed(packet);
 				if (ret < 0) {
 					bc_log(Error, "Failed to make snapshot");
+					stop_snapshot();
 				} else if (ret > 0) {
-					bc_log(Debug, "Need to feed more frames to finish snapshot");
-					snapshotting_proceeding = true;
+					bc_log(Info, "Need to feed more frames to finish snapshot");
 				} else {
-					bc_log(Debug, "Saved snapshot from single keyframe");
+					bc_log(Info, "Saved snapshot from single keyframe");
 					snapshots_done++;
+					stop_snapshot();
 					event_trigger_notifications(current_event);
 				}
 			}
@@ -224,7 +236,6 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 
 	recording_end();
 
-	snapshotting_proceeding = false;
 	snapshots_limit = 1;  /* TODO Optionize */
 	snapshots_done = 0;
 	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
@@ -270,17 +281,32 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 void recorder::recording_end()
 {
 	/* Close the media entry in the db */
-	if (current_event && bc_event_has_media(current_event)) {
-		if (recording_type == BC_EVENT_CAM_T_MOTION
-			&& !event_notification_executed)
-		event_trigger_notifications(current_event);
+	if (current_event && bc_event_has_media(current_event))
+	{
+		if (recording_type == BC_EVENT_CAM_T_MOTION &&
+			!event_notification_executed)
+			event_trigger_notifications(current_event);
+
 		bc_event_cam_end(&current_event);
 	}
 
-	if (writer)
+	if (writer != NULL)
+	{
 		writer->close();
-	delete writer;
-	writer = 0;
+		delete writer;
+		writer = NULL;
+	}
+
+	stop_snapshot();
+}
+
+void recorder::stop_snapshot()
+{
+	if (snapshot != NULL)
+	{
+		delete snapshot;
+		snapshot = NULL;
+	}
 }
 
 void recorder::do_error_event(bc_event_level_t level, bc_event_cam_type_t type)

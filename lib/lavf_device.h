@@ -30,7 +30,7 @@ extern "C" {
 class lavf_device : public input_device
 {
 public:
-	explicit lavf_device(const char *url, bool rtp_prefer_tcp);
+	explicit lavf_device(const char *url, int rtp_prefer_tcp);
 	virtual ~lavf_device();
 
 	virtual int start();
@@ -47,7 +47,7 @@ public:
 	virtual void getStatusXml(pugi::xml_node& xmlnode);
 private:
 	char url[1024];
-	bool rtp_prefer_tcp;
+	int rtp_prefer_tcp;
 	char error_message[512];
 
 	AVFormatContext *ctx;

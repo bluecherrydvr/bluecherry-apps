@@ -31,7 +31,10 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
-lavf_device::lavf_device(const char *u, bool rtp_prefer_tcp)
+#define RTP_PROTOCOL_AUTO 1
+#define RTP_PROTOCOL_TCP  0
+
+lavf_device::lavf_device(const char *u, int rtp_prefer_tcp)
 	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
 		, rtp_prefer_tcp(rtp_prefer_tcp)
 {
@@ -87,8 +90,13 @@ int lavf_device::start()
 	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	/* No input on socket, or no writability for thus many microseconds is treated as failure */
 	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
-	if (rtp_prefer_tcp && !strncmp(url, "rtsp://", 7))
-		av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
+
+	if (!strncmp(url, "rtsp://", 7))
+	{
+		if (rtp_prefer_tcp == RTP_PROTOCOL_TCP)
+			av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
+	}
+
 	if (!strncmp(url, "http://", 7)) {
 		/* For MJPEG streams, generate timestamps from system time */
 		av_dict_set(&avopt_open_input, "use_wallclock_as_timestamps", "1", 0);
