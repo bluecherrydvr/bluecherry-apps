@@ -44,7 +44,7 @@ CREATE TABLE `Devices` (
   `driver` varchar(255) DEFAULT NULL,
   `rtsp_username` varbinary(256) DEFAULT NULL,
   `rtsp_password` varbinary(256) DEFAULT NULL,
-  `rtsp_rtp_prefer_tcp` tinyint(1) NOT NULL DEFAULT '1',
+  `rtsp_rtp_prefer_tcp` smallint(5) NOT NULL DEFAULT '0',
   `mjpeg_path` varbinary(256) DEFAULT NULL,
   `onvif_port` mediumint(5) DEFAULT '80',
   `ptz_control_path` varbinary(256) DEFAULT NULL,

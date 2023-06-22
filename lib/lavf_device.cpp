@@ -31,12 +31,9 @@ extern "C" {
 #include <libavutil/mathematics.h>
 }
 
-#define RTP_PROTOCOL_AUTO 1
-#define RTP_PROTOCOL_TCP  0
-
-lavf_device::lavf_device(const char *u, int rtp_prefer_tcp)
+lavf_device::lavf_device(const char *u, int rtp_protocol)
 	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
-		, rtp_prefer_tcp(rtp_prefer_tcp)
+		, rtp_protocol(rtp_protocol)
 {
 	strlcpy(url, u, sizeof(url));
 
@@ -77,13 +74,11 @@ void lavf_device::stop()
 
 int lavf_device::start()
 {
-	int re;
-	AVDictionary *avopt_open_input = NULL;
-	AVDictionary *avopt_find_stream_info = NULL;
-	AVInputFormat *input_fmt = NULL;
+	if (ctx) return 0;
+	bool using_tcp = false;
 
-	if (ctx)
-		return 0;
+	AVDictionary *avopt_open_input = NULL;
+	AVInputFormat *input_fmt = NULL;
 
 	bc_log(Debug, "Opening session from URL: %s", url);
 
@@ -93,34 +88,55 @@ int lavf_device::start()
 
 	if (!strncmp(url, "rtsp://", 7))
 	{
-		if (rtp_prefer_tcp == RTP_PROTOCOL_TCP)
+		if (rtp_protocol == RTP_PROTOCOL_TCP || tcp_fallback)
+		{
 			av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
+			tcp_fallback = false;
+			using_tcp = true;
+		}
 	}
 
-	if (!strncmp(url, "http://", 7)) {
+	if (!strncmp(url, "http://", 7))
+	{
 		/* For MJPEG streams, generate timestamps from system time */
 		av_dict_set(&avopt_open_input, "use_wallclock_as_timestamps", "1", 0);
 		/* Declare format explicitly, as auto-recognition of MJPEG doesn't work on some models */
 		input_fmt = av_find_input_format("mjpeg");
-		if (!input_fmt) {
+
+		if (!input_fmt)
+		{
 			assert(0);
 			return -1;
 		}
 	}
 
-	re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
+	int re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
 	av_dict_free(&avopt_open_input);
-	if (re != 0) {
+
+	if (re != 0)
+	{
 		av_strerror(re, error_message, sizeof(error_message));
 		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
-		ctx = 0;
+		ctx = NULL;
+
+		if (rtp_protocol == RTP_PROTOCOL_AUTO && !using_tcp)
+		{
+			bc_log(Info, "Falling back to TCP connection");
+			tcp_fallback = true;
+			return start();
+		}
+
 		return -1;
 	}
 
+	AVDictionary *avopt_find_stream_info = NULL;
 	av_dict_set(&avopt_find_stream_info, "threads", "1", 0);
+
 	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
 	AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
-	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+
+	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
+	{
 		opt_si[i] = 0;
 		av_dict_copy(&opt_si[i], avopt_find_stream_info, 0);
 	}
@@ -129,50 +145,67 @@ int lavf_device::start()
 
 	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
 		av_dict_free(&opt_si[i]);
+
 	delete[] opt_si;
 	av_dict_free(&avopt_find_stream_info);
 
-	if (re < 0) {
+	if (re < 0)
+	{
 		stop();
 		av_strerror(re, error_message, sizeof(error_message));
 		bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
 		return -1;
 	}
 
-	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i) {
+	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i)
+	{
 		AVStream *stream = ctx->streams[i];
 
-		if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-			if (video_stream_index >= 0) {
+		if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
+		{
+			if (video_stream_index >= 0)
+			{
 				bc_log(Warning, "Session for %s has multiple video streams. Only the "
 				       "first stream will be recorded.", url);
 				stream->discard = AVDISCARD_ALL;
 				continue;
 			}
+
 			video_stream_index = i;
 
-			if (stream->time_base.num != 1 || stream->time_base.den != 90000) {
+			if (stream->time_base.num != 1 || stream->time_base.den != 90000)
+			{
 				bc_log(Info, "Video stream timebase is unusual (%d/%d). This could cause "
 				       "timing issues.", stream->time_base.num, stream->time_base.den);
 			}
-		} else if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-			if (audio_stream_index >= 0) {
+		}
+		else if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
+		{
+			if (audio_stream_index >= 0)
+			{
 				bc_log(Warning, "Session for %s has multiple audio streams. Only the "
-				       "first stream will be recorded.", url);
+					"first stream will be recorded.", url);
+
 				stream->discard = AVDISCARD_ALL;
 				continue;
-			} else if (stream->codecpar->codec_id == AV_CODEC_ID_NONE) {
+			}
+			else if (stream->codecpar->codec_id == AV_CODEC_ID_NONE)
+			{
 				bc_log(Error, "No matching audio codec for stream; ignoring audio");
 				stream->discard = AVDISCARD_ALL;
 				continue;
 			}
+
 			audio_stream_index = i;
-		} else {
-				stream->discard = AVDISCARD_ALL;
+		}
+		else
+		{
+			stream->discard = AVDISCARD_ALL;
 		}
 	}
 
-	if (video_stream_index < 0) {
+	if (video_stream_index < 0)
+	{
 		stop();
 		strcpy(error_message, "Session contains no valid video stream");
 		return -1;
