@@ -15,6 +15,9 @@ struct bc_time {
 	int sec = 0;
 };
 
+std::string bc_get_directory_path(const std::string& filePath);
+std::string bc_get_file_name(const std::string& filePath);
+
 bool bc_is_leap_year(int year);
 int bc_days_in_month(int year, int month);
 bool bc_compare_time(const bc_time& tm1, const bc_time& tm2);

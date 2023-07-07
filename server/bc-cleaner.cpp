@@ -16,6 +16,20 @@
 #include "bc-server.h"
 #include "bc-syslog.h"
 
+std::string bc_get_directory_path(const std::string& filePath)
+{
+    size_t found = filePath.find_last_of("/\\");
+    std::string dirPath = filePath.substr(0, found);
+	if (dirPath.back() != '/') dirPath.append("/");
+	return dirPath;
+}
+
+std::string bc_get_file_name(const std::string& filePath)
+{
+    size_t found = filePath.find_last_of("/\\");
+    return filePath.substr(found + 1);
+}
+
 bool bc_is_leap_year(int year)
 {
 	return (year % 4 == 0 &&
