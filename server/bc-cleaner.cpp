@@ -122,6 +122,7 @@ bool bc_is_base_path(std::string dir_path)
 
 bool bc_is_current_path(const std::string& path)
 {
+	if (path.length() <= 30) return true;
 	std::string timed_path = path.substr(path.size() - 30, 26);
 	bc_time rec_time;
 	int id = 0;

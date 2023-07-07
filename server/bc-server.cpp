@@ -813,8 +813,11 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			if (debug_pos != std::string::npos)
 			{
 				std::string sub_path = full_path.substr(0, debug_pos);
-				std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
-				bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
+				if (sub_path.length() > 26)
+				{
+					std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
+					bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
+				}
 
 				entry = readdir(pdir);
 				continue;
@@ -847,7 +850,14 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			suffix_len = 11;
 		}
 
-		std::string timed_path = full_path.substr(full_path.size() - (time_len + suffix_len), time_len);
+		size_t ending_len = time_len + suffix_len;
+		if (full_path.length() < ending_len)
+		{
+			entry = readdir(pdir);
+			continue;
+		}
+
+		std::string timed_path = full_path.substr(full_path.size() - ending_len, time_len);
 		bc_time rec_time;
 		int id = 0;
 
@@ -939,8 +949,14 @@ static int bc_initial_cleanup_untracked_media()
 	}
 
 	std::string full_path = std::string(filepath);
-	std::string timed_path = full_path.substr(full_path.size()-30, 26);
+	if (full_path.length() < 30)
+	{
+		bc_log(Warning, "Failed to determine oldest media time from path: %s", filepath);
+		bc_db_free_table(dbres);
+		return -1;
+	}
 
+	std::string timed_path = full_path.substr(full_path.size()-30, 26);
 	bc_string_array locations;
 	bc_oldest_media_t ctx;
 	int count, id;
