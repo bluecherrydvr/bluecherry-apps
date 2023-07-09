@@ -1,11 +1,11 @@
-<?php 
+<?php
 
 class eventsIndex extends Controller {
-	
+
     public function __construct()
     {
         parent::__construct();
-		$this->chAccess('backup');
+        $this->chAccess('backup');
     }
 
     public function getData()
@@ -17,22 +17,29 @@ class eventsIndex extends Controller {
 
         $events_portion = 5000;
 
-        $query = "SELECT EventsCam.*, Media.size AS media_size, Devices.device_name, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available ".
-            "FROM EventsCam LEFT JOIN Media ON (EventsCam.media_id=Media.id) LEFT JOIN Devices ON (EventsCam.device_id=Devices.id) ".
-        	 "WHERE ";
+        $query = "SELECT EventsCam.*, Media.size AS media_size, Media.start, Media.end, Devices.device_name, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available, ".
+            "IFNULL(TIMESTAMPDIFF(SECOND, Media.start, Media.end), 0) AS video_duration ".
+            "FROM EventsCam ".
+            "LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
+            "LEFT JOIN Devices ON (EventsCam.device_id=Devices.id) ".
+            "WHERE ";
+
+
         if (isset($_GET['startDate']))
-        	$query .= "EventsCam.time >= ".((int)$_GET['startDate'])." AND ";
+            $query .= "EventsCam.time >= " . ((int)$_GET['startDate']) . " AND ";
         if (isset($_GET['endDate']))
-        	$query .= "EventsCam.time <= ".((int)$_GET['endDate'])." AND ";
+            $query .= "EventsCam.time <= " . ((int)$_GET['endDate']) . " AND ";
         if (isset($_GET['beforeId']))
-        	$query .= "EventsCam.id < ".((int)$_GET['beforeId'])." AND ";
+            $query .= "EventsCam.id < " . ((int)$_GET['beforeId']) . " AND ";
         if (isset($_GET['afterId']))
-                $query .= "EventsCam.id > ".((int)$_GET['afterId'])." AND ";
+            $query .= "EventsCam.id > " . ((int)$_GET['afterId']) . " AND ";
         if (isset($_GET['id']))
-        	$query .= "EventsCam.id = ".((int)$_GET['id'])." AND ";
+            $query .= "EventsCam.id = " . ((int)$_GET['id']) . " AND ";
+
         if (empty($current_user->data[0]['access_device_list'])){
-        	$current_user->data[0]['access_device_list'] = '-1';
+            $current_user->data[0]['access_device_list'] = '-1';
         }
+
         $query .= "EventsCam.device_id NOT IN ({$current_user->data[0]['access_device_list']}) ";
         $query .= "ORDER BY EventsCam.id DESC ";
 
@@ -46,83 +53,93 @@ class eventsIndex extends Controller {
 
 
         # Output header for this feed
-        print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
-        print "<feed xmlns=\"http://www.w3.org/2005/Atom\">\n";
-        print "  <title type=\"text\">Bluecherry Events for " .
-        	$_SERVER["SERVER_NAME"] . "</title>\n";
-        
+        header('Content-Type: application/json');
+
+        $data = array();
+
+        $data['title'] = 'Bluecherry Events for ' . $_SERVER['SERVER_NAME'];
+
         if (isset($events) && $events) {
-        	$curevent = current($events);
-        	$lastupdate = date(DATE_ATOM, $curevent['time']);
+            $curevent = current($events);
+            $lastupdate = date(DATE_ATOM, $curevent['time']);
         } else {
-        	$lastupdate = date(DATE_ATOM);
+            $lastupdate = date(DATE_ATOM);
         }
 
-        print "  <updated>" . $lastupdate . "</updated>\n";
+        $data['updated'] = $lastupdate;
 
-        # XXX Need to generate this per-server
-        print "  <id>urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6</id>\n";
+        // XXX Need to generate this per-server
+        $data['id'] = 'urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6';
 
-        print "  <link rel=\"self\" type=\"application/atom+xml\" " .
-        	"href=\"http://" . $_SERVER["SERVER_NAME"] . "/events/\"/>\n";
-        print "  <generator uri=\"http://www.bluecherrydvr.com/atom.html\" version=\"1.0\">\n";
-        print "    BluecherryDVR Events Atom Generator\n";
-        print "  </generator>\n";
-        
-        # Output one events portion per query with limit/offset
-        //for ($portions = 0; $portions < $portions_num; $portions++) {
+        $data['link'] = array(
+            'rel' => 'self',
+            'type' => 'application/json',
+            'href' => 'http://' . $_SERVER['SERVER_NAME'] . '/events/'
+        );
+
+        $data['generator'] = array(
+            'uri' => 'http://www.bluecherrydvr.com/atom.html',
+            'version' => '1.0',
+            'content' => 'BluecherryDVR Events Atom Generator'
+        );
+
+        $entries = array();
+
         $offset = 0;
         while (true) {
+            $limit = min($requested_limit, $events_portion);
 
-        	$limit = min($requested_limit, $events_portion);
+            if ($limit < 0) {
+                $limit = $events_portion;
+            }
 
-        	if ($limit < 0)
-        		$limit = $events_portion;
+            $events = data::query($query . ' LIMIT ' . $limit . ' OFFSET ' . $offset);
 
-        	$events = data::query($query." LIMIT ".$limit." OFFSET ".$offset);
+            foreach ($events as $item) {
+                if (!$current_user->camPermission($item['device_id'])) {
+                    continue;
+                }
 
-        	# Output one item for each event
-        	foreach ($events as $item) {
-        		if (!$current_user->camPermission($item['device_id']))
-        			continue;
+                $entry = array(
+                    'id' => 'http://' . $_SERVER['SERVER_NAME'] . '/events/?id=' . $item['id'],
+                    'title' => $item['level_id'] . ': ' . $item['type_id'] . ' event on device ' . $item['device_name'],
+                    'published' => date(DATE_ATOM, $item['time'])
+                );
 
-        		print "  <entry>\n";
-        		print "    <id raw=\"".$item['id']."\">http://".$_SERVER['SERVER_NAME']."/events/?id=".$item['id']."</id>\n";
-        		print "    <title>" . $item['level_id'] . ": " . $item['type_id'] .
-        			" event on device " . $item['device_name'] . "</title>\n";
-        		print "    <published>" . date(DATE_ATOM, $item['time']) .
-        			"</published>\n";
+                if (!empty($item['length'])) {
+                    if ($item['length'] > 0) {
+                        $entry['updated'] = date(DATE_ATOM, $item['time'] + $item['length']);
+                    }
+                }
 
-        		/* If updated exists and is empty, the event is on-going */
-        		if (!empty($item['length'])) {
-        			print "    <updated>";
-        			if ($item['length'] > 0) {
-        				print date(DATE_ATOM, $item['time'] +
-        					$item['length']);
-        			}
-        			print "</updated>\n";
-        		}
+                $entry['category'] = array(
+                    'scheme' => 'http://www.bluecherrydvr.com/atom.html',
+                    'term' => $item['device_id'] . '/' . $item['level_id'] . '/' . $item['type_id']
+                );
 
-        		print "    <category scheme=\"http://www.bluecherrydvr.com/atom.html\" " .
-        			"term=\"" . $item['device_id'] . "/" . $item['level_id'] . "/" .
-        			$item['type_id'] . "\"/>\n";
+                if (!empty($item['media_id']) && $item['media_available']) {
+                    $entry['content'] = array(
+                        'media_id' => $item['media_id'],
+                        'media_size' => $item['media_size'],
+                        'media_duration' => $item['media_duration'],
+                        'content' => (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/media/request.php?id=' . $item['media_id']
+                    );
+                }
 
-        		if (!empty($item['media_id']) && $item['media_available']) {
-        			print "    <content media_id=\"".$item['media_id']."\" media_size=\"".$item['media_size']."\">";
-        			print (!empty($_SERVER['HTTPS']) ? "https" : "http")."://".$_SERVER['HTTP_HOST']."/media/request.php?id=".$item['media_id'];
-        			print "</content>\n";
-        		}
+                $entries[] = $entry;
+            }
 
-        		print "  </entry>\n";
-        	}
+            if (count($events) < $events_portion) {
+                break;
+            }
 
-        	if (count($events) < $events_portion)
-        		break;
-
-        	$offset += $events_portion;
+            $offset += $events_portion;
         }
-        # Close it out
-        print "</feed>\n";
+
+        $data['entry'] = $entries;
+
+        echo json_encode($data, JSON_PRETTY_PRINT);
+
     }
 
     public function postData()

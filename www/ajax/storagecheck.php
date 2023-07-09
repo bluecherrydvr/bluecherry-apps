@@ -29,11 +29,15 @@ class storagecheck extends Controller {
     // path -- path to storage dir, type -- new or existing, existing are not checked for existing files
     public function directory_status($path, $type = '')
     {
-    	#if file 
-    	if (!file_exists($path)){
-    		return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
-    	}
+        $dir = shell_exec("sudo /usr/share/bluecherry/scripts/check_dir_permission.sh $path");
 
+        if (!file_exists($path)){
+            return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
+        }
+
+        if(!substr_count($dir, '-wrx')){
+            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
+        }
         $file_group = posix_getgrgid(filegroup($path));
         $allowed_group = array('bluecherry', 'www-data');
         if ((!isset($file_group['name'])) || (isset($file_group['name']) && (!in_array($file_group['name'], $allowed_group)))) {
@@ -45,13 +49,17 @@ class storagecheck extends Controller {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
+        if (!is_writable($path)) {
+            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
+        }
+
         if (!is_readable($path)) {
             return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
         }
 
-    	if ($type == 'new'){
-    		return (count(scandir($path)) == 2) ? array('OK', DIR_OK) : array('INFO', str_replace('%PATH%', $path, DIR_NOT_EMPTY));
-    	}
+        if ($type == 'new'){
+            return (count(scandir($path)) == 2) ? array('OK', DIR_OK) : array('INFO', str_replace('%PATH%', $path, DIR_NOT_EMPTY));
+        }
 
         return false;
     }
