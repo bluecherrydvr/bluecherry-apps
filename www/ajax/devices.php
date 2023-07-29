@@ -17,9 +17,9 @@ class devices extends Controller {
         $this->ipCameras->arr = array();
         $this->ipCameras->ok = Array();
         $this->ipCameras->disabled = Array();
-
 		$this->getCards();
         $this->getIpCameras();
+
 
         $this->setView('ajax.devices');
         $devices = new StdClass();
@@ -30,8 +30,13 @@ class devices extends Controller {
 
         $this->view->devices = $devices;
 
+        if ($this->reqJSON()) {
+	        $this->Makejson();
+            die();
+        }
+
         if ($this->reqXML()) {
-	        $this->MakeXML();
+            $this->MakeXML();
             die();
         }
     }
@@ -73,14 +78,15 @@ class devices extends Controller {
     {
 		$cards = data::query("SELECT card_id FROM AvailableSources GROUP BY card_id");
 		$this->info['total_devices'] = 0;
-		if (!$cards) { return false; } 
-			else {
-				foreach ($cards as $key => $card){
-					$this->cards[$card['card_id']] = new card($card['card_id']);
-					$this->info['total_devices'] += count($this->cards[$card['card_id']]->cameras);
-				}
-				
-			}
+		if (!$cards) {
+            return false;
+        } else {
+            foreach ($cards as $key => $card){
+                $this->cards[$card['card_id']] = new card($card['card_id']);
+                $this->info['total_devices'] += count($this->cards[$card['card_id']]->cameras);
+            }
+
+        }
 	}
 	private function getIpCameras(){
 		$info = data::query("SELECT * FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
@@ -141,7 +147,48 @@ class devices extends Controller {
 		header('Content-type: text/xml');
 		print $xml;
 	}
-		
+    public function MakeJSON() {
+        $this_user = new user('id', $_SESSION['id']);
+        $devices = array();
+        if (!empty($this->cards)) {
+            foreach ($this->cards as $card_id => $card) {
+                $devices = array_merge($devices, $card->cameras);
+            }
+        }
+        if (!empty($this->ipCameras->arr))
+            $devices = array_merge($devices, $this->ipCameras->arr);
+
+        $json_data = array('devices' => array());
+
+        $short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
+        $block_props = array('rtsp_password', 'rtsp_username');
+
+        foreach ($devices as $device) {
+            if (isset($device->info['id']) && !$this_user->camPermission($device->info['id']))
+                continue;
+
+            $device_data = array();
+            if (!empty($device->info['id']))
+                $device_data['id'] = $device->info['id'];
+
+            foreach ($device->info as $prop => $val) {
+                if (isset($_GET['short']) && !in_array($prop, $short_props))
+                    continue;
+
+                if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
+                    continue;
+
+                $device_data[$prop] = $val;
+            }
+
+            $json_data['devices'][] = $device_data;
+        }
+
+        header('Content-type: application/json');
+        echo json_encode($json_data, JSON_PRETTY_PRINT);
+    }
+
+
 }
 
 

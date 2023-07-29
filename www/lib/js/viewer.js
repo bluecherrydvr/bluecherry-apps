@@ -1,3 +1,25 @@
+document.addEventListener("DOMContentLoaded", function() {
+	if(session == null) {
+		var requestData = {
+			mode: 'init',
+		};
+		var request = new Request({
+			url: 'liveview/layouts',
+			data: requestData,
+			method: 'post',
+			onRequest: function() {
+				// handle the request
+			},
+			onSuccess: function(text, xml){
+				window.location.reload(true);
+			},
+			onFailure: function(){
+				// handle failure
+			}
+		}).send();
+	}
+});
+
 window.addEvent('load', function(){
 	var layoutsMenu = new ContextMenu({
 		menu:	'layoutsMenu',
@@ -60,7 +82,7 @@ window.addEvent('load', function(){
 	$$('.dc').addEvent('click', function(){ addDelRowColumn('c', false); });
 	$$('.ar').addEvent('click', function(){ addDelRowColumn('r', true); });
 	$$('.dr').addEvent('click', function(){ addDelRowColumn('r', false); });
-	
+
 	$$('.l1').addEvent('click', function(){ setLayout(1);	});
 	$$('.l4').addEvent('click', function(){ setLayout(4);	});
 	$$('.l9').addEvent('click', function(){ setLayout(9);	});
@@ -79,29 +101,29 @@ window.addEvent('load', function(){
 	});
 	$$('.presets').each(function(el){
 		presetmenuvar = new ContextMenu({
-					menu: 'presets-'+el.getParent().get('id'),
-					targets: '#'+el.get('id'),
-					trigger: 'click',
-					actions:{
-						'goto': function(el, ref, item){
-							presetRequest('go', item.get('id'), item.get('name'));
-						},
-						'rename': function(el, ref, item){
-							var presetName = prompt('New preset name:');
-							if (presetName != null){
-								presetRequest('rename', item.get('id'), item.get('name'), presetName);
-							}
-						},
-						'delete': function(el, ref, item){
-							presetRequest('clear', item.get('id'), item.get('name'));
-						},
-						'map': function(el, ref, item){
-							var presetName = prompt('New preset name:');
-							if (presetName != null){
-								presetRequest('save', item.get('id'), item.get('name'), presetName);
-							}							
-						}
+			menu: 'presets-'+el.getParent().get('id'),
+			targets: '#'+el.get('id'),
+			trigger: 'click',
+			actions:{
+				'goto': function(el, ref, item){
+					presetRequest('go', item.get('id'), item.get('name'));
+				},
+				'rename': function(el, ref, item){
+					var presetName = prompt('New preset name:');
+					if (presetName != null){
+						presetRequest('rename', item.get('id'), item.get('name'), presetName);
 					}
+				},
+				'delete': function(el, ref, item){
+					presetRequest('clear', item.get('id'), item.get('name'));
+				},
+				'map': function(el, ref, item){
+					var presetName = prompt('New preset name:');
+					if (presetName != null){
+						presetRequest('save', item.get('id'), item.get('name'), presetName);
+					}
+				}
+			}
 		});
 	});
 });
@@ -142,7 +164,7 @@ addPtz = function(el, id){
 					sendPtzCommand(this.getParent().get('id'), 'move', el.get('class'), true);
 				},
 				'mouseup': function(){
-					var cmd = (el.get('class')=='t' || el.get('class') == 'w') ? 'stop_zoom' : 'stop'; 				
+					var cmd = (el.get('class')=='t' || el.get('class') == 'w') ? 'stop_zoom' : 'stop';
 					sendPtzCommand(this.getParent().get('id'), cmd, el.get('class'), true);
 				},
 				'mouseout': function(){
@@ -151,38 +173,99 @@ addPtz = function(el, id){
 				}
 			});
 		} else if ($('presets-'+id)==null) {
-			el.setStyle('display', 'none');		
+			el.setStyle('display', 'none');
 		}
 	});
-	
-	
+
+
 }
 
-layoutsUpdate = function(mode, layout){
-	var request = new Request({
-		url: 'liveview/layouts',
-		data: 'mode='+mode+'&layout='+layout,
-		method: 'post',
-		onRequest: function(){
-		},
-		onSuccess: function(text, xml){
-			window.location.reload(true);
-		},
-		onFailure: function(){
+function createJSONfromDiv(mode) {
+	if (mode === 'new' || mode === 'edit') {
+		var liveViewContainer = document.getElementById("liveViewContainer");
+		var elements = liveViewContainer.getElementsByClassName("gridImage");
+		var jsonObj = {};
+
+		for (var i = 0; i < elements.length; i++) {
+			var id = elements[i].id;
+			var src = elements[i].src;
+
+			if (!src.includes('/img/icons/layouts/none.png')) {
+				jsonObj[id] = src;
+			}
 		}
-	}).send();
+
+		return JSON.stringify(jsonObj);
+	} else {
+		return null;
+	}
 }
+
+function loadLayout(layoutName) {
+	// Get layout data from session object
+	var layoutDataString = session[layoutName];
+	var normalizedString = layoutDataString.replace(/\\/g, '');
+	var layoutData = JSON.parse(normalizedString);
+	for (var id in layoutData) {
+		var src = layoutData[id];
+
+		// Update the src attribute of the element with the given id
+		var element = document.getElementById(id);
+		if (element) {
+			element.src = src;
+		} else {
+			console.warn('Element not found for id: ' + id);
+		}
+	}
+}
+
+var layoutsUpdate = function(mode, layoutName){
+	if(mode == 'load' && session && session[layoutName]) {
+		// If the mode is 'load' and the session data exists, load the layout from the session
+		loadLayout(layoutName);
+	} else {
+		// Otherwise, make the request as before
+		var jsonToSend = createJSONfromDiv(mode);
+		var requestData = {
+			mode: mode,
+			layout_name: layoutName
+		};
+
+		if (jsonToSend !== null) {
+			requestData.layout = jsonToSend;
+		} else {
+			requestData.layout = {};
+		}
+
+		var request = new Request({
+			url: 'liveview/layouts',
+			data: requestData,
+			method: 'post',
+			onRequest: function() {
+				// handle the request
+			},
+			onSuccess: function(text, xml){
+				window.location.reload(true);
+
+			},
+			onFailure: function(){
+				// handle failure
+			}
+		}).send();
+	}
+}
+
 
 makeGrid = function(){
-	
+
 	var lvRows = (Cookie.read('lvRows') || 2);
 	var lvCols = (Cookie.read('lvCols') || 2);
 	var gridTable = new Element('table', {
-           	'id' : 'lvGridTable', 'class': 'webcamsTable'
-    });
+		'id' : 'lvGridTable', 'class': 'webcamsTable'
+	});
 	for (row = 1; row <= lvRows; row++) {
-       	var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
-       	for(col = 1; col <= lvCols; col++){
+		var thisRow = new Element('tr', {'id' : row,'class' : 'y'+row});
+		for(col = 1; col <= lvCols; col++){
 			var thisCol = new Element('td', {'id' : col, 'class' : 'noImageTd x'+col});
 			var imgSrcId = (Cookie.read('imgSrcy'+row+'x'+col) || 'none');
 			var imgClass = 'noImg gridImage';
@@ -197,7 +280,7 @@ makeGrid = function(){
 			else {
 				imgSrcId = (imgSrcId!='none') ? '/media/mjpeg?multipart=true&id='+imgSrcId : '/img/icons/layouts/none.png';
 			}
-			
+
 			var lvImg = new Element('img', {'class': imgClass, 'src': imgSrcId, 'id': elementId});
 			lvImg.inject(thisCol);
 
@@ -205,15 +288,15 @@ makeGrid = function(){
 				addPtz(lvImg, id);
 			}
 
-            thisCol.inject(thisRow, 'bottom');
+			thisCol.inject(thisRow, 'bottom');
 
 			if (videoMethod === 'HLS' && id != 'none') {
 				createHlsLink(id, elementId, imgClass, window.location.hostname, window.location.port);
 			}
 		};
-  	    thisRow.inject(gridTable, 'bottom');
+		thisRow.inject(gridTable, 'bottom');
 	};
-    gridTable.inject($('liveViewContainer'));
+	gridTable.inject($('liveViewContainer'));
 }
 
 adjustImageSize = function(){
@@ -224,7 +307,7 @@ adjustImageSize = function(){
 	var verticalAdj = 60;
 	var horizontalAdj = 250;
 	var maxHeight = 0;
-	var maxWidth = 0;  
+	var maxWidth = 0;
 	if ((window.innerHeight-verticalAdj)/(lvRows*480) < (window.innerWidth-horizontalAdj)/(lvCols*704)){
 		maxHeight = (window.innerHeight-verticalAdj)/(lvRows);
 		maxWidth = 704*(maxHeight/480);
@@ -232,7 +315,7 @@ adjustImageSize = function(){
 		maxWidth = (window.innerWidth-horizontalAdj)/(lvCols);
 		maxHeight = 480*(maxWidth/704);
 	}
-	
+
 	$$('#liveViewContainer table tr td img').each(function(el){
 		if ((el.width/el.height) > (704/480)){
 			el.setStyle('width', maxWidth);
@@ -245,7 +328,7 @@ adjustImageSize = function(){
 			el.setStyle('min-width', maxWidth);
 		}
 	});
-	
+
 	$$('#liveViewContainer table tr td video').each(function(el){
 		if ((el.width/el.height) > (704/480)){
 			el.setStyle('width', maxWidth);
@@ -270,17 +353,17 @@ addDelRowColumn = function(n, t){
 	Cookie.write(tp, ((t) ? v+1 : v-1));
 	window.location.reload(true);
 },
-	
-setLayout = function(tp){
-	Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
-	window.location.reload(true);
-}
+
+	setLayout = function(tp){
+		Cookie.write('lvCols', Math.sqrt(tp)); Cookie.write('lvRows', Math.sqrt(tp));
+		window.location.reload(true);
+	}
 
 sendPtzCommand = function(camId, command, d, cont, speed){
 	if (!speed) var speed = 32;
 	var data = 'id='+camId+'&panspeed='+speed+'&tiltspeed='+speed;
 	data += '&command='+command;
-	if (command != "stop"){		
+	if (command != "stop"){
 		data += (cont) ? '&duration=-1' : '&duration=250';
 		if (d!='t' && d!='w'){
 			if (d.substring(0,1)!='n') { data += '&pan='+d.substring(0,1); };
@@ -339,7 +422,7 @@ setHlsLink = function(videoLink, videoId, imgClass) {
 	element.style.height    = height;
 	element.style.minWidth  = minWidth;
 	element.style.minHeight = minHeight;
-	
+
 	parent.appendChild(element);
 }
 
@@ -351,16 +434,16 @@ setHlsErrorImage = function(elementId, message) {
 	}
 	else if (message === "disabled") {
 		element.src = '/img/icons/layouts/disabled.png';
-	} 
+	}
 	else if (message === "not_found") {
 		element.src = '/img/icons/layouts/not-found.png';
-	} 
+	}
 	else if (message === "not_id") {
 		element.src = '/img/icons/layouts/no-device-id.png';
-	} 
+	}
 	else {
 		//
-	} 
+	}
 }
 
 createHlsLink = function(deviceId, elementId, elementClass, hostname, port) {
