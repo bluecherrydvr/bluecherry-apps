@@ -25,16 +25,20 @@ class eventsIndex extends Controller {
             "WHERE ";
 
 
-        if (isset($_GET['startDate']))
-            $query .= "EventsCam.time >= " . ((int)$_GET['startDate']) . " AND ";
-        if (isset($_GET['endDate']))
-            $query .= "EventsCam.time <= " . ((int)$_GET['endDate']) . " AND ";
         if (isset($_GET['beforeId']))
             $query .= "EventsCam.id < " . ((int)$_GET['beforeId']) . " AND ";
         if (isset($_GET['afterId']))
             $query .= "EventsCam.id > " . ((int)$_GET['afterId']) . " AND ";
         if (isset($_GET['id']))
             $query .= "EventsCam.id = " . ((int)$_GET['id']) . " AND ";
+        if (isset($_GET['device_id']))
+            $query .= "EventsCam.device_id = " . ((int)$_GET['device_id']) . " AND ";
+        if (isset($_GET['device_name']))
+            $query .= "Devices.device_name = " . ((int)$_GET['device_name']) . " AND ";
+        if (isset($_GET['startTime']) && isset($_GET['endTime']))
+            // $query .= " EventsCam.time BETWEEN " . strtotime($_GET['startTime']). " AND " . strtotime($_GET['endTime']) ;
+            // StartTime & EndTime format example : 2021-02-19T22:05:18-06:00
+            $query .= " EventsCam.time >= " . strtotime($_GET['startTime']) . " AND EventsCam.time <= " . strtotime($_GET['endTime']) . " AND ";
 
         if (empty($current_user->data[0]['access_device_list'])){
             $current_user->data[0]['access_device_list'] = '-1';
