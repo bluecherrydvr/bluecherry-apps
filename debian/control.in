@@ -28,6 +28,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  i965-va-driver,
 # python3-pip,
 #focal   php-sqlite3, php-gd, php-curl, php-mysql
+#jammy   php-sqlite3, php-gd, php-curl, php-mysql
 #xenial  php-sqlite3, php-gd, php-curl, php-mysql
 #bionic  php-sqlite3, php-gd, php-curl, php-mysql
 #buster  php-sqlite3, php-gd, php-curl, php-mysql
