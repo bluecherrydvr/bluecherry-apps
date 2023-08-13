@@ -82,7 +82,6 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 {
 	AVFormatContext *ctx;
 	AVStream *st;
-	AVCodec *codec;
 	AVDictionary *muxer_opts = NULL;
 	int ret = -1;
 	uint8_t *bufptr;
@@ -130,18 +129,20 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 		goto error;
 	}
 
-	bkp_ts = st->codec->time_base;
+	bkp_ts = st->time_base;
 	if (type == AVMEDIA_TYPE_VIDEO)
-		props->video.apply(st->codec);
+		props->video.apply(st->codecpar);
 	else
-		props->audio.apply(st->codec);
+		props->audio.apply(st->codecpar);
 
-	st->codec->time_base = bkp_ts;
+	st->time_base = bkp_ts;
 	bc_rec->log.log(Debug, "streaming ctx[%d] time_base: %d/%d", index,
-		st->codec->time_base.num, st->codec->time_base.den);
+		st->time_base.num, st->time_base.den);
 
+/*
 	if (ctx->oformat->flags & AVFMT_GLOBALHEADER)
 		st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+*/
 
 	ctx->packet_size = packet_size;
 
@@ -340,12 +341,13 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	bc_rec->pkt_first_chunk = true;
 	bc_rec->cur_pts = opkt.pts;
 
-	re = av_write_frame(bc_rec->hls_stream_ctx[ctx_index], &opkt);
+	re = av_interleaved_write_frame(bc_rec->hls_stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
 			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
 			return 1;
 		}
+
 		char err[512] = { 0 };
 		av_strerror(re, err, sizeof(err));
 		bc_rec->log.log(Error, "Can't write to live stream: %s", err);
@@ -355,7 +357,7 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return -1;
 	}
 
-	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codec->codec_id == AV_CODEC_ID_MPEG4) {
+	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 		if (avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts) < 0) {

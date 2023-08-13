@@ -807,25 +807,25 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			continue;
 		}
 
-		std::size_t debug_pos = full_path.find(".debug");
-		std::size_t motion_pos = full_path.find(".motion");
-
-		if (debug_pos != std::string::npos ||
-			motion_pos != std::string::npos)
-		{
-			std::string sub_path = full_path.substr(0, debug_pos);
-			std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
-
-			if (S_ISDIR(statbuf.st_mode))
-				bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
-
-			entry = readdir(pdir);
-			continue;
-		}
-
 		if (S_ISDIR(statbuf.st_mode)) { // Recursive read directory
+
+			std::size_t debug_pos = full_path.find(".debug");
+			if (debug_pos != std::string::npos)
+			{
+				std::string sub_path = full_path.substr(0, debug_pos);
+				if (sub_path.length() > 26)
+				{
+					std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
+					bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
+				}
+
+				entry = readdir(pdir);
+				continue;
+			}
+
 			bc_recursive_cleanup_untracked_media(ctx, full_path);
 			bc_remove_dir_if_empty(full_path);
+
 			entry = readdir(pdir);
 			continue;
 		}
@@ -850,7 +850,14 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			suffix_len = 11;
 		}
 
-		std::string timed_path = full_path.substr(full_path.size() - (time_len + suffix_len), time_len);
+		size_t ending_len = time_len + suffix_len;
+		if (full_path.length() < ending_len)
+		{
+			entry = readdir(pdir);
+			continue;
+		}
+
+		std::string timed_path = full_path.substr(full_path.size() - ending_len, time_len);
 		bc_time rec_time;
 		int id = 0;
 
@@ -942,8 +949,14 @@ static int bc_initial_cleanup_untracked_media()
 	}
 
 	std::string full_path = std::string(filepath);
-	std::string timed_path = full_path.substr(full_path.size()-30, 26);
+	if (full_path.length() < 30)
+	{
+		bc_log(Warning, "Failed to determine oldest media time from path: %s", filepath);
+		bc_db_free_table(dbres);
+		return -1;
+	}
 
+	std::string timed_path = full_path.substr(full_path.size()-30, 26);
 	bc_string_array locations;
 	bc_oldest_media_t ctx;
 	int count, id;
@@ -987,16 +1000,16 @@ static int bc_initial_cleanup_untracked_media()
 */
 static int bc_cleanup_older_media(const char *filepath)
 {
-	int dir_length = strlen(filepath) - 12; // 8 for file name, 4 for extension
-	std::string dir_path = std::string(filepath);
-	std::string file_path = dir_path.substr(dir_length, 12);
-	dir_path.resize(dir_length);
+	std::string full_path = std::string(filepath);
+	std::string dir_path = bc_get_directory_path(full_path);
+	std::string file_name = bc_get_file_name(full_path);
+	if (dir_path.length() || file_name.length()) return -1;
 
 	char timestr[9];
 	int hour = 0, min = 0, sec = 0;
 	int archived = 0, removed = 0, error_count = 0;
 
-	snprintf(timestr, sizeof(timestr), "%s", file_path.c_str());
+	snprintf(timestr, sizeof(timestr), "%s", file_name.c_str());
 	sscanf(timestr, "%02d-%02d-%02d", (int*)&hour, (int*)&min, (int*)&sec);
 
 	DIR *pdir = opendir(dir_path.c_str());
@@ -1028,7 +1041,7 @@ static int bc_cleanup_older_media(const char *filepath)
 		else if (found_hour == hour && found_min == min && found_sec < sec) entry_is_old = true;
 
 		if (entry_is_old) {
-			std::string full_path = dir_path + std::string(entry->d_name);
+			full_path = dir_path + std::string(entry->d_name);
 			std::string video_file = full_path;
 			video_file.replace(video_file.size()-3, 3, "mkv");
 
@@ -1043,7 +1056,19 @@ static int bc_cleanup_older_media(const char *filepath)
 				continue;
 			}
 
-			if (unlink(full_path.c_str()) < 0) {
+			struct stat statbuf;
+			if (lstat(full_path.c_str(), &statbuf) < 0) {
+				bc_log(Error, "Can not stat file: %s", full_path.c_str());
+				entry = readdir(pdir);
+				error_count++;
+				continue;
+			}
+
+			if (S_ISDIR(statbuf.st_mode)) {
+				bc_remove_directory(full_path);
+				entry = readdir(pdir);
+				continue;
+			} else if (unlink(full_path.c_str()) < 0) {
 				bc_log(Warning, "Cannot remove old file %s: %s",
 			       full_path.c_str(), strerror(errno));
 

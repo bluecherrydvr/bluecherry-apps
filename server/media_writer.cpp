@@ -32,10 +32,18 @@ extern "C" {
 #include "bc-server.h"
 #include "lavf_device.h"
 
+static void bc_avlog(int val, const char *msg)
+{
+	char err[512] = { 0 };
+	av_strerror(val, err, sizeof(err));
+	bc_log(Error, "%s: %s", msg, err);
+}
+
+///////////////////////////////////////////////////////////////
+// S.K. >> Implementation of separated media writer
+///////////////////////////////////////////////////////////////
+
 media_writer::media_writer()
-	: oc(0), video_st(0), audio_st(0),
-	last_video_pts(0), last_video_dts(0),
-	last_audio_pts(0), last_audio_dts(0)
 {
 }
 
@@ -46,31 +54,30 @@ media_writer::~media_writer()
 
 bool media_writer::write_packet(const stream_packet &pkt)
 {
-	AVStream *s = 0;
+	AVStream *stream = 0;
 	AVPacket opkt;
 	int re;
 
-	if (pkt.type == AVMEDIA_TYPE_AUDIO)
-		s = audio_st;
-	else if (pkt.type == AVMEDIA_TYPE_VIDEO)
-		s = video_st;
-	else
-		bc_log(Debug, "write_packet: unexpected packet (to be ignored): pkt.type %d, dts %" PRId64 ", pts %" PRId64 ", size %d", pkt.type, pkt.dts, pkt.pts, pkt.size);
+	if (pkt.type == AVMEDIA_TYPE_AUDIO) stream = audio_st;
+	else if (pkt.type == AVMEDIA_TYPE_VIDEO) stream = video_st;
+	else bc_log(Debug, "write_packet: ignoring unexpected packet: pkt.type %d, dts %" PRId64 ", pts %" PRId64 ", size %d",
+		pkt.type, pkt.dts, pkt.pts, pkt.size);
 
-	if (!s)
-		return true;
-
+	if (!stream) return true;
 	av_init_packet(&opkt);
+
 	opkt.flags        = pkt.flags;
-	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, s->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, stream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+	opkt.dts          = av_rescale_q_rnd(pkt.dts, AV_TIME_BASE_Q, stream->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
-	opkt.stream_index = s->index;
+	opkt.stream_index = stream->index;
 
 	/* Fix non-increasing timestamps */
-	if (pkt.type == AVMEDIA_TYPE_AUDIO) {
-		if (opkt.pts < last_audio_pts || opkt.dts < last_audio_dts) {
+	if (pkt.type == AVMEDIA_TYPE_AUDIO)
+	{
+		if (opkt.pts < last_audio_pts || opkt.dts < last_audio_dts)
+		{
 			opkt.pts = last_audio_pts + 1;
 			opkt.dts = last_audio_dts + 1;
 			bc_log(Debug, "fixing timestamps in audio packet");
@@ -79,8 +86,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		last_audio_pts = opkt.pts;
 		last_audio_dts = opkt.dts;
 	}
-	if (pkt.type == AVMEDIA_TYPE_VIDEO) {
-		if (opkt.pts < last_video_pts || opkt.dts < last_video_dts) {
+
+	if (pkt.type == AVMEDIA_TYPE_VIDEO)
+	{
+		if (opkt.pts < last_video_pts || opkt.dts < last_video_dts)
+		{
 			opkt.pts = last_video_pts + 1;
 			opkt.dts = last_video_dts + 1;
 			bc_log(Debug, "fixing timestamps in video packet");
@@ -90,13 +100,15 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		last_video_dts = opkt.dts;
 	}
 
+	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
+		opkt.dts, opkt.pts, out_ctx->streams[opkt.stream_index]->time_base.num,
+		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
+		!!(opkt.flags & AV_PKT_FLAG_KEY));
 
-	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d", opkt.dts, opkt.pts, oc->streams[opkt.stream_index]->time_base.num, oc->streams[opkt.stream_index]->time_base.den, opkt.stream_index, !!(opkt.flags & AV_PKT_FLAG_KEY));
-	re = av_interleaved_write_frame(oc, &opkt);
-	if (re < 0) {
-		char err[512] = { 0 };
-		av_strerror(re, err, sizeof(err));
-		bc_log(Error, "Error writing frame to recording: %s", err);
+	re = av_interleaved_write_frame(out_ctx, &opkt);
+	if (re < 0)
+	{
+		bc_avlog(re, "Error writing frame to recording");
 		return false;
 	}
 
@@ -107,14 +119,16 @@ void media_writer::close()
 {
 	video_st = audio_st = NULL;
 
-	if (oc) {
-		if (oc->pb)
-			av_write_trailer(oc);
+	if (out_ctx)
+	{
+		if (out_ctx->pb)
+			av_write_trailer(out_ctx);
 
-		if (oc->pb)
-			avio_close(oc->pb);
-		avformat_free_context(oc);
-		oc = NULL;
+		if (out_ctx->pb)
+			avio_close(out_ctx->pb);
+
+		avformat_free_context(out_ctx);
+		out_ctx = NULL;
 	}
 }
 
@@ -126,10 +140,11 @@ int bc_mkdir_recursive(char *path)
 	unsigned int depth = 0;
 	char *bp[MKDIR_RECURSIVE_DEPTH];
 
-	while (depth <= MKDIR_RECURSIVE_DEPTH) {
-		if (!mkdir(path, 0750) || errno == EEXIST) {
-			if (!depth)
-				return 0;
+	while (depth <= MKDIR_RECURSIVE_DEPTH)
+	{
+		if (!mkdir(path, 0750) || errno == EEXIST)
+		{
+			if (!depth) return 0;
 
 			/* Continue with next child */
 			*bp[--depth] = '/';
@@ -141,7 +156,8 @@ int bc_mkdir_recursive(char *path)
 
 		/* Missing parent, try to make it */
 		bp[depth] = strrchr(path, '/');
-		if (!bp[depth] || bp[depth] == path) {
+		if (!bp[depth] || bp[depth] == path)
+		{
 			errno = EINVAL;
 			goto error;
 		}
@@ -217,7 +233,7 @@ static int setup_solo_output(struct bc_record *bc_rec, AVFormatContext *oc)
 		/* If we can't find an encoder, just skip it */
 		if (avcodec_find_encoder(codec_id) == NULL) {
 			bc_dev_warn(bc_rec, "Failed to find audio codec (%08x) "
-				    "so not recording", codec_id);
+				"so not recording", codec_id);
 			goto no_audio;
 		}
 
@@ -240,7 +256,7 @@ no_audio:
 	return 0;
 }
 
-int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
+int setup_out_ctx(struct bc_record *bc_rec, struct AVFormatContext *oc)
 {
 	struct bc_handle *bc = bc_rec->bc;
 	if (bc->type == BC_DEVICE_LAVF)
@@ -254,178 +270,212 @@ int setup_output_context(struct bc_record *bc_rec, struct AVFormatContext *oc)
 
 int media_writer::open(const std::string &path, const stream_properties &properties)
 {
-	int ret;
-	AVCodec *codec;
-	AVCodecContext *avctx;
+	if (out_ctx) return 0;
+	char error[512];
+	int ret = 0;
+
 	AVDictionary *muxer_opts = NULL;
-	AVRational bkp_ts;
-
-	if (oc)
-		return 0;
-
-	avctx = avcodec_alloc_context3(NULL);
+	AVCodec *codec;
 
 	/* Get the output format */
-	AVOutputFormat *fmt_out = av_guess_format("matroska", NULL, "video/mp4");
-	if (!fmt_out) {
+	AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, "video/mp4");
+	if (fmt_out == NULL)
+	{
+		bc_log(Error, "media_writer: MP4 output format is not found!");
 		errno = EINVAL;
-		goto error;
+
+		close();
+		return -1;
 	}
 
-	//if ((oc = avformat_alloc_context()) == NULL)
-	//	goto error;
+	avformat_alloc_output_context2(&out_ctx, fmt_out, NULL, path.c_str());
+	if (out_ctx == NULL)
+	{
+		close();
+		return -1;
+	}
 
-	//oc->oformat = fmt_out;
-	avformat_alloc_output_context2(&oc, fmt_out, NULL, path.c_str());
-
-	if (!oc)
-		goto error;
-
-	video_st = avformat_new_stream(oc, NULL);
+	video_st = avformat_new_stream(out_ctx, NULL);
 	if (!video_st)
-		goto error;
-	properties.video.apply(avctx);
-	avcodec_parameters_from_context(video_st->codecpar, avctx);
-
-	if (properties.has_audio()) {
-		audio_st = avformat_new_stream(oc, NULL);
-		if (!audio_st)
-			goto error;
-		properties.audio.apply(avctx);
-		avcodec_parameters_from_context(audio_st->codecpar, avctx);
+	{
+		close();
+		return -1;
 	}
 
-	avcodec_free_context(&avctx);
+	properties.video.apply(video_st->codecpar);
 
-	if (oc->oformat->flags & AVFMT_GLOBALHEADER) {
-		video_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-		if (audio_st)
-			audio_st->codec->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+	if (properties.has_audio())
+	{
+		audio_st = avformat_new_stream(out_ctx, NULL);
+		if (!audio_st)
+		{
+			close();
+			return -1;
+		}
+
+		properties.audio.apply(audio_st->codecpar);
 	}
 
 	/* Open output file */
-	if ((ret = avio_open(&oc->pb, path.c_str(), AVIO_FLAG_WRITE)) < 0) {
-		char error[512];
+	if ((ret = avio_open(&out_ctx->pb, path.c_str(), AVIO_FLAG_WRITE)) < 0)
+	{
 		av_strerror(ret, error, sizeof(error));
 		bc_log(Error, "Cannot open media output file %s: %s (%d)",
 			   path.c_str(), error, ret);
-		goto error;
+
+		close();
+		return -1;
 	}
 
-	this->file_path = path;
-
+	this->recording_path = path;
 	av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
 
-	// if (properties.has_audio()) {
-	// 	ret = avformat_write_header(oc, NULL);
-	// } else {
-	// 	av_dict_set(&muxer_opts, "movflags", "faststart+empty_moov", 0);
-	// 	ret = avformat_write_header(oc, &muxer_opts);
-	// 	av_dict_free(&muxer_opts);
-	// }
-	ret = avformat_write_header(oc, &muxer_opts);
+	ret = avformat_write_header(out_ctx, &muxer_opts);
 	av_dict_free(&muxer_opts);
 
-	if (ret) {
-		char error[512];
+	if (ret)
+	{
 		av_strerror(ret, error, sizeof(error));
 		bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
-				file_path.c_str(), error, ret);
-		avio_closep(&oc->pb);
-		goto error;
+				recording_path.c_str(), error, ret);
+
+		avio_closep(&out_ctx->pb);
+		close();
+		return -1;
 	}
 
 	return 0;
-
-error:
-	close();
-	return -1;
 }
 
-int media_writer::snapshot_create(const char *outfile, const stream_packet &pkt)
+///////////////////////////////////////////////////////////////
+// S.K. >> Implementation of separated snapshot writer
+///////////////////////////////////////////////////////////////
+
+snapshot_writer::snapshot_writer(const char *path)
 {
-	int ret;
-
-	snapshot_filename = outfile;
-	// Initialize decoder
-	ret = snapshot_decoder_init(pkt);
-	if (ret)
-		return ret;
-
-	// Feed decoder
-	return snapshot_feed(pkt);
+	output_path = std::string(path);
 }
 
-/*
- * This function automatically cleans up decoder in any case when its usage is
- * not needed/possible anymore
- */
-int media_writer::snapshot_feed(const stream_packet &pkt)
+snapshot_writer::~snapshot_writer()
 {
-	int ret;
-	AVFrame *frame = NULL;
+	cleanup();
+}
 
-	// Feed decoder
-	ret = snapshot_decode_frame(pkt, &frame);
-	if (!ret) {
-		bc_log(Debug, "Fed snapshot decoder with a frame and got picture");
-		assert (frame);
-	} else {
-		if (ret < 0) {
-			bc_log(Error, "Feeding snapshot decoder failed");
-			snapshot_decoder_cleanup();
-		} else if (ret > 0) {
-			bc_log(Debug, "Fed this frame to snapshot decoder, but it gave no picture - it needs more");
+void snapshot_writer::cleanup(bool flush)
+{
+	destroy_encoder(flush);
+	destroy_decoder();
+	destroy_muxer();
+}
+
+void snapshot_writer::destroy_encoder(bool flush)
+{
+	if (encoder != NULL)
+	{
+		if (flush)
+		{
+			AVPacket avpkt;
+			av_init_packet(&avpkt);
+
+			int ret = avcodec_send_frame(encoder, NULL);
+			while (ret >= 0)
+			{
+				ret = avcodec_receive_packet(encoder, &avpkt);
+				if (ret < 0) break;
+				av_packet_unref(&avpkt);
+			}
 		}
-		return ret;
+
+		avcodec_close(encoder);
+		av_freep(&encoder);
+		encoder = NULL;
 	}
 
-	// If decoder gave picture, snapshot_encode_write()
-	ret = snapshot_encode_write(frame);
-
-	// Unref the decoded frame
-	av_frame_free(&frame);
-
-	if (ret) {
-		bc_log(Error, "Encoding and writing snapshot file failed");
+	if (output_file != NULL)
+	{
+		fclose(output_file);
+		output_file = NULL;
 	}
-	snapshot_decoder_cleanup();
+}
+
+void snapshot_writer::destroy_decoder(void)
+{
+	if (decoder != NULL)
+	{
+		av_freep(&decoder->extradata);
+		decoder->extradata_size = 0;
+
+		avcodec_close(decoder);
+		av_freep(&decoder);
+		decoder = NULL;
+	}
+}
+
+void snapshot_writer::destroy_muxer()
+{
+	if (out_ctx)
+	{
+		if (out_ctx->pb)
+			av_write_trailer(out_ctx);
+
+		if (out_ctx->pb)
+			avio_close(out_ctx->pb);
+
+		avformat_free_context(out_ctx);
+		out_ctx = NULL;
+	}
+}
+
+int snapshot_writer::feed(const stream_packet &pkt)
+{
+	int ret = push_packet(pkt);
+	if (!ret) bc_log(Debug, "Fed snapshot decoder with a frame and got picture");
+	else if (ret < 0) bc_log(Error, "Feeding snapshot decoder failed");
+	else bc_log(Debug, "Fed frame to snapshot decoder but it needs more");
 	return ret;
 }
 
-int media_writer::snapshot_decoder_init(const stream_packet &pkt)
+int snapshot_writer::init_decoder(const stream_packet &pkt)
 {
-	AVDictionary *decoder_opts = NULL;
+	if (decoder != NULL) return 0;
+
 	std::shared_ptr<const stream_properties> properties = pkt.properties();
-	AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
-	int ret;
-	if (!codec || !(snapshot_decoder = avcodec_alloc_context3(codec))) {
+	const AVCodec *codec = avcodec_find_decoder(properties->video.codec_id);
+
+	if (!codec || !(decoder = avcodec_alloc_context3(codec)))
+	{
 		bc_log(Error, "Failed to allocate snapshot decoder context");
 		return -1;
 	}
 
-	properties->video.apply(snapshot_decoder);
-
+	properties->video.apply(decoder);
+	AVDictionary *decoder_opts = NULL;
 	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
-	ret = avcodec_open2(snapshot_decoder, codec, &decoder_opts);
+
+	int ret = avcodec_open2(decoder, codec, &decoder_opts);
 	av_dict_free(&decoder_opts);
-	if (ret < 0) {
-		bc_log(Error, "Failed to initialize snapshot decoder context");
-		av_free(snapshot_decoder);
+
+	if (ret < 0)
+	{
+		bc_avlog(ret, "Failed to initialize snapshot decoder context");
+		av_free(decoder);
+		decoder = NULL;
 	}
+
 	return ret;
 }
 
 /*
  * @return negative on failure, 0 if we have picture, positive if no picture so far
  */
-int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **frame_arg)
+int snapshot_writer::push_packet(const stream_packet &pkt)
 {
-	int ret;
-	int have_picture;
+	int ret = init_decoder(pkt);
+	if (ret < 0) return ret;
+
 	AVPacket packet;
-	AVFrame *frame = av_frame_alloc();
 	av_init_packet(&packet);
+
 	packet.flags        = pkt.is_key_frame() ? AV_PKT_FLAG_KEY : 0;
 	/* Setting DTS from PTS is silly, but in curent scheme DTS is lost.
 	 * Should work for decoding one frame right after keyframe (most of time?) */
@@ -434,139 +484,227 @@ int media_writer::snapshot_decode_frame(const stream_packet &pkt, AVFrame **fram
 	packet.data         = const_cast<uint8_t*>(pkt.data());
 	packet.size         = pkt.size;
 
-	if (!frame)
-		return AVERROR(ENOMEM);
-
-	ret = avcodec_decode_video2(snapshot_decoder, frame, &have_picture, &packet);
-	if (ret < 0) {
-		char error[512];
-		av_strerror(ret, error, sizeof(error));
-		av_frame_free(&frame);
-		bc_log(Warning, "snapshot_decode_frame: decode video frame failed: %s", error);
+	ret = avcodec_send_packet(decoder, &packet);
+	if (ret < 0)
+	{
+		bc_avlog(ret, "avcodec_send_packet failed for snapshot");
 		return ret;
 	}
 
-	if (have_picture) {
-		*frame_arg = frame;
-		return 0;
-	} else {
-		av_frame_free(&frame);
-		return 1;
+	AVFrame *frame = av_frame_alloc();
+	if (!frame) return AVERROR(ENOMEM);
+
+	bool got_frame = false;
+	bool frame_done = false;
+
+	while (ret >= 0)
+	{
+		ret = avcodec_receive_frame(decoder, frame);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+		{
+			ret = 1;
+			break;
+		}
+
+		if (ret < 0)
+		{
+			if (got_frame)
+			{
+				ret = 0;
+				break;
+			}
+
+			bc_avlog(ret, "avcodec_receive_frame failed");
+			break;
+		}
+
+		got_frame = true;
+		ret = write_frame(frame);
+
+		if (ret < 0)
+		{
+			bc_log(Error, "failed to write snapshot frame");
+			break;
+		}
+		else if (ret > 0)
+		{
+			av_frame_unref(frame);
+			continue;
+		}
+
+		break;
 	}
+
+	av_frame_free(&frame);
+	return ret;
+}
+
+int snapshot_writer::init_encoder(int width, int height)
+{
+	if (encoder == NULL)
+	{
+		const AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
+		if (!codec || !(encoder = avcodec_alloc_context3(codec)))
+		{
+			bc_log(Bug, "Failed to allocate encoder context for snapshot");
+			return -1;
+		}
+
+		encoder->width   = width;
+		encoder->height  = height;
+		encoder->pix_fmt = AV_PIX_FMT_YUVJ420P;
+		encoder->mb_lmin = encoder->qmin * FF_QP2LAMBDA;
+		encoder->mb_lmax = encoder->qmax * FF_QP2LAMBDA;
+		encoder->flags  |= AV_CODEC_FLAG_QSCALE;
+		encoder->global_quality = encoder->qmin * FF_QP2LAMBDA;
+		encoder->time_base.num = 1;
+		encoder->time_base.den = 30000;
+
+		int ret = avcodec_open2(encoder, codec, NULL);
+		if (ret < 0)
+		{
+			bc_avlog(ret, "Failed to init encoding codec for snapshot");
+			return -1;
+		}
+	}
+
+	if (output_file == NULL)
+	{
+		output_file = fopen(output_path.c_str(), "w");
+		if (output_file == NULL)
+		{
+			bc_log(Error, "Failed to open snapshot file: '%s' (%s)",
+				output_path.c_str(), strerror(errno));
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+AVFrame* snapshot_writer::scale_frame(AVFrame *rawFrame, bool &allocated)
+{
+	AVFrame *frame = av_frame_alloc();
+	if (frame == NULL)
+	{
+		bc_log(Error, "Failed to allocate frame for scaling: %s", strerror(errno));
+		return NULL;
+	}
+
+	if (rawFrame->format != AV_PIX_FMT_YUVJ420P)
+	{
+		SwsContext *sws = NULL;
+		int format = rawFrame->format;
+
+		sws = sws_getCachedContext(NULL,
+				rawFrame->width, rawFrame->height, (AVPixelFormat)format,
+				rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P,
+				SWS_BICUBIC, NULL, NULL, NULL);
+
+		if (sws == NULL)
+		{
+			bc_log(Bug, "Failed to convert pixel format for JPEG (format is %d)", format);
+
+			av_frame_free(&frame);
+			return NULL;
+		}
+
+		int ret = av_image_alloc( frame->data, frame->linesize,
+			rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P, 4);
+
+		if (ret < 0)
+		{
+			bc_log(Error, "Failed to allocate picture for scaling: %s", strerror(errno));
+
+			sws_freeContext(sws);
+			av_frame_free(&frame);
+			return NULL;
+		}
+
+		sws_scale(sws,
+			(const uint8_t**)rawFrame->data,
+			rawFrame->linesize, 0,
+			rawFrame->height,
+			frame->data,
+			frame->linesize);
+		sws_freeContext(sws);
+
+		allocated = true;
+		return frame;
+	}
+
+	av_frame_move_ref(frame, rawFrame);
+	allocated = false;
+	return frame;
 }
 
 /*
  * @return negative on error, 0 otherwise
  */
-int media_writer::snapshot_encode_write(AVFrame *rawFrame)
+int snapshot_writer::write_frame(AVFrame *rawFrame)
 {
-	AVFrame *frame = av_frame_alloc();
-	AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_MJPEG);
-	AVCodecContext *oc = NULL;
-	FILE *file = fopen(snapshot_filename.c_str(), "w");
-	int re = -1;
-	int ret;
-	bool avpicture_allocated = false;
-	int got_pkt;
+	int ret = init_encoder(rawFrame->width, rawFrame->height);
+	if (ret < 0) return -1;
+
 	AVPacket avpkt;
-
 	av_init_packet(&avpkt);
-	avpkt.data = NULL;
+
 	avpkt.size = 0;
+	avpkt.data = NULL;
+	FILE *file = NULL;
 
-	if (!file) {
-		bc_log(Error, "Failed to open file '%s' to save snapshot", snapshot_filename.c_str());
-		goto end;
+	bool allocated = false;
+	bool got_pkt = false;
+
+	AVFrame *frame = scale_frame(rawFrame, allocated);
+	if (frame == NULL) return -1;
+
+	ret = avcodec_send_frame(encoder, frame);
+	if (ret < 0)
+	{
+		bc_avlog(ret, "avcodec_send_frame: snapshot encoding failed");
+		av_frame_free(&frame);
+		return -1;
 	}
 
-	if (!codec || !(oc = avcodec_alloc_context3(codec))) {
-		bc_log(Bug, "Failed to allocate encoder context for snapshot");
-		goto end;
-	}
-
-	oc->width   = rawFrame->width;
-	oc->height  = rawFrame->height;
-	oc->pix_fmt = AV_PIX_FMT_YUVJ420P;
-	oc->mb_lmin = oc->qmin * FF_QP2LAMBDA;
-	oc->mb_lmax = oc->qmax * FF_QP2LAMBDA;
-	oc->flags  |= AV_CODEC_FLAG_QSCALE;
-	oc->global_quality = oc->qmin * FF_QP2LAMBDA;
-	oc->time_base.num = 1;
-	oc->time_base.den = 30000;
-
-	if (avcodec_open2(oc, codec, NULL) < 0)
-		goto end;
-
-	if (rawFrame->format != AV_PIX_FMT_YUVJ420P) {
-		SwsContext *sws = 0;
-		sws = sws_getCachedContext(0, rawFrame->width, rawFrame->height, (AVPixelFormat)rawFrame->format,
-		                           rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P,
-		                           SWS_BICUBIC, NULL, NULL, NULL);
-		if (!sws) {
-			bc_log(Bug, "Failed to convert pixel format for JPEG (format is %d)", rawFrame->format);
-			goto end;
+	while (ret >= 0)
+	{
+		ret = avcodec_receive_packet(encoder, &avpkt);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+		{
+			ret = got_pkt ? 0 : 1;
+			break;
 		}
 
-		ret = av_image_alloc(frame->data, frame->linesize, rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P, 4);
-		if (ret < 0) {
-			bc_log(Error, "Failed to allocate picture for encoding");
-			goto end;
-		}
-		avpicture_allocated = true;
-		sws_scale(sws, (const uint8_t**)rawFrame->data, rawFrame->linesize, 0, rawFrame->height,
-		          frame->data, frame->linesize);
-		sws_freeContext(sws);
-	} else {
-		av_frame_move_ref(frame, rawFrame);
-	}
-
-	ret = avcodec_encode_video2(oc, &avpkt, frame, &got_pkt);
-	if (avpicture_allocated)
-		av_freep(&frame->data[0]);
-	if (ret < 0) {
-		char error[512];
-		av_strerror(ret, error, sizeof(error));
-		bc_log(Bug, "snapshot: JPEG encoding failed: %s", error);
-		goto end;
-	}
-
-	if (!got_pkt) {
-		bc_log(Bug, "snapshot: encoded frame, but got no packet on output");
-		goto end;
-	}
-
-	assert(avpkt.size && avpkt.data);
-
-	// TODO Use libavformat muxer (AVFormatContext) instead
-	if (fwrite(avpkt.data, 1, avpkt.size, file) < (unsigned)avpkt.size) {
-		bc_log(Error, "Failed to write snapshot file: %s", strerror(errno));
-		goto end;
-	}
-
-	re = 0;
-end:
-	if (file)
-		fclose(file);
-	av_free_packet(&avpkt);
-	av_frame_free(&frame);
-	if (oc) {
-		// Flush encoder
-		while (1) {
-			av_init_packet(&avpkt);
-			ret = avcodec_encode_video2(oc, &avpkt, NULL, &got_pkt);
-			if (!got_pkt || ret < 0)
+		if (ret < 0)
+		{
+			if (got_pkt)
+			{
+				ret = 0;
 				break;
-			av_free_packet(&avpkt);
+			}
+
+			bc_avlog(ret, "avcodec_receive_packet: snapshot encoding failed");
+			break;
 		}
-		avcodec_close(oc);
-		av_free(oc);
+
+		assert(avpkt.size && avpkt.data);
+		got_pkt = true;
+
+		if (fwrite(avpkt.data, 1, avpkt.size, output_file) < (unsigned)avpkt.size)
+		{
+			bc_log(Error, "Failed to write snapshot file: %s", strerror(errno));
+			ret = -1;
+			break;
+		}
 	}
-	return re;
+
+	if (allocated) av_freep(&frame->data[0]);
+	av_frame_free(&frame);
+	av_packet_unref(&avpkt);
+	return ret;
 }
 
-void media_writer::snapshot_decoder_cleanup(void) {
-	av_freep(&snapshot_decoder->extradata);
-	snapshot_decoder->extradata_size = 0;
-	avcodec_close(snapshot_decoder);
-	av_freep(&snapshot_decoder);
-}
+///////////////////////////////////////////////////////////////
+// S.K. >> END-OF: Implementation of separated snapshot writer
+///////////////////////////////////////////////////////////////

@@ -134,12 +134,31 @@ void motion_processor::run()
 		avpkt.size  = pkt.size;
 
 		AVFrame *frame = av_frame_alloc();
-
 		int have_picture = 0;
-		int re = avcodec_decode_video2(decode_ctx, frame, &have_picture, &avpkt);
-		if (re < 0) {
-			bc_log(Warning, "Decoding failed for motion processor");
-		} else if (have_picture) {
+
+		int ret = avcodec_send_packet(decode_ctx, &avpkt);
+		if (ret < 0) {
+			char error[512];
+			av_strerror(ret, error, sizeof(error));
+			bc_log(Warning, "motion processor: avcodec_send_packet failed: %s", error);
+		}
+
+		while (ret >= 0) {
+			ret = avcodec_receive_frame(decode_ctx, frame);
+			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+
+			if (ret < 0) {
+				char error[512];
+				av_strerror(ret, error, sizeof(error));
+				bc_log(Warning, "motion processor: avcodec_receive_frame failed: %s", error);
+				break;
+			}
+
+			have_picture = 1;
+			break;
+		}
+
+		if (have_picture) {
 			/* For high framerates, we can achieve the same level of motion detection
 			 * with much less CPU by testing at a reduced framerate. This will only run
 			 * detection on frames with a PTS more than 45ms after the previous tested
@@ -185,7 +204,7 @@ bool motion_processor::decode_create(const stream_properties &prop)
 	if (decode_ctx)
 		return true;
 
-	AVCodec *codec = avcodec_find_decoder(prop.video.codec_id);
+	const AVCodec *codec = avcodec_find_decoder(prop.video.codec_id);
 	if (!codec || !(decode_ctx = avcodec_alloc_context3(codec)))
 		return false;
 

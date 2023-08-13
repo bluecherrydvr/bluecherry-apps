@@ -234,10 +234,10 @@ function upgrade_db
 	    # 1) Failure of dbconfig-common to apply a DB patch to add it
 	    # 2) Different fields order in fresh installation and patched one
 	    # Try to add, ignore result because this may fail if field is already here
-	    echo "ALTER TABLE Devices_bkp ADD COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" \
+	    echo "ALTER TABLE Devices_bkp ADD COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 0 AFTER rtsp_password" \
 		    | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" || true
 	    # Try to move it to be after rtsp_password for the case it was added in the end
-	    echo "ALTER TABLE Devices_bkp MODIFY COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 1 AFTER rtsp_password" \
+	    echo "ALTER TABLE Devices_bkp MODIFY COLUMN rtsp_rtp_prefer_tcp boolean NOT NULL DEFAULT 0 AFTER rtsp_password" \
 		    | mysql -h "$host" -D"$dbname" -u"$user" -p"$password"
 	    # 2.1.7-1 DB patch
 	    echo "ALTER TABLE Storage_bkp DROP COLUMN record_time" | mysql -h "$host" -D"$dbname" -u"$user" -p"$password" || true

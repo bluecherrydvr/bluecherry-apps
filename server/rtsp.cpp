@@ -367,9 +367,10 @@ rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
 	pthread_mutex_init(&write_lock, 0);
 	server->addFd(this, fd, POLLIN);
 
-	/* Increase the send buffer to 128kB, which should be large enough to hold at least one
-	 * frame. This is more efficient, because it doesn't require waking the poll thread twice. */
-	int value = 128*1024;
+	/* If streaming high-definition video over a network with good performance characteristics,
+	 * we might consider using a larger send buffer. Lets start with a size of 1MB (1024*1024)
+	 * and kernel may adjust the value we provide to align with its internal constraints and limits. */
+	int value = 1024*1024;
 	setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value));
 }
 

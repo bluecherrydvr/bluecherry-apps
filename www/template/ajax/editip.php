@@ -94,8 +94,9 @@
 
                         <div class="col-lg-6 col-md-6">
                             <select name="prefertcp" class="form-control">
-                                <option value="1">TCP</option>
-                                <option value="0" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp']==0) ? "selected" : ""; ?>>UDP</option>
+                                <option value="0">AUTO</option>
+                                <option value="1" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp'] == 1) ? "selected" : ""; ?>>TCP</option>
+                                <option value="2" <?php echo ($ipCamera->info['rtsp_rtp_prefer_tcp'] == 2) ? "selected" : ""; ?>>UDP</option>
                             </select>
                         </div>
                     </div>

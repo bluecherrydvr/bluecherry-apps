@@ -204,6 +204,26 @@ void stream_properties::video_properties::apply(AVCodecContext *cc) const
 	}
 }
 
+void stream_properties::video_properties::apply(AVCodecParameters *cp) const
+{
+	cp->codec_id = codec_id;
+	cp->codec_type = AVMEDIA_TYPE_VIDEO;
+	cp->format = pix_fmt;
+	cp->width = width;
+	cp->height = height;
+	cp->profile = profile;
+	if (!extradata.empty()) {
+		cp->extradata_size = extradata.size();
+		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;
+		cp->extradata = (uint8_t*)av_malloc(size);
+		memcpy(cp->extradata, &extradata.front(), extradata.size());
+		memset(cp->extradata + extradata.size(), 0, AV_INPUT_BUFFER_PADDING_SIZE);
+	} else {
+		cp->extradata_size = 0;
+		cp->extradata = 0;
+	}
+}
+
 stream_properties::audio_properties::audio_properties()
 	: codec_id(AV_CODEC_ID_NONE), bit_rate(0), sample_rate(0), sample_fmt(AV_SAMPLE_FMT_NONE),
 	  channels(0), time_base({ 1, 1}), profile(FF_PROFILE_UNKNOWN)
@@ -230,6 +250,28 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	} else {
 		cc->extradata_size = 0;
 		cc->extradata = 0;
+	}
+}
+
+void stream_properties::audio_properties::apply(AVCodecParameters *cp) const
+{
+	cp->codec_id = codec_id;
+	cp->codec_type = AVMEDIA_TYPE_AUDIO;
+	cp->bit_rate = bit_rate;
+	cp->sample_rate = sample_rate;
+	cp->format = sample_fmt;
+	cp->channels = channels;
+	cp->profile = profile;
+	cp->bits_per_coded_sample = bits_per_coded_sample;
+	if (!extradata.empty()) {
+		cp->extradata_size = extradata.size();
+		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;
+		cp->extradata = (uint8_t*)av_malloc(size);
+		memcpy(cp->extradata, &extradata.front(), extradata.size());
+		memset(cp->extradata + extradata.size(), 0, AV_INPUT_BUFFER_PADDING_SIZE);
+	} else {
+		cp->extradata_size = 0;
+		cp->extradata = 0;
 	}
 }
 

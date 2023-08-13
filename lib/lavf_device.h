@@ -27,10 +27,14 @@ extern "C" {
 
 #define MAX_STREAMS 3
 
+#define RTP_PROTOCOL_AUTO 0
+#define RTP_PROTOCOL_TCP  1
+#define RTP_PROTOCOL_UDP  2
+
 class lavf_device : public input_device
 {
 public:
-	explicit lavf_device(const char *url, bool rtp_prefer_tcp);
+	explicit lavf_device(const char *url, int rtp_protocol);
 	virtual ~lavf_device();
 
 	virtual int start();
@@ -47,7 +51,8 @@ public:
 	virtual void getStatusXml(pugi::xml_node& xmlnode);
 private:
 	char url[1024];
-	bool rtp_prefer_tcp;
+	int rtp_protocol = RTP_PROTOCOL_AUTO;
+	bool tcp_fallback = false;
 	char error_message[512];
 
 	AVFormatContext *ctx;
