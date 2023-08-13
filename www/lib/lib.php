@@ -892,6 +892,7 @@ class ipCamera{
 		$device_delete_ret;
 		do {
 			data::query("DELETE FROM EventsCam WHERE device_id='{$id}'", true);
+			data::query("DELETE FROM OnvifEvents WHERE device_id='{$id}'", true);
 			$media_files = data::query("SELECT id, filepath FROM Media WHERE device_id='{$id}' ORDER BY id DESC");
             if (!empty($media_files)) {
 			    $highest_id = $media_files[0]['id'];
