@@ -129,7 +129,7 @@ bool encoder::encode()
 
 bool encoder::init_encoder(int media_type, int codec_id, int bitrate, int width, int height, AVBufferRef* hw_frames_ctx)
 {
-	AVCodec *encoder = NULL;
+	const AVCodec *encoder = NULL;
 
 	type = media_type;
 	current_bitrate = bitrate;

@@ -418,6 +418,7 @@ case "$1" in
 		/usr/local/bin/pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
 		/usr/local/bin/pip3 install --user --upgrade pip
 		/usr/local/bin/pip3 install --user --upgrade cryptography
+	        /usr/local/bin/pip3 install pyopenssl --upgrade
 		
 		# Install crontabs for subdomain renewal and SSL renewal using certbot
 		crontab -l 2>/dev/null || true; printf "* * */5 * * certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ >/dev/null 2>&1\n*/5 * * * * curl -k https://localhost:7001/subdomainprovidercron >/dev/null 2>&1\n" | crontab -

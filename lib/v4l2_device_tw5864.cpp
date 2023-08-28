@@ -311,7 +311,7 @@ int v4l2_device_tw5864::read_packet()
 	}
 
 	create_stream_packet(&pkt);
-	av_free_packet(&pkt);
+	av_packet_unref(&pkt);
 
 	fcntl(dev_fd, F_SETFL, fcntl_flags | O_NONBLOCK);  // enter non-blocking mode
 	ret = ioctl(dev_fd, VIDIOC_DQEVENT, &ev);
@@ -469,10 +469,10 @@ void v4l2_device_tw5864::update_properties()
 {
 	stream_properties *p = new stream_properties;
 
-	AVCodecContext *ic = demuxer->streams[0]->codec;
-	p->video.codec_id = demuxer->streams[0]->codec->codec_id;
-	p->video.width = demuxer->streams[0]->codec->width;
-	p->video.height = demuxer->streams[0]->codec->height;
+	AVCodecParameters *ic = demuxer->streams[0]->codecpar;
+	p->video.codec_id = demuxer->streams[0]->codecpar->codec_id;
+	p->video.width = demuxer->streams[0]->codecpar->width;
+	p->video.height = demuxer->streams[0]->codecpar->height;
 	p->video.time_base = demuxer->streams[0]->time_base;
 	p->video.pix_fmt = AV_PIX_FMT_YUV420P;
 	if (ic->extradata && ic->extradata_size)

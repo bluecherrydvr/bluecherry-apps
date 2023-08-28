@@ -155,6 +155,7 @@ public:
 		/* Apply these properties to an allocated AVCodecContext instance,
 		 * suitable for creating encoders, decoders, etc. */
 		void apply(AVCodecContext *cc) const;
+		void apply(AVCodecParameters *cp) const;
 	} video;
 
 	struct audio_properties {
@@ -172,6 +173,7 @@ public:
 		/* Apply these properties to an allocated AVCodecContext instance,
 		 * suitable for creating encoders, decoders, etc. */
 		void apply(AVCodecContext *cc) const;
+		void apply(AVCodecParameters *cp) const;
 	} audio;
 
 	bool operator!=(const stream_properties&) const;

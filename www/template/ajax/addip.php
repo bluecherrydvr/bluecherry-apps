@@ -125,8 +125,9 @@
 
                         <div class="col-lg-6 col-md-6">
                             <select class="form-control" name="prefertcp">
+                                <option value="0">AUTO</option>
                                 <option value="1">TCP</option>
-                                <option value="0">UDP</option>
+                                <option value="2">UDP</option>
                             </select>
                         </div>
                     </div>

@@ -6,6 +6,7 @@
 struct AVCodecContext;
 struct bc_record;
 class media_writer;
+class snapshot_writer;
 
 class recorder : public stream_consumer
 {
@@ -28,12 +29,13 @@ private:
 	bool destroy_flag;
 	bc_event_cam_type_t recording_type;
 
-	media_writer *writer;
+	media_writer *writer = NULL;
+	snapshot_writer *snapshot = NULL;
+
 	bc_event_cam_t current_event;
 	time_t first_packet_ts_monotonic;
 	std::string snapshot_filename;
 
-	bool snapshotting_proceeding;
 	int snapshots_limit;  /* TODO Optionize */
 	int snapshots_done;
 	int snapshotting_delay_since_motion_start_ms;
@@ -41,6 +43,7 @@ private:
 
 	int recording_start(time_t start, const stream_packet &first_packet);
 	void recording_end();
+	void stop_snapshot();
 	void do_error_event(bc_event_level_t level, bc_event_cam_type_t type);
     void event_trigger_notifications(bc_event_cam_t event);
 };

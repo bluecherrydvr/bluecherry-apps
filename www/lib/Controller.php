@@ -158,6 +158,12 @@ class Controller {
         else return false;
     }
 
+    protected function reqJson()
+    {
+        if (Inp::get('JSON')) return true;
+        else return false;
+    }
+
     protected function chAccess($role)
     {
         $this->user = new user('id', $this->core->session->get('id'));
