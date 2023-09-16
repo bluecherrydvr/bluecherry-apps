@@ -1,3 +1,17 @@
+bluecherry (3:3.1.0-rc9) focal bionic buster groovy hirsute bullseye jammy; urgency=low
+
+  * FEATURE: Update video streaming APIs -- Enabling much better support for H.265, H.264 and audio streams (#167b63906d7114e8d9230286d3a4e0a54fcc5e1f)
+  * FEATURE: Enable auto transport of RTSP streams (allow the device to select streaming method...default to UDP) (#01bac09d5cafe753d6c40dc04cc2dc9815392862)
+  * FEATURE: Setup heath check endpoints for docker installs (WIP) (#1a50744c2003105bf652fa6fd71ab09fb45f62cb)
+  * FEATURE: Return XML and JSON for events (needed by Bluecherry Version 3 Client) (#493c12d0b8087daabfc36ca01813e05df351d8dd)\
+  * FIX: Remove directories when they are emptuy (#c1935a84596cde56fdf31206cdad532003d830e8)
+  * FIX: Delete old motion event debugging snapshots (#aefd31fa27689b1c85a23183162b62ee3ee38633)
+  * FIX: Allow devices to be removed (https://github.com/bluecherrydvr/bluecherry-apps/pull/612)
+  * FIX: Web: Layouts are not saved across sessions 
+  * FIX: Storage check permission errors (#04ede6fd72fe2442d96dcac05261df72cc0e2014)
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 15 Sep 2023 21:04:30 -0600
+
 bluecherry (3:3.1.0-rc8) focal bionic buster groovy hirsute bullseye jammy; urgency=low
 
   * FIX: Fix socker descriptions leak (#570)
