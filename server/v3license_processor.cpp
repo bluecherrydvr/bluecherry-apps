@@ -180,7 +180,7 @@ V3LICENSE_API int bc_license_v3_ActivateLicense(const char* licenseKey)
 
     status = ActivateLicense();
     if (LA_OK == status) {
-        bc_log(Info, "Activating license successed");
+        bc_log(Info, "License successfully activated");
         return status;
     }
     else    {
@@ -201,7 +201,7 @@ V3LICENSE_API int bc_license_v3_ActivateTrial()
     int status = ActivateTrial();
 
     if (LA_OK == status) {
-        bc_log(Info, "Activating trial successed");
+        bc_log(Info, "Trial license successfully activated");
     }
     else {
         bc_log(Error, "Activating trial failed (Error code: %d)", status);
@@ -215,7 +215,7 @@ V3LICENSE_API int bc_license_v3_DeactivateLicense()
     int status = DeactivateLicense();
 
     if (LA_OK == status) {
-        bc_log(Info, "Deactivating license successed");
+        bc_log(Info, "License successfully deactivated");
     }
     else {
         bc_log(Error, "Deactivating license failed (Error code: %d)", status);
