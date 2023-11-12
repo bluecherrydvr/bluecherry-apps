@@ -26,6 +26,8 @@ install ${SRC_PATH}/scripts/build_helper/get_distro_release_name.sh \
 	${DST_DIR}/usr/share/bluecherry/scripts
 install ${SRC_PATH}/scripts/update_subdomain_certs.sh \
 	${DST_DIR}/usr/share/bluecherry/scripts
+install ${SRC_PATH}/scripts/check_dir_permission.sh \
+	${DST_DIR}/usr/share/bluecherry/scripts 
 cp -a ${SRC_PATH}/misc/ponvif*       ${DST_DIR}/usr/share/bluecherry/
 rm -rf ${DST_DIR}/usr/share/bluecherry/ponvif*/.git
 install -D ${SRC_PATH}/debian/bluecherry.conf.in \
