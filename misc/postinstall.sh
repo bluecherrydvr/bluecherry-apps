@@ -152,6 +152,8 @@ case "$1" in
 		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
 			> /etc/sudoers.d/www-data
+   		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/check_dir_permission.sh" \
+     			>> /etc/sudoers.d/www-data
 		chmod 0440 /etc/sudoers.d/www-data
 
 		mkdir -p /usr/share/bluecherry/ssl
