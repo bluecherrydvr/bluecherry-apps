@@ -86,5 +86,5 @@ jobs:
   #          password: ${{ secrets.DOCKER_PASSWORD }}   
 #            file: ./server/Dockerfile
             push: true
-            tags: ${{ steps.meta.outputs.tags }}
+            tags: ${{ steps.meta.outputs.branch }}
             labels: ${{ steps.meta.outputs.labels }}        
