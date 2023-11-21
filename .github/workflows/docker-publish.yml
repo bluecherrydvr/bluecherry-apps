@@ -1,18 +1,15 @@
 name: Publish Docker image
 on:
   push:
-    # TODO: Add push type for release 
-    # Publish `master` as Docker `latest` image.
-    branches:
-      - master
-      - mysql
-
+    branches: [ "dev", "master" ]
+  pull_request:
+    branches: [ "dev", "master" ]
     # Publish `v1.2.3` tags as releases.
     tags:
       - v*
 
   # Run tests for any PRs.
-  pull_request:
+ # pull_request:
 
  #   steps:
 #      - uses: actions/checkout@v2
@@ -75,7 +72,7 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: bluecherrydvr/bluecherry
           
@@ -88,5 +85,5 @@ jobs:
   #          password: ${{ secrets.DOCKER_PASSWORD }}   
 #            file: ./server/Dockerfile
             push: true
-            tags: bluecherrydvr/bluecherry:${{ env.BRANCH }}
+            tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}        
