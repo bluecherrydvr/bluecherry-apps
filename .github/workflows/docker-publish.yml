@@ -74,7 +74,7 @@ jobs:
         uses: docker/build-push-action@v4     
         with:
             #working-directory: server/
-            context: "{{defaultContext}}:server"
+            context: "{{defaultContext}}:actions"
   #          username: curtishall
   #          password: ${{ secrets.DOCKER_PASSWORD }}   
 #            file: ./server/Dockerfile
