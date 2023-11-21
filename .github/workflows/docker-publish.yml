@@ -1,0 +1,103 @@
+name: Docker
+
+on:
+  push:
+    # Publish `master` as Docker `latest` image.
+    branches:
+      - master
+
+    # Publish `v1.2.3` tags as releases.
+    tags:
+      - v*
+
+  # Run tests for any PRs.
+  pull_request:
+
+env:
+  # TODO: Change variable to your image's name.
+  IMAGE_NAME: testing
+
+jobs:
+  # Run tests.
+  # See also https://docs.docker.com/docker-hub/builds/automated-testing/
+  test:
+    runs-on: ubuntu-20.04
+    
+    services:
+      mysql:
+        image: mysql:8.0.23
+        env:
+          MYSQL_USER: test
+          MYSQL_ROOT_PASSWORD: test
+        ports:
+          - 3306
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Get the mysql host
+        id: get_host
+        run: |
+          #host=`docker network inspect -f '{{(index .IPAM.Config 0).Gateway}}' bridge`
+          #echo "db-host=$host" >> $GITHUB_OUTPUT
+          #echo "$db-host"
+          sudo apt -y install mysql-client
+          mysql -uroot --password=test -h ${{ steps.get_host.outputs.db-host }} --port ${{ job.services.mysql.ports['3306'] }} -e 'show databases;'
+       
+      - name: Copy envs
+        run: |
+          cp -a .env-org server/.env
+          sed -i 's/127.0.0.1/${{ steps.get_host.outputs.db-host }}/g' server/.env
+          cat server/.env
+          
+          
+
+      - name: Run tests
+        run: |
+          if [ -f docker-compose.test.yml ]; then
+            docker-compose --file docker-compose.test.yml build
+            docker-compose --file docker-compose.test.yml run sut
+          else
+            docker build . --file server/Dockerfile --build-arg="$db-host"
+          fi
+
+  # Push image to GitHub Packages.
+  # See also https://docs.docker.com/docker-hub/builds/
+  push:
+    # Ensure test job passes before pushing image.
+    needs: test
+
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build . --file server/Dockerfile --tag $IMAGE_NAME
+
+      - name: Log into GitHub Container Registry
+      # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
+        run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push image to GitHub Container Registry
+        run: |
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/$IMAGE_NAME
+
+          # Change all uppercase to lowercase
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "master" ] && VERSION=latest
+
+          echo IMAGE_ID=$IMAGE_ID
+          echo VERSION=$VERSION
+
+          docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+          docker push $IMAGE_ID:$VERSION
