@@ -52,6 +52,8 @@ jobs:
         run: docker ps
       - name: Check out the repo
         uses: actions/checkout@v3
+      - name: Get branch name
+        run: echo "BRANCH=${GITHUB_REF##*/}" >> $GITHUB_ENV
       - name: Identify git repo path
         run: ls $GITHUB_WORKSPACE && ls -l /home/runner/work/
       - name: Wait for mysql
@@ -86,5 +88,5 @@ jobs:
   #          password: ${{ secrets.DOCKER_PASSWORD }}   
 #            file: ./server/Dockerfile
             push: true
-            tags: ${{ steps.meta.outputs.branch }}
+            tags: bluecherrydvr/bluecherry:${{ env.BRANCH }}
             labels: ${{ steps.meta.outputs.labels }}        
