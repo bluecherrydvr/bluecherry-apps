@@ -51,7 +51,8 @@ trusty_install()
 
 bionic_install()
 {
-    apt -y install gpg
+    apt update
+    apt -y install gpg python3-distutils
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic-unstable.list
     apt -y update
@@ -73,7 +74,16 @@ xenial_install()
 
 focal_install()
 {
-    apt -y install gpg
+    apt-get update
+# Update 1/5/23 Resolve dependancy problems on Ubuntu 20.04 desktop
+#    apt -y install gpg python3-pip
+#    pip install pyopenssl==22.0.0
+    apt -y install python3-distutils gnupg2
+#    wget https://bootstrap.pypa.io/get-pip.py | python3 get-pip.py -
+    wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
+    python3 /tmp/get-pip.py
+#    pip install pyopenssl --upgrade
+    pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-focal.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-focal-unstable.list
     apt -y update
@@ -103,6 +113,23 @@ hirsute_install()
     wget --output-document=/etc/apt/sources.list.d/bluecherry-hirsute.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-hirsute-unstable.list
     apt -y update
     apt -y install mariadb-server bluecherry
+    systemctl restart bluecherry
+}
+
+# 22.04
+
+jammy_install()
+{
+    apt-get update
+    apt -y install gpg software-properties-common
+#    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-jammy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jammy-unstable.list
+    add-apt-repository ppa:ondrej/php -y
+    apt -y update
+    apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
+#    apt -y install mariadb-server-10.3
+    apt -y install bluecherry
     systemctl restart bluecherry
 }
 
@@ -151,10 +178,12 @@ stretch_install()
 buster_install()
 {
     apt-get -y update
-    apt-get -y install gnupg
-    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+    apt-get -y install gnupg sudo
+    apt-get -y install python3-pip
+    pip3 install --user --upgrade pip
+    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-buster-unstable.list
     apt-get -y update
     apt-get -y install mysql-server bluecherry
@@ -163,13 +192,15 @@ buster_install()
 bullseye_install()
 {
     apt-get -y update
-    apt-get -y install gnupg
-    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+    apt-get -y install gnupg sudo sudo python3-distutils
+#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
+#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bullseye-unstable.list
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
+#   apt-get install mariadb-server
 }
 
 
@@ -180,15 +211,18 @@ elif [ $(check_distro) == "buster" ]; then
     buster_install
 elif [ $(check_distro) == "focal" ]; then
     focal_install
+elif [ $(check_distro) == "jammy" ]; then
+    jammy_install
+elif [ $(check_distro) == "vera" ]; then
+    jammy_install
 elif [ $(check_distro) == "groovy" ]; then
     groovy_install
 elif [ $(check_distro) == "hirsute" ]; then
     hirsute_install
 elif [ $(check_distro) == "bullseye" ]; then
     bullseye_install
-#elif [ $(check_distro) == "centos_7" ]; then 
+#elif [ $(check_distro) == "centos_7" ]; then
 #    centos_7_install
 else
-    echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 and Debian 10 (Buster) for unstable testing"
+    echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy) and Debian 10 (Buster), Linux Mint 21.1 (Vera) for unstable testing"
 fi
-
