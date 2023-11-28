@@ -415,7 +415,7 @@ case "$1" in
 		install_pip
 
 		# Install pip3 dependencies
-		/usr/local/bin/pip3 install --user setuptools_rust certbot certbot-dns-subdomain-provider
+		/usr/local/bin/pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
 		/usr/local/bin/pip3 install --user --upgrade pip
 		/usr/local/bin/pip3 install --user --upgrade cryptography
 	        /usr/local/bin/pip3 install pyopenssl --upgrade
