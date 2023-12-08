@@ -40,6 +40,7 @@ check_distro()
     echo $DISTRO
 }
 
+# Ubuntu 14.04
 trusty_install()
 {
     apt -y install gpg wget
@@ -50,6 +51,7 @@ trusty_install()
     service bluecherry restart
 }
 
+# Ubuntu 18.04
 bionic_install()
 {
     apt update
@@ -61,6 +63,7 @@ bionic_install()
     systemctl restart bluecherry
 }
 
+# Ubuntu 16.04
 xenial_install()
 {
     apt -y install gpg wget
@@ -71,8 +74,7 @@ xenial_install()
     systemctl restart bluecherry
 }
 
-# 20.04
-
+# Ubuntu 20.04
 focal_install()
 {
     apt-get update
@@ -93,8 +95,7 @@ focal_install()
     systemctl restart bluecherry
 }
 
-# 20.10
-
+# Ubuntu 20.10
 groovy_install()
 {
     apt -y install gpg wget
@@ -105,8 +106,7 @@ groovy_install()
     systemctl restart bluecherry
 }
 
-# 21.04
-
+# Ubuntu 21.04
 hirsute_install()
 {
     apt -y install gpg wget
@@ -117,8 +117,8 @@ hirsute_install()
     systemctl restart bluecherry
 }
 
-# 22.04
-
+# Ubuntu 22.04
+# Also used for Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 jammy_install()
 {
     apt-get update
@@ -149,6 +149,7 @@ centos_7_install()
     systemctl restart bluecherry
 }
 
+# Debian 8
 jessie_install()
 {
     apt -y install gpg wget
@@ -158,6 +159,7 @@ jessie_install()
     apt-get -y install bluecherry
 }
 
+# Debian 7
 wheezy_install()
 {
     apt -y install gpg wget
@@ -167,6 +169,7 @@ wheezy_install()
     apt-get -y install bluecherry
 }
 
+# Debian 9
 stretch_install()
 {
     apt -y install gpg wget
@@ -176,6 +179,7 @@ stretch_install()
     apt-get -y install bluecherry
 }
 
+# Debian 10
 buster_install()
 {
     apt-get -y update
@@ -190,6 +194,7 @@ buster_install()
     apt-get -y install mysql-server bluecherry
 }
 
+# Debian 11
 bullseye_install()
 {
     apt-get -y update
@@ -207,21 +212,21 @@ bullseye_install()
 
 
 if   [ $(check_distro) == "bionic" ]; then
-    bionic_install
+    bionic_install # Ubuntu 18.04
 elif [ $(check_distro) == "buster" ]; then
-    buster_install
+    buster_install # Debian 10
 elif [ $(check_distro) == "focal" ]; then
-    focal_install
+    focal_install # Ubuntu 20.04
 elif [ $(check_distro) == "jammy" ]; then
-    jammy_install
+    jammy_install # Ubuntu 22.04
 elif [ $(check_distro) == "vera" ]; then
-    jammy_install
+    jammy_install # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 elif [ $(check_distro) == "groovy" ]; then
-    groovy_install
+    groovy_install # Ubuntu 20.10
 elif [ $(check_distro) == "hirsute" ]; then
-    hirsute_install
+    hirsute_install # Ubuntu 21.04
 elif [ $(check_distro) == "bullseye" ]; then
-    bullseye_install
+    bullseye_install # Debian 11
 #elif [ $(check_distro) == "centos_7" ]; then
 #    centos_7_install
 else
