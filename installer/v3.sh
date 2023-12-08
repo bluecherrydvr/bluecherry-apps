@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail # strict mode
 
 if [[ $SUDO_USER == "bluecherry" ]]
 then
