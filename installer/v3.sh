@@ -42,7 +42,7 @@ check_distro()
 
 trusty_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-trusty.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-trusty-unstable.list
     apt -y update
@@ -53,7 +53,7 @@ trusty_install()
 bionic_install()
 {
     apt update
-    apt -y install gpg python3-distutils
+    apt -y install gpg python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic-unstable.list
     apt -y update
@@ -63,7 +63,7 @@ bionic_install()
 
 xenial_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-xenial.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-xenial-unstable.list
     apt -y update
@@ -79,7 +79,7 @@ focal_install()
 # Update 1/5/23 Resolve dependancy problems on Ubuntu 20.04 desktop
 #    apt -y install gpg python3-pip
 #    pip install pyopenssl==22.0.0
-    apt -y install python3-distutils gnupg2
+    apt -y install python3-distutils gnupg2 wget
 #    wget https://bootstrap.pypa.io/get-pip.py | python3 get-pip.py -
     wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
     python3 /tmp/get-pip.py
@@ -97,7 +97,7 @@ focal_install()
 
 groovy_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-groovy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-groovy-unstable.list
     apt -y update
@@ -109,7 +109,7 @@ groovy_install()
 
 hirsute_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-hirsute.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-hirsute-unstable.list
     apt -y update
@@ -122,7 +122,7 @@ hirsute_install()
 jammy_install()
 {
     apt-get update
-    apt -y install gpg software-properties-common
+    apt -y install gpg software-properties-common wget
 #    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
     wget --output-document=/etc/apt/sources.list.d/bluecherry-jammy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jammy-unstable.list
@@ -151,7 +151,7 @@ centos_7_install()
 
 jessie_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-jessie.list https:/unstablel.bluecherrydvr.com/sources.list.d/bluecherry-jessie-unstable.list
     apt-get -y update
@@ -160,7 +160,7 @@ jessie_install()
 
 wheezy_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-wheezy.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-wheezy-unstable.list
     apt-get -y update
@@ -169,7 +169,7 @@ wheezy_install()
 
 stretch_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-stretch.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-stretch-unstable.list
     apt-get -y update
@@ -179,7 +179,7 @@ stretch_install()
 buster_install()
 {
     apt-get -y update
-    apt-get -y install gnupg sudo
+    apt-get -y install gnupg sudo wget
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
@@ -193,7 +193,7 @@ buster_install()
 bullseye_install()
 {
     apt-get -y update
-    apt-get -y install gnupg sudo sudo python3-distutils
+    apt-get -y install gnupg sudo sudo python3-distutils wget
 #    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
