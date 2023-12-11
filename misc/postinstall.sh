@@ -150,9 +150,7 @@ case "$1" in
 		# Allow update_subdomain_certs.sh script to run as www-data
 		chown root:www-data /usr/share/bluecherry/scripts/update_subdomain_certs.sh
 		chmod 550 /usr/share/bluecherry/scripts/update_subdomain_certs.sh
-		echo "www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh" \
-			> /etc/sudoers.d/www-data
-		chmod 0440 /etc/sudoers.d/www-data
+		install --mode ug=r,o= /usr/share/bluecherry/sudoers.d/www-data /etc/sudoers.d/www-data
 
 		mkdir -p /usr/share/bluecherry/ssl
 		cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem

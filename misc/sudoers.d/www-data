@@ -1,0 +1,2 @@
+www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/update_subdomain_certs.sh
+www-data ALL=(ALL) NOPASSWD: /usr/share/bluecherry/scripts/check_dir_permission.sh

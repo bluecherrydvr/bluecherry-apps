@@ -175,7 +175,8 @@ RUN /usr/sbin/groupadd -rf \
  || echo "bluecherry user already exists"
 
 RUN mkdir /recordings \
- && chown bluecherry:bluecherry /recordings
+ && chown bluecherry:bluecherry /recordings \
+ && chmod ug=rwx,o=rx /recordings
 
 EXPOSE 7001/tcp 7002/tcp 
 
