@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail # strict mode
 
 if [[ $SUDO_USER == "bluecherry" ]]
 then
@@ -39,9 +40,10 @@ check_distro()
     echo $DISTRO
 }
 
+# Ubuntu 14.04
 trusty_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-trusty.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-trusty-unstable.list
     apt -y update
@@ -49,10 +51,11 @@ trusty_install()
     service bluecherry restart
 }
 
+# Ubuntu 18.04
 bionic_install()
 {
     apt update
-    apt -y install gpg python3-distutils
+    apt -y install gpg python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic-unstable.list
     apt -y update
@@ -60,9 +63,10 @@ bionic_install()
     systemctl restart bluecherry
 }
 
+# Ubuntu 16.04
 xenial_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-xenial.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-xenial-unstable.list
     apt -y update
@@ -70,15 +74,14 @@ xenial_install()
     systemctl restart bluecherry
 }
 
-# 20.04
-
+# Ubuntu 20.04
 focal_install()
 {
     apt-get update
 # Update 1/5/23 Resolve dependancy problems on Ubuntu 20.04 desktop
 #    apt -y install gpg python3-pip
 #    pip install pyopenssl==22.0.0
-    apt -y install python3-distutils gnupg2
+    apt -y install python3-distutils gnupg2 wget
 #    wget https://bootstrap.pypa.io/get-pip.py | python3 get-pip.py -
     wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
     python3 /tmp/get-pip.py
@@ -92,11 +95,10 @@ focal_install()
     systemctl restart bluecherry
 }
 
-# 20.10
-
+# Ubuntu 20.10
 groovy_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-groovy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-groovy-unstable.list
     apt -y update
@@ -104,11 +106,10 @@ groovy_install()
     systemctl restart bluecherry
 }
 
-# 21.04
-
+# Ubuntu 21.04
 hirsute_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-hirsute.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-hirsute-unstable.list
     apt -y update
@@ -116,12 +117,12 @@ hirsute_install()
     systemctl restart bluecherry
 }
 
-# 22.04
-
+# Ubuntu 22.04
+# Also used for Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 jammy_install()
 {
     apt-get update
-    apt -y install gpg software-properties-common
+    apt -y install gpg software-properties-common wget
 #    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
     wget --output-document=/etc/apt/sources.list.d/bluecherry-jammy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jammy-unstable.list
@@ -148,37 +149,41 @@ centos_7_install()
     systemctl restart bluecherry
 }
 
+# Debian 8
 jessie_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-jessie.list https:/unstablel.bluecherrydvr.com/sources.list.d/bluecherry-jessie-unstable.list
     apt-get -y update
     apt-get -y install bluecherry
 }
 
+# Debian 7
 wheezy_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-wheezy.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-wheezy-unstable.list
     apt-get -y update
     apt-get -y install bluecherry
 }
 
+# Debian 9
 stretch_install()
 {
-    apt -y install gpg
+    apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-stretch.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-stretch-unstable.list
     apt-get -y update
     apt-get -y install bluecherry
 }
 
+# Debian 10
 buster_install()
 {
     apt-get -y update
-    apt-get -y install gnupg sudo
+    apt-get -y install gnupg sudo wget
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
@@ -189,10 +194,11 @@ buster_install()
     apt-get -y install mysql-server bluecherry
 }
 
+# Debian 11
 bullseye_install()
 {
     apt-get -y update
-    apt-get -y install gnupg sudo sudo python3-distutils
+    apt-get -y install gnupg sudo sudo python3-distutils wget
 #    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
@@ -206,21 +212,21 @@ bullseye_install()
 
 
 if   [ $(check_distro) == "bionic" ]; then
-    bionic_install
+    bionic_install # Ubuntu 18.04
 elif [ $(check_distro) == "buster" ]; then
-    buster_install
+    buster_install # Debian 10
 elif [ $(check_distro) == "focal" ]; then
-    focal_install
+    focal_install # Ubuntu 20.04
 elif [ $(check_distro) == "jammy" ]; then
-    jammy_install
+    jammy_install # Ubuntu 22.04
 elif [ $(check_distro) == "vera" ]; then
-    jammy_install
+    jammy_install # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 elif [ $(check_distro) == "groovy" ]; then
-    groovy_install
+    groovy_install # Ubuntu 20.10
 elif [ $(check_distro) == "hirsute" ]; then
-    hirsute_install
+    hirsute_install # Ubuntu 21.04
 elif [ $(check_distro) == "bullseye" ]; then
-    bullseye_install
+    bullseye_install # Debian 11
 #elif [ $(check_distro) == "centos_7" ]; then
 #    centos_7_install
 else
