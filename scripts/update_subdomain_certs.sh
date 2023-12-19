@@ -51,11 +51,16 @@ chmod 600 $credentials
 # Generate certificates
 echo "Generating certs..."
 
-certbot certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
+CERTBOT=/root/.local/bin/certbot
+if ! [[ -x "$CERTBOT" ]]; then
+    CERTBOT=certbot
+fi
+
+"$CERTBOT" certonly --non-interactive --agree-tos --work-dir=/tmp --logs-dir=/tmp \
     --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ \
-    --dns-subdomain-provider-credentials $credentials \
-    -m $email --authenticator dns-subdomain-provider \
-    -d $subdomain.bluecherry.app -v
+    --dns-subdomain-provider-credentials "$credentials" \
+    -m "$email" --authenticator dns-subdomain-provider \
+    -d "$subdomain".bluecherry.app -v
 
 rm $credentials
 
