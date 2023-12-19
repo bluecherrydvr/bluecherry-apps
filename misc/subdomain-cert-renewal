@@ -1,0 +1,13 @@
+#!/bin/bash
+set -euo pipefail
+
+# Suppress the output of the rest of the script.
+# To debug, redirect to a real file.
+exec &> /dev/null
+
+CERTBOT=/root/.local/bin/certbot
+if ! [[ -x "$CERTBOT" ]]; then
+    CERTBOT=certbot
+fi
+
+"$CERTBOT" renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/
