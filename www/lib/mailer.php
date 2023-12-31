@@ -177,34 +177,31 @@ SOLO card(s) got $state on server {$global_settings->data['G_DVR_NAME']}
 $dow = array('M', 'T', 'W', 'R', 'F', 'S', 'U');
 
 #parse start timestamp into dow/hour/minute
-$p['day'] = $dow[date('w', $timestamp)-1];
+$p['day'] = $dow[(date('w', $timestamp) + 6) % 7];
 $p['hour'] = date('G', $timestamp);
 $p['min'] = date('i', $timestamp);
 
-
 #form a query and select applicable rules
 $query = "SELECT * FROM notificationSchedules 
-	WHERE ";
-if (isset($device_id))
-$query .= "
-		cameras LIKE '%|$device_id|%' 
-	AND ";
-$query .= "
-		day LIKE '%{$p['day']}%' 
-	AND 
-	(
-		(s_hr = {$p['hour']} AND s_min < {$p['min']}) 
-		OR 
-		(e_hr = {$p['hour']} AND e_min > {$p['min']}) 
-		OR 
-		(s_hr < {$p['hour']} AND e_hr > {$p['hour']})
-	)
-	AND
-		disabled = 0
+    WHERE ";
+if (isset($device_id)) {
+    $query .= " cameras LIKE '%|$device_id|%' AND ";
+}
+$query .= " day LIKE '%{$p['day']}%' AND 
+    (
+        (s_hr = {$p['hour']} AND s_min < {$p['min']}) 
+        OR 
+        (e_hr = {$p['hour']} AND e_min > {$p['min']}) 
+        OR 
+        (s_hr < {$p['hour']} AND e_hr > {$p['hour']})
+    )
+    AND disabled = 0
 ";
 $rules = data::query($query);
-if (!$rules){
-	exit('I: No matching rules');
+
+# Proceed only if rules are found
+if ($rules) {
+# If there are no rules (yet) don't display anything bad.
 } else {
 
     if ($argv[1] == "motion_event") {
@@ -298,7 +295,9 @@ foreach($rules as $id => $rule){
 }
 
 if (empty($rules_ids)){
-	exit('I: All applicable rules exhausted limit');
+#	exit('I: All applicable rules exhausted limit');
+# Don't complain if no rules are setup
+	exit ();
 }
 
 
