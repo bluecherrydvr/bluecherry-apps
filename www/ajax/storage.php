@@ -1,17 +1,17 @@
-<?php 
+<?php
 
 class storage extends Controller {
-	
+
     public function __construct(){
         parent::__construct();
-		$this->chAccess('admin');
+        $this->chAccess('admin');
     }
 
     public function getData()
     {
         $this->setView('ajax.storage');
 
-	    $locations = data::query("SELECT * FROM Storage");
+        $locations = data::query("SELECT * FROM Storage");
         foreach(array_keys($locations) as $id) {
             $path = database::escapeString($locations[$id]['path']);
             $max_thresh = database::escapeString($locations[$id]['max_thresh']);
@@ -22,9 +22,9 @@ class storage extends Controller {
                   "SELECT SUM(CASE WHEN end < start THEN 0 ELSE end - start END".
                 ") period, SUM(size) DIV 1048576 size".
                 " FROM Media WHERE filepath LIKE '{$path}%') q";
-    		$result = data::query($query);
-    		$locations[$id]['record_time'] = $result[0]['result'];
-		$locations[$id]['used_percent'] = ceil((disk_total_space($path) - disk_free_space($path)) / disk_total_space($path) * 100);
+            $result = data::query($query);
+            $locations[$id]['record_time'] = $result[0]['result'];
+            $locations[$id]['used_percent'] = ceil((disk_total_space($path) - disk_free_space($path)) / disk_total_space($path) * 100);
         }
 
         $this->view->locations = $locations;
@@ -36,8 +36,12 @@ class storage extends Controller {
 
         $values = Array();
         foreach($_POST['path'] as $key => $path){
-            $dir_status = $storage_check->directory_status($path);
-            if ($dir_status) return data::responseJSON($dir_status[0], $dir_status[1]);
+            // Call the updated method from storagecheck
+            $dir_status = $storage_check->change_directory_permissions($path);
+            if ($dir_status[0] !== 'OK') {
+                // If directory permissions change failed, return the error
+                return data::responseJSON($dir_status[0], $dir_status[1]);
+            }
 
             $max = intval($_POST['max'][$key]);
             $min = $max - 10;
@@ -55,4 +59,3 @@ class storage extends Controller {
         data::responseJSON($status);
     }
 }
-
