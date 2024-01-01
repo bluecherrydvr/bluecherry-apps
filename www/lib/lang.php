@@ -456,7 +456,7 @@ define('MJPEG_NO_PERMISSION', 'You do not have permission to access camera ID %I
 define('MJPEG_DEVICE_ID_NOT_SUPPLIED', 'No device ID supplied.');
 
 #storage 
-define('STRAGE_HEADER', 'Manage storage locations');
+define('STORAGE_HEADER', 'Manage storage locations');
 define('ADD_LOCATION', 'Add location');
 define('LOCATION', 'Folder:');
 define('STORAGE_INFO_MESSAGE', 'Please note that if you add a new storage location, you need to make sure that: <br /> - folder exists <br /> - folder is empty <br /> - folder belongs to user bluecherry, group bluecherry.');
