@@ -2,7 +2,8 @@ name: Publish Docker image
 on:
   push:
     branches: [ "dev", "master" ]
-  pull_request:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
     branches: [ "dev", "master" ]
     # Publish `v1.2.3` tags as releases.
     tags:
@@ -11,7 +12,7 @@ on:
 jobs: 
   mysql57:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'WIP'))
+    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'WIP')
     steps:
       - uses: actions/checkout@v2
       - name: Shutdown existing MySQL
@@ -19,7 +20,7 @@ jobs:
 
   push_to_registries:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'WIP'))
+    if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'WIP')
     permissions:
       packages: write
       contents: read
@@ -37,7 +38,7 @@ jobs:
           characterSet: utf8mb4
           collation: utf8mb4_general_ci
           sqlMode: NO_ENGINE_SUBSTITUTION
-        
+ 
       - name: Print running docker containers
         run: docker ps
       - name: Check out the repo
