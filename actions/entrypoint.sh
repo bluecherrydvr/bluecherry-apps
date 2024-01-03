@@ -14,6 +14,7 @@ echo "> Writing /root/.my.cnf"
     echo "[mysqldump]";                     \
     echo "user=$MYSQL_ADMIN_LOGIN";         \
     echo "password=$MYSQL_ADMIN_PASSWORD";  \
+    echo "host=$BLUECHERRY_DB_HOST";                      \
     echo "[mysqldiff]";                     \
     echo "user=$MYSQL_ADMIN_LOGIN";         \
     echo "password=$MYSQL_ADMIN_PASSWORD";  \
