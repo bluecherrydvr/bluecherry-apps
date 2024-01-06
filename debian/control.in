@@ -40,7 +40,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
 #jessie  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
 #groovy libapache2-mod-php7.4, mariadb-server, php-mysql, php-curl, php-gd, php-sqlite3
 Recommends: mysql-server
-Suggests: monit, mail-transport-agent
+Suggests: monit, mail-transport-agent, onvif-tools
 Conflicts: solo6010-dkms
 Replaces: solo6010-dkms
 Description: Bluecherry DVR Server
