@@ -186,9 +186,8 @@ buster_install()
     apt-get -y install gnupg sudo wget
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
-    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
+    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
     wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-buster-unstable.list
     apt-get -y update
     apt-get -y install mysql-server bluecherry
@@ -199,11 +198,9 @@ bullseye_install()
 {
     apt-get -y update
     apt-get -y install gnupg sudo sudo python3-distutils wget
-#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
-    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
+    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-#    wget -q http://repo.mysql.com/RPM-GPG-KEY-mysql -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bullseye-unstable.list
+    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bullseye.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bullseye-unstable.list
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
 #   apt-get install mariadb-server
