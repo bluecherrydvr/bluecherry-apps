@@ -12,8 +12,6 @@ PROTECTED_DIRS=(
     "/home"
     "/lib"
     "/lib64"
-    "/media"
-#    "/mnt"
     "/opt"
     "/proc"
     "/root"
@@ -26,7 +24,7 @@ PROTECTED_DIRS=(
     "/var"
 )
 
-# Function to check if a directory is a subdirectory of a protected directory
+# Verify if a directory is "protected"
 is_subdir() {
     local dir=$1
     local protected_dir=$2
@@ -42,7 +40,7 @@ is_subdir() {
 # Directory variable to store location
 DIR=$(realpath "$1") # Converts to absolute path
 
-# Special case to allow modifications for /var/lib/bluecherry/recordings
+# We need to atleast allow storage for the default storage directory which is inside a protected directory /var/lib/bluecherry/recordings
 if [[ "$DIR" == "/var/lib/bluecherry/recordings" ]]; then
     echo "Modifying permissions and ownership of $DIR"
     chmod 770 "$DIR"
