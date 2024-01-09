@@ -1,12 +1,11 @@
-<?php 
-
+<?php
 
 class storagecheck extends Controller {
-	
+
     public function __construct()
     {
         parent::__construct();
-		$this->chAccess('admin');
+        $this->chAccess('admin');
     }
 
     public function getData()
@@ -21,47 +20,31 @@ class storagecheck extends Controller {
 
     private function initProc()
     {
-        $check_dir = $this->directory_status($_GET['path'], 'new');
-
-        data::responseJSON($check_dir[0], $check_dir[1]);
+        $change_status = $this->change_directory_permissions($_GET['path']);
+        data::responseJSON($change_status[0], $change_status[1]);
     }
 
-    // path -- path to storage dir, type -- new or existing, existing are not checked for existing files
-    public function directory_status($path, $type = '')
-    {
-        $dir = shell_exec("sudo /usr/share/bluecherry/scripts/check_dir_permission.sh $path");
+    // Function to call the bash script to change permissions of a directory
 
-        if (!file_exists($path)){
-            return array('F', str_replace('%PATH%', $path, DIR_DOES_NOT_EXIST_OR_NOT_READABLE));
-        }
+public function change_directory_permissions($path)
+{
+    // Call the bash script to change directory permissions and ownership
+    $output = shell_exec("sudo /usr/share/bluecherry/scripts/check_dir_permission.sh " . escapeshellarg($path));
 
-        if(!substr_count($dir, '-wrx')){
-            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
-        }
-        $file_group = posix_getgrgid(filegroup($path));
-        $allowed_group = array('bluecherry', 'www-data');
-        if ((!isset($file_group['name'])) || (isset($file_group['name']) && (!in_array($file_group['name'], $allowed_group)))) {
-            return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
-        }
-
-        $file_owner = posix_getpwuid(fileowner($path));
-        if ((!isset($file_owner['name'])) || (isset($file_owner['name']) && (!in_array($file_group['name'], $allowed_group)))) {
-            return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
-        }
-
-        if (!is_writable($path)) {
-            return array('F', str_replace('%PATH%', $path, DIR_NOT_WRITABLE));
-        }
-
-        if (!is_readable($path)) {
-            return array('F', str_replace('%PATH%', $path, DIR_NOT_READABLE));
-        }
-
-        if ($type == 'new'){
-            return (count(scandir($path)) == 2) ? array('OK', DIR_OK) : array('INFO', str_replace('%PATH%', $path, DIR_NOT_EMPTY));
-        }
-
-        return false;
+    // Interpret the output from the script to form the response
+    if (strpos($output, 'Error') !== false) {
+        return array('F', $output);
+    } elseif (strpos($output, 'Changing permissions') !== false || strpos($output, 'Modifying permissions and ownership') !== false) {
+        return array('OK', 'Permissions and ownership changed for ' . $path);
+    } elseif (strpos($output, 'already has the correct permissions and ownership') !== false) {
+        return array('OK', '');
+    } elseif (strpos($output, 'does not exist. Creating it now') !== false) {
+        // Handle the case where the directory is being created
+        return array('OK', 'Directory created and permissions set for ' . $path);
+    } else {
+        return array('F', 'Unexpected output from shell script: ' . $output);
     }
 }
 
+
+}
