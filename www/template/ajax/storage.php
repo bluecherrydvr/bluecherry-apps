@@ -1,8 +1,12 @@
 <div class="row">
     <div class="col-lg-12">
-        <h1 class="page-header"><?php echo STORAGE_HEADER; ?></h1>
+        <h1 class="page-header"><?php echo STRAGE_HEADER; ?></h1>
     </div>
 </div>
+
+             <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i>Note: <ul><li>We will automatically create a directory for you and assign the correct permissions.</li><li>Verify that the storage path you are using is mounted on start or the start of Bluecherry server.  Usually this is done in /etc/fstab.<li>If using SMB (CIFS) mount it is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)</li><li>All storage paths must be added to either /mnt or /media</li></div>
+
+
 
 <div class="row">
     <div class="col-lg-12">
@@ -82,15 +86,3 @@
         </td>
     </tr>
 </table>
-
-<script type="text/javascript">
-    $(document).ready(function() {
-        $('#store-add-but').off().click(function() {
-            // Clone only the specific row for a new storage location
-            var newRow = $('#table-storage-orig tr.table-storage-tr-data').clone();
-
-            // Append the cloned row to the main table
-            $('.table-storage tbody').append(newRow);
-        });
-    });
-</script>
