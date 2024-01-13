@@ -44,7 +44,7 @@ while ($str = fgets($p)) {
 		//match "name/manufacturer"
 		preg_match_all('#name/([\w/%\-]+)#', $str, $match);
 		if (!empty($match[1]))
-			$cam['manufacturer'] = $match[1][0];
+			$cam['manufacturer'] = urldecode($match[1][0]);
 		//match hardware/modelname
 		preg_match_all('#hardware/([\w/%\-]+)#', $str, $match);
 		if (!empty($match[1]))
