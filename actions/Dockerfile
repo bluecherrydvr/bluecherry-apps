@@ -214,4 +214,4 @@ RUN chown bluecherry.bluecherry -R /var/lib/bluecherry
 #CMD service rsyslog start
 CMD /usr/sbin/php-fpm7.4 -D
 CMD ["/usr/sbin/nginx", "-g", "daemon off;"]
-CMD "/entrypoint.sh"
+ENTRYPOINT ["/entrypoint.sh"]
