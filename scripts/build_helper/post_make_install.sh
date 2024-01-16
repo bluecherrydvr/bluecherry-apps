@@ -36,6 +36,8 @@ mkdir ${DST_DIR}/etc/cron.d
 cp    ${SRC_PATH}/debian/bluecherry.cron ${DST_DIR}/etc/cron.d/bluecherry
 cp -a ${SRC_PATH}/www ${DST_DIR}/usr/share/bluecherry
 cp -a ${SRC_PATH}/misc/sudoers.d ${DST_DIR}/usr/share/bluecherry/
+cp -a ${SRC_PATH}/scripts/check_dir_permission.sh ${DST_DIR}/usr/share/bluecherry/scripts/check_dir_permission.sh
+
 
 echo "${VERSION}" > ${DST_DIR}/usr/share/bluecherry/version
 
