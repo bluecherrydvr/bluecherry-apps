@@ -183,6 +183,9 @@ class discoverCameras extends Controller {
             if (!$p) { continue; }
             while ($json_str = fgets($p)) {
                 $cam = json_decode($json_str, true);
+                $ip = $cam['ipv4'];
+                // append, unless already reported by earlier tools
+                if (in_array($ip, $ips)) { continue; }
                 $res[] = $cam;
                 $ips[] = $cam['ipv4'];
             }
