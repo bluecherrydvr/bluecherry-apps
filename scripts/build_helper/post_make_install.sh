@@ -11,6 +11,7 @@ SRC_PATH=$2 #./ or %{_builddir}/%{name}
 DST_DIR=$3  # debian/bluecherry or %{buildroot}
 VERSION=$4  # bluecherry/version from changelog
 
+set -euo pipefail
 mkdir -p ${DST_DIR}/usr/share/bluecherry
 cp -a ${SRC_PATH}/misc/sql/*         ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/remove_untracked_media_files.sh \
