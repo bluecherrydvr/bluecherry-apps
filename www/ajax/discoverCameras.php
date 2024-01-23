@@ -175,7 +175,7 @@ class discoverCameras extends Controller {
         );
 
         $tools = Array(
-            "/usr/share/bluecherry/onvif/discovery_json/node-onvif.js",
+            "node /usr/share/bluecherry/onvif/discovery_json/node-onvif.js",
             "/usr/share/bluecherry/onvif/discovery_json/onvif_tool",
         );
         foreach ($tools as $tool) {
