@@ -4,6 +4,11 @@ class loginapp extends Controller {
 
     const UUID_PARAM_NAME = 'G_SERVER_UUID';
 
+    public function __construct ()
+    {
+        parent::__construct();
+    }
+
     public function getData()
     {
         return json_encode([
