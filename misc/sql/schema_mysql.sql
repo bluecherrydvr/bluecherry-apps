@@ -52,7 +52,7 @@ CREATE TABLE `Devices` (
   `ptz_serial_values` varchar(64) DEFAULT NULL,
   `resolutionX` smallint(6) DEFAULT NULL,
   `resolutionY` smallint(6) DEFAULT NULL,
-  `model` varchar(30) DEFAULT NULL,
+  `model` varchar(64) DEFAULT NULL,
   `channel` int(11) NOT NULL DEFAULT '0',
   `invert` tinyint(1) NOT NULL DEFAULT '0',
   `audio_volume` smallint(6) DEFAULT '50',
