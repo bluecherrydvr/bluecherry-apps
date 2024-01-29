@@ -40,7 +40,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
 #wheezy  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
 #jessie  php5-sqlite, php5-gd, php5-curl, php5-mysqlnd
 #groovy libapache2-mod-php7.4, mariadb-server, php-mysql, php-curl, php-gd, php-sqlite3
-Recommends: mysql-server
+Recommends: mysql-server, bluecherry-node-onvif
 Suggests: monit, mail-transport-agent
 Conflicts: solo6010-dkms
 Replaces: solo6010-dkms

@@ -1,0 +1,58 @@
+#!/usr/bin/env php
+<?php
+
+# test:
+#$p = @popen("cat tests/onvif_tool.out", "r");
+$p = @popen("/usr/lib/bluecherry/onvif_tool dummyaddr null null discover", "r");
+if (!$p) {
+	exit(1);
+}
+$wait_ip_line = true;
+$cams_i = 0;
+while ($str = fgets($p)) {
+
+	//IP
+	//scope strings
+	//newline
+
+
+	if ($str[0] == "\n" && !$wait_ip_line) {
+		$wait_ip_line = true;
+		$cams_i++;
+		//$res[$cams_i] = $cam;
+		print(json_encode($cam) . "\n");
+	}
+
+	if ($wait_ip_line){
+		if (preg_match('/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/', $str, $match)) {
+			$cam = Array();
+			$cam['manufacturer'] = '';
+			$cam['model_name'] = '';
+			$cam['ipv4_port'] = '';
+			//$cam['ipv6'] = '';
+			//$cam['ipv6_path'] = '';
+			//$cam['onvif'] = true;
+			//$cam['exists'] = false;
+
+			$cam['ipv4'] = $match[0];
+			$cam['ipv4_path'] = 'http://'.$match[0].'/onvif/device_service';
+			$cam['ipv4_port'] = $match[0].':80'; // FIXME might not be the case
+
+			$wait_ip_line = false;
+		}
+	}else{
+		//match "name/manufacturer"
+		preg_match_all('#name/([\w/%\-]+)#', $str, $match);
+		if (!empty($match[1]))
+			$cam['manufacturer'] = urldecode($match[1][0]);
+		//match hardware/modelname
+		preg_match_all('#hardware/([\w/%\-]+)#', $str, $match);
+		if (!empty($match[1]))
+			$cam['model_name'] = $match[1][0];
+	}
+}
+pclose($p);
+
+//print(json_encode($res));
+
+?>

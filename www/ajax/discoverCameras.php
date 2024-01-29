@@ -174,56 +174,23 @@ class discoverCameras extends Controller {
             34599
         );
 
-	//
-	$p = @popen("/usr/lib/bluecherry/onvif_tool dummyaddr null null discover", "r");
-	if (!$p) {
-		data::responseJSON(0);
-	}
-	$wait_ip_line = true;
-	$cams_i = 0;
-	while ($str = fgets($p)) {
-
-		//IP
-		//scope strings
-		//newline
-
-		if ($str[0] == "\n" && !$wait_ip_line) {
-			$wait_ip_line = true;
-			$cams_i++;
-		}
-
-		if ($wait_ip_line){
-			if (preg_match('/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/', $str, $match)) {
-				$cam = Array();
-				$cam['manufacturer'] = '';
-				$cam['model_name'] = '';
-				$cam['ipv4_port'] = '';
-				$cam['ipv6'] = '';
-				$cam['ipv6_path'] = '';
-				$cam['onvif'] = true;
-				$cam['exists'] = false;
-
-				$cam['ipv4'] = $match[0];
-				$ips[] = $match[0];
-				$cam['ipv4_path'] = 'http://'.$match[0].'/onvif/device_service';
-				$cam['ipv4_port'] = $match[0].':80';
-
-				$wait_ip_line = false;
-
-				$res[$cams_i] = $cam;
-			}
-		}else{
-			//match "name/manufacturer"
-			preg_match_all('#name/([\w/%\-]+)#', $str, $match);
-			if (!empty($match[1]))
-				$res[$cams_i]['manufacturer'] = $match[1][0];
-			//match hardware/modelname
-			preg_match_all('#hardware/([\w/%\-]+)#', $str, $match);
-			if (!empty($match[1]))
-				$res[$cams_i]['model_name'] = $match[1][0];
-		}
-	}
-	pclose($p);
+        $tools = Array(
+            "node /usr/share/bluecherry/onvif/discovery_json/node-onvif.js",
+            "/usr/share/bluecherry/onvif/discovery_json/onvif_tool",
+        );
+        foreach ($tools as $tool) {
+            $p = @popen($tool, "r");
+            if (!$p) { continue; }
+            while ($json_str = fgets($p)) {
+                $cam = json_decode($json_str, true);
+                $ip = $cam['ipv4'];
+                // append, unless already reported by earlier tools
+                if (in_array($ip, $ips)) { continue; }
+                $res[] = $cam;
+                $ips[] = $cam['ipv4'];
+            }
+	    pclose($p);
+        }
 
         $ips = array_unique($ips);
 

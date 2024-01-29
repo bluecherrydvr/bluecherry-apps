@@ -11,6 +11,7 @@ SRC_PATH=$2 #./ or %{_builddir}/%{name}
 DST_DIR=$3  # debian/bluecherry or %{buildroot}
 VERSION=$4  # bluecherry/version from changelog
 
+set -euo pipefail
 mkdir -p ${DST_DIR}/usr/share/bluecherry
 cp -a ${SRC_PATH}/misc/sql/*         ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/remove_untracked_media_files.sh \
@@ -27,6 +28,7 @@ install ${SRC_PATH}/scripts/build_helper/get_distro_release_name.sh \
 install ${SRC_PATH}/scripts/update_subdomain_certs.sh \
 	${DST_DIR}/usr/share/bluecherry/scripts
 cp -a ${SRC_PATH}/misc/ponvif*       ${DST_DIR}/usr/share/bluecherry/
+cp -a ${SRC_PATH}/misc/onvif         ${DST_DIR}/usr/share/bluecherry/
 rm -rf ${DST_DIR}/usr/share/bluecherry/ponvif*/.git
 install -D ${SRC_PATH}/debian/bluecherry.conf.in \
 	${DST_DIR}/usr/share/bluecherry/bluecherry.conf.in
