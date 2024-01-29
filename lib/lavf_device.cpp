@@ -75,7 +75,6 @@ void lavf_device::stop()
 int lavf_device::start()
 {
 	if (ctx) return 0;
-	bool using_tcp = false;
 
 	AVDictionary *avopt_open_input = NULL;
 	AVInputFormat *input_fmt = NULL;
@@ -88,11 +87,10 @@ int lavf_device::start()
 
 	if (!strncmp(url, "rtsp://", 7))
 	{
-		if (rtp_protocol == RTP_PROTOCOL_TCP || tcp_fallback)
-		{
-			av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0);
-			tcp_fallback = false;
-			using_tcp = true;
+		switch (rtp_protocol) {
+			case RTP_PROTOCOL_TCP:  av_dict_set(&avopt_open_input, "rtsp_transport", "tcp", 0); break;
+			case RTP_PROTOCOL_UDP:  av_dict_set(&avopt_open_input, "rtsp_transport", "+udp+udp_multicast", 0); break;
+			case RTP_PROTOCOL_AUTO: av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0); break;
 		}
 	}
 
@@ -118,14 +116,6 @@ int lavf_device::start()
 		av_strerror(re, error_message, sizeof(error_message));
 		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
 		ctx = NULL;
-
-		if (rtp_protocol == RTP_PROTOCOL_AUTO && !using_tcp)
-		{
-			bc_log(Info, "Falling back to TCP connection");
-			tcp_fallback = true;
-			return start();
-		}
-
 		return -1;
 	}
 

@@ -52,7 +52,6 @@ public:
 private:
 	char url[1024];
 	int rtp_protocol = RTP_PROTOCOL_AUTO;
-	bool tcp_fallback = false;
 	char error_message[512];
 
 	AVFormatContext *ctx;
