@@ -199,8 +199,7 @@ $query .= " day LIKE '%{$p['day']}%' AND
 ";
 $rules = data::query($query);
 
-# Proceed only if rules are found
-if ($rules) {
+if ($!rules) {
 # If there are no rules (yet) don't display anything bad.
 } else {
 
