@@ -31,7 +31,8 @@ WORKDIR /root
  RUN git clone --recurse-submodules --progress http://github.com/bluecherrydvr/bluecherry-apps.git \
  && cd bluecherry-apps \
  && git checkout $BLUECHERRY_GIT_BRANCH_TAG \
- && sed -i 's/#define PRODUCT_VERSION "3.1.0-rc9"/#define PRODUCT_VERSION "3.1.0-rc9-docker"/' server/v3license_processor.h
+ && sed -i '/#define PRODUCT_VERSION/s/"$/-docker"/' server/v3license_processor.h
+
 
  
 RUN apt-get --no-install-recommends -y install \
