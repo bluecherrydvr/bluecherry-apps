@@ -39,7 +39,7 @@
             <tbody>
 <?php
         foreach($dvr_users->data as $id => $info){
-            $email_list = ''; $emails = ''; $email = ''; $tmp = '';
+            $email_list = ''; $emails = ''; $email = ''; $tmp = array();
             $emails = explode('|', $info['email']);
             foreach($emails as $id => $email){
                 $email = explode(':', $email);
