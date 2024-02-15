@@ -37,16 +37,16 @@
                 <tr>
             </thead>
             <tbody>
-            <?php
-		        foreach($dvr_users->data as $id => $info){
-        			$email_list = ''; $emails = ''; $email = ''; $tmp = '';
-    	    		$emails = explode('|', $info['email']);
-	    	    	foreach($emails as $id => $email){
-    	    			$email = explode(':', $email);
-        				$tmp[$id] = $email[0];
-        			}
-                    $email_list = implode(', ', $tmp);
-            ?>
+<?php
+        foreach($dvr_users->data as $id => $info){
+            $email_list = ''; $emails = ''; $email = ''; $tmp = array();
+            $emails = explode('|', $info['email']);
+            foreach($emails as $id => $email){
+                $email = explode(':', $email);
+                $tmp[$id] = $email[0];
+            }
+            $email_list = implode(', ', $tmp);
+?>
                 <tr class="users-list-bl-item ajax-content" data-url="/users?id=<?php echo $info['id']; ?>">
                     <td><?php echo $info['name']; ?></td><td><?php echo $info['username']; ?></td>
                     <td><?php echo $email_list; ?></td>
