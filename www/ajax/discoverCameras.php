@@ -313,24 +313,32 @@ class discoverCameras extends Controller {
             foreach ($passwords as $pass_arr) {
                 foreach ($pass_arr as $login => $password) {
                     $onvif_username = $login;
-		    $onvif_password = $password;
-                    try {
-			 $p = @popen("/usr/lib/bluecherry/onvif_tool \"{$onvif_addr}\" \"{$onvif_username}\" \"{$onvif_password}\" get_stream_urls", "r");
-			 if (!$p)
-			 	break;
+                    $onvif_password = $password;
 
-			 $media_service = fgets($p);
-			 if (!$media_service)
-			 {
-				 $err['onvif_ip'][] = $ip;
-				 break(2);
-			 }
-			 $main_stream = fgets($p);
-			 $sub_stream = fgets($p);
-			 pclose($p);
+                    try {
+                        $json_out = shell_exec("node /usr/share/bluecherry/onvif/getRtspUrls.js " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password));
+                        if ($json_out) {
+                            $urls = json_decode($json_out, /*associative=*/true);
+                            $main_stream = $urls[0]['rtspUri'];
+                            $sub_stream = $urls[1]['rtspUri'];
+                        } else {
+                            $p = @popen("/usr/lib/bluecherry/onvif_tool " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password). " get_stream_urls", "r");
+                             if (!$p)
+                                    break;
+
+                             $media_service = fgets($p);
+                             if (!$media_service)
+                             {
+                                     $err['onvif_ip'][] = $ip;
+                                     break(2);
+                             }
+                             $main_stream = fgets($p);
+                             $sub_stream = fgets($p);
+                             pclose($p);
+                        }
 
 			if ($main_stream)
-                         {
+                        {
                             $password_ch = true;
 
 			    $media_uri = trim($main_stream);
