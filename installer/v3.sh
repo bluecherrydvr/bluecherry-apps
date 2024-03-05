@@ -13,33 +13,6 @@ then
 exit
 fi 
 
-check_distro()
-{
-    if [[ -e /etc/lsb-release ]]
-    then
-        . /etc/lsb-release
-    fi
-
-    if [[ -e /etc/os-release ]] 
-    then
-        . /etc/os-release
-    fi
-    
-    if [[ -e /etc/os-release ]] && [[ $ID == "centos" ]]
-    then
-        DISTRO=${ID}_${VERSION_ID}
-    else
-
-        if [[ -e /etc/lsb-release ]]
-        then
-            DISTRO=$DISTRIB_CODENAME
-        else
-            DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
-        fi
-    fi
-    echo $DISTRO
-}
-
 # Ubuntu 14.04
 trusty_install()
 {
@@ -206,26 +179,42 @@ bullseye_install()
 #   apt-get install mariadb-server
 }
 
+check_distro()
+{
+    if [[ -e /etc/lsb-release ]]
+    then
+        . /etc/lsb-release
+    fi
 
+    if [[ -e /etc/os-release ]] 
+    then
+        . /etc/os-release
+    fi
+    
+    if [[ -e /etc/os-release ]] && [[ $ID == "centos" ]]
+    then
+        DISTRO=${ID}_${VERSION_ID}
+    else
 
-if   [ $(check_distro) == "bionic" ]; then
-    bionic_install # Ubuntu 18.04
-elif [ $(check_distro) == "buster" ]; then
-    buster_install # Debian 10
-elif [ $(check_distro) == "focal" ]; then
-    focal_install # Ubuntu 20.04
-elif [ $(check_distro) == "jammy" ]; then
-    jammy_install # Ubuntu 22.04
-elif [ $(check_distro) == "vera" ]; then
-    jammy_install # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
-elif [ $(check_distro) == "groovy" ]; then
-    groovy_install # Ubuntu 20.10
-elif [ $(check_distro) == "hirsute" ]; then
-    hirsute_install # Ubuntu 21.04
-elif [ $(check_distro) == "bullseye" ]; then
-    bullseye_install # Debian 11
-#elif [ $(check_distro) == "centos_7" ]; then
-#    centos_7_install
+        if [[ -e /etc/lsb-release ]]
+        then
+            DISTRO=$DISTRIB_CODENAME
+        else
+            DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
+        fi
+    fi
+    export DISTRO
+    echo Distro: $DISTRO
+}
+
+check_distro
+if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "18.04" && "$VERSION_CODENAME" == "bionic"   ]]; then bionic_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.10" && "$VERSION_CODENAME" == "groovy"   ]]; then groovy_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
+elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
+elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
+elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.1"  && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 else
     echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy) and Debian 10 (Buster), Linux Mint 21.1 (Vera) for unstable testing"
 fi
