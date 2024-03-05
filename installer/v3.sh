@@ -13,17 +13,6 @@ then
 exit
 fi 
 
-# Ubuntu 14.04
-trusty_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-trusty.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-trusty-unstable.list
-    apt -y update
-    apt -y install bluecherry
-    service bluecherry restart
-}
-
 # Ubuntu 18.04
 bionic_install()
 {
@@ -31,17 +20,6 @@ bionic_install()
     apt -y install gpg python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
-    apt -y update
-    apt -y install bluecherry
-    systemctl restart bluecherry
-}
-
-# Ubuntu 16.04
-xenial_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-xenial.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-xenial-unstable.list
     apt -y update
     apt -y install bluecherry
     systemctl restart bluecherry
@@ -121,36 +99,6 @@ centos_7_install()
     firewall-cmd --reload
     yum -y install bluecherry
     systemctl restart bluecherry
-}
-
-# Debian 8
-jessie_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-jessie.list https:/unstablel.bluecherrydvr.com/sources.list.d/bluecherry-jessie-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
-}
-
-# Debian 7
-wheezy_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-wheezy.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-wheezy-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
-}
-
-# Debian 9
-stretch_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-stretch.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-stretch-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
 }
 
 # Debian 10
