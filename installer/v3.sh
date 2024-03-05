@@ -30,7 +30,7 @@ bionic_install()
     apt update
     apt -y install gpg python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt -y update
     apt -y install bluecherry
     systemctl restart bluecherry
@@ -61,7 +61,7 @@ focal_install()
 #    pip install pyopenssl --upgrade
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-focal.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-focal-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt -y update
 #    apt -y install mariadb-server-10.3 
     apt -y install bluecherry
@@ -73,7 +73,7 @@ groovy_install()
 {
     apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-groovy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-groovy-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt -y update
     apt -y install mariadb-server bluecherry
     systemctl restart bluecherry
@@ -84,7 +84,7 @@ hirsute_install()
 {
     apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-hirsute.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-hirsute-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt -y update
     apt -y install mariadb-server bluecherry
     systemctl restart bluecherry
@@ -98,7 +98,8 @@ jammy_install()
     apt -y install gpg software-properties-common wget
 #    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-jammy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jammy-unstable.list
+    VERSION_CODENAME=jammy # don't say "vera" for Linux Mint at this point
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     add-apt-repository ppa:ondrej/php -y
     apt -y update
     apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
@@ -161,7 +162,7 @@ buster_install()
     pip3 install --user --upgrade pip
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-buster-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt-get -y update
     apt-get -y install mysql-server bluecherry
 }
@@ -173,7 +174,7 @@ bullseye_install()
     apt-get -y install gnupg sudo sudo python3-distutils wget
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bullseye.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bullseye-unstable.list
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
 #   apt-get install mariadb-server
