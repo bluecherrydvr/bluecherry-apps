@@ -69,18 +69,25 @@ class addip extends Controller {
 	$pass = Inp::post('pass');
 	$onvif_addr = $ip.":".$port;
 
-	$p = @popen("/usr/lib/bluecherry/onvif_tool \"{$onvif_addr}\" \"{$user}\" \"{$pass}\" get_stream_urls", "r");
+	$json_out = shell_exec("node /usr/share/bluecherry/onvif/getRtspUrls.js " . escapeshellarg($onvif_addr) .' '. escapeshellarg($user) .' '. escapeshellarg($pass));
+	if ($json_out) {
+	    $urls = json_decode($json_out, /*associative=*/true);
+	    $main_stream = $urls[0]['rtspUri'];
+	    $sub_stream = $urls[1]['rtspUri'];
+	} else {
+	    $p = @popen("/usr/lib/bluecherry/onvif_tool " . escapeshellarg($onvif_addr) .' '. escapeshellarg($user) .' '. escapeshellarg($pass). " get_stream_urls", "r");
 
-	if (!$p){
-		data::responseJSON($stat, $msg);
-		exit;
+	    if (!$p){
+		    data::responseJSON($stat, $msg);
+		    exit;
+	    }
+
+	    $media_service = fgets($p);
+	    $main_stream = fgets($p);
+	    $sub_stream = fgets($p);
+	    pclose($p);
 	}
-
-	$media_service = fgets($p);
-	$main_stream = fgets($p);
-	$sub_stream = fgets($p);
-	pclose($p);
-	if ($media_service && $main_stream){
+	if ($main_stream) {
 	$stat = 6;
 	$msg = AIP_CHECK_ONVIF_SUCCESS;
 
