@@ -13,62 +13,14 @@ then
 exit
 fi 
 
-check_distro()
-{
-    if [[ -e /etc/lsb-release ]]
-    then
-        . /etc/lsb-release
-    fi
-
-    if [[ -e /etc/os-release ]] 
-    then
-        . /etc/os-release
-    fi
-    
-    if [[ -e /etc/os-release ]] && [[ $ID == "centos" ]]
-    then
-            DISTRO=${ID}_${VERSION_ID}
-    else
-    
-    if [[ -e /etc/lsb-release ]]
-    then
-        DISTRO=$DISTRIB_CODENAME
-    else
-        DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
-    fi
-    fi
-    echo $DISTRO
-}
-
-# Ubuntu 14.04
-trusty_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-trusty.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-trusty-unstable.list
-    apt -y update
-    apt -y install bluecherry
-    service bluecherry restart
-}
-
 # Ubuntu 18.04
 bionic_install()
 {
     apt update
     apt -y install gpg python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bionic.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bionic-unstable.list
-    apt -y update
-    apt -y install bluecherry
-    systemctl restart bluecherry
-}
-
-# Ubuntu 16.04
-xenial_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-xenial.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-xenial-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
     apt -y install bluecherry
     systemctl restart bluecherry
@@ -88,7 +40,8 @@ focal_install()
 #    pip install pyopenssl --upgrade
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-focal.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-focal-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
 #    apt -y install mariadb-server-10.3 
     apt -y install bluecherry
@@ -100,7 +53,8 @@ groovy_install()
 {
     apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-groovy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-groovy-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
     apt -y install mariadb-server bluecherry
     systemctl restart bluecherry
@@ -111,7 +65,8 @@ hirsute_install()
 {
     apt -y install gpg wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-hirsute.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-hirsute-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
     apt -y install mariadb-server bluecherry
     systemctl restart bluecherry
@@ -125,7 +80,9 @@ jammy_install()
     apt -y install gpg software-properties-common wget
 #    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-jammy.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-jammy-unstable.list
+    VERSION_CODENAME=jammy # don't say "vera" for Linux Mint at this point
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     add-apt-repository ppa:ondrej/php -y
     apt -y update
     apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
@@ -149,36 +106,6 @@ centos_7_install()
     systemctl restart bluecherry
 }
 
-# Debian 8
-jessie_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-jessie.list https:/unstablel.bluecherrydvr.com/sources.list.d/bluecherry-jessie-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
-}
-
-# Debian 7
-wheezy_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-wheezy.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-wheezy-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
-}
-
-# Debian 9
-stretch_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-stretch.list https://unstable.bluecherrydvr.com/sources.list.d/bluecherry-stretch-unstable.list
-    apt-get -y update
-    apt-get -y install bluecherry
-}
-
 # Debian 10
 buster_install()
 {
@@ -188,7 +115,8 @@ buster_install()
     pip3 install --user --upgrade pip
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-buster.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-buster-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
     apt-get -y install mysql-server bluecherry
 }
@@ -200,32 +128,49 @@ bullseye_install()
     apt-get -y install gnupg sudo sudo python3-distutils wget
     wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    wget --no-check-certificate --output-document=/etc/apt/sources.list.d/bluecherry-bullseye.list https://dl.bluecherrydvr.com/sources.list.d/bluecherry-bullseye-unstable.list
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
 #   apt-get install mariadb-server
 }
 
+check_distro()
+{
+    if [[ -e /etc/lsb-release ]]
+    then
+        . /etc/lsb-release
+    fi
 
+    if [[ -e /etc/os-release ]] 
+    then
+        . /etc/os-release
+    fi
+    
+    if [[ -e /etc/os-release ]] && [[ $ID == "centos" ]]
+    then
+        DISTRO=${ID}_${VERSION_ID}
+    else
 
-if   [ $(check_distro) == "bionic" ]; then
-    bionic_install # Ubuntu 18.04
-elif [ $(check_distro) == "buster" ]; then
-    buster_install # Debian 10
-elif [ $(check_distro) == "focal" ]; then
-    focal_install # Ubuntu 20.04
-elif [ $(check_distro) == "jammy" ]; then
-    jammy_install # Ubuntu 22.04
-elif [ $(check_distro) == "vera" ]; then
-    jammy_install # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
-elif [ $(check_distro) == "groovy" ]; then
-    groovy_install # Ubuntu 20.10
-elif [ $(check_distro) == "hirsute" ]; then
-    hirsute_install # Ubuntu 21.04
-elif [ $(check_distro) == "bullseye" ]; then
-    bullseye_install # Debian 11
-#elif [ $(check_distro) == "centos_7" ]; then
-#    centos_7_install
+        if [[ -e /etc/lsb-release ]]
+        then
+            DISTRO=$DISTRIB_CODENAME
+        else
+            DISTRO=`echo $VERSION | sed -e 's/^.*[(]//' -e 's/[)]//'`
+        fi
+    fi
+    export DISTRO
+    echo Distro: $DISTRO
+}
+
+check_distro
+if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "18.04" && "$VERSION_CODENAME" == "bionic"   ]]; then bionic_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.10" && "$VERSION_CODENAME" == "groovy"   ]]; then groovy_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
+elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
+elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
+elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.1"  && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 else
     echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy) and Debian 10 (Buster), Linux Mint 21.1 (Vera) for unstable testing"
 fi
