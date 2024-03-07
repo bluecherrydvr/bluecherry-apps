@@ -278,7 +278,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	AVCodec *codec;
 
 	/* Get the output format */
-	AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, "video/mp4");
+	const AVOutputFormat *fmt_out = av_guess_format("mp4", NULL, "video/mp4");
 	if (fmt_out == NULL)
 	{
 		bc_log(Error, "media_writer: MP4 output format is not found!");
