@@ -119,7 +119,7 @@ function updateStatData() {
                     snr.hide();
                 }
             }
-        }); 
+        }, false); 
         setTimeout("updateStatData();", 2000);
 }
 
@@ -178,7 +178,7 @@ var ajaxReq = function () {
     var class_after_success = null;
 
 
-    var send = function () {
+    var send = function (redirectOnFail = true) {
         if (form !== null) form_data =  new FormData(form[0]);
 
         if (alert_bl !== null) {
@@ -241,9 +241,11 @@ var ajaxReq = function () {
                 respProc(msg);
             })
             .fail(function(msg) {
-                // This is workaround for ublockORIGIN browser plugin which blocks get HTML requests(logs page - issue #474).
-                console.error('Request failed redirecting to ' + form_act)
-                location.href = location.origin + form_act
+                if(redirectOnFail) {
+                    // This is workaround for ublockORIGIN browser plugin which blocks get HTML requests(logs page - issue #474).
+                    console.error('Request failed redirecting to ' + form_act)
+                    location.href = location.origin + form_act
+                }
 
                 if (error_ajax) alert('err ajax');
 
@@ -485,7 +487,7 @@ var ajaxReq = function () {
         return false;
     };
 
-    self.manReq = function (data) {
+    self.manReq = function (data, redirectOnFail = true) {
         form_act = data.form_act || null;
         type_req = data.type_req || type_req;
         type_data = data.type_data || type_data;
@@ -509,7 +511,7 @@ var ajaxReq = function () {
         //if ((data.callback_func !== null) && (typeof(data.callback_func === 'function'))) {
             //callback_func = data.callback_func;
         //};
-        send();
+        send(redirectOnFail);
     };
 
     var constructor = function () {
@@ -519,7 +521,7 @@ var ajaxReq = function () {
 function ajaxEvent() {
     $('body').on("click", ".send-req-form", function(e){
         var ajax_req = new ajaxReq();
-        return ajax_req.setData($(this)); 
+        return ajax_req.setData($(this));;
     }); 
 
     $('body').on("change", ".send-req-form-select", function(e){
