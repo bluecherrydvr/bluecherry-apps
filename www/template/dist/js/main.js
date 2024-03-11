@@ -521,7 +521,7 @@ var ajaxReq = function () {
 function ajaxEvent() {
     $('body').on("click", ".send-req-form", function(e){
         var ajax_req = new ajaxReq();
-        return ajax_req.setData($(this));;
+        return ajax_req.setData($(this));
     }); 
 
     $('body').on("change", ".send-req-form-select", function(e){
