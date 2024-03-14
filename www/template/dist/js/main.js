@@ -178,7 +178,7 @@ var ajaxReq = function () {
     var class_after_success = null;
 
 
-    var send = function (redirectOnFail = true) {
+    var send = function (redirectOnFail) {
         if (form !== null) form_data =  new FormData(form[0]);
 
         if (alert_bl !== null) {
@@ -444,7 +444,7 @@ var ajaxReq = function () {
             else error_ajax = 1;
 
             //form.submit();
-            send();
+            send(true);
         }
 
         return false;
@@ -478,7 +478,7 @@ var ajaxReq = function () {
         ajax_content = true;
         mch_ajsend(send_but);
 
-        send();
+        send(true);
 
         // close left menu for mobile devices
         var navbar = $('#navbar-collapse');
