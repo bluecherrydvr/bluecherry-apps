@@ -91,6 +91,7 @@ CREATE TABLE `Devices` (
   `hls_segment_duration` decimal(6,3) DEFAULT '3.000',
   `hls_segment_size` int(11) DEFAULT '2695168',
   `hls_window_size` smallint(5) DEFAULT '5',
+  `connection_retry_seconds` smallint(5) DEFAULT '10',
 
   PRIMARY KEY (`id`),
   UNIQUE KEY `device_name` (`device_name`),

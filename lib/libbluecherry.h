@@ -139,6 +139,7 @@ struct bc_device_config {
 	int hls_window_size;
 	int hls_segment_size;
 	double hls_segment_duration;
+	int connection_retry_seconds;
 };
 
 struct bc_license {
