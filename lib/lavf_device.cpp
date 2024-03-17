@@ -77,7 +77,7 @@ int lavf_device::start()
 	if (ctx) return 0;
 
 	AVDictionary *avopt_open_input = NULL;
-	AVInputFormat *input_fmt = NULL;
+	const AVInputFormat *input_fmt = NULL;
 
 	bc_log(Debug, "Opening session from URL: %s", url);
 
