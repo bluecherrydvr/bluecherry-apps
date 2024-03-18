@@ -767,19 +767,36 @@ class ipCamera{
 			$this->ptzControl = new cameraPtz($this);
 		}
 	}
-	public function checkConnection(){ 
+	public function checkConnection() {
+		 //FIXME: Currently only supports RTSP. MJPEG is currently untested
 		ini_set('default_socket_timeout', 1);
-		#needs server to check for RTSP //// $paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
-		$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
-		$paths['http'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']);
-		foreach($paths as $type => $path){
-			$headers = @get_headers($path);
-			$contents = @file_get_contents($path);
-			if (!$headers) { $this->info['connection_status'][$type] = 'F'; continue; }
-			preg_match("/([0-9]{3})/", $headers[0], $response_code);
-			$this->info['connection_status'][$type] = ($response_code[0]=='200') ? 'OK' : $response_code[0];
+
+		$path = "";
+
+		switch(($this->info['protocol']))  {
+			case 'IP-RTSP':
+				$path = 'rtsp://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+				break;
+			case 'IP-MJPEG':
+				$path= 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
+				break;
 		}
-		return $this->info['connection_status'];
+
+		//-> '-stimeout' is measured in microseconds
+		$ffprobe_output = shell_exec(
+			"LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffprobe -stimeout 5000000 -hide_banner -show_format -show_streams -print_format json \"".$path."\"");
+
+		$rtsp_data = json_decode($ffprobe_output, true);
+
+		$this->info['connection_status']['lastTimeChecked'] = date("d/m/Y h:i a"); //TODO: Make date/time formatting regional 
+		$this->info['connection_status']['success'] = array_key_exists('streams', $rtsp_data) ? count($rtsp_data['streams']) > 0 : false;
+
+
+		#needs server to check for RTSP //// $paths['rtsp']  = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+		//FIXME: Test mjpeg
+		//$paths['mjpeg'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
+		// TODO: Test http
+		//$paths['http'] = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']);
 	}
 	protected static function autoConfigure($driver, $info){ #auto configure known cameras
 		include_once("ipcamlib.php");

@@ -14,13 +14,27 @@
 
 <div class="row">
     <div class="col-lg-12 col-md-12">
-        <form action="/ajax/editip.php" method="POST" class="form-horizontal">
-	        <input type="hidden" name="mode" value="editIp" />
-        	<input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
+        <div class="panel panel-default">
+            <div class="panel-body">
 
-            <div class="panel panel-default">
-                <div class="panel-body">
-                    
+                <div class="form-group">
+                    <div class="col-lg-7 col-lg-offset-3 col-md-7 col-md-offset-2">
+                        <div id="connStat" class="alert alert-info"> 
+                            <span id="csText" style="line-height: 34px;"><?php echo AIP_TEST_CONNECTION_MESSAGE ?></span>
+                            <form action="/ajax/editip.php/test" method="POST" class="form-horizontal" style="display: inline;">
+                                <input type="hidden" name="mode" value="editIp" />
+                                <input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
+                                <a type="submit" class="btn btn-warning send-req-form pull-right" data-func="testCameraLoadingHeader" data-func-after="testCameraConnection">
+                                    <i class="fa fa-check fa-fw"></i><?php echo AIP_TEST_CONNECTION ?>
+                                </a>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <form action="/ajax/editip.php" method="POST" class="form-horizontal">
+                    <input type="hidden" name="mode" value="editIp" />
+                    <input type="hidden" name="id" value="<?php echo $ipCamera->info['id']; ?>" />
                     <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo VA_AUDIO_ENABLE; ?></label>
 
@@ -196,18 +210,16 @@
                             <input type="checkbox" name="debug_level" <?php echo ($ipCamera->info['debug_level']==1) ? 'checked' : ''; ?>  />
                         </div>
                     </div>
-                    
                     <div class="form-group">
                         <div class="col-lg-6 col-lg-offset-4 col-md-6 col-md-offset-4">
-                            <button class="btn btn-success send-req-form" type="submit"><i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES; ?></button>
+                            <button class="btn btn-success send-req-form"  data-func="testCameraLoadingHeader" data-func-after="testCameraConnection" type="submit">
+                                <i class="fa fa-check fa-fw"></i> <?php echo SAVE_CHANGES." & ".AIP_TEST_CONNECTION?>
+                            </button>
                         </div>
                     </div>
-
-                </div>
+                </form>
             </div>
-
-        
-        </form>
+        </div>
     </div>
 </div>
 
