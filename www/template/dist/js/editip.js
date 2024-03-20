@@ -1,7 +1,5 @@
 $(function() {
-    console.log("This loaded!");
 });
-
 function testCameraConnection(form, msg) {
     let data = JSON.parse(msg.data);
 
