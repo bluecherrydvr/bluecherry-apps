@@ -44,11 +44,8 @@ class ipcameracheck extends Controller {
 
         $camera->checkConnection();
 
-        $status_message = str_replace( //-> 10 as status to avoid the "changes saved successfully" popup
-            array("%TYPE%", "%TIME%"), 
-            array("RTSP", $camera->info['connection_status']['lastTimeChecked']), 
-            $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL
-        );
+        $status_message = str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
+        $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL);
         
         echo $status_message;
     }
