@@ -20,12 +20,13 @@ class editip extends Controller {
 	    $id = intval($_POST['id']);
     	$camera = new ipCamera($id);
     	$result = $camera->edit($_POST);
-        $camera->checkConnection();
-    	data::responseJSON($result[0], array(
-            $result[1], 
-            str_replace(array("%TYPE%", "%TIME%"), array("RTSP", $camera->info['connection_status']['lastTimeChecked']), 
+    	$camera = new ipCamera($id); // Reinstance the object to update information
+        $camera->checkConnection(); // Test the connection
+    	data::responseJSON($result[0], $result[1],  array(
+            json_encode($camera->info['connection_status']),
+            str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
                 $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL)
-        ), json_encode($camera->info['connection_status']));
+        ));
     	exit();
     }
 
@@ -34,11 +35,11 @@ class editip extends Controller {
 	    $id = intval($_POST['id']);
     	$camera = new ipCamera($id);
         $camera->checkConnection();
-        data::responseJSON(10, array( 1 => str_replace( //-> 10 as status to avoid the "changes saved successfully" popup
-            array("%TYPE%", "%TIME%"), 
-            array("RTSP", $camera->info['connection_status']['lastTimeChecked']), 
-            $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL)
-        ), json_encode($camera->info['connection_status'])); 
+        data::responseJSON(10, "", array(
+            json_encode($camera->info['connection_status']),
+            str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
+                $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL)
+        )); 
         exit();
     }
 }

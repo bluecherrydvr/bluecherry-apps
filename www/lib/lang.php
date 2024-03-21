@@ -386,8 +386,8 @@ define('AIP_CHECK_ONVIF_ERROR', 'Unsuccessful');
 define('AIP_LIMIT_ALLOWED_DEVICES', 'Could not add a camera, because exceeds the limit of the allowed devices.');
 define('AIP_TEST_CONNECTION', 'Test Connection');
 define('AIP_TEST_CONNECTION_MESSAGE', 'Test connection to IP Camera');
-define('AIP_CONNECTION_SUCCESS', 'Connection Successful using %TYPE%. Tested at %TIME%');
-define('AIP_CONNECTION_FAIL', 'Connection Unsuccessful using %TYPE%. Tested at %TIME%');
+define('AIP_CONNECTION_SUCCESS', 'Connection Successful using %TYPE%');
+define('AIP_CONNECTION_FAIL', 'Connection Unsuccessful using %TYPE%');
 
 # HLS configuration
 define('AIP_HLS_WINDOW_SIZE', 'HLS window size');
