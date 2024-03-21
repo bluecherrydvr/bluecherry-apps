@@ -772,10 +772,12 @@ class ipCamera{
 		ini_set('default_socket_timeout', 1);
 
 		$path = "";
+		$args = "";
 
 		switch($this->info['protocol'])  {
 			case 'IP-RTSP':
-				$path = '-rtsp_transport tcp "rtsp://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'].'"';
+				$path = 'rtsp://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+				$args = array("-rtsp_flags +prefer_tcp", "-rtsp_transport tcp", "-rtsp_transport tcp")[$this->info['rtsp_rtp_prefer_tcp']];
 				break;
 			case 'IP-MJPEG': 
 				//FIXME: This is the old logic for testing MJPEG. Testing for MJPEG is currently not supported by the bundled ffprobe method used for RTSP
@@ -789,7 +791,7 @@ class ipCamera{
 
 		//-> '-stimeout' is measured in microseconds
 		$ffprobe_output = shell_exec(
-			"/usr/lib/bluecherry/ffprobe -stimeout 5000000 -hide_banner -show_format -show_streams -print_format json ".$path);
+			"/usr/lib/bluecherry/ffprobe -stimeout 5000000 -hide_banner -show_format -show_streams -print_format json ".$args. " " . escapeshellarg($path));
 
 		$rtsp_data = json_decode($ffprobe_output, true);
 
