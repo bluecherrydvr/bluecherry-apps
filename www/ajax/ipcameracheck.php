@@ -44,13 +44,9 @@ class ipcameracheck extends Controller {
 
         $camera->checkConnection();
 
-        $status_message = '';
-        foreach($camera->info['connection_status'] as $type => $status){
-        	if ($status!='OK'){
-        		$status_message .= str_replace('%TYPE%', $type, constant('IP_ACCESS_STATUS_'.$status)).'<br /><br />';
-        	}
-        };
-
+        $status_message = str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
+        $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL);
+        
         echo $status_message;
     }
 }

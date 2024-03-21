@@ -20,9 +20,26 @@ class editip extends Controller {
 	    $id = intval($_POST['id']);
     	$camera = new ipCamera($id);
     	$result = $camera->edit($_POST);
-    	data::responseJSON($result[0], $result[1]);
+    	$camera = new ipCamera($id); // Reinstance the object to update information
+        $camera->checkConnection(); // Test the connection
+    	data::responseJSON($result[0], $result[1],  array(
+            json_encode($camera->info['connection_status']),
+            str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
+                $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL)
+        ));
     	exit();
     }
+
+    public function postTest() 
+    {
+	    $id = intval($_POST['id']);
+    	$camera = new ipCamera($id);
+        $camera->checkConnection();
+        data::responseJSON(10, "", array(
+            json_encode($camera->info['connection_status']),
+            str_replace("%TYPE%", str_replace("IP-", "", $camera->info['protocol']), 
+                $camera->info['connection_status']['success'] ? AIP_CONNECTION_SUCCESS : AIP_CONNECTION_FAIL)
+        )); 
+        exit();
+    }
 }
-
-

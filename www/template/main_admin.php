@@ -322,6 +322,7 @@
     <script src="/template/dist/js/users.js"></script>
     <script src="/template/dist/js/devices.js"></script>
     <script src="/template/dist/js/addip.js"></script>
+    <script src="/template/dist/js/editip.js"></script>
     <script src="/template/dist/js/ptzpresetlist.js"></script>
     <script src="/template/dist/js/notifications.js"></script>
     <script src="/template/dist/js/statistics.js"></script>
