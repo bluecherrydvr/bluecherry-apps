@@ -25,6 +25,8 @@ fi
 #git submodule foreach --recursive "git clean -dxf && git reset --hard"
 #git submodule update --recursive --init
 
+$(dirname $0)/check-db-version-consistency
+
 echo "#define GIT_REVISION \"`git describe --dirty --always --long` `git describe --all`\"" > server/version.h
 
 if [[ $DIST == centos* ]]
