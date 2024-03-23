@@ -1,12 +1,4 @@
 #!/bin/bash
 set -euo pipefail
 
-LAST_UPGRADE="$(ls misc/sql/mysql-upgrade | sort -n -r | head -n 1)"
-if ! [[ "$(< misc/sql/installed_db_version)" == "$LAST_UPGRADE" ]]; then
-	cat >&2 <<-EOF
-	Fix misc/sql/installed_db_version to be $LAST_UPGRADE
-	echo $LAST_UPGRADE > misc/sql/installed_db_version
-	git add misc/sql/installed_db_version
-	EOF
-	exit 1
-fi
+$(dirname $0)/check-db-version-consistency
