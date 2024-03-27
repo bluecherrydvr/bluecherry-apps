@@ -1189,12 +1189,12 @@ done:
 static int bc_check_media(void)
 {
 	int ret = 0;
-	bool storage_overloaded = true;
+	bool storage_overloaded = false;
 
 	/* If there's some space left, skip cleanup */
 	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (is_storage_full(&media_stor[i]) != 1) {
-			storage_overloaded = false;
+		if (is_storage_full(&media_stor[i]) == 1) {
+			storage_overloaded = true;
 			break;
 		}
 	}
