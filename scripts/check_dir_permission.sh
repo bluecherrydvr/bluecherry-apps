@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Script to change permissions and ownership of a directory, with enhanced safety checks
 
