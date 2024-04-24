@@ -13,14 +13,8 @@ RELEASE_NAME := $(shell ./scripts/build_helper/get_distro_release_name.sh)
 
 .PHONY: override_dh_strip debian/control
 
-# Don't build debug packages anymore
-
-#override_dh_strip:
-#	dh_strip --dbg-package=bluecherry-dbg
-
-#override_dh_installinit: sbin-start=$(wildcard /sbin/start)
-#override_dh_installinit:
-#	dh_installinit $(if $(sbin-start),--name=bluecherry)
+override_dh_strip:
+	dh_strip --dbg-package=bluecherry-dbg
 
 # Add support for systemd
 
