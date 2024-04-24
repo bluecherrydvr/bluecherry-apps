@@ -7,7 +7,7 @@ bluecherry (3:3.1.1) focal bionic buster groovy hirsute bullseye jammy; urgency=
   * FIX: Bug causing redirect to stats.php (https://github.com/bluecherrydvr/bluecherry-apps/pull/672)
   * FIX: Bug in installer script failing mysql server installation on Debian 10 (https://github.com/bluecherrydvr/bluecherry-apps/pull/670)
 
- -- Andriy Utkin <autkin@bluecherrydvr.com> Wed, Mar 27 2024 18:40:00 -0000
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Wed, 27 Mar 2024 18:40:00 -0000
 
 bluecherry (3:3.1.0-rc10) focal bionic buster groovy hirsute bullseye jammy; urgency=low
 
