@@ -50,38 +50,8 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	bc_vlog(bc_level, msg, ap);
 }
 
-static int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
-{
-	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
-	switch (op) {
-		case AV_LOCK_CREATE:
-			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-			if (!*mutex)
-				return 1;
-			return !!pthread_mutex_init(*mutex, NULL);
-
-		case AV_LOCK_OBTAIN:
-			return !!pthread_mutex_lock(*mutex);
-
-		case AV_LOCK_RELEASE:
-			return !!pthread_mutex_unlock(*mutex);
-
-		case AV_LOCK_DESTROY:
-			pthread_mutex_destroy(*mutex);
-			free(*mutex);
-			return 0;
-	}
-
-	return 1;
-}
-
 void bc_ffmpeg_init()
 {
-	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log(Fatal, "libav lock registration failed");
-		exit(1);
-	}
-
 	avformat_network_init();
 	avdevice_register_all();
 
@@ -90,5 +60,5 @@ void bc_ffmpeg_init()
 
 void bc_ffmpeg_teardown()
 {
-	av_lockmgr_register(NULL); // deprecated
+	;
 }
