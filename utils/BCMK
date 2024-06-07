@@ -28,4 +28,4 @@ clean:
 install: licensecmd ptzcmd
 	$(INSTALL_PROG) -D licensecmd $(DESTDIR)$(libexec_dir)/licensecmd
 	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
-	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool
+	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool || true
