@@ -82,11 +82,8 @@ void bc_ffmpeg_init()
 		exit(1);
 	}
 
-	av_register_all(); // deprecated
-	avfilter_register_all(); // deprecated
 	avformat_network_init();
 	avdevice_register_all();
-	avcodec_register_all(); // deprecated
 
 	av_log_set_callback(av_log_cb);
 }
