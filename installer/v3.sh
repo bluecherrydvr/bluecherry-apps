@@ -91,6 +91,12 @@ jammy_install()
     systemctl restart bluecherry
 }
 
+# Ubuntu 24.04
+noble_install()
+{
+    jammy_install
+}
+
 centos_7_install()
 {   
     setenforce 0
@@ -113,12 +119,11 @@ buster_install()
     apt-get -y install gnupg sudo wget
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
-    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
-    apt-get -y install mysql-server bluecherry
+    apt-get -y install default-mysql-server bluecherry
 }
 
 # Debian 11
@@ -126,13 +131,11 @@ bullseye_install()
 {
     apt-get -y update
     apt-get -y install gnupg sudo sudo python3-distutils wget
-    wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
-#   apt-get install mariadb-server
 }
 
 check_distro()
@@ -168,9 +171,10 @@ if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "18.04" && "$VERSION_CODENAME" == 
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.10" && "$VERSION_CODENAME" == "groovy"   ]]; then groovy_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" && "$VERSION_CODENAME" == "noble"    ]]; then noble_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
 elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.1"  && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
 else
-    echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy) and Debian 10 (Buster), Linux Mint 21.1 (Vera) for unstable testing"
+    echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy), Ubuntu 24.04 (Noble) and Debian 10 (Buster), Linux Mint 21.1 (Vera) for unstable testing"
 fi
