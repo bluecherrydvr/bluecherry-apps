@@ -82,14 +82,34 @@ function stop_nginx
 function install_pip
 {
 
-if [[ $(cat /etc/os-release | grep "UBUNTU" | grep bionic) ]]
-	then
+	source /etc/os-release
+	if [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == bionic ]]; then
         	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.6/get-pip.py
+		python3 /tmp/get-pip.py
 	else
         	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
-fi
-        python3 /tmp/get-pip.py
+		python3 /tmp/get-pip.py
+	fi
+}
 
+function install_certbot
+{
+	source /etc/os-release
+	if [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == noble ]]; then
+		echo 'For Ubuntu 24.04 (noble) we rely on packaged certbot'
+		return
+	elif [[ "$ID" == debian ]] && [[ "$VERSION_CODENAME" == bookworm ]]; then
+		echo 'For Debian 12 (bookworm) we rely on packaged certbot'
+		return
+	fi
+
+	install_pip
+
+	# Install pip3 dependencies
+	/usr/local/bin/pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
+	/usr/local/bin/pip3 install --user --upgrade pip
+	/usr/local/bin/pip3 install --user --upgrade cryptography
+	/usr/local/bin/pip3 install pyopenssl --upgrade
 }
 
 function start_apache
@@ -407,16 +427,8 @@ case "$1" in
 		if test -f "/usr/share/bluecherry/nginx-includes/subdomain.conf"; then
 		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
 		fi
-		
-# Install pip from bootstrap	
 
-		install_pip
-
-		# Install pip3 dependencies
-		/usr/local/bin/pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
-		/usr/local/bin/pip3 install --user --upgrade pip
-		/usr/local/bin/pip3 install --user --upgrade cryptography
-	        /usr/local/bin/pip3 install pyopenssl --upgrade
+		install_certbot
 		
 		# Install crontabs for subdomain renewal and SSL renewal using certbot
 		crontab -l 2>/dev/null || true; printf "* * */5 * * certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ >/dev/null 2>&1\n*/5 * * * * curl -k https://localhost:7001/subdomainprovidercron >/dev/null 2>&1\n" | crontab -
