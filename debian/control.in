@@ -27,6 +27,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  vainfo,
  i965-va-driver,
  cron,
+ certbot,
 # python3-pip,
 #focal   php-sqlite3, php-gd, php-curl, php-mysql
 #jammy   php-sqlite3, php-gd, php-curl, php-mysql
