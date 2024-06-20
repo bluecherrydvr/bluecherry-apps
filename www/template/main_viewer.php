@@ -27,7 +27,7 @@
         <?php
         $layouts =  (!empty($lv->layout_list[0])) ? $lv->layout_list : array(NO_SAVED_LAYOUTS);
         foreach ($layouts as $key => $layout){
-            echo "<li>".(($layout==NO_SAVED_LAYOUTS) ? "<a class='disabled'>{$layouts[0]}</a>" : "<a href='#load' class='{$layout['layout_name']}'>{$layout['layout_name']}")."</a></li>";
+            echo "<li>".(($layout==NO_SAVED_LAYOUTS) ? "<a class='disabled'>{$layouts[0]}</a>" : "<a href='#load' class='{".htmlspecialchars($layout['layout_name'])."}'>{".htmlspecialchars($layout['layout_name'])."}")."</a></li>";
         }
 
         ?>
