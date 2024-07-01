@@ -94,7 +94,18 @@ jammy_install()
 # Ubuntu 23.10
 mantic_install()
 {
-    jammy_install
+    # Differences from jammy:
+    # Don't add ppa:ondrej/php, it fails for Mantic.
+    apt-get update
+    apt -y install gpg software-properties-common wget
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
+    VERSION_CODENAME=mantic
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
+    apt -y update
+    apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
+    apt -y install bluecherry
+    systemctl restart bluecherry
 }
 
 # Ubuntu 24.04
