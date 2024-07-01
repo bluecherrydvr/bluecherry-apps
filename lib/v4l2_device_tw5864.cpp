@@ -242,7 +242,7 @@ int v4l2_device_tw5864::start()
 	av_dict_set(&open_opts, "input_format", "h264", 0);
 	av_dict_set(&open_opts, "format_whitelist", "v4l2", 0);
 
-	AVInputFormat *input_fmt = av_find_input_format("v4l2");
+	const AVInputFormat *input_fmt = av_find_input_format("v4l2");
 	if (!input_fmt) {
 		bc_log(Error, "v4l2 input format not found");
 		return -1;

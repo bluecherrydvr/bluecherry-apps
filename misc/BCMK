@@ -63,6 +63,7 @@ libav/config.mak:
 		--enable-protocol=pipe \
 		--enable-protocol=http \
 		--enable-protocol=https \
+		--enable-protocol=tls \
 		\
 		--enable-muxer=matroska \
 		--enable-muxer=mjpeg \
