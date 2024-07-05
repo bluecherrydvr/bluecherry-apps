@@ -438,6 +438,11 @@ case "$1" in
 		sed -i 's/snakeoil.conf/subdomain.conf/g' /etc/nginx/sites-enabled/bluecherry.conf
 		fi
 
+		# Debian 10 lacks version-agnostic link for php-fpm.sock. Add it in a compatible way.
+		if ! [[ -f /run/php/php-fpm.sock ]]; then
+			update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*-fpm.sock 0
+		fi
+
 		install_certbot
 		
 		# Install crontabs for subdomain renewal and SSL renewal using certbot
