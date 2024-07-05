@@ -81,6 +81,10 @@ function stop_nginx
 
 function install_pip
 {
+	# If already installed - nothing to do
+	if which pip3 >/dev/null; then
+		return
+	fi
 
 	source /etc/os-release
 	if [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == bionic ]]; then
@@ -106,14 +110,16 @@ function install_certbot
 		return
 	fi
 
+	export PATH=/usr/local/bin:"$PATH"
+
 	# Ubuntu 23+, Debian 12 make this step fail. Fall back to system package.
 	install_pip || return
 
 	# Install pip3 dependencies
-	/usr/local/bin/pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
-	/usr/local/bin/pip3 install --user --upgrade pip
-	/usr/local/bin/pip3 install --user --upgrade cryptography
-	/usr/local/bin/pip3 install pyopenssl --upgrade
+	pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
+	pip3 install --user --upgrade pip || true
+	pip3 install --user --upgrade cryptography
+	pip3 install pyopenssl --upgrade
 }
 
 function start_apache
