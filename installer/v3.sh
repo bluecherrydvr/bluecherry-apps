@@ -199,9 +199,9 @@ elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" && "$VERSION_CODENAME" == 
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "12"    && "$VERSION_CODENAME" == "bookworm" ]]; then bookworm_install;
-elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.1"  && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
-elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.2"  && "$VERSION_CODENAME" == "victoria" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
-elif [[ "$ID" == "mint"   && "$VERSION_ID" == "21.3"  && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.1" && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.2" && "$VERSION_CODENAME" == "victoria" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.3" && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 else
     echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy), Ubuntu 23.10 (Mantic), Ubuntu 24.04 (Noble) and Debian 10 (Buster), 11 (Bullseye), 12 (Bookworm), Linux Mint 21.1 (Vera), 21.2 (Victoria), 21.3 (Virginia) for unstable testing"
 fi
