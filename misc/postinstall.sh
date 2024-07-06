@@ -439,8 +439,8 @@ case "$1" in
 		fi
 
 		# Debian 10 lacks version-agnostic link for php-fpm.sock. Add it in a compatible way.
-		if ! [[ -f /run/php/php-fpm.sock ]]; then
-			update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*-fpm.sock 0
+		if ! [[ -L /run/php/php-fpm.sock ]]; then
+			update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*.*-fpm.sock 0
 		fi
 
 		install_certbot
