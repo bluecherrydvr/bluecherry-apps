@@ -1,3 +1,10 @@
+bluecherry (3:3.1.2) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FEATURE: Add support of Debian 12, Ubuntu 23.10, Ubuntu 24.04, Mint 21.2, 21.3 (https://github.com/bluecherrydvr/bluecherry-apps/pull/684)
+  * FEATURE: Update ffmpeg to 6.1.1
+
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Wed, 10 Jul 2024 22:30:00 +0100
+
 bluecherry (3:3.1.1) focal bionic buster groovy hirsute bullseye jammy; urgency=low
 
   * FEATURE: Add button on device page to test access to video stream (https://github.com/bluecherrydvr/bluecherry-apps/pull/673)
