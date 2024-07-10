@@ -25,48 +25,6 @@
 #include <libavcodec/avcodec.h>
 #include "logc.h"
 
-/* Fake H.264 encoder for libavcodec. We're only muxing video, never reencoding,
- * so a real encoder isn't neeeded, but one must be present for the process to
- * succeed. ffmpeg does not support h264 encoding without libx264, which is GPL.
- */
-static int fake_h264_init(AVCodecContext *ctx)
-{
-	(void)ctx;
-	return 0;
-}
-
-static int fake_h264_close(AVCodecContext *ctx)
-{
-	(void)ctx;
-	return 0;
-}
-
-static int fake_h264_frame(AVCodecContext *ctx, AVPacket *avpkt,
-			   const AVFrame *frame, int *got_packet_ptr)
-{
-	(void)ctx;
-	(void)avpkt;
-	(void)frame;
-	(void)got_packet_ptr;
-	return -1;
-}
-
-static AVCodec fake_h264_encoder = {
-	.name = "fakeh264",
-	.long_name = "Fake H.264 Encoder for RTP Muxing",
-	.type = AVMEDIA_TYPE_VIDEO,
-	.id = AV_CODEC_ID_H264,
-	.priv_data_size = 0,
-	.init = fake_h264_init,
-	.encode2 = fake_h264_frame,
-	.close = fake_h264_close,
-	.pix_fmts = (const enum AVPixelFormat[]) {
-		AV_PIX_FMT_YUV420P,
-		AV_PIX_FMT_YUVJ420P,
-		AV_PIX_FMT_NONE
-	},
-};
-
 
 /* Warning: Must be reentrant; this may be called from many device threads at
  * once */
@@ -92,49 +50,15 @@ static void av_log_cb(void *avcl, int level, const char *fmt, va_list ap)
 	bc_vlog(bc_level, msg, ap);
 }
 
-static int bc_av_lockmgr(void **mutex_p, enum AVLockOp op)
-{
-	pthread_mutex_t **mutex = (pthread_mutex_t**)mutex_p;
-	switch (op) {
-		case AV_LOCK_CREATE:
-			*mutex = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
-			if (!*mutex)
-				return 1;
-			return !!pthread_mutex_init(*mutex, NULL);
-
-		case AV_LOCK_OBTAIN:
-			return !!pthread_mutex_lock(*mutex);
-
-		case AV_LOCK_RELEASE:
-			return !!pthread_mutex_unlock(*mutex);
-
-		case AV_LOCK_DESTROY:
-			pthread_mutex_destroy(*mutex);
-			free(*mutex);
-			return 0;
-	}
-
-	return 1;
-}
-
 void bc_ffmpeg_init()
 {
-	if (av_lockmgr_register(bc_av_lockmgr)) {
-		bc_log(Fatal, "libav lock registration failed");
-		exit(1);
-	}
-
-	avcodec_register(&fake_h264_encoder); // deprecated
-	av_register_all(); // deprecated
-	avfilter_register_all(); // deprecated
 	avformat_network_init();
 	avdevice_register_all();
-	avcodec_register_all(); // deprecated
 
 	av_log_set_callback(av_log_cb);
 }
 
 void bc_ffmpeg_teardown()
 {
-	av_lockmgr_register(NULL); // deprecated
+	;
 }
