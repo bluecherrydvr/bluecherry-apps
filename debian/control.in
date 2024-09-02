@@ -28,6 +28,8 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  i965-va-driver,
  cron,
  certbot,
+ rsyslog,
+ logrotate,
 # python3-pip,
 #focal   php-sqlite3, php-gd, php-curl, php-mysql
 #jammy   php-sqlite3, php-gd, php-curl, php-mysql
