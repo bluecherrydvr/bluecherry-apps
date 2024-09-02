@@ -65,7 +65,7 @@ mantic_install()
 # Ubuntu 24.04
 noble_install()
 {
-    jammy_install
+    mantic_install
 }
 
 # Debian 10
