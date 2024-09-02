@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail # strict mode
 
+if ! [[ "$(whoami)" == root ]]; then
+    echo "Must be root to install Bluecherry." >&2
+    exit
+fi
+
 if [[ $SUDO_USER == "bluecherry" ]]
 then
         echo "You're installing Bluecherry on a system that already has an existing bluecherry user. Please remove that user first as it will be automatically created."
