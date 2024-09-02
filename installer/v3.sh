@@ -6,16 +6,9 @@ if ! [[ "$(whoami)" == root ]]; then
     exit
 fi
 
-if [[ $SUDO_USER == "bluecherry" ]]
-then
-        echo "You're installing Bluecherry on a system that already has an existing bluecherry user. Please remove that user first as it will be automatically created."
-        exit
-fi
-
-if [[ $(getent passwd "$UID" | cut -d: -f1) == "bluecherry" ]]
-then
+if getent passwd bluecherry; then
     echo "You're installing Bluecherry on a system that already has an existing bluecherry user. Please remove that user first as it will be automatically created."
-exit
+    exit
 fi 
 
 # Ubuntu 20.04
