@@ -15,20 +15,14 @@ fi
 focal_install()
 {
     apt-get update
-# Update 1/5/23 Resolve dependancy problems on Ubuntu 20.04 desktop
-#    apt -y install gpg python3-pip
-#    pip install pyopenssl==22.0.0
     apt -y install python3-distutils gnupg2 wget
-#    wget https://bootstrap.pypa.io/get-pip.py | python3 get-pip.py -
     wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
     python3 /tmp/get-pip.py
-#    pip install pyopenssl --upgrade
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
-#    apt -y install mariadb-server-10.3 
     apt -y install bluecherry
     systemctl restart bluecherry
 }
@@ -47,7 +41,6 @@ jammy_install()
     add-apt-repository ppa:ondrej/php -y
     apt -y update
     apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
-#    apt -y install mariadb-server-10.3
     apt -y install bluecherry
     systemctl restart bluecherry
 }
