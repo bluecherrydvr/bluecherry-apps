@@ -13,19 +13,6 @@ then
 exit
 fi 
 
-# Ubuntu 18.04
-bionic_install()
-{
-    apt update
-    apt -y install gpg python3-distutils wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    apt -y update
-    apt -y install bluecherry
-    systemctl restart bluecherry
-}
-
 # Ubuntu 20.04
 focal_install()
 {
@@ -45,30 +32,6 @@ focal_install()
     apt -y update
 #    apt -y install mariadb-server-10.3 
     apt -y install bluecherry
-    systemctl restart bluecherry
-}
-
-# Ubuntu 20.10
-groovy_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    apt -y update
-    apt -y install mariadb-server bluecherry
-    systemctl restart bluecherry
-}
-
-# Ubuntu 21.04
-hirsute_install()
-{
-    apt -y install gpg wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    apt -y update
-    apt -y install mariadb-server bluecherry
     systemctl restart bluecherry
 }
 
@@ -112,21 +75,6 @@ mantic_install()
 noble_install()
 {
     jammy_install
-}
-
-centos_7_install()
-{   
-    setenforce 0
-    sed -i 's/^SELINUX=.*/SELINUX=permissive/g' /etc/selinux/config
-    curl -s https://dl.bluecherrydvr.com/yum.repos.d/bluecherry-centos7.repo -o /etc/yum.repos.d/bluecherry-centos7.repo 
-    yum -y update
-    yum -y install epel-release
-    yum -y install dpkg wget epel-release httpd libbsd mariadb mariadb-server mkvtoolnix mkvtoolnix-gui mod_ssl nmap opencv-core php php-mysqlnd php-pdo php-pear-Mail php-pear-Mail-Mime policycoreutils-python sysstat v4l-utils
-    firewall-cmd --zone=public --add-port=7001/tcp --permanent
-    firewall-cmd --zone=public --add-port=7002/tcp --permanent
-    firewall-cmd --reload
-    yum -y install bluecherry
-    systemctl restart bluecherry
 }
 
 # Debian 10
@@ -190,18 +138,16 @@ check_distro()
 }
 
 check_distro
-if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "18.04" && "$VERSION_CODENAME" == "bionic"   ]]; then bionic_install;
-elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.10" && "$VERSION_CODENAME" == "groovy"   ]]; then groovy_install;
-elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
+if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "23.10" && "$VERSION_CODENAME" == "mantic"   ]]; then mantic_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" && "$VERSION_CODENAME" == "noble"    ]]; then noble_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "12"    && "$VERSION_CODENAME" == "bookworm" ]]; then bookworm_install;
-elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.1" && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # Mint 21.1 Vera, based on Ubuntu 22.04 Jammy
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.1" && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.2" && "$VERSION_CODENAME" == "victoria" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.3" && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 else
-    echo "Currently we only support Ubuntu 18.04 (Bionic), Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy), Ubuntu 23.10 (Mantic), Ubuntu 24.04 (Noble) and Debian 10 (Buster), 11 (Bullseye), 12 (Bookworm), Linux Mint 21.1 (Vera), 21.2 (Victoria), 21.3 (Virginia) for unstable testing"
+    echo "Currently we only support Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy), Ubuntu 23.10 (Mantic), Ubuntu 24.04 (Noble) and Debian 10 (Buster), 11 (Bullseye), 12 (Bookworm), Linux Mint 21.1 (Vera), 21.2 (Victoria), 21.3 (Virginia) for unstable testing"
 fi
