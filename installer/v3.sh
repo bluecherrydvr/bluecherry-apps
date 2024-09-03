@@ -20,7 +20,7 @@ focal_install()
     python3 /tmp/get-pip.py
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
     apt -y install bluecherry
@@ -36,7 +36,7 @@ jammy_install()
 #    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
     VERSION_CODENAME=jammy # don't say "vera" for Linux Mint at this point
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     add-apt-repository ppa:ondrej/php -y
     apt -y update
@@ -54,7 +54,7 @@ mantic_install()
     apt-get update
     apt -y install gpg software-properties-common wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt -y update
     apt -y install bluecherry
@@ -75,7 +75,7 @@ buster_install()
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
     apt-get -y install default-mysql-server bluecherry
@@ -87,7 +87,7 @@ bullseye_install()
     apt-get -y update
     apt-get -y install gnupg sudo sudo python3-distutils wget
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME"-unstable.list}"
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
     apt-get -y update
     apt-get -y install mariadb-server bluecherry
