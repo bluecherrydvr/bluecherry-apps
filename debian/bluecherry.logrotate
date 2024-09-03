@@ -6,7 +6,6 @@
 	notifempty
 	delaycompress
 	compress
-	create 640 syslog bluecherry
 	postrotate
 		reload rsyslog >/dev/null 2>&1 || true
 	endscript
