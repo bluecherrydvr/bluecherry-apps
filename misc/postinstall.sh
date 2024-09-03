@@ -173,6 +173,7 @@ case "$1" in
 		su bluecherry -c "chmod -R 770 /var/lib/bluecherry"
 		if [[ $IN_DEB ]]
 		then
+  			mkdir /var/run/bluecherry
 			chown -R bluecherry:bluecherry /var/run/bluecherry
 			su bluecherry -c "chmod -R 750 /var/run/bluecherry"
 		fi
