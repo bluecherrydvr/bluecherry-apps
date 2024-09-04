@@ -1,3 +1,12 @@
+bluecherry (3:3.1.3) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Update ffmpeg to 6.1.2 for a memory leak fix (https://github.com/bluecherrydvr/bluecherry-apps/pull/694)
+  * FIX: Create /var/run/bluecherry in postinstall.sh (https://github.com/bluecherrydvr/bluecherry-apps/pull/692)
+  * FIX: log rotation (https://github.com/bluecherrydvr/bluecherry-apps/pull/690)
+  * FIX: error in user management web UI (https://github.com/bluecherrydvr/bluecherry-apps/pull/689)
+
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Thu, 5 Sep 2024 00:36:00 +0100
+
 bluecherry (3:3.1.2) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * FEATURE: Add support of Debian 12, Ubuntu 23.10, Ubuntu 24.04, Mint 21.2, 21.3 (https://github.com/bluecherrydvr/bluecherry-apps/pull/684)
