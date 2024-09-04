@@ -343,7 +343,7 @@ class user{
 		$this->info['access_ptz_list'] = (isset($this->info['access_ptz_list']) ? explode(',', $this->info['access_ptz_list']) : Array());
 		$this->info['access_device_list'] = (isset($this->info['access_device_list']) ? explode(',', $this->info['access_device_list']) : Array());
 	}
-	private function checkUserData($data, $new=false){
+	private static function checkUserData($data, $new=false){
 		if (empty($data['username']))	{ return NO_USERNAME;	};
 		if (empty($data['email']))		{ return NO_EMAIL;		};
 		if (empty($data['password']))	{ return NO_PASS;		};
