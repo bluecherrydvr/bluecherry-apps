@@ -174,7 +174,7 @@ CREATE TABLE `EventsCam` (
   KEY `time_index` (`time`) USING BTREE,
   CONSTRAINT `EventsCam_ibfk_1` FOREIGN KEY (`media_id`) REFERENCES `Media` (`id`) ON DELETE CASCADE,
   CONSTRAINT `EventsCam_ibfk_2` FOREIGN KEY (`level_id`) REFERENCES `EventLevels` (`id`),
-  CONSTRAINT `EventsCam_ibfk_3` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON UPDATE CASCADE,
+  CONSTRAINT `EventsCam_ibfk_3` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT `EventsCam_ibfk_4` FOREIGN KEY (`type_id`) REFERENCES `EventTypesCam` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -227,7 +227,7 @@ CREATE TABLE `Media` (
   `archive` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `device_id` (`device_id`),
-  CONSTRAINT `Media_ibfk_1` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON UPDATE CASCADE
+  CONSTRAINT `Media_ibfk_1` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `OnvifEvents`;
