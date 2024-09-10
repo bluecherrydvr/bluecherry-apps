@@ -143,7 +143,7 @@ void motion_processor::run()
 			bc_log(Warning, "motion processor: avcodec_send_packet failed: %s", error);
 		}
 
-		while (ret >= 0) {
+		while (true) {
 			ret = avcodec_receive_frame(decode_ctx, frame);
 			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
 
