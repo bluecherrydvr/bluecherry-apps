@@ -790,9 +790,9 @@ class ipCamera{
 				return;  
 		}
 
-		//-> '-stimeout' is measured in microseconds
+		//-> '-timeout' is measured in microseconds
 		$ffprobe_output = shell_exec(
-			"/usr/lib/bluecherry/ffprobe -stimeout 5000000 -hide_banner -show_format -show_streams -print_format json ".$args. " " . escapeshellarg($path));
+			"/usr/lib/bluecherry/ffprobe -timeout 5000000 -hide_banner -show_format -show_streams -print_format json ".$args. " " . escapeshellarg($path));
 
 		$rtsp_data = json_decode($ffprobe_output, true);
 
