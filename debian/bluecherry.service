@@ -6,7 +6,7 @@ After=syslog.target network.target mysql.service
 Type=simple
 User=bluecherry
 Group=bluecherry
-#ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
+#ExecStart=/usr/bin/valgrind --tool=memcheck --leak-check=yes --leak-check=full --show-leak-kinds=all --log-file=/tmp/bluecherry-valgrind.log /usr/sbin/bc-server -s
 ExecStart=/usr/sbin/bc-server -s
 Restart=on-failure
 
