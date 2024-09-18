@@ -663,6 +663,7 @@ int snapshot_writer::write_frame(AVFrame *rawFrame)
 	if (ret < 0)
 	{
 		bc_avlog(ret, "avcodec_send_frame: snapshot encoding failed");
+		if (allocated) av_freep(&frame->data[0]);
 		av_frame_free(&frame);
 		return -1;
 	}
