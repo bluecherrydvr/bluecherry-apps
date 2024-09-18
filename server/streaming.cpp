@@ -360,7 +360,10 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
-		if (avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts) < 0) {
+		int ret;
+		ret = avformat_write_header(bc_rec->hls_stream_ctx[ctx_index], &muxer_opts);
+		av_dict_free(&muxer_opts);
+		if (ret < 0) {
 			bc_rec->log.log(Error, "Failed to write header in fragmented MP4 payload");
 			return -1;
 		}
