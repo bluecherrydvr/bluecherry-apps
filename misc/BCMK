@@ -73,6 +73,7 @@ libav/config.mak:
 		--enable-muxer=mpegts \
 		--enable-muxer=rawvideo \
 		--enable-muxer=rtp \
+		--enable-muxer=rtsp \
 		\
 		--enable-demuxer=concat \
 		--enable-demuxer=matroska \
@@ -112,12 +113,14 @@ libav/config.mak:
 		--enable-encoder=mpeg4 \
 		--enable-encoder=rawvideo \
 		\
+		--enable-filter=aevalsrc \
 		--enable-filter=aresample \
 		--enable-filter=fps \
 		--enable-filter=hwdownload \
 		--enable-filter=hwupload \
 		--enable-filter=scale \
 		--enable-filter=scale_vaapi \
+		--enable-filter=testsrc \
 		\
 
 
