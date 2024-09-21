@@ -54,70 +54,73 @@ libav/config.mak:
 		\
 		--disable-everything \
 		\
-		--enable-indev=v4l2 \
-		--enable-vaapi \
 		--enable-hwaccel=h264_vaapi \
 		--enable-hwaccel=hevc_vaapi \
+		--enable-indev=v4l2 \
+		--enable-vaapi \
 		\
 		--enable-protocol=file \
-		--enable-protocol=pipe \
 		--enable-protocol=http \
 		--enable-protocol=https \
+		--enable-protocol=pipe \
 		--enable-protocol=tls \
 		\
+		--enable-muxer=hls \
+		--enable-muxer=image2 \
 		--enable-muxer=matroska \
 		--enable-muxer=mjpeg \
-		--enable-muxer=rtp \
 		--enable-muxer=mp4 \
-		--enable-muxer=image2 \
+		--enable-muxer=mpegts \
 		--enable-muxer=rawvideo \
+		--enable-muxer=rtp \
+		--enable-muxer=rtsp \
 		\
-		--enable-demuxer=rtsp \
+		--enable-demuxer=concat \
 		--enable-demuxer=matroska \
 		--enable-demuxer=mjpeg \
 		--enable-demuxer=rawvideo \
-		--enable-demuxer=concat \
+		--enable-demuxer=rtsp \
 		\
 		--enable-bsf=aac_adtstoasc \
-		--enable-bsf=h264_mp4toannexb \
 		--enable-bsf=extract_extradata \
+		--enable-bsf=h264_mp4toannexb \
 		\
-		--enable-decoder=h264 \
-		--enable-decoder=hevc \
-		--enable-decoder=mpeg4 \
-		--enable-decoder=mjpeg \
-		--enable-decoder=rawvideo \
 		--enable-decoder=aac \
 		--enable-decoder=ac3 \
+		--enable-decoder=h264 \
+		--enable-decoder=hevc \
+		--enable-decoder=mjpeg \
 		--enable-decoder=mp2 \
 		--enable-decoder=mp3 \
+		--enable-decoder=mpeg4 \
+		--enable-decoder=pcm_alaw \
 		--enable-decoder=pcm_f32le \
 		--enable-decoder=pcm_f64le \
-		--enable-decoder=pcm_s16le \
-		--enable-decoder=pcm_alaw \
 		--enable-decoder=pcm_mulaw \
+		--enable-decoder=pcm_s16le \
+		--enable-decoder=rawvideo \
 		\
 		--enable-parser=h264 \
 		--enable-parser=hevc \
-		--enable-parser=mpeg4video \
 		--enable-parser=mjpeg \
+		--enable-parser=mpeg4video \
 		\
-		--enable-encoder=mjpeg \
-		--enable-encoder=mpeg4 \
-		--enable-encoder=rawvideo \
 		--enable-encoder=aac \
 		--enable-encoder=h264_vaapi \
-		--enable-encoder=mjpeg_vaapi \
 		--enable-encoder=hevc_vaapi \
+		--enable-encoder=mjpeg \
+		--enable-encoder=mjpeg_vaapi \
+		--enable-encoder=mpeg4 \
+		--enable-encoder=rawvideo \
 		\
-		--enable-filter=scale \
-		--enable-filter=fps \
-		--enable-filter=scale_vaapi \
+		--enable-filter=aevalsrc \
 		--enable-filter=aresample \
-		--enable-filter=hwupload \
+		--enable-filter=fps \
 		--enable-filter=hwdownload \
-		--enable-muxer=hls \
-		--enable-muxer=mpegts \
+		--enable-filter=hwupload \
+		--enable-filter=scale \
+		--enable-filter=scale_vaapi \
+		--enable-filter=testsrc \
 		\
 
 

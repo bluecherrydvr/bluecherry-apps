@@ -55,6 +55,9 @@ motion_processor::~motion_processor()
 	}
 #endif
 
+	for (int i = 0; i < sizeof(m_refFrames); i++) {
+		m_refFrames[i].release();
+	}
 	delete output_source;
 }
 
@@ -143,7 +146,7 @@ void motion_processor::run()
 			bc_log(Warning, "motion processor: avcodec_send_packet failed: %s", error);
 		}
 
-		while (ret >= 0) {
+		while (true) {
 			ret = avcodec_receive_frame(decode_ctx, frame);
 			if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
 
@@ -576,6 +579,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
     // first things first... get the original frame from the AVFrame and convert it to an OpenCV Grayscale Mat, and the "downscale" size.
     cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
     if (convert_AVFrame_to_grayMat(rawFrame, m) == 0) {
+	    m.release();
         return 0; // error converting frame...
     }
 
@@ -616,6 +620,7 @@ int motion_processor::detect_opencv(AVFrame *rawFrame)
 
 	if (m_motionDebug)
         check_for_new_debug_event(ret);
+	m.release();
 	return ret;
 }
 
@@ -627,8 +632,10 @@ int motion_processor::detect_opencv_advanced(AVFrame *rawFrame)
 
     // first things first... get the original frame from the AVFrame and convert it to an OpenCV Grayscale Mat, and the "downscale" size.
     cv::Mat m = cv::Mat(dst_h, dst_w, CV_8UC1);
-    if (convert_AVFrame_to_grayMat(rawFrame, m) == 0)
+    if (convert_AVFrame_to_grayMat(rawFrame, m) == 0) {
+        m.release();
         return 0; // error converting frame...
+    }
 
     // do a quick(-ish) blur to reduce noise...
     cv::GaussianBlur(m, m, cv::Size(21, 21), 0);
@@ -662,6 +669,7 @@ int motion_processor::detect_opencv_advanced(AVFrame *rawFrame)
     }
 
     m_motionTriggered = (num_md_frames >= m_minMotionFrames);
+    m.release();
     return m_motionTriggered;
 }
 
