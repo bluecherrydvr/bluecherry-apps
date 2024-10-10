@@ -584,38 +584,39 @@ int snapshot_writer::init_encoder(int width, int height)
 
 AVFrame* snapshot_writer::scale_frame(AVFrame *rawFrame, bool &allocated)
 {
+	// No actual size rescaling takes place here (it could though),
+	// just pixel format change for compatibility with JPEG file format.
 	AVFrame *frame = av_frame_alloc();
 	if (frame == NULL)
 	{
 		bc_log(Error, "Failed to allocate frame for scaling: %s", strerror(errno));
 		return NULL;
 	}
+	frame->format = AV_PIX_FMT_YUVJ420P;
+	frame->width = rawFrame->width;
+	frame->height = rawFrame->height;
 
-	if (rawFrame->format != AV_PIX_FMT_YUVJ420P)
+	if (rawFrame->format != frame->format)
 	{
 		SwsContext *sws = NULL;
-		int format = rawFrame->format;
-
 		sws = sws_getCachedContext(NULL,
-				rawFrame->width, rawFrame->height, (AVPixelFormat)format,
-				rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P,
+				rawFrame->width, rawFrame->height, (AVPixelFormat)rawFrame->format,
+				rawFrame->width, rawFrame->height, (AVPixelFormat)frame->format,
 				SWS_BICUBIC, NULL, NULL, NULL);
 
 		if (sws == NULL)
 		{
-			bc_log(Bug, "Failed to convert pixel format for JPEG (format is %d)", format);
-
+			bc_log(Bug, "Failed to convert pixel format for JPEG (format is %d)", rawFrame->format);
 			av_frame_free(&frame);
 			return NULL;
 		}
 
 		int ret = av_image_alloc( frame->data, frame->linesize,
-			rawFrame->width, rawFrame->height, AV_PIX_FMT_YUVJ420P, 4);
+			rawFrame->width, rawFrame->height, (AVPixelFormat)frame->format, 4);
 
 		if (ret < 0)
 		{
 			bc_log(Error, "Failed to allocate picture for scaling: %s", strerror(errno));
-
 			sws_freeContext(sws);
 			av_frame_free(&frame);
 			return NULL;
