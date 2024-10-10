@@ -158,6 +158,7 @@ function stop_apache
 # 1 - rpm install, 2 - rpm upgrade
 case "$1" in
 	configure|reconfigure|1|2)
+		PREV_INSTALLED_VERSION=$2
 		if [[ $IN_DEB ]]
 		then
 			ucfr bluecherry /etc/bluecherry.conf
@@ -446,8 +447,10 @@ case "$1" in
 
 		install_certbot
 		
-		# Install crontabs for subdomain renewal and SSL renewal using certbot
-		crontab -l 2>/dev/null || true; printf "* * */5 * * certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ >/dev/null 2>&1\n*/5 * * * * curl -k https://localhost:7001/subdomainprovidercron >/dev/null 2>&1\n" | crontab -
+		# Clean root's crontab from entries which we previously put there
+		# FIXME one-time upgrade procedure would be nice.
+		# we have a nice way but use it only for mysql upgrades.
+		crontab -l 2>/dev/null | grep -v 'bluecherry\|subdomainprovidercron' | crontab -
 
 
 		nginx -t 2>/dev/null > /dev/null
