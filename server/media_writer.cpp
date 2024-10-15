@@ -109,6 +109,10 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	if (re < 0)
 	{
 		bc_avlog(re, "Error writing frame to recording");
+		if (re == AVERROR(EINVAL)) {
+			bc_log(Error, "Error writing frame to recording. Likely timestamping problem. Ignoring.");
+			return true;
+		}
 		return false;
 	}
 
