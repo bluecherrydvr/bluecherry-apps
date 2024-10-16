@@ -43,7 +43,8 @@ static void bc_avlog(int val, const char *msg)
 // S.K. >> Implementation of separated media writer
 ///////////////////////////////////////////////////////////////
 
-media_writer::media_writer()
+media_writer::media_writer():
+	last_mux_dts{0, 0}
 {
 }
 
@@ -74,31 +75,24 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	opkt.stream_index = stream->index;
 
 	/* Fix non-increasing timestamps */
-	if (pkt.type == AVMEDIA_TYPE_AUDIO)
-	{
-		if (opkt.pts < last_audio_pts || opkt.dts < last_audio_dts)
-		{
-			opkt.pts = last_audio_pts + 1;
-			opkt.dts = last_audio_dts + 1;
-			bc_log(Debug, "fixing timestamps in audio packet");
-		}
-
-		last_audio_pts = opkt.pts;
-		last_audio_dts = opkt.dts;
+	static_assert(AVMEDIA_TYPE_VIDEO == 0);
+	static_assert(AVMEDIA_TYPE_AUDIO == 1);
+	int64_t &last_mux_dts = this->last_mux_dts[pkt.type];
+	if (opkt.dts == AV_NOPTS_VALUE) {
+		// Do nothing.
+		// In ffmpeg, ffmpeg_mux.c:write_packet() does nothing and
+		// lavf/mux.c:compute_muxer_pkt_fields() deals with it for now
+		bc_log(Info, "Got bad dts=NOPTS on stream %d, passing to libavformat to handle", opkt.stream_index);
+	} else if (last_mux_dts < opkt.dts) {
+		// Do nothing. This is normal.
+	} else {
+		// In this clause we're dealing with incorrect timestamp received from the source.
+		assert(last_mux_dts >= opkt.dts);
+		assert(last_mux_dts != AV_NOPTS_VALUE);
+		bc_log(Info, "Got bad dts=%" PRId64 " while last was %" PRId64 " on stream %d, setting to last+1", opkt.dts, last_mux_dts, opkt.stream_index);
+		opkt.dts = last_mux_dts + 1;
 	}
-
-	if (pkt.type == AVMEDIA_TYPE_VIDEO)
-	{
-		if (opkt.pts < last_video_pts || opkt.dts < last_video_dts)
-		{
-			opkt.pts = last_video_pts + 1;
-			opkt.dts = last_video_dts + 1;
-			bc_log(Debug, "fixing timestamps in video packet");
-		}
-
-		last_video_pts = opkt.pts;
-		last_video_dts = opkt.dts;
-	}
+	last_mux_dts = opkt.dts;
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
 		opkt.dts, opkt.pts, out_ctx->streams[opkt.stream_index]->time_base.num,

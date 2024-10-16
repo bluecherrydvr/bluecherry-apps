@@ -25,13 +25,8 @@ protected:
 	AVStream *audio_st = NULL;
 	std::string recording_path;
 
-	/* Base PTS value for the start of the recording. This assumes that all streams
-	 * share a time_base of AV_TIME_BASE, and 0 represents the same instant across all
-	 * streams. This is set automatically by the first written packet. */
-	int64_t last_video_pts = 0;
-	int64_t last_video_dts = 0;
-	int64_t last_audio_pts = 0;
-	int64_t last_audio_dts = 0;
+	/* Control monotonicity of timestamps we feed to muxer, the same way as in ffmpeg_mux.c in ffmpeg.*/
+	int64_t last_mux_dts[2] = {0, 0};
 };
 
 class snapshot_writer
