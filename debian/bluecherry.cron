@@ -1,3 +1,14 @@
-# m h dom mon dow user          command
-0   0  *   *   *  bluecherry    /usr/share/bluecherry/backup_db.sh
-30   0  *   *   *  bluecherry    curl -k https://localhost:7001/subdomainprovidercron
+# This file is a part of bluecherry package.
+
+# .---------------- minute (0 - 59)
+# |  .------------- hour (0 - 23)
+# |  |  .---------- day of month (1 - 31)
+# |  |  |  .------- month (1 - 12) OR jan,feb,mar,apr ...
+# |  |  |  |  .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
+# |  |  |  |  |
+# *  *  *  *  *   user-name     command to be executed
+*    * */5 *  *   root          certbot renew --config-dir=/usr/share/bluecherry/nginx-includes/letsencrypt/ &> /var/log/bluecherry-letsencrypt.log
+0    0  *  *  *   bluecherry    /usr/share/bluecherry/backup_db.sh
+30   0  *  *  *   bluecherry    curl -k https://localhost:7001/subdomainprovidercron
+
+# vim: syntax=crontab
