@@ -1,3 +1,10 @@
+bluecherry (3:3.1.6) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Deoccupy root crontab (https://github.com/bluecherrydvr/bluecherry-apps/pull/705)
+  * FIX: Make continuous recording handle bad timestamps gracefully (https://github.com/bluecherrydvr/bluecherry-apps/pull/708)
+
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Thu, 21 Oct 2024 18:25:00 +0100
+
 bluecherry (3:3.1.5) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * FIX: Snapshots saving (https://github.com/bluecherrydvr/bluecherry-apps/pull/702)
