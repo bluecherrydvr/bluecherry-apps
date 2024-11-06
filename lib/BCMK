@@ -5,9 +5,9 @@ else
 	LDFLAGS		+= -L/usr/lib64/mysql -lmysqlclient
 endif
 
-LDFLAGS		+= -lconfig -lm -lrt -lbsd
+LDFLAGS		+= -lconfig -lm -lrt -lbsd $(shell pkg-config --libs libcurl)
 LDFLAGS		+= -lavutil -lavformat -lavcodec -lpugixml
-CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\""
+CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\"" $(shell pkg-config --cflags libcurl)
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0

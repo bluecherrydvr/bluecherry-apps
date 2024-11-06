@@ -11,7 +11,8 @@ Build-Depends: debhelper (>= 11),
 #stretch default-libmysqlclient-dev,
 #buster default-libmysqlclient-dev,
  libidn11-dev, libbsd-dev, yasm, libudev-dev, libopencv-dev,
- libva-dev
+ libva-dev,
+ libcurl4, libcurl4-dev,
 Standards-Version: 3.9.5
 
 Package: bluecherry
@@ -30,6 +31,7 @@ Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  certbot,
  rsyslog,
  logrotate,
+ libcurl4,
 # python3-pip,
 #focal   php-sqlite3, php-gd, php-curl, php-mysql
 #jammy   php-sqlite3, php-gd, php-curl, php-mysql
