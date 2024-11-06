@@ -776,13 +776,13 @@ class ipCamera{
 
 		switch($this->info['protocol'])  {
 			case 'IP-RTSP':
-				$path = 'rtsp://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
+				$path = 'rtsp://'.((empty($this->info['rtsp_username'])) ? '' : urlencode($this->info['rtsp_username']).':'.urlencode($this->info['rtsp_password']).'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['rtsp'];
 				$rtp_args_menu = array("-rtsp_flags +prefer_tcp", "-rtsp_transport tcp", "-rtsp_transport +udp+udp_multicast");
 				$args = $rtp_args_menu[$this->info['rtsp_rtp_prefer_tcp']];
 				break;
 			case 'IP-MJPEG': 
 				//FIXME: This is the old logic for testing MJPEG. Testing for MJPEG is currently not supported by the bundled ffprobe method used for RTSP
-				$path = 'http://'.((empty($this->info['rtsp_username'])) ? '' : $this->info['rtsp_username'].':'.$this->info['rtsp_password'].'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
+				$path = 'http://'.((empty($this->info['rtsp_username'])) ? '' : urlencode($this->info['rtsp_username']).':'.urlencode($this->info['rtsp_password']).'@').((empty($this->info['ipAddrMjpeg'])) ? $this->info['ipAddr'] : $this->info['ipAddrMjpeg']).':'.$this->info['portMjpeg'].$this->info['mjpeg_path'];
 				$headers = @get_headers($path);
 				if (!$headers) { $this->info['connection_status']['success'] = false; return; }
 				preg_match("/([0-9]{3})/", $headers[0], $response_code);
