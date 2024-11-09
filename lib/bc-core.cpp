@@ -29,6 +29,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <bsd/string.h>
+#include <curl/curl.h>
 
 #include "libbluecherry.h"
 #include "lavf_device.h"
@@ -85,7 +86,19 @@ static int get_creds(BC_DB_RES dbres, char *creds, size_t size)
 		return -1;
 
 	if (*user && *pass) {
-		size_t s = snprintf(creds, size, "%s:%s@", user, pass);
+		char *urlencoded_user = curl_easy_escape(NULL, user, 0);
+		if (!urlencoded_user) {
+			return -1;
+		}
+
+		char *urlencoded_pass = curl_easy_escape(NULL, pass, 0);
+		if (!urlencoded_pass) {
+			curl_free(urlencoded_user);
+			return -1;
+		}
+		size_t s = snprintf(creds, size, "%s:%s@", urlencoded_user, urlencoded_pass);
+		curl_free(urlencoded_user);
+		curl_free(urlencoded_pass);
 		if (s >= size)
 			return -1;
 	} else {
@@ -141,7 +154,7 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 	 * __data, but completely unused and unreachable (bc_record type belongs to
 	 * server and not to lib) */
 
-	char creds[64];
+	char creds[4096];
 	if (get_creds(dbres, creds, sizeof(creds)) < 0)
 		return -1;
 
