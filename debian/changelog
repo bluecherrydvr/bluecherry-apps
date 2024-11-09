@@ -1,3 +1,9 @@
+bluecherry (3:3.1.7) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: handling of special characters in RTSP credentials (https://github.com/bluecherrydvr/bluecherry-apps/pull/711)
+
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Thu, 9 Nov 2024 23:00:00 +0000
+
 bluecherry (3:3.1.6) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * FIX: Deoccupy root crontab (https://github.com/bluecherrydvr/bluecherry-apps/pull/705)
