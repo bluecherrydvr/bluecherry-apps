@@ -125,7 +125,7 @@ class eventsIndex extends Controller {
                     $entry['content'] = array(
                         'media_id' => $item['media_id'],
                         'media_size' => $item['media_size'],
-                        'media_duration' => $item['media_duration'],
+                        'media_duration' => $item['video_duration'],
                         'content' => (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/media/request.php?id=' . $item['media_id']
                     );
                 }
