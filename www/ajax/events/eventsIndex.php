@@ -8,6 +8,7 @@ class eventsIndex extends Controller {
         $this->chAccess('backup');
     }
 
+    // This function handles API endpoint /events/ used by client app.
     public function getData()
     {
         $current_user = $this->user;
