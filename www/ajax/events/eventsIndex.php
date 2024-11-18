@@ -8,6 +8,7 @@ class eventsIndex extends Controller {
         $this->chAccess('backup');
     }
 
+    // This function handles API endpoint /events/ used by client app.
     public function getData()
     {
         $current_user = $this->user;
@@ -18,7 +19,7 @@ class eventsIndex extends Controller {
         $events_portion = 5000;
 
         $query = "SELECT EventsCam.*, Media.size AS media_size, Media.start, Media.end, Devices.device_name, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available, ".
-            "IFNULL(TIMESTAMPDIFF(SECOND, Media.start, Media.end), 0) AS video_duration ".
+            "IFNULL(TIMESTAMPDIFF(SECOND, Media.start, Media.end), 0) AS media_duration ".
             "FROM EventsCam ".
             "LEFT JOIN Media ON (EventsCam.media_id=Media.id) ".
             "LEFT JOIN Devices ON (EventsCam.device_id=Devices.id) ".
