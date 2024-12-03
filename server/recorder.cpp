@@ -108,9 +108,9 @@ void recorder::run()
 					bc_log(Error, "Failed while feeding snapshot saver with more frames");
 					stop_snapshot();
 				} else if (ret > 0) {
-					bc_log(Info, "Still need to feed more frames to finish snapshot");
+					bc_log(Debug, "Still need to feed more frames to finish snapshot");
 				} else {
-					bc_log(Info, "Finalized snapshot");
+					bc_log(Debug, "Finalized snapshot");
 					stop_snapshot();
 					snapshots_done++;
 					event_trigger_notifications(current_event);
@@ -123,7 +123,7 @@ void recorder::run()
 						+ (snapshotting_delay_since_motion_start_ms/1000))) {
 
 				stop_snapshot();
-				bc_log(Info, "Making a snapshot");
+				bc_log(Debug, "Making a snapshot");
 
 				// Push frames to decoder until picture is taken
 				// In some cases one AVPacket marked as keyframe is not enough, and next
@@ -141,9 +141,9 @@ void recorder::run()
 					bc_log(Error, "Failed to make snapshot");
 					stop_snapshot();
 				} else if (ret > 0) {
-					bc_log(Info, "Need to feed more frames to finish snapshot");
+					bc_log(Debug, "Need to feed more frames to finish snapshot");
 				} else {
-					bc_log(Info, "Saved snapshot from single keyframe");
+					bc_log(Debug, "Saved snapshot from single keyframe");
 					snapshots_done++;
 					stop_snapshot();
 					event_trigger_notifications(current_event);
