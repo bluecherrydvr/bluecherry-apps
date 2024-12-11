@@ -10,6 +10,7 @@ Group=bluecherry
 #ExecStart=/usr/bin/rr record -o /tmp/bluecherry.rr /usr/sbin/bc-server -s
 ExecStart=/usr/sbin/bc-server -s
 Restart=on-failure
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
