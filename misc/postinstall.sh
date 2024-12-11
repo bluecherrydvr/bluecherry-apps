@@ -4,6 +4,7 @@
 # This file is common for debian and centos (called at package postinstall stage)
 
 set -x # trace
+set -euo pipefail
 
 for x in /etc/*-release
 do
