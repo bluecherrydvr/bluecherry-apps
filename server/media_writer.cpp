@@ -44,7 +44,7 @@ static void bc_avlog(int val, const char *msg)
 ///////////////////////////////////////////////////////////////
 
 media_writer::media_writer():
-	last_mux_dts{0, 0}
+	last_mux_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE}
 {
 }
 
@@ -78,36 +78,52 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	static_assert(AVMEDIA_TYPE_VIDEO == 0);
 	static_assert(AVMEDIA_TYPE_AUDIO == 1);
 	int64_t &last_mux_dts = this->last_mux_dts[pkt.type];
+	bool update_last_mux_dts = true;
 	if (opkt.dts == AV_NOPTS_VALUE) {
 		// Do nothing.
 		// In ffmpeg, ffmpeg_mux.c:write_packet() does nothing and
 		// lavf/mux.c:compute_muxer_pkt_fields() deals with it for now
 		bc_log(Info, "Got bad dts=NOPTS on stream %d, passing to libavformat to handle", opkt.stream_index);
+		update_last_mux_dts = false;
+	} else if (last_mux_dts == AV_NOPTS_VALUE) {
+		// First packet ever. Initialize last_mux_dts and move on.
 	} else if (last_mux_dts < opkt.dts) {
-		// Do nothing. This is normal.
+		// Monotonically increasing timestamps. This is normal.
+
+		const int tolerated_gap_seconds = 1;
+		int64_t delta_dts = opkt.dts - last_mux_dts;
+		if (delta_dts > tolerated_gap_seconds * AV_TIME_BASE) {
+			// Too large a gap, assume discontinuity and close this recording file.
+			bc_log(Info, "Bad timestamp: too large a gap of %d seconds (%d tolerated), dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", (int)(delta_dts / AV_TIME_BASE), tolerated_gap_seconds, opkt.dts, last_mux_dts, opkt.stream_index);
+			return false;
+		}
 	} else {
 		// In this clause we're dealing with incorrect timestamp received from the source.
 		assert(last_mux_dts >= opkt.dts);
 		assert(last_mux_dts != AV_NOPTS_VALUE);
-		bc_log(Info, "Got bad dts=%" PRId64 " while last was %" PRId64 " on stream %d, setting to last+1", opkt.dts, last_mux_dts, opkt.stream_index);
-		opkt.dts = last_mux_dts + 1;
+		bc_log(Info, "Got bad dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", opkt.dts, last_mux_dts, opkt.stream_index);
+		return false;
 	}
-	last_mux_dts = opkt.dts;
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
 		opkt.dts, opkt.pts, out_ctx->streams[opkt.stream_index]->time_base.num,
 		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
 		!!(opkt.flags & AV_PKT_FLAG_KEY));
 
+	auto last_mux_dts_uncommitted = opkt.dts; // opkt.dts is lost as av_interleaved_write_frame() frees opkt
 	re = av_interleaved_write_frame(out_ctx, &opkt);
 	if (re < 0)
 	{
-		bc_avlog(re, "Error writing frame to recording");
 		if (re == AVERROR(EINVAL)) {
-			bc_log(Error, "Error writing frame to recording. Likely timestamping problem. Ignoring.");
-			return true;
+			bc_log(Error, "Error writing frame to recording. Likely timestamping problem.");
+		} else {
+			bc_avlog(re, "Error writing frame to recording.");
 		}
+		update_last_mux_dts = false;
 		return false;
+	}
+	if (update_last_mux_dts) {
+		last_mux_dts = last_mux_dts_uncommitted;
 	}
 
 	return true;
@@ -116,6 +132,9 @@ bool media_writer::write_packet(const stream_packet &pkt)
 void media_writer::close()
 {
 	video_st = audio_st = NULL;
+	for (int i = 0; i < sizeof(last_mux_dts)/sizeof(last_mux_dts[0]); i++) {
+		last_mux_dts[i] = AV_NOPTS_VALUE;
+	}
 
 	if (out_ctx)
 	{
