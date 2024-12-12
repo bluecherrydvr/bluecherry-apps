@@ -38,7 +38,7 @@ jammy_install()
     VERSION_CODENAME=jammy # don't say "vera" for Linux Mint at this point
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
     wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    add-apt-repository ppa:ondrej/php -y
+    echo "deb [trusted=yes] https://ppa.launchpadcontent.net/ondrej/php/ubuntu/ jammy main" > /etc/apt/sources.list.d/ondrej-ubuntu-php-jammy.list
     apt -y update
     apt -y install php7.4-fpm php7.4-sqlite3 php7.4-curl php7.4-mysql php7.4-gd php-mail php-mail-mime php-mysql php7.4-fpm php7.4-mysql
     apt -y install bluecherry
@@ -62,6 +62,7 @@ mantic_install()
 }
 
 # Ubuntu 24.04
+# Ubuntu 24.10
 noble_install()
 {
     mantic_install
@@ -128,10 +129,15 @@ check_distro()
 }
 
 check_distro
+if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "23.10" && "$VERSION_CODENAME" == "mantic"   ]]; then
+    echo "This distribution release has reached its End Of Life and is not supported anymore. All users should upgrade."
+    exit 1
+fi
+
 if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == "focal"    ]]; then focal_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
-elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "23.10" && "$VERSION_CODENAME" == "mantic"   ]]; then mantic_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" && "$VERSION_CODENAME" == "noble"    ]]; then noble_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.10" && "$VERSION_CODENAME" == "oracular" ]]; then noble_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "12"    && "$VERSION_CODENAME" == "bookworm" ]]; then bookworm_install;
@@ -139,5 +145,6 @@ elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.1" && "$VERSION_CODENAME" =
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.2" && "$VERSION_CODENAME" == "victoria" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.3" && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 else
-    echo "Currently we only support Ubuntu 20.04 (Focal), Ubuntu 22.04 (Jammy), Ubuntu 23.10 (Mantic), Ubuntu 24.04 (Noble) and Debian 10 (Buster), 11 (Bullseye), 12 (Bookworm), Linux Mint 21.1 (Vera), 21.2 (Victoria), 21.3 (Virginia) for unstable testing"
+    echo "Currently we only support up to date Ubuntu, Debian and Mint Linux distributions."
+    exit 1
 fi
