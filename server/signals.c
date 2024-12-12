@@ -58,7 +58,9 @@ void signals_setup()
 	}
 
 	// these signals are ignored:
-	sa.sa_sigaction = SIG_IGN;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDWAIT;
+	sa.sa_handler = SIG_IGN;
 	ret = sigaction(SIGCHLD, &sa, NULL);
 	assert(!ret);
 	ret = sigaction(SIGPIPE, &sa, NULL);

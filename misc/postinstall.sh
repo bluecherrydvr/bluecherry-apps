@@ -105,6 +105,9 @@ function install_certbot
 	elif [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == mantic ]]; then
 		echo 'For Ubuntu 23.10 (mantic) we rely on packaged certbot'
 		return
+	elif [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == oracular ]]; then
+		echo 'For Ubuntu 24.10 (oracular) we rely on packaged certbot'
+		return
 	elif [[ "$ID" == debian ]] && [[ "$VERSION_CODENAME" == bookworm ]]; then
 		echo 'For Debian 12 (bookworm) we rely on packaged certbot'
 		return
@@ -113,7 +116,7 @@ function install_certbot
 	export PATH=/usr/local/bin:"$PATH"
 
 	# Ubuntu 23+, Debian 12 make this step fail. Fall back to system package.
-	install_pip || return
+	install_pip || return 0
 
 	# Install pip3 dependencies
 	pip3 install --user --upgrade setuptools_rust certbot certbot-dns-subdomain-provider
