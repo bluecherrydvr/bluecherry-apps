@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
-#include <assert.h>
 
 #include "bt.h"
 
@@ -12,8 +11,6 @@ static const char * const sig_name[] = {
 	[SIGILL]  = "Illegal instruction",
 	[SIGFPE]  = "Floating point exception",
 };
-
-const char *shutdown_reason = NULL;
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
@@ -28,14 +25,8 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGFPE:
 		bt(sig_name[signum], info->si_addr);
 		_exit(1);
-
-	case SIGINT:
-	case SIGTERM:
-	case SIGQUIT:
-	case SIGHUP:
-		shutdown_reason = "Termination signal received";
-
 	default:
+		/* SIGCHLD */
 		return;
 	}
 
@@ -44,23 +35,15 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 
 void signals_setup()
 {
-	int ret;
-	const int sig[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGINT, SIGTERM, SIGQUIT, SIGHUP };
+	const int sig[] = { SIGCHLD, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_sigaction = sighandler;
 	sa.sa_flags = SA_SIGINFO | SA_NOCLDWAIT;
 
-	for (unsigned int i = 0; i < sizeof(sig) / sizeof(sig[0]); i++) {
-		ret = sigaction(sig[i], &sa, NULL);
-		assert(!ret);
-	}
+	for (unsigned int i = 0; i < sizeof(sig) / sizeof(sig[0]); i++)
+		sigaction(sig[i], &sa, NULL);
 
-	// these signals are ignored:
-	sa.sa_sigaction = SIG_IGN;
-	ret = sigaction(SIGCHLD, &sa, NULL);
-	assert(!ret);
-	ret = sigaction(SIGPIPE, &sa, NULL);
-	assert(!ret);
+	signal(SIGPIPE, SIG_IGN);
 }
