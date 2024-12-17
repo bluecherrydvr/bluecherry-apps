@@ -101,10 +101,15 @@ public:
 
 	/* Motion detection & recording */
 	class motion_processor *m_processor;
+	std::thread *m_processor_thread;
 	class trigger_processor *t_processor;
+	std::thread *t_processor_thread;
 	class motion_handler *m_handler;
+	std::thread *m_handler_thread;
 	class recorder *rec_continuous;
+	std::thread *rec_continuous_thread;
 	class recorder *rec_motion;
+	std::thread *rec_motion_thread;
 
 	/* Live View substream */
 	class substream *liveview_substream;

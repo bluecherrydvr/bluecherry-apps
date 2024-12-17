@@ -862,6 +862,7 @@ static void *bc_mproc_thread(void *data)
 	return NULL;
 }
 
+/*
 void motion_processor::start_thread()
 {
 	int ret;
@@ -872,5 +873,5 @@ void motion_processor::start_thread()
 		       strerror(errno));
 		return;
 	}
-	pthread_detach(m_thread);
 }
+*/

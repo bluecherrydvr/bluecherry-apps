@@ -52,7 +52,7 @@ public:
 	void destroy();
 	void run();
 
-	void start_thread();
+	//void start_thread();
 
 private:
 	AVCodecContext *decode_ctx;
