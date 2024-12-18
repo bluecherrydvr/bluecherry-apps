@@ -5,6 +5,7 @@ bluecherry (3:3.1.8) bookworm bullseye buster focal jammy mantic noble; urgency=
   * FIX: Installer bug on Linux Mint (https://github.com/bluecherrydvr/bluecherry-apps/pull/719)
   * FEATURE: Support Ubuntu 24.10, drop EOL'd 23.10 (https://github.com/bluecherrydvr/bluecherry-apps/pull/719)
   * FIX: Misc (https://github.com/bluecherrydvr/bluecherry-apps/pull/717)
+  * FIX: XSS vulnerability (https://github.com/bluecherrydvr/bluecherry-apps/pull/679)
 
  -- Andriy Utkin <autkin@bluecherrydvr.com>  Wed, 11 Dec 2024 18:30:00 +0000
 
