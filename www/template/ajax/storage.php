@@ -37,7 +37,7 @@
                             <label class="control-label"><?php echo LOCATION; ?></label>
                         </td>
                         <td class="col-lg-6 col-md-6 col-sm-6 col-xs-6">
-                            <input class="form-control storage-path" name="path[]" type="text" value="<?php echo $location['path']; ?>" />
+                            <input class="form-control storage-path" name="path[]" type="text" value="<?php echo htmlspecialchars($location['path']); ?>" />
                         </td>
                         <td class="col-lg-1 col-md-1 col-sm-1 col-xs-1 align-right">
                             <label class="control-label">Max:</label>
