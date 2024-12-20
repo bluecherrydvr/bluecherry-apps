@@ -310,6 +310,9 @@ foreach($users as $id => $user){
 	$user = data::getObject('Users', 'id', $user);
 	$emails = array_merge($emails, explode('|', $user[0]['email']));
 }
+if (empty($emails)) {
+	exit(); // Nobody to notify
+}
 
 $message->setTo(array_unique($emails));
 
