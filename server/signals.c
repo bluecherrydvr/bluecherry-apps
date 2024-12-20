@@ -13,7 +13,7 @@ static const char * const sig_name[] = {
 	[SIGFPE]  = "Floating point exception",
 };
 
-const char *shutdown_reason = NULL;
+volatile sig_atomic_t shutdown_flag;
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
@@ -33,7 +33,7 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGTERM:
 	case SIGQUIT:
 	case SIGHUP:
-		shutdown_reason = "Termination signal received";
+		shutdown_flag = 1;
 
 	default:
 		return;
@@ -45,6 +45,9 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 void signals_setup()
 {
 	int ret;
+
+	shutdown_flag = 0;
+
 	const int sig[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGINT, SIGTERM, SIGQUIT, SIGHUP };
 	struct sigaction sa;
 
