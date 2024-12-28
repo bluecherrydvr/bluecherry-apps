@@ -115,10 +115,9 @@ int lavf_device::start()
 		av_strerror(re, error_message, sizeof(error_message));
 		char safe_url[512];
     		strlcpy(safe_url, url, sizeof(safe_url));
-    		// Strip the username and password from the Find the @ symbol that separates credentials from host
+    		/* Strip the username and password from the Find the @ symbol that separates credentials from host */
     		char *at_pos = strchr(safe_url, '@');
     		if (at_pos && strncmp(safe_url, "rtsp://", 7) == 0) {
-        		// Move everything after @ to just after the rtsp://
         	memmove(safe_url + 7, at_pos + 1, strlen(at_pos + 1) + 1);
 	}
 
