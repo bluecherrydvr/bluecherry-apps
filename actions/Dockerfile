@@ -14,7 +14,7 @@ RUN apt-get update
 RUN apt-get install --no-install-recommends -y \
             git sudo openssl ca-certificates wget gnupg gnupg2 gnupg1 \
             ssl-cert nmap curl sysstat iproute2 \
-            autoconf automake libtool build-essential gcc g++ \
+            autoconf automake libtool build-essential gcc g++ libcurl4-openssl-dev \
             debhelper ccache bison flex texinfo yasm cmake
 
 RUN apt-get install --no-install-recommends -y \
