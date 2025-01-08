@@ -67,7 +67,9 @@ jobs:
         uses: docker/build-push-action@v4     
         with:
             #working-directory: server/
-            context: "{{defaultContext}}:actions"
+            context: ./actions
+            dockerfile: ./actions/Dockerfile            
+#            context: "{{defaultContext}}:actions"
             push: true
             tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}
