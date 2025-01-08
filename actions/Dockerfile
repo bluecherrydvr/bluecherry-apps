@@ -116,6 +116,12 @@ RUN apt-get update \
         rsyslog nmap curl sysstat iproute2 \
         openssl ca-certificates ssl-cert gnupg gnupg2 gnupg1 sudo mysql-client python3-pip wget curl nano cron
 
+# Allow service commands during installation
+RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+
+# Ensure noninteractive mode
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN { \
         echo "[client]";                        \
         echo "user=$MYSQL_ADMIN_LOGIN";         \
@@ -161,6 +167,9 @@ RUN apt-get clean \
 # from environment variables passed in by docker or docker-compose.
 RUN rm -f /root/.my.cnf \
  && rm -f /etc/bluecherry.conf
+
+RUN rm /usr/sbin/policy-rc.d
+
 
 # When running rsyslog in a container, we need to disable imklog
 # since the in-container process won't be allowed access to it.
