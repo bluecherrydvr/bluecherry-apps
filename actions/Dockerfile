@@ -21,6 +21,9 @@ RUN apt-get install --no-install-recommends -y \
             libbsd-dev libopencv-dev libudev-dev libva-dev \
             linux-image-generic linux-headers-generic \
             libmysqlclient-dev rsyslog
+
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+ls -ltrc /usr/include/x86_64-linux-gnu/curl/curl.h            
             
 # ---------------------------------------------------------------------------
 FROM os_dev_environment as bluecherry_base_environment
