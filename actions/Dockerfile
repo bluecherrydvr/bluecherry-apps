@@ -14,13 +14,16 @@ RUN apt-get update
 RUN apt-get install --no-install-recommends -y \
             git sudo openssl ca-certificates wget gnupg gnupg2 gnupg1 \
             ssl-cert nmap curl sysstat iproute2 \
-            autoconf automake libtool build-essential gcc g++ \
+            autoconf automake libtool build-essential gcc g++ libcurl4-openssl-dev \
             debhelper ccache bison flex texinfo yasm cmake
 
 RUN apt-get install --no-install-recommends -y \
             libbsd-dev libopencv-dev libudev-dev libva-dev \
             linux-image-generic linux-headers-generic \
             libmysqlclient-dev rsyslog
+
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+RUN ls -ltrc /usr/include/x86_64-linux-gnu/curl/curl.h            
             
 # ---------------------------------------------------------------------------
 FROM os_dev_environment as bluecherry_base_environment
@@ -113,6 +116,13 @@ RUN apt-get update \
         rsyslog nmap curl sysstat iproute2 \
         openssl ca-certificates ssl-cert gnupg gnupg2 gnupg1 sudo mysql-client python3-pip wget curl nano cron
 
+# Allow service commands during installation
+RUN echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && chmod +x /usr/sbin/policy-rc.d
+RUN echo "rsyslog rsyslog/restart_on_upgrade boolean false" | debconf-set-selections
+
+# Ensure noninteractive mode
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN { \
         echo "[client]";                        \
         echo "user=$MYSQL_ADMIN_LOGIN";         \
@@ -144,8 +154,9 @@ RUN { \
         echo bluecherry bluecherry/db_user string $BLUECHERRY_DB_USER; \
         echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD; \
     } | debconf-set-selections \
- && export host=$BLUECHERRY_DB_HOST \
- && apt install -y --no-install-recommends ./bluecherry-apps/releases/bluecherry_*.deb
+ && export host=$BLUECHERRY_DB_HOST 
+#apt install -y --no-install-recommends ./bluecherry-apps/releases/bluecherry_*.deb
+RUN DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y ./bluecherry-apps/releases/bluecherry_*.deb
 
 # Cleanup tasks
 RUN apt-get clean \
@@ -158,6 +169,7 @@ RUN apt-get clean \
 # from environment variables passed in by docker or docker-compose.
 RUN rm -f /root/.my.cnf \
  && rm -f /etc/bluecherry.conf
+
 
 # When running rsyslog in a container, we need to disable imklog
 # since the in-container process won't be allowed access to it.
@@ -210,6 +222,7 @@ RUN chmod +x /entrypoint.sh \
 RUN rm /etc/nginx/sites-enabled/default
 
 RUN chown bluecherry.bluecherry -R /var/lib/bluecherry
+RUN rm /usr/sbin/policy-rc.d
 #CMD rm -f /var/run/rsyslogd.pid
 #CMD ["/usr/sbin/rsyslogd", "-n", "-f", "/etc/rsyslog.conf"]
 #CMD service rsyslog start
