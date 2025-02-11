@@ -51,35 +51,24 @@ mantic_install()
     # Differences from jammy:
     # Don't add ppa:ondrej/php, it fails for Mantic.
     # Don't explicitly state which php packages to install
-    apt-get update
-    apt -y install gpg software-properties-common wget
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    apt -y update
-    apt -y install bluecherry
-    systemctl restart bluecherry
+    common_install_2025
 }
 
 # Ubuntu 24.04
 # Ubuntu 24.10
 noble_install()
 {
-    mantic_install
+    common_install_2025
 }
 
 # Debian 10
 buster_install()
 {
     apt-get -y update
-    apt-get -y install gnupg sudo wget
+    apt-get -y install gnupg sudo
     apt-get -y install python3-pip
     pip3 install --user --upgrade pip
-    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
-    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
-    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
-    apt-get -y update
-    apt-get -y install default-mysql-server bluecherry
+    common_install_2025
 }
 
 # Debian 11
@@ -97,7 +86,26 @@ bullseye_install()
 # Debian 12
 bookworm_install()
 {
-    bullseye_install
+    common_install_2025
+}
+
+common_install_2025()
+{
+    apt -y update
+    apt -y install wget
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
+    cat > /etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".sources <<EOF
+# DEB822 formatted entry, see https://repolib.readthedocs.io/en/latest/deb822-format.html
+Enabled: yes
+Types: deb
+URIs: http://dl.bluecherrydvr.com
+Suites: $VERSION_CODENAME
+Components: main
+Signed-by: /etc/apt/trusted.gpg.d/bluecherry.asc
+EOF
+    apt -y update
+    apt -y install bluecherry
+    systemctl restart bluecherry
 }
 
 check_distro()
