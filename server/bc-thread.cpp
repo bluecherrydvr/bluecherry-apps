@@ -200,12 +200,16 @@ void bc_record::run()
 		local_thread_should_die = thread_should_die;
 		local_cfg_dirty = cfg_dirty;
 		pthread_mutex_unlock(&cfg_mutex);
-		if (local_thread_should_die)
+		if (local_thread_should_die) {
+			log.log(Info, "Device's thread ordered to terminate");
 			break;
+		}
 
 		if (local_cfg_dirty) {
-			if (apply_device_cfg(this))
+			if (apply_device_cfg(this)) {
+				log.log(Error, "Failed to update device config, thread terminates");
 				break;
+			}
 		}
 
 		if (bc->substream_mode && !liveview_substream) {
@@ -226,6 +230,7 @@ void bc_record::run()
 				}
 				start_failed |= BC_MAINSTREAM_START_FAILED;
 				do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+				log.log(Info, "Going to retry connection after a delay");
 				goto error;
 			} else if (start_failed & BC_MAINSTREAM_START_FAILED) {
 				start_failed &= ~BC_MAINSTREAM_START_FAILED;
@@ -382,12 +387,14 @@ void bc_record::run()
 			stop_handle_properly(this);
 			/* XXX this should be something other than NOT_FOUND */
 			do_error_event(this, BC_EVENT_L_ALRM, BC_EVENT_CAM_T_NOT_FOUND);
+			log.log(Info, "Going to retry connection after a delay");
 			goto error;
 		}
 
 		/* End any active error events, because we successfully read a packet */
 		if (event) {
 			bc_event_cam_end(&event);
+			log.log(Info, "Back online");
 			/* Notification hook to PHP: device is back online */
 			notify_device_state("BACK ONLINE");
 		}
@@ -432,14 +439,14 @@ void bc_record::run()
 			/* Send packet to HLS streaming clients */
 			if (bc_streaming_is_active_hls(this) &&
 				bc_streaming_hls_packet_write(this, packet) == -1) {
-				log.log(Error, "Failed to stream packet for HLS live view");
+				log.log(Error, "Failed to stream packet for HLS live view, going to reconnect after a delay");
 				goto error;
 			}
 
 			/* Send packet to streaming clients */
 			if (bc_streaming_is_active(this) &&
 				bc_streaming_packet_write(this, packet) == -1) {
-				log.log(Error, "Failed to stream packet for live view");
+				log.log(Error, "Failed to stream packet for live view, going to reconnect after a delay");
 				goto error;
 			}
 		}
@@ -449,6 +456,7 @@ void bc_record::run()
 error:
 		sleep(10);
 	}
+	log.log(Info, "Shutting down device thread");
 
 	pthread_cleanup_pop(0);
 
