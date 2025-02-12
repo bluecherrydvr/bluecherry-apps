@@ -1815,6 +1815,7 @@ int main(int argc, char **argv)
 			bc_update_server_status();
 	}
 
+	stats.stop_monithoring();
 #ifdef V3_LICENSING
 	v3license_server::stopThread();
 	pthread_join(v3license_thread, NULL);

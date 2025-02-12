@@ -443,8 +443,7 @@ void bc_stats::start_monithoring()
     pthread_mutex_init(&_mutex, NULL);
     __sync_lock_test_and_set(&_active, 1);
 
-    std::thread thread_id(&bc_stats::monithoring_thread, this);
-    thread_id.detach();
+    _thread = std::thread(&bc_stats::monithoring_thread, this);
 }
 
 void bc_stats::stop_monithoring()
@@ -452,9 +451,8 @@ void bc_stats::stop_monithoring()
     /* Notify thread about finish processing */
     __sync_lock_test_and_set(&_cancel, 1);
 
-    while (__sync_add_and_fetch(&_active, 0)) 
-        usleep(10000); // Wait for thread termination
-
+    _thread.join();
     /* Destroy mutex */
     pthread_mutex_destroy(&_mutex);
+
 }

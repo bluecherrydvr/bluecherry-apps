@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <string>
 #include <vector>
+#include <thread>
 
 #include <inttypes.h>
 #include <pthread.h>
@@ -111,6 +112,7 @@ private:
     uint8_t _BC_ALIGNED_ _cancel = 0;
     uint8_t _monitoring_interval = 1;
     pthread_mutex_t     _mutex;
+    std::thread _thread;
 
     bc_stats::network   _network;
     bc_stats::memory    _memory;
