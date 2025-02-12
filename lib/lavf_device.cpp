@@ -83,7 +83,7 @@ int lavf_device::start()
 
 	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
 	/* No input on socket, or no writability for thus many microseconds is treated as failure */
-	av_dict_set(&avopt_open_input, "stimeout", "10000000" /* 10 s */, 0);
+	av_dict_set(&avopt_open_input, "timeout", "10000000" /* 10 s */, 0);
 
 	if (!strncmp(url, "rtsp://", 7))
 	{
