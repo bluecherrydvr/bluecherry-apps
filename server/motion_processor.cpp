@@ -854,24 +854,3 @@ int motion_processor::set_motion_thresh(const char *map, size_t size)
 
 	return 0;
 }
-
-static void *bc_mproc_thread(void *data)
-{
-	motion_processor *mp = (motion_processor *)data;
-	mp->run();
-	return NULL;
-}
-
-/*
-void motion_processor::start_thread()
-{
-	int ret;
-
-	ret = pthread_create(&m_thread, NULL, bc_mproc_thread, this);
-	if (ret != 0) {
-		bc_log(Error, "Error starting motion processor thread: %s",
-		       strerror(errno));
-		return;
-	}
-}
-*/
