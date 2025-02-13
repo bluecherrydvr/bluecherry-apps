@@ -450,12 +450,6 @@ case "$1" in
 
 		install_certbot
 		
-		# Clean root's crontab from entries which we previously put there
-		# FIXME one-time upgrade procedure would be nice.
-		# we have a nice way but use it only for mysql upgrades.
-		crontab -l 2>/dev/null | grep -v 'bluecherry\|subdomainprovidercron' | crontab -
-
-
 		nginx -t 2>/dev/null > /dev/null
 		if [[ $? == 0 ]]; then
 			# Reenable our site in nginx
