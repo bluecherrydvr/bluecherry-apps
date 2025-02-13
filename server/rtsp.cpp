@@ -180,6 +180,7 @@ void rtsp_server::run()
 
 void *rtsp_server::runThread(void *p)
 {
+	pthread_setname_np(pthread_self(), "RTSP_SERVER");
 	static_cast<rtsp_server*>(p)->run();
 	return NULL;
 }

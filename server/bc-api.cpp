@@ -755,6 +755,7 @@ bool bc_api::start_listener(uint16_t port)
 
 void bc_api::run()
 {
+    pthread_setname_np(pthread_self(), "API");
     bool status = true;
     while (status) status = _events.service(100);
 

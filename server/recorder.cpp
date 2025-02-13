@@ -30,6 +30,7 @@ void recorder::destroy()
 
 void recorder::run()
 {
+	pthread_setname_np(pthread_self(), thread_name);
 	std::shared_ptr<const stream_properties> saved_properties;
 	bool bool_ret;
 

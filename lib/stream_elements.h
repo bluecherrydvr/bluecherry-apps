@@ -5,6 +5,8 @@
 #include <set>
 #include <mutex>
 #include <condition_variable>
+#include <string.h>
+#include <bsd/string.h>
 
 /* These elements create a primitive chain for distributing packets from one source to
  * many consumers, and potentially for consumers to repackage those packets in a new source.
@@ -36,6 +38,7 @@ public:
 	};
 
 	const char * const name;
+	char thread_name[16];
 
 	stream_source(const char *name);
 	virtual ~stream_source();
@@ -59,6 +62,7 @@ public:
 
 	const log_context &logging_context() { return log; }
 	void set_logging_context(const log_context &context) { log = context; }
+	void set_thread_name(const char *arg) { strlcpy(thread_name, arg, sizeof(thread_name)); }
 
 protected:
 	std::set<stream_consumer*> children;
@@ -71,6 +75,7 @@ class stream_consumer
 {
 public:
 	const char * const name;
+	char thread_name[16];
 	stream_consumer(const char *name);
 	virtual ~stream_consumer();
 
@@ -88,6 +93,7 @@ public:
 
 	const log_context &logging_context() { return log; }
 	void set_logging_context(const log_context &context) { log = context; }
+	void set_thread_name(const char *arg) { strlcpy(thread_name, arg, sizeof(thread_name)); }
 
 protected:
 	/* Lock protecting buffer and buffer_wait */

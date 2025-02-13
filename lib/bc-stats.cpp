@@ -425,6 +425,7 @@ void bc_stats::display()
 
 void bc_stats::monithoring_thread()
 {
+    pthread_setname_np(pthread_self(), "MONITORING");
     while (!__sync_add_and_fetch(&_cancel, 0))
     {
         update_mem_info();

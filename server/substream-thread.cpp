@@ -3,6 +3,7 @@
 #include "bc-server.h"
 #include "lavf_device.h"
 #include <thread>
+#include <bsd/string.h>
 
 substream::substream()
 	: /*rec(0),*/ exit_flag(false)
@@ -93,4 +94,8 @@ void substream::run(struct bc_record *r)
 void substream::stop()
 {
 	exit_flag = true;
+}
+
+void substream::set_thread_name(const char *arg) {
+	strlcpy(thread_name, arg, sizeof(thread_name));
 }

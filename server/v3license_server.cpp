@@ -147,6 +147,7 @@ size_t v3license_server::splitArgument(const std::string &txt, std::vector<std::
 
 void* socketThread(void *arg)
 {
+    pthread_setname_np(pthread_self(), "LICENSE_SOCKET");
     license_thread_context_t* context = (license_thread_context_t*)arg;
     pthread_mutex_t* lock = &context->lock;
     int newSocket = context->socket;
@@ -279,6 +280,7 @@ void* socketThread(void *arg)
 
 void* v3license_server::runThread(void* p)
 {
+    pthread_setname_np(pthread_self(), "LICENSE");
     int server = static_cast<v3license_server*>(p)->serverfd;
 
     if (server < 0) {

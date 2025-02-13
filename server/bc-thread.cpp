@@ -185,7 +185,10 @@ void bc_record::run()
 	stream_packet packet;
 	int ret;
 	unsigned iteration = 0;
+	char thread_name[16];
 
+	snprintf(thread_name, sizeof(thread_name), "dev%d", id);
+	pthread_setname_np(pthread_self(), thread_name);
 	log.log(Info, "Setting up device");
 	bc_log_context_push(log);
 
@@ -264,10 +267,13 @@ void bc_record::run()
 
 			destroy_elements();
 
+			char thread_name[16];
 			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
 
 				if (sched_cur == 'X' || sched_cur == 'C') {
 					rec_continuous = new recorder(this);
+					snprintf(thread_name, sizeof(thread_name), "rcn%d", id);
+					rec_continuous->set_thread_name(thread_name);
 					rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
 					rec_continuous->set_logging_context(log);
 					bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
@@ -277,12 +283,16 @@ void bc_record::run()
 
 				if (sched_cur == 'X' || sched_cur == 'M') {
 					m_handler = new motion_handler;
+					snprintf(thread_name, sizeof(thread_name), "mha%d", id);
+					m_handler->set_thread_name(thread_name);
 					m_handler->set_logging_context(log);
 					m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 					m_handler->set_motion_analysis_ssw_length(cfg.motion_analysis_ssw_length);
 					m_handler->set_motion_analysis_percentage(cfg.motion_analysis_percentage);
 
 					rec_motion = new recorder(this);
+					snprintf(thread_name, sizeof(thread_name), "rmo%d", id);
+					rec_motion->set_thread_name(thread_name);
 					rec_motion->set_logging_context(log);
 					rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
 
@@ -297,6 +307,8 @@ void bc_record::run()
 						bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 					} else {
 						m_processor = new motion_processor(this);
+						snprintf(thread_name, sizeof(thread_name), "mpr%d", id);
+						m_processor->set_thread_name(thread_name);
 						m_processor->set_logging_context(log);
 						update_motion_thresholds();
 
@@ -323,10 +335,14 @@ void bc_record::run()
 				 * source ==> trigger_processor (data passthru, flag setting) ==> motion_handler_m ==> recorder
 				 */
 				m_handler = new motion_handler;
+				snprintf(thread_name, sizeof(thread_name), "trg%d", id);
+				m_handler->set_thread_name(thread_name);
 				m_handler->set_logging_context(log);
 				m_handler->set_buffer_time(cfg.prerecord, cfg.postrecord);
 
 				rec_motion = new recorder(this);
+				snprintf(thread_name, sizeof(thread_name), "rtr%d", id);
+				rec_motion->set_thread_name(thread_name);
 				rec_motion->set_logging_context(log);
 				rec_motion->set_recording_type(BC_EVENT_CAM_T_MOTION);
 
@@ -337,6 +353,8 @@ void bc_record::run()
 				rec_th.detach();
 
 				t_processor = new trigger_processor(id);
+				snprintf(thread_name, sizeof(thread_name), "rtp%d", id);
+				t_processor->set_thread_name(thread_name);
 				t_processor->set_logging_context(log);
 				bc->source->connect(t_processor, stream_source::StartFromLastKeyframe);
 				t_processor->output()->connect(m_handler->input_consumer());

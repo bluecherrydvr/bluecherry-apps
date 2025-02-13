@@ -1178,6 +1178,7 @@ bool hls_session::handle_request(const std::string &request)
 #ifdef BC_HLS_WITH_SSL
 static void* hls_session_thread(void *ctx)
 {
+    pthread_setname_np(pthread_self(), "HLS_SESSION");
     hls_session *session = (hls_session*)ctx;
     hls_ssl *ssl = session->get_ssl();
     uint8_t rx_buffer[HLS_REQUEST_MAX];
@@ -2047,6 +2048,8 @@ bool hls_listener::ssl_service()
 
 void hls_listener::run()
 {
+    pthread_setname_np(pthread_self(), "HLS_SERVER");
+
     if (!_init)
     {
         bc_log(Error, "HLS listener is not initialized");

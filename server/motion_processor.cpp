@@ -95,6 +95,7 @@ void motion_processor::thread_cleanup(void *data)
 
 void motion_processor::run()
 {
+	pthread_setname_np(pthread_self(), thread_name);
 	std::shared_ptr<const stream_properties> saved_properties;
 
 	bc_log_context_push(log);
