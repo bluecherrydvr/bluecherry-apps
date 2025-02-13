@@ -1,3 +1,13 @@
+bluecherry (3:3.1.9) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: cameras hangs (https://github.com/bluecherrydvr/bluecherry-apps/pull/736)
+  * FIX: orderly shutdown upon SIGTERM (https://github.com/bluecherrydvr/bluecherry-apps/pull/734)
+  * FIX: stop repeating root crontab cleaning code on upgrade (https://forums.bluecherrydvr.com/t/server-upgrade-is-deleting-lines-from-root-crontab/968/2)
+  * FIX: mailer.php errors on empty recipients list (https://github.com/bluecherrydvr/bluecherry-apps/issues/720)
+  * FIX: misc (https://github.com/bluecherrydvr/bluecherry-apps/pull/733)
+
+ -- Andriy Utkin <autkin@bluecherrydvr.com>  Wed, 13 Feb 2025 12:00:00 +0000
+
 bluecherry (3:3.1.8) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * FIX: Improve timestamps handling at recording muxing (https://github.com/bluecherrydvr/bluecherry-apps/pull/714)
