@@ -7,7 +7,7 @@ endif
 
 LDFLAGS		+= -lconfig -lm -lrt -lbsd $(shell pkg-config --libs libcurl)
 LDFLAGS		+= -lavutil -lavformat -lavcodec -lpugixml
-CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\"" $(shell pkg-config --cflags libcurl)
+CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\"" $(shell pkg-config --cflags libcurl) $(shell pkg-config --cflags libbsd)
 
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0

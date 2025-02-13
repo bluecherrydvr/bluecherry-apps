@@ -19,6 +19,8 @@
 class substream
 {
 public:
+	char thread_name[16];
+	void set_thread_name(const char *arg);
 	explicit substream();
 	void run(struct bc_record *r);
 	void stop();

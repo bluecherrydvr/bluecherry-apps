@@ -1,7 +1,8 @@
 #include "stream_elements.h"
 
 stream_source::stream_source(const char *n)
-	: name(n)
+	: name(n),
+	thread_name({0,})
 {
 }
 
@@ -48,7 +49,8 @@ void stream_source::disconnect(stream_consumer *child)
 }
 
 stream_consumer::stream_consumer(const char *n)
-	: name(n), output_source(0), connected_source(0)
+	: name(n), output_source(0), connected_source(0),
+	thread_name({0,})
 {
 	buffer.set_enforce_keyframe(false);
 }

@@ -80,6 +80,7 @@ bool status_server::socketWaitReadable(int fd, int timeout_ms) {
 }
 
 static void *servingLoopWrapper(void *arg) {
+	pthread_setname_np(pthread_self(), "STATUS");
 	status_server *self = reinterpret_cast<status_server*>(arg);
 	self->servingLoop();
 	return NULL;

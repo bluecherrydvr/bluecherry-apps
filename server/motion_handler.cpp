@@ -69,6 +69,7 @@ void motion_handler::set_motion_analysis_percentage(int percentage)
 
 void motion_handler::run()
 {
+	pthread_setname_np(pthread_self(), thread_name);
 	std::unique_lock<std::mutex> l(raw_stream->lock);
 	bool recording = false;
 	time_t last_motion = 0;

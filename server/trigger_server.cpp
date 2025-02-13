@@ -87,6 +87,7 @@ bool trigger_server::socketWaitReadable(int fd, int timeout_ms) {
 }
 
 static void *servingLoopWrapper(void *arg) {
+	pthread_setname_np(pthread_self(), "TRIGGER");
 	trigger_server *self = reinterpret_cast<trigger_server*>(arg);
 	self->servingLoop();
 	return NULL;

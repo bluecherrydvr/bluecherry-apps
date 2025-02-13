@@ -1578,6 +1578,7 @@ int main(int argc, char **argv)
 	int hwcard_down_reported = 0;
 
 	bc_syslog_init();
+	pthread_setname_np(pthread_self(), "MAIN");
 
 	umask(007);
 
