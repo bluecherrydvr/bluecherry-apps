@@ -21,6 +21,7 @@ Pre-Depends: adduser
 Depends: ${shlibs:Depends}, ssl-cert, ucf, curl, sysstat,
  mkvtoolnix, php-mail, php-mail-mime, php-net-smtp, sqlite3, nmap,
  nginx,
+ php-curl,
  php-fpm,
  php-mysql,
  php-sqlite3,

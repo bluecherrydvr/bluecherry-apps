@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+source /usr/share/bluecherry/load_db_creds.sh
+
+QUERY='SELECT CAST(device AS CHAR) FROM Devices WHERE disabled = 0'
+for device in $(mysql -u"$user" -p"$password" -h"$host" "$dbname" --batch --disable-column-names -e "$QUERY"  2>/dev/null); do
+        host="$(echo "$device" | awk -F '|' '{ print $1 }')";
+        port="$(echo "$device" | awk -F '|' '{ print $2 }')";
+        ip=$(dig +short "$host")
+        ipdst=$ip:$port
+        if ! netstat -napt | grep "$ipdst.*ESTABLISHED.*bc-server" > /dev/null; then
+                echo "No connection to device $host ($ipdst)";
+        fi
+done
+
+for path in $(mysql -u"$user" -p"$password" -h"$host" "$dbname" --batch --disable-column-names -e 'SELECT path FROM Storage'  2>/dev/null); do
+        DAY_PATH="$path/$(date '+%Y/%m/%d')"
+        QUERY='SELECT id FROM Devices WHERE disabled = 0'
+        for id in $(mysql -u"$user" -p"$password" -h"$host" "$dbname" --batch --disable-column-names -e "$QUERY"  2>/dev/null); do
+                padded_id=$(printf %06d $id)
+                if ! [[ -d "$DAY_PATH/$padded_id" ]]; then
+                        echo "Recordings directory for the device $id is missing in path $path"
+                fi
+        done
+done

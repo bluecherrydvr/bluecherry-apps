@@ -7,6 +7,7 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "bc-syslog.h"
 #include "logc.h"
@@ -115,7 +116,7 @@ void status_server::servingLoop() {
 			socklen_t addrlen = sizeof(clientAddr);
 			int clientFd = accept4(_bindFd, (struct sockaddr*)&clientAddr, &addrlen, SOCK_NONBLOCK);
 			if (clientFd == -1) {
-				bc_log(Error, "Got connection, but failed to accept");
+				bc_log(Error, "Got connection, but failed to accept: errno %d", errno);
 				continue;
 			}
 			serveClient(clientFd);
