@@ -139,6 +139,8 @@ static bc_media_files g_media_files;
 #define BC_CLEANUP_RETRY_COUNT	5
 #define BC_CLEANUP_RETRY_SEC	5
 
+extern volatile sig_atomic_t shutdown_flag;
+
 void bc_status_component_begin(bc_status_component c)
 {
 	if (status_component_active >= 0) {
@@ -1748,6 +1750,10 @@ int main(int argc, char **argv)
 
 	/* Main loop */
 	for (unsigned int loops = 0 ;; sleep(1), loops++) {
+		if (shutdown_flag) {
+			bc_log(Info, "Shutting down");
+			break;
+		}
 		/* Every 16 seconds until initialized, then every 4:16 minutes */
 		if ((!hwcard_ready && !(loops & 15)) || (hwcard_ready && !(loops & 255))) {
 			bc_status_component_begin(STATUS_HWCARD_DETECT);
@@ -1810,7 +1816,9 @@ int main(int argc, char **argv)
 			bc_update_server_status();
 	}
 
+	stats.stop_monithoring();
 #ifdef V3_LICENSING
+	v3license_server::stopThread();
 	pthread_join(v3license_thread, NULL);
 #endif /* V3_LICENSING */
 

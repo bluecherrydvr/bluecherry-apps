@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <assert.h>
 
 #include "bt.h"
 
@@ -11,6 +12,8 @@ static const char * const sig_name[] = {
 	[SIGILL]  = "Illegal instruction",
 	[SIGFPE]  = "Floating point exception",
 };
+
+volatile sig_atomic_t shutdown_flag;
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
@@ -25,8 +28,14 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGFPE:
 		bt(sig_name[signum], info->si_addr);
 		_exit(1);
+
+	case SIGINT:
+	case SIGTERM:
+	case SIGQUIT:
+	case SIGHUP:
+		shutdown_flag = 1;
+
 	default:
-		/* SIGCHLD */
 		return;
 	}
 
@@ -35,15 +44,28 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 
 void signals_setup()
 {
-	const int sig[] = { SIGCHLD, SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT };
+	int ret;
+
+	shutdown_flag = 0;
+
+	const int sig[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGINT, SIGTERM, SIGQUIT, SIGHUP };
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_sigaction = sighandler;
 	sa.sa_flags = SA_SIGINFO | SA_NOCLDWAIT;
 
-	for (unsigned int i = 0; i < sizeof(sig) / sizeof(sig[0]); i++)
-		sigaction(sig[i], &sa, NULL);
+	for (unsigned int i = 0; i < sizeof(sig) / sizeof(sig[0]); i++) {
+		ret = sigaction(sig[i], &sa, NULL);
+		assert(!ret);
+	}
 
-	signal(SIGPIPE, SIG_IGN);
+	// these signals are ignored:
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDWAIT;
+	sa.sa_handler = SIG_IGN;
+	ret = sigaction(SIGCHLD, &sa, NULL);
+	assert(!ret);
+	ret = sigaction(SIGPIPE, &sa, NULL);
+	assert(!ret);
 }

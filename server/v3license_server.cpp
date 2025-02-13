@@ -60,6 +60,8 @@ v3license_server::~v3license_server()
 
 int v3license_server::setup(int port)
 {
+    int ret;
+
     if (initedLex != LA_OK) {
         bc_log(Error, "Failed to initialize v3license feature (Error code: %d)", initedLex);
         return -1;
@@ -117,7 +119,9 @@ int v3license_server::setup(int port)
         goto error;
     }
 
-    return 0;
+    ret = fcntl(serverfd, F_SETFL, O_NONBLOCK);
+    assert(!ret);
+    return ret;
 
 error:
     close(serverfd);
@@ -295,7 +299,9 @@ void* v3license_server::runThread(void* p)
         // Accept the new client request
         int client = accept(server, NULL, NULL);
         if (client < 0) {
-            bc_log(Error, "accept() failed: %s", strerror(errno));
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                bc_log(Error, "accept() failed: %s", strerror(errno));
+            }
             sleep(1);
             continue;
         }

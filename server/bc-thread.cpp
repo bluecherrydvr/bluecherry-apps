@@ -277,8 +277,7 @@ void bc_record::run()
 					rec_continuous->set_recording_type(BC_EVENT_CAM_T_CONTINUOUS);
 					rec_continuous->set_logging_context(log);
 					bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
-					std::thread rec_th(&recorder::run, rec_continuous);
-					rec_th.detach();
+					rec_continuous_thread = new std::thread(&recorder::run, rec_continuous);
 				}
 
 				if (sched_cur == 'X' || sched_cur == 'M') {
@@ -299,8 +298,7 @@ void bc_record::run()
 					rec_motion->set_buffer_time(cfg.prerecord);
 
 					m_handler->connect(rec_motion);
-					std::thread rec_th(&recorder::run, rec_motion);
-					rec_th.detach();
+					rec_motion_thread = new std::thread(&recorder::run, rec_motion);
 
 					if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
 						bc->input->set_motion(true);
@@ -324,11 +322,11 @@ void bc_record::run()
 
 						bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 						m_processor->output()->connect(m_handler->input_consumer());
-						m_processor->start_thread();
+						//m_processor->start_thread();
+						m_processor_thread = new std::thread(&motion_processor::run, m_processor);
 					}
 
-					std::thread th(&motion_handler::run, m_handler);
-					th.detach();
+					m_handler_thread = new std::thread(&motion_handler::run, m_handler);
 				}
 			} else if (sched_cur == 'T') {
 				/*
@@ -349,8 +347,7 @@ void bc_record::run()
 				rec_motion->set_buffer_time(cfg.prerecord);
 
 				m_handler->connect(rec_motion);
-				std::thread rec_th(&recorder::run, rec_motion);
-				rec_th.detach();
+				rec_motion_thread = new std::thread(&recorder::run, rec_motion);
 
 				t_processor = new trigger_processor(id);
 				snprintf(thread_name, sizeof(thread_name), "rtp%d", id);
@@ -359,8 +356,7 @@ void bc_record::run()
 				bc->source->connect(t_processor, stream_source::StartFromLastKeyframe);
 				t_processor->output()->connect(m_handler->input_consumer());
 
-				std::thread th(&motion_handler::run, m_handler);
-				th.detach();
+				m_handler_thread = new std::thread(&motion_handler::run, m_handler);
 
 				if (cfg.onvif_events_enabled) {
 					onvif_ev = new onvif_events();
@@ -510,11 +506,16 @@ bc_record::bc_record(int i)
 	onvif_ev_thread = 0;
 
 	rec_continuous = 0;
+	rec_continuous_thread = NULL;
 	rec_motion = 0;
+	rec_motion_thread = NULL;
 
 	m_processor = 0;
+	m_processor_thread = NULL;
 	t_processor = 0;
+	t_processor_thread = NULL;
 	m_handler = 0;
+	m_handler_thread = NULL;
 	reenc = 0;
 	liveview_substream = 0;
 	liveview_substream_thread = 0;
@@ -611,36 +612,47 @@ void bc_record::destroy_elements()
 		rec_continuous->disconnect();
 		rec_continuous->destroy();
 		rec_continuous = 0;
+		rec_continuous_thread->join();
+		rec_continuous_thread = NULL;
 	}
 
 	if (rec_motion) {
 		rec_motion->disconnect();
 		rec_motion->destroy();
 		rec_motion = 0;
+		rec_motion_thread->join();
+		rec_motion_thread = NULL;
 	}
 
 	if (m_processor) {
 		m_processor->disconnect();
 		m_processor->destroy();
 		m_processor = 0;
+		m_processor_thread->join();
+		m_processor_thread = NULL;
 	}
 
 	if (t_processor) {
 		t_processor->disconnect();
 		t_processor->destroy();
 		t_processor = 0;
+		t_processor_thread->join();
+		t_processor_thread = NULL;
 	}
 
 	if (onvif_ev) {
 		onvif_ev->stop();
 		onvif_ev = 0;
 		onvif_ev_thread->join();
+		onvif_ev_thread = NULL;
 	}
 
 	if (m_handler) {
 		m_handler->disconnect();
 		m_handler->destroy();
 		m_handler = 0;
+		m_handler_thread->join();
+		m_handler_thread = NULL;
 	}
 
 	if (bc)

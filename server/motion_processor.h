@@ -52,8 +52,6 @@ public:
 	void destroy();
 	void run();
 
-	void start_thread();
-
 private:
 	AVCodecContext *decode_ctx;
 	bool destroy_flag;
