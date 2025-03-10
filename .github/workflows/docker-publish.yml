@@ -10,7 +10,7 @@ on:
       - v*
 
 jobs: 
-  mysql57:
+  mysql80:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'WIP')
     steps:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up MySQL
         uses: cweinberger/github-actions-mysql@main
         with:
-          version: 5.7
+          version: 8.0
           hostPort: 3306
           containerPort: 3306
           rootPassword: root
