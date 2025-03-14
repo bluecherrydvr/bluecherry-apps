@@ -1,0 +1,23 @@
+FROM debian:bookworm                                                                                                                                                                                                                                                         
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+#RUN set -ex \
+#    && sed -i -- 's/# deb-src/deb-src/g' /etc/apt/sources.list 
+#COPY start.sh /start.sh
+CMD ["/bin/bash"]
+
+
+RUN apt-get update
+RUN apt -y install wget gnupg
+#RUN gpg --keyserver "hkp://keyserver.ubuntu.com:80" --recv-keys "467B942D3A79BD29" 2>&1 && break
+RUN wget -q https://repo.mysql.com/RPM-GPG-KEY-mysql-2022 -O- | apt-key add -
+RUN echo "deb http://repo.mysql.com/apt/debian bookworm mysql-8.0" >> /etc/apt/sources.list.d/mysql.list
+RUN apt update
+RUN apt -y install libmariadb-dev-compat \
+               cdbs \
+               devscripts \
+               equivs \
+               fakeroot \ 
+    && apt-get clean \
+    && rm -rf /tmp/* /var/tmp/*
