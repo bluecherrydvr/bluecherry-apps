@@ -13,12 +13,26 @@ extern "C" {
 #include <libavutil/dict.h>
 }
 
-trigger_processor::trigger_processor(int camera_id)
-	: stream_consumer("Trigger Processor"), destroy_flag(false), camera_id(camera_id), trigger_flag(false)
+void trigger_processor::trigger(const char *description)
 {
-	pthread_mutex_init(&trigger_flag_lock, NULL);
-	output_source = new stream_source("Trigger Detection");
-	trigger_server::Instance().register_processor(camera_id, this);
+    // Example implementation (replace with actual logic)
+    pthread_mutex_lock(&trigger_flag_lock);
+    trigger_flag = true;
+    pthread_mutex_unlock(&trigger_flag_lock);
+
+    // Log or handle the trigger
+    printf("Trigger: %s\n", description);
+}
+
+trigger_processor::trigger_processor(int camera_id)
+    : stream_consumer("Trigger Processor"),
+      destroy_flag(false),
+      camera_id(camera_id),
+      trigger_flag(false)
+{
+    pthread_mutex_init(&trigger_flag_lock, NULL);
+    output_source = new stream_source("Trigger Detection");
+    trigger_server::Instance().register_processor(camera_id, this);
 }
 
 trigger_processor::~trigger_processor()
@@ -50,11 +64,4 @@ void trigger_processor::receive(const stream_packet &packet)
 	output_source->send(packet);
 }
 
-void trigger_processor::trigger(const char *description)
-{
-	bc_log(Info, "Triggered for device %d with description '%s'", camera_id, description);
-	pthread_mutex_lock(&trigger_flag_lock);
-	trigger_flag = true;
-	// TODO pass description
-	pthread_mutex_unlock(&trigger_flag_lock);
-}
+

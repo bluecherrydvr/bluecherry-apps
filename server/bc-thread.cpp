@@ -554,12 +554,19 @@ bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
 
 	bc = bc_handle_get(dbres);
 	if (!bc) {
-		/* XXX should be an event */
-		bc_rec->log.log(Error, "Error opening device");
-		bc_status_component_error("Error opening device %d", id);
-		state = "OPENING ERROR";
-		goto fail;
+    		/* XXX should be an event */
+    		bc_rec->log.log(Error, "Error opening device");
+    		bc_status_component_error("Error opening device %d", id);
+    		state = "OPENING ERROR";
+    		goto fail;
 	}
+
+	//  Safe to access bc->input now
+	if (bc->input) {
+    		new trigger_processor(id);
+    	bc_log(Info, "Auto-registered trigger_processor for camera ID %d", id);
+	}
+
 
 	bc->__data = bc_rec;
 	bc_rec->bc = bc;

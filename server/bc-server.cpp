@@ -40,6 +40,7 @@ extern "C" {
 #include "bc-api.h"
 #include "version.h"
 #include "status_server.h"
+#include "trigger_processor.h"
 #include "trigger_server.h"
 #include "vaapi.h"
 
@@ -50,6 +51,15 @@ extern "C" {
 #include <unordered_map>
 #include <vector>
 #include <queue>
+
+
+trigger_processor* testProcessor;
+
+void initializeTriggerTest() {
+    testProcessor = new trigger_processor(43); // Registers camera 43
+//    trigger_server::Instance().reconfigure("/tmp/bluecherry_trigger"); // Starts trigger server thread
+}
+
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -1580,6 +1590,8 @@ int main(int argc, char **argv)
 	int hwcard_down_reported = 0;
 
 	bc_syslog_init();
+// Debug trigger
+        initializeTriggerTest();
 	pthread_setname_np(pthread_self(), "MAIN");
 
 	umask(007);
