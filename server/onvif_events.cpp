@@ -1,153 +1,86 @@
 #include "onvif_events.h"
-#include "bc-server.h"
-#include "trigger_server.h"
 #include "trigger_processor.h"
+#include "trigger_server.h"
+#include "bc-server.h"
 
-#include <sys/types.h>
-#include <signal.h>
+#include <fcntl.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <string.h>
 #include <stdio.h>
-
-#include <thread>
+#include <string.h>
 
 onvif_events::onvif_events()
-	: rec(0), exit_flag(false), onvif_tool_pid(-1)
+    : record(nullptr), exit_flag(false)
 {
 }
 
-void onvif_events::run(struct bc_record *r)
+onvif_events::~onvif_events()
 {
-	while(!exit_flag)
-		run_onvif_tool(r);
-}
-
-void onvif_events::run_onvif_tool(struct bc_record *r)
-{
-	int stdout_fds[2] = {-1, -1};
-	//int stderr_fds[2] = {-1, -1};
-	FILE *onvif_tool_stdout;
-	char read_buf[2048];
-
-	this->rec = r;
-
-	r->log.log(Info, "Starting onvif events thread %u for device %u ...", std::this_thread::get_id(), r->id);
-
-	char *devaddr = strdupa(r->cfg.dev);
-	char *split = strchr(devaddr, '|');
-	*split = '\0';
-
-	sprintf(read_buf, "%s:%u", devaddr, r->cfg.onvif_port);
-	this->addr = read_buf;
-	this->username = r->cfg.rtsp_username;
-	this->password = r->cfg.rtsp_password;
-
-	if (pipe(stdout_fds) == -1) {
-		r->log.log(Error, "Failed to create stdout pipe for onvif_tool");
-		return;
-	}
-
-	pid_t pid = fork();
-
-	if (pid == -1) {
-		r->log.log(Error, "Failed to fork...");
-		return;
-	}
-	else if (pid == 0) {
-		int ret;
-
-		while ((ret = dup2(stdout_fds[1], STDOUT_FILENO)) == -1 && (errno == EINTR));
-
-		if (ret == -1)
-			exit(-1);
-
-		close(stdout_fds[1]);
-		close(stdout_fds[0]);
-
-		/* Prevent descriptor leakage from parent process */
-		for (int i = 3; i < 1024; i++)
-			close(i);
-
-		execl("/usr/lib/bluecherry/onvif_tool",
-			"/usr/lib/bluecherry/onvif_tool",
-			addr.c_str(),			
-			username.c_str(),
-			password.c_str(),
-			"events_subscribe",
-			(char*)0);
-		exit(-1);
-	}
-
-	onvif_tool_pid = pid;
-	close(stdout_fds[1]);
-
-	//catch the first string, save subscription reference
-	//on each new line call the trigger, pass the topic
-	//check stderr & if child proc is alive
-	onvif_tool_stdout = fdopen(stdout_fds[0], "r");
-
-	if (!onvif_tool_stdout)
-		goto thread_exit;
-	
-	if (!fgets(read_buf, sizeof read_buf, onvif_tool_stdout))
-		goto thread_exit;
-
-	subscription_ref_addr = read_buf;
-
-	r->log.log(Info, "Subscribed to ONVIF events at %s", subscription_ref_addr.c_str());
-
-	while(fgets(read_buf, sizeof read_buf, onvif_tool_stdout))
-	{
-		trigger_processor *proc = trigger_server::Instance().find_processor(r->id);
-
-		if (proc) {
-			proc->trigger(read_buf);
-			bc_db_query("INSERT INTO OnvifEvents (device_id,event_time,onvif_topic)"
-					" VALUES(%i, NOW(), '%.255s')",
-					r->id, read_buf);
-		} else {
-			r->log.log(Error, "Unable to find trigger processor for ONVIF event");
-			break;
-		}
-	}
-
-thread_exit:
-	r->log.log(Info, "ONVIF events thread exiting... ");
-	unsubscribe();
-	fclose(onvif_tool_stdout);
-}
-
-void onvif_events::unsubscribe()
-{
-	if (subscription_ref_addr.size() > 0) {
-		char buf[4096];
-		FILE *pf;
-
-		sprintf(buf, "/usr/lib/bluecherry/onvif_tool %s %s %s events_unsubscribe %s",
-			addr.c_str(),
-			username.c_str(),
-			password.c_str(),
-			subscription_ref_addr.c_str());
-
-		pf = popen(buf, "r");
-
-		if (pf && fgets(buf, 4, pf) && strncmp("OK", buf, 2) == 0)
-			rec->log.log(Info, "Successfully unsubscribed from ONVIF events");
-		else
-			rec->log.log(Error, "Failed to unsubscribe from ONVIF events");
-		pclose(pf);
-		subscription_ref_addr.clear();
-	}
+    stop();
 }
 
 void onvif_events::stop()
 {
-	if (onvif_tool_pid == -1)
-		return;
-	exit_flag = true;
-	kill(onvif_tool_pid, SIGKILL);
-	waitpid(onvif_tool_pid, NULL, 0);
-	onvif_tool_pid = -1;
+    exit_flag = true;
+}
+
+void onvif_events::run(bc_record *rec)
+{
+    record = rec;
+
+    const char *fifo_path = "/tmp/bluecherry_trigger";
+    char line[512];
+
+    rec->log.log(Info, "ONVIF event listener starting for device %d", rec->id);
+
+    // Open FIFO for reading
+    int fd = open(fifo_path, O_RDONLY | O_NONBLOCK);
+    if (fd == -1) {
+        rec->log.log(Error, "Failed to open %s for reading", fifo_path);
+        return;
+    }
+
+    FILE *fp = fdopen(fd, "r");
+    if (!fp) {
+        rec->log.log(Error, "fdopen() failed for FIFO");
+        close(fd);
+        return;
+    }
+
+    while (!exit_flag) {
+        if (fgets(line, sizeof(line), fp)) {
+            char *newline = strchr(line, '\n');
+            if (newline) *newline = '\0';
+
+            // Format: "camera_id|event_type|action"
+            int cam_id = -1;
+            char event_type[256] = {0};
+            char action[16] = {0};
+
+            if (sscanf(line, "%d|%255[^|]|%15s", &cam_id, event_type, action) == 3) {
+                if (cam_id == rec->id) {
+                    trigger_processor *proc = trigger_server::Instance().find_processor(rec->id);
+                    if (proc) {
+                        // Format: "event_type|action"
+                        char trigger_msg[512];
+                        snprintf(trigger_msg, sizeof(trigger_msg), "%s|%s", event_type, action);
+                        proc->trigger(trigger_msg);
+                        
+                        bc_db_query("INSERT INTO OnvifEvents (device_id, event_time, onvif_topic, action) VALUES(%i, NOW(), '%.255s', '%.15s')",
+                                    rec->id, event_type, action);
+                    } else {
+                        rec->log.log(Error, "No trigger processor found for device %d", rec->id);
+                    }
+                }
+            } else {
+                rec->log.log(Warning, "Malformed trigger line: %s", line);
+            }
+        } else {
+            // Sleep briefly to prevent busy loop
+            usleep(100 * 1000); // 100ms
+        }
+    }
+
+    fclose(fp);
+    rec->log.log(Info, "ONVIF event listener exiting for device %d", rec->id);
 }
 

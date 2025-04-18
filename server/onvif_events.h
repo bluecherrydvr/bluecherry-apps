@@ -18,26 +18,25 @@
 #ifndef ONVIF_EVENTS_H
 #define ONVIF_EVENTS_H
 
-#include <sys/types.h>
-
 #include <string>
+#include <atomic>
+#include <thread>
+
+struct bc_record;
 
 class onvif_events
 {
 public:
-	explicit onvif_events();
-	void run(struct bc_record *r);
-	void stop();
+    explicit onvif_events();
+    ~onvif_events();
+
+    void run(bc_record *rec);
+    void stop();
+
 private:
-	void run_onvif_tool(struct bc_record *r);
-	void unsubscribe();
-	struct bc_record *rec;
-	bool exit_flag;
-	pid_t onvif_tool_pid;
-	std::string subscription_ref_addr;
-	std::string addr;
-	std::string username;
-	std::string password;
+    std::atomic<bool> exit_flag;
+    bc_record *record;
 };
 
-#endif
+#endif // ONVIF_EVENTS_H
+

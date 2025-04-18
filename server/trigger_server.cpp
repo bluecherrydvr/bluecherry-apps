@@ -132,53 +132,64 @@ void trigger_server::servingLoop() {
 }
 
 void trigger_server::serveClient(int fd) {
-	// Read from socket
-	char input[1024];
-	int input_len;
-	int camera_id;
-	char *description = NULL;
+    char input[1024];
+    int input_len;
+    int camera_id;
+    char *description = NULL;
 
-	// In spite of simplification, there's no loop, just assume that sent data arrives at once
-	input_len = read(fd, input, sizeof(input)-1);
-	bc_log(Error, "trigger_server: read ret %d", input_len);
-	if (input_len < 0) {
-		bc_log(Error, "trigger_server: errno %d", errno);
-		close(fd);
-		return;
-	}
+    input_len = read(fd, input, sizeof(input) - 1);
+    bc_log(Error, "trigger_server: read ret %d", input_len);
 
-	// Stringize the input
-	input[input_len] = NULL;
+    if (input_len < 0) {
+        bc_log(Error, "trigger_server: errno %d", errno);
+        close(fd);
+        return;
+    }
 
-	// Parse input
-	errno = 0;
-	camera_id = strtol(input, &description, 10);
-	if (errno) {
-		dprintf(fd, "400 Bad Request; syntax: <camera_id> <description string>");
-		close(fd);
-		return;
-	}
+    // Null-terminate and trim whitespace
+    input[input_len] = '\0';
 
-	if (description) {
-		description++;
-		if (description >= input + input_len)
-			description = NULL;
-	}
+    while (input_len > 0 && (input[input_len - 1] == '\n' || input[input_len - 1] == '\r')) {
+        input[--input_len] = '\0';
+    }
 
-	// Find trigger_processor and execute special method
-	trigger_processor *proc = find_processor(camera_id);
-	if (!proc) {
-		dprintf(fd, "404 Processor Not Found");
-		close(fd);
-		return;
-	}
+    bc_log(Info, "trigger_server: raw input received: '%s'", input);
 
-	proc->trigger(description);
-	// Write request's status information to socket
-	dprintf(fd, "200 Ok");
-	// Close socket
-	close(fd);
+    // Expected format: "<camera_id>|<trigger_type>|<start|stop>"
+    char *tok1 = strtok(input, "|");
+    char *tok2 = strtok(NULL, "|");
+    char *tok3 = strtok(NULL, "|");
+
+    if (!tok1 || !tok2 || !tok3) {
+        bc_log(Error, "Invalid trigger message format");
+        write(fd, "400 Invalid Format\n", 20);
+        close(fd);
+        return;
+    }
+
+    camera_id = atoi(tok1);
+    std::string trigger_type(tok2);
+    std::string action(tok3);  // "start" or "stop"
+
+    bc_log(Info, "Triggered for device %d with description '%s' and action '%s'",
+           camera_id, trigger_type.c_str(), action.c_str());
+
+    pthread_mutex_lock(&processor_registry_lock);
+    trigger_processor *proc = find_processor(camera_id);
+    pthread_mutex_unlock(&processor_registry_lock);
+
+    if (!proc) {
+        write(fd, "404 Processor Not Found\n", 25);
+        return;
+    }
+
+    std::string full_desc = trigger_type + "|" + action;
+    proc->trigger(full_desc.c_str());
+
+    write(fd, "200 Ok\n", 7);
+    close(fd);
 }
+
 
 void trigger_server::register_processor(int camera_id, trigger_processor *processor)
 {

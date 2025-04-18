@@ -364,8 +364,9 @@ void bc_record::run()
 				m_handler_thread = new std::thread(&motion_handler::run, m_handler);
 
 				if (cfg.onvif_events_enabled) {
-					onvif_ev = new onvif_events();
-					onvif_ev_thread = new std::thread(&onvif_events::run, onvif_ev, this);
+ 				    onvif_ev = new onvif_events();
+				    onvif_ev->run(this);
+                                //}
 				}
 			}
 
@@ -511,7 +512,7 @@ bc_record::bc_record(int i)
 	thread_should_die = 0;
 	file_started = 0;
 	onvif_ev = 0;
-	onvif_ev_thread = 0;
+
 
 	rec_continuous = 0;
 	rec_continuous_thread = NULL;
@@ -604,14 +605,27 @@ fail:
 // XXX Many other members of bc_record are ignored here.
 bc_record::~bc_record()
 {
-	destroy_elements();
+    destroy_elements();
 
-	if (bc) {
-		bc_handle_free(bc);
-		bc = 0;
-	}
+    // Safety cleanup (in case destroy_elements() missed it or failed early)
+    if (onvif_ev) {
+        onvif_ev->stop();
+        delete onvif_ev;
+        onvif_ev = nullptr;
+    }
 
-	pthread_mutex_destroy(&cfg_mutex);
+    if (onvif_ev_thread) {
+        onvif_ev_thread->join();
+        delete onvif_ev_thread;
+        onvif_ev_thread = nullptr;
+    }
+
+    if (bc) {
+        bc_handle_free(bc);
+        bc = nullptr;
+    }
+
+    pthread_mutex_destroy(&cfg_mutex);
 }
 
 void bc_record::destroy_elements()
@@ -649,10 +663,9 @@ void bc_record::destroy_elements()
 	}
 
 	if (onvif_ev) {
-		onvif_ev->stop();
-		onvif_ev = 0;
-		onvif_ev_thread->join();
-		onvif_ev_thread = NULL;
+    		onvif_ev->stop();
+    		delete onvif_ev;
+    		onvif_ev = nullptr;
 	}
 
 	if (m_handler) {

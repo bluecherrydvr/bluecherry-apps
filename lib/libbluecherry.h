@@ -111,6 +111,7 @@ struct bc_device_config {
 	double motion_frame_downscale_factor;
 	bool onvif_events_enabled;
 	int onvif_port;
+	char onvif_event_types[1024];  // Comma-separated list of enabled event types
 	int min_motion_area;
 	char schedule[7 * 24 + 1];
 	int     width, height;
@@ -131,7 +132,7 @@ struct bc_device_config {
 	char substream_path[256];
 
 	int max_motion_area;
-    int min_motion_frames;
+	int min_motion_frames;
 	int max_motion_frames;
 	int motion_blend_ratio;
 	bool motion_debug;
