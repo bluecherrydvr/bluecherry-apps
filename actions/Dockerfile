@@ -136,17 +136,18 @@ RUN { \
 # if ! echo "show databases" | mysql_wrapper -h"${host}" -u"$MYSQL_ADMIN_LOGIN" &>/dev/null
 #
 RUN { \
-        echo bluecherry bluecherry/mysql_admin_login string $MYSQL_ADMIN_LOGIN; \
-        echo bluecherry bluecherry/mysql_admin_password password $MYSQL_ADMIN_PASSWORD; \
-        echo bluecherry bluecherry/db_host string $BLUECHERRY_DB_HOST; \
-        echo bluecherry bluecherry/db_userhost string $BLUECHERRY_DB_ACCESS_HOST; \
-        echo bluecherry bluecherry/db_name string $BLUECHERRY_DB_NAME; \
-        echo bluecherry bluecherry/db_user string $BLUECHERRY_DB_USER; \
-        echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD; \
-    } | debconf-set-selections \
+    echo bluecherry bluecherry/mysql_admin_login string $MYSQL_ADMIN_LOGIN; \
+    echo bluecherry bluecherry/mysql_admin_password password $MYSQL_ADMIN_PASSWORD; \
+    echo bluecherry bluecherry/db_host string $BLUECHERRY_DB_HOST; \
+    echo bluecherry bluecherry/db_userhost string $BLUECHERRY_DB_ACCESS_HOST; \
+    echo bluecherry bluecherry/db_name string $BLUECHERRY_DB_NAME; \
+    echo bluecherry bluecherry/db_user string $BLUECHERRY_DB_USER; \
+    echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD; \
+} | debconf-set-selections \
  && export host=$BLUECHERRY_DB_HOST \
- && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /usr/share/bluecherry/postinst || true \
- && apt install -y --no-install-recommends ./bluecherry-apps/releases/bluecherry_*.deb
+ && dpkg -i --unpack ./bluecherry-apps/releases/bluecherry_*.deb \
+ && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /var/lib/dpkg/info/bluecherry.postinst \
+ && dpkg --configure bluecherry
 
 # Cleanup tasks
 RUN apt-get clean \
