@@ -88,19 +88,19 @@ RUN apt-get update && apt-get install -y \
 RUN echo "[client]\nuser=$MYSQL_ADMIN_LOGIN\npassword=$MYSQL_ADMIN_PASSWORD\n[mysqldump]\nuser=$MYSQL_ADMIN_LOGIN\npassword=$MYSQL_ADMIN_PASSWORD" > /root/.my.cnf
 
 # Debconf pre-seed values
-RUN echo bluecherry bluecherry/mysql_admin_login string $MYSQL_ADMIN_LOGIN | debconf-set-selections && \
-    echo bluecherry bluecherry/mysql_admin_password password $MYSQL_ADMIN_PASSWORD | debconf-set-selections && \
-    echo bluecherry bluecherry/db_host string $BLUECHERRY_DB_HOST | debconf-set-selections && \
-    echo bluecherry bluecherry/db_userhost string $BLUECHERRY_DB_ACCESS_HOST | debconf-set-selections && \
-    echo bluecherry bluecherry/db_name string $BLUECHERRY_DB_NAME | debconf-set-selections && \
-    echo bluecherry bluecherry/db_user string $BLUECHERRY_DB_USER | debconf-set-selections && \
-    echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD | debconf-set-selections
-
-# Patch and install
-COPY patch-bluecherry-deb.sh /root/
-RUN chmod +x /root/patch-bluecherry-deb.sh && \
-    /root/patch-bluecherry-deb.sh /root/bluecherry-apps/releases/bluecherry_*.deb && \
-    apt install -y /root/patched_bluecherry_*.deb
+RUN { \
+    echo bluecherry bluecherry/mysql_admin_login string $MYSQL_ADMIN_LOGIN; \
+    echo bluecherry bluecherry/mysql_admin_password password $MYSQL_ADMIN_PASSWORD; \
+    echo bluecherry bluecherry/db_host string $BLUECHERRY_DB_HOST; \
+    echo bluecherry bluecherry/db_userhost string $BLUECHERRY_DB_ACCESS_HOST; \
+    echo bluecherry bluecherry/db_name string $BLUECHERRY_DB_NAME; \
+    echo bluecherry bluecherry/db_user string $BLUECHERRY_DB_USER; \
+    echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD; \
+} | debconf-set-selections \
+ && export host=$BLUECHERRY_DB_HOST \
+ && dpkg -i --unpack ./bluecherry-apps/releases/bluecherry_*.deb \
+ && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /var/lib/dpkg/info/bluecherry.postinst \
+ && dpkg --configure bluecherry
 
 # Cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /root/.my.cnf
