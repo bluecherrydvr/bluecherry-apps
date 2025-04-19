@@ -149,6 +149,7 @@ RUN { \
  && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /var/lib/dpkg/info/bluecherry.postinst \
  && dpkg --configure bluecherry
 
+
 # Cleanup tasks
 RUN apt-get clean \
 # && rm -f bluecherry-apps/releases/bluecherry_*.deb \
