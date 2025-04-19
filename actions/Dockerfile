@@ -145,6 +145,7 @@ RUN { \
         echo bluecherry bluecherry/db_password password $BLUECHERRY_DB_PASSWORD; \
     } | debconf-set-selections \
  && export host=$BLUECHERRY_DB_HOST \
+ && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /usr/share/bluecherry/postinst || true \
  && apt install -y --no-install-recommends ./bluecherry-apps/releases/bluecherry_*.deb
 
 # Cleanup tasks
