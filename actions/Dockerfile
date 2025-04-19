@@ -7,6 +7,11 @@ ARG BLUECHERRY_GIT_BRANCH_TAG=master
 # Build the base OS with some development libs and tools
 FROM baseos AS os_dev_environment
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Block service start attempts (safely for Docker builds)
+COPY ./scripts/policy-rc.d /usr/sbin/policy-rc.d
+RUN chmod +x /usr/sbin/policy-rc.d
+
 WORKDIR /root
 
 RUN apt-get update
