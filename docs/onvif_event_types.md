@@ -6,6 +6,26 @@ This document outlines the process for adding support for new ONVIF event types 
 
 The Bluecherry DVR system supports ONVIF events from IP cameras. The system is designed to be extensible, allowing new event types to be added as they become available in the ONVIF standard or as manufacturers implement proprietary event types.
 
+## TODO: Event Type System Improvements
+
+The current implementation has some limitations that should be addressed in future updates:
+
+1. **Dynamic Event Type Support**: Currently, event types are hardcoded in the `bc_event_cam_type_t` enum in `lib/libbluecherry.h`. This requires code changes to add new event types. A more flexible system should:
+   - Allow dynamic registration of event types at runtime
+   - Support event type mapping between ONVIF events and internal event types
+   - Enable adding new event types without code changes
+   - Maintain backward compatibility with existing event types
+
+2. **File Naming Flexibility**: The file naming system in `server/recorder.cpp` is currently hardcoded for specific event types. This should be updated to:
+   - Support dynamic event type names in filenames
+   - Allow configuration of filename formats per event type
+   - Handle new event types without code changes
+
+3. **Event Type Configuration**: Add a configuration system that allows:
+   - Defining event type properties (name, display name, filename format)
+   - Mapping ONVIF event topics to internal event types
+   - Configuring event type behavior (recording, notifications, etc.)
+
 ## Code Restrictions and Naming Conventions
 
 When adding new ONVIF event types, keep the following restrictions in mind:
