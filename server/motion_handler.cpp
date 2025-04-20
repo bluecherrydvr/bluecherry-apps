@@ -88,32 +88,28 @@ void motion_handler::run()
 		const stream_keyframe_buffer &buffer = raw_stream->buffer;
 
 		bool triggered = false;
+		unsigned trigger_flags = 0;
 		for (auto it = buffer.begin(); it != buffer.end(); it++) {
-			// TODO Avoid repetitive traversal loop! Repetitive processing is already eliminated by last_pkt_seq check.
 			if ((int)it->seq <= last_pkt_seq)
 				continue;
 			last_pkt_seq = it->seq;
 			bc_log(Debug, "pkt: type:%c flags: 0x%02x, size: %u, pts: %" PRId64 " ts_clock: %u ts_monotonic: %u seq: %u",
 			       it->type == AVMEDIA_TYPE_VIDEO ? 'V' : 'A',
 			       it->flags, it->size, it->pts, (unsigned)it->ts_clock, (unsigned)it->ts_monotonic, it->seq);
-			// If N% of frames in the past X seconds contain motion, trigger
-			// Push info on packet into sliding sequence window checker (SSWC)
-			// Drop from SSWC the packets which don't fit to the specified window (done internally with push())
 			bc_log(Debug, "pkt: motion: %s, trigger: %s, pts: %" PRId64 " seq: %u",
 					(it->flags & stream_packet::MotionFlag) ? "YES" : "NO ",
 					(it->flags & stream_packet::TriggerFlag) ? "YES" : "NO ",
 					it->pts, it->seq);
 
-			/* Triggered mode skips percentage checks */
 			if (it->flags & stream_packet::TriggerFlag) {
 				triggered = true;
-				break;  // for...
+				trigger_flags = it->flags;
+				bc_log(Info, "Preserving trigger flags: 0x%x", trigger_flags);
+				break;
 			}
 
 			if (it->type == AVMEDIA_TYPE_VIDEO) {
-				// TODO Use DTS instead of PTS for STWC for sure monotonity?
-				ssw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
-				// Check the "sum" (count) of motion-flagged packets in SSWC
+				ssw_motion_analysis.push((it->flags & stream_packet::MotionFlag) ? 1 : 0);
 				int percentage = 100 * ssw_motion_analysis.sum() / ssw_motion_analysis.count();
 				bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
 						ssw_motion_analysis.count(), percentage, motion_threshold_percentage);
@@ -121,7 +117,8 @@ void motion_handler::run()
 				if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
 						&& (percentage >= motion_threshold_percentage)) {
 					triggered = true;
-					break;  // for...
+					trigger_flags = it->flags;
+					break;
 				}
 			}
 		}
@@ -129,9 +126,6 @@ void motion_handler::run()
 		int send_from = -1;
 
 		if (triggered && !recording) {
-			/* If the recording is paused, and the last recorded packet is still
-			 * in the buffer, send all packets between that and the current packet
-			 * to resume the recording. */
 			if (last_recorded_seq && last_recorded_seq >= buffer.front().seq) {
 				unsigned int resume_pos = 0;
 				for (; resume_pos < buffer.size(); resume_pos++) {
@@ -156,7 +150,6 @@ void motion_handler::run()
 		if (!recording && last_recorded_seq && buffer.front().seq > last_recorded_seq) {
 			bc_log(Debug, "motion: stop recording");
 			last_recorded_seq = 0;
-			// Send null packet to end recording
 			send(stream_packet());
 			continue;
 		}
@@ -182,11 +175,15 @@ void motion_handler::run()
 			}
 		}
 
-		for (unsigned int i = send_from; i < buffer.size(); i++)
-			send(buffer[i]);
+		for (unsigned int i = send_from; i < buffer.size(); i++) {
+			stream_packet pkt = buffer[i];
+			if (triggered) {
+				pkt.flags = trigger_flags;
+				bc_log(Debug, "Setting packet flags to 0x%x", pkt.flags);
+			}
+			send(pkt);
+		}
 		last_recorded_seq = buffer.back().seq;
-
-		// note lock is held
 	}
 
 	bc_log(Debug, "motion_handler destroying");
