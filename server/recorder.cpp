@@ -178,7 +178,28 @@ void recorder::event_trigger_notifications(bc_event_cam_t event)
 
 	char id[24] = { 0 };
 	snprintf(id, sizeof(id), "%lu", event->media.table_id);
-	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", "motion_event", id, NULL);
+	
+	// Determine the event type string for the notification
+	const char* event_type = "motion_event";
+	switch (event->type) {
+		case BC_EVENT_CAM_T_MOTION:
+			event_type = "motion_event";
+			break;
+		case BC_EVENT_CAM_T_VEHICLE:
+			event_type = "vehicle_event";
+			break;
+		case BC_EVENT_CAM_T_PERSON:
+			event_type = "person_event";
+			break;
+		case BC_EVENT_CAM_T_ANIMAL:
+			event_type = "animal_event";
+			break;
+		default:
+			event_type = "motion_event";
+			break;
+	}
+	
+	execl("/usr/bin/php", "/usr/bin/php", "/usr/share/bluecherry/www/lib/mailer.php", event_type, id, NULL);
 	exit(1);
 }
 
@@ -204,10 +225,24 @@ static int media_file_path(char *dst, size_t len, time_t start_ts, int device_id
 	localtime_r(&start_ts, &tm);
 	strftime(date, sizeof(date), "%Y/%m/%d", &tm);
 
-	if (rec_type == BC_EVENT_CAM_T_MOTION)
-		strftime(fname, sizeof(fname), "/%H-%M-%S-motion.mp4", &tm);
-	else
-		strftime(fname, sizeof(fname), "/%H-%M-%S.mp4", &tm);
+	// Handle different event types
+	switch (rec_type) {
+		case BC_EVENT_CAM_T_MOTION:
+			strftime(fname, sizeof(fname), "/%H-%M-%S-motion.mp4", &tm);
+			break;
+		case BC_EVENT_CAM_T_VEHICLE:
+			strftime(fname, sizeof(fname), "/%H-%M-%S-vehicle.mp4", &tm);
+			break;
+		case BC_EVENT_CAM_T_PERSON:
+			strftime(fname, sizeof(fname), "/%H-%M-%S-person.mp4", &tm);
+			break;
+		case BC_EVENT_CAM_T_ANIMAL:
+			strftime(fname, sizeof(fname), "/%H-%M-%S-animal.mp4", &tm);
+			break;
+		default:
+			strftime(fname, sizeof(fname), "/%H-%M-%S.mp4", &tm);
+			break;
+	}
 
 	/* Construct full path except final file name, for mkdir */
 	size_t dir_len = snprintf(dst, len, "%s/%s/%06d",
@@ -255,7 +290,10 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 		return -1;
 	}
 
-	bc_event_level_t level = (recording_type == BC_EVENT_CAM_T_MOTION) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
+	bc_event_level_t level = (recording_type == BC_EVENT_CAM_T_MOTION || 
+	                          recording_type == BC_EVENT_CAM_T_VEHICLE || 
+	                          recording_type == BC_EVENT_CAM_T_PERSON || 
+	                          recording_type == BC_EVENT_CAM_T_ANIMAL) ? BC_EVENT_L_WARN : BC_EVENT_L_INFO;
 	nevent = bc_event_cam_start(device_id, start_ts, level, recording_type, outfile);
 
 	if (!nevent) {
@@ -284,7 +322,10 @@ void recorder::recording_end()
 	/* Close the media entry in the db */
 	if (current_event && bc_event_has_media(current_event))
 	{
-		if (recording_type == BC_EVENT_CAM_T_MOTION &&
+		if ((recording_type == BC_EVENT_CAM_T_MOTION ||
+		     recording_type == BC_EVENT_CAM_T_VEHICLE ||
+		     recording_type == BC_EVENT_CAM_T_PERSON ||
+		     recording_type == BC_EVENT_CAM_T_ANIMAL) &&
 			!event_notification_executed)
 			event_trigger_notifications(current_event);
 

@@ -156,12 +156,15 @@ typedef enum {
 	BC_EVENT_L_CRIT,
 } bc_event_level_t;
 
-typedef enum {
+typedef enum bc_event_cam_type {
 	BC_EVENT_CAM_T_MOTION = 0,
 	BC_EVENT_CAM_T_NOT_FOUND,
 	BC_EVENT_CAM_T_VLOSS,
 	BC_EVENT_CAM_T_ALOSS,
 	BC_EVENT_CAM_T_CONTINUOUS,
+	BC_EVENT_CAM_T_VEHICLE,
+	BC_EVENT_CAM_T_PERSON,
+	BC_EVENT_CAM_T_ANIMAL,
 } bc_event_cam_type_t;
 
 typedef enum {

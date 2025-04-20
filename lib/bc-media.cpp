@@ -33,7 +33,7 @@ static const char *level_to_str[] = {
 };
 
 static const char *cam_type_to_str[] = {
-	"motion", "not found", "video signal loss", "audio signal loss", "continuous"
+	"motion", "not found", "video signal loss", "audio signal loss", "continuous", "vehicle", "person", "animal"
 };
 
 static const char *sys_type_to_str[] = {
