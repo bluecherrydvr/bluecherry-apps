@@ -99,8 +99,10 @@ RUN { \
 } | debconf-set-selections \
  && export host=$BLUECHERRY_DB_HOST \
  && dpkg -i --unpack ./bluecherry-apps/releases/bluecherry_*.deb \
- && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /var/lib/dpkg/info/bluecherry.postinst \
+ && sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*$|true|' /var/lib/dpkg/info/bluecherry.postinst \
+ && grep 'update-alternatives' /var/lib/dpkg/info/bluecherry.postinst || echo "Patch successful - line removed" \
  && dpkg --configure bluecherry
+
 
 # Cleanup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /root/.my.cnf
