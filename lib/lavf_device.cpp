@@ -111,12 +111,20 @@ int lavf_device::start()
 	int re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
 	av_dict_free(&avopt_open_input);
 
-	if (re != 0)
-	{
+	if (re != 0) {
 		av_strerror(re, error_message, sizeof(error_message));
-		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
-		ctx = NULL;
-		return -1;
+		char safe_url[512];
+    		strlcpy(safe_url, url, sizeof(safe_url));
+    		/* Strip the username and password from the Find the @ symbol that separates credentials from host */
+    		char *at_pos = strchr(safe_url, '@');
+    		if (at_pos && strncmp(safe_url, "rtsp://", 7) == 0) {
+        	memmove(safe_url + 7, at_pos + 1, strlen(at_pos + 1) + 1);
+	}
+
+		bc_log(Error, "Failed to open stream for device %s Error: %d (%s) (** login credentials removed **)",
+           		safe_url, re, error_message);
+    		ctx = NULL;
+    	return -1;
 	}
 
 	AVDictionary *avopt_find_stream_info = NULL;
