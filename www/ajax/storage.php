@@ -29,7 +29,8 @@ class storage extends Controller {
                     MIN(CASE WHEN start > 0 THEN start ELSE NULL END) as earliest_recording,
                     MAX(CASE WHEN end > 0 THEN end ELSE NULL END) as latest_recording
                     FROM Media 
-                    WHERE filepath LIKE '{$path}%'";
+                    WHERE filepath LIKE '{$path}%'
+                    AND size > 2000";
             $stats = data::query($query);
             
             $total_hours = ($stats[0]['total_duration'] ?: 0) / 3600;
