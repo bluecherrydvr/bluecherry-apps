@@ -57,6 +57,26 @@
                     <tr class="table-storage-tr-info">
                         <td colspan="5">Storage Used: <?php echo $used_storage . "%"; ?></td>
                     </tr>
+                    <?php if (!$location['has_sufficient_data']): ?>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5" class="text-warning">
+                            <i class="fa fa-exclamation-triangle"></i> Provisional estimate - Need at least 24 hours of recording data for accurate calculation
+                            <?php if ($location['earliest_recording'] && $location['latest_recording']): ?>
+                            <br>Current recording range: <?php echo date('Y-m-d H:i', $location['earliest_recording']); ?> to <?php echo date('Y-m-d H:i', $location['latest_recording']); ?>
+                            (<?php echo round($location['total_duration']/3600, 1); ?> hours available)
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5">Total Recorded: <?php echo round($location['total_duration']/3600, 1); ?> hours | <?php echo round($location['total_size_mb']/1024, 1); ?> GB used | <?php echo $location['file_count']; ?> files | <?php echo $location['mb_per_hour']; ?> MB/hour average</td>
+                    </tr>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5">Last 7 Days: <?php echo round($location['total_duration']/3600, 1); ?> hours recorded | <?php echo round($location['total_size_mb']/1024, 1); ?> GB used | <?php echo $location['file_count']; ?> files | <?php echo $location['mb_per_hour']; ?> MB/hour average</td>
+                    </tr>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5">Average Bitrate: <?php echo $location['avg_bitrate']; ?> kbps | Motion Detection: <?php echo $location['motion_percent']; ?>% | Compression Factor: <?php echo $location['compression_factor']; ?>x</td>
+                    </tr>
                 <?php } ?>
                 </tbody>
             </table>
