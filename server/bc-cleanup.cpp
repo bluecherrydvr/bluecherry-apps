@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <algorithm>
 #include <cmath>
+#include <thread>
 
 // CleanupRetryManager implementation
 void CleanupRetryManager::add_retry(const std::string& filepath, const std::string& error) {
@@ -134,11 +135,22 @@ std::string ParallelCleanup::get_next_file() {
 void ParallelCleanup::process_file(const std::string& filepath) {
     struct stat st;
     if (stat(filepath.c_str(), &st) == 0) {
+        // Check file size before deletion
+        if (st.st_size > 100 * 1024 * 1024) {  // If file is larger than 100MB
+            bc_log(Info, "Processing large file: %s (%.2f MB)", 
+                   filepath.c_str(), st.st_size / (1024.0 * 1024.0));
+        }
+        
         if (unlink(filepath.c_str()) == 0) {
             stats.files_deleted++;
             stats.bytes_freed += st.st_size;
+            
+            // Add delay after deletion to reduce I/O pressure
+            std::this_thread::sleep_for(std::chrono::milliseconds(FILE_DELETE_DELAY_MS));
         } else {
             stats.errors++;
+            bc_log(Error, "Failed to delete file: %s (errno: %d)", 
+                   filepath.c_str(), errno);
         }
     }
     stats.files_processed++;
@@ -197,15 +209,18 @@ int CleanupManager::run_cleanup() {
     BC_DB_RES dbres;
     std::vector<std::string> batch;
     
-    // Check if storage is critically full (above 95%)
+    // Check if storage is critically full using database thresholds
     bool is_critically_full = false;
     float highest_usage = 0.0;
+    float max_thresh = 0.0;
+    
     for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
         float used = path_used_percent(media_stor[i].path);
         if (used > highest_usage) {
             highest_usage = used;
+            max_thresh = media_stor[i].max_thresh;
         }
-        if (used >= 95.0) {
+        if (used >= media_stor[i].max_thresh) {
             is_critically_full = true;
             break;
         }
@@ -215,39 +230,47 @@ int CleanupManager::run_cleanup() {
     int batch_size = is_critically_full ? HIGH_PRIORITY_BATCH_SIZE : CLEANUP_BATCH_SIZE;
     
     if (is_critically_full) {
-        bc_log(Info, "Storage critically full (%.1f%%), entering high priority cleanup mode. Batch size: %d files", 
-               highest_usage, batch_size);
+        bc_log(Info, "Storage critically full (%.1f%% > %.1f%% threshold), entering high priority cleanup mode. Batch size: %d files", 
+               highest_usage, max_thresh, batch_size);
     }
     
-    dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
-                           "filepath!='' ORDER BY id ASC LIMIT %d",
-                           batch_size);
-    
-    if (!dbres) {
-        bc_log(Error, "Database error during media cleanup");
+    try {
+        dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
+                               "filepath!='' ORDER BY id ASC LIMIT %d",
+                               batch_size);
+        
+        if (!dbres) {
+            bc_log(Error, "Database error during media cleanup");
+            return -1;
+        }
+        
+        while (!bc_db_fetch_row(dbres) && should_continue_cleanup(start_time)) {
+            const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+            if (filepath && *filepath) {
+                batch.push_back(filepath);
+            }
+        }
+        
+        bc_db_free_table(dbres);
+        
+        if (is_critically_full) {
+            bc_log(Info, "High priority cleanup: Found %zu files to process", batch.size());
+        }
+        
+        // Process the batch
+        int result = process_batch(batch);
+        
+        // Update scheduler
+        scheduler->update_last_run();
+        
+        return result;
+    } catch (const std::exception& e) {
+        bc_log(Error, "Exception during cleanup: %s", e.what());
+        return -1;
+    } catch (...) {
+        bc_log(Error, "Unknown exception during cleanup");
         return -1;
     }
-    
-    while (!bc_db_fetch_row(dbres) && should_continue_cleanup(start_time)) {
-        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-        if (filepath && *filepath) {
-            batch.push_back(filepath);
-        }
-    }
-    
-    bc_db_free_table(dbres);
-    
-    if (is_critically_full) {
-        bc_log(Info, "High priority cleanup: Found %zu files to process", batch.size());
-    }
-    
-    // Process the batch
-    int result = process_batch(batch);
-    
-    // Update scheduler
-    scheduler->update_last_run();
-    
-    return result;
 }
 
 void CleanupManager::update_stats(const cleanup_stats& new_stats) {
@@ -274,31 +297,39 @@ int CleanupManager::process_batch(const std::vector<std::string>& files) {
         return 0;
     }
     
-    // Start parallel cleanup
-    parallel_cleanup->start_cleanup(std::thread::hardware_concurrency());
-    
-    // Add files to work queue
-    for (const auto& file : files) {
-        parallel_cleanup->add_work(file);
+    try {
+        // Start parallel cleanup
+        parallel_cleanup->start_cleanup(std::thread::hardware_concurrency());
+        
+        // Add files to work queue
+        for (const auto& file : files) {
+            parallel_cleanup->add_work(file);
+        }
+        
+        // Wait for completion
+        parallel_cleanup->stop_cleanup();
+        
+        // Get stats before updating
+        cleanup_stats new_stats = parallel_cleanup->get_stats();
+        
+        // Log cleanup results
+        bc_log(Info, "Cleanup completed: %d files processed, %d deleted, %d errors, %.2f GB freed",
+               new_stats.files_processed.load(),
+               new_stats.files_deleted.load(),
+               new_stats.errors.load(),
+               new_stats.bytes_freed.load() / (1024.0 * 1024.0 * 1024.0));
+        
+        // Update stats
+        update_stats(new_stats);
+        
+        return 0;
+    } catch (const std::exception& e) {
+        bc_log(Error, "Exception during batch processing: %s", e.what());
+        return -1;
+    } catch (...) {
+        bc_log(Error, "Unknown exception during batch processing");
+        return -1;
     }
-    
-    // Wait for completion
-    parallel_cleanup->stop_cleanup();
-    
-    // Get stats before updating
-    cleanup_stats new_stats = parallel_cleanup->get_stats();
-    
-    // Log cleanup results
-    bc_log(Info, "Cleanup completed: %d files processed, %d deleted, %d errors, %.2f GB freed",
-           new_stats.files_processed.load(),
-           new_stats.files_deleted.load(),
-           new_stats.errors.load(),
-           new_stats.bytes_freed.load() / (1024.0 * 1024.0 * 1024.0));
-    
-    // Update stats
-    update_stats(new_stats);
-    
-    return 0;
 }
 
 bool CleanupManager::should_continue_cleanup(time_t start_time) {

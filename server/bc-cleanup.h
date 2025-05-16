@@ -12,11 +12,13 @@ ook#ifndef BC_CLEANUP_H
 #include <memory>
 
 // Constants for cleanup configuration
-#define CLEANUP_BATCH_SIZE 200  // Normal batch size
+#define CLEANUP_BATCH_SIZE 50  // Reduced from 200 to be more I/O friendly
 #define MAX_CLEANUP_TIME 300  // 5 minutes
 #define MAX_RETRY_COUNT 5
 #define RETRY_BACKOFF_BASE 5  // seconds
-#define HIGH_PRIORITY_BATCH_SIZE 5000  // New constant for high priority cleanup
+#define HIGH_PRIORITY_BATCH_SIZE 200  // Reduced from 10000 to be more I/O friendly
+#define FILE_DELETE_DELAY_MS 100  // 100ms delay between file deletions
+#define MAX_IO_LOAD 80  // Maximum I/O load percentage before pausing
 
 // Cleanup statistics structure
 struct cleanup_stats {
