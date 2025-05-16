@@ -146,14 +146,27 @@ void ParallelCleanup::process_file(const std::string& filepath) {
 
 // CleanupScheduler implementation
 CleanupScheduler::CleanupScheduler(std::chrono::minutes interval)
-    : interval(interval) {
+    : interval(interval), high_priority_interval(std::chrono::minutes(1)) {
     last_run = std::chrono::system_clock::now();
 }
 
 bool CleanupScheduler::should_run_cleanup() {
     std::lock_guard<std::mutex> lock(scheduler_mutex);
     auto now = std::chrono::system_clock::now();
-    return (now - last_run) >= interval;
+    
+    // Check if storage is critically full
+    bool is_critically_full = false;
+    for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+        float used = path_used_percent(media_stor[i].path);
+        if (used >= 95.0) {
+            is_critically_full = true;
+            break;
+        }
+    }
+    
+    // Use shorter interval for critical storage
+    auto current_interval = is_critically_full ? high_priority_interval : interval;
+    return (now - last_run) >= current_interval;
 }
 
 void CleanupScheduler::update_last_run() {
@@ -184,10 +197,31 @@ int CleanupManager::run_cleanup() {
     BC_DB_RES dbres;
     std::vector<std::string> batch;
     
-    // Get files to clean up
+    // Check if storage is critically full (above 95%)
+    bool is_critically_full = false;
+    float highest_usage = 0.0;
+    for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
+        float used = path_used_percent(media_stor[i].path);
+        if (used > highest_usage) {
+            highest_usage = used;
+        }
+        if (used >= 95.0) {
+            is_critically_full = true;
+            break;
+        }
+    }
+    
+    // Get files to clean up with appropriate batch size
+    int batch_size = is_critically_full ? HIGH_PRIORITY_BATCH_SIZE : CLEANUP_BATCH_SIZE;
+    
+    if (is_critically_full) {
+        bc_log(Info, "Storage critically full (%.1f%%), entering high priority cleanup mode. Batch size: %d files", 
+               highest_usage, batch_size);
+    }
+    
     dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
                            "filepath!='' ORDER BY id ASC LIMIT %d",
-                           CLEANUP_BATCH_SIZE);
+                           batch_size);
     
     if (!dbres) {
         bc_log(Error, "Database error during media cleanup");
@@ -202,6 +236,10 @@ int CleanupManager::run_cleanup() {
     }
     
     bc_db_free_table(dbres);
+    
+    if (is_critically_full) {
+        bc_log(Info, "High priority cleanup: Found %zu files to process", batch.size());
+    }
     
     // Process the batch
     int result = process_batch(batch);
@@ -247,8 +285,18 @@ int CleanupManager::process_batch(const std::vector<std::string>& files) {
     // Wait for completion
     parallel_cleanup->stop_cleanup();
     
+    // Get stats before updating
+    cleanup_stats new_stats = parallel_cleanup->get_stats();
+    
+    // Log cleanup results
+    bc_log(Info, "Cleanup completed: %d files processed, %d deleted, %d errors, %.2f GB freed",
+           new_stats.files_processed.load(),
+           new_stats.files_deleted.load(),
+           new_stats.errors.load(),
+           new_stats.bytes_freed.load() / (1024.0 * 1024.0 * 1024.0));
+    
     // Update stats
-    update_stats(parallel_cleanup->get_stats());
+    update_stats(new_stats);
     
     return 0;
 }

@@ -1,4 +1,4 @@
-#ifndef BC_CLEANUP_H
+ook#ifndef BC_CLEANUP_H
 #define BC_CLEANUP_H
 
 #include <string>
@@ -12,10 +12,11 @@
 #include <memory>
 
 // Constants for cleanup configuration
-#define CLEANUP_BATCH_SIZE 1000
+#define CLEANUP_BATCH_SIZE 200  // Normal batch size
 #define MAX_CLEANUP_TIME 300  // 5 minutes
 #define MAX_RETRY_COUNT 5
 #define RETRY_BACKOFF_BASE 5  // seconds
+#define HIGH_PRIORITY_BATCH_SIZE 5000  // New constant for high priority cleanup
 
 // Cleanup statistics structure
 struct cleanup_stats {
@@ -77,6 +78,7 @@ class CleanupScheduler {
 private:
     std::chrono::system_clock::time_point last_run;
     std::chrono::minutes interval;
+    std::chrono::minutes high_priority_interval;  // New interval for critical storage
     std::mutex scheduler_mutex;
     
 public:
