@@ -107,6 +107,16 @@ cleanup_stats ParallelCleanup::get_stats() const {
     return stats;
 }
 
+cleanup_stats_report ParallelCleanup::get_stats_report() const {
+    cleanup_stats_report r;
+    r.files_processed = stats.files_processed.load();
+    r.files_deleted = stats.files_deleted.load();
+    r.errors = stats.errors.load();
+    r.bytes_freed = stats.bytes_freed.load();
+    r.retries = stats.retries.load();
+    return r;
+}
+
 void ParallelCleanup::worker_thread() {
     while (true) {
         std::string filepath = get_next_file();
@@ -287,6 +297,17 @@ cleanup_stats CleanupManager::get_stats() const {
     return stats;
 }
 
+cleanup_stats_report CleanupManager::get_stats_report() const {
+    std::lock_guard<std::mutex> lock(stats_mutex);
+    cleanup_stats_report r;
+    r.files_processed = stats.files_processed.load();
+    r.files_deleted = stats.files_deleted.load();
+    r.errors = stats.errors.load();
+    r.bytes_freed = stats.bytes_freed.load();
+    r.retries = stats.retries.load();
+    return r;
+}
+
 void CleanupManager::reset_stats() {
     std::lock_guard<std::mutex> lock(stats_mutex);
     stats = cleanup_stats();
@@ -310,17 +331,23 @@ int CleanupManager::process_batch(const std::vector<std::string>& files) {
         parallel_cleanup->stop_cleanup();
         
         // Get stats before updating
-        cleanup_stats new_stats = parallel_cleanup->get_stats();
+        cleanup_stats_report new_stats = parallel_cleanup->get_stats_report();
         
         // Log cleanup results
         bc_log(Info, "Cleanup completed: %d files processed, %d deleted, %d errors, %.2f GB freed",
-               new_stats.files_processed.load(),
-               new_stats.files_deleted.load(),
-               new_stats.errors.load(),
-               new_stats.bytes_freed.load() / (1024.0 * 1024.0 * 1024.0));
+               new_stats.files_processed,
+               new_stats.files_deleted,
+               new_stats.errors,
+               new_stats.bytes_freed / (1024.0 * 1024.0 * 1024.0));
         
-        // Update stats
-        update_stats(new_stats);
+        // Update stats (use atomic version for accumulation)
+        cleanup_stats temp;
+        temp.files_processed = new_stats.files_processed;
+        temp.files_deleted = new_stats.files_deleted;
+        temp.errors = new_stats.errors;
+        temp.bytes_freed = new_stats.bytes_freed;
+        temp.retries = new_stats.retries;
+        update_stats(temp);
         
         return 0;
     } catch (const std::exception& e) {

@@ -29,6 +29,15 @@ struct cleanup_stats {
     std::atomic<int> retries{0};
 };
 
+// Plain struct for reporting
+struct cleanup_stats_report {
+    int files_processed;
+    int files_deleted;
+    int errors;
+    size_t bytes_freed;
+    int retries;
+};
+
 // Retry entry structure
 struct cleanup_retry_entry {
     std::string filepath;
@@ -68,6 +77,7 @@ public:
     void stop_cleanup();
     void add_work(const std::string& filepath);
     cleanup_stats get_stats() const;
+    cleanup_stats_report get_stats_report() const;
     
 private:
     void worker_thread();
@@ -106,6 +116,7 @@ public:
     int run_cleanup();
     void update_stats(const cleanup_stats& new_stats);
     cleanup_stats get_stats() const;
+    cleanup_stats_report get_stats_report() const;
     void reset_stats();
     
 private:
