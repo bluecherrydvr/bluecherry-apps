@@ -74,9 +74,6 @@
                     <tr class="table-storage-tr-info">
                         <td colspan="5">Last 7 Days: <?php echo round($location['total_duration']/3600, 1); ?> hours recorded | <?php echo round($location['total_size_mb']/1024, 1); ?> GB used | <?php echo $location['file_count']; ?> files | <?php echo $location['mb_per_hour']; ?> MB/hour average</td>
                     </tr>
-                    <tr class="table-storage-tr-info">
-                        <td colspan="5">Average Bitrate: <?php echo $location['avg_bitrate']; ?> kbps | Motion Detection: <?php echo $location['motion_percent']; ?>% | Compression Factor: <?php echo $location['compression_factor']; ?>x</td>
-                    </tr>
                 <?php } ?>
                 </tbody>
             </table>
