@@ -68,32 +68,109 @@ class storage extends Controller {
         $this->view->locations = $locations;
     }
 
+    private function validatePath($path) {
+        // Check if path starts with /mnt or /media
+        if (!preg_match('/^\/(mnt|media)\//', $path)) {
+            return array(false, "Storage path must start with /mnt or /media");
+        }
+
+        // Check for invalid characters
+        if (preg_match('/[\|\&\;\$\#\*\(\)\{\}\[\]\<\>]/', $path)) {
+            return array(false, "Storage path contains invalid characters");
+        }
+
+        // Check if path exists and is writable
+        if (!is_dir($path)) {
+            return array(false, "Storage path does not exist");
+        }
+
+        if (!is_writable($path)) {
+            return array(false, "Storage path is not writable");
+        }
+
+        return array(true, "");
+    }
+
+    private function validateThresholds($max, $min) {
+        if (!is_numeric($max) || !is_numeric($min)) {
+            return array(false, "Thresholds must be numeric values");
+        }
+
+        $max = floatval($max);
+        $min = floatval($min);
+
+        if ($max < 1 || $max > 100) {
+            return array(false, "Maximum threshold must be between 1 and 100");
+        }
+
+        if ($min < 1 || $min > 100) {
+            return array(false, "Minimum threshold must be between 1 and 100");
+        }
+
+        if ($min >= $max) {
+            return array(false, "Minimum threshold must be less than maximum threshold");
+        }
+
+        return array(true, "");
+    }
+
     public function postData()
     {
         $storage_check = $this->ctl('storagecheck');
+        $values = array();
+        $errors = array();
 
-        $values = Array();
-        foreach($_POST['path'] as $key => $path){
-            // Call the updated method from storagecheck
-            $dir_status = $storage_check->change_directory_permissions($path);
-            if ($dir_status[0] !== 'OK') {
-                // If directory permissions change failed, return the error
-                return data::responseJSON($dir_status[0], $dir_status[1]);
+        // Start transaction
+        data::query("START TRANSACTION", true);
+
+        try {
+            // Validate all paths and thresholds first
+            foreach($_POST['path'] as $key => $path) {
+                // Validate path
+                list($valid, $error) = $this->validatePath($path);
+                if (!$valid) {
+                    throw new Exception($error);
+                }
+
+                // Validate thresholds
+                $max = intval($_POST['max'][$key]);
+                $min = $max - 10;
+                list($valid, $error) = $this->validateThresholds($max, $min);
+                if (!$valid) {
+                    throw new Exception($error);
+                }
+
+                // Check directory permissions
+                $dir_status = $storage_check->change_directory_permissions($path);
+                if ($dir_status[0] !== 'OK') {
+                    throw new Exception($dir_status[1]);
+                }
+
+                $values[] = "({$key}, '" . database::escapeString($path) . "', {$max}, {$min})";
             }
 
-            $max = intval($_POST['max'][$key]);
-            $min = $max - 10;
-            $values[] = "({$key}, '{$path}', {$max}, {$min})";
-        }
+            // Ensure at least one storage location
+            if (empty($values)) {
+                throw new Exception("At least one storage location is required");
+            }
 
-        data::query("DELETE FROM Storage", true);
+            // Delete existing storage locations
+            data::query("DELETE FROM Storage", true);
 
-        $status = true;
-        if (!empty($values)) {
+            // Insert new storage locations
             $values = implode(',', $values);
-            $status = (data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES {$values}", true)) ? $status : false;
-        }
+            if (!data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES {$values}", true)) {
+                throw new Exception("Failed to save storage locations");
+            }
 
-        data::responseJSON($status);
+            // Commit transaction
+            data::query("COMMIT", true);
+            data::responseJSON(true);
+
+        } catch (Exception $e) {
+            // Rollback transaction
+            data::query("ROLLBACK", true);
+            data::responseJSON(false, $e->getMessage());
+        }
     }
 }
