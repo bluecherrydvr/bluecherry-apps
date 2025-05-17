@@ -1,4 +1,4 @@
-ook#ifndef BC_CLEANUP_H
+#ifndef BC_CLEANUP_H
 #define BC_CLEANUP_H
 
 #include <string>
