@@ -1,6 +1,8 @@
 #!/usr/bin/make -f
 
 export CXXFLAGS += -std=c++14
+export CFLAGS += -std=c++14
+export DEB_CXXFLAGS_MAINT_APPEND = -std=c++14
 
 include /usr/share/dpkg/default.mk
 
