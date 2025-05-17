@@ -1211,10 +1211,10 @@ static int bc_check_media(void)
 		ret = g_cleanup_manager->run_cleanup();
 		
 		// Log cleanup statistics
-		cleanup_stats stats = g_cleanup_manager->get_stats();
+		cleanup_stats_report stats = g_cleanup_manager->get_stats_report();
 		bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, bytes_freed=%zu, retries=%d",
-			   stats.files_processed.load(), stats.files_deleted.load(),
-			   stats.errors.load(), stats.bytes_freed.load(), stats.retries.load());
+			   stats.files_processed, stats.files_deleted,
+			   stats.errors, stats.bytes_freed, stats.retries);
 	}
 
 	return ret;

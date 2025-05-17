@@ -1,0 +1,10 @@
+---
+description: code location php node
+globs: 
+alwaysApply: false
+---
+The computer cursor runs on is a mac m1, it is not the server hosting the code.
+
+192.168.86.90 is the server running the latest code.
+
+/var/log/nginx/bluecherry-error.log is the nginx log
