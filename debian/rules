@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+export CXXFLAGS += -std=c++14
+
 include /usr/share/dpkg/default.mk
 
 VERSION := $(shell dpkg-parsechangelog | sed '/^Version:/!d;s/^[^ ]* //')
