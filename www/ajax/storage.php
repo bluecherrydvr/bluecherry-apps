@@ -16,8 +16,25 @@ class storage extends Controller {
             $path = database::escapeString($locations[$id]['path']);
             $max_thresh = database::escapeString($locations[$id]['max_thresh']);
             
+            // Disk space error checks
+            $free_space = disk_free_space($path);
+            $total_space = disk_total_space($path);
+            if ($free_space === false || $total_space === false) {
+                $locations[$id]['record_time'] = 0;
+                $locations[$id]['used_percent'] = 0;
+                // Set other stats to 0 for consistency
+                $locations[$id]['total_duration'] = 0;
+                $locations[$id]['total_size_mb'] = 0;
+                $locations[$id]['file_count'] = 0;
+                $locations[$id]['mb_per_hour'] = 0;
+                $locations[$id]['has_sufficient_data'] = false;
+                $locations[$id]['earliest_recording'] = 0;
+                $locations[$id]['latest_recording'] = 0;
+                continue;
+            }
+
             // Get available space considering threshold
-            $available_space = (disk_free_space($path) - disk_total_space($path) * (1.0 - $max_thresh/100) ) >> 20;
+            $available_space = ($free_space - $total_space * (1.0 - $max_thresh/100) ) >> 20;
             if ($available_space < 0)
                 $available_space = 0;
 
@@ -53,7 +70,12 @@ class storage extends Controller {
             }
             
             $locations[$id]['record_time'] = $estimated_seconds;
-            $locations[$id]['used_percent'] = ceil((disk_total_space($path) - disk_free_space($path)) / disk_total_space($path) * 100);
+            // Calculate used_percent with division by zero protection
+            if ($total_space > 0) {
+                $locations[$id]['used_percent'] = ceil(($total_space - $free_space) / $total_space * 100);
+            } else {
+                $locations[$id]['used_percent'] = 0;
+            }
             
             // Add usage statistics
             $locations[$id]['total_duration'] = $stats[0]['total_duration'] ?: 0;
