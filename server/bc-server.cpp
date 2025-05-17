@@ -42,6 +42,7 @@ extern "C" {
 #include "status_server.h"
 #include "trigger_server.h"
 #include "vaapi.h"
+#include "bc-cleanup.h"
 
 #ifdef V3_LICENSING
 #include "v3license_server.h"
@@ -140,6 +141,8 @@ static bc_media_files g_media_files;
 #define BC_CLEANUP_RETRY_SEC	5
 
 extern volatile sig_atomic_t shutdown_flag;
+
+static std::unique_ptr<CleanupManager> g_cleanup_manager;
 
 void bc_status_component_begin(bc_status_component c)
 {
@@ -1201,8 +1204,18 @@ static int bc_check_media(void)
 		}
 	}
 
-	if (storage_overloaded || is_media_max_age_exceeded())
-		ret = bc_cleanup_media();
+	if (storage_overloaded || is_media_max_age_exceeded()) {
+		if (!g_cleanup_manager) {
+			g_cleanup_manager = std::make_unique<CleanupManager>();
+		}
+		ret = g_cleanup_manager->run_cleanup();
+		
+		// Log cleanup statistics
+		cleanup_stats stats = g_cleanup_manager->get_stats();
+		bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, bytes_freed=%zu, retries=%d",
+			   stats.files_processed.load(), stats.files_deleted.load(),
+			   stats.errors.load(), stats.bytes_freed.load(), stats.retries.load());
+	}
 
 	return ret;
 }
