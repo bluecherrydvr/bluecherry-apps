@@ -1,4 +1,23 @@
-bluecherry (3:3.1.9) bookworm bullseye buster focal jammy mantic noble; urgency=low
+bluecherry (3:3.1.10) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * Upgrade build system to C++14 support
+  * Add PHP-FPM timezone fix script and update Certbot install logic for Ubuntu 24.04+ and Linux Mint 22.1+ in postinstall.sh
+  * Improve storage management security and validation
+  * Add path validation and disk space checks to check_dir_permission.sh
+  * Add transaction support and better error handling to storage.php
+  * Improve storage estimation accuracy and add data sufficiency checks
+  * Make cleanup process more I/O friendly: reduce batch sizes, add delays between deletions, improve logging
+  * Add high priority cleanup mode and detailed logging (runs every minute)
+  * Filter storage calculation to only include valid media files (size > 2000 bytes)
+  * DVR storage page is blank (Ubuntu 24.04 / php 8.2) (#729)
+  * Remove 'There are no supported video capture cards detected on this system.' when no analog cards installed (#741)
+  * Unable to delete license key from web UI if license ports == 0 (#743)
+  * Do not crash if MAX_STORAGE_AGE is empty (#731)
+
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 17 May 2025 22:18:21 -0500
+
+bluecherry (3:3.1.9) bookworm bullseye buster buster focal jammy mantic noble; urgency=low
 
   * FIX: cameras hangs (https://github.com/bluecherrydvr/bluecherry-apps/pull/736)
   * FIX: orderly shutdown upon SIGTERM (https://github.com/bluecherrydvr/bluecherry-apps/pull/734)

@@ -3,6 +3,7 @@
 *.lo
 *.la
 *.mkv
+.c*
 
 .deps
 .libs/
