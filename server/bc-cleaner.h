@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <queue>
+#include <memory>
 
 struct bc_time {
 	int year = 0;
@@ -13,6 +14,30 @@ struct bc_time {
 	int hour = 0;
 	int min = 0;
 	int sec = 0;
+};
+
+// Cleanup statistics structure
+struct cleanup_stats_report {
+    int files_processed = 0;
+    int files_deleted = 0;
+    int errors = 0;
+    size_t bytes_freed = 0;
+    int retries = 0;
+};
+
+// Main cleanup manager class
+class CleanupManager {
+public:
+    CleanupManager();
+    ~CleanupManager();
+    
+    int run_cleanup();
+    cleanup_stats_report get_stats_report() const;
+    
+private:
+    cleanup_stats_report stats;
+    int process_batch(const std::vector<std::string>& files);
+    bool should_continue_cleanup(time_t start_time);
 };
 
 std::string bc_get_directory_path(const std::string& filePath);

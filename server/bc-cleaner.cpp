@@ -15,6 +15,102 @@
 #include "bc-cleaner.h"
 #include "bc-server.h"
 #include "bc-syslog.h"
+#include "bc-db.h"
+
+// Constants for cleanup configuration
+#define CLEANUP_BATCH_SIZE 100
+#define MAX_CLEANUP_TIME 300  // 5 minutes
+
+// CleanupManager implementation
+CleanupManager::CleanupManager() {
+    stats = cleanup_stats_report();
+}
+
+CleanupManager::~CleanupManager() = default;
+
+int CleanupManager::run_cleanup() {
+    time_t start_time = time(NULL);
+    BC_DB_RES dbres;
+    std::vector<std::string> batch;
+    
+    // Get files to clean up
+    dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
+                           "filepath!='' ORDER BY id ASC LIMIT %d",
+                           CLEANUP_BATCH_SIZE);
+    
+    if (!dbres) {
+        bc_log(Error, "Database error during media cleanup");
+        return -1;
+    }
+    
+    while (!bc_db_fetch_row(dbres) && should_continue_cleanup(start_time)) {
+        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+        int id = bc_db_get_val_int(dbres, "id");
+        
+        if (!filepath || !*filepath)
+            continue;
+            
+        batch.push_back(filepath);
+        
+        // Delete from database
+        if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+            bc_log(Error, "Database error during Media cleanup");
+            stats.errors++;
+            continue;
+        }
+    }
+    
+    bc_db_free_table(dbres);
+    
+    // Process the batch
+    int result = process_batch(batch);
+    
+    return result;
+}
+
+cleanup_stats_report CleanupManager::get_stats_report() const {
+    return stats;
+}
+
+int CleanupManager::process_batch(const std::vector<std::string>& files) {
+    if (files.empty()) {
+        return 0;
+    }
+    
+    for (const auto& filepath : files) {
+        struct stat st;
+        if (stat(filepath.c_str(), &st) == 0) {
+            if (unlink(filepath.c_str()) == 0) {
+                stats.files_deleted++;
+                stats.bytes_freed += st.st_size;
+                
+                // Try to remove sidecar file
+                std::string sidecar = filepath;
+                if (sidecar.size() > 3) {
+                    sidecar.replace(sidecar.size()-3, 3, "jpg");
+                    if (unlink(sidecar.c_str()) == 0) {
+                        stats.files_deleted++;
+                        stats.bytes_freed += st.st_size;
+                    }
+                }
+                
+                // Remove empty directories
+                bc_remove_dir_if_empty(filepath);
+            } else {
+                stats.errors++;
+                bc_log(Warning, "Cannot remove file %s: %s",
+                       filepath.c_str(), strerror(errno));
+            }
+        }
+        stats.files_processed++;
+    }
+    
+    return 0;
+}
+
+bool CleanupManager::should_continue_cleanup(time_t start_time) {
+    return (time(NULL) - start_time) < MAX_CLEANUP_TIME;
+}
 
 std::string bc_get_directory_path(const std::string& filePath)
 {
