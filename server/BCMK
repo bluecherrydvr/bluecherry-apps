@@ -1,4 +1,4 @@
-CFLAGS		+= -pthread -MMD $(shell pkg-config --cflags libbsd)
+CFLAGS		+= -pthread -MMD -std=c++14 $(shell pkg-config --cflags libbsd)
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lavfilter -lswscale -lavdevice -lswresample -lpugixml
 
