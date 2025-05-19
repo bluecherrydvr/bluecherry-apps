@@ -16,100 +16,252 @@
 #include "bc-server.h"
 #include "bc-syslog.h"
 #include "bc-db.h"
+#include "bc-db-core.h"
+#include "bc-log.h"
+#include <algorithm>
+#include <cmath>
 
 // Constants for cleanup configuration
 #define CLEANUP_BATCH_SIZE 100
 #define MAX_CLEANUP_TIME 300  // 5 minutes
+#define MAX_RETRY_COUNT 3
+#define RETRY_BACKOFF_BASE 1
+
+// CleanupRetryManager implementation
+void CleanupRetryManager::add_retry(const std::string& filepath, const std::string& error) {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    cleanup_retry_entry entry;
+    entry.filepath = filepath;
+    entry.last_attempt = time(nullptr);
+    entry.attempt_count = 1;
+    entry.error_reason = error;
+    retry_queue[filepath] = entry;
+}
+
+void CleanupRetryManager::process_retries() {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    time_t now = time(nullptr);
+    
+    for (auto it = retry_queue.begin(); it != retry_queue.end();) {
+        auto& entry = it->second;
+        if (entry.attempt_count >= MAX_RETRY_COUNT) {
+            bc_log(Error, "Failed to delete %s after %d attempts: %s",
+                   entry.filepath.c_str(), entry.attempt_count, entry.error_reason.c_str());
+            it = retry_queue.erase(it);
+            continue;
+        }
+        
+        if (now - entry.last_attempt >= RETRY_BACKOFF_BASE * std::pow(2, entry.attempt_count - 1)) {
+            if (unlink(entry.filepath.c_str()) == 0) {
+                it = retry_queue.erase(it);
+            } else {
+                entry.last_attempt = now;
+                entry.attempt_count++;
+                ++it;
+            }
+        } else {
+            ++it;
+        }
+    }
+}
+
+size_t CleanupRetryManager::get_retry_count() const {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    return retry_queue.size();
+}
+
+void CleanupRetryManager::clear_retries() {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    retry_queue.clear();
+}
+
+// ParallelCleanup implementation
+ParallelCleanup::ParallelCleanup() : should_stop(false) {}
+
+ParallelCleanup::~ParallelCleanup() {
+    stop_cleanup();
+}
+
+void ParallelCleanup::start_cleanup(int num_threads) {
+    should_stop = false;
+    for (int i = 0; i < num_threads; ++i) {
+        workers.emplace_back(&ParallelCleanup::worker_thread, this);
+    }
+}
+
+void ParallelCleanup::stop_cleanup() {
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        should_stop = true;
+    }
+    queue_cv.notify_all();
+    
+    for (auto& worker : workers) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+    workers.clear();
+}
+
+void ParallelCleanup::add_work(const std::string& filepath) {
+    {
+        std::lock_guard<std::mutex> lock(queue_mutex);
+        work_queue.push(filepath);
+    }
+    queue_cv.notify_one();
+}
+
+cleanup_stats_report ParallelCleanup::get_stats() const {
+    return stats;
+}
+
+void ParallelCleanup::worker_thread() {
+    while (true) {
+        std::string filepath = get_next_file();
+        if (filepath.empty()) {
+            break;
+        }
+        process_file(filepath);
+    }
+}
+
+std::string ParallelCleanup::get_next_file() {
+    std::unique_lock<std::mutex> lock(queue_mutex);
+    queue_cv.wait(lock, [this] { return !work_queue.empty() || should_stop; });
+    
+    if (should_stop && work_queue.empty()) {
+        return "";
+    }
+    
+    std::string filepath = work_queue.front();
+    work_queue.pop();
+    return filepath;
+}
+
+void ParallelCleanup::process_file(const std::string& filepath) {
+    struct stat st;
+    if (stat(filepath.c_str(), &st) != 0) {
+        stats.increment_errors();
+        return;
+    }
+    
+    stats.increment_processed();
+    if (unlink(filepath.c_str()) == 0) {
+        stats.increment_deleted();
+        stats.add_bytes_freed(st.st_size);
+    } else {
+        stats.increment_errors();
+    }
+}
+
+// CleanupScheduler implementation
+CleanupScheduler::CleanupScheduler() 
+    : last_run(std::chrono::system_clock::now())
+    , interval(std::chrono::seconds(NORMAL_CLEANUP_INTERVAL))
+    , high_priority_interval(std::chrono::seconds(HIGH_PRIORITY_INTERVAL)) {}
+
+bool CleanupScheduler::should_run_cleanup() {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    auto now = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_run);
+    
+    // Check if storage is critically full
+    double storage_usage = bc_get_storage_usage();
+    auto current_interval = (storage_usage >= CRITICAL_STORAGE_THRESHOLD) ? 
+                           high_priority_interval : interval;
+    
+    return elapsed >= current_interval;
+}
+
+void CleanupScheduler::update_last_run() {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    last_run = std::chrono::system_clock::now();
+}
+
+void CleanupScheduler::set_interval(std::chrono::seconds new_interval) {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    interval = new_interval;
+}
+
+void CleanupScheduler::set_high_priority_interval(std::chrono::seconds new_interval) {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    high_priority_interval = new_interval;
+}
 
 // CleanupManager implementation
 CleanupManager::CleanupManager() {
-    stats = cleanup_stats_report();
+    retry_manager = std::make_unique<CleanupRetryManager>();
+    parallel_cleanup = std::make_unique<ParallelCleanup>();
+    scheduler = std::make_unique<CleanupScheduler>();
 }
 
 CleanupManager::~CleanupManager() = default;
 
 int CleanupManager::run_cleanup() {
-    time_t start_time = time(NULL);
-    BC_DB_RES dbres;
-    std::vector<std::string> batch;
-    
-    // Get files to clean up
-    dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
-                           "filepath!='' ORDER BY id ASC LIMIT %d",
-                           CLEANUP_BATCH_SIZE);
-    
-    if (!dbres) {
-        bc_log(Error, "Database error during media cleanup");
-        return -1;
-    }
-    
-    while (!bc_db_fetch_row(dbres) && should_continue_cleanup(start_time)) {
-        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-        int id = bc_db_get_val_int(dbres, "id");
-        
-        if (!filepath || !*filepath)
-            continue;
-            
-        batch.push_back(filepath);
-        
-        // Delete from database
-        if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
-            bc_log(Error, "Database error during Media cleanup");
-            stats.errors++;
-            continue;
-        }
-    }
-    
-    bc_db_free_table(dbres);
-    
-    // Process the batch
-    int result = process_batch(batch);
-    
-    return result;
-}
-
-cleanup_stats_report CleanupManager::get_stats_report() const {
-    return stats;
-}
-
-int CleanupManager::process_batch(const std::vector<std::string>& files) {
-    if (files.empty()) {
+    if (!scheduler->should_run_cleanup()) {
         return 0;
     }
     
-    for (const auto& filepath : files) {
-        struct stat st;
-        if (stat(filepath.c_str(), &st) == 0) {
-            if (unlink(filepath.c_str()) == 0) {
-                stats.files_deleted++;
-                stats.bytes_freed += st.st_size;
-                
-                // Try to remove sidecar file
-                std::string sidecar = filepath;
-                if (sidecar.size() > 3) {
-                    sidecar.replace(sidecar.size()-3, 3, "jpg");
-                    if (unlink(sidecar.c_str()) == 0) {
-                        stats.files_deleted++;
-                        stats.bytes_freed += st.st_size;
-                    }
-                }
-                
-                // Remove empty directories
-                bc_remove_dir_if_empty(filepath);
-            } else {
-                stats.errors++;
-                bc_log(Warning, "Cannot remove file %s: %s",
-                       filepath.c_str(), strerror(errno));
-            }
-        }
-        stats.files_processed++;
+    time_t start_time = time(nullptr);
+    int total_processed = 0;
+    
+    // Calculate optimal number of threads based on system size
+    int num_threads = std::thread::hardware_concurrency();
+    if (num_threads > 0) {
+        num_threads = std::min(num_threads, 8); // Cap at 8 threads
+    } else {
+        num_threads = 4; // Default to 4 threads if hardware_concurrency fails
     }
     
-    return 0;
+    parallel_cleanup->start_cleanup(num_threads);
+    
+    while (should_continue_cleanup(start_time)) {
+        std::vector<std::string> files = bc_get_media_files(calculate_batch_size());
+        if (files.empty()) {
+            break;
+        }
+        
+        for (const auto& file : files) {
+            parallel_cleanup->add_work(file);
+        }
+        
+        total_processed += files.size();
+    }
+    
+    parallel_cleanup->stop_cleanup();
+    retry_manager->process_retries();
+    
+    // Update stats
+    update_stats(parallel_cleanup->get_stats());
+    scheduler->update_last_run();
+    
+    return total_processed;
+}
+
+cleanup_stats_report CleanupManager::get_stats_report() const {
+    std::lock_guard<std::mutex> lock(stats_mutex);
+    return stats.get_copy();
+}
+
+int CleanupManager::calculate_batch_size() {
+    double storage_size_tb = bc_get_total_storage_size() / (1024.0 * 1024.0 * 1024.0 * 1024.0);
+    int batch_size = static_cast<int>(storage_size_tb * BATCH_SIZE_MULTIPLIER);
+    return std::clamp(batch_size, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
 }
 
 bool CleanupManager::should_continue_cleanup(time_t start_time) {
-    return (time(NULL) - start_time) < MAX_CLEANUP_TIME;
+    time_t now = time(nullptr);
+    return (now - start_time) < MAX_CLEANUP_TIME;
+}
+
+void CleanupManager::update_stats(const cleanup_stats_report& new_stats) {
+    std::lock_guard<std::mutex> lock(stats_mutex);
+    stats.files_processed += new_stats.files_processed;
+    stats.files_deleted += new_stats.files_deleted;
+    stats.errors += new_stats.errors;
+    stats.bytes_freed += new_stats.bytes_freed;
+    stats.retries += new_stats.retries;
 }
 
 std::string bc_get_directory_path(const std::string& filePath)

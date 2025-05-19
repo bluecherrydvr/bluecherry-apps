@@ -1211,7 +1211,7 @@ static int bc_check_media(void)
 		ret = g_cleanup_manager->run_cleanup();
 		
 		// Log cleanup statistics
-		cleanup_stats_report stats = g_cleanup_manager->get_stats_report();
+		const cleanup_stats_report& stats = g_cleanup_manager->get_stats_report();
 		bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, bytes_freed=%zu, retries=%d",
 			   stats.files_processed, stats.files_deleted,
 			   stats.errors, stats.bytes_freed, stats.retries);
@@ -1548,7 +1548,10 @@ static void setup_vaapi()
 	}
 
 	if (strncasecmp(renderNode, autodetect, sizeof autodetect) == 0) {
-		system("/usr/bin/php /usr/share/bluecherry/www/lib/vaapi_autodetect.php");
+		int ret = system("/usr/bin/php /usr/share/bluecherry/www/lib/vaapi_autodetect.php");
+		if (ret != 0) {
+			bc_log(Warning, "VAAPI autodetect script failed with exit code %d", ret);
+		}
 
 		if (dbres)
 			bc_db_free_table(dbres);
