@@ -15,9 +15,9 @@
 #include "bc-cleaner.h"
 #include "bc-server.h"
 #include "bc-syslog.h"
-#include "bc-db.h"
-#include "bc-db-core.h"
-#include "bc-log.h"
+#include "../lib/libbluecherry.h"
+#include "../lib/logging.h"
+#include "../lib/logc.h"
 #include <algorithm>
 #include <cmath>
 
@@ -113,7 +113,7 @@ void ParallelCleanup::add_work(const std::string& filepath) {
 }
 
 cleanup_stats_report ParallelCleanup::get_stats() const {
-    return stats;
+    return stats.get_copy();
 }
 
 void ParallelCleanup::worker_thread() {
@@ -240,14 +240,15 @@ int CleanupManager::run_cleanup() {
 }
 
 cleanup_stats_report CleanupManager::get_stats_report() const {
-    std::lock_guard<std::mutex> lock(stats_mutex);
     return stats.get_copy();
 }
 
 int CleanupManager::calculate_batch_size() {
     double storage_size_tb = bc_get_total_storage_size() / (1024.0 * 1024.0 * 1024.0 * 1024.0);
     int batch_size = static_cast<int>(storage_size_tb * BATCH_SIZE_MULTIPLIER);
-    return std::clamp(batch_size, MIN_BATCH_SIZE, MAX_BATCH_SIZE);
+    if (batch_size < MIN_BATCH_SIZE) return MIN_BATCH_SIZE;
+    if (batch_size > MAX_BATCH_SIZE) return MAX_BATCH_SIZE;
+    return batch_size;
 }
 
 bool CleanupManager::should_continue_cleanup(time_t start_time) {
@@ -538,4 +539,70 @@ int bc_remove_directory(const std::string& path)
 		retval = rmdir(path.c_str());
 
 	return retval;
+}
+
+// Implementation of storage-related functions
+double bc_get_storage_usage() {
+    struct statvfs stat;
+    char basepath[PATH_MAX];
+    
+    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
+        bc_log(Error, "No free storage locations for new recordings!");
+        return 100.0; // Return 100% usage if we can't get storage info
+    }
+    
+    if (statvfs(basepath, &stat) != 0) {
+        bc_log(Error, "Failed to get storage usage for %s: %s", basepath, strerror(errno));
+        return 100.0;
+    }
+    
+    double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+    double used = total - free;
+    
+    return (used / total) * 100.0;
+}
+
+double bc_get_total_storage_size() {
+    struct statvfs stat;
+    char basepath[PATH_MAX];
+    
+    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
+        bc_log(Error, "No free storage locations for new recordings!");
+        return 0.0;
+    }
+    
+    if (statvfs(basepath, &stat) != 0) {
+        bc_log(Error, "Failed to get storage size for %s: %s", basepath, strerror(errno));
+        return 0.0;
+    }
+    
+    return static_cast<double>(stat.f_blocks) * stat.f_frsize;
+}
+
+std::vector<std::string> bc_get_media_files(int batch_size) {
+    std::vector<std::string> files;
+    char basepath[PATH_MAX];
+    
+    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
+        bc_log(Error, "No free storage locations for new recordings!");
+        return files;
+    }
+    
+    DIR* dir = opendir(basepath);
+    if (!dir) {
+        bc_log(Error, "Failed to open directory %s: %s", basepath, strerror(errno));
+        return files;
+    }
+    
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr && files.size() < static_cast<size_t>(batch_size)) {
+        if (entry->d_type == DT_REG) {  // Only regular files
+            std::string filepath = std::string(basepath) + "/" + entry->d_name;
+            files.push_back(filepath);
+        }
+    }
+    
+    closedir(dir);
+    return files;
 }
