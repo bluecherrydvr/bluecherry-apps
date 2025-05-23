@@ -13,14 +13,9 @@
 #include <map>
 #include "bc-time.h"  // For bc_time struct definition
 
-// Forward declarations
-double bc_get_storage_usage();
-std::vector<std::string> bc_get_media_files(int batch_size);
-double bc_get_total_storage_size();
-
 // Constants for cleanup configuration
-constexpr int NORMAL_CLEANUP_INTERVAL = 300;  // 5 minutes
-constexpr int HIGH_PRIORITY_INTERVAL = 60;    // 1 minute
+constexpr int NORMAL_CLEANUP_INTERVAL = 1800;  // 30 minutes
+constexpr int HIGH_PRIORITY_INTERVAL = 300;    // 5 minutes
 constexpr int MAX_CLEANUP_TIME = 300;         // 5 minutes
 constexpr int MAX_RETRY_COUNT = 5;
 constexpr int RETRY_BACKOFF_BASE = 5;         // 5 seconds
@@ -38,7 +33,7 @@ struct cleanup_stats_report {
     int errors = 0;
     size_t bytes_freed = 0;
     int retries = 0;
-    mutable std::mutex stats_mutex;  // Made mutable to allow locking in const methods
+    mutable std::mutex stats_mutex;
 
     // Delete copy constructor and assignment
     cleanup_stats_report(const cleanup_stats_report&) = delete;
@@ -120,7 +115,7 @@ struct cleanup_retry_entry {
 class CleanupRetryManager {
 private:
     std::map<std::string, cleanup_retry_entry> retry_queue;
-    mutable std::mutex queue_mutex;  // Made mutable for const methods
+    mutable std::mutex queue_mutex;
     
 public:
     void add_retry(const std::string& filepath, const std::string& error);
@@ -160,7 +155,7 @@ private:
     std::chrono::system_clock::time_point last_run;
     std::chrono::seconds interval;
     std::chrono::seconds high_priority_interval;
-    mutable std::mutex scheduler_mutex;  // Made mutable for const methods
+    std::mutex scheduler_mutex;
     
 public:
     CleanupScheduler();
@@ -178,13 +173,14 @@ public:
     
     int run_cleanup();
     cleanup_stats_report get_stats_report() const;  // Will use get_copy() internally
+    bool should_run_cleanup() const;  // New method to check if cleanup should run
     
 private:
     std::unique_ptr<CleanupRetryManager> retry_manager;
     std::unique_ptr<ParallelCleanup> parallel_cleanup;
     std::unique_ptr<CleanupScheduler> scheduler;
     cleanup_stats_report stats;
-    mutable std::mutex stats_mutex;  // Made mutable for const methods
+    std::mutex stats_mutex;
     
     int process_batch(const std::vector<std::string>& files);
     bool should_continue_cleanup(time_t start_time);
@@ -205,3 +201,8 @@ std::string bc_get_dir_path(const std::string& path);
 bool bc_is_dir_empty(const std::string& path);
 bool bc_remove_dir_if_empty(const std::string& path);
 int bc_remove_directory(const std::string& path);
+
+// Function declarations
+double bc_get_storage_usage();
+double bc_get_total_storage_size();
+std::vector<std::string> bc_get_media_files(int batch_size);

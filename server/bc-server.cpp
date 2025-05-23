@@ -1209,12 +1209,6 @@ static int bc_check_media(void)
 			g_cleanup_manager = std::make_unique<CleanupManager>();
 		}
 		ret = g_cleanup_manager->run_cleanup();
-		
-		// Log cleanup statistics
-		const cleanup_stats_report& stats = g_cleanup_manager->get_stats_report();
-		bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, bytes_freed=%zu, retries=%d",
-			   stats.files_processed, stats.files_deleted,
-			   stats.errors, stats.bytes_freed, stats.retries);
 	}
 
 	return ret;
@@ -1806,10 +1800,40 @@ int main(int argc, char **argv)
 			bc_status_component_end(STATUS_HWCARD_DETECT, ret == 0);
 		}
 
-		bc_status_component_begin(STATUS_MEDIA_CHECK);
-		/* Check media locations for full */
-		int mc_ret = bc_check_media();
-		bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
+		// Check if any storage location needs cleanup
+		const char* const storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
+		BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+		if (storage_res) {
+			while (!bc_db_fetch_row(storage_res)) {
+				size_t len;
+				const char* path = bc_db_get_val(storage_res, "path", &len);
+				const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+				if (path && max_thresh_str) {
+					struct statvfs stat;
+					if (statvfs(path, &stat) == 0) {
+						double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+						double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+						double used = total - free;
+						double usage = (used / total) * 100.0;
+						double max_thresh = atof(max_thresh_str);
+						
+						if (usage >= max_thresh) {
+							bc_log(Debug, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
+								   path, usage, max_thresh);
+							break;
+						}
+					}
+				}
+			}
+			bc_db_free_table(storage_res);
+		}
+
+		// Run cleanup based on scheduler
+		if (g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
+			bc_status_component_begin(STATUS_MEDIA_CHECK);
+			int mc_ret = bc_check_media();
+			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
+		}
 
 		/* Every 8 seconds */
 		if ((loops & 7) == 0) {

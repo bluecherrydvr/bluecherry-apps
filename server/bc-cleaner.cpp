@@ -200,6 +200,7 @@ CleanupManager::~CleanupManager() = default;
 
 int CleanupManager::run_cleanup() {
     if (!scheduler->should_run_cleanup()) {
+        bc_log(Info, "Skipping cleanup - not time to run yet");
         return 0;
     }
     
@@ -214,14 +215,55 @@ int CleanupManager::run_cleanup() {
         num_threads = 4; // Default to 4 threads if hardware_concurrency fails
     }
     
+    bc_log(Info, "Starting cleanup with %d threads", num_threads);
     parallel_cleanup->start_cleanup(num_threads);
     
     while (should_continue_cleanup(start_time)) {
-        std::vector<std::string> files = bc_get_media_files(calculate_batch_size());
-        if (files.empty()) {
+        // Check if any storage location needs cleanup
+        bool needs_cleanup = false;
+        const char* storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
+        BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+        if (storage_res) {
+            while (!bc_db_fetch_row(storage_res)) {
+                size_t len;
+                const char* path = bc_db_get_val(storage_res, "path", &len);
+                const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+                if (path && max_thresh_str) {
+                    struct statvfs stat;
+                    if (statvfs(path, &stat) == 0) {
+                        double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+                        double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                        double used = total - free;
+                        double usage = (used / total) * 100.0;
+                        double max_thresh = atof(max_thresh_str);
+                        
+                        if (usage >= max_thresh) {
+                            needs_cleanup = true;
+                            bc_log(Debug, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
+                                   path, usage, max_thresh);
+                            break;
+                        }
+                    }
+                }
+            }
+            bc_db_free_table(storage_res);
+        }
+        
+        if (!needs_cleanup) {
+            bc_log(Info, "No storage locations need cleanup");
             break;
         }
         
+        int batch_size = calculate_batch_size();
+        bc_log(Info, "Calculated batch size: %d", batch_size);
+        
+        std::vector<std::string> files = bc_get_media_files(batch_size);
+        if (files.empty()) {
+            bc_log(Info, "No more files to process");
+            break;
+        }
+        
+        bc_log(Info, "Adding %zu files to cleanup queue", files.size());
         for (const auto& file : files) {
             parallel_cleanup->add_work(file);
         }
@@ -229,12 +271,21 @@ int CleanupManager::run_cleanup() {
         total_processed += files.size();
     }
     
+    bc_log(Info, "Stopping cleanup workers");
     parallel_cleanup->stop_cleanup();
+    
+    bc_log(Info, "Processing retries");
     retry_manager->process_retries();
     
     // Update stats
     update_stats(parallel_cleanup->get_stats());
     scheduler->update_last_run();
+    
+    // Log final stats with GB instead of bytes
+    double gb_freed = stats.bytes_freed / (1024.0 * 1024.0 * 1024.0);
+    bc_log(Info, "Cleanup completed: processed %d files", total_processed);
+    bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, freed=%.2f GB, retries=%d",
+           stats.files_processed, stats.files_deleted, stats.errors, gb_freed, stats.retries);
     
     return total_processed;
 }
@@ -263,6 +314,10 @@ void CleanupManager::update_stats(const cleanup_stats_report& new_stats) {
     stats.errors += new_stats.errors;
     stats.bytes_freed += new_stats.bytes_freed;
     stats.retries += new_stats.retries;
+}
+
+bool CleanupManager::should_run_cleanup() const {
+    return scheduler->should_run_cleanup();
 }
 
 std::string bc_get_directory_path(const std::string& filePath)
@@ -350,47 +405,46 @@ bool bc_compare_time(const bc_time& tm1, const bc_time& tm2)
 
 bool bc_is_base_path(std::string dir_path)
 {
-	if (!dir_path.length()) return false;
-	char basepath[PATH_MAX];
+    if (!dir_path.length()) return false;
+    char basepath[PATH_MAX];
 
-	if (bc_get_media_loc(basepath, sizeof(basepath)) < 0)
-	{
-		bc_log(Error, "No free storage locations for new recordings!");
-		return false;
-	}
+    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0)
+    {
+        bc_log(Error, "No free storage locations for new recordings!");
+        return false;
+    }
 
-	std::string base_path = std::string(basepath);
-	if (base_path.back() != '/') base_path.append("/");
-	if (dir_path.back() != '/') dir_path.append("/");
+    std::string base_path = std::string(basepath);
+    if (base_path.back() != '/') base_path.append("/");
+    if (dir_path.back() != '/') dir_path.append("/");
 
-	if (dir_path.length() <= base_path.length() ||
-		dir_path == base_path) return true;
-
-	return false;
+    return dir_path == base_path;
 }
 
 bool bc_is_current_path(const std::string& path)
 {
-	if (path.length() <= 30) return true;
-	std::string timed_path = path.substr(path.size() - 30, 26);
-	bc_time rec_time;
-	int id = 0;
+    // Only check paths that look like they might be date-based
+    if (path.length() <= 30) return false;
+    
+    std::string timed_path = path.substr(path.size() - 30, 26);
+    bc_time rec_time;
+    int id = 0;
 
-	int count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
-		(int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
-		(int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
-	if (count != 7) return true;
+    int count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
+        (int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
+        (int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
+    
+    // If we can't parse the date, don't skip the path
+    if (count != 7) return false;
 
-	struct tm tm;
-	time_t ts = time(NULL);
-	localtime_r(&ts, &tm);
+    struct tm tm;
+    time_t ts = time(NULL);
+    localtime_r(&ts, &tm);
 
-	/* Do not remove current recording directory */
-	if (rec_time.year == (tm.tm_year + 1900) &&
-		rec_time.month == (tm.tm_mon + 1) &&
-		rec_time.day == tm.tm_mday) return true;
-
-	return false;
+    // Only skip if it's from today
+    return (rec_time.year == (tm.tm_year + 1900) &&
+            rec_time.month == (tm.tm_mon + 1) &&
+            rec_time.day == tm.tm_mday);
 }
 
 std::string bc_get_parent_path(const std::string& path)
@@ -541,68 +595,293 @@ int bc_remove_directory(const std::string& path)
 	return retval;
 }
 
-// Implementation of storage-related functions
-double bc_get_storage_usage() {
-    struct statvfs stat;
-    char basepath[PATH_MAX];
-    
-    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
-        bc_log(Error, "No free storage locations for new recordings!");
-        return 100.0; // Return 100% usage if we can't get storage info
-    }
-    
-    if (statvfs(basepath, &stat) != 0) {
-        bc_log(Error, "Failed to get storage usage for %s: %s", basepath, strerror(errno));
-        return 100.0;
-    }
-    
-    double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
-    double used = total - free;
-    
-    return (used / total) * 100.0;
-}
-
-double bc_get_total_storage_size() {
-    struct statvfs stat;
-    char basepath[PATH_MAX];
-    
-    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
-        bc_log(Error, "No free storage locations for new recordings!");
-        return 0.0;
-    }
-    
-    if (statvfs(basepath, &stat) != 0) {
-        bc_log(Error, "Failed to get storage size for %s: %s", basepath, strerror(errno));
-        return 0.0;
-    }
-    
-    return static_cast<double>(stat.f_blocks) * stat.f_frsize;
-}
-
-std::vector<std::string> bc_get_media_files(int batch_size) {
-    std::vector<std::string> files;
-    char basepath[PATH_MAX];
-    
-    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
-        bc_log(Error, "No free storage locations for new recordings!");
-        return files;
-    }
-    
-    DIR* dir = opendir(basepath);
+// Helper function to recursively scan directories
+void scan_directory_for_files(const std::string& basepath, std::vector<std::string>& files, int& batch_size, int& files_found) {
+    DIR* dir = opendir(basepath.c_str());
     if (!dir) {
-        bc_log(Error, "Failed to open directory %s: %s", basepath, strerror(errno));
-        return files;
+        bc_log(Error, "Failed to open directory %s: %s", basepath.c_str(), strerror(errno));
+        return;
     }
+    
+    // Store files with their timestamps for sorting
+    struct FileInfo {
+        std::string path;
+        time_t timestamp;
+        
+        bool operator<(const FileInfo& other) const {
+            return timestamp < other.timestamp;  // Sort by oldest first
+        }
+    };
+    std::vector<FileInfo> file_list;
     
     struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr && files.size() < static_cast<size_t>(batch_size)) {
-        if (entry->d_type == DT_REG) {  // Only regular files
-            std::string filepath = std::string(basepath) + "/" + entry->d_name;
-            files.push_back(filepath);
+    while ((entry = readdir(dir)) != nullptr) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        std::string full_path = basepath + "/" + entry->d_name;
+        struct stat st;
+        
+        if (stat(full_path.c_str(), &st) != 0) {
+            continue;
+        }
+        
+        if (S_ISREG(st.st_mode)) {  // Regular file
+            // Extract timestamp from filename (format: HH-MM-SS)
+            int hour, min, sec;
+            if (sscanf(entry->d_name, "%02d-%02d-%02d", &hour, &min, &sec) == 3) {
+                // Get the directory path components (YYYY/MM/DD)
+                std::string dir_path = bc_get_parent_path(full_path);
+                std::string dir_name = bc_get_file_name(dir_path);
+                
+                int year, month, day;
+                if (sscanf(dir_name.c_str(), "%04d/%02d/%02d", &year, &month, &day) == 3) {
+                    struct tm tm = {0};
+                    tm.tm_year = year - 1900;  // Years since 1900
+                    tm.tm_mon = month - 1;     // Months since January (0-11)
+                    tm.tm_mday = day;
+                    tm.tm_hour = hour;
+                    tm.tm_min = min;
+                    tm.tm_sec = sec;
+                    
+                    time_t timestamp = mktime(&tm);
+                    if (timestamp != -1) {
+                        files_found++;
+                        FileInfo info;
+                        info.path = full_path;
+                        info.timestamp = timestamp;
+                        file_list.push_back(info);
+                    }
+                }
+            }
+        } else if (S_ISDIR(st.st_mode)) {  // Directory
+            // Skip current day's directory
+            if (bc_is_current_path(full_path)) {
+                continue;
+            }
+            scan_directory_for_files(full_path, files, batch_size, files_found);
         }
     }
     
     closedir(dir);
+    
+    // Sort files by timestamp (oldest first)
+    std::sort(file_list.begin(), file_list.end());
+    
+    // Add sorted files to the cleanup batch
+    for (const auto& info : file_list) {
+        if (files.size() < static_cast<size_t>(batch_size)) {
+            files.push_back(info.path);
+        } else {
+            break;
+        }
+    }
+}
+
+std::vector<std::string> bc_get_media_files(int batch_size) {
+    std::vector<std::string> files;
+    
+    // Get storage paths and their usage with thresholds
+    struct StorageInfo {
+        std::string path;
+        double usage;
+        double max_thresh;
+        double min_thresh;
+    };
+    std::vector<StorageInfo> storage_paths;
+    
+    const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
+    BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+    if (storage_res) {
+        while (!bc_db_fetch_row(storage_res)) {
+            size_t len;
+            const char* path = bc_db_get_val(storage_res, "path", &len);
+            const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+            const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
+            
+            if (path) {
+                struct statvfs stat;
+                if (statvfs(path, &stat) == 0) {
+                    double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double used = total - free;
+                    double usage = (used / total) * 100.0;
+                    
+                    StorageInfo info;
+                    info.path = path;
+                    info.usage = usage;
+                    info.max_thresh = max_thresh_str ? atof(max_thresh_str) : 95.0;
+                    info.min_thresh = min_thresh_str ? atof(min_thresh_str) : 85.0;
+                    storage_paths.push_back(info);
+                }
+            }
+        }
+        bc_db_free_table(storage_res);
+    }
+    
+    // Sort storage paths by usage (highest first)
+    std::sort(storage_paths.begin(), storage_paths.end(),
+              [](const auto& a, const auto& b) { return a.usage > b.usage; });
+    
+    // Get files from the most full storage location first
+    for (const auto& info : storage_paths) {
+        if (info.usage < info.max_thresh) {
+            bc_log(Debug, "Skipping %s: usage %.1f%% < max_thresh %.1f%%", 
+                   info.path.c_str(), info.usage, info.max_thresh);
+            continue;
+        }
+        
+        char query[512];
+        snprintf(query, sizeof(query),
+                "SELECT filepath, start FROM Media WHERE filepath != '' AND archive = 0 "
+                "AND filepath LIKE '%s%%' ORDER BY start ASC LIMIT %d",
+                info.path.c_str(), batch_size);
+        
+        bc_log(Debug, "Executing query for %s (%.1f%% full, max_thresh=%.1f%%, min_thresh=%.1f%%): %s", 
+               info.path.c_str(), info.usage, info.max_thresh, info.min_thresh, query);
+        
+        BC_DB_RES dbres = bc_db_get_table("%s", query);
+        if (!dbres) {
+            bc_log(Error, "Failed to get media files from database for %s", info.path.c_str());
+            continue;
+        }
+        
+        int row_count = 0;
+        int missing_files = 0;
+        while (!bc_db_fetch_row(dbres)) {
+            size_t len;
+            const char* filepath = bc_db_get_val(dbres, "filepath", &len);
+            const char* start = bc_db_get_val(dbres, "start", &len);
+            
+            if (filepath) {
+                struct stat st;
+                if (stat(filepath, &st) == 0) {
+                    files.push_back(filepath);
+                    row_count++;
+                    bc_log(Debug, "Added file to cleanup list: %s (start: %s)", filepath, start ? start : "NULL");
+                } else {
+                    missing_files++;
+                    char update_sql[512];
+                    snprintf(update_sql, sizeof(update_sql), 
+                            "UPDATE Media SET archive = 1 WHERE filepath = '%s'", filepath);
+                    bc_db_query("%s", update_sql);
+                    bc_log(Info, "Marked missing file as archived: %s", filepath);
+                }
+                
+                if (files.size() >= static_cast<size_t>(batch_size)) {
+                    break;
+                }
+            }
+        }
+        
+        bc_log(Info, "Found %d media files in database for %s, %d files added to cleanup list, %d files missing",
+               row_count + missing_files, info.path.c_str(), row_count, missing_files);
+        bc_db_free_table(dbres);
+        
+        if (!files.empty()) {
+            break;  // Stop after finding files in the most full storage location
+        }
+    }
+    
     return files;
+}
+
+double bc_get_storage_usage() {
+    double max_usage = 0.0;
+    std::vector<std::string> storage_paths;
+    
+    // Get all storage paths from Storage table
+    const char* sql = "SELECT path FROM Storage ORDER BY priority";
+    bc_log(Debug, "Executing query: %s", sql);
+    
+    BC_DB_RES dbres = bc_db_get_table("%s", sql);
+    if (!dbres) {
+        bc_log(Error, "Failed to get storage paths from database");
+        return 100.0;  // Return 100% if we can't check
+    }
+    
+    int row_count = 0;
+    while (!bc_db_fetch_row(dbres)) {  // Note the ! operator
+        size_t len;
+        const char* path = bc_db_get_val(dbres, "path", &len);
+        if (path) {
+            bc_log(Debug, "Found storage path: %s", path);
+            storage_paths.push_back(path);
+            row_count++;
+        }
+    }
+    
+    bc_log(Debug, "Found %d storage paths in database", row_count);
+    bc_db_free_table(dbres);
+    
+    if (storage_paths.empty()) {
+        bc_log(Error, "No storage paths found in Storage table");
+        return 100.0;
+    }
+    
+    // Check usage for each storage path
+    for (const auto& path : storage_paths) {
+        struct statvfs stat;
+        if (statvfs(path.c_str(), &stat) != 0) {
+            bc_log(Error, "Failed to get storage usage for %s: %s", path.c_str(), strerror(errno));
+            continue;
+        }
+        
+        double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+        double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+        double used = total - free;
+        double usage = (used / total) * 100.0;
+        
+        max_usage = std::max(max_usage, usage);
+    }
+    
+    return max_usage;
+}
+
+double bc_get_total_storage_size() {
+    double total_size = 0.0;
+    std::vector<std::string> storage_paths;
+    
+    // Get all storage paths from Storage table
+    const char* sql = "SELECT path FROM Storage ORDER BY priority";
+    bc_log(Debug, "Executing query: %s", sql);
+    
+    BC_DB_RES dbres = bc_db_get_table("%s", sql);
+    if (!dbres) {
+        bc_log(Error, "Failed to get storage paths from database");
+        return 0.0;
+    }
+    
+    int row_count = 0;
+    while (!bc_db_fetch_row(dbres)) {  // Note the ! operator
+        size_t len;
+        const char* path = bc_db_get_val(dbres, "path", &len);
+        if (path) {
+            bc_log(Debug, "Found storage path: %s", path);
+            storage_paths.push_back(path);
+            row_count++;
+        }
+    }
+    
+    bc_log(Debug, "Found %d storage paths in database", row_count);
+    bc_db_free_table(dbres);
+    
+    if (storage_paths.empty()) {
+        bc_log(Error, "No storage paths found in Storage table");
+        return 0.0;
+    }
+    
+    // Sum up size for each storage path
+    for (const auto& path : storage_paths) {
+        struct statvfs stat;
+        if (statvfs(path.c_str(), &stat) != 0) {
+            bc_log(Error, "Failed to get storage size for %s: %s", path.c_str(), strerror(errno));
+            continue;
+        }
+        
+        total_size += static_cast<double>(stat.f_blocks) * stat.f_frsize;
+    }
+    
+    return total_size;
 }
