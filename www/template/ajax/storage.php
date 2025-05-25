@@ -4,7 +4,7 @@
     </div>
 </div>
 
-             <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i>Note: <ul><li>We will automatically create a directory for you and assign the correct permissions.</li><li>Verify that the storage path you are using is mounted on start or the start of Bluecherry server.  Usually this is done in /etc/fstab.<li>If using SMB (CIFS) mount it is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)</li><li>All storage paths must be added to either /mnt or /media</li></div>
+             <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i>Note: <ul><li>We will automatically create a directory for you and assign the correct permissions.</li><li>Verify that the storage path you are using is mounted on start or the start of Bluecherry server.  Usually this is done in /etc/fstab.</li><li>If using SMB (CIFS) mount it is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)</li></ul></div>
 
 
 
