@@ -159,19 +159,66 @@ void ParallelCleanup::process_file(const std::string& filepath) {
 CleanupScheduler::CleanupScheduler() 
     : last_run(std::chrono::system_clock::now())
     , interval(std::chrono::seconds(NORMAL_CLEANUP_INTERVAL))
-    , high_priority_interval(std::chrono::seconds(HIGH_PRIORITY_INTERVAL)) {}
+    , high_priority_interval(std::chrono::seconds(HIGH_PRIORITY_INTERVAL))
+    , startup_cleanup_done(false) {}
+
+bool CleanupScheduler::needs_startup_cleanup() const {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    return !startup_cleanup_done;
+}
+
+void CleanupScheduler::mark_startup_cleanup_done() {
+    std::lock_guard<std::mutex> lock(scheduler_mutex);
+    startup_cleanup_done = true;
+}
 
 bool CleanupScheduler::should_run_cleanup() {
     std::lock_guard<std::mutex> lock(scheduler_mutex);
+    
+    // If startup cleanup hasn't been done, run it
+    if (!startup_cleanup_done) {
+        return true;
+    }
+    
     auto now = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_run);
     
-    // Check if storage is critically full
-    double storage_usage = bc_get_storage_usage();
-    auto current_interval = (storage_usage >= CRITICAL_STORAGE_THRESHOLD) ? 
-                           high_priority_interval : interval;
+    // Check if any storage location needs cleanup based on its thresholds
+    bool needs_cleanup = false;
+    const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
+    BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+    if (storage_res) {
+        while (!bc_db_fetch_row(storage_res)) {
+            size_t len;
+            const char* path = bc_db_get_val(storage_res, "path", &len);
+            const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+            const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
+            
+            if (path && max_thresh_str && min_thresh_str) {
+                struct statvfs stat;
+                if (statvfs(path, &stat) == 0) {
+                    double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double used = total - free;
+                    double usage = (used / total) * 100.0;
+                    double max_thresh = atof(max_thresh_str);
+                    double min_thresh = atof(min_thresh_str);
+                    
+                    if (usage >= max_thresh) {
+                        needs_cleanup = true;
+                        // Use high priority interval if any storage is above max threshold
+                        auto current_interval = high_priority_interval;
+                        bc_db_free_table(storage_res);
+                        return elapsed >= current_interval;
+                    }
+                }
+            }
+        }
+        bc_db_free_table(storage_res);
+    }
     
-    return elapsed >= current_interval;
+    // If no storage is critically full, use normal interval
+    return elapsed >= interval;
 }
 
 void CleanupScheduler::update_last_run() {
@@ -318,6 +365,14 @@ void CleanupManager::update_stats(const cleanup_stats_report& new_stats) {
 
 bool CleanupManager::should_run_cleanup() const {
     return scheduler->should_run_cleanup();
+}
+
+bool CleanupManager::needs_startup_cleanup() const {
+    return scheduler->needs_startup_cleanup();
+}
+
+void CleanupManager::mark_startup_cleanup_done() {
+    scheduler->mark_startup_cleanup_done();
 }
 
 std::string bc_get_directory_path(const std::string& filePath)

@@ -155,7 +155,8 @@ private:
     std::chrono::system_clock::time_point last_run;
     std::chrono::seconds interval;
     std::chrono::seconds high_priority_interval;
-    std::mutex scheduler_mutex;
+    mutable std::mutex scheduler_mutex;
+    bool startup_cleanup_done;
     
 public:
     CleanupScheduler();
@@ -163,6 +164,8 @@ public:
     void update_last_run();
     void set_interval(std::chrono::seconds new_interval);
     void set_high_priority_interval(std::chrono::seconds new_interval);
+    bool needs_startup_cleanup() const;
+    void mark_startup_cleanup_done();
 };
 
 // Main cleanup manager class
@@ -174,6 +177,8 @@ public:
     int run_cleanup();
     cleanup_stats_report get_stats_report() const;  // Will use get_copy() internally
     bool should_run_cleanup() const;  // New method to check if cleanup should run
+    bool needs_startup_cleanup() const;  // New method to check if startup cleanup is needed
+    void mark_startup_cleanup_done();  // New method to mark startup cleanup as done
     
 private:
     std::unique_ptr<CleanupRetryManager> retry_manager;

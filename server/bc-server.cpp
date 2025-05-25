@@ -1106,6 +1106,7 @@ static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
 	int removed = 0, error_count = 0;
+	std::vector<std::string> error_details;
 
 	/* Retry last cleanup list first */
 	bc_cleanup_media_retry();
@@ -1124,15 +1125,33 @@ static int bc_cleanup_media()
 		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
-		if (!filepath || !*filepath)
+		if (!filepath || !*filepath) {
+			bc_log(Debug, "Skipping media entry %d with empty filepath", id);
 			continue;
+		}
+
+		bc_log(Debug, "Processing media file: %s (id: %d)", filepath, id);
+
+		// Check for related records
+		BC_DB_RES check_res = bc_db_get_table("SELECT COUNT(*) as count FROM EventsCam WHERE media_id=%d", id);
+		if (check_res && !bc_db_fetch_row(check_res)) {
+			int related_count = bc_db_get_val_int(check_res, "count");
+			if (related_count > 0) {
+				bc_log(Debug, "Media id %d has %d related EventsCam records", id, related_count);
+			}
+		}
+		bc_db_free_table(check_res);
 
 		if (unlink(filepath) < 0 && errno != ENOENT) {
-			bc_log(Warning, "Cannot remove file %s for cleanup: %s",
-			       filepath, strerror(errno));
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to remove %s: %s (errno=%d)", 
+				filepath, strerror(errno), errno);
+			error_details.push_back(error_msg);
 			error_count++;
+			bc_log(Debug, "File deletion failed: %s", error_msg);
 			continue;
 		} else if (errno == ENOENT) {
+			bc_log(Debug, "File not found, will retry: %s", filepath);
 			// Maybe dangling link caused by mount error or permission issue, try again
 			g_media_files[filepath].timestamp = time(NULL);
 			g_media_files[filepath].try_count = 0;
@@ -1143,11 +1162,15 @@ static int bc_cleanup_media()
 			sidecar.replace(sidecar.size()-3, 3, "jpg");
 
 		if (unlink(sidecar.c_str()) < 0 && errno != ENOENT) {
-			bc_log(Warning, "Cannot remove sidecar file %s for cleanup: %s",
-			       sidecar.c_str(), strerror(errno));
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to remove sidecar %s: %s (errno=%d)", 
+				sidecar.c_str(), strerror(errno), errno);
+			error_details.push_back(error_msg);
 			error_count++;
+			bc_log(Debug, "Sidecar deletion failed: %s", error_msg);
 			continue;
 		} else if (errno == ENOENT) {
+			bc_log(Debug, "Sidecar not found, will retry: %s", sidecar.c_str());
 			// Maybe sidecar is not created yet, try again
 			g_media_files[sidecar].timestamp = time(NULL);
 			g_media_files[sidecar].try_count = 0;
@@ -1157,8 +1180,35 @@ static int bc_cleanup_media()
 
 		removed++;
 
-		if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
-			bc_status_component_error("Database error during Media cleanup");
+		// Use transaction for database operations
+		if (bc_db_start_trans()) {
+			if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+				bc_db_rollback_trans();
+				char error_msg[256];
+				snprintf(error_msg, sizeof(error_msg), "Database error deleting media id %d", id);
+				error_details.push_back(error_msg);
+				error_count++;
+				bc_log(Debug, "Database deletion failed: %s", error_msg);
+			} else {
+				bc_db_commit_trans();
+				
+				// Verify deletion
+				BC_DB_RES verify_res = bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE id=%d", id);
+				if (verify_res && !bc_db_fetch_row(verify_res)) {
+					int remaining = bc_db_get_val_int(verify_res, "count");
+					if (remaining > 0) {
+						bc_log(Error, "Media id %d still exists in database after deletion", id);
+						error_count++;
+						error_details.push_back("Database verification failed: record still exists");
+					}
+				}
+				bc_db_free_table(verify_res);
+			}
+		} else {
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to start transaction for media id %d", id);
+			error_details.push_back(error_msg);
+			error_count++;
 		}
 
 		/* Delete older files than last deleted file */
@@ -1183,10 +1233,16 @@ static int bc_cleanup_media()
 done:
 	bc_db_free_table(dbres);
 
-	if (error_count)
+	if (error_count) {
 		bc_log(Error, "Cleaned up %d files with %d errors, which may cause undeletable files", removed, error_count);
-	else
+		// Log detailed error information
+		bc_log(Error, "Detailed error information:");
+		for (const auto& error : error_details) {
+			bc_log(Error, "  %s", error.c_str());
+		}
+	} else {
 		bc_log(Info, "Cleaned up %d files", removed);
+	}
 
 	return 0;
 }
@@ -1196,18 +1252,38 @@ static int bc_check_media(void)
 	int ret = 0;
 	bool storage_overloaded = false;
 
-	/* If there's some space left, skip cleanup */
-	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (is_storage_full(&media_stor[i]) == 1) {
-			storage_overloaded = true;
-			break;
+	// Check each storage location against its thresholds
+	const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
+	BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+	if (storage_res) {
+		while (!bc_db_fetch_row(storage_res)) {
+			size_t len;
+			const char* path = bc_db_get_val(storage_res, "path", &len);
+			const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+			const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
+			
+			if (path && max_thresh_str && min_thresh_str) {
+				struct statvfs stat;
+				if (statvfs(path, &stat) == 0) {
+					double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+					double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+					double used = total - free;
+					double usage = (used / total) * 100.0;
+					double max_thresh = atof(max_thresh_str);
+					
+					if (usage >= max_thresh) {
+						storage_overloaded = true;
+						bc_log(Debug, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
+							   path, usage, max_thresh);
+						break;
+					}
+				}
+			}
 		}
+		bc_db_free_table(storage_res);
 	}
 
 	if (storage_overloaded || is_media_max_age_exceeded()) {
-		if (!g_cleanup_manager) {
-			g_cleanup_manager = std::make_unique<CleanupManager>();
-		}
 		ret = g_cleanup_manager->run_cleanup();
 	}
 
@@ -1750,6 +1826,10 @@ int main(int argc, char **argv)
 	/* Delete untracked media files */
 	bc_initial_cleanup_untracked_media();
 
+	// Initialize cleanup manager for regular scheduling
+	g_cleanup_manager = std::make_unique<CleanupManager>();
+	bc_log(Info, "Cleanup manager initialized with regular schedule");
+
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
@@ -1764,6 +1844,20 @@ int main(int argc, char **argv)
 			bc_log(Info, "Shutting down");
 			break;
 		}
+
+		// Run cleanup based on scheduler
+		if (g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
+			bc_status_component_begin(STATUS_MEDIA_CHECK);
+			int mc_ret = bc_check_media();
+			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
+			
+			// If this was a startup cleanup, mark it as done
+			if (g_cleanup_manager->needs_startup_cleanup()) {
+				g_cleanup_manager->mark_startup_cleanup_done();
+				bc_log(Info, "Startup cleanup completed, returning to regular schedule");
+			}
+		}
+
 		/* Every 16 seconds until initialized, then every 4:16 minutes */
 		if ((!hwcard_ready && !(loops & 15)) || (hwcard_ready && !(loops & 255))) {
 			bc_status_component_begin(STATUS_HWCARD_DETECT);
@@ -1798,41 +1892,6 @@ int main(int argc, char **argv)
 					bc_log(Error, "Failed to run mailer.php for notification");
 			}
 			bc_status_component_end(STATUS_HWCARD_DETECT, ret == 0);
-		}
-
-		// Check if any storage location needs cleanup
-		const char* const storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
-		BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
-		if (storage_res) {
-			while (!bc_db_fetch_row(storage_res)) {
-				size_t len;
-				const char* path = bc_db_get_val(storage_res, "path", &len);
-				const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
-				if (path && max_thresh_str) {
-					struct statvfs stat;
-					if (statvfs(path, &stat) == 0) {
-						double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-						double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
-						double used = total - free;
-						double usage = (used / total) * 100.0;
-						double max_thresh = atof(max_thresh_str);
-						
-						if (usage >= max_thresh) {
-							bc_log(Debug, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
-								   path, usage, max_thresh);
-							break;
-						}
-					}
-				}
-			}
-			bc_db_free_table(storage_res);
-		}
-
-		// Run cleanup based on scheduler
-		if (g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
-			bc_status_component_begin(STATUS_MEDIA_CHECK);
-			int mc_ret = bc_check_media();
-			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
 		}
 
 		/* Every 8 seconds */
