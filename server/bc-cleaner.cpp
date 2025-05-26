@@ -265,76 +265,85 @@ int CleanupManager::run_cleanup() {
     bc_log(Info, "Starting cleanup with %d threads", num_threads);
     parallel_cleanup->start_cleanup(num_threads);
     
-    while (should_continue_cleanup(start_time)) {
-        // Check if any storage location needs cleanup
-        bool needs_cleanup = false;
-        const char* storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
-        BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
-        if (storage_res) {
-            while (!bc_db_fetch_row(storage_res)) {
-                size_t len;
-                const char* path = bc_db_get_val(storage_res, "path", &len);
-                const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
-                if (path && max_thresh_str) {
-                    struct statvfs stat;
-                    if (statvfs(path, &stat) == 0) {
-                        double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-                        double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
-                        double used = total - free;
-                        double usage = (used / total) * 100.0;
-                        double max_thresh = atof(max_thresh_str);
-                        
-                        if (usage >= max_thresh) {
-                            needs_cleanup = true;
-                            bc_log(Debug, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
-                                   path, usage, max_thresh);
-                            break;
-                        }
+    // Check if any storage location needs cleanup
+    bool needs_cleanup = false;
+    int total_media_files = 0;
+    const char* storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
+    BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+    if (storage_res) {
+        while (!bc_db_fetch_row(storage_res)) {
+            size_t len;
+            const char* path = bc_db_get_val(storage_res, "path", &len);
+            const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+            
+            if (path && max_thresh_str) {
+                struct statvfs stat;
+                if (statvfs(path, &stat) == 0) {
+                    double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double used = total - free;
+                    double usage = (used / total) * 100.0;
+                    double max_thresh = atof(max_thresh_str);
+                    
+                    // Count media files in database for this path
+                    const char* media_sql = "SELECT COUNT(*) as count FROM Media WHERE path LIKE ?";
+                    BC_DB_RES media_res = bc_db_get_table(media_sql, path);
+                    if (media_res && !bc_db_fetch_row(media_res)) {
+                        total_media_files += bc_db_get_val_int(media_res, "count");
+                    }
+                    bc_db_free_table(media_res);
+                    
+                    if (usage >= max_thresh) {
+                        needs_cleanup = true;
+                        break;
                     }
                 }
             }
-            bc_db_free_table(storage_res);
         }
-        
-        if (!needs_cleanup) {
-            bc_log(Info, "No storage locations need cleanup");
-            break;
-        }
-        
-        int batch_size = calculate_batch_size();
-        bc_log(Info, "Calculated batch size: %d", batch_size);
-        
-        std::vector<std::string> files = bc_get_media_files(batch_size);
-        if (files.empty()) {
-            bc_log(Info, "No more files to process");
-            break;
-        }
-        
-        bc_log(Info, "Adding %zu files to cleanup queue", files.size());
-        for (const auto& file : files) {
-            parallel_cleanup->add_work(file);
-        }
-        
-        total_processed += files.size();
+        bc_db_free_table(storage_res);
     }
     
-    bc_log(Info, "Stopping cleanup workers");
+    if (!needs_cleanup) {
+        bc_log(Info, "Starting cleanup with %d threads, database reports %d media files, storage is below max_threshold, no cleanup needed", 
+               num_threads, total_media_files);
+        parallel_cleanup->stop_cleanup();
+        return 0;
+    }
+    
+    int batch_size = calculate_batch_size();
+    bc_log(Info, "Calculated batch size: %d", batch_size);
+    
+    std::vector<std::string> files = bc_get_media_files(batch_size);
+    if (files.empty()) {
+        bc_log(Info, "No more files to process");
+        parallel_cleanup->stop_cleanup();
+        return 0;
+    }
+    
+    bc_log(Info, "Adding %zu files to cleanup queue", files.size());
+    for (const auto& file : files) {
+        parallel_cleanup->add_work(file);
+    }
+    
+    // Stop cleanup workers - this will wait for them to finish
     parallel_cleanup->stop_cleanup();
     
-    bc_log(Info, "Processing retries");
-    retry_manager->process_retries();
+    // Get stats before logging
+    auto cleanup_stats = parallel_cleanup->get_stats();
     
-    // Update stats
-    update_stats(parallel_cleanup->get_stats());
-    scheduler->update_last_run();
-    
-    // Log final stats with GB instead of bytes
-    double gb_freed = stats.bytes_freed / (1024.0 * 1024.0 * 1024.0);
-    bc_log(Info, "Cleanup completed: processed %d files", total_processed);
+    // Log final stats with consistent numbers
+    bc_log(Info, "Cleanup completed: processed %d files", cleanup_stats.files_processed);
     bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, freed=%.2f GB, retries=%d",
-           stats.files_processed, stats.files_deleted, stats.errors, gb_freed, stats.retries);
+           cleanup_stats.files_processed,
+           cleanup_stats.files_deleted,
+           cleanup_stats.errors,
+           cleanup_stats.bytes_freed / (1024.0 * 1024.0 * 1024.0),
+           cleanup_stats.retries);
     
-    return total_processed;
+    // Update our internal stats
+    update_stats(cleanup_stats);
+    
+    return cleanup_stats.files_processed;
 }
 
 cleanup_stats_report CleanupManager::get_stats_report() const {
@@ -804,6 +813,7 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
         
         int row_count = 0;
         int missing_files = 0;
+        int archived_count = 0;
         while (!bc_db_fetch_row(dbres)) {
             size_t len;
             const char* filepath = bc_db_get_val(dbres, "filepath", &len);
@@ -821,7 +831,8 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
                     snprintf(update_sql, sizeof(update_sql), 
                             "UPDATE Media SET archive = 1 WHERE filepath = '%s'", filepath);
                     bc_db_query("%s", update_sql);
-                    bc_log(Info, "Marked missing file as archived: %s", filepath);
+                    bc_log(Info, "File not found on disk, marking as archived in database: %s", filepath);
+                    archived_count++;
                 }
                 
                 if (files.size() >= static_cast<size_t>(batch_size)) {
@@ -830,8 +841,8 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
             }
         }
         
-        bc_log(Info, "Found %d media files in database for %s, %d files added to cleanup list, %d files missing",
-               row_count + missing_files, info.path.c_str(), row_count, missing_files);
+        bc_log(Info, "Second check complete: Found %d total files (%d already archived, %d pending cleanup)",
+               row_count + missing_files, archived_count, files.size());
         bc_db_free_table(dbres);
         
         if (!files.empty()) {
