@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <pwd.h>
 #include <grp.h>
+#include <numeric>  // For std::accumulate
 
 #include <sys/statvfs.h>
 #include <sys/stat.h>
@@ -185,27 +186,31 @@ bool CleanupScheduler::should_run_cleanup() {
     
     // Check if any storage location needs cleanup based on its thresholds
     bool needs_cleanup = false;
-    const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
+    const char* storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
     BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
     if (storage_res) {
-        while (!bc_db_fetch_row(storage_res)) {
+        while (!bc_db_fetch_row(storage_res)) {  // Note: returns 0 on success
             size_t len;
             const char* path = bc_db_get_val(storage_res, "path", &len);
             const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
-            const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
             
-            if (path && max_thresh_str && min_thresh_str) {
+            if (path && max_thresh_str) {
                 struct statvfs stat;
                 if (statvfs(path, &stat) == 0) {
                     double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bavail) * stat.f_frsize;
                     double used = total - free;
                     double usage = (used / total) * 100.0;
                     double max_thresh = atof(max_thresh_str);
-                    double min_thresh = atof(min_thresh_str);
                     
-                    if (usage >= max_thresh) {
+                    bc_log(Debug, "Storage path %s: usage=%.1f%%, max_thresh=%.1f%%", 
+                           path, usage, max_thresh);
+                    
+                    // Use a small epsilon to handle floating point comparison
+                    const double EPSILON = 0.0001;
+                    if (usage >= max_thresh - EPSILON) {
                         needs_cleanup = true;
+                        bc_log(Info, "Storage path %s needs cleanup: %.1f%% >= %.1f%%", path, usage, max_thresh);
                         // Use high priority interval if any storage is above max threshold
                         auto current_interval = high_priority_interval;
                         bc_db_free_table(storage_res);
@@ -268,10 +273,12 @@ int CleanupManager::run_cleanup() {
     // Check if any storage location needs cleanup
     bool needs_cleanup = false;
     int total_media_files = 0;
+    std::vector<std::string> paths_above_threshold;
+    
     const char* storage_sql = "SELECT path, max_thresh FROM Storage ORDER BY priority";
     BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
     if (storage_res) {
-        while (!bc_db_fetch_row(storage_res)) {
+        while (!bc_db_fetch_row(storage_res)) {  // Note: returns 0 on success
             size_t len;
             const char* path = bc_db_get_val(storage_res, "path", &len);
             const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
@@ -280,23 +287,40 @@ int CleanupManager::run_cleanup() {
                 struct statvfs stat;
                 if (statvfs(path, &stat) == 0) {
                     double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bavail) * stat.f_frsize;
                     double used = total - free;
                     double usage = (used / total) * 100.0;
                     double max_thresh = atof(max_thresh_str);
                     
+                    bc_log(Debug, "Storage path %s: blocks=%lu, bfree=%lu, bavail=%lu, frsize=%lu", 
+                           path, stat.f_blocks, stat.f_bfree, stat.f_bavail, stat.f_frsize);
+                    bc_log(Debug, "Storage path %s: total=%.2f GB, free=%.2f GB, used=%.2f GB", 
+                           path, total/(1024*1024*1024.0), free/(1024*1024*1024.0), used/(1024*1024*1024.0));
+                    bc_log(Debug, "Storage path %s: usage=%.1f%%, max_thresh=%.1f%%", 
+                           path, usage, max_thresh);
+                    
                     // Count media files in database for this path
-                    const char* media_sql = "SELECT COUNT(*) as count FROM Media WHERE path LIKE ?";
-                    BC_DB_RES media_res = bc_db_get_table(media_sql, path);
-                    if (media_res && !bc_db_fetch_row(media_res)) {
-                        total_media_files += bc_db_get_val_int(media_res, "count");
+                    char query[512];
+                    snprintf(query, sizeof(query), "SELECT COUNT(*) as count FROM Media WHERE filepath LIKE '%s%%'", path);
+                    BC_DB_RES media_res = bc_db_get_table("%s", query);
+                    if (media_res && !bc_db_fetch_row(media_res)) {  // Note: returns 0 on success
+                        int count = bc_db_get_val_int(media_res, "count");
+                        total_media_files += count;
+                        bc_log(Debug, "Found %d media files in %s", count, path);
                     }
                     bc_db_free_table(media_res);
                     
-                    if (usage >= max_thresh) {
+                    // Use a small epsilon to handle floating point comparison
+                    const double EPSILON = 0.0001;
+                    if (usage >= max_thresh - EPSILON) {
                         needs_cleanup = true;
-                        break;
+                        paths_above_threshold.push_back(path);
+                        bc_log(Info, "Storage path %s needs cleanup: %.1f%% >= %.1f%%", path, usage, max_thresh);
+                    } else {
+                        bc_log(Debug, "Storage path %s below threshold: %.1f%% < %.1f%%", path, usage, max_thresh);
                     }
+                } else {
+                    bc_log(Error, "Failed to get storage usage for %s: %s", path, strerror(errno));
                 }
             }
         }
@@ -304,10 +328,23 @@ int CleanupManager::run_cleanup() {
     }
     
     if (!needs_cleanup) {
-        bc_log(Info, "Starting cleanup with %d threads, database reports %d media files, storage is below max_threshold, no cleanup needed", 
+        bc_log(Info, "Starting cleanup with %d threads, database reports %d media files, all storage paths below max_threshold, no cleanup needed", 
                num_threads, total_media_files);
         parallel_cleanup->stop_cleanup();
+        scheduler->update_last_run();  // Update last run time even if no cleanup was needed
         return 0;
+    }
+    
+    // Log which paths need cleanup
+    if (paths_above_threshold.empty()) {
+        bc_log(Info, "Storage paths above max threshold: none");
+    } else {
+        std::string paths_str;
+        for (size_t i = 0; i < paths_above_threshold.size(); ++i) {
+            if (i > 0) paths_str += ", ";
+            paths_str += paths_above_threshold[i];
+        }
+        bc_log(Info, "Storage paths above max threshold: %s", paths_str.c_str());
     }
     
     int batch_size = calculate_batch_size();
@@ -317,6 +354,7 @@ int CleanupManager::run_cleanup() {
     if (files.empty()) {
         bc_log(Info, "No more files to process");
         parallel_cleanup->stop_cleanup();
+        scheduler->update_last_run();  // Update last run time even if no files to process
         return 0;
     }
     
@@ -342,6 +380,9 @@ int CleanupManager::run_cleanup() {
     
     // Update our internal stats
     update_stats(cleanup_stats);
+    
+    // Update last run time after successful cleanup
+    scheduler->update_last_run();
     
     return cleanup_stats.files_processed;
 }
@@ -758,7 +799,7 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
     const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
     BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
     if (storage_res) {
-        while (!bc_db_fetch_row(storage_res)) {
+        while (!bc_db_fetch_row(storage_res)) {  // Note: returns 0 on success
             size_t len;
             const char* path = bc_db_get_val(storage_res, "path", &len);
             const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
@@ -768,7 +809,7 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
                 struct statvfs stat;
                 if (statvfs(path, &stat) == 0) {
                     double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-                    double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+                    double free = static_cast<double>(stat.f_bavail) * stat.f_frsize;
                     double used = total - free;
                     double usage = (used / total) * 100.0;
                     
@@ -778,6 +819,11 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
                     info.max_thresh = max_thresh_str ? atof(max_thresh_str) : 95.0;
                     info.min_thresh = min_thresh_str ? atof(min_thresh_str) : 85.0;
                     storage_paths.push_back(info);
+                    
+                    bc_log(Debug, "Storage path %s: usage=%.1f%%, max_thresh=%.1f%%, min_thresh=%.1f%%", 
+                           path, usage, info.max_thresh, info.min_thresh);
+                } else {
+                    bc_log(Error, "Failed to get storage usage for %s: %s", path, strerror(errno));
                 }
             }
         }
@@ -788,7 +834,22 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
     std::sort(storage_paths.begin(), storage_paths.end(),
               [](const auto& a, const auto& b) { return a.usage > b.usage; });
     
-    // Get files from the most full storage location first
+    // Calculate how many files to get from each storage path
+    int remaining_batch = batch_size;
+    int paths_above_threshold = 0;
+    
+    // First count how many paths need cleanup
+    for (const auto& info : storage_paths) {
+        if (info.usage >= info.max_thresh) {
+            paths_above_threshold++;
+        }
+    }
+    
+    // Calculate batch size per path
+    int batch_per_path = paths_above_threshold > 0 ? batch_size / paths_above_threshold : 0;
+    if (batch_per_path < 10) batch_per_path = 10;  // Ensure minimum batch size
+    
+    // Get files from all storage locations that need cleanup
     for (const auto& info : storage_paths) {
         if (info.usage < info.max_thresh) {
             bc_log(Debug, "Skipping %s: usage %.1f%% < max_thresh %.1f%%", 
@@ -796,14 +857,70 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
             continue;
         }
         
+        bc_log(Info, "Processing storage path %s: usage %.1f%% >= max_thresh %.1f%%", 
+               info.path.c_str(), info.usage, info.max_thresh);
+        
+        // Calculate how many files to get from this path
+        int path_batch = std::min(batch_per_path, remaining_batch);
+        if (path_batch <= 0) break;
+        
+        // First, clean up any database entries for files that don't exist
+        // Use a larger batch size for database cleanup to reduce number of queries
+        char cleanup_sql[512];
+        snprintf(cleanup_sql, sizeof(cleanup_sql),
+                "SELECT filepath FROM Media WHERE filepath != '' AND archive = 0 "
+                "AND filepath LIKE '%s%%' LIMIT 1000", info.path.c_str());
+        
+        BC_DB_RES cleanup_res = bc_db_get_table("%s", cleanup_sql);
+        if (cleanup_res) {
+            int missing_count = 0;
+            std::vector<std::string> missing_files;
+            std::set<std::string> dirs_to_check;
+            
+            // First pass: collect missing files and directories to check
+            while (!bc_db_fetch_row(cleanup_res)) {  // Note: returns 0 on success
+                size_t len;
+                const char* filepath = bc_db_get_val(cleanup_res, "filepath", &len);
+                if (filepath) {
+                    struct stat st;
+                    if (stat(filepath, &st) != 0) {
+                        missing_files.push_back(filepath);
+                        dirs_to_check.insert(bc_get_directory_path(filepath));
+                    }
+                }
+            }
+            
+            // Batch update database for missing files
+            if (!missing_files.empty()) {
+                std::string update_sql = "UPDATE Media SET archive = 1 WHERE filepath IN (";
+                for (size_t i = 0; i < missing_files.size(); ++i) {
+                    if (i > 0) update_sql += ",";
+                    update_sql += "'" + missing_files[i] + "'";
+                }
+                update_sql += ")";
+                bc_db_query("%s", update_sql.c_str());
+                missing_count = missing_files.size();
+            }
+            
+            // Check directories in batch
+            for (const auto& dir : dirs_to_check) {
+                if (bc_is_dir_empty(dir)) {
+                    bc_remove_dir_if_empty(dir);
+                }
+            }
+            
+            if (missing_count > 0) {
+                bc_log(Info, "Cleaned up %d missing file entries from database", missing_count);
+            }
+            bc_db_free_table(cleanup_res);
+        }
+        
+        // Now get files for cleanup
         char query[512];
         snprintf(query, sizeof(query),
                 "SELECT filepath, start FROM Media WHERE filepath != '' AND archive = 0 "
                 "AND filepath LIKE '%s%%' ORDER BY start ASC LIMIT %d",
-                info.path.c_str(), batch_size);
-        
-        bc_log(Debug, "Executing query for %s (%.1f%% full, max_thresh=%.1f%%, min_thresh=%.1f%%): %s", 
-               info.path.c_str(), info.usage, info.max_thresh, info.min_thresh, query);
+                info.path.c_str(), path_batch);
         
         BC_DB_RES dbres = bc_db_get_table("%s", query);
         if (!dbres) {
@@ -814,7 +931,10 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
         int row_count = 0;
         int missing_files = 0;
         int archived_count = 0;
-        while (!bc_db_fetch_row(dbres)) {
+        std::vector<std::string> batch_missing_files;
+        std::set<std::string> batch_dirs_to_check;
+        
+        while (!bc_db_fetch_row(dbres)) {  // Note: returns 0 on success
             size_t len;
             const char* filepath = bc_db_get_val(dbres, "filepath", &len);
             const char* start = bc_db_get_val(dbres, "start", &len);
@@ -824,29 +944,46 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
                 if (stat(filepath, &st) == 0) {
                     files.push_back(filepath);
                     row_count++;
+                    remaining_batch--;
                     bc_log(Debug, "Added file to cleanup list: %s (start: %s)", filepath, start ? start : "NULL");
                 } else {
                     missing_files++;
-                    char update_sql[512];
-                    snprintf(update_sql, sizeof(update_sql), 
-                            "UPDATE Media SET archive = 1 WHERE filepath = '%s'", filepath);
-                    bc_db_query("%s", update_sql);
+                    batch_missing_files.push_back(filepath);
+                    batch_dirs_to_check.insert(bc_get_directory_path(filepath));
                     bc_log(Info, "File not found on disk, marking as archived in database: %s", filepath);
                     archived_count++;
                 }
                 
-                if (files.size() >= static_cast<size_t>(batch_size)) {
+                if (remaining_batch <= 0) {
                     break;
                 }
             }
         }
         
-        bc_log(Info, "Second check complete: Found %d total files (%d already archived, %d pending cleanup)",
-               row_count + missing_files, archived_count, files.size());
+        // Batch update database for missing files
+        if (!batch_missing_files.empty()) {
+            std::string update_sql = "UPDATE Media SET archive = 1 WHERE filepath IN (";
+            for (size_t i = 0; i < batch_missing_files.size(); ++i) {
+                if (i > 0) update_sql += ",";
+                update_sql += "'" + batch_missing_files[i] + "'";
+            }
+            update_sql += ")";
+            bc_db_query("%s", update_sql.c_str());
+        }
+        
+        // Check directories in batch
+        for (const auto& dir : batch_dirs_to_check) {
+            if (bc_is_dir_empty(dir)) {
+                bc_remove_dir_if_empty(dir);
+            }
+        }
+        
+        bc_log(Info, "Found %d total files (%d already archived, %zu pending cleanup) in %s",
+               row_count + missing_files, archived_count, files.size(), info.path.c_str());
         bc_db_free_table(dbres);
         
-        if (!files.empty()) {
-            break;  // Stop after finding files in the most full storage location
+        if (remaining_batch <= 0) {
+            break;
         }
     }
     
@@ -868,7 +1005,7 @@ double bc_get_storage_usage() {
     }
     
     int row_count = 0;
-    while (!bc_db_fetch_row(dbres)) {  // Note the ! operator
+    while (!bc_db_fetch_row(dbres)) {  // Note: returns 0 on success
         size_t len;
         const char* path = bc_db_get_val(dbres, "path", &len);
         if (path) {
@@ -895,13 +1032,19 @@ double bc_get_storage_usage() {
         }
         
         double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-        double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
+        double free = static_cast<double>(stat.f_bavail) * stat.f_frsize;
         double used = total - free;
         double usage = (used / total) * 100.0;
         
-        max_usage = std::max(max_usage, usage);
+        bc_log(Debug, "Storage path %s: usage=%.1f%%", path.c_str(), usage);
+        
+        if (usage > max_usage) {
+            max_usage = usage;
+            bc_log(Debug, "New maximum usage found: %.1f%% at %s", max_usage, path.c_str());
+        }
     }
     
+    bc_log(Debug, "Final maximum storage usage: %.1f%%", max_usage);
     return max_usage;
 }
 
@@ -920,7 +1063,7 @@ double bc_get_total_storage_size() {
     }
     
     int row_count = 0;
-    while (!bc_db_fetch_row(dbres)) {  // Note the ! operator
+    while (!bc_db_fetch_row(dbres)) {  // Note: returns 0 on success
         size_t len;
         const char* path = bc_db_get_val(dbres, "path", &len);
         if (path) {
@@ -946,8 +1089,12 @@ double bc_get_total_storage_size() {
             continue;
         }
         
-        total_size += static_cast<double>(stat.f_blocks) * stat.f_frsize;
+        double path_size = static_cast<double>(stat.f_blocks) * stat.f_frsize;
+        total_size += path_size;
+        
+        bc_log(Debug, "Storage path %s: size=%.2f GB", path.c_str(), path_size / (1024.0 * 1024.0 * 1024.0));
     }
     
+    bc_log(Debug, "Total storage size: %.2f GB", total_size / (1024.0 * 1024.0 * 1024.0));
     return total_size;
 }
