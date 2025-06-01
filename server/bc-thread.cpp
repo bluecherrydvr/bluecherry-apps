@@ -614,62 +614,190 @@ bc_record::~bc_record()
 	pthread_mutex_destroy(&cfg_mutex);
 }
 
+// Helper function to safely disconnect a component
+static void safe_disconnect(stream_consumer* consumer, stream_source* source) {
+    if (!consumer || !source) return;
+    
+    // Only try to disconnect if the consumer is actually connected to this source
+    try {
+        // First try to disconnect from the source side
+        source->disconnect(consumer);
+        
+        // Then try to disconnect from the consumer side
+        consumer->disconnect();
+    } catch (const std::exception& e) {
+        // Log but don't throw
+        bc_log(Warning, "Error during disconnect: %s", e.what());
+    } catch (...) {
+        bc_log(Warning, "Unknown error during disconnect");
+    }
+}
+
 void bc_record::destroy_elements()
 {
-	if (rec_continuous) {
-		rec_continuous->disconnect();
-		rec_continuous->destroy();
-		rec_continuous = 0;
+	static bool is_destroying = false;
+	if (is_destroying) {
+		return;
+	}
+	is_destroying = true;
+
+	// First end any active events
+	if (event) {
+		bc_event_cam_end(&event);
+	}
+
+	// Stop the liveview substream first
+	if (liveview_substream) {
+		liveview_substream->stop();
+	}
+
+	// Clean up streaming contexts
+	for (int i = 0; i < 2; i++) {
+		if (rtp_stream_ctx[i]) {
+			bc_streaming_destroy_rtp(this);
+			rtp_stream_ctx[i] = nullptr;
+		}
+		if (hls_stream_ctx[i]) {
+			bc_streaming_destroy_hls(this);
+			hls_stream_ctx[i] = nullptr;
+		}
+	}
+
+	if (hls_stream) {
+		hls_content *content = hls_stream->get_hls_content(id);
+		if (content) {
+			content->clear_window();
+		}
+		delete hls_stream;
+		hls_stream = nullptr;
+	}
+
+	if (rtsp_stream) {
+		delete rtsp_stream;
+		rtsp_stream = nullptr;
+	}
+
+	// First disconnect all components from their sources
+	if (bc && bc->source) {
+		// Disconnect all components from the main source first
+		if (rec_continuous) {
+			safe_disconnect(rec_continuous, bc->source);
+		}
+		if (rec_motion) {
+			safe_disconnect(rec_motion, bc->source);
+		}
+		if (m_processor) {
+			safe_disconnect(m_processor, bc->source);
+		}
+		if (t_processor) {
+			safe_disconnect(t_processor, bc->source);
+		}
+		if (m_handler && m_handler->input_consumer()) {
+			safe_disconnect(m_handler->input_consumer(), bc->source);
+		}
+	}
+
+	// Give a small delay for disconnects to complete
+	usleep(100000); // 100ms
+
+	// Then join all threads
+	if (rec_continuous_thread && rec_continuous_thread->joinable()) {
 		rec_continuous_thread->join();
-		rec_continuous_thread = NULL;
 	}
-
-	if (rec_motion) {
-		rec_motion->disconnect();
-		rec_motion->destroy();
-		rec_motion = 0;
+	if (rec_motion_thread && rec_motion_thread->joinable()) {
 		rec_motion_thread->join();
-		rec_motion_thread = NULL;
 	}
-
-	if (m_processor) {
-		m_processor->disconnect();
-		m_processor->destroy();
-		m_processor = 0;
+	if (m_processor_thread && m_processor_thread->joinable()) {
 		m_processor_thread->join();
-		m_processor_thread = NULL;
 	}
-
-	if (t_processor) {
-		t_processor->disconnect();
-		t_processor->destroy();
-		t_processor = 0;
+	if (t_processor_thread && t_processor_thread->joinable()) {
 		t_processor_thread->join();
-		t_processor_thread = NULL;
 	}
-
-	if (onvif_ev) {
-		onvif_ev->stop();
-		onvif_ev = 0;
+	if (onvif_ev_thread && onvif_ev_thread->joinable()) {
 		onvif_ev_thread->join();
-		onvif_ev_thread = NULL;
 	}
-
-	if (m_handler) {
-		m_handler->disconnect();
-		m_handler->destroy();
-		m_handler = 0;
+	if (m_handler_thread && m_handler_thread->joinable()) {
 		m_handler_thread->join();
-		m_handler_thread = NULL;
+	}
+	if (liveview_substream_thread && liveview_substream_thread->joinable()) {
+		liveview_substream_thread->join();
 	}
 
-	if (bc)
+	// Then destroy and delete all components
+	if (rec_continuous) {
+		rec_continuous->destroy();
+		delete rec_continuous;
+		rec_continuous = nullptr;
+	}
+	if (rec_motion) {
+		rec_motion->destroy();
+		delete rec_motion;
+		rec_motion = nullptr;
+	}
+	if (m_processor) {
+		m_processor->destroy();
+		delete m_processor;
+		m_processor = nullptr;
+	}
+	if (t_processor) {
+		t_processor->destroy();
+		delete t_processor;
+		t_processor = nullptr;
+	}
+	if (onvif_ev) {
+		delete onvif_ev;
+		onvif_ev = nullptr;
+	}
+	if (m_handler) {
+		m_handler->destroy();
+		delete m_handler;
+		m_handler = nullptr;
+	}
+	if (liveview_substream) {
+		delete liveview_substream;
+		liveview_substream = nullptr;
+	}
+
+	// Finally delete all thread objects
+	if (rec_continuous_thread) {
+		delete rec_continuous_thread;
+		rec_continuous_thread = nullptr;
+	}
+	if (rec_motion_thread) {
+		delete rec_motion_thread;
+		rec_motion_thread = nullptr;
+	}
+	if (m_processor_thread) {
+		delete m_processor_thread;
+		m_processor_thread = nullptr;
+	}
+	if (t_processor_thread) {
+		delete t_processor_thread;
+		t_processor_thread = nullptr;
+	}
+	if (onvif_ev_thread) {
+		delete onvif_ev_thread;
+		onvif_ev_thread = nullptr;
+	}
+	if (m_handler_thread) {
+		delete m_handler_thread;
+		m_handler_thread = nullptr;
+	}
+	if (liveview_substream_thread) {
+		delete liveview_substream_thread;
+		liveview_substream_thread = nullptr;
+	}
+
+	if (bc) {
 		bc->input->set_motion(false);
+	}
 
 	if (reenc) {
 		delete reenc;
-		reenc = 0;
+		reenc = nullptr;
 	}
+
+	is_destroying = false;
 }
 
 bool bc_record::update_motion_thresholds()
