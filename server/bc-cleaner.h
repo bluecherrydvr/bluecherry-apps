@@ -170,27 +170,30 @@ public:
 
 // Main cleanup manager class
 class CleanupManager {
-public:
-    CleanupManager();
-    ~CleanupManager();
-    
-    int run_cleanup();
-    cleanup_stats_report get_stats_report() const;  // Will use get_copy() internally
-    bool should_run_cleanup() const;  // New method to check if cleanup should run
-    bool needs_startup_cleanup() const;  // New method to check if startup cleanup is needed
-    void mark_startup_cleanup_done();  // New method to mark startup cleanup as done
-    
 private:
+    std::mutex cleanup_mutex;
+    bool cleanup_in_progress;
     std::unique_ptr<CleanupRetryManager> retry_manager;
     std::unique_ptr<ParallelCleanup> parallel_cleanup;
     std::unique_ptr<CleanupScheduler> scheduler;
+    std::chrono::system_clock::time_point last_cleanup_time;
     cleanup_stats_report stats;
     std::mutex stats_mutex;
-    
-    int process_batch(const std::vector<std::string>& files);
-    bool should_continue_cleanup(time_t start_time);
+
+    // Helper functions
+    bool delete_media_file(const std::string& filepath, int id);
+    bool check_storage_status();
+
+public:
+    CleanupManager();
+    int run_cleanup();
+    cleanup_stats_report get_stats_report() const;
     int calculate_batch_size();
+    bool should_continue_cleanup(time_t start_time);
     void update_stats(const cleanup_stats_report& new_stats);
+    bool should_run_cleanup() const;
+    bool needs_startup_cleanup() const;
+    void mark_startup_cleanup_done();
 };
 
 // Utility functions
