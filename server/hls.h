@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <netinet/in.h>
 
 #ifdef BC_HLS_WITH_SSL
 #include <openssl/x509.h>
@@ -177,32 +178,32 @@ class hls_listener;
 class hls_session
 {
 public:
-
-    enum request_type
-    {
-        invalid = 0,
+    enum class request_type {
+        invalid,
         unauthorized,
-        rec_playlist,
-        recording,
+        index,
         playlist,
-        initial,
         payload,
-        index
+        initial,
+        recording,
+        rec_playlist
     };
 
+    hls_session(hls_listener *listener, int fd);
     ~hls_session();
+
+    void set_addr(const struct in_addr addr);
+    const char *get_addr() const { return _address.c_str(); }
+
+    std::string get_request();
+    bool handle_request(const std::string &request);
+    ssize_t tx_buffer_flush();
+    void tx_buffer_append(uint8_t *data, size_t size);
 
     int writeable();
 
-    std::string get_request();
-    bool authenticate(const std::string &uri, const std::string &request);
-    bool handle_request(const std::string &request);
-    bool create_response();
-
     hls_byte_buffer& tx_buffer_get() { return _tx_buffer; }
-    void tx_buffer_append(uint8_t *data, size_t size);
     size_t tx_buffer_advance(size_t size);
-    ssize_t tx_buffer_flush();
 
     void rx_buffer_append(const char *data) { _rx_buffer.append(data); }
     void rx_buffer_advance(size_t size) { _rx_buffer.erase(0, size); }
@@ -214,8 +215,6 @@ public:
     void set_listener(hls_listener *listener) { _listener = listener; } 
     hls_listener* get_listener() { return _listener; }
 
-    const char *get_addr() { return _address.c_str(); }
-    void set_addr(const struct in_addr addr);
     void set_fd(int fd) { _fd = fd; }
     int get_fd() { return _fd; }
 
@@ -227,27 +226,25 @@ public:
     hls_ssl* get_ssl() { return _ssl; }
 #endif
 
-private:
-    /* Request */
-    std::string     _recording;
-    std::string     _auth_token;
-    request_type    _type = invalid;
-    uint32_t        _segment_id = 0;
-    uint8_t         _stream_id = 0;
-    int             _device_id = 0;
+    request_type _type;
+    int _device_id;
+    int _stream_id;
+    int _segment_id;
+    std::string _recording;
 
-    /* Objects */
+private:
+    bool authenticate(const std::string &uri, const std::string &request);
+    bool create_response();
+
     hls_events::event_data* _ev_data = NULL;
     hls_filestream*         _fstream = NULL;
     hls_listener*           _listener = NULL;
     hls_events*             _events = NULL;
 
 #ifdef BC_HLS_WITH_SSL
-    /* SSL support */
     hls_ssl*         _ssl = NULL;
 #endif
 
-    /* rx/tx */
     hls_byte_buffer _tx_buffer;
     std::string     _rx_buffer;
     std::string     _address;
