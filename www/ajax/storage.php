@@ -61,11 +61,11 @@ class storage extends Controller {
                 $estimated_seconds = ($available_space * 3600) / $mb_per_hour;
             } else {
                 // If insufficient data, use the original calculation
-                $query = "SELECT ({$available_space}) * period / size AS result FROM (".
+            $query = "SELECT ({$available_space}) * period / size AS result FROM (".
                       "SELECT SUM(CASE WHEN end < start OR end = 0 THEN 0 ELSE end - start END".
                     ") period, COALESCE(SUM(size), 0) DIV 1048576 size".
-                    " FROM Media WHERE filepath LIKE '{$path}%') q";
-                $result = data::query($query);
+                " FROM Media WHERE filepath LIKE '{$path}%') q";
+            $result = data::query($query);
                 $estimated_seconds = $result[0]['result'] ?: 0;
             }
             
@@ -91,11 +91,6 @@ class storage extends Controller {
     }
 
     private function validatePath($path) {
-        // Check if path starts with /mnt or /media
-        if (!preg_match('/^\/(mnt|media)\//', $path)) {
-            return array(false, "Storage path must start with /mnt or /media");
-        }
-
         // Check for invalid characters
         if (preg_match('/[\|\&\;\$\#\*\(\)\{\}\[\]\<\>]/', $path)) {
             return array(false, "Storage path contains invalid characters");
@@ -163,13 +158,13 @@ class storage extends Controller {
                 }
 
                 // Check directory permissions
-                $dir_status = $storage_check->change_directory_permissions($path);
-                if ($dir_status[0] !== 'OK') {
+            $dir_status = $storage_check->change_directory_permissions($path);
+            if ($dir_status[0] !== 'OK') {
                     throw new Exception($dir_status[1]);
-                }
+            }
 
                 $values[] = "({$key}, '" . database::escapeString($path) . "', {$max}, {$min})";
-            }
+        }
 
             // Ensure at least one storage location
             if (empty($values)) {
@@ -177,13 +172,13 @@ class storage extends Controller {
             }
 
             // Delete existing storage locations
-            data::query("DELETE FROM Storage", true);
+        data::query("DELETE FROM Storage", true);
 
             // Insert new storage locations
             $values = implode(',', $values);
             if (!data::query("INSERT INTO Storage (priority, path, max_thresh, min_thresh) VALUES {$values}", true)) {
                 throw new Exception("Failed to save storage locations");
-            }
+        }
 
             // Commit transaction
             data::query("COMMIT", true);

@@ -51,6 +51,7 @@ extern "C" {
 #include <unordered_map>
 #include <vector>
 #include <queue>
+#include <map>
 
 /* Global Mutexes */
 pthread_mutex_t mutex_global_sched;
@@ -72,13 +73,8 @@ int max_record_time_sec;
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
 
-struct bc_storage {
-	char path[PATH_MAX];
-	float min_thresh, max_thresh;
-};
-
 #define MAX_STOR_LOCS	10
-static struct bc_storage media_stor[MAX_STOR_LOCS];
+struct bc_storage media_stor[MAX_STOR_LOCS];
 
 /* Timestamp of when the server was last known to be running prior to this
  * instance; may be zero if unknown or never */
@@ -617,66 +613,54 @@ int bc_get_media_loc(char *dest, size_t size)
 	return ret;
 }
 
-static bool is_media_max_age_exceeded()
+static bool is_media_max_age_exceeded(void)
 {
-	BC_DB_RES dbres;
-	long start;
-	int max_age;
-	long now;
-	bool exceeds_max_age;
-
-	/* There's no binary search key at timestamp fields, I see no possibility
-	 * for smart single no-overhead SQL query to determine the requested fact
-	 */
-
-	// Get max allowed recording age
-	dbres = bc_db_get_table("SELECT value FROM GlobalSettings WHERE parameter = 'G_MAX_RECORD_AGE' LIMIT 1");
-	if (!dbres)
+	static time_t last_check = 0;
+	const time_t CHECK_INTERVAL = 300; // Check every 5 minutes instead of every 30 seconds
+	
+	time_t now = time(NULL);
+	if (now - last_check < CHECK_INTERVAL) {
 		return false;
+	}
+	last_check = now;
 
-	// No setting, unlimited age allowed
-	if (bc_db_fetch_row(dbres)) {
-		bc_db_free_table(dbres);
+	const char* sql = "SELECT value FROM GlobalSettings WHERE parameter='G_MAX_RECORD_AGE'";
+	BC_DB_RES res = bc_db_get_table("%s", sql);
+	if (!res) {
+		bc_log(Error, "Failed to get G_MAX_RECORD_AGE from database");
 		return false;
 	}
 
-	max_age = bc_db_get_val_int(dbres, "value");
-	bc_db_free_table(dbres);
-
-	if (max_age < 0) {
-		bc_log(Debug, "is_media_max_age_exceeded(): max_age < 0, %d, illegal value, aborting further checks", max_age);
-		return false;
+	bool exceeded = false;
+	if (!bc_db_fetch_row(res)) {
+		size_t len;
+		const char* val = bc_db_get_val(res, "value", &len);
+		if (val) {
+			int max_age = atoi(val);
+			if (max_age > 0) {
+				const char* check_sql = 
+					"SELECT COUNT(*) as count FROM Media "
+					"WHERE type = 'video' AND "
+					"UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(created_at) > %d";
+				BC_DB_RES check_res = bc_db_get_table("%s", check_sql, max_age);
+				if (check_res) {
+					if (!bc_db_fetch_row(check_res)) {
+						const char* count_str = bc_db_get_val(check_res, "count", &len);
+						if (count_str) {
+							int count = atoi(count_str);
+							exceeded = (count > 0);
+							if (exceeded) {
+								bc_log(Info, "Found %d media files exceeding max age of %d days", count, max_age/86400);
+							}
+						}
+					}
+					bc_db_free_table(check_res);
+				}
+			}
+		}
 	}
-
-	if (max_age == 0) {
-		bc_log(Debug, "is_media_max_age_exceeded(): max_age == 0, assuming no age limit");
-		return false;
-	}
-
-	// Get oldest recording date
-	dbres = bc_db_get_table("SELECT start FROM Media ORDER BY id ASC LIMIT 1");
-	if (!dbres)
-		return false;
-
-	if (bc_db_fetch_row(dbres)) {
-		bc_db_free_table(dbres);
-		return false;
-	}
-
-	start = bc_db_get_val_int(dbres, "start");
-	bc_db_free_table(dbres);
-
-	if (start <= 0) {
-		bc_log(Debug, "is_media_max_age_exceeded(): start <= 0, %ld, illegal value, aborting further checks", start);
-		return false;
-	}
-
-	now = time(NULL);
-
-	exceeds_max_age = start < now - max_age;
-	bc_log(Debug, "Oldest recording is dated with timestamp %ld, now %ld, max_age %d. Too old? %s", start, now, max_age, exceeds_max_age ? "YES" : "NO");
-
-	return exceeds_max_age;
+	bc_db_free_table(res);
+	return exceeded;
 }
 
 /*
@@ -780,20 +764,24 @@ static int bc_cleanup_motion_debug_folder(bc_oldest_media_t &ctx, const std::str
 */
 static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::string dir_path)
 {
-	if (dir_path.back() != '/') dir_path.append("/");
-	DIR *pdir = opendir(dir_path.c_str());
+	if (dir_path.empty()) {
+		bc_log(Warning, "Empty directory path provided");
+		return -1;
+	}
 
+	if (dir_path.back() != '/') 
+		dir_path.append("/");
+
+	DIR *pdir = opendir(dir_path.c_str());
 	if (pdir == NULL) {
 		bc_log(Warning, "Can not open directory %s: %s",
 			dir_path.c_str(), strerror(errno));
-
 		ctx.errors++;
 		return -1;
 	}
 
 	struct dirent *entry = readdir(pdir);
-	while (entry != NULL)
-	{
+	while (entry != NULL) {
 		/* Found an entry, but ignore . and .. */
 		if (strcmp(".", entry->d_name) == 0 ||
 			strcmp("..", entry->d_name) == 0) {
@@ -813,56 +801,55 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 		}
 
 		if (S_ISDIR(statbuf.st_mode)) { // Recursive read directory
-
 			std::size_t debug_pos = full_path.find(".debug");
-			if (debug_pos != std::string::npos)
-			{
+			if (debug_pos != std::string::npos) {
 				std::string sub_path = full_path.substr(0, debug_pos);
-				if (sub_path.length() > 26)
-				{
-					std::string time_path = sub_path.substr(sub_path.size() - 26, std::string::npos);
+				if (sub_path.length() > 26) {
+					std::string time_path = sub_path.substr(sub_path.size() - 26);
 					bc_cleanup_motion_debug_folder(ctx, full_path, time_path);
 				}
-
 				entry = readdir(pdir);
 				continue;
 			}
 
 			bc_recursive_cleanup_untracked_media(ctx, full_path);
 			bc_remove_dir_if_empty(full_path);
-
 			entry = readdir(pdir);
 			continue;
 		}
 
-		if (entry_name.compare(entry_name.size()-4, 4, ".mkv") &&
-			entry_name.compare(entry_name.size()-4, 4, ".mp4") &&
-			entry_name.compare(entry_name.size()-4, 4, ".jpg")) {
-			/* Not a bc media file, leave it unchanged */
+		// Check file extension
+		if (entry_name.length() < 4) {
 			entry = readdir(pdir);
 			ctx.others++;
 			continue;
 		}
 
-		size_t time_len = 26;
-		size_t suffix_len = 4;
-
-		if (!entry_name.compare(entry_name.size()-11, 11, "-motion.jpg") ||
-			!entry_name.compare(entry_name.size()-11, 11, "-motion.mp4") ||
-			!entry_name.compare(entry_name.size()-11, 11, "-motion.mkv"))
-		{
-			/* Not a bc media file, leave it unchanged */
-			suffix_len = 11;
+		std::string ext = entry_name.substr(entry_name.length() - 4);
+		if (ext != ".mkv" && ext != ".mp4" && ext != ".jpg") {
+			entry = readdir(pdir);
+			ctx.others++;
+			continue;
 		}
 
-		size_t ending_len = time_len + suffix_len;
-		if (full_path.length() < ending_len)
-		{
+		// Check for motion files
+		size_t suffix_len = 4;
+		if (entry_name.length() >= 11) {
+			std::string motion_suffix = entry_name.substr(entry_name.length() - 11);
+			if (motion_suffix == "-motion.jpg" || 
+				motion_suffix == "-motion.mp4" || 
+				motion_suffix == "-motion.mkv") {
+				suffix_len = 11;
+			}
+		}
+
+		// Extract timestamp from path
+		if (full_path.length() < 26 + suffix_len) {
 			entry = readdir(pdir);
 			continue;
 		}
 
-		std::string timed_path = full_path.substr(full_path.size() - ending_len, time_len);
+		std::string timed_path = full_path.substr(full_path.length() - 26 - suffix_len, 26);
 		bc_time rec_time;
 		int id = 0;
 
@@ -873,7 +860,6 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 		if (count != 7) {
 			bc_log(Error, "Can not parse date from media file: %s (%s)",
 				full_path.c_str(), timed_path.c_str());
-
 			entry = readdir(pdir);
 			ctx.errors++;
 			continue;
@@ -892,7 +878,9 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 
 		if (entry_is_old) {
 			std::string video_file = full_path;
-			video_file.replace(video_file.size()-3, 3, "mkv");
+			if (video_file.length() >= 3) {
+				video_file.replace(video_file.length()-3, 3, "mkv");
+			}
 
 			int rv = bc_media_is_archived(video_file.c_str());
 			if (rv > 0) {
@@ -907,8 +895,7 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 
 			if (unlink(full_path.c_str()) < 0) {
 				bc_log(Warning, "Cannot remove old file %s: %s",
-			       full_path.c_str(), strerror(errno));
-
+					full_path.c_str(), strerror(errno));
 				entry = readdir(pdir);
 				ctx.errors++;
 				continue;
@@ -917,7 +904,6 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			ctx.removed++;
 		}
 
-		/* Move forward */
 		entry = readdir(pdir);
 	}
 
@@ -1106,6 +1092,7 @@ static int bc_cleanup_media()
 {
 	BC_DB_RES dbres;
 	int removed = 0, error_count = 0;
+	std::vector<std::string> error_details;
 
 	/* Retry last cleanup list first */
 	bc_cleanup_media_retry();
@@ -1124,15 +1111,33 @@ static int bc_cleanup_media()
 		const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
 		int id = bc_db_get_val_int(dbres, "id");
 
-		if (!filepath || !*filepath)
+		if (!filepath || !*filepath) {
+			bc_log(Debug, "Skipping media entry %d with empty filepath", id);
 			continue;
+		}
+
+		bc_log(Debug, "Processing media file: %s (id: %d)", filepath, id);
+
+		// Check for related records
+		BC_DB_RES check_res = bc_db_get_table("SELECT COUNT(*) as count FROM EventsCam WHERE media_id=%d", id);
+		if (check_res && !bc_db_fetch_row(check_res)) {
+			int related_count = bc_db_get_val_int(check_res, "count");
+			if (related_count > 0) {
+				bc_log(Debug, "Media id %d has %d related EventsCam records", id, related_count);
+			}
+		}
+		bc_db_free_table(check_res);
 
 		if (unlink(filepath) < 0 && errno != ENOENT) {
-			bc_log(Warning, "Cannot remove file %s for cleanup: %s",
-			       filepath, strerror(errno));
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to remove %s: %s (errno=%d)", 
+				filepath, strerror(errno), errno);
+			error_details.push_back(error_msg);
 			error_count++;
+			bc_log(Debug, "File deletion failed: %s", error_msg);
 			continue;
 		} else if (errno == ENOENT) {
+			bc_log(Debug, "File not found, will retry: %s", filepath);
 			// Maybe dangling link caused by mount error or permission issue, try again
 			g_media_files[filepath].timestamp = time(NULL);
 			g_media_files[filepath].try_count = 0;
@@ -1143,11 +1148,15 @@ static int bc_cleanup_media()
 			sidecar.replace(sidecar.size()-3, 3, "jpg");
 
 		if (unlink(sidecar.c_str()) < 0 && errno != ENOENT) {
-			bc_log(Warning, "Cannot remove sidecar file %s for cleanup: %s",
-			       sidecar.c_str(), strerror(errno));
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to remove sidecar %s: %s (errno=%d)", 
+				sidecar.c_str(), strerror(errno), errno);
+			error_details.push_back(error_msg);
 			error_count++;
+			bc_log(Debug, "Sidecar deletion failed: %s", error_msg);
 			continue;
 		} else if (errno == ENOENT) {
+			bc_log(Debug, "Sidecar not found, will retry: %s", sidecar.c_str());
 			// Maybe sidecar is not created yet, try again
 			g_media_files[sidecar].timestamp = time(NULL);
 			g_media_files[sidecar].try_count = 0;
@@ -1157,8 +1166,35 @@ static int bc_cleanup_media()
 
 		removed++;
 
-		if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
-			bc_status_component_error("Database error during Media cleanup");
+		// Use transaction for database operations
+		if (bc_db_start_trans()) {
+			if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+				bc_db_rollback_trans();
+				char error_msg[256];
+				snprintf(error_msg, sizeof(error_msg), "Database error deleting media id %d", id);
+				error_details.push_back(error_msg);
+				error_count++;
+				bc_log(Debug, "Database deletion failed: %s", error_msg);
+			} else {
+				bc_db_commit_trans();
+				
+				// Verify deletion
+				BC_DB_RES verify_res = bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE id=%d", id);
+				if (verify_res && !bc_db_fetch_row(verify_res)) {
+					int remaining = bc_db_get_val_int(verify_res, "count");
+					if (remaining > 0) {
+						bc_log(Error, "Media id %d still exists in database after deletion", id);
+						error_count++;
+						error_details.push_back("Database verification failed: record still exists");
+					}
+				}
+				bc_db_free_table(verify_res);
+			}
+		} else {
+			char error_msg[256];
+			snprintf(error_msg, sizeof(error_msg), "Failed to start transaction for media id %d", id);
+			error_details.push_back(error_msg);
+			error_count++;
 		}
 
 		/* Delete older files than last deleted file */
@@ -1183,10 +1219,16 @@ static int bc_cleanup_media()
 done:
 	bc_db_free_table(dbres);
 
-	if (error_count)
+	if (error_count) {
 		bc_log(Error, "Cleaned up %d files with %d errors, which may cause undeletable files", removed, error_count);
-	else
+		// Log detailed error information
+		bc_log(Error, "Detailed error information:");
+		for (const auto& error : error_details) {
+			bc_log(Error, "  %s", error.c_str());
+		}
+	} else {
 		bc_log(Info, "Cleaned up %d files", removed);
+	}
 
 	return 0;
 }
@@ -1195,26 +1237,76 @@ static int bc_check_media(void)
 {
 	int ret = 0;
 	bool storage_overloaded = false;
+	static std::map<std::string, float> last_usage;  // Track last usage per path
+	static time_t last_cleanup = 0;
+	const time_t CLEANUP_COOLDOWN = 300; // 5 minutes between cleanups
+	
+	time_t now = time(NULL);
+	if (now - last_cleanup < CLEANUP_COOLDOWN) {
+		return 0; // Skip check if we recently ran cleanup
+	}
+	
+	// Check each storage location against its thresholds
+	const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
+	BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+	if (storage_res) {
+		while (!bc_db_fetch_row(storage_res)) {
+			size_t len;
+			const char* path = bc_db_get_val(storage_res, "path", &len);
+			const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+			const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
+			
+			if (path && max_thresh_str && min_thresh_str) {
+				// Check if directory exists before checking usage
+				struct stat st;
+				if (stat(path, &st) != 0 || !S_ISDIR(st.st_mode)) {
+					bc_log(Warning, "Storage path %s does not exist or is not a directory", path);
+					continue;
+				}
 
-	/* If there's some space left, skip cleanup */
-	for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].max_thresh; i++) {
-		if (is_storage_full(&media_stor[i]) == 1) {
-			storage_overloaded = true;
-			break;
+				float usage = path_used_percent(path);
+				double max_thresh = atof(max_thresh_str);
+				
+				if (usage >= 0) {
+					// Add a small buffer to prevent oscillation
+					const float BUFFER = 0.5; // 0.5% buffer
+					if (usage >= (max_thresh - BUFFER)) {
+						storage_overloaded = true;
+						bc_log(Info, "Storage %s needs cleanup: %.1f%% >= %.1f%%", 
+							   path, usage, max_thresh);
+						break;
+					}
+					
+					// Only log if usage has changed by more than 0.1%
+					float last = last_usage[path];
+					if (last < 0 || fabs(usage - last) > 0.1) {
+						bc_log(Info, "Storage path %s below threshold: %.1f%% <= %.1f%%", 
+							   path, usage, max_thresh);
+						last_usage[path] = usage;
+					}
+				} else {
+					bc_log(Error, "Failed to get storage usage for %s", path);
+				}
+			}
 		}
+		bc_db_free_table(storage_res);
+	} else {
+		bc_log(Error, "Failed to get storage paths from database");
 	}
 
-	if (storage_overloaded || is_media_max_age_exceeded()) {
-		if (!g_cleanup_manager) {
-			g_cleanup_manager = std::make_unique<CleanupManager>();
-		}
+	bool max_age_exceeded = is_media_max_age_exceeded();
+	if (max_age_exceeded) {
+		bc_log(Info, "Media max age exceeded, running cleanup");
+	}
+
+	if (storage_overloaded || max_age_exceeded) {
+		bc_log(Info, "Running cleanup due to %s", 
+			   storage_overloaded ? "storage overload" : "max age exceeded");
 		ret = g_cleanup_manager->run_cleanup();
-		
-		// Log cleanup statistics
-		const cleanup_stats_report& stats = g_cleanup_manager->get_stats_report();
-		bc_log(Info, "Cleanup stats: processed=%d, deleted=%d, errors=%d, bytes_freed=%zu, retries=%d",
-			   stats.files_processed, stats.files_deleted,
-			   stats.errors, stats.bytes_freed, stats.retries);
+		bc_log(Info, "Cleanup completed with result: %d", ret);
+		last_cleanup = now;
+	} else {
+		bc_log(Debug, "No cleanup needed - storage below threshold and max age not exceeded");
 	}
 
 	return ret;
@@ -1315,23 +1407,39 @@ static void get_last_run_date()
 
 static void *bc_update_abandoned_media_threadproc(void *arg)
 {
-	/* Running mkvinfo could take a significant amount time on long recordings,
-	 * so processing of abandoned recordings is done in this separate thread.
-	 */
 	bc_log(Info, "started processing abandoned recordings");
 	while(!abandoned_media_to_update.empty()) {
 		char cmd[4096];
 		char *line = NULL;
-		size_t len;
+		size_t len = 0;
 		FILE *fp;
 		struct media_record m;
 
 		m = abandoned_media_to_update.front();
-		sprintf(cmd, "mkvinfo -v %s", m.filepath.c_str());
+		
+		// Validate filepath before using it
+		if (m.filepath.empty()) {
+			bc_log(Warning, "Empty filepath in abandoned media queue, skipping");
+			abandoned_media_to_update.pop();
+			continue;
+		}
+
+		// Validate the file still exists
+		struct stat st;
+		if (stat(m.filepath.c_str(), &st) != 0) {
+			bc_log(Warning, "File no longer exists: %s", m.filepath.c_str());
+			abandoned_media_to_update.pop();
+			continue;
+		}
+
+		snprintf(cmd, sizeof(cmd), "mkvinfo -v %s", m.filepath.c_str());
 
 		fp = popen(cmd, "r");
-		if (fp == NULL)
+		if (fp == NULL) {
+			bc_log(Warning, "Failed to execute mkvinfo for %s", m.filepath.c_str());
+			abandoned_media_to_update.pop();
 			continue;
+		}
 
 		while (getline(&line, &len, fp) >= 0) {
 			char *p;
@@ -1339,10 +1447,10 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 				sscanf(p, "timecode %d.", &m.duration);
 			free(line);
 			line = NULL;
+			len = 0;
 		}
 
 		free(line);
-
 		pclose(fp);
 
 		pthread_mutex_lock(&mutex_abandoned_media);
@@ -1353,7 +1461,6 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 	}
 
 	bc_log(Info, "finished processing abandoned recordings");
-
 	return NULL;
 }
 
@@ -1419,17 +1526,30 @@ static void bc_check_inprogress(void)
 			continue;
 		}
 
-		struct media_record m;
+		// Validate filepath before using it
+		if (strlen(filepath) == 0) {
+			bc_log(Warning, "Empty filepath for event %d, skipping", event_id);
+			continue;
+		}
 
+		struct media_record m;
 		m.id = event_id;
 		m.media_id = m_id;
 		m.filepath = std::string(filepath);
 		m.duration = 0;
 
+		// Validate the file exists before queuing
+		struct stat st;
+		if (stat(m.filepath.c_str(), &st) != 0) {
+			bc_log(Warning, "File not found for event %d: %s", event_id, m.filepath.c_str());
+			continue;
+		}
+
 		abandoned_media_to_update.push(m);
 		abandoned_media_update_in_progress = true;
 		bc_log(Info, "Found abandoned recording %s, queued for length update", m.filepath.c_str());
-        }
+	}
+
 	if (abandoned_media_update_in_progress) {
 		pthread_t thread_id;
 		pthread_attr_t attr;
@@ -1756,6 +1876,10 @@ int main(int argc, char **argv)
 	/* Delete untracked media files */
 	bc_initial_cleanup_untracked_media();
 
+	// Initialize cleanup manager for regular scheduling
+	g_cleanup_manager = std::make_unique<CleanupManager>();
+	bc_log(Info, "Cleanup manager initialized with regular schedule");
+
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
@@ -1770,6 +1894,20 @@ int main(int argc, char **argv)
 			bc_log(Info, "Shutting down");
 			break;
 		}
+
+		// Run cleanup based on scheduler, but only check every 30 seconds
+		if ((loops % 30) == 0 && g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
+			bc_status_component_begin(STATUS_MEDIA_CHECK);
+			int mc_ret = bc_check_media();
+			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
+			
+			// If this was a startup cleanup, mark it as done
+			if (g_cleanup_manager->needs_startup_cleanup()) {
+				g_cleanup_manager->mark_startup_cleanup_done();
+				bc_log(Info, "Startup cleanup completed, returning to regular schedule");
+			}
+		}
+
 		/* Every 16 seconds until initialized, then every 4:16 minutes */
 		if ((!hwcard_ready && !(loops & 15)) || (hwcard_ready && !(loops & 255))) {
 			bc_status_component_begin(STATUS_HWCARD_DETECT);
@@ -1805,11 +1943,6 @@ int main(int argc, char **argv)
 			}
 			bc_status_component_end(STATUS_HWCARD_DETECT, ret == 0);
 		}
-
-		bc_status_component_begin(STATUS_MEDIA_CHECK);
-		/* Check media locations for full */
-		int mc_ret = bc_check_media();
-		bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
 
 		/* Every 8 seconds */
 		if ((loops & 7) == 0) {

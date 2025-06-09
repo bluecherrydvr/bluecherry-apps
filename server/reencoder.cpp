@@ -345,7 +345,7 @@ bool reencoder::run_loop()
 		if (scaled_frame == NULL)
 			return false;
 
-		bc_log(Debug, "got frame of size %d x %d vaapi surface %#x from scaler", scaled_frame->width, scaled_frame->height, (uintptr_t)scaled_frame->data[3]);
+		bc_log(Debug, "got frame of size %d x %d vaapi surface %#lx from scaler", scaled_frame->width, scaled_frame->height, (uintptr_t)scaled_frame->data[3]);
 
 		if (!init_enc_streaming(scaled_frame))
 			return false;
@@ -369,7 +369,7 @@ bool reencoder::run_loop()
 			return false;
 
 
-		bc_log(Debug, "got frame of size %d x %d vaapi surface %#x from scaler", scaled_frame->width, scaled_frame->height, (uintptr_t)scaled_frame->data[3]);
+		bc_log(Debug, "got frame of size %d x %d vaapi surface %#lx from scaler", scaled_frame->width, scaled_frame->height, (uintptr_t)scaled_frame->data[3]);
 
 		if (!init_enc_streaming(scaled_frame))
 			return false;

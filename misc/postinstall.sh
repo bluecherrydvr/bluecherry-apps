@@ -90,6 +90,9 @@ function install_pip
 	if [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == bionic ]]; then
         	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.6/get-pip.py
 		python3 /tmp/get-pip.py
+	elif [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == focal ]]; then
+        	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.8/get-pip.py
+		python3 /tmp/get-pip.py
 	else
         	wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
 		python3 /tmp/get-pip.py

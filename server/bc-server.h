@@ -45,6 +45,15 @@ extern pthread_mutex_t mutex_max_record_time_sec;
 #define BC_MAINSTREAM_START_FAILED 1
 #define BC_SUBSTREAM_START_FAILED 2
 
+struct bc_storage {
+	char path[PATH_MAX];
+	float min_thresh, max_thresh;
+};
+
+#define MAX_STOR_LOCS    10
+
+extern struct bc_storage media_stor[MAX_STOR_LOCS];
+
 class bc_record
 {
 public:
@@ -217,6 +226,24 @@ void signals_setup();
 
 void bc_ffmpeg_init();
 void bc_ffmpeg_teardown();
+}
+
+static inline void safe_disconnect(stream_consumer* consumer, stream_source* source) {
+    if (!consumer || !source) return;
+    
+    // Only try to disconnect if the consumer is actually connected to this source
+    try {
+        // First try to disconnect from the source side
+        source->disconnect(consumer);
+        
+        // Then try to disconnect from the consumer side
+        consumer->disconnect();
+    } catch (const std::exception& e) {
+        // Log but don't throw
+        bc_log(Warning, "Error during disconnect: %s", e.what());
+    } catch (...) {
+        bc_log(Warning, "Unknown error during disconnect");
+    }
 }
 
 #endif /* __BC_SERVER_H */

@@ -48,10 +48,6 @@ is_valid_path() {
     if [[ "$path" =~ [\|\&\;\$\#\*\(\)\{\}\[\]\<\>] ]]; then
         return 1
     fi
-    # Check if path starts with /mnt or /media
-    if [[ ! "$path" =~ ^/(mnt|media)/ ]]; then
-        return 1
-    fi
     return 0
 }
 
@@ -82,7 +78,7 @@ DIR=$(realpath "$1") # Converts to absolute path
 
 # Validate path format
 if ! is_valid_path "$DIR"; then
-    echo "Error: Invalid path format. Path must start with /mnt or /media and contain no special characters."
+    echo "Error: Invalid path format. Path must contain no special characters."
     exit 1
 fi
 

@@ -16,7 +16,7 @@ void substream::run(struct bc_record *r)
 	int ret;
 	stream_packet liveview_packet;
 
-	r->log.log(Debug, "Starting substream thread %u ...", std::this_thread::get_id());
+	r->log.log(Debug, "Starting substream thread %zu ...", std::hash<std::thread::id>{}(std::this_thread::get_id()));
 
 	while (!exit_flag)
 	{
