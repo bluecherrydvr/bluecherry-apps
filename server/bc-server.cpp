@@ -640,9 +640,8 @@ static bool is_media_max_age_exceeded(void)
 			if (max_age > 0) {
 				const char* check_sql = 
 					"SELECT COUNT(*) as count FROM Media "
-					"WHERE type = 'video' AND "
-					"UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(created_at) > %d";
-				BC_DB_RES check_res = bc_db_get_table("%s", check_sql, max_age);
+					"WHERE UNIX_TIMESTAMP(NOW()) - start > %d";
+				BC_DB_RES check_res = bc_db_get_table(check_sql, max_age);
 				if (check_res) {
 					if (!bc_db_fetch_row(check_res)) {
 						const char* count_str = bc_db_get_val(check_res, "count", &len);
