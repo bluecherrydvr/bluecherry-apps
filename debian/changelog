@@ -1,4 +1,16 @@
-bluecherry (3:3.1.10) bookworm bullseye buster focal jammy mantic noble; urgency=low
+bluecherry (3.1.11) focal; urgency=medium
+
+  * Enhanced RTSP streaming support:
+    - Added optimized socket buffer settings (1MB send/receive)
+    - Implemented TCP keepalive with configurable timing
+    - Added adaptive queue sizing based on active sessions
+    - Improved session timeout handling
+    - Enhanced error handling and connection cleanup
+    - Added thread-safe session management
+
+ -- Curtis Hall <curtis@bluecherrydvr.com>  Mon, 10 Jun 2024 10:00:00 -0400
+
+bluecherry (3:3.1.10) bookworm bullseye buster buster focal jammy mantic noble; urgency=low
 
   * Upgrade build system to C++14 support
   * Add PHP-FPM timezone fix script and update Certbot install logic for Ubuntu 24.04+ and Linux Mint 22.1+ in postinstall.sh
