@@ -1388,58 +1388,19 @@ hls_content::~hls_content()
     pthread_mutex_destroy(&_mutex);
 }
 
-void hls_content::set_config(hls_config *config)
-{
-    if (pthread_mutex_lock(&_mutex))
-    {
-        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-        return;
-    }
-
-    _config = *config;
-
-    if (pthread_mutex_unlock(&_mutex))
-    {
-        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
-        return;
-    }
-}
-
-void hls_content::get_config(size_t *segment_size, double *segment_duration)
-{
-    if (pthread_mutex_lock(&_mutex))
-    {
-        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-        return;
-    }
-
-    *segment_size = _config.segment_size;
-    *segment_duration = _config.segment_duration;
-
-    if (pthread_mutex_unlock(&_mutex))
-    {
-        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
-        return;
-    }
-}
-
 bool hls_content::clear_window()
 {
-    if (pthread_mutex_lock(&_mutex))
-    {
-        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+    if (!lock_mutex()) {
         return false;
     }
 
-    while (_window.size())
-    {
+    while (_window.size()) {
         hls_segment *front = _window.front();
         _window.pop_front();
         delete front;
     }
 
-    if (_init_segment)
-    {
+    if (_init_segment) {
         delete _init_segment;
         _init_segment = NULL;
     }
@@ -1448,20 +1409,12 @@ bool hls_content::clear_window()
     _pts = 0;
     _cc = 0;
 
-    if (pthread_mutex_unlock(&_mutex))
-    {
-        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
-        return false;
-    }
-
-    return true;
+    return unlock_mutex();
 }
 
 bool hls_content::append_segment(hls_segment *segment)
 {
-    if (pthread_mutex_lock(&_mutex))
-    {
-        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+    if (!lock_mutex()) {
         return false;
     }
 
@@ -1475,8 +1428,7 @@ bool hls_content::append_segment(hls_segment *segment)
     if (_fmp4 && _use_initial && !_init_segment) 
         set_initial_segment(segment);
 
-    while (_config.window_size && _window.size() > _config.window_size)
-    {
+    while (_config.window_size && _window.size() > _config.window_size) {
         hls_segment *front = _window.front();
         delete front;
 
@@ -1485,19 +1437,12 @@ bool hls_content::append_segment(hls_segment *segment)
     }
 
     if (_fmp4 && _use_initial && _window.size() && 
-        (!_init_segment || buffer_moved))
-    {
+        (!_init_segment || buffer_moved)) {
         hls_segment *front = _window.front();
         if (front) set_initial_segment(front);
     }
 
-    if (pthread_mutex_unlock(&_mutex))
-    {
-        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
-        return false;
-    }
-
-    return true;
+    return unlock_mutex();
 }
 
 void hls_content::set_initial_segment(hls_segment *segment)
@@ -1604,25 +1549,41 @@ hls_segment* hls_content::get_segment(uint32_t id)
 
 size_t hls_content::get_segment_ids(hls_segments &segments)
 {
-    if (pthread_mutex_lock(&_mutex))
-    {
-        bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
+    if (!lock_mutex()) {
         return 0;
     }
 
-    for (size_t i = 0; i < _window.size(); i++)
-    {
+    for (size_t i = 0; i < _window.size(); i++) {
         hls_segment *temp = _window[i];
         segments.push_back(temp->_meta.id);
     }
 
-    if (pthread_mutex_unlock(&_mutex))
-    {
-        bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
-        return 0;
+    size_t count = segments.size();
+    unlock_mutex();
+    return count;
+}
+
+void hls_content::set_config(hls_config *config)
+{
+    if (!lock_mutex()) {
+        return;
     }
 
-    return segments.size();
+    _config = *config;
+
+    unlock_mutex();
+}
+
+void hls_content::get_config(size_t *segment_size, double *segment_duration)
+{
+    if (!lock_mutex()) {
+        return;
+    }
+
+    *segment_size = _config.segment_size;
+    *segment_duration = _config.segment_duration;
+
+    unlock_mutex();
 }
 
 //////////////////////////////////////////////////

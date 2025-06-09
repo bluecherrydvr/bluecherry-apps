@@ -148,7 +148,7 @@ void trigger_server::serveClient(int fd) {
 	}
 
 	// Stringize the input
-	input[input_len] = NULL;
+	input[input_len] = '\0';
 
 	// Parse input
 	errno = 0;

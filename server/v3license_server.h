@@ -28,7 +28,7 @@
 #include <poll.h>
 #include <inttypes.h>
 
-#define FD_MAX 256
+#define V3LICENSE_FD_MAX 256
 #define BUF_MAX 256
 #define QUEUE_MAX_V3LICENSE_SOCK 10
 #define MIN_ARG_CNT_V3LICENSE 1
