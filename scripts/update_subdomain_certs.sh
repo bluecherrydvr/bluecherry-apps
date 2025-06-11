@@ -34,7 +34,7 @@ function stop_nginx()
     fi
 }
 
-credentials=/tmp/dns-subdomain-credentials.ini
+credentials=/usr/share/bluecherry/nginx-includes/letsencrypt/dns-subdomain-credentials.ini
 
 if test -f $credentials; then
     rm $credentials
