@@ -27,6 +27,7 @@
 #include <signal.h>
 #include <limits.h>
 #include <dirent.h>
+#include <thread>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -72,6 +73,9 @@ int snapshot_delay_ms;
 int max_record_time_sec;
 
 static pthread_rwlock_t media_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+// Forward declarations
+static int bc_cleanup_media();
 
 struct bc_storage {
 	char path[PATH_MAX];
@@ -1139,219 +1143,198 @@ static int bc_cleanup_older_media(const char *filepath)
 	return 0;
 }
 
-static int bc_cleanup_media();
+static int bc_cleanup_media()
+{
+    // Start transaction
+    if (bc_db_query("START TRANSACTION") != 0) {
+        bc_log(Error, "Failed to start cleanup transaction");
+        return -1;
+    }
+
+    try {
+        BC_DB_RES dbres;
+        int removed = 0;
+
+        // Log initial storage state
+        for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+            float used = path_used_percent(media_stor[i].path);
+            bc_log(Info, "Initial storage usage for %s: %.1f%%", media_stor[i].path, used);
+        }
+
+        /* Get files to clean up, ordered by date components from filepath */
+        dbres = bc_db_get_table("SELECT *, "
+            "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 1), '/', -1) as year, "
+            "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 2), '/', -1) as month, "
+            "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 3), '/', -1) as day, "
+            "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 5), '/', -1) as time "
+            "FROM Media WHERE filepath!='' "
+            "ORDER BY year ASC, month ASC, day ASC, time ASC");
+
+        if (!dbres) {
+            bc_status_component_error("Database error during media cleanup");
+            return -1;
+        }
+
+        // First, count total files
+        int total_files = 0;
+        BC_DB_RES count_res = bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE filepath!=''");
+        if (count_res && bc_db_fetch_row(count_res) == 0) {
+            total_files = bc_db_get_val_int(count_res, "count");
+        }
+        bc_db_free_table(count_res);
+
+        std::string current_dir;
+        int dir_removed = 0;
+        uint64_t total_bytes_freed = 0;
+        bool below_threshold = false;
+
+        // Keep track of how many files we've processed
+        int files_processed = 0;
+
+        // Process files
+        while (bc_db_fetch_row(dbres) == 0) {
+            files_processed++;
+            const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+            int id = bc_db_get_val_int(dbres, "id");
+
+            if (!filepath || !*filepath) {
+                continue;
+            }
+
+            // Get directory path
+            std::string dir_path = bc_get_directory_path(filepath);
+            
+            // If we're in a new directory, log it
+            if (dir_path != current_dir) {
+                if (!current_dir.empty()) {
+                    bc_log(Info, "Cleaned up %d files from directory %s", dir_removed, current_dir.c_str());
+                }
+                current_dir = dir_path;
+                dir_removed = 0;
+                bc_log(Info, "Starting cleanup of directory: %s", current_dir.c_str());
+            }
+
+            // Check if file exists on disk
+            struct stat st;
+            if (stat(filepath, &st) != 0) {
+                // File doesn't exist on disk, delete from database
+                if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+                    bc_log(Error, "Failed to delete non-existent file from database: %s", filepath);
+                } else {
+                    bc_log(Info, "Deleted non-existent file from database: %s", filepath);
+                }
+                continue;
+            }
+
+            // Get file size before deletion
+            uint64_t file_size = st.st_size;
+            bc_log(Info, "Deleting file %s (size: %ld bytes)", filepath, (long)file_size);
+
+            // Delete the file
+            if (unlink(filepath) != 0 && errno != ENOENT) {
+                bc_log(Error, "Failed to delete file %s: %s", filepath, strerror(errno));
+                continue;
+            }
+
+            // Delete the sidecar file
+            std::string sidecar = filepath;
+            if (sidecar.size() > 3) {
+                sidecar.replace(sidecar.size()-3, 3, "jpg");
+                if (stat(sidecar.c_str(), &st) == 0) {
+                    uint64_t sidecar_size = st.st_size;
+                    bc_log(Info, "Deleting sidecar file %s (size: %ld bytes)", sidecar.c_str(), (long)sidecar_size);
+                    file_size += sidecar_size;
+                    unlink(sidecar.c_str());
+                }
+            }
+
+            // Force filesystem sync
+            sync();
+
+            // Delete from database
+            if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+                bc_log(Error, "Failed to delete file from database: %s", filepath);
+                continue;
+            }
+
+            removed++;
+            dir_removed++;
+            total_bytes_freed += file_size;
+            bc_remove_dir_if_empty(filepath);
+
+            // Small delay to allow filesystem to update
+            usleep(100000); // 100ms delay
+
+            // Check if we're below max_thresh
+            below_threshold = false;
+            for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+                float used = path_used_percent(media_stor[i].path);
+                if (used >= 0 && used <= media_stor[i].max_thresh) {
+                    below_threshold = true;
+                    bc_log(Info, "Storage usage %.1f%% is now below threshold %.1f%%", 
+                        used, media_stor[i].max_thresh);
+                    break;
+                }
+            }
+
+            // If we're below threshold, we can stop
+            if (below_threshold) {
+                break;
+            }
+        }
+
+        // Log final state
+        for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+            float used = path_used_percent(media_stor[i].path);
+            bc_log(Info, "Final storage usage for %s: %.1f%% (total space freed: %.2f MB, processed %d/%d files)", 
+                media_stor[i].path, used, total_bytes_freed / (1024.0 * 1024.0), files_processed, total_files);
+        }
+
+        bc_db_free_table(dbres);
+        bc_db_query("COMMIT");
+
+        // Final filesystem sync
+        sync();
+
+        return 0;
+    } catch (...) {
+        bc_db_query("ROLLBACK");
+        bc_log(Error, "Cleanup failed, rolling back transaction");
+        return -1;
+    }
+}
 
 static int bc_check_media(void)
 {
-	int ret = 0;
-	bool storage_overloaded = false;
-	const float BUFFER_ZONE = 1.0; // 1% buffer zone below max_thresh
+    static int last_check = 0;
+    int now = time(NULL);
 
-	// Check each storage location against its thresholds
-	const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
-	BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
-	if (storage_res) {
-		while (!bc_db_fetch_row(storage_res)) {
-			size_t len;
-			const char* path = bc_db_get_val(storage_res, "path", &len);
-			const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
-			const char* min_thresh_str = bc_db_get_val(storage_res, "min_thresh", &len);
-			
-			if (path && max_thresh_str && min_thresh_str) {
-				struct statvfs stat;
-				if (statvfs(path, &stat) == 0) {
-					double total = static_cast<double>(stat.f_blocks) * stat.f_frsize;
-					double free = static_cast<double>(stat.f_bfree) * stat.f_frsize;
-					double used = total - free;
-					double usage = (used / total) * 100.0;
-					double max_thresh = atof(max_thresh_str);
-					
-					if (usage >= max_thresh) {
-						storage_overloaded = true;
-						bc_log(Info, "Storage path %s needs cleanup: %.1f%% > %.1f%%", 
-							   path, usage, max_thresh);
-						break;
-					} else if (usage >= (max_thresh - BUFFER_ZONE)) {
-						// Also trigger cleanup if we're in the buffer zone
-						storage_overloaded = true;
-						bc_log(Info, "Storage path %s in buffer zone: %.1f%% >= %.1f%%", 
-							   path, usage, max_thresh - BUFFER_ZONE);
-						break;
-					}
-				}
-			}
-		}
-		bc_db_free_table(storage_res);
-	}
+    // Only check every minute
+    if (now - last_check < 60)
+        return 0;
 
-	// Only run cleanup if storage is above max_thresh or in buffer zone
-	if (storage_overloaded) {
-		ret = bc_cleanup_media();
-	}
+    last_check = now;
 
-	return ret;
-}
+    // Check if any storage location needs cleanup
+    for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
+        float used = path_used_percent(media_stor[i].path);
+        if (used >= 0 && used >= media_stor[i].max_thresh) {
+            bc_log(Info, "Storage path %s requires cleanup: %.1f%% >= %.1f%%", 
+                media_stor[i].path, used, media_stor[i].max_thresh);
+            
+            // Schedule cleanup to run in a separate thread
+            std::thread cleanup_thread([]() {
+                bc_cleanup_media();
+            });
+            cleanup_thread.detach();
+            
+            return 0;
+        }
+        bc_log(Info, "Storage path %s below threshold: %.1f%% <= %.1f%%", 
+            media_stor[i].path, used, media_stor[i].max_thresh);
+    }
 
-static int bc_cleanup_media()
-{
-	// Start transaction
-	if (bc_db_query("START TRANSACTION") != 0) {
-		bc_log(Error, "Failed to start cleanup transaction");
-		return -1;
-	}
-
-	try {
-		BC_DB_RES dbres;
-		int removed = 0;
-		const float BUFFER_ZONE = 1.0; // 1% buffer zone below max_thresh
-
-		// Log initial storage state
-		for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-			float used = path_used_percent(media_stor[i].path);
-			bc_log(Info, "Initial storage usage for %s: %.1f%%", media_stor[i].path, used);
-		}
-
-		/* Get files to clean up, ordered by date components from filepath */
-		dbres = bc_db_get_table("SELECT *, "
-			"SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 1), '/', -1) as year, "
-			"SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 2), '/', -1) as month, "
-			"SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 3), '/', -1) as day, "
-			"SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 5), '/', -1) as time "
-			"FROM Media WHERE filepath!='' "
-			"ORDER BY year ASC, month ASC, day ASC, time ASC");
-
-		if (!dbres) {
-			bc_status_component_error("Database error during media cleanup");
-			return -1;
-		}
-
-		// First, count total files
-		int total_files = 0;
-		BC_DB_RES count_res = bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE filepath!=''");
-		if (count_res && bc_db_fetch_row(count_res) == 0) {
-			total_files = bc_db_get_val_int(count_res, "count");
-		}
-		bc_db_free_table(count_res);
-
-		std::string current_dir;
-		int dir_removed = 0;
-		uint64_t total_bytes_freed = 0;
-		bool below_threshold = false;
-
-		// Keep track of how many files we've processed
-		int files_processed = 0;
-
-		// Process files
-		while (bc_db_fetch_row(dbres) == 0) {
-			files_processed++;
-			const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-			int id = bc_db_get_val_int(dbres, "id");
-
-			if (!filepath || !*filepath) {
-				continue;
-			}
-
-			// Get directory path
-			std::string dir_path = bc_get_directory_path(filepath);
-			
-			// If we're in a new directory, log it
-			if (dir_path != current_dir) {
-				if (!current_dir.empty()) {
-					bc_log(Info, "Cleaned up %d files from directory %s", dir_removed, current_dir.c_str());
-				}
-				current_dir = dir_path;
-				dir_removed = 0;
-				bc_log(Info, "Starting cleanup of directory: %s", current_dir.c_str());
-			}
-
-			// Check if file exists on disk
-			struct stat st;
-			if (stat(filepath, &st) != 0) {
-				// File doesn't exist on disk, delete from database
-				if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
-					bc_log(Error, "Failed to delete non-existent file from database: %s", filepath);
-				} else {
-					bc_log(Info, "Deleted non-existent file from database: %s", filepath);
-				}
-				continue;
-			}
-
-			// Get file size before deletion
-			uint64_t file_size = st.st_size;
-			bc_log(Info, "Deleting file %s (size: %ld bytes)", filepath, (long)file_size);
-
-			// Delete the file
-			if (unlink(filepath) != 0 && errno != ENOENT) {
-				bc_log(Error, "Failed to delete file %s: %s", filepath, strerror(errno));
-				continue;
-			}
-
-			// Delete the sidecar file
-			std::string sidecar = filepath;
-			if (sidecar.size() > 3) {
-				sidecar.replace(sidecar.size()-3, 3, "jpg");
-				if (stat(sidecar.c_str(), &st) == 0) {
-					uint64_t sidecar_size = st.st_size;
-					bc_log(Info, "Deleting sidecar file %s (size: %ld bytes)", sidecar.c_str(), (long)sidecar_size);
-					file_size += sidecar_size;
-					unlink(sidecar.c_str());
-				}
-			}
-
-			// Force filesystem sync
-			sync();
-
-			// Delete from database
-			if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
-				bc_log(Error, "Failed to delete file from database: %s", filepath);
-				continue;
-			}
-
-			removed++;
-			dir_removed++;
-			total_bytes_freed += file_size;
-			bc_remove_dir_if_empty(filepath);
-
-			// Small delay to allow filesystem to update
-			usleep(100000); // 100ms delay
-
-			// Check if we're below max_thresh
-			below_threshold = false;
-			for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-				float used = path_used_percent(media_stor[i].path);
-				if (used >= 0 && used <= media_stor[i].max_thresh) {
-					below_threshold = true;
-					bc_log(Info, "Storage usage %.1f%% is now below threshold %.1f%%", 
-						used, media_stor[i].max_thresh);
-					break;
-				}
-			}
-
-			// If we're below threshold, we can stop
-			if (below_threshold) {
-				break;
-			}
-		}
-
-		// Log final state
-		for (int i = 0; i < MAX_STOR_LOCS && media_stor[i].min_thresh; i++) {
-			float used = path_used_percent(media_stor[i].path);
-			bc_log(Info, "Final storage usage for %s: %.1f%% (total space freed: %.2f MB, processed %d/%d files)", 
-				media_stor[i].path, used, total_bytes_freed / (1024.0 * 1024.0), files_processed, total_files);
-		}
-
-		bc_db_free_table(dbres);
-		bc_db_query("COMMIT");
-
-		// Final filesystem sync
-		sync();
-
-		return 0;
-	} catch (...) {
-		bc_db_query("ROLLBACK");
-		bc_log(Error, "Cleanup failed, rolling back transaction");
-		return -1;
-	}
+    return 0;
 }
 
 static int bc_check_db(void)
