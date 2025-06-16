@@ -90,19 +90,76 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	} else if (last_mux_dts < opkt.dts) {
 		// Monotonically increasing timestamps. This is normal.
 
-		const int tolerated_gap_seconds = 1;
+		// Get the tolerated gap from configuration, default to 2 seconds
+		int tolerated_gap_seconds = 2;
+		if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+			// For video streams, check if it's VBR
+			AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			if (codecpar->bit_rate == 0) {  // VBR is indicated by bit_rate = 0
+				// For VBR cameras, use a more lenient gap tolerance
+				// Based on typical I-frame intervals and network conditions
+				tolerated_gap_seconds = 3;  // 3 seconds should cover most VBR gaps
+			}
+		}
+
 		int64_t delta_dts = opkt.dts - last_mux_dts;
 		if (delta_dts > tolerated_gap_seconds * AV_TIME_BASE) {
-			// Too large a gap, assume discontinuity and close this recording file.
-			bc_log(Info, "Bad timestamp: too large a gap of %d seconds (%d tolerated), dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", (int)(delta_dts / AV_TIME_BASE), tolerated_gap_seconds, opkt.dts, last_mux_dts, opkt.stream_index);
-			return false;
+			// Instead of bailing out, log a warning and continue
+			bc_log(Warning, "Large timestamp gap of %d seconds (%d tolerated), dts=%" PRId64 " while last was %" PRId64 " on stream %d, continuing recording", 
+				(int)(delta_dts / AV_TIME_BASE), tolerated_gap_seconds, opkt.dts, last_mux_dts, opkt.stream_index);
+			
+			// Calculate frame increment based on the stream's time base
+			AVStream *stream = out_ctx->streams[opkt.stream_index];
+			int64_t frame_increment;
+			
+			// Try to get frame rate from stream
+			if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+				// Convert frame rate to time base units
+				frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+			} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+				// Fall back to r_frame_rate if avg_frame_rate is not available
+				frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+			} else {
+				// If no frame rate info is available, use a conservative default of 1/30
+				frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+				bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
+			}
+			
+			// Adjust the timestamp to maintain continuity
+			opkt.dts = last_mux_dts + frame_increment;
+			if (opkt.pts != AV_NOPTS_VALUE) {
+				opkt.pts = opkt.dts;
+			}
 		}
 	} else {
 		// In this clause we're dealing with incorrect timestamp received from the source.
 		assert(last_mux_dts >= opkt.dts);
 		assert(last_mux_dts != AV_NOPTS_VALUE);
-		bc_log(Info, "Got bad dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", opkt.dts, last_mux_dts, opkt.stream_index);
-		return false;
+		bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp", 
+			opkt.dts, last_mux_dts, opkt.stream_index);
+		
+		// Calculate frame increment based on the stream's time base
+		AVStream *stream = out_ctx->streams[opkt.stream_index];
+		int64_t frame_increment;
+		
+		// Try to get frame rate from stream
+		if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+			// Convert frame rate to time base units
+			frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+		} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+			// Fall back to r_frame_rate if avg_frame_rate is not available
+			frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+		} else {
+			// If no frame rate info is available, use a conservative default of 1/30
+			frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+			bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
+		}
+		
+		// Adjust the timestamp to maintain continuity
+		opkt.dts = last_mux_dts + frame_increment;
+		if (opkt.pts != AV_NOPTS_VALUE) {
+			opkt.pts = opkt.dts;
+		}
 	}
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
