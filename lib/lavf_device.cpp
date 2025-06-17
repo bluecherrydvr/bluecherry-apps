@@ -61,40 +61,182 @@ void lavf_device::stop()
 	current_packet = stream_packet();
 	current_properties.reset();
 	av_packet_unref(&frame);
-/*
-	for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
-		if (ctx->streams[i]->codec->codec)
-			avcodec_close(ctx->streams[i]->codec);
+
+	// Ensure proper cleanup of the format context
+	if (ctx) {
+		avformat_close_input(&ctx);
+		ctx = NULL;
 	}
-*/
-	avformat_close_input(&ctx);
-	ctx = 0;
+	
 	video_stream_index = audio_stream_index = -1;
 }
 
 int lavf_device::start()
 {
-	if (ctx) return 0;
+	// Ensure clean state before starting
+	stop();
 
+	if (ctx) {
+		bc_log(Error, "Format context not properly cleaned up");
+		return -1;
+	}
+
+	// Initialize format context to NULL
+	ctx = NULL;
+
+	// Common options for all stream types
 	AVDictionary *avopt_open_input = NULL;
 	const AVInputFormat *input_fmt = NULL;
+	int re = -1;  // Move re declaration to outer scope
 
 	bc_log(Debug, "Opening session from URL: %s", url);
 
-	av_dict_set(&avopt_open_input, "allowed_media_types", audio_enabled() ? "-data" : "-audio-data", 0);
-	/* No input on socket, or no writability for thus many microseconds is treated as failure */
-	av_dict_set(&avopt_open_input, "timeout", "10000000" /* 10 s */, 0);
-
 	if (!strncmp(url, "rtsp://", 7))
 	{
-		switch (rtp_protocol) {
-			case RTP_PROTOCOL_TCP:  av_dict_set(&avopt_open_input, "rtsp_transport", "tcp", 0); break;
-			case RTP_PROTOCOL_UDP:  av_dict_set(&avopt_open_input, "rtsp_transport", "+udp+udp_multicast", 0); break;
-			case RTP_PROTOCOL_AUTO: av_dict_set(&avopt_open_input, "rtsp_flags", "+prefer_tcp", 0); break;
+		// Check if URL is local network (private IP range)
+		bool is_local = false;
+		bool is_reolink = false;
+		char host[256] = {0};
+		int port = 0;
+		char scheme[8] = {0};
+		char auth[256] = {0};
+		char path[1024] = {0};
+		
+		// Parse URL with more detailed error handling
+		av_url_split(scheme, sizeof(scheme),
+					auth, sizeof(auth),
+					host, sizeof(host),
+					&port,
+					path, sizeof(path),
+					url);
+				
+		bc_log(Debug, "Parsed RTSP URL - Scheme: %s, Host: %s, Port: %d, Path: %s", 
+			   scheme, host, port, path);
+			
+		if (strlen(host) == 0) {
+			bc_log(Error, "Invalid RTSP URL: Could not parse host from %s", url);
+			return -1;
+		}
+		
+		if (port <= 0) {
+			port = 554; // Default RTSP port
+			bc_log(Debug, "No port specified in URL, using default RTSP port 554");
+		}
+
+		unsigned int ip[4];
+		if (sscanf(host, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]) == 4) {
+			// Check for private IP ranges
+			is_local = (ip[0] == 10) || 
+					  (ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31) ||
+					  (ip[0] == 192 && ip[1] == 168);
+			bc_log(Debug, "IP address %s is %s", host, is_local ? "local" : "remote");
+		} else {
+			bc_log(Debug, "Host %s is not an IP address, assuming remote", host);
+		}
+		
+		// Check if this is a Reolink camera by looking for common Reolink paths
+		is_reolink = (strstr(path, "/h264Preview") != NULL || 
+					 strstr(path, "/h264") != NULL ||
+					 strstr(path, "/h265") != NULL);
+		if (is_reolink) {
+			bc_log(Debug, "Detected Reolink camera based on path pattern");
+		}
+
+		// Try different transport protocols
+		const char *transports[] = {"tcp", "udp"};
+		for (int i = 0; i < 2 && re != 0; i++) {
+			// Clean up any existing context before retry
+			if (ctx) {
+				avformat_close_input(&ctx);
+				ctx = NULL;
+			}
+
+			// Set up options for this attempt
+			av_dict_free(&avopt_open_input);
+			avopt_open_input = NULL;
+			
+			// Set transport protocol
+			av_dict_set(&avopt_open_input, "rtsp_transport", transports[i], 0);
+			
+			// Set timeout options
+			av_dict_set(&avopt_open_input, "stimeout", "5000000", 0);  // 5 seconds in microseconds
+			av_dict_set(&avopt_open_input, "timeout", "5000000", 0);   // 5 seconds in microseconds
+			
+			// Additional options for better stability
+			av_dict_set(&avopt_open_input, "reorder_queue_size", "0", 0);
+			av_dict_set(&avopt_open_input, "max_delay", "500000", 0);  // 500ms max delay
+			
+			// Try to open the input
+			re = avformat_open_input(&ctx, url, NULL, &avopt_open_input);
+			
+			// Clean up options dictionary
+			av_dict_free(&avopt_open_input);
+
+			if (re != 0) {
+				char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
+				av_strerror(re, errbuf, sizeof(errbuf));
+				bc_log(Info, "%s connection failed (%s)", transports[i], errbuf);
+				
+				// Clean up failed context
+				if (ctx) {
+					avformat_close_input(&ctx);
+					ctx = NULL;
+				}
+			}
+		}
+
+		if (re != 0) {
+			char errbuf[AV_ERROR_MAX_STRING_SIZE] = {0};
+			av_strerror(re, errbuf, sizeof(errbuf));
+			bc_log(Error, "Failed to open RTSP stream %s. Error: %d (%s)", url, re, errbuf);
+			if (ctx) {
+				avformat_close_input(&ctx);
+				ctx = NULL;
+			}
+			return -1;
+		}
+
+		// Verify the context is valid
+		if (!ctx || !ctx->iformat) {
+			bc_log(Error, "Invalid format context after opening stream");
+			if (ctx) {
+				avformat_close_input(&ctx);
+				ctx = NULL;
+			}
+			return -1;
+		}
+
+		// Set up stream info
+		AVDictionary *avopt_find_stream_info = NULL;
+		av_dict_set(&avopt_find_stream_info, "threads", "1", 0);
+
+		/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
+		AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
+
+		for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+			opt_si[i] = NULL;
+			av_dict_copy(&opt_si[i], avopt_find_stream_info, 0);
+		}
+
+		re = avformat_find_stream_info(ctx, opt_si);
+
+		// Clean up stream info options
+		for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+			if (opt_si[i]) {
+				av_dict_free(&opt_si[i]);
+			}
+		}
+		delete[] opt_si;
+		av_dict_free(&avopt_find_stream_info);
+
+		if (re < 0) {
+			stop();
+			av_strerror(re, error_message, sizeof(error_message));
+			bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
+			return -1;
 		}
 	}
-
-	if (!strncmp(url, "http://", 7))
+	else if (!strncmp(url, "http://", 7))
 	{
 		/* For MJPEG streams, generate timestamps from system time */
 		av_dict_set(&avopt_open_input, "use_wallclock_as_timestamps", "1", 0);
@@ -106,47 +248,50 @@ int lavf_device::start()
 			assert(0);
 			return -1;
 		}
+
+		re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
+		av_dict_free(&avopt_open_input);
+
+		if (re != 0)
+		{
+			av_strerror(re, error_message, sizeof(error_message));
+			bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
+			ctx = NULL;
+			return -1;
+		}
+
+		// Set up stream info for HTTP streams
+		AVDictionary *avopt_find_stream_info = NULL;
+		av_dict_set(&avopt_find_stream_info, "threads", "1", 0);
+
+		/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
+		AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
+
+		for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+			opt_si[i] = NULL;
+			av_dict_copy(&opt_si[i], avopt_find_stream_info, 0);
+		}
+
+		re = avformat_find_stream_info(ctx, opt_si);
+
+		// Clean up stream info options
+		for (unsigned int i = 0; i < ctx->nb_streams; ++i) {
+			if (opt_si[i]) {
+				av_dict_free(&opt_si[i]);
+			}
+		}
+		delete[] opt_si;
+		av_dict_free(&avopt_find_stream_info);
+
+		if (re < 0) {
+			stop();
+			av_strerror(re, error_message, sizeof(error_message));
+			bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
+			return -1;
+		}
 	}
 
-	int re = avformat_open_input(&ctx, url, input_fmt, &avopt_open_input);
-	av_dict_free(&avopt_open_input);
-
-	if (re != 0)
-	{
-		av_strerror(re, error_message, sizeof(error_message));
-		bc_log(Error, "Failed to open stream. Error: %d (%s)", re, error_message);
-		ctx = NULL;
-		return -1;
-	}
-
-	AVDictionary *avopt_find_stream_info = NULL;
-	av_dict_set(&avopt_find_stream_info, "threads", "1", 0);
-
-	/* avformat_find_stream_info takes an array of AVDictionary ptrs for each stream */
-	AVDictionary **opt_si = new AVDictionary*[ctx->nb_streams];
-
-	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
-	{
-		opt_si[i] = 0;
-		av_dict_copy(&opt_si[i], avopt_find_stream_info, 0);
-	}
-
-	re = avformat_find_stream_info(ctx, opt_si);
-
-	for (unsigned int i = 0; i < ctx->nb_streams; ++i)
-		av_dict_free(&opt_si[i]);
-
-	delete[] opt_si;
-	av_dict_free(&avopt_find_stream_info);
-
-	if (re < 0)
-	{
-		stop();
-		av_strerror(re, error_message, sizeof(error_message));
-		bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
-		return -1;
-	}
-
+	// Process streams
 	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i)
 	{
 		AVStream *stream = ctx->streams[i];
@@ -156,7 +301,7 @@ int lavf_device::start()
 			if (video_stream_index >= 0)
 			{
 				bc_log(Warning, "Session for %s has multiple video streams. Only the "
-				       "first stream will be recorded.", url);
+					   "first stream will be recorded.", url);
 				stream->discard = AVDISCARD_ALL;
 				continue;
 			}
@@ -166,7 +311,7 @@ int lavf_device::start()
 			if (stream->time_base.num != 1 || stream->time_base.den != 90000)
 			{
 				bc_log(Info, "Video stream timebase is unusual (%d/%d). This could cause "
-				       "timing issues.", stream->time_base.num, stream->time_base.den);
+					   "timing issues.", stream->time_base.num, stream->time_base.den);
 			}
 		}
 		else if (stream->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
@@ -174,7 +319,7 @@ int lavf_device::start()
 			if (audio_stream_index >= 0)
 			{
 				bc_log(Warning, "Session for %s has multiple audio streams. Only the "
-					"first stream will be recorded.", url);
+						"first stream will be recorded.", url);
 
 				stream->discard = AVDISCARD_ALL;
 				continue;
@@ -246,12 +391,30 @@ void lavf_device::create_stream_packet(AVPacket *src)
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
-	current_packet.pts      = av_rescale_q_rnd(src->pts,
-			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+	
+	// Get stream timebase
+	AVRational tb = ctx->streams[src->stream_index]->time_base;
+	
+	// Calculate PTS and DTS with proper timebase conversion
+	int64_t pts = av_rescale_q_rnd(src->pts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	current_packet.dts      = av_rescale_q_rnd(src->dts,
-			ctx->streams[src->stream_index]->time_base, AV_TIME_BASE_Q,
+	int64_t dts = av_rescale_q_rnd(src->dts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
+			
+	// Handle VBR streams - if DTS is same as last, increment slightly
+	if (src->stream_index == video_stream_index) {
+		static int64_t last_dts = 0;
+		if (dts == last_dts) {
+			// For VBR streams, increment DTS by a small amount
+			dts = last_dts + 1;
+			bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld", last_dts, dts);
+		}
+		last_dts = dts;
+	}
+	
+	current_packet.pts = pts;
+	current_packet.dts = dts;
+	
 	if (src->flags & AV_PKT_FLAG_KEY)
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();
@@ -288,7 +451,8 @@ void lavf_device::update_properties()
 		p->audio.bit_rate = ic->bit_rate;
 		p->audio.sample_rate = ic->sample_rate;
 		p->audio.sample_fmt = (AVSampleFormat)ic->format;
-		p->audio.channels = ic->channels;
+		// Use new channel layout API
+		p->audio.channels = ic->ch_layout.nb_channels;
 		p->audio.time_base = (AVRational){1, ic->sample_rate};
 		p->audio.profile = ic->profile;
 		p->audio.bits_per_coded_sample = ic->bits_per_coded_sample;
@@ -379,10 +543,11 @@ void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
 				}
 				case AVMEDIA_TYPE_AUDIO: {
 					es.append_attribute("sample_rate") = s->codecpar->sample_rate;
-					es.append_attribute("channels") = s->codecpar->channels;
+					// Use new channel layout API
+					es.append_attribute("channels") = s->codecpar->ch_layout.nb_channels;
 					char channel_layout_descr[50];
-					av_get_channel_layout_string(channel_layout_descr, sizeof(channel_layout_descr),
-							s->codecpar->channels, s->codecpar->channel_layout);
+					av_channel_layout_describe(&s->codecpar->ch_layout, channel_layout_descr, sizeof(channel_layout_descr));
+					es.append_attribute("channel_layout") = channel_layout_descr;
 					break;
 				}
 				default: break;
