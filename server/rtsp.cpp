@@ -121,7 +121,7 @@ void rtsp_server::run()
 		return;
 
 	for (;;) {
-		int n = poll(fds, n_fds, 100/*ms*/);
+		int n = poll(fds, n_fds, 10/*ms*/);
 
 		if (n <= 0) {
 			if (n == 0 || errno == EINTR)
@@ -368,11 +368,33 @@ rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
 	pthread_mutex_init(&write_lock, 0);
 	server->addFd(this, fd, POLLIN);
 
-	/* If streaming high-definition video over a network with good performance characteristics,
-	 * we might consider using a larger send buffer. Lets start with a size of 1MB (1024*1024)
-	 * and kernel may adjust the value we provide to align with its internal constraints and limits. */
-	int value = 1024*1024;
+	/* Optimized socket settings for high-performance RTSP streaming */
+	// Increase send buffer to 2MB for better throughput
+	int value = 2*1024*1024;
 	setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value));
+	
+	// Enable TCP_NODELAY to reduce latency
+	const int yes = 1;
+#ifdef TCP_NODELAY
+	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes));
+#endif
+	
+	// Set TCP keepalive for better connection stability
+	setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes));
+	
+	// Configure keepalive parameters (Linux-specific)
+#ifdef TCP_KEEPIDLE
+	int keepalive_time = 60;  // Start probing after 60 seconds
+	setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &keepalive_time, sizeof(keepalive_time));
+#endif
+#ifdef TCP_KEEPINTVL
+	int keepalive_intvl = 10; // Probe every 10 seconds
+	setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &keepalive_intvl, sizeof(keepalive_intvl));
+#endif
+#ifdef TCP_KEEPCNT
+	int keepalive_probes = 3; // Try 3 times before giving up
+	setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &keepalive_probes, sizeof(keepalive_probes));
+#endif
 }
 
 rtsp_connection::~rtsp_connection()
@@ -668,9 +690,9 @@ int rtsp_connection::send(const char *buf, int size, int type, int flag)
 	}
 
 end:
-	if (wrbuf && rtsp_write_buffer::trim(wrbuf) >= 1024*1024*2) {
-		/* If the buffer reaches 2MB and cannot be trimmed any further,
-		 * drop the connection. There is little hope in this case anyway. */
+	if (wrbuf && rtsp_write_buffer::trim(wrbuf) >= 512*1024) {
+		/* If the buffer reaches 512KB and cannot be trimmed any further,
+		 * drop the connection. This provides faster response to slow clients. */
 		bc_log(Debug, "Buffer size exceeded on stream, dropping connection (client too slow?)");
 		shutdown(fd, SHUT_RDWR);
 		re = -1;
@@ -1128,11 +1150,17 @@ void rtsp_stream::sendPackets(uint8_t *buf, unsigned int size, int flags, int st
 	pthread_mutex_lock(&queue_lock);
 	// Append new packet to the queue
 	queue.push(rtsp_pkt);
+	
+	// Smart wake optimization: only wake on keyframes or when queue gets large
+	bool should_wake = (flags & AV_PKT_FLAG_KEY) || (queue.size() > 5);
+	
 	// Unlock stream queue
 	pthread_mutex_unlock(&queue_lock);
 
-	// wake server
-	rtsp_server::instance->wake();
+	// wake server only when needed
+	if (should_wake) {
+		rtsp_server::instance->wake();
+	}
 }
 
 void rtsp_stream::sendQueuedPackets()
@@ -1201,8 +1229,8 @@ bool rtsp_session::parseTransport(std::string str)
 		char *x = transport;
 		char *param = strsep(&x, ";");
 
-		/* Only allow TCP for now */
-		if (strcmp(param, "RTP/AVP/TCP") != 0)
+		/* Allow both TCP and UDP transport */
+		if (strcmp(param, "RTP/AVP/TCP") != 0 && strcmp(param, "RTP/AVP") != 0)
 			continue;
 
 		bool acceptable = true;

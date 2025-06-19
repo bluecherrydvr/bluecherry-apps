@@ -98,7 +98,7 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			if (codecpar->bit_rate == 0) {  // VBR is indicated by bit_rate = 0
 				// For VBR cameras, use a more lenient gap tolerance
 				// Based on typical I-frame intervals and network conditions
-				tolerated_gap_seconds = 3;  // 3 seconds should cover most VBR gaps
+				tolerated_gap_seconds = 2;  // Reduced from 3 to 2 seconds for faster recovery
 			}
 		}
 

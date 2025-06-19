@@ -131,7 +131,7 @@ int lavf_device::start()
 					  (ip[0] == 192 && ip[1] == 168);
 			bc_log(Debug, "IP address %s is %s", host, is_local ? "local" : "remote");
 		} else {
-			bc_log(Debug, "Host %s is not an IP address, assuming remote", host);
+			bc_log(Debug, "Host %s is not an IP address, assuming remote");
 		}
 		
 		// Check if this is a Reolink camera by looking for common Reolink paths
@@ -159,12 +159,14 @@ int lavf_device::start()
 			av_dict_set(&avopt_open_input, "rtsp_transport", transports[i], 0);
 			
 			// Set timeout options
-			av_dict_set(&avopt_open_input, "stimeout", "5000000", 0);  // 5 seconds in microseconds
-			av_dict_set(&avopt_open_input, "timeout", "5000000", 0);   // 5 seconds in microseconds
+			av_dict_set(&avopt_open_input, "stimeout", "3000000", 0);  // 3 seconds in microseconds
+			av_dict_set(&avopt_open_input, "timeout", "3000000", 0);   // 3 seconds in microseconds
 			
-			// Additional options for better stability
+			// Additional options for better stability and faster setup
 			av_dict_set(&avopt_open_input, "reorder_queue_size", "0", 0);
-			av_dict_set(&avopt_open_input, "max_delay", "500000", 0);  // 500ms max delay
+			av_dict_set(&avopt_open_input, "max_delay", "300000", 0);  // 300ms max delay
+			av_dict_set(&avopt_open_input, "probesize", "500000", 0);  // Smaller probe size for faster analysis
+			av_dict_set(&avopt_open_input, "analyzeduration", "1000000", 0); // 1 second analyze duration
 			
 			// Try to open the input
 			re = avformat_open_input(&ctx, url, NULL, &avopt_open_input);
@@ -400,11 +402,12 @@ void lavf_device::create_stream_packet(AVPacket *src)
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	int64_t dts = av_rescale_q_rnd(src->dts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-			
-	// Handle VBR streams - if DTS is same as last, increment slightly
+
+	// Only adjust DTS for VBR streams (bit_rate == 0)
 	if (src->stream_index == video_stream_index) {
+		AVCodecParameters *codecpar = ctx->streams[video_stream_index]->codecpar;
 		static int64_t last_dts = 0;
-		if (dts == last_dts) {
+		if (codecpar->bit_rate == 0 && dts == last_dts) {
 			// For VBR streams, increment DTS by a small amount
 			dts = last_dts + 1;
 			bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld", last_dts, dts);
