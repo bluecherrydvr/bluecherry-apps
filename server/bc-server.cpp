@@ -898,24 +898,38 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
 			continue;
 		}
 
-		// Extract date from directory structure
+		// Extract date from directory structure and time from filename
 		std::string dir_path = bc_get_directory_path(full_path);
-		std::string time_path = dir_path;
-		if (time_path.length() > 26) {
-			time_path = time_path.substr(time_path.size() - 26, std::string::npos);
+		std::string file_name = bc_get_file_name(full_path);
+		
+		// Parse date from directory path (YYYY/MM/DD/XXXXXX)
+		std::string date_path = dir_path;
+		if (date_path.length() > 20) {
+			date_path = date_path.substr(date_path.size() - 20, std::string::npos);
 		}
 
 		bc_time rec_time;
 		int id = 0;
 
-		// Strictly enforce standard format (YYYY/MM/DD/XXXXXX/HH-MM-SS)
-		int count = sscanf(time_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
-			(int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
+		// Parse date from directory structure (YYYY/MM/DD/XXXXXX)
+		int count = sscanf(date_path.c_str(), "%04d/%02d/%02d/%06d",
+			(int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id);
+
+		if (count != 4) {
+			bc_log(Error, "Invalid media file path format: %s (expected YYYY/MM/DD/XXXXXX/filename)",
+				full_path.c_str());
+			entry = readdir(pdir.get());
+			ctx.errors++;
+			continue;
+		}
+
+		// Parse time from filename (HH-MM-SS.ext)
+		count = sscanf(file_name.c_str(), "%02d-%02d-%02d",
 			(int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
 
-		if (count != 7) {
-			bc_log(Error, "Invalid media file path format: %s (expected YYYY/MM/DD/XXXXXX/HH-MM-SS)",
-				full_path.c_str());
+		if (count != 3) {
+			bc_log(Error, "Invalid media filename format: %s (expected HH-MM-SS.ext)",
+				file_name.c_str());
 			entry = readdir(pdir.get());
 			ctx.errors++;
 			continue;
