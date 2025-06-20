@@ -1892,8 +1892,8 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		// Run cleanup based on scheduler, but only check every 60 seconds
-		if ((loops % 60) == 0 && g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
+		// Run cleanup based on scheduler, but only check every 300 seconds (5 minutes)
+		if ((loops % 300) == 0 && g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
 			bc_status_component_begin(STATUS_MEDIA_CHECK);
 			int mc_ret = bc_check_media();
 			bc_status_component_end(STATUS_MEDIA_CHECK, mc_ret == 0);
