@@ -1,3 +1,13 @@
+bluecherry (3:3.1.11) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Revert RTSP server to exact v3.1.9 behavior for stability
+  * FIX: Change cleanup check interval from 1 minute to 5 minutes to reduce log spam
+  * FIX: Media file path parsing bug - parse time from filename instead of directory path
+  * FIX: Reduce log spam for frame rate and timestamp gap warnings
+  * FIX: VBR stream DTS timestamp handling for improved recording stability
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Thu, 20 Jun 2025 10:00:00 -0500
+
 bluecherry (3:3.1.10) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * Upgrade build system to C++14 support
