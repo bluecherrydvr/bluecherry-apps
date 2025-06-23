@@ -225,7 +225,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// Try to recover by resetting the timestamp tracking
 			last_mux_dts = AV_NOPTS_VALUE;
 		} else {
-			bc_avlog(re, "Error writing frame to recording.");
+			// Provide more specific error information
+			char err_buf[256];
+			av_strerror(re, err_buf, sizeof(err_buf));
+			bc_log(Error, "Error writing %s frame to recording: %s (codec: %s, stream: %d)", 
+				pkt.type == AVMEDIA_TYPE_VIDEO ? "video" : "audio",
+				err_buf,
+				avcodec_get_name(stream->codecpar->codec_id),
+				opkt.stream_index);
 		}
 		update_last_mux_dts = false;
 		return false;
@@ -406,6 +413,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	for (int i = 0; i < 2; i++) {
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
+		last_timestamp_warning[i] = 0;
 	}
 
 	AVDictionary *muxer_opts = NULL;
@@ -447,7 +455,47 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 			return -1;
 		}
 
-		properties.audio.apply(audio_st->codecpar);
+		// Check if the incoming audio codec is supported for recording
+		enum AVCodecID incoming_codec = properties.audio.codec_id;
+		bool codec_supported = false;
+		
+		// List of supported audio codecs for recording
+		switch (incoming_codec) {
+			case AV_CODEC_ID_PCM_S16LE:
+			case AV_CODEC_ID_PCM_S16BE:
+			case AV_CODEC_ID_PCM_U16LE:
+			case AV_CODEC_ID_PCM_U16BE:
+			case AV_CODEC_ID_PCM_S8:
+			case AV_CODEC_ID_PCM_U8:
+			case AV_CODEC_ID_PCM_ALAW:
+			case AV_CODEC_ID_PCM_MULAW:
+			case AV_CODEC_ID_PCM_S32LE:
+			case AV_CODEC_ID_PCM_S32BE:
+			case AV_CODEC_ID_PCM_U32LE:
+			case AV_CODEC_ID_PCM_U32BE:
+			case AV_CODEC_ID_PCM_S24LE:
+			case AV_CODEC_ID_PCM_S24BE:
+			case AV_CODEC_ID_PCM_U24LE:
+			case AV_CODEC_ID_PCM_U24BE:
+				codec_supported = true;
+				break;
+			default:
+				codec_supported = false;
+				break;
+		}
+		
+		if (!codec_supported) {
+			bc_log(Warning, "Unsupported audio codec %s for recording, disabling audio", 
+				avcodec_get_name(incoming_codec));
+			audio_st = NULL;
+		} else {
+			// Apply the actual audio properties from the stream
+			properties.audio.apply(audio_st->codecpar);
+			bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
+				avcodec_get_name(incoming_codec),
+				properties.audio.sample_rate,
+				properties.audio.channels);
+		}
 	}
 
 	/* Open output file */
