@@ -23,13 +23,6 @@
 #include <algorithm>
 #include <cmath>
 
-// Define bc_storage structure
-struct bc_storage {
-    char path[PATH_MAX];
-    float max_thresh;
-    float min_thresh;
-};
-
 // Constants for cleanup configuration
 #define CLEANUP_BATCH_SIZE 100
 #define MAX_CLEANUP_TIME 300  // 5 minutes
