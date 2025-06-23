@@ -870,66 +870,104 @@ static int bc_recursive_cleanup_untracked_media(bc_oldest_media_t &ctx, std::str
         // Extract date from directory structure and time from filename
         std::string dir_path = bc_get_directory_path(full_path);
         std::string file_name = bc_get_file_name(full_path);
+        
         // Parse date from directory path (YYYY/MM/DD/XXXXXX)
         std::string date_path = dir_path;
-        if (date_path.length() > 20) {
-            date_path = date_path.substr(date_path.size() - 20, std::string::npos);
+        
+        // Find the last 4 path components (YYYY/MM/DD/XXXXXX)
+        size_t last_slash = date_path.find_last_of('/');
+        if (last_slash != std::string::npos) {
+            date_path = date_path.substr(last_slash + 1); // Get XXXXXX
+            last_slash = dir_path.substr(0, last_slash).find_last_of('/');
+            if (last_slash != std::string::npos) {
+                std::string day_path = dir_path.substr(0, last_slash);
+                last_slash = day_path.find_last_of('/');
+                if (last_slash != std::string::npos) {
+                    std::string month_path = day_path.substr(0, last_slash);
+                    last_slash = month_path.find_last_of('/');
+                    if (last_slash != std::string::npos) {
+                        std::string year_path = month_path.substr(0, last_slash);
+                        last_slash = year_path.find_last_of('/');
+                        if (last_slash != std::string::npos) {
+                            std::string base_path = year_path.substr(0, last_slash);
+                            std::string year_str = year_path.substr(last_slash + 1);
+                            std::string month_str = month_path.substr(month_path.find_last_of('/') + 1);
+                            std::string day_str = day_path.substr(day_path.find_last_of('/') + 1);
+                            
+                            // Now parse the components
+                            bc_time rec_time;
+                            int id = 0;
+                            int count = sscanf(year_str.c_str(), "%04d", (int*)&rec_time.year);
+                            if (count == 1) {
+                                count = sscanf(month_str.c_str(), "%02d", (int*)&rec_time.month);
+                                if (count == 1) {
+                                    count = sscanf(day_str.c_str(), "%02d", (int*)&rec_time.day);
+                                    if (count == 1) {
+                                        count = sscanf(date_path.c_str(), "%06d", &id);
+                                        if (count == 1) {
+                                            // Successfully parsed directory structure
+                                            // Now parse time from filename (HH-MM-SS.ext)
+                                            count = sscanf(file_name.c_str(), "%02d-%02d-%02d",
+                                                (int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
+                                            if (count == 3) {
+                                                // Successfully parsed both date and time
+                                                bc_time old_time;
+                                                old_time.year = ctx.year;
+                                                old_time.month = ctx.month;
+                                                old_time.day = ctx.day;
+                                                old_time.hour = ctx.hour;
+                                                old_time.min = ctx.min;
+                                                old_time.sec = ctx.sec;
+                                                
+                                                /* Check if found entry is older than oldest media record in DB */
+                                                bool entry_is_old = bc_compare_time(rec_time, old_time);
+                                                if (entry_is_old) {
+                                                    std::string video_file = full_path;
+                                                    video_file.replace(video_file.size()-3, 3, "mkv");
+                                                    int rv = bc_media_is_archived(video_file.c_str());
+                                                    if (rv > 0) {
+                                                        entry = readdir(pdir.get());
+                                                        ctx.archived++;
+                                                        continue;
+                                                    } else if (rv < 0) {
+                                                        entry = readdir(pdir.get());
+                                                        ctx.errors++;
+                                                        continue;
+                                                    }
+                                                    if (unlink(full_path.c_str()) < 0) {
+                                                        bc_log(Warning, "Cannot remove old file %s: %s",
+                                                           full_path.c_str(), strerror(errno));
+                                                        entry = readdir(pdir.get());
+                                                        ctx.errors++;
+                                                        continue;
+                                                    }
+                                                    ctx.removed++;
+                                                }
+                                                /* Move forward */
+                                                entry = readdir(pdir.get());
+                                                continue;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-        bc_time rec_time;
-        int id = 0;
-        // Parse date from directory structure (YYYY/MM/DD/XXXXXX)
-        int count = sscanf(date_path.c_str(), "%04d/%02d/%02d/%06d",
-            (int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id);
-        if (count != 4) {
+        
+        // If we get here, parsing failed - log error but don't spam
+        static time_t last_path_error = 0;
+        time_t now = time(nullptr);
+        if (now - last_path_error >= 60) { // Only log once per minute
             bc_log(Error, "Invalid media file path format: %s (expected YYYY/MM/DD/XXXXXX/filename)",
                 full_path.c_str());
-            entry = readdir(pdir.get());
-            ctx.errors++;
-            continue;
+            last_path_error = now;
         }
-        // Parse time from filename (HH-MM-SS.ext)
-        count = sscanf(file_name.c_str(), "%02d-%02d-%02d",
-            (int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
-        if (count != 3) {
-            bc_log(Error, "Invalid media filename format: %s (expected HH-MM-SS.ext)",
-                file_name.c_str());
-            entry = readdir(pdir.get());
-            ctx.errors++;
-            continue;
-        }
-        bc_time old_time;
-        old_time.year = ctx.year;
-        old_time.month = ctx.month;
-        old_time.day = ctx.day;
-        old_time.hour = ctx.hour;
-        old_time.min = ctx.min;
-        old_time.sec = ctx.sec;
-        /* Check if found entry is older than oldest media record in DB */
-        bool entry_is_old = bc_compare_time(rec_time, old_time);
-        if (entry_is_old) {
-            std::string video_file = full_path;
-            video_file.replace(video_file.size()-3, 3, "mkv");
-            int rv = bc_media_is_archived(video_file.c_str());
-            if (rv > 0) {
-                entry = readdir(pdir.get());
-                ctx.archived++;
-                continue;
-            } else if (rv < 0) {
-                entry = readdir(pdir.get());
-                ctx.errors++;
-                continue;
-            }
-            if (unlink(full_path.c_str()) < 0) {
-                bc_log(Warning, "Cannot remove old file %s: %s",
-                   full_path.c_str(), strerror(errno));
-                entry = readdir(pdir.get());
-                ctx.errors++;
-                continue;
-            }
-            ctx.removed++;
-        }
-        /* Move forward */
         entry = readdir(pdir.get());
+        ctx.errors++;
+        continue;
     }
     return 0;
 }
@@ -970,42 +1008,82 @@ static int bc_initial_cleanup_untracked_media()
 		return -1;
 	}
 
-	std::string timed_path = full_path.substr(full_path.size()-30, 26);
+	// Parse the path components properly
+	std::string dir_path = bc_get_directory_path(full_path);
+	std::string file_name = bc_get_file_name(full_path);
+	
 	bc_string_array locations;
 	bc_oldest_media_t ctx;
-	int count, id;
+	int id = 0;
+	
+	// Parse date from directory structure (YYYY/MM/DD/XXXXXX)
+	size_t last_slash = dir_path.find_last_of('/');
+	if (last_slash != std::string::npos) {
+		std::string date_path = dir_path.substr(last_slash + 1); // Get XXXXXX
+		last_slash = dir_path.substr(0, last_slash).find_last_of('/');
+		if (last_slash != std::string::npos) {
+			std::string day_path = dir_path.substr(0, last_slash);
+			last_slash = day_path.find_last_of('/');
+			if (last_slash != std::string::npos) {
+				std::string month_path = day_path.substr(0, last_slash);
+				last_slash = month_path.find_last_of('/');
+				if (last_slash != std::string::npos) {
+					std::string year_path = month_path.substr(0, last_slash);
+					last_slash = year_path.find_last_of('/');
+					if (last_slash != std::string::npos) {
+						std::string year_str = year_path.substr(last_slash + 1);
+						std::string month_str = month_path.substr(month_path.find_last_of('/') + 1);
+						std::string day_str = day_path.substr(day_path.find_last_of('/') + 1);
+						
+						// Parse the components
+						int count = sscanf(year_str.c_str(), "%04d", (int*)&ctx.year);
+						if (count == 1) {
+							count = sscanf(month_str.c_str(), "%02d", (int*)&ctx.month);
+							if (count == 1) {
+								count = sscanf(day_str.c_str(), "%02d", (int*)&ctx.day);
+								if (count == 1) {
+									count = sscanf(date_path.c_str(), "%06d", &id);
+									if (count == 1) {
+										// Parse time from filename (HH-MM-SS.ext)
+										count = sscanf(file_name.c_str(), "%02d-%02d-%02d",
+											(int*)&ctx.hour, (int*)&ctx.min, (int*)&ctx.sec);
+										if (count == 3) {
+											// Successfully parsed both date and time
+											bc_log(Info, "Determined oldest media time: %04d/%02d/%02d %02d-%02d-%02d", 
+												ctx.year, ctx.month, ctx.day, ctx.hour, ctx.min, ctx.sec);
 
-	/* Determine date and time of the oldest media file */
-	count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
-		(int*)&ctx.year, (int*)&ctx.month, (int*)&ctx.day, (int*)&id,
-		(int*)&ctx.hour, (int*)&ctx.min, (int*)&ctx.sec);
+											if (!bc_get_media_locations(locations)) {
+												bc_log(Warning, "No media locations available for cleanup");
+												bc_db_free_table(dbres);
+												return -1;
+											}
 
-	if (count != 7) {
-		bc_log(Warning, "Failed determine oldest media time");
-		bc_db_free_table(dbres);
-		return -1;
+											for (size_t i = 0; i < locations.size(); i++)
+											{
+												bc_log(Info, "Checking location: %s", locations[i].c_str());
+												bc_recursive_cleanup_untracked_media(ctx, locations[i]);
+											}
+
+											bc_log(Info, "Initial media cleanup finished: removed(%d), archived(%d), errors(%d), others(%d)",
+												ctx.removed, ctx.archived, ctx.errors, ctx.others);
+
+											bc_db_free_table(dbres);
+											return 0;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-
-	bc_log(Info, "Determined oldest media time: %04d/%02d/%02d %02d-%02d-%02d", 
-		ctx.year, ctx.month, ctx.day, ctx.hour, ctx.min, ctx.sec);
-
-	if (!bc_get_media_locations(locations)) {
-		bc_log(Warning, "No media locations available for cleanup");
-		bc_db_free_table(dbres);
-		return -1;
-	}
-
-	for (size_t i = 0; i < locations.size(); i++)
-	{
-		bc_log(Info, "Checking location: %s", locations[i].c_str());
-		bc_recursive_cleanup_untracked_media(ctx, locations[i]);
-	}
-
-	bc_log(Info, "Initial media cleanup finished: removed(%d), archived(%d), errors(%d), others(%d)",
-		ctx.removed, ctx.archived, ctx.errors, ctx.others);
-
+	
+	// If we get here, parsing failed
+	bc_log(Warning, "Failed to determine oldest media time from path: %s", filepath);
 	bc_db_free_table(dbres);
-	return 0;
+	return -1;
 }
 
 /*
