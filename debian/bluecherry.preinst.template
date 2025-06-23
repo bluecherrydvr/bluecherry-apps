@@ -7,12 +7,15 @@ if [[ $(cat /etc/os-release | grep "^ID=" | grep centos) ]]
 then 
     systemctl stop httpd.service
 else
-	if [ ! -z `which service` ]
-	then
-		service apache2 stop || true
-	else
-		invoke-rc.d apache2 stop || true
-	fi
+    # Try to stop nginx first, then apache2 as fallback
+    if [ ! -z `which service` ]
+    then
+        service nginx stop || true
+        service apache2 stop || true
+    else
+        invoke-rc.d nginx stop || true
+        invoke-rc.d apache2 stop || true
+    fi
 fi
 
 if [ "$1" = upgrade ] && dpkg --compare-versions "$2" lt "1:2.0.3"; then

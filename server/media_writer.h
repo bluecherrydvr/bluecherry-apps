@@ -27,6 +27,10 @@ protected:
 
 	/* Control monotonicity of timestamps we feed to muxer, the same way as in ffmpeg_mux.c in ffmpeg.*/
 	int64_t last_mux_dts[2] = {0, 0};
+	
+	/* Track logging state to prevent spam */
+	bool frame_rate_warned[2] = {false, false};
+	bool timestamp_gap_warned[2] = {false, false};
 };
 
 class snapshot_writer

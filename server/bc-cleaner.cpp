@@ -7,6 +7,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <numeric>  // For std::accumulate
+#include <fcntl.h>
 
 #include <sys/statvfs.h>
 #include <sys/stat.h>
@@ -21,6 +22,13 @@
 #include "../lib/logc.h"
 #include <algorithm>
 #include <cmath>
+
+// Define bc_storage structure
+struct bc_storage {
+    char path[PATH_MAX];
+    float max_thresh;
+    float min_thresh;
+};
 
 // Constants for cleanup configuration
 #define CLEANUP_BATCH_SIZE 100
@@ -314,8 +322,31 @@ CleanupManager::CleanupManager() : cleanup_in_progress(false) {
 }
 
 bool CleanupManager::delete_media_file(const std::string& filepath, int id) {
-    // Try to delete the file
-    if (unlink(filepath.c_str()) == 0) {
+    // Get the base path without extension
+    std::string base_path = filepath;
+    size_t last_dot = base_path.find_last_of('.');
+    if (last_dot != std::string::npos) {
+        base_path = base_path.substr(0, last_dot);
+    }
+    
+    // Delete the main file
+    bool main_file_deleted = (unlink(filepath.c_str()) == 0);
+    
+    // Delete sidecar files (jpg, jpeg, etc)
+    std::vector<std::string> sidecar_extensions = {".jpg", ".jpeg", ".png", ".txt"};
+    bool sidecar_deleted = true;
+    
+    for (const auto& ext : sidecar_extensions) {
+        std::string sidecar_path = base_path + ext;
+        if (unlink(sidecar_path.c_str()) == 0) {
+            bc_log(Info, "Deleted sidecar file %s", sidecar_path.c_str());
+        } else if (errno != ENOENT) {  // Ignore if file doesn't exist
+            bc_log(Error, "Failed to delete sidecar file %s: %s", sidecar_path.c_str(), strerror(errno));
+            sidecar_deleted = false;
+        }
+    }
+    
+    if (main_file_deleted) {
         // Mark file as archived in database
         char query[2048];
         snprintf(query, sizeof(query), 
@@ -330,6 +361,8 @@ bool CleanupManager::delete_media_file(const std::string& filepath, int id) {
                     filepath.c_str());
             
             if (bc_db_query("%s", events_query) == 0) {
+                // Force filesystem sync after all deletions
+                sync();
                 return true;
             }
         }
@@ -355,10 +388,14 @@ bool CleanupManager::check_storage_status() {
                     double used = total - free;
                     double usage = (used / total) * 100.0;
                     double max_thresh = atof(max_thresh_str);
+                    double target_usage = max_thresh - 1.0; // Target is 1% below max_thresh
+                    
+                    bc_log(Info, "Storage path %s: usage=%.1f%%, max_thresh=%.1f%%, target=%.1f%%", 
+                           path, usage, max_thresh, target_usage);
                     
                     // Use a small epsilon to handle floating point comparison
                     const double EPSILON = 0.0001;
-                    if (usage > max_thresh + EPSILON) {
+                    if (usage > target_usage + EPSILON) {
                         bc_db_free_table(storage_res);
                         return false;  // Still need cleanup
                     }
@@ -381,50 +418,114 @@ int CleanupManager::run_cleanup() {
     cleanup_in_progress = true;
     int deleted_count = 0;
     std::string last_deleted_path;
+    time_t start_time = time(nullptr);
     
     try {
-        // Get oldest media files that need cleanup
-        BC_DB_RES dbres = bc_db_get_table("SELECT * FROM Media WHERE archive=0 AND "
-                                        "filepath!='' ORDER BY id ASC LIMIT 100");
+        // Get initial storage usage
+        double initial_usage = bc_get_storage_usage();
+        bc_log(Info, "Initial storage usage: %.1f%%", initial_usage);
         
-        if (!dbres) {
-            bc_log(Error, "Database error during media cleanup");
-            cleanup_in_progress = false;
-            return -1;
+        // Get target threshold from database
+        double target_threshold = 0.0;
+        const char* storage_sql = "SELECT max_thresh FROM Storage ORDER BY priority LIMIT 1";
+        BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
+        if (storage_res && !bc_db_fetch_row(storage_res)) {
+            size_t len;
+            const char* max_thresh_str = bc_db_get_val(storage_res, "max_thresh", &len);
+            if (max_thresh_str) {
+                target_threshold = atof(max_thresh_str) - 1.0; // 1% below max_thresh
+            }
         }
+        bc_db_free_table(storage_res);
         
-        while (!bc_db_fetch_row(dbres)) {
-            const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-            int id = bc_db_get_val_int(dbres, "id");
+        bc_log(Info, "Target storage threshold: %.1f%%", target_threshold);
+        
+        while (should_continue_cleanup(start_time)) {
+            // Get oldest media files that need cleanup - ORDER BY start_time to ensure we get oldest first
+            BC_DB_RES dbres = bc_db_get_table("SELECT m.* FROM Media m "
+                                            "WHERE m.archive=0 AND m.filepath!='' "
+                                            "ORDER BY m.start_time ASC LIMIT 1000");
             
-            if (!filepath || !*filepath) {
-                bc_log(Debug, "Skipping media entry %d with empty filepath", id);
-                continue;
+            if (!dbres) {
+                bc_log(Error, "Database error during media cleanup");
+                cleanup_in_progress = false;
+                return -1;
             }
             
-            // Delete the file and its sidecar
-            if (delete_media_file(filepath, id)) {
-                deleted_count++;
-                last_deleted_path = filepath;
+            bool deleted_any = false;
+            int rows_processed = 0;
+            
+            // Process all rows in the result set
+            while (bc_db_fetch_row(dbres) == 0) {  // Changed condition to check for 0 (success)
+                const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+                int id = bc_db_get_val_int(dbres, "id");
+                const char *start_time = bc_db_get_val(dbres, "start_time", NULL);
+                
+                if (!filepath || !*filepath) {
+                    bc_log(Debug, "Skipping media entry %d with empty filepath", id);
+                    continue;
+                }
+                
+                rows_processed++;
+                bc_log(Info, "Processing file %s (start_time: %s) [%d/%d]", 
+                       filepath, start_time ? start_time : "unknown", rows_processed, 1000);
+                
+                // Get file size before deletion
+                struct stat st;
+                if (stat(filepath, &st) != 0) {
+                    bc_log(Error, "Failed to stat file %s: %s", filepath, strerror(errno));
+                    continue;
+                }
+                
+                // Delete the file and its sidecar
+                if (delete_media_file(filepath, id)) {
+                    deleted_count++;
+                    last_deleted_path = filepath;
+                    deleted_any = true;
+                    
+                    // Force filesystem sync after deletion
+                    sync();
+                    
+                    // Check current storage usage
+                    double current_usage = bc_get_storage_usage();
+                    bc_log(Info, "Storage usage after deleting %s: %.1f%% (target: %.1f%%)", 
+                           filepath, current_usage, target_threshold);
+                    
+                    // Check if we've freed enough space
+                    if (current_usage <= target_threshold) {
+                        bc_log(Info, "Storage usage now below target threshold (%.1f%% <= %.1f%%), stopping cleanup", 
+                               current_usage, target_threshold);
+                        bc_db_free_table(dbres);
+                        cleanup_in_progress = false;
+                        return 0;
+                    }
+                }
             }
             
-            // Check if we've freed enough space
-            if (check_storage_status()) {
+            bc_db_free_table(dbres);
+            
+            // If we didn't delete any files in this batch, we're done
+            if (!deleted_any) {
+                bc_log(Info, "No more files to delete in this batch");
                 break;
             }
+            
+            // Force filesystem sync after batch
+            sync();
         }
-        
-        bc_db_free_table(dbres);
         
         // Log summary of deletions
         if (deleted_count > 0) {
+            double final_usage = bc_get_storage_usage();
             if (deleted_count == 1) {
-                bc_log(Info, "Successfully deleted and archived file and associated events: %s", 
-                       last_deleted_path.c_str());
+                bc_log(Info, "Successfully deleted and archived file and associated events: %s (Usage: %.1f%% -> %.1f%%)", 
+                       last_deleted_path.c_str(), initial_usage, final_usage);
             } else {
-                bc_log(Info, "Successfully deleted and archived %d files and associated events (last: %s)", 
-                       deleted_count, last_deleted_path.c_str());
+                bc_log(Info, "Successfully deleted and archived %d files and associated events (last: %s) (Usage: %.1f%% -> %.1f%%)", 
+                       deleted_count, last_deleted_path.c_str(), initial_usage, final_usage);
             }
+        } else {
+            bc_log(Info, "No files needed to be deleted");
         }
         
     } catch (const std::exception& e) {
@@ -973,6 +1074,9 @@ double bc_get_storage_usage() {
     double max_usage = 0.0;
     std::vector<std::string> storage_paths;
     
+    // Force filesystem sync before checking usage
+    sync();
+    
     // Get all storage paths from Storage table
     const char* sql = "SELECT path FROM Storage ORDER BY priority";
     bc_log(Debug, "Executing query: %s", sql);
@@ -1004,6 +1108,16 @@ double bc_get_storage_usage() {
     
     // Check usage for each storage path
     for (const auto& path : storage_paths) {
+        // Force sync for this specific path
+        int fd = open(path.c_str(), O_RDONLY);
+        if (fd >= 0) {
+            fsync(fd);
+            close(fd);
+        }
+        
+        // Wait a moment for filesystem to update stats
+        usleep(100000);  // 100ms delay
+        
         struct statvfs stat;
         if (statvfs(path.c_str(), &stat) != 0) {
             bc_log(Error, "Failed to get storage usage for %s: %s", path.c_str(), strerror(errno));
@@ -1015,7 +1129,11 @@ double bc_get_storage_usage() {
         double used = total - free;
         double usage = (used / total) * 100.0;
         
-        bc_log(Debug, "Storage path %s: usage=%.1f%%", path.c_str(), usage);
+        bc_log(Debug, "Storage path %s: usage=%.1f%% (total=%.2f GB, free=%.2f GB, used=%.2f GB)", 
+               path.c_str(), usage, 
+               total/(1024*1024*1024.0), 
+               free/(1024*1024*1024.0), 
+               used/(1024*1024*1024.0));
         
         if (usage > max_usage) {
             max_usage = usage;
