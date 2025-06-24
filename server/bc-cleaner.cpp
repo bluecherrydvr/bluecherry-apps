@@ -8,6 +8,8 @@
 #include <grp.h>
 #include <numeric>  // For std::accumulate
 #include <fcntl.h>
+#include <sys/sysinfo.h>
+#include <mysql/mysql.h>
 
 #include <sys/statvfs.h>
 #include <sys/stat.h>
@@ -30,6 +32,82 @@
 #define RETRY_BACKOFF_BASE 1
 #define MIN_SPACE_TO_FREE_GB 5  // Minimum space to free in GB
 #define SAFETY_MARGIN_PERCENT 5  // Safety margin to prevent over-cleaning
+
+// LoadMonitor implementation
+double LoadMonitor::get_system_load() {
+    struct sysinfo info;
+    if (sysinfo(&info) != 0) {
+        bc_log(Error, "Failed to get system load");
+        return 0.0;
+    }
+    
+    // Convert load average to a more readable format
+    double load_avg = static_cast<double>(info.loads[0]) / (1 << SI_LOAD_SHIFT);
+    return load_avg;
+}
+
+int LoadMonitor::get_mysql_connections() {
+    // Try to get MySQL connection count from the database
+    const char* sql = "SHOW STATUS LIKE 'Threads_connected'";
+    BC_DB_RES res = bc_db_get_table("%s", sql);
+    if (!res) {
+        bc_log(Debug, "Could not get MySQL connection count");
+        return 0;
+    }
+    
+    int connections = 0;
+    if (!bc_db_fetch_row(res)) {
+        size_t len;
+        const char* value = bc_db_get_val(res, "Value", &len);
+        if (value) {
+            connections = atoi(value);
+        }
+    }
+    bc_db_free_table(res);
+    return connections;
+}
+
+bool LoadMonitor::is_system_overloaded() {
+    double load = get_system_load();
+    return load > MAX_SYSTEM_LOAD;
+}
+
+bool LoadMonitor::is_mysql_overloaded() {
+    int connections = get_mysql_connections();
+    return connections > MAX_MYSQL_CONNECTIONS;
+}
+
+void LoadMonitor::wait_if_overloaded(int max_wait_seconds) {
+    time_t start_time = time(nullptr);
+    int wait_count = 0;
+    
+    while ((time(nullptr) - start_time) < max_wait_seconds) {
+        if (is_system_overloaded()) {
+            if (wait_count == 0) {
+                bc_log(Info, "System load high (%.2f), pausing cleanup", get_system_load());
+            }
+            usleep(100000); // 100ms
+            wait_count++;
+            continue;
+        }
+        
+        if (is_mysql_overloaded()) {
+            if (wait_count == 0) {
+                bc_log(Info, "MySQL connections high (%d), pausing cleanup", get_mysql_connections());
+            }
+            usleep(100000); // 100ms
+            wait_count++;
+            continue;
+        }
+        
+        if (wait_count > 0) {
+            bc_log(Info, "System load normalized, resuming cleanup after %d ms pause", wait_count * 100);
+        }
+        return;
+    }
+    
+    bc_log(Warning, "System remained overloaded for %d seconds, continuing cleanup", max_wait_seconds);
+}
 
 // CleanupRetryManager implementation
 void CleanupRetryManager::add_retry(const std::string& filepath, const std::string& error) {
@@ -307,12 +385,11 @@ void CleanupScheduler::set_high_priority_interval(std::chrono::seconds new_inter
 }
 
 // CleanupManager implementation
-CleanupManager::CleanupManager() : cleanup_in_progress(false) {
-    retry_manager = std::make_unique<CleanupRetryManager>();
-    parallel_cleanup = std::make_unique<ParallelCleanup>();
-    scheduler = std::make_unique<CleanupScheduler>();
-    last_cleanup_time = std::chrono::system_clock::now();
-}
+CleanupManager::CleanupManager() 
+    : cleanup_in_progress(false)
+    , retry_manager(std::make_unique<CleanupRetryManager>())
+    , parallel_cleanup(std::make_unique<ParallelCleanup>())
+    , scheduler(std::make_unique<CleanupScheduler>()) {}
 
 bool CleanupManager::delete_media_file(const std::string& filepath, int id) {
     // Get the base path without extension
@@ -354,8 +431,6 @@ bool CleanupManager::delete_media_file(const std::string& filepath, int id) {
                     filepath.c_str());
             
             if (bc_db_query("%s", events_query) == 0) {
-                // Force filesystem sync after all deletions
-                sync();
                 return true;
             }
         }
@@ -400,6 +475,192 @@ bool CleanupManager::check_storage_status() {
     return true;  // No cleanup needed
 }
 
+int CleanupManager::get_adaptive_batch_size() {
+    // Start with default batch size
+    int batch_size = DEFAULT_BATCH_SIZE;
+    
+    // Check system load and adjust
+    if (LoadMonitor::is_system_overloaded()) {
+        batch_size = std::max(MIN_BATCH_SIZE, batch_size / 2);
+        bc_log(Info, "System overloaded, reducing batch size to %d", batch_size);
+    }
+    
+    // Check MySQL load and adjust
+    if (LoadMonitor::is_mysql_overloaded()) {
+        batch_size = std::max(MIN_BATCH_SIZE, batch_size / 2);
+        bc_log(Info, "MySQL overloaded, reducing batch size to %d", batch_size);
+    }
+    
+    // Adjust based on storage size
+    double storage_size_tb = bc_get_total_storage_size() / (1024.0 * 1024.0 * 1024.0 * 1024.0);
+    int storage_based_size = static_cast<int>(storage_size_tb * BATCH_SIZE_MULTIPLIER);
+    
+    // Use the smaller of the two to be conservative
+    batch_size = std::min(batch_size, storage_based_size);
+    
+    // Ensure within bounds
+    batch_size = std::max(MIN_BATCH_SIZE, std::min(MAX_BATCH_SIZE, batch_size));
+    
+    return batch_size;
+}
+
+void CleanupManager::batch_delete_files(const std::vector<std::string>& files, int& deleted_count, size_t& bytes_freed) {
+    deleted_count = 0;
+    bytes_freed = 0;
+    
+    for (const auto& filepath : files) {
+        struct stat st;
+        if (stat(filepath.c_str(), &st) != 0) {
+            bc_log(Debug, "File doesn't exist, skipping: %s", filepath.c_str());
+            continue;
+        }
+        
+        // Delete the file
+        if (unlink(filepath.c_str()) == 0) {
+            deleted_count++;
+            bytes_freed += st.st_size;
+            
+            // Delete sidecar files
+            std::string base_path = filepath;
+            size_t last_dot = base_path.find_last_of('.');
+            if (last_dot != std::string::npos) {
+                base_path = base_path.substr(0, last_dot);
+            }
+            
+            std::vector<std::string> sidecar_extensions = {".jpg", ".jpeg", ".png", ".txt"};
+            for (const auto& ext : sidecar_extensions) {
+                std::string sidecar_path = base_path + ext;
+                unlink(sidecar_path.c_str()); // Ignore errors for sidecars
+            }
+        } else {
+            bc_log(Error, "Failed to delete file %s: %s", filepath.c_str(), strerror(errno));
+        }
+    }
+}
+
+void CleanupManager::commit_batch_changes(const std::vector<std::string>& deleted_files) {
+    if (deleted_files.empty()) {
+        return;
+    }
+    
+    // Start transaction
+    if (bc_db_query("START TRANSACTION") != 0) {
+        bc_log(Error, "Failed to start batch transaction");
+        return;
+    }
+    
+    try {
+        // Batch update Media table
+        std::string media_query = "UPDATE Media SET archive = 1 WHERE filepath IN (";
+        for (size_t i = 0; i < deleted_files.size(); ++i) {
+            if (i > 0) media_query += ",";
+            media_query += "'" + deleted_files[i] + "'";
+        }
+        media_query += ")";
+        
+        if (bc_db_query("%s", media_query.c_str()) != 0) {
+            bc_log(Error, "Failed to batch update Media table");
+            bc_db_query("ROLLBACK");
+            return;
+        }
+        
+        // Batch update EventsCam table
+        std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
+        events_query += "SELECT id FROM Media WHERE filepath IN (";
+        for (size_t i = 0; i < deleted_files.size(); ++i) {
+            if (i > 0) events_query += ",";
+            events_query += "'" + deleted_files[i] + "'";
+        }
+        events_query += "))";
+        
+        if (bc_db_query("%s", events_query.c_str()) != 0) {
+            bc_log(Error, "Failed to batch update EventsCam table");
+            bc_db_query("ROLLBACK");
+            return;
+        }
+        
+        // Commit transaction
+        if (bc_db_query("COMMIT") != 0) {
+            bc_log(Error, "Failed to commit batch transaction");
+            bc_db_query("ROLLBACK");
+            return;
+        }
+        
+        bc_log(Info, "Successfully committed batch changes for %zu files", deleted_files.size());
+        
+    } catch (...) {
+        bc_log(Error, "Exception during batch commit, rolling back");
+        bc_db_query("ROLLBACK");
+    }
+}
+
+bool CleanupManager::process_batch(int batch_size, double target_threshold, int& total_deleted) {
+    auto batch_start_time = std::chrono::steady_clock::now();
+    
+    // Check system load before processing
+    LoadMonitor::wait_if_overloaded();
+    
+    // Get files for this batch
+    BC_DB_RES dbres = bc_db_get_table("SELECT m.* FROM Media m "
+                                    "WHERE m.archive=0 AND m.filepath!='' "
+                                    "ORDER BY m.start_time ASC LIMIT %d", batch_size);
+    
+    if (!dbres) {
+        bc_log(Error, "Database error during batch cleanup");
+        return false;
+    }
+    
+    std::vector<std::string> files_to_delete;
+    std::vector<std::string> file_ids;
+    
+    // Collect files for batch processing
+    while (bc_db_fetch_row(dbres) == 0) {
+        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+        int id = bc_db_get_val_int(dbres, "id");
+        
+        if (!filepath || !*filepath) {
+            continue;
+        }
+        
+        files_to_delete.push_back(filepath);
+        file_ids.push_back(std::to_string(id));
+    }
+    bc_db_free_table(dbres);
+    
+    if (files_to_delete.empty()) {
+        bc_log(Info, "No files found for batch processing");
+        return false;
+    }
+    
+    bc_log(Info, "Processing batch of %zu files", files_to_delete.size());
+    
+    // Delete files from filesystem
+    int deleted_count = 0;
+    size_t bytes_freed = 0;
+    batch_delete_files(files_to_delete, deleted_count, bytes_freed);
+    
+    if (deleted_count > 0) {
+        // Commit database changes in a single transaction
+        commit_batch_changes(files_to_delete);
+        
+        total_deleted += deleted_count;
+        stats.add_bytes_freed(bytes_freed);
+        
+        // Update batch statistics
+        auto batch_end_time = std::chrono::steady_clock::now();
+        auto batch_duration = std::chrono::duration_cast<std::chrono::milliseconds>(batch_end_time - batch_start_time);
+        stats.update_avg_batch_time(batch_duration.count() / 1000.0);
+        
+        bc_log(Info, "Batch completed: %d/%zu files deleted, %.2f MB freed, %.2f seconds", 
+               deleted_count, files_to_delete.size(), 
+               bytes_freed / (1024.0 * 1024.0), 
+               batch_duration.count() / 1000.0);
+    }
+    
+    stats.increment_batches();
+    return deleted_count > 0;
+}
+
 int CleanupManager::run_cleanup() {
     std::lock_guard<std::mutex> lock(cleanup_mutex);
     
@@ -409,9 +670,9 @@ int CleanupManager::run_cleanup() {
     }
     
     cleanup_in_progress = true;
-    int deleted_count = 0;
-    std::string last_deleted_path;
+    int total_deleted = 0;
     time_t start_time = time(nullptr);
+    int batch_count = 0;
     
     try {
         // Get initial storage usage
@@ -434,89 +695,58 @@ int CleanupManager::run_cleanup() {
         bc_log(Info, "Target storage threshold: %.1f%%", target_threshold);
         
         while (should_continue_cleanup(start_time)) {
-            // Get oldest media files that need cleanup - ORDER BY start_time to ensure we get oldest first
-            BC_DB_RES dbres = bc_db_get_table("SELECT m.* FROM Media m "
-                                            "WHERE m.archive=0 AND m.filepath!='' "
-                                            "ORDER BY m.start_time ASC LIMIT 1000");
-            
-            if (!dbres) {
-                bc_log(Error, "Database error during media cleanup");
-                cleanup_in_progress = false;
-                return -1;
-            }
-            
-            bool deleted_any = false;
-            int rows_processed = 0;
-            
-            // Process all rows in the result set
-            while (bc_db_fetch_row(dbres) == 0) {  // Changed condition to check for 0 (success)
-                const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-                int id = bc_db_get_val_int(dbres, "id");
-                const char *start_time = bc_db_get_val(dbres, "start_time", NULL);
-                
-                if (!filepath || !*filepath) {
-                    bc_log(Debug, "Skipping media entry %d with empty filepath", id);
-                    continue;
-                }
-                
-                rows_processed++;
-                bc_log(Info, "Processing file %s (start_time: %s) [%d/%d]", 
-                       filepath, start_time ? start_time : "unknown", rows_processed, 1000);
-                
-                // Get file size before deletion
-                struct stat st;
-                if (stat(filepath, &st) != 0) {
-                    bc_log(Error, "Failed to stat file %s: %s", filepath, strerror(errno));
-                    continue;
-                }
-                
-                // Delete the file and its sidecar
-                if (delete_media_file(filepath, id)) {
-                    deleted_count++;
-                    last_deleted_path = filepath;
-                    deleted_any = true;
-                    
-                    // Force filesystem sync after deletion
-                    sync();
-                    
-                    // Check current storage usage
-                    double current_usage = bc_get_storage_usage();
-                    bc_log(Info, "Storage usage after deleting %s: %.1f%% (target: %.1f%%)", 
-                           filepath, current_usage, target_threshold);
-                    
-                    // Check if we've freed enough space
-                    if (current_usage <= target_threshold) {
-                        bc_log(Info, "Storage usage now below target threshold (%.1f%% <= %.1f%%), stopping cleanup", 
-                               current_usage, target_threshold);
-                        bc_db_free_table(dbres);
-                        cleanup_in_progress = false;
-                        return 0;
-                    }
-                }
-            }
-            
-            bc_db_free_table(dbres);
-            
-            // If we didn't delete any files in this batch, we're done
-            if (!deleted_any) {
-                bc_log(Info, "No more files to delete in this batch");
+            // Check if we've reached the target
+            double current_usage = bc_get_storage_usage();
+            if (current_usage <= target_threshold) {
+                bc_log(Info, "Storage usage now below target threshold (%.1f%% <= %.1f%%), stopping cleanup", 
+                       current_usage, target_threshold);
                 break;
             }
             
-            // Force filesystem sync after batch
-            sync();
+            // Get adaptive batch size
+            int batch_size = get_adaptive_batch_size();
+            
+            // Process batch
+            bool batch_success = process_batch(batch_size, target_threshold, total_deleted);
+            batch_count++;
+            
+            if (!batch_success) {
+                bc_log(Info, "No more files to delete, stopping cleanup");
+                break;
+            }
+            
+            // Add delay between batches to reduce system load
+            if (BATCH_DELAY_MS > 0) {
+                usleep(BATCH_DELAY_MS * 1000);
+            }
+            
+            // Sync filesystem periodically (not after every batch)
+            if (batch_count % SYNC_INTERVAL_BATCHES == 0) {
+                sync();
+                bc_log(Debug, "Filesystem sync after %d batches", batch_count);
+            }
+            
+            // Check system load periodically
+            if (batch_count % LOAD_CHECK_INTERVAL == 0) {
+                if (LoadMonitor::is_system_overloaded()) {
+                    stats.increment_load_pauses();
+                    bc_log(Info, "System load check: pausing due to high load");
+                }
+                if (LoadMonitor::is_mysql_overloaded()) {
+                    stats.increment_mysql_pauses();
+                    bc_log(Info, "MySQL load check: pausing due to high connections");
+                }
+            }
         }
         
-        // Log summary of deletions
-        if (deleted_count > 0) {
+        // Final sync
+        sync();
+        
+        // Log summary
+        if (total_deleted > 0) {
             double final_usage = bc_get_storage_usage();
-            if (deleted_count == 1) {
-                bc_log(Info, "Successfully deleted and archived file and associated events: %s (Usage: %.1f%% -> %.1f%%)", 
-                       last_deleted_path.c_str(), initial_usage, final_usage);
-            } else {
-                bc_log(Info, "Successfully deleted and archived %d files and associated events (last: %s) (Usage: %.1f%% -> %.1f%%)", 
-                       deleted_count, last_deleted_path.c_str(), initial_usage, final_usage);
-            }
+            bc_log(Info, "Cleanup completed: %d files deleted, %d batches processed, %.1f%% -> %.1f%% usage", 
+                   total_deleted, batch_count, initial_usage, final_usage);
         } else {
             bc_log(Info, "No files needed to be deleted");
         }
@@ -555,6 +785,9 @@ void CleanupManager::update_stats(const cleanup_stats_report& new_stats) {
     stats.errors += new_stats.errors;
     stats.bytes_freed += new_stats.bytes_freed;
     stats.retries += new_stats.retries;
+    stats.batches_processed += new_stats.batches_processed;
+    stats.load_pauses += new_stats.load_pauses;
+    stats.mysql_pauses += new_stats.mysql_pauses;
 }
 
 bool CleanupManager::should_run_cleanup() const {
@@ -600,224 +833,151 @@ int bc_days_in_month(int year, int month) {
         return 0;
     }
 
-    int days = days_per_month[month];
-    if (month == 2 && bc_is_leap_year(year)) days = 29;
+    if (month == 1 && bc_is_leap_year(year)) {
+        return 29;
+    }
 
-    return days;
+    return days_per_month[month];
 }
 
 bool bc_compare_time(const bc_time& tm1, const bc_time& tm2) {
-    long long time1 = 0, time2 = 0;
-    int days1 = 0, days2 = 0;
-
-    // Convert years and months to days
-    for (int y = 1; y < tm1.year; y++)
-        days1 += bc_is_leap_year(y) ? 366 : 365;
-
-    for (int m = 1; m < tm1.month; m++)
-        days1 += bc_days_in_month(tm1.year, m);
-
-    for (int y = 1; y < tm2.year; y++)
-        days2 += bc_is_leap_year(y) ? 366 : 365;
-
-    for (int m = 1; m < tm2.month; m++)
-        days2 += bc_days_in_month(tm2.year, m);
-
-    // Add days
-    days1 += tm1.day;
-    days2 += tm2.day;
-
-    // Convert days to seconds
-    time1 = (long long)days1 * 24 * 60 * 60;
-    time2 = (long long)days2 * 24 * 60 * 60;
-
-    // Convert hours to seconds
-    time1 += (long long)tm1.hour * 60 * 60;
-    time2 += (long long)tm2.hour * 60 * 60;
-
-    // Convert minutes to seconds
-    time1 += (long long)tm1.min * 60;
-    time2 += (long long)tm2.min * 60;
-
-    // Add seconds
-    time1 += tm1.sec;
-    time2 += tm2.sec;
-
-    return time1 < time2;
+    if (tm1.year != tm2.year) {
+        return tm1.year < tm2.year;
+    }
+    if (tm1.month != tm2.month) {
+        return tm1.month < tm2.month;
+    }
+    if (tm1.day != tm2.day) {
+        return tm1.day < tm2.day;
+    }
+    if (tm1.hour != tm2.hour) {
+        return tm1.hour < tm2.hour;
+    }
+    if (tm1.min != tm2.min) {
+        return tm1.min < tm2.min;
+    }
+    return tm1.sec < tm2.sec;
 }
 
 bool bc_is_base_path(std::string dir_path) {
-    if (!dir_path.length()) return false;
-    char basepath[PATH_MAX];
-
-    if (bc_get_media_loc(basepath, sizeof(basepath)) < 0) {
-        bc_log(Error, "No free storage locations for new recordings!");
-        return false;
+    // Remove trailing slash if present
+    if (!dir_path.empty() && dir_path.back() == '/') {
+        dir_path.pop_back();
     }
-
-    std::string base_path = std::string(basepath);
-    if (base_path.back() != '/') base_path.append("/");
-    if (dir_path.back() != '/') dir_path.append("/");
-
-    return dir_path == base_path;
+    
+    // Check if this is a base path (e.g., /var/lib/bluecherry/recordings)
+    // Base paths typically have 4-5 components
+    size_t slash_count = std::count(dir_path.begin(), dir_path.end(), '/');
+    return slash_count <= 5;
 }
 
 bool bc_is_current_path(const std::string& path) {
-    // Only check paths that look like they might be date-based
-    if (path.length() <= 30) return false;
-    
-    std::string timed_path = path.substr(path.size() - 30, 26);
-    bc_time rec_time;
-    int id = 0;
-
-    int count = sscanf(timed_path.c_str(), "%04d/%02d/%02d/%06d/%02d-%02d-%02d",
-        (int*)&rec_time.year, (int*)&rec_time.month, (int*)&rec_time.day, (int*)&id,
-        (int*)&rec_time.hour, (int*)&rec_time.min, (int*)&rec_time.sec);
-    
-    // If we can't parse the date, don't skip the path
-    if (count != 7) return false;
-
+    time_t now = time(nullptr);
     struct tm tm;
-    time_t ts = time(NULL);
-    localtime_r(&ts, &tm);
-
-    // Only skip if it's from today
-    return (rec_time.year == (tm.tm_year + 1900) &&
-            rec_time.month == (tm.tm_mon + 1) &&
-            rec_time.day == tm.tm_mday);
+    
+    if (localtime_r(&now, &tm) == nullptr) {
+        bc_log(Error, "Failed to get current time");
+        return false;
+    }
+    
+    // Check if path contains current year/month/day
+    char current_date[32];
+    snprintf(current_date, sizeof(current_date), "%04d/%02d/%02d", 
+             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    
+    return path.find(current_date) != std::string::npos;
 }
 
 std::string bc_get_parent_path(const std::string& path) {
-    if (!path.length()) return std::string();
-    std::string dir_path = path;
-
-    std::size_t last_slash = dir_path.find_last_of('/');
-    if (last_slash == std::string::npos) return std::string();
-
-    dir_path.erase(last_slash);
-    return dir_path;
-}
-
-bool bc_is_dir_empty(const std::string& path) {
-    int file_count = 0;
-    struct dirent *entry;
-
-    bc_log(Debug, "Checking if empty: %s", path.c_str());
-    DIR *dir = opendir(path.c_str());
-
-    if (dir == NULL) {
-        bc_log(Warning, "Can not open directory %s: %s",
-            path.c_str(), strerror(errno));
-
-        return false;
+    size_t last_slash = path.find_last_of('/');
+    if (last_slash == std::string::npos) {
+        return "";
     }
-
-    // Check if there is something more than "." and ".."
-    while ((entry = readdir(dir)) != NULL)
-        if (++file_count > 2) break;
-
-    closedir(dir);
-
-    return file_count <= 2 ?
-        true : false;
+    return path.substr(0, last_slash);
 }
 
 std::string bc_get_dir_path(const std::string& path) {
-    /* Do not empty or remove base paths */
-    if (bc_is_base_path(path)) return std::string();
-    else if (!path.length()) return std::string();
-
     struct stat path_stat;
-    if (stat(path.c_str(), &path_stat) != 0) {
-        if (errno == ENOENT) {
-            /* If file does not exist, try parent directory */
-            std::string parent = bc_get_parent_path(path);
-            return bc_get_dir_path(parent);
+    if (stat(path.c_str(), &path_stat) == 0) {
+        if (S_ISDIR(path_stat.st_mode)) {
+            return path;
         }
-
-        bc_log(Error, "Failed to stat: %s (%s)",
-            path.c_str(), strerror(errno));
-
-        return std::string();
     }
-
-    if (S_ISDIR(path_stat.st_mode))
-        return std::string(path);
-
-    if (S_ISREG(path_stat.st_mode)) {
-        std::string parent = bc_get_parent_path(path);
-        return bc_get_dir_path(parent);
+    
+    size_t last_slash = path.find_last_of('/');
+    if (last_slash == std::string::npos) {
+        return "";
     }
+    return path.substr(0, last_slash);
+}
 
-    bc_log(Error, "The path is neither a file nor a directory: %s", path.c_str());
-    return std::string();
+bool bc_is_dir_empty(const std::string& path) {
+    DIR* dir = opendir(path.c_str());
+    if (!dir) {
+        return true; // Consider non-existent directories as empty
+    }
+    
+    struct dirent *entry;
+    bool empty = true;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            empty = false;
+            break;
+        }
+    }
+    
+    closedir(dir);
+    return empty;
 }
 
 bool bc_remove_dir_if_empty(const std::string& path) {
-    // Do not remove current working dir, even if its empty
-    if (bc_is_current_path(path)) return false;
-
-    // Get parent directory path of recording file
-    std::string dir = bc_get_dir_path(path);
-    if (!dir.length()) return false;
-
-    while (dir.length()) {
-        if (bc_is_base_path(dir)) break;
-        if (!bc_is_dir_empty(dir)) break;
-
-        if (rmdir(dir.c_str()) != 0) {
-            bc_log(Error, "Failed to delete directory: %s (%s)",
-                dir.c_str(), strerror(errno));
-
-            return false;
+    if (bc_is_dir_empty(path)) {
+        if (rmdir(path.c_str()) == 0) {
+            bc_log(Debug, "Removed empty directory: %s", path.c_str());
+            return true;
+        } else {
+            bc_log(Debug, "Failed to remove directory %s: %s", path.c_str(), strerror(errno));
         }
-
-        bc_log(Info, "Deleted empty directory: %s", dir.c_str());
-        std::string parent = bc_get_parent_path(dir);
-        dir = bc_get_dir_path(parent);
     }
-
-    return true;
+    return false;
 }
 
 int bc_remove_directory(const std::string& path) {
-    /* Check if path exists */
     struct stat statbuf = {0};
-    int retval = stat(path.c_str(), &statbuf);
-    if (retval < 0) return -1;
-
-    /* Open directory */
-    DIR *dir = opendir(path.c_str());
-    if (dir) {
-        struct dirent *entry;
-        retval = 0;
-
-        while (!retval && (entry = readdir(dir))) {
-            int xretval = -1;
-
-            /* Skip the names "." and ".." as we don't want to recurse on them. */
-            if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) continue;
-            std::string new_path = path + "/" + std::string(entry->d_name);
-
-            if (!stat(new_path.c_str(), &statbuf)) {
-                if (!S_ISDIR(statbuf.st_mode)) xretval = unlink(new_path.c_str());
-                else xretval = bc_remove_directory(new_path.c_str());
-            }
-
-            retval = xretval;
-        }
-
-        /* Close dir pointer */
-        closedir(dir);
+    if (stat(path.c_str(), &statbuf) == -1) {
+        return -1;
     }
-
-    if (!retval)
-        retval = rmdir(path.c_str());
-
-    return retval;
+    
+    if (S_ISDIR(statbuf.st_mode)) {
+        DIR* dir = opendir(path.c_str());
+        if (dir) {
+            struct dirent *entry;
+            while ((entry = readdir(dir)) != nullptr) {
+                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+                    continue;
+                }
+                
+                std::string full_path = path + "/" + std::string(entry->d_name);
+                if (bc_remove_directory(full_path) != 0) {
+                    closedir(dir);
+                    return -1;
+                }
+            }
+            closedir(dir);
+        }
+        
+        if (rmdir(path.c_str()) == -1) {
+            return -1;
+        }
+    } else {
+        if (unlink(path.c_str()) == -1) {
+            return -1;
+        }
+    }
+    
+    return 0;
 }
 
-// Helper function to recursively scan directories
 void scan_directory_for_files(const std::string& basepath, std::vector<std::string>& files, int& batch_size, int& files_found) {
     DIR* dir = opendir(basepath.c_str());
     if (!dir) {
@@ -849,40 +1009,19 @@ void scan_directory_for_files(const std::string& basepath, std::vector<std::stri
             continue;
         }
         
-        if (S_ISREG(st.st_mode)) {  // Regular file
-            // Extract timestamp from filename (format: HH-MM-SS)
-            int hour, min, sec;
-            if (sscanf(entry->d_name, "%02d-%02d-%02d", &hour, &min, &sec) == 3) {
-                // Get the directory path components (YYYY/MM/DD)
-                std::string dir_path = bc_get_parent_path(full_path);
-                std::string dir_name = bc_get_file_name(dir_path);
-                
-                int year, month, day;
-                if (sscanf(dir_name.c_str(), "%04d/%02d/%02d", &year, &month, &day) == 3) {
-                    struct tm tm = {0};
-                    tm.tm_year = year - 1900;  // Years since 1900
-                    tm.tm_mon = month - 1;     // Months since January (0-11)
-                    tm.tm_mday = day;
-                    tm.tm_hour = hour;
-                    tm.tm_min = min;
-                    tm.tm_sec = sec;
-                    
-                    time_t timestamp = mktime(&tm);
-                    if (timestamp != -1) {
-                        files_found++;
-                        FileInfo info;
-                        info.path = full_path;
-                        info.timestamp = timestamp;
-                        file_list.push_back(info);
-                    }
-                }
-            }
-        } else if (S_ISDIR(st.st_mode)) {  // Directory
-            // Skip current day's directory
-            if (bc_is_current_path(full_path)) {
-                continue;
-            }
-            scan_directory_for_files(full_path, files, batch_size, files_found);
+        if (S_ISREG(st.st_mode)) {
+            // Regular file
+            FileInfo info;
+            info.path = full_path;
+            info.timestamp = st.st_mtime;
+            file_list.push_back(info);
+            files_found++;
+        } else if (S_ISDIR(st.st_mode)) {
+            // Directory - recursively scan
+            int sub_batch_size = batch_size / 2;
+            int sub_files_found = 0;
+            scan_directory_for_files(full_path, files, sub_batch_size, sub_files_found);
+            files_found += sub_files_found;
         }
     }
     
@@ -891,20 +1030,18 @@ void scan_directory_for_files(const std::string& basepath, std::vector<std::stri
     // Sort files by timestamp (oldest first)
     std::sort(file_list.begin(), file_list.end());
     
-    // Add sorted files to the cleanup batch
+    // Add files to the result vector, respecting batch size
     for (const auto& info : file_list) {
-        if (files.size() < static_cast<size_t>(batch_size)) {
-            files.push_back(info.path);
-        } else {
+        if (files.size() >= batch_size) {
             break;
         }
+        files.push_back(info.path);
     }
 }
 
 std::vector<std::string> bc_get_media_files(int batch_size) {
     std::vector<std::string> files;
     
-    // Define storage info structure
     struct StorageInfo {
         std::string path;
         double usage;
@@ -913,7 +1050,7 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
     };
     std::vector<StorageInfo> storage_info;
     
-    // First, get all storage locations and their usage
+    // Get storage information from database
     const char* storage_sql = "SELECT path, max_thresh, min_thresh FROM Storage ORDER BY priority";
     BC_DB_RES storage_res = bc_db_get_table("%s", storage_sql);
     if (storage_res) {
@@ -930,41 +1067,43 @@ std::vector<std::string> bc_get_media_files(int batch_size) {
                     double free = static_cast<double>(stat.f_bavail) * stat.f_frsize;
                     double used = total - free;
                     double usage = (used / total) * 100.0;
-                    double max_thresh = atof(max_thresh_str);
-                    double min_thresh = atof(min_thresh_str);
                     
                     StorageInfo info;
                     info.path = path;
                     info.usage = usage;
-                    info.max_thresh = max_thresh;
-                    info.min_thresh = min_thresh;
+                    info.max_thresh = atof(max_thresh_str);
+                    info.min_thresh = atof(min_thresh_str);
                     storage_info.push_back(info);
-                    
-                    bc_log(Info, "Storage path %s: usage=%.1f%%, max_thresh=%.1f%%, min_thresh=%.1f%%", 
-                           path, usage, max_thresh, min_thresh);
                 }
             }
         }
         bc_db_free_table(storage_res);
     }
     
-    // Calculate how much space we need to free
-    double max_usage = 0.0;
-    double target_usage = 0.0;
+    if (storage_info.empty()) {
+        bc_log(Error, "No storage information available");
+        return files;
+    }
+    
+    // Sort by usage (highest first)
+    std::sort(storage_info.begin(), storage_info.end(), 
+              [](const StorageInfo& a, const StorageInfo& b) { return a.usage > b.usage; });
+    
+    // Find paths that need cleanup
     std::vector<std::string> paths_to_clean;
+    double max_usage = storage_info[0].usage;
+    double target_usage = storage_info[0].max_thresh;
+    
     for (const auto& info : storage_info) {
-        if (info.usage > max_usage) {
-            max_usage = info.usage;
-            // Calculate safety margin based on storage size
-            // For large arrays (>1TB), use 0.5% margin
-            // For smaller arrays, use up to 1% margin
-            double safety_margin = 0.5;  // Default to 0.5%
-            struct statvfs stat;
-            if (statvfs(info.path.c_str(), &stat) == 0) {
-                double total_gb = (static_cast<double>(stat.f_blocks) * stat.f_frsize) / (1024.0 * 1024.0 * 1024.0);
-                if (total_gb < 1000) {  // If less than 1TB
-                    safety_margin = 1.0;  // Use 1% margin
-                }
+        // Calculate safety margin based on storage size
+        double safety_margin = 1.0; // Default 1%
+        struct statvfs stat;
+        if (statvfs(info.path.c_str(), &stat) == 0) {
+            double total_gb = (static_cast<double>(stat.f_blocks) * stat.f_frsize) / (1024.0 * 1024.0 * 1024.0);
+            if (total_gb > 1000) { // Large storage (>1TB)
+                safety_margin = 2.0;
+            } else if (total_gb > 100) { // Medium storage (>100GB)
+                safety_margin = 1.5;
             }
             target_usage = info.max_thresh - safety_margin;
             bc_log(Info, "Storage path %s: using %.1f%% safety margin (target %.1f%%)", 
@@ -1171,7 +1310,7 @@ double bc_get_total_storage_size() {
         return 0.0;
     }
     
-    // Sum up size for each storage path
+    // Calculate total size for all storage paths
     for (const auto& path : storage_paths) {
         struct statvfs stat;
         if (statvfs(path.c_str(), &stat) != 0) {
@@ -1182,39 +1321,28 @@ double bc_get_total_storage_size() {
         double path_size = static_cast<double>(stat.f_blocks) * stat.f_frsize;
         total_size += path_size;
         
-        bc_log(Debug, "Storage path %s: size=%.2f GB", path.c_str(), path_size / (1024.0 * 1024.0 * 1024.0));
+        bc_log(Debug, "Storage path %s: size=%.2f GB", 
+               path.c_str(), path_size/(1024*1024*1024.0));
     }
     
-    bc_log(Debug, "Total storage size: %.2f GB", total_size / (1024.0 * 1024.0 * 1024.0));
+    bc_log(Debug, "Total storage size: %.2f GB", total_size/(1024*1024*1024.0));
     return total_size;
 }
 
 static float path_used_percent(const char *path) {
     struct statvfs st;
-
-    if (statvfs(path, &st))
-        return -1.00;
-
-    // Calculate usage based on f_bavail (available blocks) instead of f_bfree
-    // This matches the system's df command behavior
+    if (statvfs(path, &st) != 0) {
+        return -1.0f;
+    }
+    
     double total = static_cast<double>(st.f_blocks) * st.f_frsize;
     double free = static_cast<double>(st.f_bavail) * st.f_frsize;
     double used = total - free;
-    double usage = (used / total) * 100.0;
-
-    bc_log(Debug, "path_used_percent(%s) = %.1f%%, total=%.2f GB, free=%.2f GB, used=%.2f GB", 
-           path, usage, total/(1024*1024*1024.0), free/(1024*1024*1024.0), used/(1024*1024*1024.0));
-
-    return usage;
+    
+    return static_cast<float>((used / total) * 100.0);
 }
 
 static int is_storage_full(const struct bc_storage *stor) {
     float used = path_used_percent(stor->path);
-
-    if (used < 0)
-        return -1;
-
-    // Add a small buffer to prevent oscillation
-    const float BUFFER = 0.5; // 0.5% buffer
-    return (used >= (stor->max_thresh - BUFFER));
+    return (used >= 0 && used >= stor->max_thresh);
 }

@@ -1368,11 +1368,24 @@ static int bc_check_media(void)
             bc_log(Info, "Storage path %s requires cleanup: %.1f%% >= %.1f%%", 
                 media_stor[i].path, used, media_stor[i].max_thresh);
             
-            // Schedule cleanup to run in a separate thread
-            std::thread cleanup_thread([]() {
-                bc_cleanup_media();
-            });
-            cleanup_thread.detach();
+            // Use the optimized cleanup system instead of the old cleanup
+            if (g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
+                // Schedule optimized cleanup to run in a separate thread
+                std::thread cleanup_thread([]() {
+                    if (g_cleanup_manager) {
+                        bc_log(Info, "Starting optimized cleanup process");
+                        int result = g_cleanup_manager->run_cleanup();
+                        if (result == 0) {
+                            bc_log(Info, "Optimized cleanup completed successfully");
+                        } else {
+                            bc_log(Error, "Optimized cleanup failed with error code %d", result);
+                        }
+                    }
+                });
+                cleanup_thread.detach();
+            } else {
+                bc_log(Info, "Cleanup not needed or already in progress");
+            }
             
             return 0;
         }
