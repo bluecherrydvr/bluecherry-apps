@@ -1,3 +1,18 @@
+bluecherry (3:3.1.12) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Robust timestamp handling for muxer (DTS/PTS) - remove crash assertions and improve error recovery
+  * FIX: Add comprehensive audio codec support (AAC, G.726, MP3, G.723.1, G.722, G.729, GSM, AC3, OPUS, AMR, ILBC)
+  * FIX: Graceful fallback for unsupported audio codecs - disable audio instead of crashing
+  * FIX: Add PCM ALAW support to resolve "Error writing recording" issues
+  * FIX: Improve path parsing logic for media file cleanup to reduce error logging spam
+  * FIX: Add rate limiting for timestamp warnings to prevent log flooding
+  * FIX: Enhanced storage management with multi-device support from bluecherry.Storage table
+  * FIX: Better error handling and logging for media file operations
+  * FIX: Remove duplicate struct definition in bc-cleaner.cpp
+  * FIX: Maintain backward compatibility with all existing distributions
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 23 Jun 2025 14:00:00 -0500
+
 bluecherry (3:3.1.11) bookworm bullseye buster focal jammy mantic noble; urgency=low
 
   * FIX: Revert RTSP server to exact v3.1.9 behavior for stability

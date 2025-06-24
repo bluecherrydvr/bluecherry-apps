@@ -77,10 +77,8 @@ void encoder::push_frame(AVFrame* frame, int motion_flag)
 bool encoder::encode()
 {
 	int ret;
-	AVPacket pkt;
+	AVPacket pkt = {0};
 	AVCodecContext *ctx;
-
-	av_init_packet(&pkt);
 
 	ctx = encoder_ctx_todelete ? encoder_ctx_todelete : encoder_ctx;
 

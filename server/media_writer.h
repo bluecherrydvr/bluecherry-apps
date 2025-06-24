@@ -31,6 +31,7 @@ protected:
 	/* Track logging state to prevent spam */
 	bool frame_rate_warned[2] = {false, false};
 	bool timestamp_gap_warned[2] = {false, false};
+	time_t last_timestamp_warning[2] = {0, 0};
 };
 
 class snapshot_writer

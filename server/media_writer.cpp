@@ -46,7 +46,8 @@ static void bc_avlog(int val, const char *msg)
 media_writer::media_writer():
 	last_mux_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE},
 	frame_rate_warned{false, false},
-	timestamp_gap_warned{false, false}
+	timestamp_gap_warned{false, false},
+	last_timestamp_warning{0, 0}
 {
 }
 
@@ -158,35 +159,45 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		}
 	} else {
 		// In this clause we're dealing with incorrect timestamp received from the source.
-		assert(last_mux_dts >= opkt.dts);
-		assert(last_mux_dts != AV_NOPTS_VALUE);
-		bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp", 
-			opkt.dts, last_mux_dts, opkt.stream_index);
-		
-		// Calculate frame increment based on the stream's time base
-		AVStream *stream = out_ctx->streams[opkt.stream_index];
-		int64_t frame_increment;
-		
-		// Try to get frame rate from stream
-		if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
-			// Convert frame rate to time base units
-			frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
-		} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
-			// Fall back to r_frame_rate if avg_frame_rate is not available
-			frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
-		} else {
-			// If no frame rate info is available, use a conservative default of 1/30
-			frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
-			if (!frame_rate_warned[pkt.type]) {
-				bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
-				frame_rate_warned[pkt.type] = true;
+		if (last_mux_dts >= opkt.dts) {
+			// Rate limit warnings to prevent log spam (max once per 30 seconds per stream)
+			time_t now = time(nullptr);
+			if (now - last_timestamp_warning[pkt.type] >= 30) {
+				bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp", 
+					opkt.dts, last_mux_dts, opkt.stream_index);
+				last_timestamp_warning[pkt.type] = now;
 			}
-		}
-		
-		// Adjust the timestamp to maintain continuity
-		opkt.dts = last_mux_dts + frame_increment;
-		if (opkt.pts != AV_NOPTS_VALUE) {
-			opkt.pts = opkt.dts;
+			
+			// Calculate frame increment based on the stream's time base
+			AVStream *stream = out_ctx->streams[opkt.stream_index];
+			int64_t frame_increment;
+			
+			// Try to get frame rate from stream
+			if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+				// Convert frame rate to time base units
+				frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+			} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+				// Fall back to r_frame_rate if avg_frame_rate is not available
+				frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+			} else {
+				// If no frame rate info is available, use a conservative default of 1/30
+				frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+				if (!frame_rate_warned[pkt.type]) {
+					bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
+					frame_rate_warned[pkt.type] = true;
+				}
+			}
+			
+			// Adjust the timestamp to maintain continuity
+			opkt.dts = last_mux_dts + frame_increment;
+			if (opkt.pts != AV_NOPTS_VALUE) {
+				opkt.pts = opkt.dts;
+			}
+		} else {
+			// This should not happen, but handle gracefully if it does
+			bc_log(Error, "Unexpected timestamp condition: last_mux_dts=%" PRId64 " < opkt.dts=%" PRId64 " on stream %d", 
+				last_mux_dts, opkt.dts, opkt.stream_index);
+			// Continue with the packet as-is to avoid dropping frames
 		}
 	}
 
@@ -195,14 +206,33 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
 		!!(opkt.flags & AV_PKT_FLAG_KEY));
 
+	// Additional safety check for invalid timestamps before writing
+	if (opkt.dts != AV_NOPTS_VALUE && opkt.dts < 0) {
+		bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+		opkt.dts = 0;
+	}
+	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
+		bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+		opkt.pts = 0;
+	}
+
 	auto last_mux_dts_uncommitted = opkt.dts; // opkt.dts is lost as av_interleaved_write_frame() frees opkt
 	re = av_interleaved_write_frame(out_ctx, &opkt);
 	if (re < 0)
 	{
 		if (re == AVERROR(EINVAL)) {
 			bc_log(Error, "Error writing frame to recording. Likely timestamping problem.");
+			// Try to recover by resetting the timestamp tracking
+			last_mux_dts = AV_NOPTS_VALUE;
 		} else {
-			bc_avlog(re, "Error writing frame to recording.");
+			// Provide more specific error information
+			char err_buf[256];
+			av_strerror(re, err_buf, sizeof(err_buf));
+			bc_log(Error, "Error writing %s frame to recording: %s (codec: %s, stream: %d)", 
+				pkt.type == AVMEDIA_TYPE_VIDEO ? "video" : "audio",
+				err_buf,
+				avcodec_get_name(stream->codecpar->codec_id),
+				opkt.stream_index);
 		}
 		update_last_mux_dts = false;
 		return false;
@@ -221,6 +251,7 @@ void media_writer::close()
 		last_mux_dts[i] = AV_NOPTS_VALUE;
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
+		last_timestamp_warning[i] = 0;
 	}
 
 	if (out_ctx)
@@ -382,6 +413,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	for (int i = 0; i < 2; i++) {
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
+		last_timestamp_warning[i] = 0;
 	}
 
 	AVDictionary *muxer_opts = NULL;
@@ -423,7 +455,85 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 			return -1;
 		}
 
-		properties.audio.apply(audio_st->codecpar);
+		// Check if the incoming audio codec is supported for recording
+		enum AVCodecID incoming_codec = properties.audio.codec_id;
+		bool codec_supported = false;
+		
+		// List of supported audio codecs for recording
+		switch (incoming_codec) {
+			// PCM variants (already supported)
+			case AV_CODEC_ID_PCM_S16LE:
+			case AV_CODEC_ID_PCM_S16BE:
+			case AV_CODEC_ID_PCM_U16LE:
+			case AV_CODEC_ID_PCM_U16BE:
+			case AV_CODEC_ID_PCM_S8:
+			case AV_CODEC_ID_PCM_U8:
+			case AV_CODEC_ID_PCM_ALAW:
+			case AV_CODEC_ID_PCM_MULAW:
+			case AV_CODEC_ID_PCM_S32LE:
+			case AV_CODEC_ID_PCM_S32BE:
+			case AV_CODEC_ID_PCM_U32LE:
+			case AV_CODEC_ID_PCM_U32BE:
+			case AV_CODEC_ID_PCM_S24LE:
+			case AV_CODEC_ID_PCM_S24BE:
+			case AV_CODEC_ID_PCM_U24LE:
+			case AV_CODEC_ID_PCM_U24BE:
+				codec_supported = true;
+				break;
+			
+			// Common IP camera audio codecs
+			case AV_CODEC_ID_AAC:           // Most common modern codec
+			case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
+			case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
+			case AV_CODEC_ID_MP3:           // Common in consumer cameras
+			case AV_CODEC_ID_G723_1:        // Low bitrate telephony
+			case AV_CODEC_ID_ADPCM_G722:    // Wideband audio
+			case AV_CODEC_ID_G729:          // Low bitrate telephony
+			case AV_CODEC_ID_GSM:           // Mobile telephony standard
+			case AV_CODEC_ID_GSM_MS:        // Microsoft GSM variant
+			case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
+			case AV_CODEC_ID_EAC3:          // Enhanced AC3
+			case AV_CODEC_ID_MP2:           // MPEG Layer 2
+			case AV_CODEC_ID_OPUS:          // Modern low-latency codec
+			case AV_CODEC_ID_AMR_NB:        // Narrowband AMR
+			case AV_CODEC_ID_AMR_WB:        // Wideband AMR
+			case AV_CODEC_ID_ILBC:          // Internet Low Bitrate Codec
+				codec_supported = true;
+				break;
+			
+			default:
+				codec_supported = false;
+				break;
+		}
+		
+		if (!codec_supported) {
+			bc_log(Warning, "Unsupported audio codec %s for recording, disabling audio stream (camera: %s)", 
+				avcodec_get_name(incoming_codec),
+				properties.audio.codec_id == AV_CODEC_ID_NONE ? "unknown" : avcodec_get_name(incoming_codec));
+			
+			// Clean up the audio stream we just created
+			if (audio_st) {
+				// Remove the stream from the context
+				for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
+					if (out_ctx->streams[i] == audio_st) {
+						// Shift remaining streams down
+						for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
+							out_ctx->streams[j] = out_ctx->streams[j + 1];
+						}
+						out_ctx->nb_streams--;
+						break;
+					}
+				}
+				audio_st = NULL;
+			}
+		} else {
+			// Apply the actual audio properties from the stream
+			properties.audio.apply(audio_st->codecpar);
+			bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
+				avcodec_get_name(incoming_codec),
+				properties.audio.sample_rate,
+				properties.audio.channels);
+		}
 	}
 
 	/* Open output file */

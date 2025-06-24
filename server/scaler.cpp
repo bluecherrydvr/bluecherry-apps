@@ -219,7 +219,7 @@ void scaler::push_frame(AVFrame *in)
 		if (!vaapi_hwaccel::hwupload_frame(hw_frames_ctx, in))
 			return;
 
-		bc_log(Debug, "scaler: uploaded frame %dx%d from software decoder to vaapi frame context, surface %#x", in->width, in->height, in->data[3]);
+		bc_log(Debug, "scaler: uploaded frame %dx%d from software decoder to vaapi frame context, surface %p", in->width, in->height, (void*)in->data[3]);
         }
 
 

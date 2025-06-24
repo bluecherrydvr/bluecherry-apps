@@ -17,7 +17,7 @@ focal_install()
     apt-get update
     apt -y install python3-distutils gnupg2 wget
     wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.8/get-pip.py
-    python3 /tmp/get-pip.py
+  	python3 /tmp/get-pip.py
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
