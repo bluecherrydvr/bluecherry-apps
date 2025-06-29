@@ -437,14 +437,32 @@ bool bc_stats::update_storage_info()
     pthread_mutex_lock(&_mutex);
     
     std::vector<storage_path> new_storage_paths;
-    
-    // Open /etc/mtab or /proc/mounts to get mounted filesystems
+    std::set<std::string> unique_mounts;
+
+    // Always include the default storage path
+    std::vector<std::string> storage_paths = {"/var/lib/bluecherry/recordings"};
+
+    // Query the Storage table for user-defined paths
+    BC_DB_RES dbres = bc_db_get_table("SELECT path FROM Storage");
+    if (dbres) {
+        while (!bc_db_fetch_row(dbres)) {
+            const char *path = bc_db_get_val(dbres, "path", NULL);
+            if (path && *path) {
+                storage_paths.push_back(std::string(path));
+            }
+        }
+        bc_db_free_table(dbres);
+    }
+
+    // Open /proc/mounts to map mount points
     FILE *mtab = setmntent("/proc/mounts", "r");
     if (!mtab) {
         pthread_mutex_unlock(&_mutex);
         return false;
     }
-    
+
+    // Build a map from mount point to filesystem type
+    std::map<std::string, std::string> mount_map;
     struct mntent *entry;
     while ((entry = getmntent(mtab)) != NULL) {
         // Skip non-local filesystems and special filesystems
@@ -457,32 +475,52 @@ bool bc_stats::update_storage_info()
             strncmp(entry->mnt_type, "fuse.", 5) == 0) {
             continue;
         }
-        
+        mount_map[std::string(entry->mnt_dir)] = std::string(entry->mnt_type);
+    }
+    endmntent(mtab);
+
+    // For each storage path, resolve its mount point
+    for (const auto& path : storage_paths) {
+        char resolved[PATH_MAX];
+        if (!realpath(path.c_str(), resolved)) {
+            continue;
+        }
+        std::string best_mount = "/";
+        size_t best_len = 0;
+        for (const auto& m : mount_map) {
+            if (strncmp(resolved, m.first.c_str(), m.first.length()) == 0) {
+                if (m.first.length() > best_len) {
+                    best_mount = m.first;
+                    best_len = m.first.length();
+                }
+            }
+        }
+        unique_mounts.insert(best_mount);
+    }
+
+    // Always include root mount
+    unique_mounts.insert("/");
+
+    // For each unique mount, collect stats
+    for (const auto& mount : unique_mounts) {
         struct statvfs vfs;
-        if (statvfs(entry->mnt_dir, &vfs) == 0) {
+        if (statvfs(mount.c_str(), &vfs) == 0) {
             storage_path path_info;
-            path_info.path = std::string(entry->mnt_dir);
-            path_info.filesystem = std::string(entry->mnt_type);
-            
-            // Calculate sizes in bytes
+            path_info.path = mount;
+            path_info.filesystem = mount_map.count(mount) ? mount_map[mount] : "unknown";
             uint64_t block_size = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
             path_info.total_size = (uint64_t)vfs.f_blocks * block_size;
             path_info.free_size = (uint64_t)vfs.f_bavail * block_size;
             path_info.used_size = path_info.total_size - path_info.free_size;
-            
-            // Calculate usage percentage
             if (path_info.total_size > 0) {
                 path_info.usage_percent = (uint32_t)((path_info.used_size * 100) / path_info.total_size);
             } else {
                 path_info.usage_percent = 0;
             }
-            
             new_storage_paths.push_back(path_info);
         }
     }
-    
-    endmntent(mtab);
-    
+
     // Update the storage paths
     _storage_paths = new_storage_paths;
     
