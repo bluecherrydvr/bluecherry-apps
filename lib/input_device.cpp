@@ -237,10 +237,31 @@ void stream_properties::audio_properties::apply(AVCodecContext *cc) const
 	cc->bit_rate = bit_rate;
 	cc->sample_rate = sample_rate;
 	cc->sample_fmt = sample_fmt;
-	cc->channels = channels;
 	cc->time_base = time_base;
 	cc->profile = profile;
 	cc->bits_per_coded_sample = bits_per_coded_sample;
+	
+	// Initialize channel layout properly
+	av_channel_layout_uninit(&cc->ch_layout);
+	if (channels > 0) {
+		// For common channel counts, use standard layouts
+		if (channels == 1) {
+			cc->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO;
+		} else if (channels == 2) {
+			cc->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
+		} else {
+			// For other channel counts, use default layout
+			av_channel_layout_default(&cc->ch_layout, channels);
+		}
+	} else {
+		// Fallback for invalid channel count
+		cc->ch_layout.order = AV_CHANNEL_ORDER_UNSPEC;
+		cc->ch_layout.nb_channels = 0;
+	}
+	
+	// Keep the old channels field for compatibility
+	cc->channels = channels;
+	
 	if (!extradata.empty()) {
 		cc->extradata_size = extradata.size();
 		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;
@@ -260,9 +281,30 @@ void stream_properties::audio_properties::apply(AVCodecParameters *cp) const
 	cp->bit_rate = bit_rate;
 	cp->sample_rate = sample_rate;
 	cp->format = sample_fmt;
-	cp->channels = channels;
 	cp->profile = profile;
 	cp->bits_per_coded_sample = bits_per_coded_sample;
+	
+	// Initialize channel layout properly
+	av_channel_layout_uninit(&cp->ch_layout);
+	if (channels > 0) {
+		// For common channel counts, use standard layouts
+		if (channels == 1) {
+			cp->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_MONO;
+		} else if (channels == 2) {
+			cp->ch_layout = (AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO;
+		} else {
+			// For other channel counts, use default layout
+			av_channel_layout_default(&cp->ch_layout, channels);
+		}
+	} else {
+		// Fallback for invalid channel count
+		cp->ch_layout.order = AV_CHANNEL_ORDER_UNSPEC;
+		cp->ch_layout.nb_channels = 0;
+	}
+	
+	// Keep the old channels field for compatibility
+	cp->channels = channels;
+	
 	if (!extradata.empty()) {
 		cp->extradata_size = extradata.size();
 		size_t size = extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE;

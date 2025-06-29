@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluecherry Historical Data Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chart-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        .controls {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        select, input {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .status {
+            background: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .auth-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .auth-section h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .auth-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .auth-inputs input {
+            flex: 1;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Bluecherry Historical Data Dashboard</h1>
+            <p>Real-time system monitoring with historical data visualization</p>
+        </div>
+
+        <div class="auth-section">
+            <h3>🔐 Authentication Required</h3>
+            <p>This API requires HTTP Basic Authentication with Bluecherry user credentials.</p>
+            <div class="auth-inputs">
+                <input type="text" id="username" placeholder="Username" value="admin">
+                <input type="password" id="password" placeholder="Password" value="password">
+                <button onclick="updateCredentials()">Update Credentials</button>
+            </div>
+            <p><strong>Note:</strong> Update the credentials above with your actual Bluecherry username and password.</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="dataType">Data Type:</label>
+                <select id="dataType">
+                    <option value="cpu">CPU Usage</option>
+                    <option value="memory">Memory Usage</option>
+                    <option value="network">Network Traffic</option>
+                    <option value="storage">Storage Usage</option>
+                    <option value="overall">Overall System</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="timeRange">Time Range:</label>
+                <select id="timeRange">
+                    <option value="60">Last 2 minutes (60 entries)</option>
+                    <option value="150">Last 5 minutes (150 entries)</option>
+                    <option value="300">Last 10 minutes (300 entries)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="updateInterval">Update Interval:</label>
+                <select id="updateInterval">
+                    <option value="2000">2 seconds</option>
+                    <option value="5000">5 seconds</option>
+                    <option value="10000">10 seconds</option>
+                </select>
+            </div>
+            <button onclick="startMonitoring()">Start Monitoring</button>
+            <button onclick="stopMonitoring()">Stop Monitoring</button>
+        </div>
+
+        <div class="status" id="status">
+            Status: Ready to start monitoring
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title" id="chartTitle">CPU Usage Over Time</div>
+            <canvas id="chartCanvas" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let monitoringInterval = null;
+        const API_BASE = 'http://localhost:7005/api';
+        let credentials = {
+            username: 'admin',
+            password: 'password'
+        };
+
+        function updateCredentials() {
+            credentials.username = document.getElementById('username').value;
+            credentials.password = document.getElementById('password').value;
+            updateStatus('Credentials updated');
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = 'Status: ' + message;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = 'Error: ' + message;
+            
+            const statusDiv = document.getElementById('status');
+            statusDiv.parentNode.insertBefore(errorDiv, statusDiv.nextSibling);
+            
+            // Remove error after 5 seconds
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 5000);
+        }
+
+        function createChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Value'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Free Space (GB)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleTimeString();
+        }
+
+        function updateChart(dataType, data) {
+            if (!chart || !data.history || data.history.length === 0) {
+                return;
+            }
+
+            const history = data.history;
+            const labels = history.map(entry => formatTimestamp(entry.timestamp));
+            
+            let datasets = [];
+
+            switch (dataType) {
+                case 'cpu':
+                    datasets = [
+                        {
+                            label: 'Load Average (1m)',
+                            data: history.map(entry => entry.load_average[0].value),
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Bluecherry CPU (User)',
+                            data: history.map(entry => entry.usage.bluecherry.user_space),
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Bluecherry CPU (Kernel)',
+                            data: history.map(entry => entry.usage.bluecherry.kernel_space),
+                            borderColor: 'rgb(255, 205, 86)',
+                            backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                            tension: 0.1
+                        }
+                    ];
+                    break;
+
+                case 'memory':
+                    datasets = [
+                        {
+                            label: 'System Available (GB)',
+                            data: history.map(entry => (entry.system.available / (1024 * 1024 * 1024)).toFixed(2)),
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Bluecherry Resident (MB)',
+                            data: history.map(entry => (entry.bluecherry.resident / (1024 * 1024)).toFixed(2)),
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1
+                        }
+                    ];
+                    break;
+
+                case 'network':
+                    if (history[0] && history[0].interfaces && history[0].interfaces.length > 0) {
+                        const interface = history[0].interfaces[0]; // Use first interface
+                        datasets = [
+                            {
+                                label: 'Bytes Received (MB/s)',
+                                data: history.map(entry => {
+                                    const iface = entry.interfaces.find(i => i.name === interface.name);
+                                    return iface ? (iface.bytes_received_per_sec / (1024 * 1024)).toFixed(2) : 0;
+                                }),
+                                borderColor: 'rgb(54, 162, 235)',
+                                backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                tension: 0.1
+                            },
+                            {
+                                label: 'Bytes Sent (MB/s)',
+                                data: history.map(entry => {
+                                    const iface = entry.interfaces.find(i => i.name === interface.name);
+                                    return iface ? (iface.bytes_sent_per_sec / (1024 * 1024)).toFixed(2) : 0;
+                                }),
+                                borderColor: 'rgb(255, 99, 132)',
+                                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                                tension: 0.1
+                            }
+                        ];
+                    }
+                    break;
+
+                case 'storage':
+                    if (history[0] && history[0].paths && history[0].paths.length > 0) {
+                        // Get unique paths from the first entry
+                        const paths = history[0].paths.map(p => p.path);
+                        
+                        // Create a dataset for each storage path
+                        paths.forEach((path, index) => {
+                            const colors = [
+                                'rgb(255, 99, 132)',
+                                'rgb(54, 162, 235)',
+                                'rgb(255, 205, 86)',
+                                'rgb(75, 192, 192)',
+                                'rgb(153, 102, 255)'
+                            ];
+                            
+                            datasets.push({
+                                label: `${path} Usage (%)`,
+                                data: history.map(entry => {
+                                    const pathData = entry.paths.find(p => p.path === path);
+                                    return pathData ? pathData.usage_percent : 0;
+                                }),
+                                borderColor: colors[index % colors.length],
+                                backgroundColor: colors[index % colors.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                                tension: 0.1
+                            });
+                            
+                            datasets.push({
+                                label: `${path} Free (GB)`,
+                                data: history.map(entry => {
+                                    const pathData = entry.paths.find(p => p.path === path);
+                                    return pathData ? (pathData.free_size / (1024 * 1024 * 1024)).toFixed(2) : 0;
+                                }),
+                                borderColor: colors[(index + 2) % colors.length],
+                                backgroundColor: colors[(index + 2) % colors.length].replace('rgb', 'rgba').replace(')', ', 0.1)'),
+                                tension: 0.1,
+                                yAxisID: 'y1'
+                            });
+                        });
+                    }
+                    break;
+
+                case 'overall':
+                    datasets = [
+                        {
+                            label: 'Load Average (1m)',
+                            data: history.map(entry => entry.cpu.load_average[0].value),
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Memory Available (GB)',
+                            data: history.map(entry => (entry.memory.system.available / (1024 * 1024 * 1024)).toFixed(2)),
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                            tension: 0.1,
+                            yAxisID: 'y1'
+                        }
+                    ];
+                    break;
+            }
+
+            chart.data.labels = labels;
+            chart.data.datasets = datasets;
+            chart.update();
+        }
+
+        async function fetchData() {
+            const dataType = document.getElementById('dataType').value;
+            const timeRange = document.getElementById('timeRange').value;
+            
+            try {
+                updateStatus('Fetching data...');
+                
+                // Create Authorization header
+                const authString = btoa(credentials.username + ':' + credentials.password);
+                const headers = {
+                    'Authorization': 'Basic ' + authString
+                };
+                
+                const response = await fetch(`${API_BASE}/stats/${dataType}/history?count=${timeRange}`, {
+                    headers: headers
+                });
+                
+                if (response.status === 401) {
+                    throw new Error('Authentication failed - check username and password');
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateChart(dataType, data);
+                updateStatus(`Last updated: ${new Date().toLocaleTimeString()}`);
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError(error.message);
+                updateStatus('Error occurred - check console for details');
+            }
+        }
+
+        function startMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+            }
+
+            createChart();
+            fetchData(); // Initial fetch
+
+            const interval = parseInt(document.getElementById('updateInterval').value);
+            monitoringInterval = setInterval(fetchData, interval);
+            
+            updateStatus('Monitoring started');
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                updateStatus('Monitoring stopped');
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            createChart();
+            updateStatus('Ready to start monitoring - update credentials above');
+        });
+    </script>
+</body>
+</html> 

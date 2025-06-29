@@ -603,7 +603,7 @@ bool CleanupManager::process_batch(int batch_size, double target_threshold, int&
     // Get files for this batch
     BC_DB_RES dbres = bc_db_get_table("SELECT m.* FROM Media m "
                                     "WHERE m.archive=0 AND m.filepath!='' "
-                                    "ORDER BY m.start_time ASC LIMIT %d", batch_size);
+                                    "ORDER BY m.start ASC LIMIT %d", batch_size);
     
     if (!dbres) {
         bc_log(Error, "Database error during batch cleanup");

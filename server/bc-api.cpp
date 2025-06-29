@@ -361,10 +361,102 @@ bool api_session::handle_request(const std::string &request)
         _api->create_http_response(_tx_buffer, body);
         return true;
     }
+    else if (!url.compare(0, 15, "/stats/storage"))
+    {
+        std::string body;
+        _api->get_storage_stats(body);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
     else if (!url.compare(0, 14, "/stats/overall"))
     {
         std::string body;
         _api->get_overall_stats(body);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 15, "/stats/cpu/history"))
+    {
+        std::string body;
+        size_t count = 60; // Default to 60 entries (2 minutes)
+        
+        // Parse count parameter if present
+        size_t param_pos = url.find("?count=");
+        if (param_pos != std::string::npos) {
+            std::string count_str = url.substr(param_pos + 7);
+            count = std::stoul(count_str);
+            if (count > 300) count = 300; // Cap at 300 entries (10 minutes)
+        }
+        
+        _api->get_cpu_history(body, count);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 18, "/stats/memory/history"))
+    {
+        std::string body;
+        size_t count = 60; // Default to 60 entries (2 minutes)
+        
+        // Parse count parameter if present
+        size_t param_pos = url.find("?count=");
+        if (param_pos != std::string::npos) {
+            std::string count_str = url.substr(param_pos + 7);
+            count = std::stoul(count_str);
+            if (count > 300) count = 300; // Cap at 300 entries (10 minutes)
+        }
+        
+        _api->get_memory_history(body, count);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 19, "/stats/network/history"))
+    {
+        std::string body;
+        size_t count = 60; // Default to 60 entries (2 minutes)
+        
+        // Parse count parameter if present
+        size_t param_pos = url.find("?count=");
+        if (param_pos != std::string::npos) {
+            std::string count_str = url.substr(param_pos + 7);
+            count = std::stoul(count_str);
+            if (count > 300) count = 300; // Cap at 300 entries (10 minutes)
+        }
+        
+        _api->get_network_history(body, count);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 20, "/stats/storage/history"))
+    {
+        std::string body;
+        size_t count = 60; // Default to 60 entries (2 minutes)
+        
+        // Parse count parameter if present
+        size_t param_pos = url.find("?count=");
+        if (param_pos != std::string::npos) {
+            std::string count_str = url.substr(param_pos + 7);
+            count = std::stoul(count_str);
+            if (count > 300) count = 300; // Cap at 300 entries (10 minutes)
+        }
+        
+        _api->get_storage_history(body, count);
+        _api->create_http_response(_tx_buffer, body);
+        return true;
+    }
+    else if (!url.compare(0, 19, "/stats/overall/history"))
+    {
+        std::string body;
+        size_t count = 60; // Default to 60 entries (2 minutes)
+        
+        // Parse count parameter if present
+        size_t param_pos = url.find("?count=");
+        if (param_pos != std::string::npos) {
+            std::string count_str = url.substr(param_pos + 7);
+            count = std::stoul(count_str);
+            if (count > 300) count = 300; // Cap at 300 entries (10 minutes)
+        }
+        
+        _api->get_overall_history(body, count);
         _api->create_http_response(_tx_buffer, body);
         return true;
     }
@@ -624,6 +716,41 @@ void bc_api::get_network_stats(std::string &outout)
     outout.append("]");
 }
 
+void bc_api::get_storage_stats(std::string &outout)
+{
+    std::vector<bc_stats::storage_path> storage_paths;
+    _stats->get_storage_info(&storage_paths);
+    
+    outout = std::string("[");
+    
+    for (size_t i = 0; i < storage_paths.size(); i++)
+    {
+        const bc_stats::storage_path& path = storage_paths[i];
+        char buffer[BC_REQUEST_MAX];
+        
+        int length = snprintf(buffer, sizeof(buffer),
+            "{"
+                "\"path\":\"%s\","
+                "\"filesystem\":\"%s\","
+                "\"total_size\":%lu,"
+                "\"used_size\":%lu,"
+                "\"free_size\":%lu,"
+                "\"usage_percent\":%u"
+            "}",
+            path.path.c_str(),
+            path.filesystem.c_str(),
+            path.total_size,
+            path.used_size,
+            path.free_size,
+            path.usage_percent);
+        
+        outout.append(buffer, length);
+        if (i < storage_paths.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]");
+}
+
 void bc_api::get_overall_stats(std::string &outout)
 {
     outout = std::string("{\"cpu\":");
@@ -640,6 +767,11 @@ void bc_api::get_overall_stats(std::string &outout)
 
     outout.append(",\"network\":");
     get_network_stats(stats);
+    outout.append(stats);
+    stats.clear();
+    
+    outout.append(",\"storage\":");
+    get_storage_stats(stats);
     outout.append(stats);
     outout.append("}");
 }
@@ -762,4 +894,374 @@ void bc_api::run()
     /* Thats all */
     close(_fd);
     _fd = -1;
+}
+
+// Historical data methods implementation
+void bc_api::get_cpu_history(std::string &outout, size_t count)
+{
+    std::vector<stats_history_entry> history = _stats->get_history_entries(count);
+    
+    outout = std::string("{\"history\":[");
+    
+    for (size_t i = 0; i < history.size(); i++)
+    {
+        const stats_history_entry& entry = history[i];
+        auto time_t = std::chrono::system_clock::to_time_t(entry.timestamp);
+        
+        char response[BC_REQUEST_MAX];
+        int length = snprintf(response, sizeof(response),
+            "{"
+                "\"timestamp\":%ld,"
+                "\"load_average\":["
+                    "{\"interval\":\"1m\",\"value\":%.2f},"
+                    "{\"interval\":\"5m\",\"value\":%.2f},"
+                    "{\"interval\":\"10m\",\"value\":%.2f}"
+                "],"
+                "\"usage\":{"
+                    "\"bluecherry\":{"
+                        "\"user_space\":%.2f,"
+                        "\"kernel_space\":%.2f"
+                    "},"
+                    "\"idle\":%.2f,"
+                    "\"user_space\":%.2f,"
+                    "\"kernel_space\":%.2f,"
+                    "\"user_niced\":%.2f,"
+                    "\"soft_ints\":%.2f,"
+                    "\"hard_ints\":%.2f,"
+                    "\"io_wait\":%.2f"
+                "}"
+            "}",
+            time_t,
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[0]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[1]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[2]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.proc.user_space_usg), 
+            bc_stats::bc_u32_to_float(entry.cpu_data.proc.kernel_space_usg),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.idle_time),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.user_space),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.kernel_space),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.user_niced),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.soft_ints),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.hard_ints),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.io_wait));
+
+        outout.append(response, length);
+        if (i < history.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]}");
+}
+
+void bc_api::get_memory_history(std::string &outout, size_t count)
+{
+    std::vector<stats_history_entry> history = _stats->get_history_entries(count);
+    
+    outout = std::string("{\"history\":[");
+    
+    for (size_t i = 0; i < history.size(); i++)
+    {
+        const stats_history_entry& entry = history[i];
+        auto time_t = std::chrono::system_clock::to_time_t(entry.timestamp);
+        
+        char response[BC_REQUEST_MAX];
+        int length = snprintf(response, sizeof(response),
+            "{"
+                "\"timestamp\":%ld,"
+                "\"bluecherry\":{"
+                    "\"resident\":%lu,"
+                    "\"virtual\":%lu"
+                "},"
+                "\"system\":{"
+                    "\"available\":%lu,"
+                    "\"buffers\":%lu,"
+                    "\"total\":%lu,"
+                    "\"swap\":%lu,"
+                    "\"free\":%lu"
+                "}"
+            "}",
+            time_t,
+            entry.memory_data.resident,
+            entry.memory_data.virt,
+            entry.memory_data.avail,
+            entry.memory_data.buff,
+            entry.memory_data.total,
+            entry.memory_data.swap,
+            entry.memory_data.free);
+
+        outout.append(response, length);
+        if (i < history.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]}");
+}
+
+void bc_api::get_network_history(std::string &outout, size_t count)
+{
+    std::vector<stats_history_entry> history = _stats->get_history_entries(count);
+    
+    outout = std::string("{\"history\":[");
+    
+    for (size_t i = 0; i < history.size(); i++)
+    {
+        const stats_history_entry& entry = history[i];
+        auto time_t = std::chrono::system_clock::to_time_t(entry.timestamp);
+        
+        outout.append("{");
+        outout.append("\"timestamp\":");
+        outout.append(std::to_string(time_t));
+        outout.append(",\"interfaces\":[");
+        
+        bool first_interface = true;
+        for (bc_stats::network_const_it it = entry.network_data.begin(); it != entry.network_data.end(); it++)
+        {
+            if (!first_interface) outout.append(",");
+            first_interface = false;
+            
+            const bc_stats::net_iface& iface = it->second;
+            char buffer[BC_REQUEST_MAX];
+
+            int length = snprintf(buffer, sizeof(buffer),
+                "{"
+                    "\"name\":\"%s\","
+                    "\"type\":%d,"
+                    "\"hw_addr\":\"%s\","
+                    "\"ip_addr\":\"%s\","
+                    "\"bytes_received\":%ld,"
+                    "\"bytes_sent\":%ld,"
+                    "\"packets_received\":%ld,"
+                    "\"packets_sent\":%ld,"
+                    "\"bytes_received_per_sec\":%lu,"
+                    "\"bytes_sent_per_sec\":%lu,"
+                    "\"packets_received_per_sec\":%lu,"
+                    "\"packets_sent_per_sec\":%lu"
+                "}",
+                iface.name.c_str(),
+                iface.type,
+                iface.hwaddr.c_str(),
+                iface.ipaddr.c_str(),
+                iface.bytes_recv,
+                iface.bytes_sent,
+                iface.pkts_recv,
+                iface.pkts_sent,
+                iface.bytes_recv_per_sec,
+                iface.bytes_sent_per_sec,
+                iface.pkts_recv_per_sec,
+                iface.pkts_sent_per_sec);
+
+            outout.append(buffer, length);
+        }
+        
+        outout.append("]}");
+        if (i < history.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]}");
+}
+
+void bc_api::get_storage_history(std::string &outout, size_t count)
+{
+    std::vector<stats_history_entry> history = _stats->get_history_entries(count);
+    
+    outout = std::string("{\"history\":[");
+    
+    for (size_t i = 0; i < history.size(); i++)
+    {
+        const stats_history_entry& entry = history[i];
+        auto time_t = std::chrono::system_clock::to_time_t(entry.timestamp);
+        
+        outout.append("{");
+        outout.append("\"timestamp\":");
+        outout.append(std::to_string(time_t));
+        outout.append(",\"paths\":[");
+        
+        bool first_path = true;
+        for (const auto& path : entry.storage_data)
+        {
+            if (!first_path) outout.append(",");
+            first_path = false;
+            
+            char buffer[BC_REQUEST_MAX];
+            int length = snprintf(buffer, sizeof(buffer),
+                "{"
+                    "\"path\":\"%s\","
+                    "\"filesystem\":\"%s\","
+                    "\"total_size\":%lu,"
+                    "\"used_size\":%lu,"
+                    "\"free_size\":%lu,"
+                    "\"usage_percent\":%u"
+                "}",
+                path.path.c_str(),
+                path.filesystem.c_str(),
+                path.total_size,
+                path.used_size,
+                path.free_size,
+                path.usage_percent);
+            
+            outout.append(buffer, length);
+        }
+        
+        outout.append("]}");
+        if (i < history.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]}");
+}
+
+void bc_api::get_overall_history(std::string &outout, size_t count)
+{
+    std::vector<stats_history_entry> history = _stats->get_history_entries(count);
+    
+    outout = std::string("{\"history\":[");
+    
+    for (size_t i = 0; i < history.size(); i++)
+    {
+        const stats_history_entry& entry = history[i];
+        auto time_t = std::chrono::system_clock::to_time_t(entry.timestamp);
+        
+        outout.append("{");
+        outout.append("\"timestamp\":");
+        outout.append(std::to_string(time_t));
+        outout.append(",\"cpu\":");
+        
+        // CPU data
+        char cpu_response[BC_REQUEST_MAX];
+        int cpu_length = snprintf(cpu_response, sizeof(cpu_response),
+            "{"
+                "\"load_average\":["
+                    "{\"interval\":\"1m\",\"value\":%.2f},"
+                    "{\"interval\":\"5m\",\"value\":%.2f},"
+                    "{\"interval\":\"10m\",\"value\":%.2f}"
+                "],"
+                "\"usage\":{"
+                    "\"bluecherry\":{"
+                        "\"user_space\":%.2f,"
+                        "\"kernel_space\":%.2f"
+                    "},"
+                    "\"idle\":%.2f,"
+                    "\"user_space\":%.2f,"
+                    "\"kernel_space\":%.2f,"
+                    "\"user_niced\":%.2f,"
+                    "\"soft_ints\":%.2f,"
+                    "\"hard_ints\":%.2f,"
+                    "\"io_wait\":%.2f"
+                "}"
+            "}",
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[0]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[1]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.load_avg[2]),
+            bc_stats::bc_u32_to_float(entry.cpu_data.proc.user_space_usg), 
+            bc_stats::bc_u32_to_float(entry.cpu_data.proc.kernel_space_usg),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.idle_time),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.user_space),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.kernel_space),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.user_niced),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.soft_ints),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.hard_ints),
+            bc_stats::bc_u32_to_float(entry.cpu_data.sum.io_wait));
+        
+        outout.append(cpu_response, cpu_length);
+        
+        // Memory data
+        outout.append(",\"memory\":");
+        char mem_response[BC_REQUEST_MAX];
+        int mem_length = snprintf(mem_response, sizeof(mem_response),
+            "{"
+                "\"bluecherry\":{"
+                    "\"resident\":%lu,"
+                    "\"virtual\":%lu"
+                "},"
+                "\"system\":{"
+                    "\"available\":%lu,"
+                    "\"buffers\":%lu,"
+                    "\"total\":%lu,"
+                    "\"swap\":%lu,"
+                    "\"free\":%lu"
+                "}"
+            "}",
+            entry.memory_data.resident,
+            entry.memory_data.virt,
+            entry.memory_data.avail,
+            entry.memory_data.buff,
+            entry.memory_data.total,
+            entry.memory_data.swap,
+            entry.memory_data.free);
+        
+        outout.append(mem_response, mem_length);
+        
+        // Network data
+        outout.append(",\"network\":[");
+        bool first_interface = true;
+        for (bc_stats::network_const_it it = entry.network_data.begin(); it != entry.network_data.end(); it++)
+        {
+            if (!first_interface) outout.append(",");
+            first_interface = false;
+            
+            const bc_stats::net_iface& iface = it->second;
+            char net_buffer[BC_REQUEST_MAX];
+
+            int net_length = snprintf(net_buffer, sizeof(net_buffer),
+                "{"
+                    "\"name\":\"%s\","
+                    "\"type\":%d,"
+                    "\"hw_addr\":\"%s\","
+                    "\"ip_addr\":\"%s\","
+                    "\"bytes_received\":%ld,"
+                    "\"bytes_sent\":%ld,"
+                    "\"packets_received\":%ld,"
+                    "\"packets_sent\":%ld,"
+                    "\"bytes_received_per_sec\":%lu,"
+                    "\"bytes_sent_per_sec\":%lu,"
+                    "\"packets_received_per_sec\":%lu,"
+                    "\"packets_sent_per_sec\":%lu"
+                "}",
+                iface.name.c_str(),
+                iface.type,
+                iface.hwaddr.c_str(),
+                iface.ipaddr.c_str(),
+                iface.bytes_recv,
+                iface.bytes_sent,
+                iface.pkts_recv,
+                iface.pkts_sent,
+                iface.bytes_recv_per_sec,
+                iface.bytes_sent_per_sec,
+                iface.pkts_recv_per_sec,
+                iface.pkts_sent_per_sec);
+
+            outout.append(net_buffer, net_length);
+        }
+        outout.append("]");
+        
+        // Storage data
+        outout.append(",\"storage\":[");
+        bool first_path = true;
+        for (const auto& path : entry.storage_data)
+        {
+            if (!first_path) outout.append(",");
+            first_path = false;
+            
+            char storage_buffer[BC_REQUEST_MAX];
+            int storage_length = snprintf(storage_buffer, sizeof(storage_buffer),
+                "{"
+                    "\"path\":\"%s\","
+                    "\"filesystem\":\"%s\","
+                    "\"total_size\":%lu,"
+                    "\"used_size\":%lu,"
+                    "\"free_size\":%lu,"
+                    "\"usage_percent\":%u"
+                "}",
+                path.path.c_str(),
+                path.filesystem.c_str(),
+                path.total_size,
+                path.used_size,
+                path.free_size,
+                path.usage_percent);
+            
+            outout.append(storage_buffer, storage_length);
+        }
+        outout.append("]");
+        
+        if (i < history.size() - 1) outout.append(",");
+    }
+    
+    outout.append("]}");
 }

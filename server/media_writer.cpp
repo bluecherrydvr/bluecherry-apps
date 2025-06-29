@@ -446,6 +446,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	properties.video.apply(video_st->codecpar);
 
+	/* Setup audio stream if available */
 	if (properties.has_audio())
 	{
 		audio_st = avformat_new_stream(out_ctx, NULL);
@@ -459,51 +460,35 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		enum AVCodecID incoming_codec = properties.audio.codec_id;
 		bool codec_supported = false;
 		
-		// List of supported audio codecs for recording
-		switch (incoming_codec) {
-			// PCM variants (already supported)
-			case AV_CODEC_ID_PCM_S16LE:
-			case AV_CODEC_ID_PCM_S16BE:
-			case AV_CODEC_ID_PCM_U16LE:
-			case AV_CODEC_ID_PCM_U16BE:
-			case AV_CODEC_ID_PCM_S8:
-			case AV_CODEC_ID_PCM_U8:
-			case AV_CODEC_ID_PCM_ALAW:
-			case AV_CODEC_ID_PCM_MULAW:
-			case AV_CODEC_ID_PCM_S32LE:
-			case AV_CODEC_ID_PCM_S32BE:
-			case AV_CODEC_ID_PCM_U32LE:
-			case AV_CODEC_ID_PCM_U32BE:
-			case AV_CODEC_ID_PCM_S24LE:
-			case AV_CODEC_ID_PCM_S24BE:
-			case AV_CODEC_ID_PCM_U24LE:
-			case AV_CODEC_ID_PCM_U24BE:
-				codec_supported = true;
-				break;
-			
-			// Common IP camera audio codecs
-			case AV_CODEC_ID_AAC:           // Most common modern codec
-			case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
-			case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
-			case AV_CODEC_ID_MP3:           // Common in consumer cameras
-			case AV_CODEC_ID_G723_1:        // Low bitrate telephony
-			case AV_CODEC_ID_ADPCM_G722:    // Wideband audio
-			case AV_CODEC_ID_G729:          // Low bitrate telephony
-			case AV_CODEC_ID_GSM:           // Mobile telephony standard
-			case AV_CODEC_ID_GSM_MS:        // Microsoft GSM variant
-			case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
-			case AV_CODEC_ID_EAC3:          // Enhanced AC3
-			case AV_CODEC_ID_MP2:           // MPEG Layer 2
-			case AV_CODEC_ID_OPUS:          // Modern low-latency codec
-			case AV_CODEC_ID_AMR_NB:        // Narrowband AMR
-			case AV_CODEC_ID_AMR_WB:        // Wideband AMR
-			case AV_CODEC_ID_ILBC:          // Internet Low Bitrate Codec
-				codec_supported = true;
-				break;
-			
-			default:
-				codec_supported = false;
-				break;
+		// Skip problematic audio configurations that cause muxer failures
+		if (incoming_codec == AV_CODEC_ID_PCM_MULAW && properties.audio.channels == 1) {
+			bc_log(Warning, "Skipping problematic audio stream: pcm_mulaw with 1 channel (causes muxer initialization failure)");
+			codec_supported = false;
+		} else {
+			// Most common IP camera audio codecs
+			switch (incoming_codec) {
+				// Standard PCM codecs
+				case AV_CODEC_ID_PCM_S16LE:
+				case AV_CODEC_ID_PCM_S16BE:
+				case AV_CODEC_ID_PCM_ALAW:
+				case AV_CODEC_ID_PCM_MULAW:
+				
+				// Common IP camera audio codecs
+				case AV_CODEC_ID_AAC:           // Most common modern codec
+				case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
+				case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
+				case AV_CODEC_ID_MP3:           // Common in consumer cameras
+				case AV_CODEC_ID_G723_1:        // Low bitrate telephony
+				case AV_CODEC_ID_G729:          // Low bitrate telephony
+				case AV_CODEC_ID_GSM:           // Mobile telephony standard
+				case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
+					codec_supported = true;
+					break;
+				
+				default:
+					codec_supported = false;
+					break;
+			}
 		}
 		
 		if (!codec_supported) {
