@@ -10,6 +10,7 @@ bluecherry (3:3.1.13) bookworm bullseye buster focal jammy mantic noble; urgency
   * FIX: Replace old server cleanup code with optimized CleanupManager implementation
   * FIX: Add comprehensive monitoring and diagnostic capabilities
   * FIX: Maintain backward compatibility with all existing distributions
+  * FIX: Audio recording muxer initialization failure - fix channel layout handling and skip problematic pcm_mulaw configurations
 
  -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 23 Jun 2025 15:00:00 -0500
 
