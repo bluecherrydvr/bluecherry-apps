@@ -1,0 +1,13 @@
+preferred_libraries:
+  - Chart.js (frontend charting)
+  - Bootstrap (UI styling)
+  - jQuery (legacy AJAX, DOM manipulation)
+  - C++ STL (backend data structures)
+  - MySQL, SQLite (database)
+  - Bash (automation)
+design_patterns:
+  - PHP: MVC-like separation (templates, AJAX endpoints, lib/ helpers)
+  - C++: Daemon/service pattern for long-running processes
+  - Use of singletons for DB and config access
+  - Helper modules for device and protocol abstraction
+  - REST-like AJAX endpoints for frontend-backend communication 

@@ -40,6 +40,7 @@ define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_PLAYBACK', 'Playback');
 define('MMENU_STATISTICS', 'Event statistics');
+define('MMENU_MONITORING', 'System Monitoring');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_DOCUMENTATION', 'Documentation');

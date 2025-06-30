@@ -10,6 +10,8 @@
 #include <thread>
 #include <sys/statvfs.h>
 #include <mntent.h>
+#include <set>
+#include <map>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,6 +22,7 @@
 
 #include "bc-stats.h"
 #include "logc.h"
+#include "libbluecherry.h"
 
 #define BC_DIR_NETWORK           "/sys/class/net/"
 #define BC_FILE_SELFSTATUS       "/proc/self/status"

@@ -1,0 +1,23 @@
+major_tables:
+  - Devices: Camera/device configuration, RTSP/ONVIF info
+  - EventsCam: Camera event records (motion, triggers)
+  - Users: User accounts, hashed passwords, permissions
+  - Media: Video/audio file metadata
+  - Storage: Storage locations and usage
+  - Licenses: Licensing and feature restrictions
+  - EventComments, EventTags: Metadata for events
+  - ActiveUsers: Tracks logged-in users
+relationships:
+  - EventsCam.device_id -> Devices.id
+  - EventComments.event_id -> EventsCam.id
+  - EventComments.user_id -> Users.id
+  - EventTags.event_id -> EventsCam.id
+  - EventTags.user_id -> Users.id
+  - EventsCam.media_id -> Media.id
+  - Storage used by Devices
+naming_conventions:
+  - Tables: PascalCase (Devices, EventsCam, Users)
+  - Columns: snake_case or lowerCamelCase
+orm_vs_raw_sql:
+  - Raw SQL is used throughout (see www/ajax/ and lib/)
+  - No ORM; queries are constructed in PHP and C++ 
