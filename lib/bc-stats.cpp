@@ -12,10 +12,12 @@
 #include <mntent.h>
 #include <set>
 #include <map>
+#include <cstdlib> // For system()
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
@@ -124,6 +126,14 @@ bool bc_stats::update_mem_info()
     __sync_lock_test_and_set(&_memory.avail, parse_info(buffer, length, "MemAvailable"));
     __sync_lock_test_and_set(&_memory.buff, parse_info(buffer, length, "Buffers"));
     __sync_lock_test_and_set(&_memory.swap, parse_info(buffer, length, "SwapCached"));
+    
+    /* Calculate memory usage percentage using MemAvailable (consistent with web UI) */
+    uint64_t total = __sync_add_and_fetch(&_memory.total, 0);
+    uint64_t available = __sync_add_and_fetch(&_memory.avail, 0);
+    if (total > 0) {
+        uint32_t mem_usage_percent = (uint32_t)(100 - (available * 100 / total));
+        __sync_lock_test_and_set(&_memory.usage_percent, mem_usage_percent);
+    }
 
     /* Load /proc/self/status file */
     length = load_file(BC_FILE_SELFSTATUS, buffer, sizeof(buffer));
@@ -536,6 +546,7 @@ void bc_stats::monithoring_thread()
     pthread_setname_np(pthread_self(), "MONITORING");
     int history_counter = 0;
     int storage_counter = 0;
+    int rrd_counter = 0;  // Counter for RRD updates
     
     while (!__sync_add_and_fetch(&_cancel, 0))
     {
@@ -557,6 +568,13 @@ void bc_stats::monithoring_thread()
             history_counter = 0;
         }
 
+        // Update RRD every 10 seconds (less frequent to reduce I/O)
+        rrd_counter++;
+        if (rrd_counter >= 10) {
+            update_rrd_data();
+            rrd_counter = 0;
+        }
+
         //display();
         sleep(1);
     }
@@ -568,6 +586,9 @@ void bc_stats::start_monithoring()
 {
     pthread_mutex_init(&_mutex, NULL);
     __sync_lock_test_and_set(&_active, 1);
+
+    // Initialize RRD file if it doesn't exist
+    initialize_rrd_file();
 
     _thread = std::thread(&bc_stats::monithoring_thread, this);
 }
@@ -644,4 +665,117 @@ size_t bc_stats::get_history_size() const
 {
     std::lock_guard<std::mutex> lock(_history_mutex);
     return _history.size();
+}
+
+void bc_stats::initialize_rrd_file()
+{
+    // Try multiple possible RRD locations
+    const char* rrd_paths[] = {
+        "/var/lib/bluecherry/monitor.rrd",
+        "/tmp/bluecherry-monitor.rrd",
+        "/var/tmp/bluecherry-monitor.rrd"
+    };
+    
+    const char* rrd_path = nullptr;
+    
+    // Find the first writable location
+    for (const char* path : rrd_paths) {
+        FILE* test_file = fopen(path, "r");
+        if (test_file) {
+            fclose(test_file);
+            bc_log(Info, "RRD file %s already exists", path);
+            return;
+        }
+        
+        // Try to create the directory if it doesn't exist
+        char dir_path[256];
+        snprintf(dir_path, sizeof(dir_path), "%s", path);
+        char* last_slash = strrchr(dir_path, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+            mkdir(dir_path, 0755); // Ignore errors
+        }
+        
+        // Test if we can write to this location
+        FILE* test_write = fopen(path, "w");
+        if (test_write) {
+            fclose(test_write);
+            unlink(path); // Remove the test file
+            rrd_path = path;
+            break;
+        }
+    }
+    
+    if (!rrd_path) {
+        bc_log(Error, "No writable location found for RRD file");
+        return;
+    }
+    
+    // Create RRD file with appropriate data sources and archives (10-second step)
+    char create_cmd[512];
+    snprintf(create_cmd, sizeof(create_cmd),
+        "rrdtool create %s --step 10 "
+        "DS:cpu:GAUGE:20:0:100 "
+        "DS:mem:GAUGE:20:0:100 "
+        "DS:disk:GAUGE:20:0:100 "
+        "RRA:AVERAGE:0.5:1:360 "     /* 1 hour of 10-second data */
+        "RRA:AVERAGE:0.5:6:1440 "    /* 24 hours of 1-minute data */
+        "RRA:AVERAGE:0.5:30:288 "    /* 1 day of 5-minute data */
+        "RRA:AVERAGE:0.5:360:168 "   /* 1 week of 1-hour data */
+        "RRA:AVERAGE:0.5:8640:30",   /* 1 month of 1-day data */
+        rrd_path);
+    
+    int result = system(create_cmd);
+    if (result == 0) {
+        bc_log(Info, "Successfully created RRD file %s", rrd_path);
+    } else {
+        bc_log(Error, "Failed to create RRD file %s (exit code: %d)", rrd_path, result);
+    }
+}
+
+void bc_stats::update_rrd_data()
+{
+    // Prepare values for RRD update (CPU, memory, disk usage)
+    float cpu_percent = 0.0f;
+    if (_cpu.cores.size() > 0) {
+        // Convert encoded CPU values to percentages
+        float user_space = bc_u32_to_float(_cpu.cores[0].user_space);
+        float kernel_space = bc_u32_to_float(_cpu.cores[0].kernel_space);
+        float user_niced = bc_u32_to_float(_cpu.cores[0].user_niced);
+        cpu_percent = user_space + kernel_space + user_niced;
+    }
+    float mem_percent = 0.0f;
+    if (_memory.total > 0) {
+        // Use MemAvailable for consistency with web UI
+        mem_percent = 100.0f * (float)(_memory.total - _memory.avail) / (float)_memory.total;
+    }
+    float disk_percent = 0.0f;
+    if (!_storage_paths.empty()) {
+        disk_percent = (float)_storage_paths[0].usage_percent;
+    }
+    
+    // Try multiple possible RRD locations
+    const char* rrd_paths[] = {
+        "/var/lib/bluecherry/monitor.rrd",
+        "/tmp/bluecherry-monitor.rrd",
+        "/var/tmp/bluecherry-monitor.rrd"
+    };
+    
+    bool updated = false;
+    for (const char* rrd_path : rrd_paths) {
+        char rrd_cmd[256];
+        snprintf(rrd_cmd, sizeof(rrd_cmd),
+            "rrdtool update %s N:%.2f:%.2f:%.2f 2>/dev/null",
+            rrd_path, cpu_percent, mem_percent, disk_percent);
+        
+        int result = system(rrd_cmd);
+        if (result == 0) {
+            updated = true;
+            break;
+        }
+    }
+    
+    if (!updated) {
+        bc_log(Debug, "Failed to update RRD file (all locations failed)");
+    }
 }
