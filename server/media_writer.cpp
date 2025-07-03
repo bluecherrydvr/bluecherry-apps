@@ -461,8 +461,9 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		bool codec_supported = false;
 		
 		// Skip problematic audio configurations that cause muxer failures
-		if (incoming_codec == AV_CODEC_ID_PCM_MULAW && properties.audio.channels == 1) {
-			bc_log(Warning, "Skipping problematic audio stream: pcm_mulaw with 1 channel (causes muxer initialization failure)");
+		if ((incoming_codec == AV_CODEC_ID_PCM_MULAW || incoming_codec == AV_CODEC_ID_PCM_ALAW) && properties.audio.channels == 1) {
+			bc_log(Warning, "Skipping problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
+				avcodec_get_name(incoming_codec));
 			codec_supported = false;
 		} else {
 			// Most common IP camera audio codecs
