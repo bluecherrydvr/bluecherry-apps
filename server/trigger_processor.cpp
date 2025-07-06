@@ -6,6 +6,7 @@
 
 #include "trigger_processor.h"
 #include "trigger_server.h"
+#include "bc-server.h"
 
 extern "C" {
 #include <libswscale/swscale.h>
@@ -15,12 +16,14 @@ extern "C" {
 
 void trigger_processor::trigger(const char *description)
 {
-    // Example implementation (replace with actual logic)
     pthread_mutex_lock(&trigger_flag_lock);
     trigger_flag = true;
     pthread_mutex_unlock(&trigger_flag_lock);
 
-    // Log or handle the trigger
+    // Insert a new event into EventsCam for this trigger
+    bc_db_query("INSERT INTO EventsCam (time, level_id, device_id, type_id, details) "
+                "VALUES (UNIX_TIMESTAMP(), 'info', %d, '%s', NULL)", camera_id, description);
+    bc_log(Info, "Trigger event recorded: camera_id=%d, type=%s", camera_id, description);
     printf("Trigger: %s\n", description);
 }
 
