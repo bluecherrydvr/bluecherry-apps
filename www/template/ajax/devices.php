@@ -48,7 +48,10 @@
                 </div>
             </div>
 
-            <?php if ($devices->cards){ ?>
+            <?php if (!$devices->cards){ ?>
+                <br>
+                <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i> <?php echo NO_CARDS; ?></div>
+            <?php } else { ?>
             
             <?php 
                 $counter = 0;

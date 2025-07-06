@@ -99,52 +99,34 @@ class licenses extends Controller {
         // }
 
         if (!empty($_GET['mode']) && $_GET['mode'] == 'deactivate') {
-            // Check if license is invalid (ports = 0)
-            $allowed_devices = bc_license_devices_allowed();
-            if ((int)$allowed_devices == 0) {
-                // License is invalid, allow direct database deletion
-                $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
-                $message = L_LICENSE_DEACTIVATED;
-                if ($result) { // success
-                    $message = L_LICENSE_DEACTIVATED;
-                }
-                else { // fail
-                    $message = L_LICENSE_DEACTIVATED_DB_FAIL;
-                }
-                $ret = bc_license_check_genuine();
-                data::responseJSON(true, $message, $ret);
-                exit();
-            }
+			$ret = bc_license_deactivate_key();
+			if (is_null($ret)) {
+				data::responseJSON(false, false);
+				exit();
+			}
 
-            // Normal deactivation flow for valid licenses
-            $ret = bc_license_deactivate_key();
-            if (is_null($ret)) {
-                data::responseJSON(false, false);
-                exit();
-            }
+			// Show status message if deactivation fails
+			$status = (int)$ret[1];
+			if ($status != Constant('LA_OK') && $status != 63) {
+				$message = licenses::getLicenseStatusMessage($status);
+				data::responseJSON(false, $message, $ret);
+				exit();
+			}
+			
+			// Delete the license key from database
+			$result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
+			$message = L_LICENSE_DEACTIVATED;
+			if ($result) { // success
+				$message = L_LICENSE_DEACTIVATED;
+			}
+			else { // fail
+				$message = L_LICENSE_DEACTIVATED_DB_FAIL;
+			}
 
-            // Show status message if deactivation fails
-            $status = (int)$ret[1];
-            if ($status != Constant('LA_OK') && $status != 63) {
-                $message = licenses::getLicenseStatusMessage($status);
-                data::responseJSON(false, $message, $ret);
-                exit();
-            }
-            
-            // Delete the license key from database
-            $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
-            $message = L_LICENSE_DEACTIVATED;
-            if ($result) { // success
-                $message = L_LICENSE_DEACTIVATED;
-            }
-            else { // fail
-                $message = L_LICENSE_DEACTIVATED_DB_FAIL;
-            }
-
-            // Update the general notification in the page
-            $ret = bc_license_check_genuine();
-            data::responseJSON(true, $message, $ret);
-        }
+			// Update the general notification in the page
+			$ret = bc_license_check_genuine();
+			data::responseJSON(true, $message, $ret);
+		}
 
     }
 

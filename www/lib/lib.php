@@ -508,15 +508,28 @@ class user{
 	}
 }
 
-function device($id){ #wrapper for camera/ipCamera
-	$device = data::getObject('Devices', 'id', $id);
-	if (substr($device[0]['protocol'], 0, 2) === 'IP'){
-		$device = new ipCamera($device[0]['id']);
-	} else {
-		$device = new camera($device[0]['device']);
-	};
-	$device->info['ptz_presets'] = data::query("SELECT * FROM PTZPresets WHERE device_id=".$id);
-	return $device;
+function device($id) { #wrapper for camera/ipCamera
+    if (!$id) {
+        return null;
+    }
+    
+    $device = data::getObject('Devices', 'id', $id);
+    
+    // Check if query returned valid results
+    if (!$device || !is_array($device) || empty($device[0])) {
+        return null;
+    }
+
+    try {
+        if (substr($device[0]['protocol'], 0, 2) === 'IP') {
+            return new ipCamera($device[0]['id']);
+        } else {
+            return new camera($device[0]['device']);
+        }
+    } catch (Exception $e) {
+        error_log("Error creating device object: " . $e->getMessage());
+        return null;
+    }
 }
 
 class camera {
@@ -828,7 +841,7 @@ class ipCamera{
 			}
 		#prepare mjpeg path
             $rawData['mjpeg'] = (!empty($rawData['mjpeg']) && (substr($rawData['mjpeg'][0], 0, 1) != '/')) ? '/'.$rawData['mjpeg'] : $rawData['mjpeg'];
-			$data['mjpeg_path'] = "{$_POST['ipAddr']}|{$_POST['portMjpeg']}|{$_POST['mjpeg']}";	
+			$data['mjpeg_path'] = "{$rawData['ipAddr']}|{$rawData['portMjpeg']}|{$rawData['mjpeg']}";
 		#prepare audio check box, ignored for new devices
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
@@ -841,8 +854,8 @@ class ipCamera{
 
 			$data['debug_level'] = (!empty($rawData['debug_level']) && $rawData['debug_level']=='on') ? 1 : 0;
 		#prepare rtsp username/password
-			$data['rtsp_username'] = empty($_POST['user']) ?  '' : $rawData['user'];
-			$data['rtsp_password'] = empty($_POST['pass']) ?  '' : $rawData['pass'];
+			$data['rtsp_username'] = empty($rawData['user']) ?  '' : $rawData['user'];
+			$data['rtsp_password'] = empty($rawData['pass']) ?  '' : $rawData['pass'];
 		#prepare model name
 			$data['model'] = (!empty($rawData['models'])) ? $rawData['models'] : false;
 		#prepare driver
@@ -1223,7 +1236,12 @@ class cameraPtz{
 	private function getIpCommandPreset($id){
 		return data::getObject("ipPtzCommandPresets", "id", $id);
 	}
-	private function prepareCmd($command, $id = false){
+//	private function prepareCmd($command, $id = false){
+private function prepareCmd($command, $id = false){
+    if (!is_array($this->preset) || !isset($this->preset[0])) {
+        error_log("PTZ preset data not properly loaded");
+        return false;
+    }
 		$command = ((isset($command[0])) && ($command[0]=='/')) ? $command : '/'.$command;
 		if (!$this->preset[0]['http_auth']){ #if !http_auth then login/password should be in the GET parameters
 			$command = str_replace(array('%USERNAME%', '%PASSWORD%', '%ID%'), array($this->camera->info['rtsp_username'], $this->camera->info['rtsp_password'], $id), $command);

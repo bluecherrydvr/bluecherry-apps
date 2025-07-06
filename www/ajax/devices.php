@@ -106,113 +106,89 @@ class devices extends Controller {
 		$this->info['total_devices'] += count($this->ipCameras->ok);
 		$this->info['total_devices'] += count($this->ipCameras->disabled);
 	}
-public function MakeXML() {
-    $this_user = new user('id', $_SESSION['id']);
-    $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n<devices>\n";
-    $devices = array();
-    if (!empty($this->cards)) {
-        foreach($this->cards as $card_id => $card) {
-            $devices = array_merge($devices, $card->cameras);
-        }
-    }
-    if (!empty($this->ipCameras->arr))
-        $devices = array_merge($devices, $this->ipCameras->arr);
+	public function MakeXML(){
+		$this_user = new user('id', $_SESSION['id']);
+		// The \063 is a '?'. Used decimal so as not to confuse vim
+		$xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" \x3f>\n<devices>\n";
+		$devices = array();
+		if (!empty($this->cards)) {
+			foreach($this->cards as $card_id => $card) {
+				$devices = array_merge($devices, $card->cameras);
+			}
+		}
+		if (!empty($this->ipCameras->arr))
+			$devices = array_merge($devices, $this->ipCameras->arr);
 
-    $short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
-    $block_props = array('rtsp_password', 'rtsp_username');
+		$short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
+		$block_props = array('rtsp_password', 'rtsp_username');
 
-    foreach($devices as $device) {
-        if (isset($device->info['id']) and 
-            !$this_user->camPermission($device->info['id']))
-            continue;
+		foreach($devices as $device) {
+			if (isset($device->info['id']) and
+			    !$this_user->camPermission($device->info['id']))
+				continue;
 
-        $xml .= '  <device';
-        if (!empty($device->info['id']))
-            $xml .= ' id="' . $device->info['id'].'"';
-        $xml .= ">\n";
+			$xml .= '  <device';
+			if (!empty($device->info['id']))
+				$xml .= ' id="' . $device->info['id'].'"';
+			$xml .= ">\n";
 
-        foreach ($device->info as $prop => $val) {
-            if (isset($_GET['short']) and
-                !in_array($prop, $short_props))
-                continue;
+			foreach ($device->info as $prop => $val) {
+				if (isset($_GET['short']) and
+				    !in_array($prop, $short_props))
+					continue;
 
-            if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
-                continue;
-            $xml .= "    <$prop>".htmlspecialchars($val)."</$prop>\n";
-        }
-
-        // Add oldest recording date
-        if (!empty($device->info['id'])) {
-            $result = data::query("SELECT MIN(start) as oldest 
-                                 FROM Media 
-                                 WHERE device_id = {$device->info['id']}");
-            
-            if ($result[0]['oldest'] === NULL) {
-                $xml .= "    <oldest_recording>NULL</oldest_recording>\n";
-            } else {
-                $date = new DateTime('@' . $result[0]['oldest']);
-                $xml .= "    <oldest_recording>" . $date->format('c') . "</oldest_recording>\n";
+				if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
+					continue;
+				$xml .= "    <$prop>".htmlspecialchars($val)."</$prop>\n";
+			}
+			$xml .= "  </device>\n";
+		}
+		$xml .= "</devices>";
+		header('Content-type: text/xml');
+		print $xml;
+	}
+    public function MakeJSON() {
+        $this_user = new user('id', $_SESSION['id']);
+        $devices = array();
+        if (!empty($this->cards)) {
+            foreach ($this->cards as $card_id => $card) {
+                $devices = array_merge($devices, $card->cameras);
             }
         }
+        if (!empty($this->ipCameras->arr))
+            $devices = array_merge($devices, $this->ipCameras->arr);
 
-        $xml .= "  </device>\n";
-    }
-    $xml .= "</devices>";
-    header('Content-type: text/xml');
-    print $xml;
-}
-public function MakeJSON() {
-    $this_user = new user('id', $_SESSION['id']);
-    $devices = array();
-    if (!empty($this->cards)) {
-        foreach ($this->cards as $card_id => $card) {
-            $devices = array_merge($devices, $card->cameras);
-        }
-    }
-    if (!empty($this->ipCameras->arr))
-        $devices = array_merge($devices, $this->ipCameras->arr);
+        $json_data = array('devices' => array());
 
-    $json_data = array('devices' => array());
+        $short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
+        $block_props = array('rtsp_password', 'rtsp_username');
 
-    $short_props = array('protocol', 'device_name', 'resolutionX', 'resolutionY');
-    $block_props = array('rtsp_password', 'rtsp_username');
-
-    foreach ($devices as $device) {
-        if (isset($device->info['id']) && !$this_user->camPermission($device->info['id']))
-            continue;
-
-        $device_data = array();
-        if (!empty($device->info['id']))
-            $device_data['id'] = $device->info['id'];
-
-        foreach ($device->info as $prop => $val) {
-            if (isset($_GET['short']) && !in_array($prop, $short_props))
+        foreach ($devices as $device) {
+            if (isset($device->info['id']) && !$this_user->camPermission($device->info['id']))
                 continue;
 
-            if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
-                continue;
+            $device_data = array();
+            if (!empty($device->info['id']))
+                $device_data['id'] = $device->info['id'];
 
-            $device_data[$prop] = $val;
-        }
+            foreach ($device->info as $prop => $val) {
+                if (isset($_GET['short']) && !in_array($prop, $short_props))
+                    continue;
 
-        // Add oldest recording date
-        if (!empty($device->info['id'])) {
-            $result = data::query("SELECT MIN(start) as oldest 
-                                 FROM Media 
-                                 WHERE device_id = {$device->info['id']}");
-            
-            if ($result[0]['oldest'] === NULL) {
-                $device_data['oldest_recording'] = "NULL";
-            } else {
-                $date = new DateTime('@' . $result[0]['oldest']);
-                $device_data['oldest_recording'] = $date->format('c');
+                if (in_array($prop, $block_props) || is_array($prop) || is_array($val))
+                    continue;
+
+                $device_data[$prop] = $val;
             }
+
+            $json_data['devices'][] = $device_data;
         }
 
-        $json_data['devices'][] = $device_data;
+        header('Content-type: application/json');
+        echo json_encode($json_data, JSON_PRETTY_PRINT);
     }
 
-    header('Content-type: application/json');
-    echo json_encode($json_data, JSON_PRETTY_PRINT);
-    }
+
 }
+
+

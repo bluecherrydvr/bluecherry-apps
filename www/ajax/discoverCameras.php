@@ -174,22 +174,21 @@ class discoverCameras extends Controller {
             34599
         );
 
-        $tools = Array(
-            "NODE_PATH=/usr/share/nodejs/onvif/node_modules node /usr/share/bluecherry/onvif/discovery_json/node-onvif.js",
-            "/usr/share/bluecherry/onvif/discovery_json/onvif_tool",
-        );
-        foreach ($tools as $tool) {
-            $p = @popen($tool, "r");
-            if (!$p) { continue; }
-            while ($json_str = fgets($p)) {
-                $cam = json_decode($json_str, true);
-                $ip = $cam['ipv4'];
-                // append, unless already reported by earlier tools
-                if (in_array($ip, $ips)) { continue; }
-                $res[] = $cam;
-                $ips[] = $cam['ipv4'];
+        $onvif_service_url = 'http://127.0.0.1:4000/devices/discover';
+        $json_str = $this->curlReq($onvif_service_url);
+        if ($json_str) {
+            $discovery_result = json_decode($json_str, true);
+            if ($discovery_result && isset($discovery_result['data'])) {
+                foreach ($discovery_result['data'] as $cam) {
+                    $ip = '';
+                    if (isset($cam['ipv4'])) {
+                        $ip = $cam['ipv4'];
+                    }
+                    if (in_array($ip, $ips)) { continue; }
+                    $res[] = $cam;
+                    $ips[] = $ip;
+                }
             }
-	    pclose($p);
         }
 
         $ips = array_unique($ips);
@@ -208,22 +207,59 @@ class discoverCameras extends Controller {
                 unset($ips[$key]);
             }
         }
-	//
-        data::responseJSON($status, 'err', $res);
+
+        // Load previous scan from /var/lib/bluecherry/last_scan.json
+        $last_scan_file = '/var/lib/bluecherry/last_scan.json';
+        $prev_cameras = file_exists($last_scan_file) ? json_decode(file_get_contents($last_scan_file), true) : array();
+        // Index by ipv4
+        $index_by = function($arr, $key) {
+            $out = array();
+            foreach ($arr as $item) {
+                if (isset($item[$key])) {
+                    $out[$item[$key]] = $item;
+                }
+            }
+            return $out;
+        };
+        $prev_index = $index_by($prev_cameras, 'ipv4');
+        $new_index = $index_by($res, 'ipv4');
+        $added = array_diff_key($new_index, $prev_index);
+        $removed = array_diff_key($prev_index, $new_index);
+        $unchanged = array_intersect_key($new_index, $prev_index);
+        // Save new scan
+        @file_put_contents($last_scan_file, json_encode($res, JSON_PRETTY_PRINT));
+        // Add found_count and comparison to response
+        $response = [
+            'devices' => $res,
+            'found_count' => count($res),
+            'added' => array_values($added),
+            'removed' => array_values($removed),
+            'unchanged' => array_values($unchanged)
+        ];
+        data::responseJSON($status, '', $response);
     }
 
 
-    protected function curlReq($url) {
-        $ch=curl_init();
+    protected function curlReq($url, $post_data = null) {
+        $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        $output=curl_exec($ch);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Increased timeout for discovery
 
+        if ($post_data) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'Content-Length: ' . strlen($post_data)
+            ]);
+        } else {
+            curl_setopt($ch, CURLOPT_HEADER, false);
+        }
+
+        $output = curl_exec($ch);
         curl_close($ch);
-
         return $output;
     }
 
@@ -250,12 +286,15 @@ class discoverCameras extends Controller {
         $res = Array();
 
         if (!empty($ips_arr)) {
-            $ips_str = implode('|', $ips_arr);
-            $list_cam = data::query("SELECT device FROM Devices WHERE CAST(device AS BINARY) REGEXP BINARY '{$ips_str}'");
-            if (!empty($list_cam)) {
-                foreach ($list_cam as $key => $val) {
-                    $tmp = explode('|', $val['device']);
-                    $res[] = $tmp[0];
+            $ips_arr = array_filter($ips_arr);
+            if (!empty($ips_arr)) {
+                $ips_str = implode('|', $ips_arr);
+                $list_cam = data::query("SELECT device FROM Devices WHERE CAST(device AS BINARY) REGEXP BINARY '{$ips_str}'");
+                if (!empty($list_cam)) {
+                    foreach ($list_cam as $key => $val) {
+                        $tmp = explode('|', $val['device']);
+                        $res[] = $tmp[0];
+                    }
                 }
             }
         }
@@ -282,6 +321,7 @@ class discoverCameras extends Controller {
         $model_name_arr = (Inp::gp_arr('model_name'));
         $login_arr = (Inp::gp_arr('login'));
         $password_arr = (Inp::gp_arr('password'));
+        $event_types_arr = (Inp::gp_arr('event_types'));
 
         $exist_devices = $this->existDevices($ipv4);
 
@@ -290,117 +330,112 @@ class discoverCameras extends Controller {
 
             $ip = $ipv4_port[$key];
             if (!in_array($ipv4[$key], $exist_devices)) {
-            $manuf = $manufacturer[$key];
-            $model_name = $model_name_arr[$key];
-
-            if (!empty($login_arr[$key]) || !empty($password_arr[$key])) {
-                $passwords = Array();
-                $passwords[] = Array(
-                    $login_arr[$key] => $password_arr[$key]
-                );
-            } else {
-                if (!empty($manuf)) {
-                    $passwords = $this->getManufPass($manuf);
+                $model_name = $model_name_arr[$key];
+                // Only use user-supplied credentials
+                if (!empty($login_arr[$key]) && !empty($password_arr[$key])) {
+                    $onvif_username = $login_arr[$key];
+                    $onvif_password = $password_arr[$key];
                 } else {
-                    $passwords = $this->default_pass;
+                    // No credentials provided, skip and prompt for credentials
+                    $err['passwd_ip'][] = $ip;
+                    continue;
                 }
-            }
 
-            $onvif_addr = $ip;
+                // Always construct xaddr as http://<ip>:<port>/onvif/device_service
+                $ip_only = $ipv4[$key];
+                $port_only = 80;
+                if (strpos($ipv4_port[$key], ':') !== false) {
+                    list($ip_only, $port_only) = explode(':', $ipv4_port[$key], 2);
+                } else if (!empty($ipv4_port[$key])) {
+                    $port_only = $ipv4_port[$key];
+                }
+                $onvif_addr = "http://{$ip_only}:{$port_only}/onvif/device_service";
 
-            $password_ch = false;
-            // guess login/passwrod
-            foreach ($passwords as $pass_arr) {
-                foreach ($pass_arr as $login => $password) {
-                    $onvif_username = $login;
-                    $onvif_password = $password;
+                try {
+                    $main_stream = null;
+                    $sub_stream = null;
+                    $onvif_service_url = 'http://127.0.0.1:4000/devices/rtsp';
+                    $post_data = json_encode([
+                        'xaddr' => $onvif_addr,
+                        'username' => $onvif_username,
+                        'password' => $onvif_password
+                    ]);
+                    $json_out = $this->curlReq($onvif_service_url, $post_data);
 
-                    try {
-                        $json_out = shell_exec("node /usr/share/bluecherry/onvif/getRtspUrls.js " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password));
-                        if ($json_out) {
-                            $urls = json_decode($json_out, /*associative=*/true);
-                            $main_stream = $urls[0]['rtspUri'];
-                            $sub_stream = $urls[1]['rtspUri'];
-                        } else {
-                            $p = @popen("/usr/lib/bluecherry/onvif_tool " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password). " get_stream_urls", "r");
-                             if (!$p)
-                                    break;
-
-                             $media_service = fgets($p);
-                             if (!$media_service)
-                             {
-                                     $err['onvif_ip'][] = $ip;
-                                     break(2);
-                             }
-                             $main_stream = fgets($p);
-                             $sub_stream = fgets($p);
-                             pclose($p);
+                    if ($json_out) {
+                        $urls = json_decode($json_out, true);
+                        if (isset($urls[0]['rtspUri']) || isset($urls[0]['rtspUrl']) || isset($urls[0]['url'])) {
+                            $main_stream = isset($urls[0]['rtspUri']) ? $urls[0]['rtspUri'] : (isset($urls[0]['rtspUrl']) ? $urls[0]['rtspUrl'] : $urls[0]['url']);
+                            $sub_stream = isset($urls[1]['rtspUri']) ? $urls[1]['rtspUri'] : (isset($urls[1]['rtspUrl']) ? $urls[1]['rtspUrl'] : (isset($urls[1]['url']) ? $urls[1]['url'] : null));
                         }
+                    }
 
-			if ($main_stream)
-                        {
-                            $password_ch = true;
+                    if ($main_stream)
+                    {
+                        $media_uri = trim($main_stream);
 
-			    $media_uri = trim($main_stream);
+                        if (empty($media_uri)) {
+                            $err['rtsp_ip'][] = $ip;
+                        } else {
+                            $err_add = false;
+                            // add camera to db
+                            $media_uri_parse = parse_url($media_uri);
 
-                            if (empty($media_uri)) {
-                                $err['rtsp_ip'][] = $ip;
-                            } else {
-                                $err_add = false;
-                                // add camera to db
-                                $media_uri_parse = parse_url($media_uri);
-
-                                if (!isset($media_uri_parse['port'])) {
-                                    $media_uri_parse['port'] = 554;
-                                }
-
-                                if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
-
-				if ($sub_stream) {
-				    $sub_parse = parse_url(trim($sub_stream));
-				    $sub_stream = $sub_parse['path'];
-				    if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
-				}
-                                $_POST = Array(
-                                    'mode' => 'addip',
-                                    'models' => 'Generic',
-                                    'camName' => $media_uri_parse['host'],
-                                    'ipAddr' => $media_uri_parse['host'],
-                                    'user' => $login,
-                                    'pass' => $password,
-                                    'protocol' => 'IP-RTSP',
-                                    'rtsp' => $media_uri_parse['path'],
-                                    'port' => $media_uri_parse['port'],
-				                    'substream' => $sub_stream,
-                                    'prefertcp' => '0',
-                                    'mjpeg' => '',
-                                    'portMjpeg' => 80
-                                );
-
-                                //print_r($data_camera);
-                                $result = ipCamera::create($_POST);
-                                if ($result[0]) {
-                                    $added_ip[] = $ip;
-                                } else {
-                                    $err['ip'][] = $ip;
-                                }
-
+                            if (!isset($media_uri_parse['port'])) {
+                                $media_uri_parse['port'] = 554;
                             }
 
-                            break(2);
+                            if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
+
+                            if ($sub_stream) {
+                                $sub_parse = parse_url(trim($sub_stream));
+                                $sub_stream = $sub_parse['path'];
+                                if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
+                            }
+                            $_POST = Array(
+                                'mode' => 'addip',
+                                'models' => $model_name,
+                                'camName' => $media_uri_parse['host'],
+                                'ipAddr' => $media_uri_parse['host'],
+                                'user' => $onvif_username,
+                                'pass' => $onvif_password,
+                                'protocol' => 'IP-RTSP',
+                                'rtsp' => $media_uri_parse['path'],
+                                'port' => $media_uri_parse['port'],
+                                'substream' => $sub_stream,
+                                'prefertcp' => '0',
+                                'mjpeg' => '',
+                                'portMjpeg' => 80,
+                                'event_subscriptions' => isset($event_types_arr[$key]) ? $event_types_arr[$key] : ''
+                            );
+
+                            $result = ipCamera::create($_POST);
+                            if ($result[0]) {
+                                $device_id = false;
+                                if (isset($result[1]['id'])) {
+                                    $device_id = $result[1]['id'];
+                                } else {
+                                    $device_row = data::getObject('Devices', 'device', "{$media_uri_parse['host']}|{$media_uri_parse['port']}|{$media_uri_parse['path']}");
+                                    if ($device_row && isset($device_row[0]['id'])) {
+                                        $device_id = $device_row[0]['id'];
+                                    }
+                                }
+                                $added_ip[] = array('ip' => $ip, 'id' => $device_id);
+                            } else {
+                                $err['ip'][] = $ip;
+                                // Always include the error message from ipCamera::create
+                                if (isset($result[1]) && $result[1]) {
+                                    $err['add_error'][$ip] = $result[1];
+                                }
+                            }
                         }
-                    } catch (Exception $e) {
-                        $err['ip'][] = $ip;
-                        break(2);
+                    } else {
+                        $err['rtsp_ip'][] = $ip;
                     }
+                } catch (Exception $e) {
+                    $err['ip'][] = $ip;
+                    $err['add_error'][$ip] = $e->getMessage();
                 }
-
-            }
-
-            if (!$password_ch) {
-                $err['passwd_ip'][] = $ip;
-            }
-
             } else {
                 $added_ip[] = $ip;
             }
@@ -409,7 +444,8 @@ class discoverCameras extends Controller {
         $res['err'] = $err;
         $res['added_ip'] = $added_ip;
 
-
+        // Use status 6 for success (any added), 7 for error (none added)
+        $status = count($added_ip) > 0 ? 6 : 7;
         data::responseJSON($status, '', $res);
     }
 }
