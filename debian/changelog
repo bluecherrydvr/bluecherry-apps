@@ -1,4 +1,64 @@
-bluecherry (3:3.1.9) bookworm bullseye buster focal jammy mantic noble; urgency=low
+bluecherry (3:3.1.13) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Major cleanup optimization to resolve high system load and MySQL overload issues
+  * FIX: Implement adaptive batch sizing based on system load and MySQL connection count
+  * FIX: Add load monitoring with automatic pause/resume during high system load
+  * FIX: Reduce filesystem sync frequency and add batch transaction support
+  * FIX: Add database indexes for Media and EventsCam tables to improve cleanup performance
+  * FIX: Implement retry mechanism with exponential backoff for failed file deletions
+  * FIX: Add safety margins and improved storage threshold calculations
+  * FIX: Replace old server cleanup code with optimized CleanupManager implementation
+  * FIX: Add comprehensive monitoring and diagnostic capabilities
+  * FIX: Maintain backward compatibility with all existing distributions
+  * FIX: Audio recording muxer initialization failure - fix channel layout handling and skip problematic pcm_mulaw configurations
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 23 Jun 2025 15:00:00 -0500
+
+bluecherry (3:3.1.12) bookworm bullseye buster buster focal jammy mantic noble; urgency=low
+
+  * FIX: Robust timestamp handling for muxer (DTS/PTS) - remove crash assertions and improve error recovery
+  * FIX: Add comprehensive audio codec support (AAC, G.726, MP3, G.723.1, G.722, G.729, GSM, AC3, OPUS, AMR, ILBC)
+  * FIX: Graceful fallback for unsupported audio codecs - disable audio instead of crashing
+  * FIX: Add PCM ALAW support to resolve "Error writing recording" issues
+  * FIX: Improve path parsing logic for media file cleanup to reduce error logging spam
+  * FIX: Add rate limiting for timestamp warnings to prevent log flooding
+  * FIX: Enhanced storage management with multi-device support from bluecherry.Storage table
+  * FIX: Better error handling and logging for media file operations
+  * FIX: Remove duplicate struct definition in bc-cleaner.cpp
+  * FIX: Maintain backward compatibility with all existing distributions
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Mon, 23 Jun 2025 14:00:00 -0500
+
+bluecherry (3:3.1.11) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * FIX: Revert RTSP server to exact v3.1.9 behavior for stability
+  * FIX: Change cleanup check interval from 1 minute to 5 minutes to reduce log spam
+  * FIX: Media file path parsing bug - parse time from filename instead of directory path
+  * FIX: Reduce log spam for frame rate and timestamp gap warnings
+  * FIX: VBR stream DTS timestamp handling for improved recording stability
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Thu, 20 Jun 2025 10:00:00 -0500
+
+bluecherry (3:3.1.10) bookworm bullseye buster focal jammy mantic noble; urgency=low
+
+  * Upgrade build system to C++14 support
+  * Add PHP-FPM timezone fix script and update Certbot install logic for Ubuntu 24.04+ and Linux Mint 22.1+ in postinstall.sh
+  * Improve storage management security and validation
+  * Add path validation and disk space checks to check_dir_permission.sh
+  * Add transaction support and better error handling to storage.php
+  * Improve storage estimation accuracy and add data sufficiency checks
+  * Make cleanup process more I/O friendly: reduce batch sizes, add delays between deletions, improve logging
+  * Add high priority cleanup mode and detailed logging (runs every minute)
+  * Filter storage calculation to only include valid media files (size > 2000 bytes)
+  * DVR storage page is blank (Ubuntu 24.04 / php 8.2) (#729)
+  * Remove 'There are no supported video capture cards detected on this system.' when no analog cards installed (#741)
+  * Unable to delete license key from web UI if license ports == 0 (#743)
+  * Do not crash if MAX_STORAGE_AGE is empty (#731)
+
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Sat, 17 May 2025 22:18:21 -0500
+
+bluecherry (3:3.1.9) bookworm bullseye buster buster focal jammy mantic noble; urgency=low
 
   * FIX: cameras hangs (https://github.com/bluecherrydvr/bluecherry-apps/pull/736)
   * FIX: orderly shutdown upon SIGTERM (https://github.com/bluecherrydvr/bluecherry-apps/pull/734)

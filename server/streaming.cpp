@@ -170,6 +170,10 @@ static int bc_streaming_setup_elementary(struct bc_record *bc_rec, std::shared_p
 	if (bc_type == BC_RTP) {
 		ctx->pb->seekable = 0;  // Adjust accordingly
 		av_dict_set(&muxer_opts, "rtpflags", "skip_rtcp", 0);
+		// Add real-time streaming optimizations
+		av_dict_set(&muxer_opts, "nobuffer", "1", 0);  // Disable buffering for immediate processing
+		av_dict_set(&muxer_opts, "low_delay", "1", 0); // Reduce latency
+		av_dict_set(&muxer_opts, "fflags", "nobuffer+genpts", 0); // Additional real-time flags
 	} else if (remux_mp4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);

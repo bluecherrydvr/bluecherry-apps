@@ -1,4 +1,3 @@
-
 extern "C"
 {
 #include <libavcodec/avcodec.h>
@@ -149,8 +148,7 @@ void decoder::push_packet(const stream_packet &pkt)
 		}
 	}
 
-	AVPacket avpkt;
-	av_init_packet(&avpkt);
+	AVPacket avpkt = {0};
 	avpkt.flags = pkt.flags;
 	avpkt.pts   = pkt.pts;
 	avpkt.dts   = pkt.dts;

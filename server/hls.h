@@ -340,10 +340,28 @@ private:
     bool                _use_initial = false;
     hls_segment*        _init_segment = NULL;
     
-
     int                 _device_id = 0;
     int64_t             _pts = 0;
     uint32_t            _cc = 0;
+
+    // Helper functions for mutex operations
+    bool lock_mutex() {
+        int ret = pthread_mutex_lock(&_mutex);
+        if (ret != 0) {
+            bc_log(Error, "Failed to lock HLS content mutex: %s", strerror(ret));
+            return false;
+        }
+        return true;
+    }
+
+    bool unlock_mutex() {
+        int ret = pthread_mutex_unlock(&_mutex);
+        if (ret != 0) {
+            bc_log(Error, "Failed to unlock HLS content mutex: %s", strerror(ret));
+            return false;
+        }
+        return true;
+    }
 };
 
 typedef std::unordered_map<int, hls_content*> hls_content_map;

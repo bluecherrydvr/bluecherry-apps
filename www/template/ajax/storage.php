@@ -4,7 +4,7 @@
     </div>
 </div>
 
-             <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i>Note: <ul><li>We will automatically create a directory for you and assign the correct permissions.</li><li>Verify that the storage path you are using is mounted on start or the start of Bluecherry server.  Usually this is done in /etc/fstab.<li>If using SMB (CIFS) mount it is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)</li><li>All storage paths must be added to either /mnt or /media</li></div>
+             <div class="alert alert-warning"><i class="fa fa-warning fa-fw"></i>Note: <ul><li>We will automatically create a directory for you and assign the correct permissions.</li><li>Verify that the storage path you are using is mounted on start or the start of Bluecherry server.  Usually this is done in /etc/fstab.</li><li>If using SMB (CIFS) mount it is recommended to mount network storage with sync option and disabled cache (option cache=none for CIFS)</li></ul></div>
 
 
 
@@ -56,6 +56,23 @@
                     </tr>
                     <tr class="table-storage-tr-info">
                         <td colspan="5">Storage Used: <?php echo $used_storage . "%"; ?></td>
+                    </tr>
+                    <?php if (!$location['has_sufficient_data']): ?>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5" class="text-warning">
+                            <i class="fa fa-exclamation-triangle"></i> Provisional estimate - Need at least 24 hours of recording data for accurate calculation
+                            <?php if ($location['earliest_recording'] && $location['latest_recording']): ?>
+                            <br>Current recording range: <?php echo date('Y-m-d H:i', $location['earliest_recording']); ?> to <?php echo date('Y-m-d H:i', $location['latest_recording']); ?>
+                            (<?php echo round($location['total_duration']/3600, 1); ?> hours available)
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5">Total Recorded: <?php echo round($location['total_duration']/3600, 1); ?> hours | <?php echo round($location['total_size_mb']/1024, 1); ?> GB used | <?php echo $location['file_count']; ?> files | <?php echo $location['mb_per_hour']; ?> MB/hour average</td>
+                    </tr>
+                    <tr class="table-storage-tr-info">
+                        <td colspan="5">Last 7 Days: <?php echo round($location['total_duration']/3600, 1); ?> hours recorded | <?php echo round($location['total_size_mb']/1024, 1); ?> GB used | <?php echo $location['file_count']; ?> files | <?php echo $location['mb_per_hour']; ?> MB/hour average</td>
                     </tr>
                 <?php } ?>
                 </tbody>

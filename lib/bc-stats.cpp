@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <math.h>
 #include <thread>
+#include <sys/statvfs.h>
+#include <mntent.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -74,7 +76,7 @@ int bc_stats::load_file(const char *path, char *buffer, size_t size)
 	int bytes = read(fd, buffer, size);
     if (bytes <= 0)
     {
-        bc_log(Error, "Can not read file: %s (%s): %u", path, strerror(errno));
+        bc_log(Error, "Can not read file: %s (%s): %u", path, strerror(errno), bytes);
         close(fd);
         return 0;
     }
@@ -423,14 +425,96 @@ void bc_stats::display()
     }
 }
 
+void bc_stats::get_storage_info(std::vector<storage_path> *storage_paths)
+{
+    pthread_mutex_lock(&_mutex);
+    *storage_paths = _storage_paths;
+    pthread_mutex_unlock(&_mutex);
+}
+
+bool bc_stats::update_storage_info()
+{
+    pthread_mutex_lock(&_mutex);
+    
+    std::vector<storage_path> new_storage_paths;
+    
+    // Open /etc/mtab or /proc/mounts to get mounted filesystems
+    FILE *mtab = setmntent("/proc/mounts", "r");
+    if (!mtab) {
+        pthread_mutex_unlock(&_mutex);
+        return false;
+    }
+    
+    struct mntent *entry;
+    while ((entry = getmntent(mtab)) != NULL) {
+        // Skip non-local filesystems and special filesystems
+        if (strcmp(entry->mnt_type, "proc") == 0 || 
+            strcmp(entry->mnt_type, "sysfs") == 0 ||
+            strcmp(entry->mnt_type, "devpts") == 0 ||
+            strcmp(entry->mnt_type, "tmpfs") == 0 ||
+            strcmp(entry->mnt_type, "devtmpfs") == 0 ||
+            strcmp(entry->mnt_type, "cgroup") == 0 ||
+            strncmp(entry->mnt_type, "fuse.", 5) == 0) {
+            continue;
+        }
+        
+        struct statvfs vfs;
+        if (statvfs(entry->mnt_dir, &vfs) == 0) {
+            storage_path path_info;
+            path_info.path = std::string(entry->mnt_dir);
+            path_info.filesystem = std::string(entry->mnt_type);
+            
+            // Calculate sizes in bytes
+            uint64_t block_size = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
+            path_info.total_size = (uint64_t)vfs.f_blocks * block_size;
+            path_info.free_size = (uint64_t)vfs.f_bavail * block_size;
+            path_info.used_size = path_info.total_size - path_info.free_size;
+            
+            // Calculate usage percentage
+            if (path_info.total_size > 0) {
+                path_info.usage_percent = (uint32_t)((path_info.used_size * 100) / path_info.total_size);
+            } else {
+                path_info.usage_percent = 0;
+            }
+            
+            new_storage_paths.push_back(path_info);
+        }
+    }
+    
+    endmntent(mtab);
+    
+    // Update the storage paths
+    _storage_paths = new_storage_paths;
+    
+    pthread_mutex_unlock(&_mutex);
+    return true;
+}
+
 void bc_stats::monithoring_thread()
 {
     pthread_setname_np(pthread_self(), "MONITORING");
+    int history_counter = 0;
+    int storage_counter = 0;
+    
     while (!__sync_add_and_fetch(&_cancel, 0))
     {
         update_mem_info();
         update_cpu_info();
         update_net_info();
+        
+        // Update storage info every 10 seconds (less frequent due to statvfs calls)
+        storage_counter++;
+        if (storage_counter >= 10) {
+            update_storage_info();
+            storage_counter = 0;
+        }
+
+        // Add to history every 2 seconds (for historical data)
+        history_counter++;
+        if (history_counter >= 2) {
+            add_history_entry();
+            history_counter = 0;
+        }
 
         //display();
         sleep(1);
@@ -455,5 +539,68 @@ void bc_stats::stop_monithoring()
     _thread.join();
     /* Destroy mutex */
     pthread_mutex_destroy(&_mutex);
+}
 
+// Historical data methods implementation
+void bc_stats::add_history_entry()
+{
+    std::lock_guard<std::mutex> lock(_history_mutex);
+    
+    stats_history_entry entry;
+    entry.timestamp = std::chrono::system_clock::now();
+    
+    // Copy current memory data
+    entry.memory_data = _memory;
+    
+    // Copy current CPU data
+    entry.cpu_data = _cpu;
+    
+    // Copy current network data
+    pthread_mutex_lock(&_mutex);
+    entry.network_data = _network;
+    entry.storage_data = _storage_paths;
+    pthread_mutex_unlock(&_mutex);
+    
+    // Add to history
+    _history.push_back(entry);
+    
+    // Remove old entries if we exceed the maximum
+    if (_history.size() > MAX_HISTORY_ENTRIES) {
+        _history.pop_front();
+    }
+}
+
+std::vector<stats_history_entry> bc_stats::get_history_entries(size_t count)
+{
+    std::lock_guard<std::mutex> lock(_history_mutex);
+    
+    std::vector<stats_history_entry> result;
+    size_t available = _history.size();
+    size_t to_return = (count < available) ? count : available;
+    
+    if (to_return == 0) {
+        return result;
+    }
+    
+    // Get the most recent entries
+    auto start_it = _history.end() - to_return;
+    result.assign(start_it, _history.end());
+    
+    return result;
+}
+
+void bc_stats::clear_old_history()
+{
+    std::lock_guard<std::mutex> lock(_history_mutex);
+    
+    // Keep only the last MAX_HISTORY_ENTRIES
+    while (_history.size() > MAX_HISTORY_ENTRIES) {
+        _history.pop_front();
+    }
+}
+
+size_t bc_stats::get_history_size() const
+{
+    std::lock_guard<std::mutex> lock(_history_mutex);
+    return _history.size();
 }

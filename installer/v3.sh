@@ -16,8 +16,8 @@ focal_install()
 {
     apt-get update
     apt -y install python3-distutils gnupg2 wget
-    wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py 
-    python3 /tmp/get-pip.py
+    wget --output-document=/tmp/get-pip.py https://bootstrap.pypa.io/pip/3.8/get-pip.py
+  	python3 /tmp/get-pip.py
     pip3 install pyOpenSSL --upgrade
     wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | apt-key add -
     : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-"$VERSION_CODENAME".list}"
@@ -144,6 +144,8 @@ elif [[ "$ID" == "debian" && "$VERSION_ID" == "12"    && "$VERSION_CODENAME" == 
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.1" && "$VERSION_CODENAME" == "vera"     ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.2" && "$VERSION_CODENAME" == "victoria" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.3" && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "22" && "$VERSION_CODENAME" == "wilma" ]]; then noble_install; # based on Ubuntu 24.04 Noble
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "22.1" && "$VERSION_CODENAME" == "xia" ]]; then noble_install; # based on Ubuntu 24.04 Noble
 else
     echo "Currently we only support up to date Ubuntu, Debian and Mint Linux distributions."
     exit 1

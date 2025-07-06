@@ -32,7 +32,8 @@ void onvif_events::run_onvif_tool(struct bc_record *r)
 
 	this->rec = r;
 
-	r->log.log(Info, "Starting onvif events thread %u for device %u ...", std::this_thread::get_id(), r->id);
+	r->log.log(Info, "Starting onvif events thread %zu for device %u ...", 
+			   std::hash<std::thread::id>{}(std::this_thread::get_id()), r->id);
 
 	char *devaddr = strdupa(r->cfg.dev);
 	char *split = strchr(devaddr, '|');

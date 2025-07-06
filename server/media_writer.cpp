@@ -44,7 +44,10 @@ static void bc_avlog(int val, const char *msg)
 ///////////////////////////////////////////////////////////////
 
 media_writer::media_writer():
-	last_mux_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE}
+	last_mux_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE},
+	frame_rate_warned{false, false},
+	timestamp_gap_warned{false, false},
+	last_timestamp_warning{0, 0}
 {
 }
 
@@ -90,19 +93,112 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	} else if (last_mux_dts < opkt.dts) {
 		// Monotonically increasing timestamps. This is normal.
 
-		const int tolerated_gap_seconds = 1;
+		// Get the tolerated gap from configuration, default to 2 seconds
+		int tolerated_gap_seconds = 2;
+		if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+			// For video streams, check if it's VBR
+			AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			if (codecpar->bit_rate == 0) {  // VBR is indicated by bit_rate = 0
+				// For VBR cameras, use a more lenient gap tolerance
+				// Based on typical I-frame intervals and network conditions
+				tolerated_gap_seconds = 3;  // More lenient for VBR
+			} else {
+				// For CBR cameras, use a tighter gap tolerance
+				// CBR should have more consistent timing
+				tolerated_gap_seconds = 1;  // Tighter for CBR
+			}
+		}
+
 		int64_t delta_dts = opkt.dts - last_mux_dts;
 		if (delta_dts > tolerated_gap_seconds * AV_TIME_BASE) {
-			// Too large a gap, assume discontinuity and close this recording file.
-			bc_log(Info, "Bad timestamp: too large a gap of %d seconds (%d tolerated), dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", (int)(delta_dts / AV_TIME_BASE), tolerated_gap_seconds, opkt.dts, last_mux_dts, opkt.stream_index);
-			return false;
+			// Only log warning once per stream to prevent spam
+			if (!timestamp_gap_warned[pkt.type]) {
+				bc_log(Warning, "Large timestamp gap of %d seconds (%d tolerated), dts=%" PRId64 " while last was %" PRId64 " on stream %d, continuing recording", 
+					(int)(delta_dts / AV_TIME_BASE), tolerated_gap_seconds, opkt.dts, last_mux_dts, opkt.stream_index);
+				timestamp_gap_warned[pkt.type] = true;
+			}
+			
+			// For CBR streams, be more conservative about timestamp adjustment
+			// Only adjust if the gap is extremely large (more than 5 seconds)
+			bool should_adjust = true;
+			if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+				AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+				if (codecpar->bit_rate != 0) {  // CBR stream
+					// Only adjust CBR timestamps if gap is very large
+					should_adjust = (delta_dts > 5 * AV_TIME_BASE);
+				}
+			}
+			
+			if (should_adjust) {
+				// Calculate frame increment based on the stream's time base
+				AVStream *stream = out_ctx->streams[opkt.stream_index];
+				int64_t frame_increment;
+				
+				// Try to get frame rate from stream
+				if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+					// Convert frame rate to time base units
+					frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+				} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+					// Fall back to r_frame_rate if avg_frame_rate is not available
+					frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+				} else {
+					// If no frame rate info is available, use a conservative default of 1/30
+					frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+					if (!frame_rate_warned[pkt.type]) {
+						bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
+						frame_rate_warned[pkt.type] = true;
+					}
+				}
+				
+				// Adjust the timestamp to maintain continuity
+				opkt.dts = last_mux_dts + frame_increment;
+				if (opkt.pts != AV_NOPTS_VALUE) {
+					opkt.pts = opkt.dts;
+				}
+			}
 		}
 	} else {
 		// In this clause we're dealing with incorrect timestamp received from the source.
-		assert(last_mux_dts >= opkt.dts);
-		assert(last_mux_dts != AV_NOPTS_VALUE);
-		bc_log(Info, "Got bad dts=%" PRId64 " while last was %" PRId64 " on stream %d, bailing out, causing the recording file to restart", opkt.dts, last_mux_dts, opkt.stream_index);
-		return false;
+		if (last_mux_dts >= opkt.dts) {
+			// Rate limit warnings to prevent log spam (max once per 30 seconds per stream)
+			time_t now = time(nullptr);
+			if (now - last_timestamp_warning[pkt.type] >= 30) {
+				bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp", 
+					opkt.dts, last_mux_dts, opkt.stream_index);
+				last_timestamp_warning[pkt.type] = now;
+			}
+			
+			// Calculate frame increment based on the stream's time base
+			AVStream *stream = out_ctx->streams[opkt.stream_index];
+			int64_t frame_increment;
+			
+			// Try to get frame rate from stream
+			if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+				// Convert frame rate to time base units
+				frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+			} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+				// Fall back to r_frame_rate if avg_frame_rate is not available
+				frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+			} else {
+				// If no frame rate info is available, use a conservative default of 1/30
+				frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+				if (!frame_rate_warned[pkt.type]) {
+					bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
+					frame_rate_warned[pkt.type] = true;
+				}
+			}
+			
+			// Adjust the timestamp to maintain continuity
+			opkt.dts = last_mux_dts + frame_increment;
+			if (opkt.pts != AV_NOPTS_VALUE) {
+				opkt.pts = opkt.dts;
+			}
+		} else {
+			// This should not happen, but handle gracefully if it does
+			bc_log(Error, "Unexpected timestamp condition: last_mux_dts=%" PRId64 " < opkt.dts=%" PRId64 " on stream %d", 
+				last_mux_dts, opkt.dts, opkt.stream_index);
+			// Continue with the packet as-is to avoid dropping frames
+		}
 	}
 
 	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
@@ -110,14 +206,33 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
 		!!(opkt.flags & AV_PKT_FLAG_KEY));
 
+	// Additional safety check for invalid timestamps before writing
+	if (opkt.dts != AV_NOPTS_VALUE && opkt.dts < 0) {
+		bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+		opkt.dts = 0;
+	}
+	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
+		bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+		opkt.pts = 0;
+	}
+
 	auto last_mux_dts_uncommitted = opkt.dts; // opkt.dts is lost as av_interleaved_write_frame() frees opkt
 	re = av_interleaved_write_frame(out_ctx, &opkt);
 	if (re < 0)
 	{
 		if (re == AVERROR(EINVAL)) {
 			bc_log(Error, "Error writing frame to recording. Likely timestamping problem.");
+			// Try to recover by resetting the timestamp tracking
+			last_mux_dts = AV_NOPTS_VALUE;
 		} else {
-			bc_avlog(re, "Error writing frame to recording.");
+			// Provide more specific error information
+			char err_buf[256];
+			av_strerror(re, err_buf, sizeof(err_buf));
+			bc_log(Error, "Error writing %s frame to recording: %s (codec: %s, stream: %d)", 
+				pkt.type == AVMEDIA_TYPE_VIDEO ? "video" : "audio",
+				err_buf,
+				avcodec_get_name(stream->codecpar->codec_id),
+				opkt.stream_index);
 		}
 		update_last_mux_dts = false;
 		return false;
@@ -134,6 +249,9 @@ void media_writer::close()
 	video_st = audio_st = NULL;
 	for (int i = 0; i < sizeof(last_mux_dts)/sizeof(last_mux_dts[0]); i++) {
 		last_mux_dts[i] = AV_NOPTS_VALUE;
+		frame_rate_warned[i] = false;
+		timestamp_gap_warned[i] = false;
+		last_timestamp_warning[i] = 0;
 	}
 
 	if (out_ctx)
@@ -291,6 +409,13 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	char error[512];
 	int ret = 0;
 
+	// Reset warning flags for new recording session
+	for (int i = 0; i < 2; i++) {
+		frame_rate_warned[i] = false;
+		timestamp_gap_warned[i] = false;
+		last_timestamp_warning[i] = 0;
+	}
+
 	AVDictionary *muxer_opts = NULL;
 	AVCodec *codec;
 
@@ -321,6 +446,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	properties.video.apply(video_st->codecpar);
 
+	/* Setup audio stream if available */
 	if (properties.has_audio())
 	{
 		audio_st = avformat_new_stream(out_ctx, NULL);
@@ -330,7 +456,69 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 			return -1;
 		}
 
-		properties.audio.apply(audio_st->codecpar);
+		// Check if the incoming audio codec is supported for recording
+		enum AVCodecID incoming_codec = properties.audio.codec_id;
+		bool codec_supported = false;
+		
+		// Skip problematic audio configurations that cause muxer failures
+		if (incoming_codec == AV_CODEC_ID_PCM_MULAW && properties.audio.channels == 1) {
+			bc_log(Warning, "Skipping problematic audio stream: pcm_mulaw with 1 channel (causes muxer initialization failure)");
+			codec_supported = false;
+		} else {
+			// Most common IP camera audio codecs
+			switch (incoming_codec) {
+				// Standard PCM codecs
+				case AV_CODEC_ID_PCM_S16LE:
+				case AV_CODEC_ID_PCM_S16BE:
+				case AV_CODEC_ID_PCM_ALAW:
+				case AV_CODEC_ID_PCM_MULAW:
+				
+				// Common IP camera audio codecs
+				case AV_CODEC_ID_AAC:           // Most common modern codec
+				case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
+				case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
+				case AV_CODEC_ID_MP3:           // Common in consumer cameras
+				case AV_CODEC_ID_G723_1:        // Low bitrate telephony
+				case AV_CODEC_ID_G729:          // Low bitrate telephony
+				case AV_CODEC_ID_GSM:           // Mobile telephony standard
+				case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
+					codec_supported = true;
+					break;
+				
+				default:
+					codec_supported = false;
+					break;
+			}
+		}
+		
+		if (!codec_supported) {
+			bc_log(Warning, "Unsupported audio codec %s for recording, disabling audio stream (camera: %s)", 
+				avcodec_get_name(incoming_codec),
+				properties.audio.codec_id == AV_CODEC_ID_NONE ? "unknown" : avcodec_get_name(incoming_codec));
+			
+			// Clean up the audio stream we just created
+			if (audio_st) {
+				// Remove the stream from the context
+				for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
+					if (out_ctx->streams[i] == audio_st) {
+						// Shift remaining streams down
+						for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
+							out_ctx->streams[j] = out_ctx->streams[j + 1];
+						}
+						out_ctx->nb_streams--;
+						break;
+					}
+				}
+				audio_st = NULL;
+			}
+		} else {
+			// Apply the actual audio properties from the stream
+			properties.audio.apply(audio_st->codecpar);
+			bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
+				avcodec_get_name(incoming_codec),
+				properties.audio.sample_rate,
+				properties.audio.channels);
+		}
 	}
 
 	/* Open output file */

@@ -120,7 +120,15 @@ public:
     void get_cpu_stats(std::string &outout);
     void get_memory_stats(std::string &outout);
     void get_network_stats(std::string &outout);
+    void get_storage_stats(std::string &outout);
     void get_overall_stats(std::string &outout);
+
+    // Historical data methods
+    void get_cpu_history(std::string &outout, size_t count = 60);
+    void get_memory_history(std::string &outout, size_t count = 60);
+    void get_network_history(std::string &outout, size_t count = 60);
+    void get_storage_history(std::string &outout, size_t count = 60);
+    void get_overall_history(std::string &outout, size_t count = 60);
 
     void create_http_response(std::string &outout, const std::string &body);
 

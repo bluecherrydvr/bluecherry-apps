@@ -117,12 +117,10 @@ int trigger_server::reconfigure(const std::string& socketPath)
     return 0;
 }
 
-
 void trigger_server::servingLoop()
 {
     bc_log(Info, "Trigger server loop is running");
     bc_log(Info, "TriggerServer: servingLoop() entered, _hangupThread = %d", _hangupThread);
-
 
     while (!_hangupThread) {
         struct pollfd pfd;
@@ -144,9 +142,6 @@ void trigger_server::servingLoop()
 
 void trigger_server::serveClient(int fd)
 {
-// Debug:
-//    bc_log(Info, "TriggerServer: serveClient() started");
-
     char input[1024] = {0};
     ssize_t input_len = read(fd, input, sizeof(input) - 1);
     bc_log(Info, "TriggerServer: read ret %ld, input: '%s'", input_len, input);
@@ -159,13 +154,12 @@ void trigger_server::serveClient(int fd)
 
     int camera_id = 0;
     char description[1024] = {0};
-    sscanf(input, "%d %[^\n]", &camera_id, description);
+    sscanf(input, "%d %[^
+]", &camera_id, description);
     bc_log(Info, "TriggerServer: parsed camera_id=%d, description='%s'", camera_id, description);
 
     trigger_processor* proc = find_processor(camera_id);
     if (proc) {
-// Debug:
-//        bc_log(Info, "TriggerServer: found processor, calling trigger()");
         proc->trigger(description);
         dprintf(fd, "200 Ok\n");
     } else {
@@ -174,10 +168,7 @@ void trigger_server::serveClient(int fd)
     }
 
     close(fd);
-// Debug:
-//    bc_log(Info, "TriggerServer: serveClient() complete");
 }
-
 
 void trigger_server::register_processor(int camera_id, trigger_processor* processor)
 {

@@ -133,8 +133,7 @@ void motion_processor::run()
 			continue;
 		}
 
-		AVPacket avpkt;
-		av_init_packet(&avpkt);
+		AVPacket avpkt = {0};
 		avpkt.flags = pkt.flags;
 		avpkt.pts   = pkt.pts;
 		avpkt.dts   = pkt.dts;
@@ -483,7 +482,7 @@ void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
     mkdir_p(fname, S_IRWXU | S_IRWXG | S_IRWXO);
 
     // append again to the end of fname to get the absolute filename
-    sprintf(fname + strlen(fname),"/%06d.%s%s.jpg", m_debugFrameNum, name, (m_motionTriggered ? "-t" : "-p"), name);
+    sprintf(fname + strlen(fname),"/%06ld.%s.jpg", m_debugFrameNum, name);
     if (!imwrite(fname, m))
             bc_log(Error, "Failed to save %s Frame", name);
 }

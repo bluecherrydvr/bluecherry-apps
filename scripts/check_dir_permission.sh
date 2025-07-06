@@ -25,6 +25,9 @@ PROTECTED_DIRS=(
     "/var"
 )
 
+# Minimum required free space in MB
+MIN_FREE_SPACE=1024  # 1GB minimum free space
+
 # Verify if a directory is "protected"
 is_subdir() {
     local dir=$1
@@ -38,14 +41,56 @@ is_subdir() {
     return 1 # False, not a subdir
 }
 
+# Check if path is valid
+is_valid_path() {
+    local path=$1
+    # Check for invalid characters
+    if [[ "$path" =~ [\|\&\;\$\#\*\(\)\{\}\[\]\<\>] ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Check available disk space
+check_disk_space() {
+    local path=$1
+    local free_space=$(df -m "$path" | awk 'NR==2 {print $4}')
+    if [ "$free_space" -lt "$MIN_FREE_SPACE" ]; then
+        echo "Error: Insufficient disk space. Required: ${MIN_FREE_SPACE}MB, Available: ${free_space}MB"
+        return 1
+    fi
+    return 0
+}
+
+# Verify write permissions
+verify_write_permissions() {
+    local path=$1
+    if ! touch "$path/.write_test" 2>/dev/null; then
+        echo "Error: Cannot write to directory $path"
+        return 1
+    fi
+    rm -f "$path/.write_test"
+    return 0
+}
+
 # Directory variable to store location
 DIR=$(realpath "$1") # Converts to absolute path
+
+# Validate path format
+if ! is_valid_path "$DIR"; then
+    echo "Error: Invalid path format. Path must contain no special characters."
+    exit 1
+fi
 
 # We need to atleast allow storage for the default storage directory which is inside a protected directory /var/lib/bluecherry/recordings
 if [[ "$DIR" == "/var/lib/bluecherry/recordings" ]]; then
     echo "Modifying permissions and ownership of $DIR"
     chmod 770 "$DIR"
     chown -R bluecherry:bluecherry "$DIR"
+    if ! verify_write_permissions "$DIR"; then
+        echo "Error: Failed to verify write permissions after setting them"
+        exit 1
+    fi
     exit 0
 fi
 
@@ -74,14 +119,32 @@ if [[ -d "$DIR" ]]; then
         echo "Changing permissions and ownership of $DIR"
         chmod 770 "$DIR"
         chown -R bluecherry:bluecherry "$DIR"
+        if ! verify_write_permissions "$DIR"; then
+            echo "Error: Failed to verify write permissions after setting them"
+            exit 1
+        fi
     else
         echo "Directory $DIR already has the correct permissions and ownership."
     fi
 elif [[ -e "$DIR" ]]; then
     echo "$DIR already exists but is not a directory."
+    exit 1
 else
     echo "Directory $DIR does not exist. Creating it now..."
     mkdir -p "$DIR"
     chmod 770 "$DIR"
     chown -R bluecherry:bluecherry "$DIR"
+    if ! verify_write_permissions "$DIR"; then
+        echo "Error: Failed to verify write permissions after creating directory"
+        exit 1
+    fi
 fi
+
+# Check available disk space
+if ! check_disk_space "$DIR"; then
+    echo "Error: Insufficient disk space for storage location"
+    exit 1
+fi
+
+echo "Successfully configured storage location: $DIR"
+exit 0
