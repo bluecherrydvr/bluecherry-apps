@@ -14,17 +14,27 @@ class playback extends Controller {
         $this->setView('ajax.playback.index');
 
         $this->view->cameras = $this->getCameras();
+        $this->view->event_types = $this->getEventTypes();
     }
 
     private function getCameras()
     {
         $res = data::query("SELECT dvs.* FROM Devices as dvs
             INNER JOIN EventsCam as m ON dvs.id=m.device_id
-            WHERE m.type_id='motion' OR m.type_id='continuous'
             GROUP BY dvs.id
             ");
 
         return $res;
+    }
+
+    private function getEventTypes()
+    {
+        $res = data::query("SELECT DISTINCT type_id FROM EventsCam ORDER BY type_id");
+        $event_types = array();
+        foreach ($res as $row) {
+            $event_types[] = $row['type_id'];
+        }
+        return $event_types;
     }
 
     public function getDownloadMkv()
@@ -45,26 +55,27 @@ class playback extends Controller {
     {
         $res = '';
 
-        $motion = Inp::post('motion_events');
-        $continuous = Inp::post('continuous_events');
+        $event_types = Inp::post('event_types');
         $date_start = Inp::post('start');
         $date_end = Inp::post('end');
 
-        if ($motion || $continuous) {
+        if (!empty($event_types)) {
             $view = new View('ajax.playback.listEvents');
 
             $where_add = '';
             if ($date_start) $where_add .= " AND EventsCam.time >= ".dateToUnix($date_start);
             if ($date_end) $where_add .= " AND EventsCam.time <= ".dateToUnix($date_end);
 
-            if ($motion && $continuous) {
-                $where_add .= " AND (type_id='motion' OR type_id='continuous')";
-            } else {
-                if ($motion) $where_add .= " AND type_id='motion'";
-                if ($continuous) $where_add .= " AND type_id='continuous'";
+            // Build dynamic event type filter
+            $event_type_conditions = array();
+            foreach ($event_types as $type) {
+                $event_type_conditions[] = "type_id='".addslashes($type)."'";
+            }
+            if (!empty($event_type_conditions)) {
+                $where_add .= " AND (" . implode(" OR ", $event_type_conditions) . ")";
             }
 
-            $query = "SELECT EventsCam.*, Devices.device_name, Media.id as media_id, Media.size AS media_size, Media.start, Media.end, ((Media.size>0 OR Media.end=0) AND Media.filepath!='') AS media_available
+            $query = "SELECT EventsCam.*, Devices.device_name, Media.id as media_id, Media.size AS media_size, Media.start, Media.end, (Media.id IS NOT NULL AND Media.filepath!='') AS media_available
                 FROM EventsCam
                 LEFT JOIN Media ON (EventsCam.media_id=Media.id)
                 LEFT JOIN Devices ON (EventsCam.device_id=Devices.id)
@@ -74,6 +85,10 @@ class playback extends Controller {
                 ";
 
             $query_res = data::query($query);
+
+            // Debug: Log the query and results
+            error_log("Playback query: " . $query);
+            error_log("Query results count: " . count($query_res));
 
             $locale_en = localeEn();
             foreach ($query_res as $key => $val) {
@@ -93,6 +108,9 @@ class playback extends Controller {
                     $color = '';
                 }
                 $query_res[$key]['color'] = $color;
+                
+                // Debug: Log each event
+                error_log("Event: id=" . $val['id'] . ", type=" . $val['type_id'] . ", media_available=" . $val['media_available'] . ", media_size=" . $val['media_size'] . ", end=" . $val['end']);
             }
 
             $view->events = $query_res;

@@ -154,8 +154,7 @@ void trigger_server::serveClient(int fd)
 
     int camera_id = 0;
     char description[1024] = {0};
-    sscanf(input, "%d %[^
-]", &camera_id, description);
+    sscanf(input, "%d %[^\n]", &camera_id, description);
     bc_log(Info, "TriggerServer: parsed camera_id=%d, description='%s'", camera_id, description);
 
     trigger_processor* proc = find_processor(camera_id);

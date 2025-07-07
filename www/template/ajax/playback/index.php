@@ -45,13 +45,17 @@
 		    </select>
 		</div>
 		<div class="form-group">
+		    <label>Event Types</label>
 		    <div class="checkbox">
-			<label>
-			    <input type="checkbox" name="motion_events" checked><?php echo STS_ET_M; ?>
-			</label>
-			<label>
-			    <input type="checkbox" name="continuous_events"><?php echo STS_ET_C; ?>
-			</label>
+			<?php if (!empty($event_types)) { ?>
+			    <?php foreach ($event_types as $event_type) { ?>
+			    <label>
+				<input type="checkbox" name="event_types[]" value="<?php echo htmlspecialchars($event_type); ?>" <?php echo ($event_type == 'motion' || $event_type == 'continuous') ? 'checked' : ''; ?>><?php echo ucfirst(htmlspecialchars($event_type)); ?>
+			    </label>
+			    <?php } ?>
+			<?php } else { ?>
+			    <p class="text-muted">No event types available</p>
+			<?php } ?>
 		    </div>
 		</div>
 		<button class="btn btn-success btn-block send-req-form" type="submit" data-type-data="HTML" data-func-after="playbackSetResult">Get</button>

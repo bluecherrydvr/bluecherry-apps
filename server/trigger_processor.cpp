@@ -20,10 +20,25 @@ void trigger_processor::trigger(const char *description)
     trigger_flag = true;
     pthread_mutex_unlock(&trigger_flag_lock);
 
+    // Extract type from description (before the | character)
+    char type[64] = {0};
+    const char *pipe_pos = strchr(description, '|');
+    if (pipe_pos) {
+        strncpy(type, description, pipe_pos - description);
+        type[pipe_pos - description] = '\0';
+    } else {
+        strncpy(type, description, sizeof(type) - 1);
+    }
+    
+    // Convert to lowercase for consistency
+    for (int i = 0; type[i]; i++) {
+        type[i] = tolower(type[i]);
+    }
+
     // Insert a new event into EventsCam for this trigger
     bc_db_query("INSERT INTO EventsCam (time, level_id, device_id, type_id, details) "
-                "VALUES (UNIX_TIMESTAMP(), 'info', %d, '%s', NULL)", camera_id, description);
-    bc_log(Info, "Trigger event recorded: camera_id=%d, type=%s", camera_id, description);
+                "VALUES (UNIX_TIMESTAMP(), 'info', %d, '%s', 'triggered')", camera_id, type);
+    bc_log(Info, "Trigger event recorded: camera_id=%d, type=%s, details=triggered", camera_id, type);
     printf("Trigger: %s\n", description);
 }
 

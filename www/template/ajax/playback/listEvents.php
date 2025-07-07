@@ -28,6 +28,15 @@
                     </td>
                     <td data-bytes="<?php echo $val['media_size']; ?>"><?php echo $val['media_size_converted']; ?></td>
                 </tr>
+                <?php } else { ?>
+                <tr class="<?php echo $val['color']; ?>">
+                    <td data-time="<?php echo $val['time']; ?>"><?php echo $val['time_converted']; ?></td>
+                    <td><?php echo $val['type_id']; ?></td>
+                    <td>
+                        <?php echo isset($val['details']) ? htmlspecialchars($val['details']) : 'N/A'; ?>
+                    </td>
+                    <td data-bytes="0">No media</td>
+                </tr>
                 <?php } ?>
             <?php } ?>
             </tbody>
