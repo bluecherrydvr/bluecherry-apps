@@ -394,6 +394,18 @@ void lavf_device::create_stream_packet(AVPacket *src)
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
 	
+	// SAFE ACCESS: Validate stream index and stream before accessing
+	if (!ctx || !ctx->streams || src->stream_index < 0 || 
+	    src->stream_index >= ctx->nb_streams || 
+	    !ctx->streams[src->stream_index]) {
+		bc_log(Error, "Invalid stream access in lavf_device: ctx=%p, streams=%p, stream_index=%d, nb_streams=%d",
+		       ctx, ctx ? ctx->streams : NULL, src->stream_index, ctx ? ctx->nb_streams : -1);
+		current_packet.pts = 0;
+		current_packet.dts = 0;
+		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
+		return;
+	}
+	
 	// Get stream timebase
 	AVRational tb = ctx->streams[src->stream_index]->time_base;
 	
@@ -405,14 +417,18 @@ void lavf_device::create_stream_packet(AVPacket *src)
 
 	// Only adjust DTS for VBR streams (bit_rate == 0)
 	if (src->stream_index == video_stream_index) {
-		AVCodecParameters *codecpar = ctx->streams[video_stream_index]->codecpar;
-		static int64_t last_dts = 0;
-		if (codecpar->bit_rate == 0 && dts == last_dts) {
-			// For VBR streams, increment DTS by a small amount
-			dts = last_dts + 1;
-			bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld", last_dts, dts);
+		// SAFE ACCESS: Validate video stream before accessing codecpar
+		if (video_stream_index >= 0 && video_stream_index < ctx->nb_streams && 
+		    ctx->streams[video_stream_index] && ctx->streams[video_stream_index]->codecpar) {
+			AVCodecParameters *codecpar = ctx->streams[video_stream_index]->codecpar;
+			static int64_t last_dts = 0;
+			if (codecpar->bit_rate == 0 && dts == last_dts) {
+				// For VBR streams, increment DTS by a small amount
+				dts = last_dts + 1;
+				bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld", last_dts, dts);
+			}
+			last_dts = dts;
 		}
-		last_dts = dts;
 	}
 	
 	current_packet.pts = pts;
@@ -434,7 +450,9 @@ void lavf_device::update_properties()
 {
 	stream_properties *p = new stream_properties;
 
-	if (video_stream_index >= 0) {
+	// SAFE ACCESS: Validate video stream before accessing properties
+	if (video_stream_index >= 0 && video_stream_index < ctx->nb_streams && 
+	    ctx->streams[video_stream_index] && ctx->streams[video_stream_index]->codecpar) {
 		AVCodecParameters *ic = ctx->streams[video_stream_index]->codecpar;
 		AVRational tb = ctx->streams[video_stream_index]->time_base;
 		p->video.codec_id = ic->codec_id;
@@ -448,7 +466,9 @@ void lavf_device::update_properties()
 			p->video.extradata.assign(ic->extradata, ic->extradata + ic->extradata_size);
 	}
 
-	if (audio_stream_index >= 0) {
+	// SAFE ACCESS: Validate audio stream before accessing properties
+	if (audio_stream_index >= 0 && audio_stream_index < ctx->nb_streams && 
+	    ctx->streams[audio_stream_index] && ctx->streams[audio_stream_index]->codecpar) {
 		AVCodecParameters *ic = ctx->streams[audio_stream_index]->codecpar;
 		p->audio.codec_id = ic->codec_id;
 		p->audio.bit_rate = ic->bit_rate;
@@ -476,6 +496,13 @@ const char *lavf_device::stream_info()
 		return buf;
 	}
 
+	// SAFE ACCESS: Validate video stream before accessing
+	if (!ctx || !ctx->streams || video_stream_index >= ctx->nb_streams || 
+	    !ctx->streams[video_stream_index] || !ctx->streams[video_stream_index]->codecpar) {
+		strlcpy(buf, "Invalid video stream", size);
+		return buf;
+	}
+
 	AVStream *stream = ctx->streams[video_stream_index];
 
 	/* Borrow the error_message field */
@@ -487,7 +514,10 @@ const char *lavf_device::stream_info()
 	off += snprintf(buf+off, size-off, ", %d/%d(s) %d/%d(c)", stream->time_base.num,
                 stream->time_base.den, stream->time_base.num, stream->time_base.den);
 
-	if (audio_stream_index >= 0 && size - off > 2) {
+	// SAFE ACCESS: Validate audio stream before accessing
+	if (audio_stream_index >= 0 && audio_stream_index < ctx->nb_streams && 
+	    ctx->streams[audio_stream_index] && ctx->streams[audio_stream_index]->codecpar && 
+	    size - off > 2) {
 		stream = ctx->streams[audio_stream_index];
 		buf[off++] = ';';
 		buf[off++] = ' ';

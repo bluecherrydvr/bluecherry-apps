@@ -281,6 +281,18 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	if (!bc_streaming_is_active(bc_rec))
 		return 0;
 
+	// CRITICAL SAFETY CHECK: Validate streaming context and streams
+	if (!bc_rec->rtp_stream_ctx[ctx_index] || 
+	    !bc_rec->rtp_stream_ctx[ctx_index]->streams || 
+	    bc_rec->rtp_stream_ctx[ctx_index]->nb_streams == 0 ||
+	    !bc_rec->rtp_stream_ctx[ctx_index]->streams[0]) {
+		bc_rec->log.log(Error, "Invalid RTP streaming context: ctx=%p, streams=%p, nb_streams=%d", 
+		       bc_rec->rtp_stream_ctx[ctx_index],
+		       bc_rec->rtp_stream_ctx[ctx_index] ? bc_rec->rtp_stream_ctx[ctx_index]->streams : NULL,
+		       bc_rec->rtp_stream_ctx[ctx_index] ? bc_rec->rtp_stream_ctx[ctx_index]->nb_streams : -1);
+		return -1;
+	}
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
 	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->rtp_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
@@ -331,6 +343,17 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	if (!bc_rec->hls_stream_ctx[ctx_index])
 		return 0;
 
+	// CRITICAL SAFETY CHECK: Validate HLS streaming context and streams
+	if (!bc_rec->hls_stream_ctx[ctx_index]->streams || 
+	    bc_rec->hls_stream_ctx[ctx_index]->nb_streams == 0 ||
+	    !bc_rec->hls_stream_ctx[ctx_index]->streams[0]) {
+		bc_rec->log.log(Error, "Invalid HLS streaming context: ctx=%p, streams=%p, nb_streams=%d", 
+		       bc_rec->hls_stream_ctx[ctx_index],
+		       bc_rec->hls_stream_ctx[ctx_index] ? bc_rec->hls_stream_ctx[ctx_index]->streams : NULL,
+		       bc_rec->hls_stream_ctx[ctx_index] ? bc_rec->hls_stream_ctx[ctx_index]->nb_streams : -1);
+		return -1;
+	}
+
 	av_init_packet(&opkt);
 	opkt.flags        = pkt.flags;
 	opkt.pts          = av_rescale_q_rnd(pkt.pts, AV_TIME_BASE_Q, bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
@@ -361,7 +384,10 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 		return -1;
 	}
 
-	if (bc_rec->hls_stream_ctx[ctx_index]->streams[0]->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
+	// SAFE ACCESS: Add null pointer check before accessing codecpar
+	AVStream *hls_stream = bc_rec->hls_stream_ctx[ctx_index]->streams[0];
+	if (hls_stream && hls_stream->codecpar && 
+	    hls_stream->codecpar->codec_id == AV_CODEC_ID_MPEG4) {
 		// Write header for every MP4 fragment to be used as independent segments in HLS playlist
 		av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
 		int ret;
