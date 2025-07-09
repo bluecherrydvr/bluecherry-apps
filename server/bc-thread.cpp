@@ -862,7 +862,15 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 	memset(&cfg_tmp, 0, sizeof(cfg_tmp));
 
 	if (bc_db_get_val_int(dbres, "disabled") > 0) {
-		pthread_mutex_lock(&bc_rec->cfg_mutex);
+		// CRITICAL FIX: Add timeout to prevent deadlock
+		struct timespec timeout;
+		clock_gettime(CLOCK_REALTIME, &timeout);
+		timeout.tv_sec += 5; // 5 second timeout
+		
+		if (pthread_mutex_timedlock(&bc_rec->cfg_mutex, &timeout) != 0) {
+			bc_rec->log.log(Error, "Failed to acquire config mutex within timeout - potential deadlock");
+			return -1;
+		}
 		bc_rec->thread_should_die = "Disabled in config";
 		pthread_mutex_unlock(&bc_rec->cfg_mutex);
 		return 0;
@@ -873,7 +881,16 @@ int bc_record_update_cfg(struct bc_record *bc_rec, BC_DB_RES dbres)
 		return -1;
 	}
 
-	pthread_mutex_lock(&bc_rec->cfg_mutex);
+	// CRITICAL FIX: Add timeout to prevent deadlock
+	struct timespec timeout;
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += 5; // 5 second timeout
+	
+	if (pthread_mutex_timedlock(&bc_rec->cfg_mutex, &timeout) != 0) {
+		bc_rec->log.log(Error, "Failed to acquire config mutex within timeout - potential deadlock");
+		return -1;
+	}
+	
 	if (memcmp(&bc_rec->cfg_update, &cfg_tmp, sizeof(struct bc_device_config))) {
 		memcpy(&bc_rec->cfg_update, &cfg_tmp, sizeof(struct bc_device_config));
 		bc_rec->cfg_dirty = 1;
@@ -890,7 +907,15 @@ static int apply_device_cfg(struct bc_record *bc_rec)
 	int motion_map_changed, format_changed;
 	int ret;
 
-	pthread_mutex_lock(&bc_rec->cfg_mutex);
+	// CRITICAL FIX: Add timeout to prevent deadlock
+	struct timespec timeout;
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += 5; // 5 second timeout
+	
+	if (pthread_mutex_timedlock(&bc_rec->cfg_mutex, &timeout) != 0) {
+		bc_rec->log.log(Error, "Failed to acquire config mutex within timeout - potential deadlock");
+		return -1;
+	}
 
 	bc_rec->log.log(Info, "Applying configuration changes");
 

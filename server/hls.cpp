@@ -727,7 +727,12 @@ bool hls_session::create_response()
         if (pthread_mutex_lock(&content->_mutex))
         {
             bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-            return false;
+            // CRITICAL FIX: Return proper error response instead of false
+            std::string response = std::string("HTTP/1.1 503 Service Unavailable\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+            return true;
         }
 
         size_t window_size = content->_window.size();
@@ -889,8 +894,13 @@ bool hls_session::create_response()
 
         if (pthread_mutex_unlock(&content->_mutex))
         {
-            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-            return false;
+            bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+            // CRITICAL FIX: Return proper error response instead of false
+            std::string response = std::string("HTTP/1.1 503 Service Unavailable\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+            return true;
         }
 
         if (segment == NULL)

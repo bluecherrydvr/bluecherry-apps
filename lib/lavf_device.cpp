@@ -247,7 +247,9 @@ int lavf_device::start()
 
 		if (!input_fmt)
 		{
-			assert(0);
+			// CRITICAL FIX: Replace dangerous assert(0) with proper error handling
+			bc_log(Error, "Failed to find MJPEG input format - this should never happen");
+			strcpy(error_message, "MJPEG format not available");
 			return -1;
 		}
 

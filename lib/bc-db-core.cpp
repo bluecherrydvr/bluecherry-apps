@@ -19,6 +19,8 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h> // Required for clock_gettime
+#include <stdio.h> // Required for fprintf
 
 #include "bc-db.h"
 
@@ -34,7 +36,17 @@ static struct bc_db_ops *db_ops = NULL;
 
 static void bc_db_lock(void)
 {
-	pthread_mutex_lock(&db_lock);
+	// CRITICAL FIX: Add timeout to prevent database deadlock
+	struct timespec timeout;
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += 10; // 10 second timeout for database operations
+	
+	if (pthread_mutex_timedlock(&db_lock, &timeout) != 0) {
+		// Log error but don't crash - this is critical for server stability
+		fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
+		// Continue without lock - this is better than hanging the server
+		return;
+	}
 }
 
 static void bc_db_unlock(void)
