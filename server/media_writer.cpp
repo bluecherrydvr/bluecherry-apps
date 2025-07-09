@@ -558,6 +558,17 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	this->recording_path = path;
 	av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
+	
+	// CRITICAL FIX: Enable fragmented MP4 for crash recovery
+	// This allows partial recordings to be recovered if the server crashes
+	// Each keyframe creates a new fragment that can be played independently
+	av_dict_set(&muxer_opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+	
+	// Set fragment duration to ensure reasonable fragment sizes (30 seconds)
+	av_dict_set(&muxer_opts, "frag_duration", "30000000", 0); // 30 seconds in microseconds
+	
+	// Enable fast start for better playback compatibility
+	av_dict_set(&muxer_opts, "movflags", "+faststart", AV_DICT_APPEND);
 
 	ret = avformat_write_header(out_ctx, &muxer_opts);
 	av_dict_free(&muxer_opts);
@@ -572,6 +583,10 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		close();
 		return -1;
 	}
+
+	// Log successful fragmented MP4 initialization
+	bc_log(Info, "Fragmented MP4 recording enabled for crash recovery: %s", recording_path.c_str());
+	bc_log(Debug, "Fragments will be created at keyframes and every 30 seconds for partial recovery");
 
 	// CRITICAL SAFETY CHECK: Validate stream initialization
 	if (!out_ctx || out_ctx->nb_streams == 0 || !out_ctx->streams[0]) {
