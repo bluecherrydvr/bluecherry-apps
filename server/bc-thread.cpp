@@ -702,18 +702,39 @@ void bc_record::destroy_elements()
         liveview_substream->stop();
     }
 
-    // Clean up HLS stream first with proper synchronization
+    // CRITICAL FIX: Safe HLS stream cleanup with proper synchronization
     if (hls_stream) {
-        hls_content *content = hls_stream->get_hls_content(id);
-        if (content) {
-            pthread_mutex_lock(&content->_mutex);
-            content->clear_window();
-            pthread_mutex_unlock(&content->_mutex);
+        // Get HLS content with proper null checking
+        hls_content *content = nullptr;
+        try {
+            content = hls_stream->get_hls_content(id);
+        } catch (...) {
+            bc_log(Error, "Exception during HLS content access for camera %d", id);
+            content = nullptr;
         }
-        // Give time for any pending operations to complete
-        usleep(100000); // 100ms
-        delete hls_stream;
-        hls_stream = nullptr;
+        
+        if (content) {
+            // CRITICAL FIX: Use timeout protection for mutex operations
+            struct timespec timeout;
+            clock_gettime(CLOCK_REALTIME, &timeout);
+            timeout.tv_sec += 2; // 2 second timeout
+            
+            if (pthread_mutex_timedlock(&content->_mutex, &timeout) == 0) {
+                content->clear_window();
+                pthread_mutex_unlock(&content->_mutex);
+            } else {
+                bc_log(Error, "Failed to acquire HLS content mutex within timeout for camera %d", id);
+            }
+        }
+        
+        // CRITICAL FIX: Add delay before deletion to prevent race conditions
+        usleep(200000); // 200ms delay
+        
+        // CRITICAL FIX: Safe deletion with null check
+        if (hls_stream) {
+            delete hls_stream;
+            hls_stream = nullptr;
+        }
     }
 
     // Then clean up streaming contexts

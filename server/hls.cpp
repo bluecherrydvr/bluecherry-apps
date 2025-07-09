@@ -1394,7 +1394,28 @@ hls_content::~hls_content()
 {
     if (!_init) return;
 
-    clear_window();
+    // CRITICAL FIX: Safe cleanup with timeout protection
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 2; // 2 second timeout
+    
+    if (pthread_mutex_timedlock(&_mutex, &timeout) == 0) {
+        clear_window();
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        bc_log(Error, "Failed to acquire mutex during HLS content destruction - forcing cleanup");
+        // Force cleanup without mutex if timeout occurs
+        while (_window.size()) {
+            hls_segment *front = _window.front();
+            _window.pop_front();
+            if (front) delete front;
+        }
+        if (_init_segment) {
+            delete _init_segment;
+            _init_segment = NULL;
+        }
+    }
+    
     pthread_mutex_destroy(&_mutex);
 }
 
@@ -1803,6 +1824,36 @@ hls_listener::hls_listener()
 hls_listener::~hls_listener()
 {
     if (!_init) return;
+    
+    // CRITICAL FIX: Safe cleanup with timeout protection
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 3; // 3 second timeout
+    
+    if (pthread_mutex_timedlock(&_mutex, &timeout) == 0) {
+        // Clear all content safely
+        hls_content_it it;
+        for (it = _content.begin(); it != _content.end(); it++) {
+            hls_content *content = it->second;
+            if (content) {
+                delete content;
+            }
+        }
+        _content.clear();
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        bc_log(Error, "Failed to acquire mutex during HLS listener destruction - forcing cleanup");
+        // Force cleanup without mutex if timeout occurs
+        hls_content_it it;
+        for (it = _content.begin(); it != _content.end(); it++) {
+            hls_content *content = it->second;
+            if (content) {
+                delete content;
+            }
+        }
+        _content.clear();
+    }
+    
     pthread_mutex_destroy(&_mutex);
     _fd = sock_shutdown(_fd);
 }
