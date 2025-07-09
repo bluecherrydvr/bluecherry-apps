@@ -77,6 +77,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	opkt.size         = pkt.size;
 	opkt.stream_index = stream->index;
 
+	// CRITICAL SAFETY CHECK: Validate stream index and context
+	if (!out_ctx || opkt.stream_index < 0 || opkt.stream_index >= out_ctx->nb_streams || 
+	    !out_ctx->streams[opkt.stream_index]) {
+		bc_log(Error, "Invalid stream context: out_ctx=%p, stream_index=%d, nb_streams=%d", 
+		       out_ctx, opkt.stream_index, out_ctx ? out_ctx->nb_streams : -1);
+		return false;
+	}
+
 	/* Fix non-increasing timestamps */
 	static_assert(AVMEDIA_TYPE_VIDEO == 0);
 	static_assert(AVMEDIA_TYPE_AUDIO == 1);
@@ -95,9 +103,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 		// Get the tolerated gap from configuration, default to 2 seconds
 		int tolerated_gap_seconds = 2;
-		if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+		AVStream *current_stream = out_ctx->streams[opkt.stream_index];
+		if (current_stream && current_stream->codecpar && 
+		    current_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			// For video streams, check if it's VBR
-			AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			AVCodecParameters *codecpar = current_stream->codecpar;
 			if (codecpar->bit_rate == 0) {  // VBR is indicated by bit_rate = 0
 				// For VBR cameras, use a more lenient gap tolerance
 				// Based on typical I-frame intervals and network conditions
@@ -121,8 +131,9 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// For CBR streams, be more conservative about timestamp adjustment
 			// Only adjust if the gap is extremely large (more than 5 seconds)
 			bool should_adjust = true;
-			if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-				AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			if (current_stream && current_stream->codecpar && 
+			    current_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+				AVCodecParameters *codecpar = current_stream->codecpar;
 				if (codecpar->bit_rate != 0) {  // CBR stream
 					// Only adjust CBR timestamps if gap is very large
 					should_adjust = (delta_dts > 5 * AV_TIME_BASE);
@@ -201,10 +212,17 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		}
 	}
 
-	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
-		opkt.dts, opkt.pts, out_ctx->streams[opkt.stream_index]->time_base.num,
-		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
-		!!(opkt.flags & AV_PKT_FLAG_KEY));
+	// SAFE DEBUG LOGGING: Add null pointer checks before accessing stream properties
+	AVStream *debug_stream = out_ctx->streams[opkt.stream_index];
+	if (debug_stream) {
+		bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
+			opkt.dts, opkt.pts, debug_stream->time_base.num,
+			debug_stream->time_base.den, opkt.stream_index,
+			!!(opkt.flags & AV_PKT_FLAG_KEY));
+	} else {
+		bc_log(Error, "av_interleaved_write_frame: NULL stream at index %d", opkt.stream_index);
+		return false;
+	}
 
 	// Additional safety check for invalid timestamps before writing
 	if (opkt.dts != AV_NOPTS_VALUE && opkt.dts < 0) {
@@ -225,14 +243,16 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// Try to recover by resetting the timestamp tracking
 			last_mux_dts = AV_NOPTS_VALUE;
 		} else {
-			// Provide more specific error information
+			// SAFE ERROR HANDLING: Add null pointer checks before accessing stream properties
 			char err_buf[256];
 			av_strerror(re, err_buf, sizeof(err_buf));
+			const char *codec_name = "unknown";
+			if (stream && stream->codecpar) {
+				codec_name = avcodec_get_name(stream->codecpar->codec_id);
+			}
 			bc_log(Error, "Error writing %s frame to recording: %s (codec: %s, stream: %d)", 
 				pkt.type == AVMEDIA_TYPE_VIDEO ? "video" : "audio",
-				err_buf,
-				avcodec_get_name(stream->codecpar->codec_id),
-				opkt.stream_index);
+				err_buf, codec_name, opkt.stream_index);
 		}
 		update_last_mux_dts = false;
 		return false;
@@ -256,11 +276,14 @@ void media_writer::close()
 
 	if (out_ctx)
 	{
-		if (out_ctx->pb)
-			av_write_trailer(out_ctx);
-
-		if (out_ctx->pb)
+		// SAFE CLEANUP: Add null pointer checks before accessing context
+		if (out_ctx->pb) {
+			// Only write trailer if the context is still valid
+			if (out_ctx->nb_streams > 0 && out_ctx->streams[0]) {
+				av_write_trailer(out_ctx);
+			}
 			avio_close(out_ctx->pb);
+		}
 
 		avformat_free_context(out_ctx);
 		out_ctx = NULL;
@@ -548,6 +571,34 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		avio_closep(&out_ctx->pb);
 		close();
 		return -1;
+	}
+
+	// CRITICAL SAFETY CHECK: Validate stream initialization
+	if (!out_ctx || out_ctx->nb_streams == 0 || !out_ctx->streams[0]) {
+		bc_log(Error, "Stream validation failed after muxer initialization: out_ctx=%p, nb_streams=%d", 
+		       out_ctx, out_ctx ? out_ctx->nb_streams : -1);
+		close();
+		return -1;
+	}
+
+	// Validate video stream is accessible
+	if (video_st && video_st->index >= 0 && video_st->index < out_ctx->nb_streams) {
+		if (out_ctx->streams[video_st->index] != video_st) {
+			bc_log(Error, "Video stream index mismatch: expected=%d, actual=%d", 
+			       video_st->index, out_ctx->streams[video_st->index] ? out_ctx->streams[video_st->index]->index : -1);
+			close();
+			return -1;
+		}
+	}
+
+	// Validate audio stream is accessible (if present)
+	if (audio_st && audio_st->index >= 0 && audio_st->index < out_ctx->nb_streams) {
+		if (out_ctx->streams[audio_st->index] != audio_st) {
+			bc_log(Error, "Audio stream index mismatch: expected=%d, actual=%d", 
+			       audio_st->index, out_ctx->streams[audio_st->index] ? out_ctx->streams[audio_st->index]->index : -1);
+			close();
+			return -1;
+		}
 	}
 
 	return 0;
