@@ -576,10 +576,6 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		return -1;
 	}
 
-	// Log successful fragmented MP4 initialization
-	bc_log(Info, "Fragmented MP4 recording enabled for crash recovery: %s", recording_path.c_str());
-	bc_log(Debug, "Fragments will be created at keyframes and every 30 seconds for partial recovery");
-
 	// CRITICAL SAFETY CHECK: Validate stream initialization
 	if (!out_ctx || out_ctx->nb_streams == 0 || !out_ctx->streams[0]) {
 		bc_log(Error, "Stream validation failed after muxer initialization: out_ctx=%p, nb_streams=%d", 
