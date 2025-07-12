@@ -133,6 +133,13 @@ function optimize_mysql_for_bluecherry
 {
 	echo "Optimizing MySQL/MariaDB configuration for Bluecherry..."
 	
+	# Detect system RAM for buffer pool sizing
+	local total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+	local total_ram_mb=$((total_ram_kb / 1024))
+	local total_ram_gb=$((total_ram_mb / 1024))
+	
+	echo "Detected system RAM: ${total_ram_gb}GB (${total_ram_mb}MB)"
+	
 	# Enhanced detection of MySQL vs MariaDB
 	DB_TYPE=""
 	DB_SERVICE=""
@@ -307,17 +314,54 @@ function optimize_mysql_for_bluecherry
 	update_mysql_setting "mysqld" "net_write_timeout" "30" "Bluecherry optimization"
 	
 	# InnoDB settings for better transaction handling
-	update_mysql_setting "mysqld" "innodb_buffer_pool_size" "256M" "Bluecherry optimization"
+	# Calculate optimal buffer pool size based on available RAM
+	local buffer_pool_size="256M"
+	if [ $total_ram_gb -ge 8 ]; then
+		# For systems with 8GB+ RAM, use 2GB+ buffer pool
+		buffer_pool_size="2G"
+		echo "Using 2GB InnoDB buffer pool for high-memory system"
+	elif [ $total_ram_gb -ge 4 ]; then
+		# For systems with 4-7GB RAM, use 1GB buffer pool
+		buffer_pool_size="1G"
+		echo "Using 1GB InnoDB buffer pool for medium-memory system"
+	else
+		# For systems with <4GB RAM, use 256MB buffer pool
+		echo "Using 256MB InnoDB buffer pool for low-memory system"
+	fi
+	
+	update_mysql_setting "mysqld" "innodb_buffer_pool_size" "$buffer_pool_size" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "innodb_log_file_size" "64M" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "innodb_log_buffer_size" "16M" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "innodb_flush_log_at_trx_commit" "2" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "innodb_lock_wait_timeout" "50" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "innodb_rollback_on_timeout" "ON" "Bluecherry optimization"
 	
-	# Query cache and performance settings (MariaDB supports these)
-	update_mysql_setting "mysqld" "query_cache_type" "1" "Bluecherry optimization"
-	update_mysql_setting "mysqld" "query_cache_size" "32M" "Bluecherry optimization"
-	update_mysql_setting "mysqld" "query_cache_limit" "2M" "Bluecherry optimization"
+	# Query cache and performance settings
+	# Check MySQL version to determine if query cache should be used
+	local mysql_version=""
+	local mysql_major_version=""
+	
+	if [ "$DB_TYPE" = "mysql" ]; then
+		# Try to get MySQL version
+		if command -v mysql >/dev/null 2>&1; then
+			mysql_version=$(mysql --version 2>/dev/null | grep -oP 'Distrib \K[0-9]+\.[0-9]+' || echo "")
+			if [ -n "$mysql_version" ]; then
+				mysql_major_version=$(echo "$mysql_version" | cut -d. -f1)
+				echo "Detected MySQL version: $mysql_version"
+			fi
+		fi
+	fi
+	
+	# Query cache is deprecated in MySQL 5.7+ and removed in MySQL 8.0+
+	# Only apply query cache settings for MariaDB or older MySQL versions
+	if [ "$DB_TYPE" = "mariadb" ] || [ -z "$mysql_major_version" ] || [ "$mysql_major_version" -lt 5 ]; then
+		echo "Applying query cache settings (supported in MariaDB and MySQL <5.7)"
+		update_mysql_setting "mysqld" "query_cache_type" "1" "Bluecherry optimization"
+		update_mysql_setting "mysqld" "query_cache_size" "32M" "Bluecherry optimization"
+		update_mysql_setting "mysqld" "query_cache_limit" "2M" "Bluecherry optimization"
+	else
+		echo "Skipping query cache settings (not supported in MySQL $mysql_version)"
+	fi
 	update_mysql_setting "mysqld" "max_allowed_packet" "16M" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "table_open_cache" "2000" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "thread_cache_size" "8" "Bluecherry optimization"

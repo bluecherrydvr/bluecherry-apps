@@ -178,6 +178,13 @@ private function connect() {
 - **Configuration Files**: Supports multiple standard locations for both systems
 
 #### Key MySQL/MariaDB Settings Applied:
+
+**System Detection:**
+- **RAM Detection**: Automatically detects available system memory
+- **Database Type**: Detects MySQL vs MariaDB
+- **Version Detection**: Checks MySQL version for compatibility
+
+**Connection Settings:**
 ```ini
 [mysqld]
 max_connections = 200
@@ -186,17 +193,34 @@ interactive_timeout = 300
 connect_timeout = 10
 net_read_timeout = 30
 net_write_timeout = 30
+```
 
-# InnoDB settings for better transaction handling
-innodb_buffer_pool_size = 256M
+**InnoDB Settings (RAM-optimized):**
+```ini
+# Buffer pool size automatically adjusted based on available RAM:
+# - 2GB for systems with ≥8GB RAM
+# - 1GB for systems with 4-7GB RAM  
+# - 256MB for systems with <4GB RAM
+innodb_buffer_pool_size = [auto-detected]
 innodb_log_file_size = 64M
+innodb_log_buffer_size = 16M
 innodb_flush_log_at_trx_commit = 2
 innodb_lock_wait_timeout = 50
 innodb_rollback_on_timeout = ON
+```
 
-# Performance settings (supported by both MySQL and MariaDB)
-query_cache_type = 1
-query_cache_size = 32M
+**Query Cache Settings (Version-aware):**
+```ini
+# MariaDB: Always enabled
+# MySQL <5.7: Enabled
+# MySQL 5.7+: Skipped (deprecated feature)
+query_cache_type = 1    # Only applied if supported
+query_cache_size = 32M  # Only applied if supported
+query_cache_limit = 2M  # Only applied if supported
+```
+
+**Performance Settings:**
+```ini
 max_allowed_packet = 16M
 table_open_cache = 2000
 thread_cache_size = 8
@@ -290,7 +314,11 @@ private $max_retries = 3;        // Maximum retry attempts
 ### MySQL Settings
 - **max_connections**: 200 (adjust based on server capacity)
 - **wait_timeout**: 300 seconds
-- **innodb_buffer_pool_size**: 256M (adjust based on available RAM)
+- **innodb_buffer_pool_size**: Auto-detected based on RAM:
+  - 2GB for systems with ≥8GB RAM
+  - 1GB for systems with 4-7GB RAM
+  - 256MB for systems with <4GB RAM
+- **query_cache**: Version-aware (enabled for MariaDB, disabled for MySQL 5.7+)
 
 ## Conclusion
 
