@@ -181,6 +181,7 @@ private function connect() {
 
 **System Detection:**
 - **RAM Detection**: Automatically detects available system memory
+- **CPU Core Detection**: Detects number of CPU cores for thread cache sizing
 - **Database Type**: Detects MySQL vs MariaDB
 - **Version Detection**: Checks MySQL version for compatibility
 
@@ -223,8 +224,27 @@ query_cache_limit = 2M  # Only applied if supported
 ```ini
 max_allowed_packet = 16M
 table_open_cache = 2000
-thread_cache_size = 8
+# Thread cache size automatically adjusted based on CPU cores:
+# - 64 for systems with ≥16 cores
+# - 32 for systems with 8-15 cores
+# - 16 for systems with 4-7 cores
+# - 8 for systems with <4 cores
+thread_cache_size = [auto-detected]
 ```
+
+**Logging Configuration:**
+```ini
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+log_error = /var/log/mysql/error.log
+```
+
+**Log Rotation:**
+- **Automatic Setup**: Creates `/etc/logrotate.d/mysql-slow` for slow query log rotation
+- **Daily Rotation**: Rotates logs daily with 7-day retention
+- **Compression**: Compresses old log files to save space
+- **MySQL Integration**: Uses `mysqladmin flush-logs` for proper log rotation
 
 ## Performance Improvements
 
@@ -318,7 +338,13 @@ private $max_retries = 3;        // Maximum retry attempts
   - 2GB for systems with ≥8GB RAM
   - 1GB for systems with 4-7GB RAM
   - 256MB for systems with <4GB RAM
+- **thread_cache_size**: Auto-detected based on CPU cores:
+  - 64 for systems with ≥16 cores
+  - 32 for systems with 8-15 cores
+  - 16 for systems with 4-7 cores
+  - 8 for systems with <4 cores
 - **query_cache**: Version-aware (enabled for MariaDB, disabled for MySQL 5.7+)
+- **slow_query_log**: Enabled with automatic log rotation
 
 ## Conclusion
 

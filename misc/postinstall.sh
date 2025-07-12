@@ -140,6 +140,10 @@ function optimize_mysql_for_bluecherry
 	
 	echo "Detected system RAM: ${total_ram_gb}GB (${total_ram_mb}MB)"
 	
+	# Detect CPU cores for thread cache sizing
+	local cpu_cores=$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 1)
+	echo "Detected CPU cores: $cpu_cores"
+	
 	# Enhanced detection of MySQL vs MariaDB
 	DB_TYPE=""
 	DB_SERVICE=""
@@ -364,13 +368,53 @@ function optimize_mysql_for_bluecherry
 	fi
 	update_mysql_setting "mysqld" "max_allowed_packet" "16M" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "table_open_cache" "2000" "Bluecherry optimization"
-	update_mysql_setting "mysqld" "thread_cache_size" "8" "Bluecherry optimization"
+	
+	# Calculate optimal thread cache size based on CPU cores
+	local thread_cache_size="8"
+	if [ $cpu_cores -ge 16 ]; then
+		thread_cache_size="64"
+		echo "Using 64 thread cache size for high-core system ($cpu_cores cores)"
+	elif [ $cpu_cores -ge 8 ]; then
+		thread_cache_size="32"
+		echo "Using 32 thread cache size for medium-core system ($cpu_cores cores)"
+	elif [ $cpu_cores -ge 4 ]; then
+		thread_cache_size="16"
+		echo "Using 16 thread cache size for multi-core system ($cpu_cores cores)"
+	else
+		echo "Using 8 thread cache size for single/low-core system ($cpu_cores cores)"
+	fi
+	
+	update_mysql_setting "mysqld" "thread_cache_size" "$thread_cache_size" "Bluecherry optimization"
 	
 	# Logging settings for debugging
 	update_mysql_setting "mysqld" "slow_query_log" "1" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "slow_query_log_file" "/var/log/mysql/slow.log" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "long_query_time" "2" "Bluecherry optimization"
 	update_mysql_setting "mysqld" "log_error" "/var/log/mysql/error.log" "Bluecherry optimization"
+	
+	# Ensure slow query log rotation is configured
+	echo "Configuring slow query log rotation..."
+	if [ ! -f "/etc/logrotate.d/mysql-slow" ]; then
+		cat > /etc/logrotate.d/mysql-slow << 'EOF'
+/var/log/mysql/slow.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 640 mysql mysql
+    postrotate
+        if [ -f /var/run/mysqld/mysqld.pid ]; then
+            mysqladmin flush-logs
+        fi
+    endscript
+}
+EOF
+		echo "Created MySQL slow query log rotation configuration"
+	else
+		echo "MySQL slow query log rotation already configured"
+	fi
 	
 	# Client settings
 	update_mysql_setting "client" "connect_timeout" "10" "Bluecherry optimization"
