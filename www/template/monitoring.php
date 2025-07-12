@@ -258,9 +258,9 @@
             document.getElementById('disk-usage').textContent = live.disk + '%';
             
             if (live.server_running) {
-                document.getElementById('server-status').innerHTML = '<span class="text-success">BlueCherry Server is running</span>';
+                document.getElementById('server-status').innerHTML = '<span class="text-success">Bluecherry Server is running</span>';
             } else {
-                document.getElementById('server-status').innerHTML = '<span class="text-danger">BlueCherry Server is not running</span>';
+                document.getElementById('server-status').innerHTML = '<span class="text-danger">Bluecherry Server is not running</span>';
             }
         }
         

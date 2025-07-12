@@ -105,7 +105,7 @@ class stats extends Controller {
     }
 
     private function getStorageStats() {
-        // Get storage paths from BlueCherry Storage table
+        // Get storage paths from Bluecherry Storage table
         $storage_paths = [];
         
         // Include root filesystem

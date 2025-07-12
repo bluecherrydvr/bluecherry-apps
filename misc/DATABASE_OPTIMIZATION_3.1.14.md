@@ -1,4 +1,4 @@
-# BlueCherry Database Optimization (3.1.14)
+# Bluecherry Database Optimization (3.1.14)
 
 ## Overview
 
@@ -223,10 +223,10 @@ thread_cache_size = 8
 ## Migration Guide
 
 ### 1. Automatic MySQL Configuration
-MySQL optimization is now **automatic** during BlueCherry installation and upgrade. The system will:
+MySQL optimization is now **automatic** during Bluecherry installation and upgrade. The system will:
 - Detect your MySQL configuration file
 - Create a backup of original settings
-- Apply BlueCherry-optimized settings
+- Apply Bluecherry-optimized settings
 - Restart MySQL service to apply changes
 
 ### 2. Verify Installation
@@ -299,7 +299,7 @@ The database optimization in 3.1.14 resolves the critical connection and transac
 1. **Implementing connection pooling** for better concurrency
 2. **Adding comprehensive error recovery** and retry logic
 3. **Improving transaction synchronization** to prevent conflicts
-4. **Optimizing MySQL configuration** for BlueCherry workloads
+4. **Optimizing MySQL configuration** for Bluecherry workloads
 5. **Adding connection health monitoring** for proactive issue detection
 
 These improvements ensure stable operation on large installations with many cameras while maintaining excellent performance and reliability. 

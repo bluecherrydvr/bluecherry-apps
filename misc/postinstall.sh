@@ -128,10 +128,10 @@ function install_certbot
 	pip3 install pyopenssl --upgrade
 }
 
-# CRITICAL FIX: MySQL/MariaDB optimization function for BlueCherry
+# CRITICAL FIX: MySQL/MariaDB optimization function for Bluecherry
 function optimize_mysql_for_bluecherry
 {
-	echo "Optimizing MySQL/MariaDB configuration for BlueCherry..."
+	echo "Optimizing MySQL/MariaDB configuration for Bluecherry..."
 	
 	# Enhanced detection of MySQL vs MariaDB
 	DB_TYPE=""
@@ -228,9 +228,9 @@ function optimize_mysql_for_bluecherry
 	BACKUP_TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
 	BACKUP_FILE="${MYSQL_CONF}.bluecherry.backup.${BACKUP_TIMESTAMP}"
 	
-	# Check if we already have a BlueCherry backup
+	# Check if we already have a Bluecherry backup
 	if [ -f "${MYSQL_CONF}.bluecherry.backup" ]; then
-		echo "Found existing BlueCherry backup, using it as base"
+		echo "Found existing Bluecherry backup, using it as base"
 		cp "${MYSQL_CONF}.bluecherry.backup" "$BACKUP_FILE"
 	else
 		# Create new backup of current configuration
@@ -299,41 +299,41 @@ function optimize_mysql_for_bluecherry
 	}
 	
 	# Connection and timeout settings
-	update_mysql_setting "mysqld" "max_connections" "200" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "wait_timeout" "300" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "interactive_timeout" "300" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "connect_timeout" "10" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "net_read_timeout" "30" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "net_write_timeout" "30" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "max_connections" "200" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "wait_timeout" "300" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "interactive_timeout" "300" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "connect_timeout" "10" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "net_read_timeout" "30" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "net_write_timeout" "30" "Bluecherry optimization"
 	
 	# InnoDB settings for better transaction handling
-	update_mysql_setting "mysqld" "innodb_buffer_pool_size" "256M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "innodb_log_file_size" "64M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "innodb_log_buffer_size" "16M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "innodb_flush_log_at_trx_commit" "2" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "innodb_lock_wait_timeout" "50" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "innodb_rollback_on_timeout" "ON" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_buffer_pool_size" "256M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "innodb_log_file_size" "64M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "innodb_log_buffer_size" "16M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "innodb_flush_log_at_trx_commit" "2" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "innodb_lock_wait_timeout" "50" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "innodb_rollback_on_timeout" "ON" "Bluecherry optimization"
 	
 	# Query cache and performance settings (MariaDB supports these)
-	update_mysql_setting "mysqld" "query_cache_type" "1" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "query_cache_size" "32M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "query_cache_limit" "2M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "max_allowed_packet" "16M" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "table_open_cache" "2000" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "thread_cache_size" "8" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "query_cache_type" "1" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "query_cache_size" "32M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "query_cache_limit" "2M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "max_allowed_packet" "16M" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "table_open_cache" "2000" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "thread_cache_size" "8" "Bluecherry optimization"
 	
 	# Logging settings for debugging
-	update_mysql_setting "mysqld" "slow_query_log" "1" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "slow_query_log_file" "/var/log/mysql/slow.log" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "long_query_time" "2" "BlueCherry optimization"
-	update_mysql_setting "mysqld" "log_error" "/var/log/mysql/error.log" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "slow_query_log" "1" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "slow_query_log_file" "/var/log/mysql/slow.log" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "long_query_time" "2" "Bluecherry optimization"
+	update_mysql_setting "mysqld" "log_error" "/var/log/mysql/error.log" "Bluecherry optimization"
 	
 	# Client settings
-	update_mysql_setting "client" "connect_timeout" "10" "BlueCherry optimization"
-	update_mysql_setting "client" "read_timeout" "30" "BlueCherry optimization"
-	update_mysql_setting "client" "write_timeout" "30" "BlueCherry optimization"
+	update_mysql_setting "client" "connect_timeout" "10" "Bluecherry optimization"
+	update_mysql_setting "client" "read_timeout" "30" "Bluecherry optimization"
+	update_mysql_setting "client" "write_timeout" "30" "Bluecherry optimization"
 	
-	echo "$DB_TYPE configuration optimized for BlueCherry"
+	echo "$DB_TYPE configuration optimized for Bluecherry"
 	echo "Backup saved as: $BACKUP_FILE"
 	echo "Reference backup: ${MYSQL_CONF}.bluecherry.backup"
 	
@@ -656,7 +656,7 @@ case "$1" in
 			rm -f "$DB_BACKUP_GZ_FILE"
 		fi
 
-		# CRITICAL FIX: Optimize MySQL configuration for BlueCherry
+		# CRITICAL FIX: Optimize MySQL configuration for Bluecherry
 		optimize_mysql_for_bluecherry
 
 		mkdir -p /usr/share/bluecherry/sqlite

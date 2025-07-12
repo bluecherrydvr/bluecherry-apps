@@ -33,7 +33,7 @@ $server_running = shell_exec('pidof bc-server') ? true : false;
 
 if (!$server_running) {
     http_response_code(503);
-    echo json_encode(['error' => 'BlueCherry server not running']);
+    echo json_encode(['error' => 'Bluecherry server not running']);
     exit;
 }
 
