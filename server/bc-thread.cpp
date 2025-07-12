@@ -356,6 +356,9 @@ void bc_record::run()
 				onvif_ev_thread = nullptr;
 			}
 
+			// Give a small delay before creating new components to ensure cleanup is complete
+			usleep(50000); // 50ms
+
 			char thread_name[16];
 			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
 				if (sched_cur == 'X' || sched_cur == 'C') {

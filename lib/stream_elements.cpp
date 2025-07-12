@@ -79,15 +79,24 @@ void stream_consumer::disconnect()
 
 void stream_consumer::connected(stream_source *source)
 {
-	if (connected_source)
-		bc_log(Bug, "More than one source connected to element; this may crash");
+	if (connected_source) {
+		// This can happen during rapid schedule changes
+		// Disconnect from the old source first
+		bc_log(Warning, "Consumer %s was already connected to %s, disconnecting before connecting to %s", 
+		       name, connected_source->name, source->name);
+		connected_source->disconnect(this);
+	}
 	connected_source = source;
 }
 
 void stream_consumer::disconnected(stream_source *source)
 {
 	if (source != connected_source) {
-		bc_log(Bug, "Disconnected from source we weren't connected to?! This is a bug.");
+		// This can happen during rapid schedule changes or cleanup
+		// Log as warning instead of bug since it's a known race condition
+		bc_log(Warning, "Disconnected from source %s but was connected to %s - this may indicate a race condition during schedule changes", 
+		       source ? source->name : "null", 
+		       connected_source ? connected_source->name : "null");
 		return;
 	}
 

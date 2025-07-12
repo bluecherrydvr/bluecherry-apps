@@ -242,6 +242,10 @@ int recorder::recording_start(time_t start_ts, const stream_packet &first_packet
 	snapshotting_delay_since_motion_start_ms = snapshot_delay_ms;
 	event_notification_executed = false;
 
+	// CRITICAL FIX: Add small random delay to reduce database transaction conflicts
+	// This helps prevent multiple cameras from starting transactions simultaneously
+	usleep((device_id % 10) * 10000); // 0-90ms delay based on device ID
+
 	char outfile[PATH_MAX];
 	int ret = media_file_path(outfile, sizeof(outfile), start_ts, device_id, get_recording_type());
 	if (ret < 0) {

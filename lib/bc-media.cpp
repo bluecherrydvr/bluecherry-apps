@@ -84,9 +84,19 @@ bc_event_cam_t bc_event_cam_start(int id, time_t start_ts,
 	bce->level      = level;
 	bce->type       = type;
 
-	if (bc_db_start_trans()) {
-		free(bce);
-		return NULL;
+	// CRITICAL FIX: Add retry mechanism for database transaction failures
+	unsigned int retries = 3;
+	for (; retries; retries--) {
+		if (bc_db_start_trans()) {
+			if (retries > 1) {
+				bc_log(Warning, "Failed to start transaction for camera %d, retrying... (%d attempts left)", id, retries - 1);
+				usleep(100000); // 100ms delay before retry
+				continue;
+			}
+			free(bce);
+			return NULL;
+		}
+		break;
 	}
 
 	if (media_file) {

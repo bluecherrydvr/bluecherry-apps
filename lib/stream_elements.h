@@ -91,6 +91,9 @@ public:
 	 * is guaranteed to still exist. */
 	void disconnect();
 
+	/* Check if this consumer is connected to the specified source */
+	bool is_connected_to(stream_source *source) const { return connected_source == source; }
+
 	const log_context &logging_context() { return log; }
 	void set_logging_context(const log_context &context) { log = context; }
 	void set_thread_name(const char *arg) { strlcpy(thread_name, arg, sizeof(thread_name)); }

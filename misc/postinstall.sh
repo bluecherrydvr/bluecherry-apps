@@ -128,6 +128,266 @@ function install_certbot
 	pip3 install pyopenssl --upgrade
 }
 
+# CRITICAL FIX: MySQL/MariaDB optimization function for BlueCherry
+function optimize_mysql_for_bluecherry
+{
+	echo "Optimizing MySQL/MariaDB configuration for BlueCherry..."
+	
+	# Enhanced detection of MySQL vs MariaDB
+	DB_TYPE=""
+	DB_SERVICE=""
+	DB_VERSION=""
+	
+	# Check for running services first
+	if systemctl is-active --quiet mariadb 2>/dev/null; then
+		DB_TYPE="mariadb"
+		DB_SERVICE="mariadb"
+		echo "Detected running MariaDB service"
+	elif systemctl is-active --quiet mysql 2>/dev/null; then
+		DB_TYPE="mysql"
+		DB_SERVICE="mysql"
+		echo "Detected running MySQL service"
+	else
+		# Check for installed services
+		if systemctl list-unit-files | grep -q "mariadb.service" && [ -f "/etc/mysql/mariadb.conf.d/50-server.cnf" ]; then
+			DB_TYPE="mariadb"
+			DB_SERVICE="mariadb"
+			echo "Detected installed MariaDB"
+		elif systemctl list-unit-files | grep -q "mysql.service" && [ -f "/etc/mysql/mysql.conf.d/mysqld.cnf" ]; then
+			DB_TYPE="mysql"
+			DB_SERVICE="mysql"
+			echo "Detected installed MySQL"
+		else
+			# Fallback detection methods
+			if command -v mariadbd >/dev/null 2>&1 || [ -f "/etc/mysql/mariadb.conf.d/50-server.cnf" ]; then
+				DB_TYPE="mariadb"
+				DB_SERVICE="mariadb"
+				echo "Detected MariaDB via fallback method"
+			elif command -v mysqld >/dev/null 2>&1 || [ -f "/etc/mysql/mysql.conf.d/mysqld.cnf" ]; then
+				DB_TYPE="mysql"
+				DB_SERVICE="mysql"
+				echo "Detected MySQL via fallback method"
+			else
+				echo "Warning: Could not detect MySQL/MariaDB installation, skipping optimization"
+				return 0
+			fi
+		fi
+	fi
+	
+	# Get version information
+	if [ "$DB_TYPE" = "mariadb" ]; then
+		if command -v mariadb >/dev/null 2>&1; then
+			DB_VERSION=$(mariadb --version 2>/dev/null | head -1 | sed 's/.*Ver \([0-9.]*\).*/\1/')
+		fi
+	else
+		if command -v mysql >/dev/null 2>&1; then
+			DB_VERSION=$(mysql --version 2>/dev/null | head -1 | sed 's/.*Ver \([0-9.]*\).*/\1/')
+		fi
+	fi
+	
+	echo "Detected $DB_TYPE version: ${DB_VERSION:-unknown}"
+	
+	# Detect MySQL/MariaDB configuration file with priority order
+	MYSQL_CONF=""
+	CONF_CANDIDATES=()
+	
+	if [ "$DB_TYPE" = "mariadb" ]; then
+		# MariaDB configuration locations (Debian/Ubuntu)
+		CONF_CANDIDATES=(
+			"/etc/mysql/mariadb.conf.d/50-server.cnf"
+			"/etc/mysql/mariadb.conf.d/mysqld.cnf"
+			"/etc/mysql/my.cnf"
+			"/etc/my.cnf"
+		)
+	else
+		# MySQL configuration locations
+		CONF_CANDIDATES=(
+			"/etc/mysql/mysql.conf.d/mysqld.cnf"
+			"/etc/mysql/my.cnf"
+			"/etc/my.cnf"
+		)
+	fi
+	
+	# Find the first existing configuration file
+	for conf_file in "${CONF_CANDIDATES[@]}"; do
+		if [ -f "$conf_file" ]; then
+			MYSQL_CONF="$conf_file"
+			break
+		fi
+	done
+	
+	if [ -z "$MYSQL_CONF" ]; then
+		echo "Warning: Could not find $DB_TYPE configuration file, skipping optimization"
+		echo "Searched in: ${CONF_CANDIDATES[*]}"
+		return 0
+	fi
+	
+	echo "Using $DB_TYPE configuration file: $MYSQL_CONF"
+	
+	# Create timestamped backup with customer changes protection
+	BACKUP_TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+	BACKUP_FILE="${MYSQL_CONF}.bluecherry.backup.${BACKUP_TIMESTAMP}"
+	
+	# Check if we already have a BlueCherry backup
+	if [ -f "${MYSQL_CONF}.bluecherry.backup" ]; then
+		echo "Found existing BlueCherry backup, using it as base"
+		cp "${MYSQL_CONF}.bluecherry.backup" "$BACKUP_FILE"
+	else
+		# Create new backup of current configuration
+		cp "$MYSQL_CONF" "$BACKUP_FILE"
+		echo "Created $DB_TYPE config backup: $BACKUP_FILE"
+		
+		# Also create a reference backup for future updates
+		cp "$MYSQL_CONF" "${MYSQL_CONF}.bluecherry.backup"
+		echo "Created reference backup: ${MYSQL_CONF}.bluecherry.backup"
+	fi
+	
+	# Function to add or update MySQL/MariaDB setting with validation
+	update_mysql_setting() {
+		local section="$1"
+		local key="$2"
+		local value="$3"
+		local comment="$4"
+		
+		# Validate input
+		if [ -z "$section" ] || [ -z "$key" ] || [ -z "$value" ]; then
+			echo "Error: Invalid setting parameters for $section.$key"
+			return 1
+		fi
+		
+		# Check if section exists, create if not
+		if ! grep -q "^\[$section\]" "$MYSQL_CONF"; then
+			echo -e "\n[$section]" >> "$MYSQL_CONF"
+		fi
+		
+		# Check if setting already exists in the section
+		local in_section=0
+		local setting_updated=0
+		local temp_file=$(mktemp)
+		
+		while IFS= read -r line; do
+			if [[ "$line" =~ ^\[.*\]$ ]]; then
+				if [ "$in_section" -eq 1 ] && [ "$setting_updated" -eq 0 ]; then
+					# We're leaving the target section and haven't updated the setting
+					echo "$key = $value  # $comment" >> "$temp_file"
+					setting_updated=1
+				fi
+				in_section=0
+				if [[ "$line" == "[$section]" ]]; then
+					in_section=1
+				fi
+			fi
+			
+			if [ "$in_section" -eq 1 ] && [[ "$line" =~ ^[[:space:]]*$key[[:space:]]*= ]]; then
+				# Update existing setting
+				echo "$key = $value  # $comment" >> "$temp_file"
+				setting_updated=1
+			else
+				echo "$line" >> "$temp_file"
+			fi
+		done < "$MYSQL_CONF"
+		
+		# If we never found the section or setting, add it at the end
+		if [ "$setting_updated" -eq 0 ]; then
+			if [ "$in_section" -eq 0 ]; then
+				echo -e "\n[$section]" >> "$temp_file"
+			fi
+			echo "$key = $value  # $comment" >> "$temp_file"
+		fi
+		
+		mv "$temp_file" "$MYSQL_CONF"
+	}
+	
+	# Connection and timeout settings
+	update_mysql_setting "mysqld" "max_connections" "200" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "wait_timeout" "300" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "interactive_timeout" "300" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "connect_timeout" "10" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "net_read_timeout" "30" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "net_write_timeout" "30" "BlueCherry optimization"
+	
+	# InnoDB settings for better transaction handling
+	update_mysql_setting "mysqld" "innodb_buffer_pool_size" "256M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_log_file_size" "64M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_log_buffer_size" "16M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_flush_log_at_trx_commit" "2" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_lock_wait_timeout" "50" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "innodb_rollback_on_timeout" "ON" "BlueCherry optimization"
+	
+	# Query cache and performance settings (MariaDB supports these)
+	update_mysql_setting "mysqld" "query_cache_type" "1" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "query_cache_size" "32M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "query_cache_limit" "2M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "max_allowed_packet" "16M" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "table_open_cache" "2000" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "thread_cache_size" "8" "BlueCherry optimization"
+	
+	# Logging settings for debugging
+	update_mysql_setting "mysqld" "slow_query_log" "1" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "slow_query_log_file" "/var/log/mysql/slow.log" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "long_query_time" "2" "BlueCherry optimization"
+	update_mysql_setting "mysqld" "log_error" "/var/log/mysql/error.log" "BlueCherry optimization"
+	
+	# Client settings
+	update_mysql_setting "client" "connect_timeout" "10" "BlueCherry optimization"
+	update_mysql_setting "client" "read_timeout" "30" "BlueCherry optimization"
+	update_mysql_setting "client" "write_timeout" "30" "BlueCherry optimization"
+	
+	echo "$DB_TYPE configuration optimized for BlueCherry"
+	echo "Backup saved as: $BACKUP_FILE"
+	echo "Reference backup: ${MYSQL_CONF}.bluecherry.backup"
+	
+	# Validate configuration syntax
+	if [ "$DB_TYPE" = "mariadb" ]; then
+		if command -v mariadb-check >/dev/null 2>&1; then
+			if mariadb-check --config-file="$MYSQL_CONF" >/dev/null 2>&1; then
+				echo "MariaDB configuration syntax validation passed"
+			else
+				echo "Warning: MariaDB configuration syntax validation failed"
+				echo "Restoring from backup..."
+				cp "$BACKUP_FILE" "$MYSQL_CONF"
+				return 1
+			fi
+		fi
+	else
+		if command -v mysqld >/dev/null 2>&1; then
+			if mysqld --defaults-file="$MYSQL_CONF" --validate-config >/dev/null 2>&1; then
+				echo "MySQL configuration syntax validation passed"
+			else
+				echo "Warning: MySQL configuration syntax validation failed"
+				echo "Restoring from backup..."
+				cp "$BACKUP_FILE" "$MYSQL_CONF"
+				return 1
+			fi
+		fi
+	fi
+	
+	# Restart MySQL/MariaDB service if it's running
+	if systemctl is-active --quiet "$DB_SERVICE" 2>/dev/null; then
+		echo "Restarting $DB_SERVICE service to apply optimizations..."
+		
+		# Try to restart gracefully
+		if [[ $IN_DEB ]]; then
+			service "$DB_SERVICE" restart || systemctl restart "$DB_SERVICE" || true
+		else
+			systemctl restart "$DB_SERVICE" || true
+		fi
+		
+		# Wait for service to start
+		sleep 5
+		
+		# Verify service is running
+		if systemctl is-active --quiet "$DB_SERVICE" 2>/dev/null; then
+			echo "$DB_SERVICE restarted successfully"
+		else
+			echo "Warning: $DB_SERVICE restart may have failed"
+			echo "Configuration changes have been applied but service may need manual restart"
+		fi
+	else
+		echo "Note: $DB_SERVICE service is not running, optimizations will be applied when service starts"
+	fi
+}
+
 function start_apache
 {
 	if [[ $IN_DEB ]]
@@ -396,6 +656,9 @@ case "$1" in
 			rm -f "$DB_BACKUP_GZ_FILE"
 		fi
 
+		# CRITICAL FIX: Optimize MySQL configuration for BlueCherry
+		optimize_mysql_for_bluecherry
+
 		mkdir -p /usr/share/bluecherry/sqlite
 		if [[ $IN_DEB ]]
 		then
@@ -460,6 +723,8 @@ case "$1" in
 		else
 			echo "Nginx configuration failure"
 		fi
+
+		optimize_mysql_for_bluecherry
 
 		;;
 esac

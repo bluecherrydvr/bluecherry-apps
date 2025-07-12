@@ -17,6 +17,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <pthread.h>
 
 #include "bc-db.h"
 
@@ -36,17 +38,30 @@ struct bc_db_mysql_res {
 	int ncols;
 };
 
+// CRITICAL FIX: Connection pool structure
+struct mysql_connection {
+	MYSQL *con;
+	time_t last_used;
+	bool in_use;
+	pthread_mutex_t lock;
+};
+
+#define MAX_CONNECTIONS 10
+#define CONNECTION_TIMEOUT 300  // 5 minutes
+#define CONNECTION_CHECK_INTERVAL 60  // Check every minute
 
 static char *dbname, *dbuser, *dbpass, *dbhost, *dbsock;
 static int dbport = 0;
-static MYSQL *my_con_global;
+static MYSQL *my_con_global;  // Keep for backward compatibility
+static struct mysql_connection connection_pool[MAX_CONNECTIONS];
+static pthread_mutex_t pool_lock = PTHREAD_MUTEX_INITIALIZER;
+static time_t last_connection_check = 0;
 
 static inline void free_null(char **p)
 {
 	free(*p);
 	*p = NULL;
 }
-
 
 #define GET_VAL(__res, __var, __ret) do {				\
 	const char *val;						\
@@ -60,6 +75,101 @@ static inline void free_null(char **p)
 	} else								\
 		__res = strdup(val);					\
 } while(0)
+
+// CRITICAL FIX: Initialize connection pool
+static void init_connection_pool(void)
+{
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		connection_pool[i].con = NULL;
+		connection_pool[i].last_used = 0;
+		connection_pool[i].in_use = false;
+		pthread_mutex_init(&connection_pool[i].lock, NULL);
+	}
+}
+
+// CRITICAL FIX: Clean up connection pool
+static void cleanup_connection_pool(void)
+{
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		if (connection_pool[i].con) {
+			mysql_close(connection_pool[i].con);
+			connection_pool[i].con = NULL;
+		}
+		pthread_mutex_destroy(&connection_pool[i].lock);
+	}
+}
+
+// CRITICAL FIX: Get available connection from pool
+static MYSQL *get_pooled_connection(void)
+{
+	time_t now = time(NULL);
+	
+	// Check for stale connections periodically
+	if (now - last_connection_check > CONNECTION_CHECK_INTERVAL) {
+		last_connection_check = now;
+		for (int i = 0; i < MAX_CONNECTIONS; i++) {
+			if (connection_pool[i].con && !connection_pool[i].in_use) {
+				if (now - connection_pool[i].last_used > CONNECTION_TIMEOUT) {
+					// Close stale connection
+					mysql_close(connection_pool[i].con);
+					connection_pool[i].con = NULL;
+				}
+			}
+		}
+	}
+	
+	// Find available connection
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		if (pthread_mutex_trylock(&connection_pool[i].lock) == 0) {
+			if (!connection_pool[i].in_use) {
+				if (!connection_pool[i].con) {
+					// Create new connection
+					connection_pool[i].con = mysql_init(NULL);
+					if (!connection_pool[i].con) {
+						pthread_mutex_unlock(&connection_pool[i].lock);
+						continue;
+					}
+					
+					// CRITICAL FIX: Improved timeout settings
+					mysql_options(connection_pool[i].con, MYSQL_OPT_READ_TIMEOUT, (const int[]){30});
+					mysql_options(connection_pool[i].con, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){30});
+					mysql_options(connection_pool[i].con, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){10});
+					mysql_options(connection_pool[i].con, MYSQL_OPT_RETRY_COUNT, (const int[]){3});
+					
+					MYSQL *ret = mysql_real_connect(connection_pool[i].con, dbhost, dbuser, dbpass,
+									dbname, dbport, dbsock, 0);
+					if (!ret) {
+						mysql_close(connection_pool[i].con);
+						connection_pool[i].con = NULL;
+						pthread_mutex_unlock(&connection_pool[i].lock);
+						continue;
+					}
+				}
+				
+				connection_pool[i].in_use = true;
+				connection_pool[i].last_used = now;
+				return connection_pool[i].con;
+			}
+			pthread_mutex_unlock(&connection_pool[i].lock);
+		}
+	}
+	
+	// No available connection, fall back to global connection
+	return my_con_global;
+}
+
+// CRITICAL FIX: Release connection back to pool
+static void release_pooled_connection(MYSQL *con)
+{
+	for (int i = 0; i < MAX_CONNECTIONS; i++) {
+		if (connection_pool[i].con == con) {
+			connection_pool[i].in_use = false;
+			pthread_mutex_unlock(&connection_pool[i].lock);
+			return;
+		}
+	}
+	// If not found in pool, it's the global connection - no need to release
+}
 
 static MYSQL *reset_con(void)
 {
@@ -76,9 +186,11 @@ static MYSQL *reset_con(void)
 	}
 
 	/* NOTE: Retries multiply the specified timeouts */
-	mysql_options(my_con_global, MYSQL_OPT_READ_TIMEOUT, (const int[]){5});
-	mysql_options(my_con_global, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){5});
-	mysql_options(my_con_global, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){5});
+	// CRITICAL FIX: Improved timeout settings for global connection
+	mysql_options(my_con_global, MYSQL_OPT_READ_TIMEOUT, (const int[]){30});
+	mysql_options(my_con_global, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){30});
+	mysql_options(my_con_global, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){10});
+	mysql_options(my_con_global, MYSQL_OPT_RETRY_COUNT, (const int[]){3});
 
 	MYSQL *ret = mysql_real_connect(my_con_global, dbhost, dbuser, dbpass,
 					dbname, dbport, dbsock, 0);
@@ -88,11 +200,22 @@ static MYSQL *reset_con(void)
 		return NULL;
 	}
 
+	// CRITICAL FIX: Reset database lock availability when connection is restored
+	extern bool db_lock_available;
+	db_lock_available = true;
+
 	return my_con_global;
 }
 
 static MYSQL *get_handle(void)
 {
+	// CRITICAL FIX: Try pooled connection first
+	MYSQL *pooled_con = get_pooled_connection();
+	if (pooled_con) {
+		return pooled_con;
+	}
+	
+	// Fall back to global connection
 	return my_con_global ? my_con_global : reset_con();
 }
 
@@ -105,6 +228,9 @@ static void bc_db_mysql_close(void)
 	free_null(&dbsock);
 	dbport = 0;
 
+	// CRITICAL FIX: Clean up connection pool
+	cleanup_connection_pool();
+
 	if (my_con_global) {
 		mysql_close(my_con_global);
 		my_con_global = NULL;
@@ -113,8 +239,11 @@ static void bc_db_mysql_close(void)
 
 static int bc_db_mysql_open(struct config_t *cfg)
 {
-	if (get_handle() != NULL)
+	if (get_handle() != NULL) {
+		// CRITICAL FIX: Initialize connection pool on first open
+		init_connection_pool();
 		return 0;
+	}
 
 	GET_VAL(dbname, "dbname", 1);
 	GET_VAL(dbuser, "user", 1);
@@ -130,6 +259,9 @@ static int bc_db_mysql_open(struct config_t *cfg)
 		bc_db_mysql_close();
 		return -1;
 	}
+
+	// CRITICAL FIX: Initialize connection pool
+	init_connection_pool();
 
 	return 0;
 }
@@ -148,6 +280,15 @@ static bool is_con_lost(MYSQL *con)
 	}
 }
 
+// CRITICAL FIX: Check if connection is still valid
+static bool is_connection_valid(MYSQL *con)
+{
+	if (!con) return false;
+	
+	// Try a simple ping to check connection health
+	return mysql_ping(con) == 0;
+}
+
 static int bc_db_mysql_query(const char *query)
 {
 	MYSQL *my_con = get_handle();
@@ -155,6 +296,15 @@ static int bc_db_mysql_query(const char *query)
 
 	if (my_con == NULL)
 		return -1;
+
+	// CRITICAL FIX: Check connection health before query
+	if (!is_connection_valid(my_con)) {
+		bc_log(Warning, "Database connection lost, attempting to reconnect");
+		my_con = reset_con();
+		if (!my_con) {
+			return -1;
+		}
+	}
 
 	unsigned int retries = 3;
 	for (; (ret = mysql_query(my_con, query)) && retries; retries--) {
@@ -170,6 +320,9 @@ static int bc_db_mysql_query(const char *query)
 	if (ret)
 		bc_log(Error, "Query error: [%s] => %s", query,
 		       mysql_error(my_con));
+
+	// CRITICAL FIX: Release pooled connection if used
+	release_pooled_connection(my_con);
 
 	return ret;
 }
@@ -285,17 +438,143 @@ static void bc_db_mysql_escape_string(char *to, const char *from, size_t len)
 
 static int bc_db_mysql_start_trans(void)
 {
-	return bc_db_mysql_query("START TRANSACTION");
+	MYSQL *my_con = get_handle();
+	int ret;
+
+	if (my_con == NULL)
+		return -1;
+
+	unsigned int retries = 3;
+	for (; retries; retries--) {
+		ret = mysql_query(my_con, "START TRANSACTION");
+		if (!ret)
+			break;
+
+		int err = mysql_errno(my_con);
+		if (err == CR_COMMANDS_OUT_OF_SYNC) {
+			// CRITICAL FIX: Handle "Commands out of sync" error
+			bc_log(Warning, "MySQL commands out of sync, attempting to reset connection");
+			
+			// Try to reset the connection
+			my_con = reset_con();
+			if (!my_con) {
+				bc_log(Error, "Failed to reset MySQL connection");
+				break;
+			}
+			
+			// Small delay before retry
+			usleep(100000); // 100ms
+			continue;
+		} else if (is_con_lost(my_con)) {
+			// Handle connection loss
+			my_con = reset_con();
+			if (!my_con)
+				break;
+			continue;
+		} else {
+			// Other error, don't retry
+			break;
+		}
+	}
+
+	if (ret)
+		bc_log(Error, "Failed to start transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+
+	return ret;
 }
 
 static int bc_db_mysql_commit_trans(void)
 {
-	return bc_db_mysql_query("COMMIT");
+	MYSQL *my_con = get_handle();
+	int ret;
+
+	if (my_con == NULL)
+		return -1;
+
+	unsigned int retries = 3;
+	for (; retries; retries--) {
+		ret = mysql_query(my_con, "COMMIT");
+		if (!ret)
+			break;
+
+		int err = mysql_errno(my_con);
+		if (err == CR_COMMANDS_OUT_OF_SYNC) {
+			// CRITICAL FIX: Handle "Commands out of sync" error
+			bc_log(Warning, "MySQL commands out of sync during commit, attempting to reset connection");
+			
+			// Try to reset the connection
+			my_con = reset_con();
+			if (!my_con) {
+				bc_log(Error, "Failed to reset MySQL connection during commit");
+				break;
+			}
+			
+			// Small delay before retry
+			usleep(100000); // 100ms
+			continue;
+		} else if (is_con_lost(my_con)) {
+			// Handle connection loss
+			my_con = reset_con();
+			if (!my_con)
+				break;
+			continue;
+		} else {
+			// Other error, don't retry
+			break;
+		}
+	}
+
+	if (ret)
+		bc_log(Error, "Failed to commit transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+
+	return ret;
 }
 
 static int bc_db_mysql_rollback_trans(void)
 {
-	return bc_db_mysql_query("ROLLBACK");
+	MYSQL *my_con = get_handle();
+	int ret;
+
+	if (my_con == NULL)
+		return -1;
+
+	unsigned int retries = 3;
+	for (; retries; retries--) {
+		ret = mysql_query(my_con, "ROLLBACK");
+		if (!ret)
+			break;
+
+		int err = mysql_errno(my_con);
+		if (err == CR_COMMANDS_OUT_OF_SYNC) {
+			// CRITICAL FIX: Handle "Commands out of sync" error
+			bc_log(Warning, "MySQL commands out of sync during rollback, attempting to reset connection");
+			
+			// Try to reset the connection
+			my_con = reset_con();
+			if (!my_con) {
+				bc_log(Error, "Failed to reset MySQL connection during rollback");
+				break;
+			}
+			
+			// Small delay before retry
+			usleep(100000); // 100ms
+			continue;
+		} else if (is_con_lost(my_con)) {
+			// Handle connection loss
+			my_con = reset_con();
+			if (!my_con)
+				break;
+			continue;
+		} else {
+			// Other error, don't retry
+			break;
+		}
+	}
+
+	if (ret)
+		bc_log(Error, "Failed to rollback transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+
+	return ret;
 }
 
 struct bc_db_ops bc_db_mysql = {
