@@ -470,78 +470,71 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	properties.video.apply(video_st->codecpar);
 
 	/* Setup audio stream if available */
+	audio_st = NULL;
 	if (properties.has_audio())
 	{
-		audio_st = avformat_new_stream(out_ctx, NULL);
-		if (!audio_st)
+		AVStream *tmp_audio_st = avformat_new_stream(out_ctx, NULL);
+		if (!tmp_audio_st)
 		{
-			close();
-			return -1;
+			bc_log(Warning, "Audio stream could not be created, recording video only");
+			// continue with video only
 		}
-
-		// Check if the incoming audio codec is supported for recording
-		enum AVCodecID incoming_codec = properties.audio.codec_id;
-		bool codec_supported = false;
-		
-		// Skip problematic audio configurations that cause muxer failures
-		if ((incoming_codec == AV_CODEC_ID_PCM_MULAW || incoming_codec == AV_CODEC_ID_PCM_ALAW) && properties.audio.channels == 1) {
-			bc_log(Warning, "Skipping problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
-				avcodec_get_name(incoming_codec));
-			codec_supported = false;
-		} else {
-			// Most common IP camera audio codecs
-			switch (incoming_codec) {
-				// Standard PCM codecs
-				case AV_CODEC_ID_PCM_S16LE:
-				case AV_CODEC_ID_PCM_S16BE:
-				case AV_CODEC_ID_PCM_ALAW:
-				case AV_CODEC_ID_PCM_MULAW:
-				
-				// Common IP camera audio codecs
-				case AV_CODEC_ID_AAC:           // Most common modern codec
-				case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
-				case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
-				case AV_CODEC_ID_MP3:           // Common in consumer cameras
-				case AV_CODEC_ID_G723_1:        // Low bitrate telephony
-				case AV_CODEC_ID_G729:          // Low bitrate telephony
-				case AV_CODEC_ID_GSM:           // Mobile telephony standard
-				case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
-					codec_supported = true;
-					break;
-				
-				default:
-					codec_supported = false;
-					break;
-			}
-		}
-		
-		if (!codec_supported) {
-			bc_log(Warning, "Unsupported audio codec %s for recording, disabling audio stream (camera: %s)", 
-				avcodec_get_name(incoming_codec),
-				properties.audio.codec_id == AV_CODEC_ID_NONE ? "unknown" : avcodec_get_name(incoming_codec));
-			
-			// Clean up the audio stream we just created
-			if (audio_st) {
-				// Remove the stream from the context
-				for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
-					if (out_ctx->streams[i] == audio_st) {
-						// Shift remaining streams down
-						for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
-							out_ctx->streams[j] = out_ctx->streams[j + 1];
-						}
-						out_ctx->nb_streams--;
+		else
+		{
+			// Check if the incoming audio codec is supported for recording
+			enum AVCodecID incoming_codec = properties.audio.codec_id;
+			bool codec_supported = false;
+			// Skip problematic audio configurations that cause muxer failures
+			if ((incoming_codec == AV_CODEC_ID_PCM_MULAW || incoming_codec == AV_CODEC_ID_PCM_ALAW) && properties.audio.channels == 1) {
+				bc_log(Warning, "Skipping problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
+					avcodec_get_name(incoming_codec));
+				codec_supported = false;
+			} else {
+				switch (incoming_codec) {
+					case AV_CODEC_ID_PCM_S16LE:
+					case AV_CODEC_ID_PCM_S16BE:
+					case AV_CODEC_ID_PCM_ALAW:
+					case AV_CODEC_ID_PCM_MULAW:
+					case AV_CODEC_ID_AAC:
+					case AV_CODEC_ID_ADPCM_G726:
+					case AV_CODEC_ID_ADPCM_G726LE:
+					case AV_CODEC_ID_MP3:
+					case AV_CODEC_ID_G723_1:
+					case AV_CODEC_ID_G729:
+					case AV_CODEC_ID_GSM:
+					case AV_CODEC_ID_AC3:
+						codec_supported = true;
 						break;
+					default:
+						codec_supported = false;
+						break;
+				}
+			}
+			if (!codec_supported) {
+				bc_log(Warning, "Audio stream not supported (codec: %s), recording video only", avcodec_get_name(incoming_codec));
+				// Remove the stream from the context
+				if (tmp_audio_st) {
+					for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
+						if (out_ctx->streams[i] == tmp_audio_st) {
+							for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
+								out_ctx->streams[j] = out_ctx->streams[j + 1];
+							}
+							out_ctx->nb_streams--;
+							break;
+						}
 					}
 				}
-				audio_st = NULL;
+				tmp_audio_st = NULL;
 			}
-		} else {
-			// Apply the actual audio properties from the stream
-			properties.audio.apply(audio_st->codecpar);
-			bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
-				avcodec_get_name(incoming_codec),
-				properties.audio.sample_rate,
-				properties.audio.channels);
+			else {
+				// Apply the actual audio properties from the stream
+				properties.audio.apply(tmp_audio_st->codecpar);
+				bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
+					avcodec_get_name(incoming_codec),
+					properties.audio.sample_rate,
+					properties.audio.channels);
+				audio_st = tmp_audio_st;
+			}
 		}
 	}
 
@@ -559,21 +552,42 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	this->recording_path = path;
 	av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
 
-	// Fragmented MP4 options removed for stability testing
-	// (No movflags or frag_duration here)
-
 	ret = avformat_write_header(out_ctx, &muxer_opts);
 	av_dict_free(&muxer_opts);
 
 	if (ret)
 	{
 		av_strerror(ret, error, sizeof(error));
-		bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
+		if (audio_st) {
+			// Try again without audio
+			bc_log(Warning, "Audio stream initialization failed (muxer error), recording video only: %s (%d)", error, ret);
+			// Remove audio stream and try again
+			for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
+				if (out_ctx->streams[i] == audio_st) {
+					for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
+						out_ctx->streams[j] = out_ctx->streams[j + 1];
+					}
+					out_ctx->nb_streams--;
+					break;
+				}
+			}
+			audio_st = NULL;
+			// Try header again
+			ret = avformat_write_header(out_ctx, NULL);
+			if (ret) {
+				bc_log(Error, "Failed to init muxer for output file %s (video only): %s (%d)",
+					recording_path.c_str(), error, ret);
+				avio_closep(&out_ctx->pb);
+				close();
+				return -1;
+			}
+		} else {
+			bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
 				recording_path.c_str(), error, ret);
-
-		avio_closep(&out_ctx->pb);
-		close();
-		return -1;
+			avio_closep(&out_ctx->pb);
+			close();
+			return -1;
+		}
 	}
 
 	// CRITICAL SAFETY CHECK: Validate stream initialization
@@ -592,15 +606,17 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 			close();
 			return -1;
 		}
+	} else {
+		bc_log(Error, "Video stream not accessible after muxer initialization");
+		close();
+		return -1;
 	}
 
 	// Validate audio stream is accessible (if present)
 	if (audio_st && audio_st->index >= 0 && audio_st->index < out_ctx->nb_streams) {
 		if (out_ctx->streams[audio_st->index] != audio_st) {
-			bc_log(Error, "Audio stream index mismatch: expected=%d, actual=%d", 
-			       audio_st->index, out_ctx->streams[audio_st->index] ? out_ctx->streams[audio_st->index]->index : -1);
-			close();
-			return -1;
+			bc_log(Warning, "Audio stream index mismatch after muxer initialization, recording video only");
+			audio_st = NULL;
 		}
 	}
 
