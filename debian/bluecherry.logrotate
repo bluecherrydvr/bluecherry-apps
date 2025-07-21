@@ -6,6 +6,7 @@
 	notifempty
 	delaycompress
 	compress
+	create 644 root bluecherry
 	postrotate
 		/usr/lib/rsyslog/rsyslog-rotate
 	endscript
