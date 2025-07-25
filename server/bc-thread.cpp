@@ -21,6 +21,7 @@
 #include <time.h>
 #include <thread>
 #include <string>
+#include <chrono>
 
 #include "bt.h"
 
@@ -270,71 +271,141 @@ void bc_record::run()
 					goto error;
 			}
 
-			log.log(Info, "Switching to new recording schedule '%s'", sched_str.c_str());
+			log.log(Info, "Device %d: Starting schedule transition to '%s'", id, sched_str.c_str());
 
 			// First disconnect all components from their sources
 			if (bc && bc->source) {
+				log.log(Debug, "Device %d: Disconnecting components from source", id);
 				// Disconnect all components from the main source first
 				if (rec_continuous) {
+					log.log(Debug, "Device %d: Disconnecting continuous recorder", id);
 					safe_disconnect(rec_continuous, bc->source);
 				}
 				if (rec_motion) {
+					log.log(Debug, "Device %d: Disconnecting motion recorder", id);
 					safe_disconnect(rec_motion, bc->source);
 				}
 				if (m_processor) {
+					log.log(Debug, "Device %d: Disconnecting motion processor", id);
 					safe_disconnect(m_processor, bc->source);
 				}
 				if (t_processor) {
+					log.log(Debug, "Device %d: Disconnecting trigger processor", id);
 					safe_disconnect(t_processor, bc->source);
 				}
 				if (m_handler && m_handler->input_consumer()) {
+					log.log(Debug, "Device %d: Disconnecting motion handler", id);
 					safe_disconnect(m_handler->input_consumer(), bc->source);
 				}
 			}
 
 			// Give a small delay for disconnects to complete
+			log.log(Debug, "Device %d: Waiting 100ms for disconnects to complete", id);
 			usleep(100000); // 100ms
 
-			// Then join all threads
-			if (rec_continuous_thread && rec_continuous_thread->joinable()) {
-				rec_continuous_thread->join();
+			// CRITICAL FIX: Add timeout protection for thread joins to prevent hangs
+			log.log(Debug, "Device %d: Starting thread cleanup with timeout protection", id);
+			
+			// Helper function to join thread with timeout
+			auto join_thread_with_timeout = [this](std::thread* thread, const char* thread_name, int timeout_seconds) -> bool {
+				if (!thread || !thread->joinable()) {
+					log.log(Debug, "Device %d: Thread %s is not joinable, skipping", id, thread_name);
+					return true;
+				}
+				
+				log.log(Debug, "Device %d: Joining thread %s with %d second timeout", id, thread_name, timeout_seconds);
+				
+				// Use a separate thread to join with timeout
+				std::thread join_thread([thread, thread_name, timeout_seconds, this]() {
+					thread->join();
+				});
+				
+				// Wait for join thread to complete with timeout
+				auto start_time = std::chrono::steady_clock::now();
+				auto timeout_duration = std::chrono::seconds(timeout_seconds);
+				
+				while (join_thread.joinable()) {
+					auto elapsed = std::chrono::steady_clock::now() - start_time;
+					if (elapsed >= timeout_duration) {
+						log.log(Error, "Device %d: Thread %s join timeout after %d seconds - thread may be stuck", 
+							id, thread_name, timeout_seconds);
+						return false;
+					}
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				}
+				
+				join_thread.join();
+				log.log(Debug, "Device %d: Successfully joined thread %s", id, thread_name);
+				return true;
+			};
+
+			// Join all threads with timeout protection
+			bool all_threads_joined = true;
+			
+			if (rec_continuous_thread) {
+				if (!join_thread_with_timeout(rec_continuous_thread, "continuous recorder", 10)) {
+					all_threads_joined = false;
+				}
 			}
-			if (rec_motion_thread && rec_motion_thread->joinable()) {
-				rec_motion_thread->join();
+			
+			if (rec_motion_thread) {
+				if (!join_thread_with_timeout(rec_motion_thread, "motion recorder", 10)) {
+					all_threads_joined = false;
+				}
 			}
-			if (m_processor_thread && m_processor_thread->joinable()) {
-				m_processor_thread->join();
+			
+			if (m_processor_thread) {
+				if (!join_thread_with_timeout(m_processor_thread, "motion processor", 10)) {
+					all_threads_joined = false;
+				}
 			}
-			if (t_processor_thread && t_processor_thread->joinable()) {
-				t_processor_thread->join();
+			
+			if (t_processor_thread) {
+				if (!join_thread_with_timeout(t_processor_thread, "trigger processor", 10)) {
+					all_threads_joined = false;
+				}
 			}
-			if (onvif_ev_thread && onvif_ev_thread->joinable()) {
-				onvif_ev_thread->join();
+			
+			if (onvif_ev_thread) {
+				if (!join_thread_with_timeout(onvif_ev_thread, "ONVIF events", 5)) {
+					all_threads_joined = false;
+				}
+			}
+
+			if (!all_threads_joined) {
+				log.log(Warning, "Device %d: Some threads failed to join within timeout - proceeding with cleanup", id);
 			}
 
 			// Delete old components
+			log.log(Debug, "Device %d: Deleting old components", id);
 			if (rec_continuous) {
+				log.log(Debug, "Device %d: Deleting continuous recorder", id);
 				delete rec_continuous;
 				rec_continuous = nullptr;
 			}
 			if (rec_motion) {
+				log.log(Debug, "Device %d: Deleting motion recorder", id);
 				delete rec_motion;
 				rec_motion = nullptr;
 			}
 			if (m_processor) {
+				log.log(Debug, "Device %d: Deleting motion processor", id);
 				delete m_processor;
 				m_processor = nullptr;
 			}
 			if (t_processor) {
+				log.log(Debug, "Device %d: Deleting trigger processor", id);
 				delete t_processor;
 				t_processor = nullptr;
 			}
 			if (m_handler) {
+				log.log(Debug, "Device %d: Deleting motion handler", id);
 				delete m_handler;
 				m_handler = nullptr;
 			}
 
 			// Delete thread objects
+			log.log(Debug, "Device %d: Deleting thread objects", id);
 			if (rec_continuous_thread) {
 				delete rec_continuous_thread;
 				rec_continuous_thread = nullptr;
@@ -357,11 +428,15 @@ void bc_record::run()
 			}
 
 			// Give a small delay before creating new components to ensure cleanup is complete
+			log.log(Debug, "Device %d: Waiting 50ms before creating new components", id);
 			usleep(50000); // 50ms
 
+			// Create new components based on schedule
+			log.log(Debug, "Device %d: Creating new components for schedule '%s'", id, sched_str.c_str());
 			char thread_name[16];
 			if (sched_cur == 'X' || sched_cur == 'M' || sched_cur == 'C') {
 				if (sched_cur == 'X' || sched_cur == 'C') {
+					log.log(Debug, "Device %d: Creating continuous recorder", id);
 					rec_continuous = new recorder(this);
 					snprintf(thread_name, sizeof(thread_name), "rcn%d", id);
 					rec_continuous->set_thread_name(thread_name);
@@ -369,9 +444,11 @@ void bc_record::run()
 					rec_continuous->set_logging_context(log);
 					bc->source->connect(rec_continuous, stream_source::StartFromLastKeyframe);
 					rec_continuous_thread = new std::thread(&recorder::run, rec_continuous);
+					log.log(Debug, "Device %d: Continuous recorder thread started", id);
 				}
 
 				if (sched_cur == 'X' || sched_cur == 'M') {
+					log.log(Debug, "Device %d: Creating motion handler and recorder", id);
 					m_handler = new motion_handler;
 					snprintf(thread_name, sizeof(thread_name), "mha%d", id);
 					m_handler->set_thread_name(thread_name);
@@ -389,11 +466,14 @@ void bc_record::run()
 
 					m_handler->connect(rec_motion);
 					rec_motion_thread = new std::thread(&recorder::run, rec_motion);
+					log.log(Debug, "Device %d: Motion recorder thread started", id);
 
 					if (bc->input->caps() & BC_CAM_CAP_V4L2_MOTION) {
+						log.log(Debug, "Device %d: Using V4L2 motion detection", id);
 						bc->input->set_motion(true);
 						bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
 					} else {
+						log.log(Debug, "Device %d: Creating motion processor", id);
 						m_processor = new motion_processor(this);
 						snprintf(thread_name, sizeof(thread_name), "mpr%d", id);
 						m_processor->set_thread_name(thread_name);
@@ -412,11 +492,14 @@ void bc_record::run()
 						bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
 						m_processor->output()->connect(m_handler->input_consumer());
 						m_processor_thread = new std::thread(&motion_processor::run, m_processor);
+						log.log(Debug, "Device %d: Motion processor thread started", id);
 					}
 
 					m_handler_thread = new std::thread(&motion_handler::run, m_handler);
+					log.log(Debug, "Device %d: Motion handler thread started", id);
 				}
 			} else if (sched_cur == 'T') {
+				log.log(Debug, "Device %d: Creating trigger-based recording components", id);
 				m_handler = new motion_handler;
 				snprintf(thread_name, sizeof(thread_name), "trg%d", id);
 				m_handler->set_thread_name(thread_name);
@@ -432,6 +515,7 @@ void bc_record::run()
 
 				m_handler->connect(rec_motion);
 				rec_motion_thread = new std::thread(&recorder::run, rec_motion);
+				log.log(Debug, "Device %d: Trigger recorder thread started", id);
 
 				t_processor = new trigger_processor(id);
 				snprintf(thread_name, sizeof(thread_name), "rtp%d", id);
@@ -441,14 +525,17 @@ void bc_record::run()
 				t_processor->output()->connect(m_handler->input_consumer());
 
 				m_handler_thread = new std::thread(&motion_handler::run, m_handler);
+				log.log(Debug, "Device %d: Trigger handler thread started", id);
 
 				if (cfg.onvif_events_enabled) {
+					log.log(Debug, "Device %d: Creating ONVIF events thread", id);
 					onvif_ev = new onvif_events();
 					onvif_ev_thread = new std::thread(&onvif_events::run, onvif_ev, this);
 				}
 			}
 
 			if (cfg.reencode_enabled && bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT) {
+				log.log(Debug, "Device %d: Setting up reencoder", id);
 				reenc = new reencoder(cfg.reencode_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
 
 				/* Reencoded stream has different properties, they'll be set later when
@@ -460,6 +547,7 @@ void bc_record::run()
 					bc_streaming_destroy_hls(this);
 			}
 
+			log.log(Info, "Device %d: Successfully completed schedule transition to '%s'", id, sched_str.c_str());
 			sched_last = 0;
 		}
 
@@ -781,22 +869,126 @@ void bc_record::destroy_elements()
     // Give a small delay for disconnects to complete
     usleep(100000); // 100ms
 
-    // Then join all threads
-    if (rec_continuous_thread && rec_continuous_thread->joinable()) {
-        rec_continuous_thread->join();
+    // CRITICAL FIX: Add timeout protection for thread joins during shutdown
+    log.log(Debug, "Device %d: Starting thread cleanup during shutdown with timeout protection", id);
+    
+    // Helper function to join thread with timeout (same as in schedule transition)
+    auto join_thread_with_timeout = [this](std::thread* thread, const char* thread_name, int timeout_seconds) -> bool {
+        if (!thread || !thread->joinable()) {
+            log.log(Debug, "Device %d: Thread %s is not joinable during shutdown, skipping", id, thread_name);
+            return true;
+        }
+        
+        log.log(Debug, "Device %d: Joining thread %s during shutdown with %d second timeout", id, thread_name, timeout_seconds);
+        
+        // Use a separate thread to join with timeout
+        std::thread join_thread([thread, thread_name, timeout_seconds, this]() {
+            thread->join();
+        });
+        
+        // Wait for join thread to complete with timeout
+        auto start_time = std::chrono::steady_clock::now();
+        auto timeout_duration = std::chrono::seconds(timeout_seconds);
+        
+        while (join_thread.joinable()) {
+            auto elapsed = std::chrono::steady_clock::now() - start_time;
+            if (elapsed >= timeout_duration) {
+                log.log(Error, "Device %d: Thread %s join timeout during shutdown after %d seconds - thread may be stuck", 
+                    id, thread_name, timeout_seconds);
+                return false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        
+        join_thread.join();
+        log.log(Debug, "Device %d: Successfully joined thread %s during shutdown", id, thread_name);
+        return true;
+    };
+
+    // Join all threads with timeout protection during shutdown
+    bool all_threads_joined = true;
+    
+    if (rec_continuous_thread) {
+        if (!join_thread_with_timeout(rec_continuous_thread, "continuous recorder", 5)) {
+            all_threads_joined = false;
+        }
     }
-    if (rec_motion_thread && rec_motion_thread->joinable()) {
-        rec_motion_thread->join();
+    
+    if (rec_motion_thread) {
+        if (!join_thread_with_timeout(rec_motion_thread, "motion recorder", 5)) {
+            all_threads_joined = false;
+        }
     }
-    if (m_processor_thread && m_processor_thread->joinable()) {
-        m_processor_thread->join();
+    
+    if (m_processor_thread) {
+        if (!join_thread_with_timeout(m_processor_thread, "motion processor", 5)) {
+            all_threads_joined = false;
+        }
     }
-    if (t_processor_thread && t_processor_thread->joinable()) {
-        t_processor_thread->join();
+    
+    if (t_processor_thread) {
+        if (!join_thread_with_timeout(t_processor_thread, "trigger processor", 5)) {
+            all_threads_joined = false;
+        }
     }
-    if (onvif_ev_thread && onvif_ev_thread->joinable()) {
-        onvif_ev_thread->join();
+    
+    if (onvif_ev_thread) {
+        if (!join_thread_with_timeout(onvif_ev_thread, "ONVIF events", 3)) {
+            all_threads_joined = false;
+        }
     }
+
+    if (!all_threads_joined) {
+        log.log(Warning, "Device %d: Some threads failed to join during shutdown - proceeding with cleanup", id);
+    }
+
+    // Delete thread objects
+    log.log(Debug, "Device %d: Deleting thread objects during shutdown", id);
+    if (rec_continuous_thread) {
+        delete rec_continuous_thread;
+        rec_continuous_thread = nullptr;
+    }
+    if (rec_motion_thread) {
+        delete rec_motion_thread;
+        rec_motion_thread = nullptr;
+    }
+    if (m_processor_thread) {
+        delete m_processor_thread;
+        m_processor_thread = nullptr;
+    }
+    if (t_processor_thread) {
+        delete t_processor_thread;
+        t_processor_thread = nullptr;
+    }
+    if (onvif_ev_thread) {
+        delete onvif_ev_thread;
+        onvif_ev_thread = nullptr;
+    }
+
+    // Delete component objects
+    log.log(Debug, "Device %d: Deleting component objects during shutdown", id);
+    if (rec_continuous) {
+        delete rec_continuous;
+        rec_continuous = nullptr;
+    }
+    if (rec_motion) {
+        delete rec_motion;
+        rec_motion = nullptr;
+    }
+    if (m_processor) {
+        delete m_processor;
+        m_processor = nullptr;
+    }
+    if (t_processor) {
+        delete t_processor;
+        t_processor = nullptr;
+    }
+    if (m_handler) {
+        delete m_handler;
+        m_handler = nullptr;
+    }
+
+    log.log(Debug, "Device %d: Completed destroy_elements", id);
 }
 
 bool bc_record::update_motion_thresholds()
