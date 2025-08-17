@@ -711,7 +711,21 @@ int CleanupManager::run_cleanup() {
             batch_count++;
             
             if (!batch_success) {
-                bc_log(Info, "No more files to delete, stopping cleanup");
+                bc_log(Info, "No more files to delete, checking for database sync issues");
+                
+                // Check if storage is still full despite no files found
+                if (current_usage > target_threshold + 5.0) { // 5% buffer
+                    bc_log(Info, "Storage still full (%.1f%%) despite no files found, running database sync", current_usage);
+                    int sync_result = sync_database_with_filesystem();
+                    if (sync_result > 0) {
+                        bc_log(Info, "Database sync cleaned up %d orphaned entries, re-running cleanup", sync_result);
+                        // Reset for another cleanup attempt
+                        total_deleted = 0;
+                        batch_count = 0;
+                        start_time = time(nullptr);
+                        continue; // Go back to cleanup loop
+                    }
+                }
                 break;
             }
             
@@ -749,21 +763,6 @@ int CleanupManager::run_cleanup() {
                    total_deleted, batch_count, initial_usage, final_usage);
         } else {
             bc_log(Info, "No files needed to be deleted");
-            
-            // Check if storage is still full despite no files found
-            double current_usage = bc_get_storage_usage();
-            if (current_usage > target_threshold + 5.0) { // 5% buffer
-                bc_log(Info, "Storage still full (%.1f%%) despite no files found, running database sync");
-                int sync_result = sync_database_with_filesystem();
-                if (sync_result > 0) {
-                    bc_log(Info, "Database sync cleaned up %d orphaned entries, re-running cleanup", sync_result);
-                    // Reset for another cleanup attempt
-                    total_deleted = 0;
-                    batch_count = 0;
-                    start_time = time(nullptr);
-                    continue; // Go back to cleanup loop
-                }
-            }
         }
         
     } catch (const std::exception& e) {
