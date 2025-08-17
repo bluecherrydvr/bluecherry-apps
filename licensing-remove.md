@@ -38,31 +38,31 @@ This document outlines the steps required to remove all Cryptlex licensing from 
 ## Web Interface Changes
 
 ### 6. Update PHP License Wrapper
-- [ ] **File**: `www/lib/bc_license_wrapper.php`
-- [ ] **Action**: Modify `bc_license_devices_allowed()` to always return `-1` (unlimited)
-- [ ] **Action**: Modify `bc_license_check_genuine()` to always return success
-- [ ] **Action**: Remove all actual license checking logic
+- [x] **File**: `www/lib/bc_license_wrapper.php`
+- [x] **Action**: Modify `bc_license_devices_allowed()` to always return `-1` (unlimited)
+- [x] **Action**: Modify `bc_license_check_genuine()` to always return success
+- [x] **Action**: Remove all actual license checking logic
 
 ### 7. Remove Device Limits
-- [ ] **File**: `www/lib/lib.php`
-- [ ] **Action**: Modify `checkLimitDevices()` function to always return `true`
-- [ ] **Action**: Remove device count validation in `camera::create()`
-- [ ] **Lines**: ~958, ~1015-1019
+- [x] **File**: `www/lib/lib.php`
+- [x] **Action**: Modify `checkLimitDevices()` function to always return `true`
+- [x] **Action**: Remove device count validation in `camera::create()`
+- [x] **Lines**: ~958, ~1015-1019
 
 ### 8. Remove License Management Interface
-- [ ] **File**: `www/ajax/licenses.php`
-- [ ] **Action**: Remove or disable entire license management interface
-- [ ] **Action**: Remove license activation/deactivation functionality
-- [ ] **Action**: Remove license status checking
+- [x] **File**: `www/ajax/licenses.php`
+- [x] **Action**: Remove or disable entire license management interface
+- [x] **Action**: Remove license activation/deactivation functionality
+- [x] **Action**: Remove license status checking
 
 ### 9. Update Main Web Interface
-- [ ] **File**: `www/index.php`
-- [ ] **Action**: Remove license checking from main page (lines 29-30)
-- [ ] **Action**: Remove license-related error messages
+- [x] **File**: `www/index.php`
+- [x] **Action**: Remove license checking from main page (lines 29-30)
+- [x] **Action**: Remove license-related error messages
 
 ### 10. Remove License Templates
-- [ ] **Delete**: `www/template/ajax/licenses.php`
-- [ ] **Delete**: Any other license-related template files
+- [x] **Delete**: `www/template/ajax/licenses.php`
+- [x] **Delete**: Any other license-related template files
 
 ## Database Changes
 
