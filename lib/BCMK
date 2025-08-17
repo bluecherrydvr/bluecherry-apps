@@ -12,7 +12,7 @@ CFLAGS		+= -fPIC -DETCDIR="\"$(etc_dir)\"" $(shell pkg-config --cflags libcurl) 
 SOLIB		= libbluecherry.so
 SOLIBVER	= $(SOLIB).0
 OBJS		= bc-core.o bc-utils.o bc-db-core.o bc-db-mysql.o \
-		  bc-key.o bc-media.o lavf_device.o bc-ptz.o bc-stats.o \
+		  bc-media.o lavf_device.o bc-ptz.o bc-stats.o \
 		  input_device.o v4l2_device_solo6x10.o stream_elements.o \
 		  logging.o bc-syslog.o sliding_seq_window.o \
 		  v4l2_device_tw5864.o v4l2_device_solo6010-dkms.o
