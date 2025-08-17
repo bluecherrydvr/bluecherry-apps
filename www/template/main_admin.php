@@ -180,9 +180,7 @@
                         <li>
                             <a href="/log" class="ajax-content" data-left-menu="true"><i class="fa fa-file-o fa-fw"></i> <?php echo MMENU_LOG; ?></a>
                         </li>
-                        <li>
-                            <a href="/licenses" class="ajax-content" data-left-menu="true"><i class="fa fa-lock fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
-                        </li>
+
                     </ul>
 
                     <div class="panel-body">
