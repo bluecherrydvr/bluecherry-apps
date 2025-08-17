@@ -1946,6 +1946,19 @@ int main(int argc, char **argv)
 	// Initialize cleanup manager for regular scheduling
 	g_cleanup_manager = std::make_unique<CleanupManager>();
 	bc_log(Info, "Cleanup manager initialized with regular schedule");
+	
+	// Run initial database sync to clean up orphaned entries
+	if (g_cleanup_manager) {
+		bc_log(Info, "Running initial database/filesystem synchronization");
+		int sync_result = g_cleanup_manager->run_database_sync();
+		if (sync_result > 0) {
+			bc_log(Info, "Initial database sync cleaned up %d orphaned entries", sync_result);
+		} else if (sync_result == 0) {
+			bc_log(Info, "Initial database sync completed: no orphaned entries found");
+		} else {
+			bc_log(Error, "Initial database sync failed with error code %d", sync_result);
+		}
+	}
 
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
