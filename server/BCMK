@@ -2,12 +2,8 @@ CFLAGS		+= -pthread -MMD -std=c++14 $(shell pkg-config --cflags libbsd)
 LDFLAGS		+= -lbluecherry -lbsd -ludev \
 		   -lavformat -lavcodec -lavutil -lavfilter -lswscale -lavdevice -lswresample -lpugixml
 
-CFLAGS		+= -DV3_LICENSING
 # Required by our call-tracing implementation
 LDFLAGS		+= -ldl
-CURRENT_DIR     = $(shell pwd)
-CFLAGS		+= -I/$(CURRENT_DIR)/lexapi
-LDFLAGS		+= -L/$(CURRENT_DIR)/lexapi -lLexActivator
 
 # OpenCV libraries
 LDFLAGS		+= -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
@@ -21,7 +17,7 @@ SERVER_OBJS	= bc-server.o bc-thread.o media_writer.o g723-dec.o \
 		  decoder.o encoder.o reencoder.o vaapi.o scaler.o \
 		  recorder.o motion_handler.o ffmpeg-init.o bt.o status_server.o \
 		  trigger_server.o substream-thread.o onvif_events.o bc-cleaner.o \
-		  v3license_server.o v3license_processor.o hls.o bc-api.o
+		  hls.o bc-api.o
 
 all: $(TARGETS) FORCE
 
@@ -34,7 +30,6 @@ install: all rsyslog.conf FORCE
 	$(INSTALL_PROG) -D bc-server $(DESTDIR)$(sbin_dir)/bc-server
 	$(INSTALL_DATA) -D rsyslog.conf \
 		$(DESTDIR)$(etc_dir)/rsyslog.d/10-bluecherry.conf
-	$(INSTALL_DATA) -D lexapi/libLexActivator.so $(DESTDIR)$(lib_dir)/libLexActivator.so
 
 
 clean: FORCE
