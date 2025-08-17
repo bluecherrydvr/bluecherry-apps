@@ -20,7 +20,7 @@ cp    ${SRC_PATH}/misc/backup_db.sh  ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/list_ether.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/postinstall.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/bc_db_tool.sh ${DST_DIR}/usr/share/bluecherry/
-cp    ${SRC_PATH}/misc/drop_licenses.sh ${DST_DIR}/usr/share/bluecherry/
+
 cp    ${SRC_PATH}/misc/remove_all_data.sh ${DST_DIR}/usr/share/bluecherry/
 cp    ${SRC_PATH}/misc/bc-health-check ${DST_DIR}/usr/sbin/
 install -d ${DST_DIR}/usr/share/bluecherry/scripts

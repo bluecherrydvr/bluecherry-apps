@@ -25,4 +25,3 @@ clean:
 
 install: ptzcmd
 	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
-	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool || true
