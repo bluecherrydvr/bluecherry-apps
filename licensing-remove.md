@@ -6,34 +6,34 @@ This document outlines the steps required to remove all Cryptlex licensing from 
 ## Build System Changes
 
 ### 1. Remove V3 Licensing Compilation
-- [ ] **File**: `server/BCMK`
-- [ ] **Action**: Remove `CFLAGS += -DV3_LICENSING` from line 4
-- [ ] **Effect**: Disables all V3 licensing code compilation
+- [x] **File**: `server/BCMK`
+- [x] **Action**: Remove `CFLAGS += -DV3_LICENSING` from line 4
+- [x] **Effect**: Disables all V3 licensing code compilation
 
 ### 2. Update Makefile Dependencies
-- [ ] **File**: `server/BCMK`
-- [ ] **Action**: Remove `v3license_server.o v3license_processor.o` from object files list
-- [ ] **Effect**: Excludes licensing components from build
+- [x] **File**: `server/BCMK`
+- [x] **Action**: Remove `v3license_server.o v3license_processor.o` from object files list
+- [x] **Effect**: Excludes licensing components from build
 
 ## Server Code Removal
 
 ### 3. Remove V3 Licensing Files
-- [ ] **Delete**: `server/v3license_server.h`
-- [ ] **Delete**: `server/v3license_server.cpp`
-- [ ] **Delete**: `server/v3license_processor.h`
-- [ ] **Delete**: `server/v3license_processor.cpp`
-- [ ] **Delete**: `server/lexapi/` directory (entire Cryptlex SDK)
+- [x] **Delete**: `server/v3license_server.h`
+- [x] **Delete**: `server/v3license_server.cpp`
+- [x] **Delete**: `server/v3license_processor.h`
+- [x] **Delete**: `server/v3license_processor.cpp`
+- [x] **Delete**: `server/lexapi/` directory (entire Cryptlex SDK)
 
 ### 4. Update Main Server Code
-- [ ] **File**: `server/bc-server.cpp`
-- [ ] **Action**: Remove all `#ifdef V3_LICENSING` blocks
-- [ ] **Lines**: 47-49, 99-101, 1927-1939, 1969-1972, 2052-2055
-- [ ] **Effect**: Removes v3license server initialization, thread creation, and cleanup
+- [x] **File**: `server/bc-server.cpp`
+- [x] **Action**: Remove all `#ifdef V3_LICENSING` blocks
+- [x] **Lines**: 47-49, 99-101, 1927-1939, 1969-1972, 2052-2055
+- [x] **Effect**: Removes v3license server initialization, thread creation, and cleanup
 
 ### 5. Remove License Utility Programs
-- [ ] **Delete**: `utils/licensecmd.cpp`
-- [ ] **Delete**: `utils/bc-license.cpp`
-- [ ] **Delete**: `lib/bc-key.cpp`
+- [x] **Delete**: `utils/licensecmd.cpp`
+- [x] **Delete**: `utils/bc-license.cpp`
+- [x] **Delete**: `lib/bc-key.cpp`
 
 ## Web Interface Changes
 
@@ -167,7 +167,8 @@ This document outlines the steps required to remove all Cryptlex licensing from 
 ### 2025-01-XX - Initial Setup
 - [x] Created TODO list
 - [x] Created new branch `remove-licensing` from `release-3.1.14`
-- [ ] Started build system changes
+- [x] Started build system changes
+- [x] Removed V3_LICENSING compilation flag and dependencies
 
 ## Notes
 
