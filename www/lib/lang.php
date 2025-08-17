@@ -46,7 +46,7 @@ define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_DOCUMENTATION', 'Documentation');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
-define('MMENU_LICENSING', 'License keys');
+
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -623,9 +623,7 @@ define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the license key 
 define('L_INVALID_LICENSE', 'The license key you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_INVALID_LICENSE_EXISTS', 'The license key you entered is already in use on this system.');
 define('L_INVALID_CONFIRMATION', 'Confirmation license key you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_LICENSE_ACTIVATED', 'The license key was successfully activated.');
-define('L_LICENSE_DEACTIVATED', 'The license key was deactivated.');
-define('L_LICENSE_DEACTIVATED_DB_FAIL', 'The license key was deactivated.<br> But this license key isn\'t removed from database due to database problem.<br>Please remove this manually later.');
+
 define('L_CURRENT',  'Active license key');
 define('L_CONFIRM', 'Confirm');
 define('L_CONFIRM_DELETE', 'Are you sure you want to deactivate this license key?');
