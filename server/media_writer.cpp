@@ -39,6 +39,54 @@ static void bc_avlog(int val, const char *msg)
 	bc_log(Error, "%s: %s", msg, err);
 }
 
+// Audio stream compatibility validation function
+static bool is_audio_stream_compatible(const stream_properties::audio_properties &audio_props)
+{
+	enum AVCodecID codec_id = audio_props.codec_id;
+	int channels = audio_props.channels;
+	int sample_rate = audio_props.sample_rate;
+	
+	// Enhanced problematic audio detection - discard completely if issues detected
+	if ((codec_id == AV_CODEC_ID_PCM_MULAW || codec_id == AV_CODEC_ID_PCM_ALAW) && channels == 1) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
+			avcodec_get_name(codec_id));
+		return false;
+	}
+	
+	// Check for non-standard sample rates for G711 codecs
+	if (codec_id == AV_CODEC_ID_PCM_ALAW && sample_rate != 8000) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with non-standard sample rate %d Hz (expected 8000 Hz)", 
+			avcodec_get_name(codec_id), sample_rate);
+		return false;
+	}
+	
+	if (codec_id == AV_CODEC_ID_PCM_MULAW && sample_rate != 8000) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with non-standard sample rate %d Hz (expected 8000 Hz)", 
+			avcodec_get_name(codec_id), sample_rate);
+		return false;
+	}
+	
+	// Check if codec is supported
+	switch (codec_id) {
+		case AV_CODEC_ID_PCM_S16LE:
+		case AV_CODEC_ID_PCM_S16BE:
+		case AV_CODEC_ID_PCM_ALAW:
+		case AV_CODEC_ID_PCM_MULAW:
+		case AV_CODEC_ID_AAC:
+		case AV_CODEC_ID_ADPCM_G726:
+		case AV_CODEC_ID_ADPCM_G726LE:
+		case AV_CODEC_ID_MP3:
+		case AV_CODEC_ID_G723_1:
+		case AV_CODEC_ID_G729:
+		case AV_CODEC_ID_GSM:
+		case AV_CODEC_ID_AC3:
+			return true;
+		default:
+			bc_log(Warning, "Audio codec not supported: %s, recording video only", avcodec_get_name(codec_id));
+			return false;
+	}
+}
+
 ///////////////////////////////////////////////////////////////
 // S.K. >> Implementation of separated media writer
 ///////////////////////////////////////////////////////////////
@@ -473,68 +521,23 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	audio_st = NULL;
 	if (properties.has_audio())
 	{
-		AVStream *tmp_audio_st = avformat_new_stream(out_ctx, NULL);
-		if (!tmp_audio_st)
-		{
-			bc_log(Warning, "Audio stream could not be created, recording video only");
-			// continue with video only
-		}
-		else
-		{
-			// Check if the incoming audio codec is supported for recording
-			enum AVCodecID incoming_codec = properties.audio.codec_id;
-			bool codec_supported = false;
-			// Skip problematic audio configurations that cause muxer failures
-			if ((incoming_codec == AV_CODEC_ID_PCM_MULAW || incoming_codec == AV_CODEC_ID_PCM_ALAW) && properties.audio.channels == 1) {
-				bc_log(Warning, "Skipping problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
-					avcodec_get_name(incoming_codec));
-				codec_supported = false;
+		// Validate audio stream compatibility before creating it
+		if (is_audio_stream_compatible(properties.audio)) {
+			// Only create audio stream if it's compatible
+			AVStream *tmp_audio_st = avformat_new_stream(out_ctx, NULL);
+			if (!tmp_audio_st) {
+				bc_log(Warning, "Audio stream could not be created, recording video only");
 			} else {
-				switch (incoming_codec) {
-					case AV_CODEC_ID_PCM_S16LE:
-					case AV_CODEC_ID_PCM_S16BE:
-					case AV_CODEC_ID_PCM_ALAW:
-					case AV_CODEC_ID_PCM_MULAW:
-					case AV_CODEC_ID_AAC:
-					case AV_CODEC_ID_ADPCM_G726:
-					case AV_CODEC_ID_ADPCM_G726LE:
-					case AV_CODEC_ID_MP3:
-					case AV_CODEC_ID_G723_1:
-					case AV_CODEC_ID_G729:
-					case AV_CODEC_ID_GSM:
-					case AV_CODEC_ID_AC3:
-						codec_supported = true;
-						break;
-					default:
-						codec_supported = false;
-						break;
-				}
-			}
-			if (!codec_supported) {
-				bc_log(Warning, "Audio stream not supported (codec: %s), recording video only", avcodec_get_name(incoming_codec));
-				// Remove the stream from the context
-				if (tmp_audio_st) {
-					for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
-						if (out_ctx->streams[i] == tmp_audio_st) {
-							for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
-								out_ctx->streams[j] = out_ctx->streams[j + 1];
-							}
-							out_ctx->nb_streams--;
-							break;
-						}
-					}
-				}
-				tmp_audio_st = NULL;
-			}
-			else {
 				// Apply the actual audio properties from the stream
 				properties.audio.apply(tmp_audio_st->codecpar);
 				bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
-					avcodec_get_name(incoming_codec),
+					avcodec_get_name(properties.audio.codec_id),
 					properties.audio.sample_rate,
 					properties.audio.channels);
 				audio_st = tmp_audio_st;
 			}
+		} else {
+			bc_log(Info, "Audio stream discarded due to compatibility issues, recording video only");
 		}
 	}
 
