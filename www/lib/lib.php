@@ -1010,14 +1010,8 @@ class ipCamera{
 		return array(data::query("UPDATE Devices SET disabled=".(($this->info['disabled']) ? 0 : 1)." WHERE id={$this->info['id']}", true));
 	}
 	private static function checkLimitDevices(){
-		$info = data::query("SELECT COUNT(*) as n FROM Devices WHERE protocol in ('IP-RTSP', 'IP-MJPEG', 'IP')");
-		$total_devices = $info[0]['n'];
-
-		$allowed_by_license = bc_license_devices_allowed();
-		if ((int)$allowed_by_license == -1) return true; // -1 for unlimited
-
-		$allowed_devices = (int)$allowed_by_license + Constant('NO_LICENSE_DEFAULT_ALLOWED');
-		return ((int)$total_devices < $allowed_devices);
+		// Always return true for free and open source version - no device limits
+		return true;
 	}
 }
 
