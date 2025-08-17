@@ -13,6 +13,9 @@ bluecherry (3:3.1.14) bookworm bullseye buster focal jammy mantic noble; urgency
   * FEATURE: Web interface for manual database sync with real-time progress indicators
   * FEATURE: Startup database sync to clean orphaned entries on server start
   * FEATURE: Automatic sync integration with cleanup process for seamless operation
+  * FIX: Implement robust audio stream validation to prevent TP-Link recording failures
+  * FIX: Discard problematic PCM A-law/μ-law audio streams before muxer initialization
+  * FIX: Enhanced audio compatibility checking for G711 codecs with non-standard parameters
   * DOC: Update documentation for crash recovery, stability, and deployment steps
   * Maintain backward compatibility with all supported distributions
 
