@@ -705,6 +705,7 @@ define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
 define('L_ENABLE', 'enable');
 define('L_DISABLE', 'disable');
+define('DB_SYNC_BUTTON', 'Sync Database');
 
 define('BETA_LICENSE_WARNING', 'Bluecherry DVR is now free and open source software.<br>');
 
