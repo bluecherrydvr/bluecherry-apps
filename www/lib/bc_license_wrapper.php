@@ -47,11 +47,8 @@ function bc_license_check_auth($key, $auth)
 
 function bc_license_devices_allowed()
 {
-	$output = bc_license_command(LA_GET_LICENSE_METADATA);
-	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
-		return 0;
-
-	return (int)$output[2];
+	// Always return unlimited devices (-1) for free and open source version
+	return -1;
 }
 
 function bc_license_check_genuine()
