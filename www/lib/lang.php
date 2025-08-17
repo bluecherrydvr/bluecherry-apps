@@ -708,7 +708,7 @@ define('U_LOADING', 'Loading...');
 define('L_ENABLE', 'enable');
 define('L_DISABLE', 'disable');
 
-define('BETA_LICENSE_WARNING', 'You are using the community version of our software, for support options please click here.<br><a href=https://www.bluecherrydvr.com/licenses>www.bluecherrydvr.com/licenses</a><br>');
+define('BETA_LICENSE_WARNING', 'Bluecherry DVR is now free and open source software.<br>');
 
 #ip cam props
 define('IPCAM_TCPUDP_LEVEL', 'Transport');
