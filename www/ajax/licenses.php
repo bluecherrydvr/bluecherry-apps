@@ -19,62 +19,9 @@ class licenses extends Controller {
 
     public function postData()
     {
-		if (!empty($_GET['mode']) && $_GET['mode'] == 'add'){
-			//  Check if the license to be activated already exits in database
-			$exists = data::getObject('Licenses', 'license', $_POST['licenseCode']);
-			if (!empty($exists)){
-				data::responseJSON(false, L_INVALID_LICENSE_EXISTS);
-				exit();
-			};
-
-			// Activate the license key
-			$ret = bc_license_activate_key($_POST['licenseCode']);
-			if (is_null($ret)) {
-				data::responseJSON(false, false);
-				exit();
-			}
-
-			// Show status message if activation fails
-			$status = (int)$ret[1];
-			$message = licenses::getLicenseStatusMessage($status);
-			if ($status != Constant('LA_OK')) {
-				data::responseJSON(false, $message, $ret);
-				exit();
-			}
-
-			// Add the verified license to database
-			$result = $this->updateVerifiedLicense($_POST['licenseCode']);
-			if (!$result){
-				data::responseJSON(false, false);
-				exit();
-			}
-
-			// Update the general notification in the page
-			$ret = bc_license_check_genuine();
-			data::responseJSON(true, L_LICENSE_ACTIVATED, $ret);
-		}
-
-		if (!empty($_GET['mode']) && $_GET['mode'] == 'activate_trial'){
-			// Activate trial
-			$ret = bc_license_activate_trial();
-			if (is_null($ret)) {
-				data::responseJSON(false, false);
-				exit();
-			}
-
-			// Show the relevant message
-			$status = (int)$ret[1];
-			$message = licenses::getLicenseStatusMessage($status);
-			if ($status == Constant('LA_OK')) {
-				$ret = bc_license_check_genuine();
-				data::responseJSON(true, L_LA_E_TRIAL_ACTIVATE_SUCCESS, $ret);
-				exit();
-			}
-			else {
-				data::responseJSON(false, $message, $ret);
-				exit();
-			}
-		}
+        // License management disabled for free and open source version
+        data::responseJSON(false, "License management is not available in the free version");
+        exit();
 
         // if (!empty($_GET['mode']) && $_GET['mode'] == 'confirm'){
         // 	if (bc_license_check_auth($_POST['licenseCode'], $_POST['confirmLicense'])) {
@@ -98,52 +45,10 @@ class licenses extends Controller {
         // 	}
         // }
 
+        // License deactivation disabled for free and open source version
         if (!empty($_GET['mode']) && $_GET['mode'] == 'deactivate') {
-            // Check if license is invalid (ports = 0)
-            $allowed_devices = bc_license_devices_allowed();
-            if ((int)$allowed_devices == 0) {
-                // License is invalid, allow direct database deletion
-                $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
-                $message = L_LICENSE_DEACTIVATED;
-                if ($result) { // success
-                    $message = L_LICENSE_DEACTIVATED;
-                }
-                else { // fail
-                    $message = L_LICENSE_DEACTIVATED_DB_FAIL;
-                }
-                $ret = bc_license_check_genuine();
-                data::responseJSON(true, $message, $ret);
-                exit();
-            }
-
-            // Normal deactivation flow for valid licenses
-            $ret = bc_license_deactivate_key();
-            if (is_null($ret)) {
-                data::responseJSON(false, false);
-                exit();
-            }
-
-            // Show status message if deactivation fails
-            $status = (int)$ret[1];
-            if ($status != Constant('LA_OK') && $status != 63) {
-                $message = licenses::getLicenseStatusMessage($status);
-                data::responseJSON(false, $message, $ret);
-                exit();
-            }
-            
-            // Delete the license key from database
-            $result = data::query("DELETE FROM Licenses WHERE license = '{$_GET['license']}'", true);
-            $message = L_LICENSE_DEACTIVATED;
-            if ($result) { // success
-                $message = L_LICENSE_DEACTIVATED;
-            }
-            else { // fail
-                $message = L_LICENSE_DEACTIVATED_DB_FAIL;
-            }
-
-            // Update the general notification in the page
-            $ret = bc_license_check_genuine();
-            data::responseJSON(true, $message, $ret);
+            data::responseJSON(false, "License management is not available in the free version");
+            exit();
         }
 
     }
