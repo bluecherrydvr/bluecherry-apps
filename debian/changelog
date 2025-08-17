@@ -9,6 +9,10 @@ bluecherry (3:3.1.14) bookworm bullseye buster focal jammy mantic noble; urgency
   * FIX: Improve error handling, replace assertions with graceful degradation
   * FIX: PHP: Prevent memory errors and improve range request handling for large event lists
   * FIX: Web UI: Correct timezone handling and filter out 0s-duration events for better performance
+  * FEATURE: Add automatic database/filesystem synchronization to prevent disk space issues
+  * FEATURE: Web interface for manual database sync with real-time progress indicators
+  * FEATURE: Startup database sync to clean orphaned entries on server start
+  * FEATURE: Automatic sync integration with cleanup process for seamless operation
   * DOC: Update documentation for crash recovery, stability, and deployment steps
   * Maintain backward compatibility with all supported distributions
 
