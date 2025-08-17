@@ -67,24 +67,24 @@ This document outlines the steps required to remove all Cryptlex licensing from 
 ## Database Changes
 
 ### 11. Remove License Tables
-- [ ] **Action**: Remove `Licenses` table entirely
-- [ ] **Action**: Remove any license-related columns from other tables
-- [ ] **Action**: Update database schema scripts
+- [x] **Action**: Remove `Licenses` table entirely
+- [x] **Action**: Remove any license-related columns from other tables
+- [x] **Action**: Update database schema scripts
 
 ### 12. Update Database Upgrade Scripts
-- [ ] **Action**: Remove license-related database migrations
-- [ ] **Action**: Add migration to clean up existing license data
+- [x] **Action**: Remove license-related database migrations
+- [x] **Action**: Add migration to clean up existing license data
 
 ## Configuration Changes
 
 ### 13. Remove License Server Configuration
-- [ ] **Action**: Remove license server endpoints (port 7004)
-- [ ] **Action**: Remove license validation from startup
-- [ ] **Action**: Remove license-related configuration options
+- [x] **Action**: Remove license server endpoints (port 7004)
+- [x] **Action**: Remove license validation from startup
+- [x] **Action**: Remove license-related configuration options
 
 ### 14. Update Systemd/Init Scripts
-- [ ] **Action**: Remove license server service definitions
-- [ ] **Action**: Update startup scripts to not check for licenses
+- [x] **Action**: Remove license server service definitions
+- [x] **Action**: Update startup scripts to not check for licenses
 
 ## Documentation Updates
 
@@ -118,19 +118,19 @@ This document outlines the steps required to remove all Cryptlex licensing from 
 ## Cleanup Tasks
 
 ### 20. Remove License-Related Constants
-- [ ] **File**: `www/lib/var.php`
-- [ ] **Action**: Remove license-related constant definitions
-- [ ] **Action**: Remove license status messages
+- [x] **File**: `www/lib/var.php`
+- [x] **Action**: Remove license-related constant definitions
+- [x] **Action**: Remove license status messages
 
 ### 21. Remove License Language Strings
-- [ ] **File**: `www/lib/lang.php`
-- [ ] **Action**: Remove all license-related language definitions
-- [ ] **Action**: Clean up unused language strings
+- [x] **File**: `www/lib/lang.php`
+- [x] **Action**: Remove all license-related language definitions
+- [x] **Action**: Clean up unused language strings
 
 ### 22. Update Error Handling
-- [ ] **Action**: Remove license-related error handling code
-- [ ] **Action**: Update error messages to not mention licensing
-- [ ] **Action**: Ensure graceful handling when license checks are removed
+- [x] **Action**: Remove license-related error handling code
+- [x] **Action**: Update error messages to not mention licensing
+- [x] **Action**: Ensure graceful handling when license checks are removed
 
 ## Post-Removal Verification
 
