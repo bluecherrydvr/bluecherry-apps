@@ -465,6 +465,10 @@ bool bc_stats::update_storage_info()
             }
         }
         bc_db_free_table(dbres);
+    } else {
+        // CRITICAL FIX: Handle database query failure gracefully
+        // Use default storage path only if database is unavailable
+        bc_log(Warning, "Failed to query Storage table, using default path only");
     }
 
     // Open /proc/mounts to map mount points
@@ -711,23 +715,52 @@ void bc_stats::initialize_rrd_file()
         return;
     }
     
+    // Get network interfaces for RRD data sources
+    std::string network_ds = "";
+    DIR *net_dir = opendir(BC_DIR_NETWORK);
+    if (net_dir != NULL) {
+        struct dirent *dir_entry = readdir(net_dir);
+        while(dir_entry != NULL) {
+            if (strcmp(".", dir_entry->d_name) != 0 && strcmp("..", dir_entry->d_name) != 0) {
+                // Skip loopback and virtual interfaces
+                if (strncmp(dir_entry->d_name, "lo", 2) != 0 && 
+                    strncmp(dir_entry->d_name, "docker", 6) != 0 &&
+                    strncmp(dir_entry->d_name, "veth", 4) != 0) {
+                    
+                    char iface_name[64];
+                    snprintf(iface_name, sizeof(iface_name), "%s", dir_entry->d_name);
+                    
+                    // Add data sources for this interface
+                    network_ds += " DS:";
+                    network_ds += iface_name;
+                    network_ds += "_rx:COUNTER:20:0:U";
+                    network_ds += " DS:";
+                    network_ds += iface_name;
+                    network_ds += "_tx:COUNTER:20:0:U";
+                }
+            }
+            dir_entry = readdir(net_dir);
+        }
+        closedir(net_dir);
+    }
+    
     // Create RRD file with appropriate data sources and archives (10-second step)
-    char create_cmd[512];
+    char create_cmd[2048]; // Increased buffer size for network interfaces
     snprintf(create_cmd, sizeof(create_cmd),
         "rrdtool create %s --step 10 "
         "DS:cpu:GAUGE:20:0:100 "
         "DS:mem:GAUGE:20:0:100 "
-        "DS:disk:GAUGE:20:0:100 "
+        "DS:disk:GAUGE:20:0:100%s "
         "RRA:AVERAGE:0.5:1:360 "     /* 1 hour of 10-second data */
         "RRA:AVERAGE:0.5:6:1440 "    /* 24 hours of 1-minute data */
         "RRA:AVERAGE:0.5:30:288 "    /* 1 day of 5-minute data */
         "RRA:AVERAGE:0.5:360:168 "   /* 1 week of 1-hour data */
         "RRA:AVERAGE:0.5:8640:30",   /* 1 month of 1-day data */
-        rrd_path);
+        rrd_path, network_ds.c_str());
     
     int result = system(create_cmd);
     if (result == 0) {
-        bc_log(Info, "Successfully created RRD file %s", rrd_path);
+        bc_log(Info, "Successfully created RRD file %s with network interfaces", rrd_path);
     } else {
         bc_log(Error, "Failed to create RRD file %s (exit code: %d)", rrd_path, result);
     }
@@ -754,6 +787,26 @@ void bc_stats::update_rrd_data()
         disk_percent = (float)_storage_paths[0].usage_percent;
     }
     
+    // Build network interface data string
+    std::string network_data = "";
+    pthread_mutex_lock(&_mutex);
+    for (const auto& pair : _network) {
+        const std::string& iface_name = pair.first;
+        const net_iface& iface = pair.second;
+        
+        // Skip loopback and virtual interfaces
+        if (iface_name.substr(0, 2) != "lo" && 
+            iface_name.substr(0, 6) != "docker" &&
+            iface_name.substr(0, 4) != "veth") {
+            
+            network_data += ":";
+            network_data += std::to_string(iface.bytes_recv);
+            network_data += ":";
+            network_data += std::to_string(iface.bytes_sent);
+        }
+    }
+    pthread_mutex_unlock(&_mutex);
+    
     // Try multiple possible RRD locations
     const char* rrd_paths[] = {
         "/var/lib/bluecherry/monitor.rrd",
@@ -763,10 +816,10 @@ void bc_stats::update_rrd_data()
     
     bool updated = false;
     for (const char* rrd_path : rrd_paths) {
-        char rrd_cmd[256];
+        char rrd_cmd[2048]; // Increased buffer size for network data
         snprintf(rrd_cmd, sizeof(rrd_cmd),
-            "rrdtool update %s N:%.2f:%.2f:%.2f 2>/dev/null",
-            rrd_path, cpu_percent, mem_percent, disk_percent);
+            "rrdtool update %s N:%.2f:%.2f:%.2f%s 2>/dev/null",
+            rrd_path, cpu_percent, mem_percent, disk_percent, network_data.c_str());
         
         int result = system(rrd_cmd);
         if (result == 0) {

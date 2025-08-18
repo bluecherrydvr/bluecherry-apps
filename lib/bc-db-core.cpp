@@ -182,6 +182,12 @@ int bc_db_query(const char *sql, ...)
 	char *query;
 	int ret;
 
+	// CRITICAL FIX: Add null pointer protection
+	if (!db_ops) {
+		bc_log(Error, "Database not initialized - cannot execute query");
+		return -1;
+	}
+
 	va_start(ap, sql);
 	if (vasprintf(&query, sql, ap) < 0)
 		return -1;
@@ -217,6 +223,12 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 	char *query;
 	BC_DB_RES dbres;
 
+	// CRITICAL FIX: Add null pointer protection
+	if (!db_ops) {
+		bc_log(Error, "Database not initialized - cannot execute query");
+		return NULL;
+	}
+
 	va_start(ap, sql);
 	if (vasprintf(&query, sql, ap) < 0)
 		return NULL;
@@ -236,6 +248,12 @@ BC_DB_RES __bc_db_get_table(const char *sql, ...)
 	va_list ap;
 	char *query;
 	BC_DB_RES dbres;
+
+	// CRITICAL FIX: Add null pointer protection
+	if (!db_ops) {
+		bc_log(Error, "Database not initialized - cannot execute query");
+		return NULL;
+	}
 
 	va_start(ap, sql);
 	if (vasprintf(&query, sql, ap) < 0)
