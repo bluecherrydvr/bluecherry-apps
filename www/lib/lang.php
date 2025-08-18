@@ -326,7 +326,7 @@ define('STATS_UPT', 'Server uptime:');
 define('USER_KICKED', 'Your session was terminated by an Administrator.');
 define('USER_NACCESS', 'You need administrator priveleges to access this page. Please <a href="/">login again</a>.');
 define('USER_RELOGIN', 'Your session has expired, please <a htef="/">relogin</a>. ');
-define('NO_CONNECTION', 'Cound not connect to the server.<br /><br />Please make sure that:<br />-server httpd is running<br />-you are online');
+define('NO_CONNECTION', 'Could not connect to the server.<br /><br />Please make sure that:<br />-server httpd is running<br />-you are online');
 
 #active users 
 define('ACTIVE_USERS_HEADER', 'Connected users');

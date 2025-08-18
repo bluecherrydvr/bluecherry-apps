@@ -8,23 +8,152 @@ class stats extends Controller {
     }
 
     public function start($uri = array()) {
-        // Prevent any output before JSON
+        // Check if this is a request for XML format (legacy compatibility)
+        if (isset($_GET['format']) && $_GET['format'] === 'xml') {
+            $this->getXMLStats();
+            return;
+        }
+        
+        // Modern JSON API (default)
         ob_clean();
         header('Content-Type: application/json');
         
         try {
-            $range = isset($_GET['range']) ? $_GET['range'] : '1h';
-            $this->getStats($range);
+            $live_stats = $this->getLiveStats();
+            $memory_info = $this->getMemoryInfo();
+            
+            $response = [
+                'success' => true,
+                'timestamp' => time(),
+                'live' => [
+                    'cpu' => $live_stats['cpu'],
+                    'memory' => $live_stats['memory'],
+                    'disk' => $live_stats['disk'],
+                    'server_running' => $live_stats['server_running'],
+                    'uptime' => $this->getServerUptime(),
+                    'memory_info' => $memory_info
+                ]
+            ];
+            
+            // Add historical data if requested
+            if (isset($_GET['range'])) {
+                $response['historical'] = $this->getHistoricalStats($_GET['range']);
+            }
+            
+            // Add storage data if requested
+            if (isset($_GET['include_storage']) && $_GET['include_storage'] === 'true') {
+                $response['storage'] = $this->getStorageStats();
+            }
+            
+            echo json_encode($response);
+            
         } catch (Exception $e) {
-            // Return error as JSON instead of HTML
+            // Return error as JSON
             echo json_encode([
+                'success' => false,
                 'error' => true,
                 'message' => 'Failed to load stats: ' . $e->getMessage(),
-                'live' => ['cpu' => 0, 'memory' => 0, 'disk' => 0, 'server_running' => false, 'timestamp' => time()],
-                'historical' => [],
-                'storage' => []
+                'live' => [
+                    'cpu' => 0,
+                    'memory' => 0,
+                    'disk' => 0,
+                    'server_running' => false,
+                    'uptime' => '0m',
+                    'memory_info' => '0 MB / 0 MB'
+                ]
             ]);
         }
+    }
+
+    // CRITICAL FIX: Add XML format for main.js compatibility
+    private function getXMLStats() {
+        ob_clean();
+        header('Content-Type: text/xml');
+        
+        try {
+            $live_stats = $this->getLiveStats();
+            
+            $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            $xml .= '<stats>' . "\n";
+            $xml .= '  <cpu-usage>' . $live_stats['cpu'] . '</cpu-usage>' . "\n";
+            $xml .= '  <memory-inuse>' . ($live_stats['memory'] * 1024 * 1024) . '</memory-inuse>' . "\n"; // Convert to bytes
+            $xml .= '  <memory-total>' . (1024 * 1024 * 1024) . '</memory-total>' . "\n"; // 1GB placeholder
+            $xml .= '  <memory-used-percentage>' . $live_stats['memory'] . '</memory-used-percentage>' . "\n";
+            $xml .= '  <server-uptime>' . $this->getServerUptime() . '</server-uptime>' . "\n";
+            $xml .= '  <bc-server-running>' . ($live_stats['server_running'] ? 'up' : 'down') . '</bc-server-running>' . "\n";
+            $xml .= '</stats>' . "\n";
+            
+            echo $xml;
+        } catch (Exception $e) {
+            // Return minimal XML on error
+            $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+            $xml .= '<stats>' . "\n";
+            $xml .= '  <cpu-usage>0</cpu-usage>' . "\n";
+            $xml .= '  <memory-inuse>0</memory-inuse>' . "\n";
+            $xml .= '  <memory-total>0</memory-total>' . "\n";
+            $xml .= '  <memory-used-percentage>0</memory-used-percentage>' . "\n";
+            $xml .= '  <server-uptime>0</server-uptime>' . "\n";
+            $xml .= '  <bc-server-running>down</bc-server-running>' . "\n";
+            $xml .= '</stats>' . "\n";
+            echo $xml;
+        }
+    }
+
+    private function getServerUptime() {
+        $uptime = 0;
+        $uptime_file = '/proc/uptime';
+        if (file_exists($uptime_file)) {
+            $uptime_data = file_get_contents($uptime_file);
+            if ($uptime_data) {
+                $parts = explode(' ', trim($uptime_data));
+                $uptime = intval($parts[0]);
+            }
+        }
+        
+        // Format uptime as days, hours, minutes
+        $days = intval($uptime / 86400);
+        $hours = intval(($uptime % 86400) / 3600);
+        $minutes = intval(($uptime % 3600) / 60);
+        
+        if ($days > 0) {
+            return $days . 'd ' . $hours . 'h ' . $minutes . 'm';
+        } elseif ($hours > 0) {
+            return $hours . 'h ' . $minutes . 'm';
+        } else {
+            return $minutes . 'm';
+        }
+    }
+
+    private function getMemoryInfo() {
+        $meminfo = file_get_contents('/proc/meminfo');
+        if (!$meminfo) {
+            return '0 MB / 0 MB';
+        }
+        
+        preg_match('/MemTotal:\s+(\d+)/', $meminfo, $total);
+        preg_match('/MemAvailable:\s+(\d+)/', $meminfo, $available);
+        
+        if (!$total || !$available) {
+            return '0 MB / 0 MB';
+        }
+        
+        $total_kb = intval($total[1]);
+        $available_kb = intval($available[1]);
+        $used_kb = $total_kb - $available_kb;
+        
+        $total_mb = round($total_kb / 1024);
+        $used_mb = round($used_kb / 1024);
+        
+        return $used_mb . ' MB / ' . $total_mb . ' MB';
+    }
+
+    private function getHistoricalStats($range) {
+        // Simple historical data - can be enhanced later
+        return [
+            'range' => $range,
+            'data' => [],
+            'message' => 'Historical data not yet implemented'
+        ];
     }
 
     private function getNetworkStats() {
