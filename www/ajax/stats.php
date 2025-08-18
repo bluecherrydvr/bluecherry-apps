@@ -27,6 +27,69 @@ class stats extends Controller {
         }
     }
 
+    private function getNetworkStats() {
+        $network_stats = [];
+        
+        // Get network interface names and current stats
+        $net_dir = '/sys/class/net/';
+        if (is_dir($net_dir)) {
+            $interfaces = scandir($net_dir);
+            $iface_index = 0;
+            
+            foreach ($interfaces as $iface) {
+                if ($iface !== '.' && $iface !== '..') {
+                    // Skip loopback and virtual interfaces
+                    if (substr($iface, 0, 2) !== 'lo' && 
+                        substr($iface, 0, 6) !== 'docker' &&
+                        substr($iface, 0, 4) !== 'veth') {
+                        
+                        // Get interface statistics
+                        $rx_bytes = 0;
+                        $tx_bytes = 0;
+                        $is_up = false;
+                        
+                        $rx_file = $net_dir . $iface . '/statistics/rx_bytes';
+                        $tx_file = $net_dir . $iface . '/statistics/tx_bytes';
+                        $operstate_file = $net_dir . $iface . '/operstate';
+                        
+                        if (file_exists($rx_file)) {
+                            $rx_bytes = intval(file_get_contents($rx_file));
+                        }
+                        if (file_exists($tx_file)) {
+                            $tx_bytes = intval(file_get_contents($tx_file));
+                        }
+                        if (file_exists($operstate_file)) {
+                            $operstate = trim(file_get_contents($operstate_file));
+                            $is_up = ($operstate === 'up');
+                        }
+                        
+                        // Get IP address if available
+                        $ip_address = '';
+                        $addr_file = $net_dir . $iface . '/address';
+                        if (file_exists($addr_file)) {
+                            $ip_address = trim(file_get_contents($addr_file));
+                        }
+                        
+                        $network_stats[] = [
+                            'index' => $iface_index,
+                            'name' => $iface,
+                            'is_up' => $is_up,
+                            'ip_address' => $ip_address,
+                            'rx_bytes' => $rx_bytes,
+                            'tx_bytes' => $tx_bytes,
+                            'rx_mbps' => round($rx_bytes / (1024 * 1024), 2),
+                            'tx_mbps' => round($tx_bytes / (1024 * 1024), 2)
+                        ];
+                        
+                        $iface_index++;
+                    }
+                }
+            }
+        }
+        
+        return $network_stats;
+    }
+
     private function getStats($range) {
         $rrd_available = false;
         $rrd_file = null;
@@ -55,10 +118,14 @@ class stats extends Controller {
         // Get storage path stats
         $storage_stats = $this->getStorageStats();
         
+        // Get network interface stats
+        $network_stats = $this->getNetworkStats();
+        
         $response = [
             'live' => $live_stats,
             'historical' => $historical_data,
             'storage' => $storage_stats,
+            'network' => $network_stats,
             'rrd_available' => $rrd_available,
             'time_range' => $range,
             'resolution' => '10s'
@@ -89,12 +156,32 @@ class stats extends Controller {
                         $cpu = (strpos($cpu_str, 'nan') !== false || $cpu_str === '-nan') ? null : floatval($cpu_str);
                         $mem = (strpos($mem_str, 'nan') !== false || $mem_str === '-nan') ? null : floatval($mem_str);
                         $disk = (strpos($disk_str, 'nan') !== false || $disk_str === '-nan') ? null : floatval($disk_str);
-                        if ($cpu !== null || $mem !== null || $disk !== null) {
+                        
+                        // Parse network interface data
+                        $network_data = [];
+                        for ($i = 4; $i < count($parts); $i += 2) {
+                            if (isset($parts[$i]) && isset($parts[$i + 1])) {
+                                $rx_str = trim($parts[$i]);
+                                $tx_str = trim($parts[$i + 1]);
+                                $rx = (strpos($rx_str, 'nan') !== false || $rx_str === '-nan') ? null : floatval($rx_str);
+                                $tx = (strpos($tx_str, 'nan') !== false || $tx_str === '-nan') ? null : floatval($tx_str);
+                                
+                                // Calculate interface index (0-based)
+                                $iface_index = ($i - 4) / 2;
+                                $network_data[$iface_index] = [
+                                    'rx' => $rx !== null ? round($rx, 2) : null,
+                                    'tx' => $tx !== null ? round($tx, 2) : null
+                                ];
+                            }
+                        }
+                        
+                        if ($cpu !== null || $mem !== null || $disk !== null || !empty($network_data)) {
                             $historical_data[] = [
                                 'timestamp' => $timestamp,
                                 'cpu' => $cpu !== null ? round($cpu, 2) : null,
                                 'memory' => $mem !== null ? round($mem, 2) : null,
-                                'disk' => $disk !== null ? round($disk, 2) : null
+                                'disk' => $disk !== null ? round($disk, 2) : null,
+                                'network' => $network_data
                             ];
                         }
                     }

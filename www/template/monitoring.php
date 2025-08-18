@@ -38,6 +38,24 @@
                 <i class="fa fa-info-circle"></i> 
                 <strong>Server Status:</strong> 
                 <span id="server-status">Checking...</span>
+                <button type="button" class="btn btn-sm btn-default pull-right" onclick="toggleDebug()">
+                    <i class="fa fa-bug"></i> Debug
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row" id="debug-panel" style="display: none;">
+        <div class="col-lg-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Debug Information</h3>
+                </div>
+                <div class="panel-body">
+                    <div id="debug-info">
+                        <p>Click "Debug" to show detailed information about the monitoring system.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +128,7 @@
                 <div class="panel-heading">
                     <div class="row">
                         <div class="col-xs-3">
-                            <i class="fa fa-hdd fa-5x"></i>
+                            <i class="fa fa-hdd-o fa-5x"></i>
                         </div>
                         <div class="col-xs-9 text-right">
                             <div class="huge" id="disk-usage">--</div>
@@ -122,6 +140,21 @@
                     <span class="pull-left">Current</span>
                     <span class="pull-right"><i class="fa fa-arrow-circle-right"></i></span>
                     <div class="clearfix"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><i class="fa fa-network-wired"></i> Network Interface Status</h3>
+                </div>
+                <div class="panel-body">
+                    <div id="network-interfaces" class="row">
+                        <!-- Network interface panels will be dynamically generated here -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -162,6 +195,14 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="chart-container">
+                                <h4>Network Interface Traffic</h4>
+                                <div id="network-chart" style="height: 300px;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -190,7 +231,8 @@
             memory: null,
             disk: null,
             storage: null,
-            storagePaths: {}
+            storagePaths: {},
+            network: null // Added for network traffic chart
         };
         
         // Initialize time range buttons
@@ -214,27 +256,50 @@
         function loadStats() {
             console.log('Loading stats for range:', currentRange);
             
+            // Show loading state
+            document.getElementById('server-status').innerHTML = '<span class="text-info">Loading...</span>';
+            
             // Create XMLHttpRequest
             const xhr = new XMLHttpRequest();
             xhr.open('GET', '/ajax/stats.php?range=' + currentRange, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.timeout = 10000; // 10 second timeout
+            xhr.timeout = 15000; // 15 second timeout
             
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     try {
                         const data = JSON.parse(xhr.responseText);
                         console.log('Stats loaded successfully:', data);
-                        updateLiveStats(data.live);
-                        updatePerformanceCharts(data.historical);
-                        updateStorageCharts(data.storage);
+                        
+                        // Update all components
+                        if (data.live) {
+                            updateLiveStats(data.live);
+                        }
+                        if (data.historical) {
+                            updatePerformanceCharts(data.historical);
+                        }
+                        if (data.storage) {
+                            updateStorageCharts(data.storage);
+                        }
+                        if (data.network) {
+                            updateNetworkInterfaces(data.network);
+                        }
+                        if (data.network_traffic) {
+                            updateNetworkTrafficChart(data.network_traffic);
+                        }
                         updateStatus(data);
+                        
+                        // Reset retry counter on success
+                        retryCount = 0;
+                        
                     } catch (e) {
                         console.error('Failed to parse JSON:', e);
+                        console.error('Response text:', xhr.responseText);
                         document.getElementById('server-status').innerHTML = '<span class="text-danger">Error parsing data</span>';
                     }
                 } else {
                     console.error('HTTP Error:', xhr.status);
+                    console.error('Response text:', xhr.responseText);
                     document.getElementById('server-status').innerHTML = '<span class="text-danger">HTTP Error: ' + xhr.status + '</span>';
                 }
             };
@@ -242,17 +307,37 @@
             xhr.onerror = function() {
                 console.error('Network error occurred');
                 document.getElementById('server-status').innerHTML = '<span class="text-danger">Network error</span>';
+                
+                // Retry after a short delay if this is the first attempt
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    setTimeout(loadStats, 2000);
+                }
             };
             
             xhr.ontimeout = function() {
                 console.error('Request timed out');
                 document.getElementById('server-status').innerHTML = '<span class="text-danger">Request timed out</span>';
+                
+                // Retry after a short delay if this is the first attempt
+                if (retryCount < maxRetries) {
+                    retryCount++;
+                    setTimeout(loadStats, 2000);
+                }
             };
             
             xhr.send();
         }
         
         function updateLiveStats(live) {
+            if (!live) {
+                document.getElementById('cpu-usage').textContent = '--';
+                document.getElementById('memory-usage').textContent = '--';
+                document.getElementById('disk-usage').textContent = '--';
+                document.getElementById('server-status').innerHTML = '<span class="text-warning">No data available</span>';
+                return;
+            }
+            
             document.getElementById('cpu-usage').textContent = live.cpu + '%';
             document.getElementById('memory-usage').textContent = live.memory + '%';
             document.getElementById('disk-usage').textContent = live.disk + '%';
@@ -360,6 +445,7 @@
             if (containerId === 'cpu-chart') charts.cpu = chart;
             else if (containerId === 'memory-chart') charts.memory = chart;
             else if (containerId === 'disk-chart') charts.disk = chart;
+            else if (containerId === 'network-chart') charts.network = chart; // Store network chart
         }
         
         function updateStorageCharts(storage) {
@@ -533,6 +619,139 @@
             if (usage >= 75) return 'rgb(255, 193, 7)'; // Yellow
             return 'rgb(40, 167, 69)'; // Green
         }
+
+        function updateNetworkInterfaces(network) {
+            const container = document.getElementById('network-interfaces');
+            if (!container) return;
+
+            // Clear existing interface panels
+            container.innerHTML = '';
+
+            if (!network || network.length === 0) {
+                container.innerHTML = '<div class="col-lg-12 text-center text-muted">No network interface data available.</div>';
+                return;
+            }
+
+            network.forEach(function(ifaceData) {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'col-lg-4 col-md-6'; // Adjusted for 3 columns
+                colDiv.style.marginBottom = '20px';
+
+                const statusColor = ifaceData.is_up ? 'text-success' : 'text-danger';
+                const statusIcon = ifaceData.is_up ? 'fa-check-circle' : 'fa-times-circle';
+                const statusText = ifaceData.is_up ? 'Up' : 'Down';
+
+                colDiv.innerHTML = `
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="panel-title">${ifaceData.name}</h4>
+                        </div>
+                        <div class="panel-body">
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <div class="text-center">
+                                        <i class="fa ${statusIcon} fa-3x ${statusColor}"></i>
+                                    </div>
+                                </div>
+                                <div class="col-xs-6">
+                                    <div class="text-center">
+                                        <div class="huge">${statusText}</div>
+                                        <div>Status</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row" style="margin-top: 10px;">
+                                <div class="col-xs-12">
+                                    <small class="text-muted">
+                                        <strong>RX:</strong> ${(ifaceData.rx_bytes / (1024 * 1024)).toFixed(2)} MB<br>
+                                        <strong>TX:</strong> ${(ifaceData.tx_bytes / (1024 * 1024)).toFixed(2)} MB
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(colDiv);
+            });
+        }
+
+        function updateNetworkTrafficChart(networkTraffic) {
+            const container = document.getElementById('network-chart');
+            if (!container || typeof Chart === 'undefined') return;
+
+            // Destroy existing chart
+            if (charts.network) {
+                charts.network.destroy();
+            }
+
+            if (!networkTraffic || networkTraffic.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">No network traffic data available.</div>';
+                return;
+            }
+
+            const labels = networkTraffic.map(t => new Date(t.timestamp * 1000).toLocaleTimeString());
+            const uploadData = networkTraffic.map(t => t.upload_bytes / 1024 / 1024); // MB
+            const downloadData = networkTraffic.map(t => t.download_bytes / 1024 / 1024); // MB
+
+            const ctx = document.createElement('canvas');
+            container.innerHTML = '';
+            container.appendChild(ctx);
+
+            charts.network = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Upload (MB)',
+                            data: uploadData,
+                            borderColor: 'rgb(54, 162, 235)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Download (MB)',
+                            data: downloadData,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Data (MB)'
+                            }
+                        },
+                        x: {
+                            display: false
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
         
         function updateStatus(data) {
             const statusElement = document.getElementById('rrd-status');
@@ -543,11 +762,49 @@
             }
         }
         
+        // Load initial data with retry mechanism
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        function loadStatsWithRetry() {
+            loadStats();
+        }
+        
+        function toggleDebug() {
+            const debugPanel = document.getElementById('debug-panel');
+            const debugInfo = document.getElementById('debug-info');
+            
+            if (debugPanel.style.display === 'none') {
+                debugPanel.style.display = 'block';
+                
+                // Collect debug information
+                const debugData = {
+                    'Current Time': new Date().toLocaleString(),
+                    'Current Range': currentRange,
+                    'Retry Count': retryCount,
+                    'Chart.js Available': typeof Chart !== 'undefined',
+                    'User Agent': navigator.userAgent,
+                    'Page URL': window.location.href,
+                    'Last API Call': new Date().toLocaleString()
+                };
+                
+                let debugHtml = '<table class="table table-striped">';
+                for (const [key, value] of Object.entries(debugData)) {
+                    debugHtml += `<tr><td><strong>${key}:</strong></td><td>${value}</td></tr>`;
+                }
+                debugHtml += '</table>';
+                
+                debugInfo.innerHTML = debugHtml;
+            } else {
+                debugPanel.style.display = 'none';
+            }
+        }
+        
         // Load initial data
-        loadStats();
+        loadStatsWithRetry();
         
         // Refresh every 30 seconds
-        setInterval(loadStats, 30000);
+        setInterval(loadStatsWithRetry, 30000);
     });
     </script>
 </body>

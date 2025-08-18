@@ -55,7 +55,10 @@ int get_solo_driver_name(char *buf, size_t bufsize)
 	FILE *fd = popen("lsmod | grep ^solo6 | cut -d ' ' -f1 | tr -d '\\n'", "r");
 	if (!fd)
 		return -1;
-	fgets(buf, bufsize, fd);
+	if (fgets(buf, bufsize, fd) == NULL) {
+		pclose(fd);
+		return -1;
+	}
 	pclose(fd);
 	return 0;
 }

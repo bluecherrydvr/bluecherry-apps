@@ -19,6 +19,8 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <stdbool.h>
 
 #include "bc-db.h"
 
@@ -31,6 +33,9 @@
 #include <mysql/errmsg.h>
 #include <mysql/mysqld_error.h>
 #endif
+
+// MYSQL_OPT_RETRY_COUNT is available in MySQL 5.7+ and MariaDB 10.2+
+// The code below uses #ifdef MYSQL_OPT_RETRY_COUNT to conditionally compile
 
 struct bc_db_mysql_res {
 	MYSQL_RES *res;
@@ -134,7 +139,10 @@ static MYSQL *get_pooled_connection(void)
 					mysql_options(connection_pool[i].con, MYSQL_OPT_READ_TIMEOUT, (const int[]){30});
 					mysql_options(connection_pool[i].con, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){30});
 					mysql_options(connection_pool[i].con, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){10});
+					// Only set MYSQL_OPT_RETRY_COUNT if it's available
+#ifdef MYSQL_OPT_RETRY_COUNT
 					mysql_options(connection_pool[i].con, MYSQL_OPT_RETRY_COUNT, (const int[]){3});
+#endif
 					
 					MYSQL *ret = mysql_real_connect(connection_pool[i].con, dbhost, dbuser, dbpass,
 									dbname, dbport, dbsock, 0);
@@ -190,7 +198,10 @@ static MYSQL *reset_con(void)
 	mysql_options(my_con_global, MYSQL_OPT_READ_TIMEOUT, (const int[]){30});
 	mysql_options(my_con_global, MYSQL_OPT_WRITE_TIMEOUT, (const int[]){30});
 	mysql_options(my_con_global, MYSQL_OPT_CONNECT_TIMEOUT, (const int[]){10});
+	// Only set MYSQL_OPT_RETRY_COUNT if it's available
+#ifdef MYSQL_OPT_RETRY_COUNT
 	mysql_options(my_con_global, MYSQL_OPT_RETRY_COUNT, (const int[]){3});
+#endif
 
 	MYSQL *ret = mysql_real_connect(my_con_global, dbhost, dbuser, dbpass,
 					dbname, dbport, dbsock, 0);
@@ -200,9 +211,7 @@ static MYSQL *reset_con(void)
 		return NULL;
 	}
 
-	// CRITICAL FIX: Reset database lock availability when connection is restored
-	extern bool db_lock_available;
-	db_lock_available = true;
+	// Connection restored successfully
 
 	return my_con_global;
 }
