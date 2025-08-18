@@ -64,8 +64,13 @@ class StandaloneDatabase {
             
             // CRITICAL FIX: Set connection options for better reliability
             mysqli_options($this->dblink, MYSQLI_OPT_CONNECT_TIMEOUT, $this->connection_timeout);
-            mysqli_options($this->dblink, MYSQLI_OPT_READ_TIMEOUT, 30);
-            mysqli_options($this->dblink, MYSQLI_OPT_WRITE_TIMEOUT, 30);
+            // Use constants only if they exist (PHP version compatibility)
+            if (defined('MYSQLI_OPT_READ_TIMEOUT')) {
+                mysqli_options($this->dblink, MYSQLI_OPT_READ_TIMEOUT, 30);
+            }
+            if (defined('MYSQLI_OPT_WRITE_TIMEOUT')) {
+                mysqli_options($this->dblink, MYSQLI_OPT_WRITE_TIMEOUT, 30);
+            }
             
             $this->dblink = mysqli_real_connect($this->dblink, $this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
             
@@ -92,7 +97,7 @@ class StandaloneDatabase {
     // CRITICAL FIX: Check connection health
     private function check_connection() {
         if (!$this->dblink || !mysqli_ping($this->dblink)) {
-            bc_log(Warning, "Database connection lost, attempting to reconnect");
+            error_log("Database connection lost, attempting to reconnect");
             $this->connect();
         }
     }

@@ -272,14 +272,24 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		return false;
 	}
 
-	// Additional safety check for invalid timestamps before writing
-	if (opkt.dts != AV_NOPTS_VALUE && opkt.dts < 0) {
-		bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
-		opkt.dts = 0;
+	// Enhanced safety check for invalid timestamps before writing
+	if (opkt.dts != AV_NOPTS_VALUE) {
+		if (opkt.dts < 0) {
+			bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+			opkt.dts = 0;
+		} else if (opkt.dts > INT64_MAX / 2) {
+			bc_log(Warning, "Extremely large DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+			opkt.dts = 0;
+		}
 	}
-	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
-		bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
-		opkt.pts = 0;
+	if (opkt.pts != AV_NOPTS_VALUE) {
+		if (opkt.pts < 0) {
+			bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+			opkt.pts = 0;
+		} else if (opkt.pts > INT64_MAX / 2) {
+			bc_log(Warning, "Extremely large PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+			opkt.pts = 0;
+		}
 	}
 
 	auto last_mux_dts_uncommitted = opkt.dts; // opkt.dts is lost as av_interleaved_write_frame() frees opkt
