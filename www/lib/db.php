@@ -72,9 +72,9 @@ class StandaloneDatabase {
                 mysqli_options($this->dblink, MYSQLI_OPT_WRITE_TIMEOUT, 30);
             }
             
-            $this->dblink = mysqli_real_connect($this->dblink, $this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
+            $connect_result = mysqli_real_connect($this->dblink, $this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
             
-            if ($this->dblink) {
+            if ($connect_result) {
                 // CRITICAL FIX: Set charset and other options
                 mysqli_real_query($this->dblink, "set names utf8;");
                 mysqli_real_query($this->dblink, "SET SESSION wait_timeout=300;");
@@ -96,8 +96,8 @@ class StandaloneDatabase {
     
     // CRITICAL FIX: Check connection health
     private function check_connection() {
-        if (!$this->dblink || !mysqli_ping($this->dblink)) {
-            error_log("Database connection lost, attempting to reconnect");
+        if (!$this->dblink || !is_object($this->dblink) || !mysqli_ping($this->dblink)) {
+            error_log("Database connection lost or invalid, attempting to reconnect");
             $this->connect();
         }
     }
