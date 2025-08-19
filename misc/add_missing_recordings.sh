@@ -45,30 +45,39 @@ date
 # Get list of files already in database
 echo "SELECT filepath FROM Media WHERE filepath != ''" | mysql -h"$host" -D"$dbname" -u"$user" -p"$password" | tail -n +2 > ${DB_LIST_FILE}.raw
 
-# Resolve absolute paths for database entries
-echo "Resolving absolute file paths from database..."
-set +e
-I=1
-while true
-do
-    ENTRY=`tail -n +$I ${DB_LIST_FILE}.raw | tail -n 1`
-    if [[ -z "$ENTRY" ]]; then
-        break
-    fi
-    I=$(( I + 1 ))
+# Check if we got any results
+if [ ! -s ${DB_LIST_FILE}.raw ]; then
+    echo "No files found in database (this is normal for a fresh install or after VM restore)"
+    echo "" > ${DB_LIST_FILE}.resolved
+    echo "" > ${DB_LIST_FILE}.sorted
+    DB_COUNT=0
+    echo "Found $DB_COUNT files already in database"
+else
+    # Resolve absolute paths for database entries
+    echo "Resolving absolute file paths from database..."
+    set +e
+    I=1
+    while true
+    do
+        ENTRY=`tail -n +$I ${DB_LIST_FILE}.raw | tail -n 1`
+        if [[ -z "$ENTRY" ]]; then
+            break
+        fi
+        I=$(( I + 1 ))
 
-    ABS=`readlink -f "$ENTRY"`
-    if [[ $? != 0 ]]; then
-        echo "Warning: Absolute path of DB entry $ENTRY cannot be resolved"
-    else
-        echo "$ABS" >> ${DB_LIST_FILE}.resolved
-    fi
-done
-set -e
+        ABS=`readlink -f "$ENTRY"`
+        if [[ $? != 0 ]]; then
+            echo "Warning: Absolute path of DB entry $ENTRY cannot be resolved"
+        else
+            echo "$ABS" >> ${DB_LIST_FILE}.resolved
+        fi
+    done
+    set -e
 
-sort ${DB_LIST_FILE}.resolved > ${DB_LIST_FILE}.sorted
-DB_COUNT=$(wc -l < ${DB_LIST_FILE}.sorted)
-echo "Found $DB_COUNT files already in database"
+    sort ${DB_LIST_FILE}.resolved > ${DB_LIST_FILE}.sorted
+    DB_COUNT=$(wc -l < ${DB_LIST_FILE}.sorted)
+    echo "Found $DB_COUNT files already in database"
+fi
 
 echo ""
 echo "Step 2: Getting storage paths..."
@@ -176,6 +185,11 @@ get_device_id() {
     # Extract device ID from path like /path/to/recordings/YYYY/MM/DD/000001/filename.mp4
     local device_id=$(echo "$filepath" | sed -n 's/.*\/\([0-9]\{6\}\)\/.*/\1/p')
     if [ -n "$device_id" ]; then
+        # Convert 6-digit device ID to actual device number (remove leading zeros)
+        device_id=$(echo "$device_id" | sed 's/^0*//')
+        if [ -z "$device_id" ]; then
+            device_id="0"
+        fi
         echo "$device_id"
     else
         echo "0"
@@ -208,8 +222,8 @@ while IFS= read -r filepath; do
         
         # Insert into Media table
         mysql -h"$host" -D"$dbname" -u"$user" -p"$password" -e "
-            INSERT INTO Media (device_id, filepath, timestamp, filesize, archive, type) 
-            VALUES ($device_id, '$filepath', '$timestamp', $filesize, 0, 'video')
+            INSERT INTO Media (device_id, filepath, start, end, size, archive) 
+            VALUES ($device_id, '$filepath', UNIX_TIMESTAMP('$timestamp'), UNIX_TIMESTAMP('$timestamp') + 300, $filesize, 0)
         " 2>/dev/null
         
         if [ $? -eq 0 ]; then
