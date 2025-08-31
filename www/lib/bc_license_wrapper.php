@@ -47,68 +47,17 @@ function bc_license_check_auth($key, $auth)
 
 function bc_license_devices_allowed()
 {
-	$output = bc_license_command(LA_GET_LICENSE_METADATA);
-	if (is_null($output) || (int)$output[1] != Constant('LA_OK'))
-		return 0;
-
-	return (int)$output[2];
+	// Always return unlimited devices (-1) for free and open source version
+	return -1;
 }
 
 function bc_license_check_genuine()
 {
 	$ret = array();
 
-	// Check if the license is genuine
-	$output = bc_license_command(LA_IS_LICENSE_GENUINE);
-	if (is_null($output)) {
-		$ret[0] = false;
-		$ret[1] = L_LA_E_BC_SERVER;
-		return $ret;
-	}
-
-	// If the command is OK
-	if ((int)$output[1] == Constant('LA_OK')) {
-		$output = bc_license_genuine_expirydate();
-		if (is_null($output)) {
-			$ret[0] = false;
-			$ret[1] = L_LA_E_BC_SERVER;
-		}
-		else if ((int)$output[1] == Constant('LA_OK')) {
-			$ret[0] = true;
-			$left_days = (int)$output[3];
-
-			if ((int)$output[2] == 1) { // unlimited
-				$ret[1] = L_LA_E_LICENSE_ACTIVATED;
-			}
-			else {
-				$ret[1] = L_LA_E_LICENSE_ACTIVATED . " Days left: " . strval($left_days);
-			}
-		}
-		else {
-			$ret[0] = false;
-			$ret[1] = licenses::getLicenseStatusMessage((int)$output[1]);
-		}
-
-		return $ret;
-	}
-
-	// If the genuine is expired or isn't activated
-	if ((int)$output[1] == Constant('LA_EXPIRED')) {
-		$ret[0] = false;
-		$ret[1] = L_LA_EXPIRED;
-	}
-	else if ((int)$output[1] == Constant('LA_SUSPENDED')) {
-		$ret[0] = false;
-		$ret[1] = L_LA_SUSPENDED;
-	}
-	else if ((int)$output[1] == Constant('LA_GRACE_PERIOD_OVER')) {
-		$ret[0] = false;
-		$ret[1] = L_LA_GRACE_PERIOD_OVER;
-	}
-	else {
-		$ret = bc_license_check_trial();
-		$ret[0] = false;
-	}
+	// Always return success for free and open source version
+	$ret[0] = true;
+	$ret[1] = "Free and Open Source - No License Required";
 
 	return $ret;
 }

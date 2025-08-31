@@ -248,10 +248,12 @@ private:
     bool process_batch(int batch_size, double target_threshold, int& total_deleted);
     void batch_delete_files(const std::vector<std::string>& files, int& deleted_count, size_t& bytes_freed);
     void commit_batch_changes(const std::vector<std::string>& deleted_files);
+    int sync_database_with_filesystem();
 
 public:
     CleanupManager();
     int run_cleanup();
+    int run_database_sync();
     cleanup_stats_report get_stats_report() const;
     int calculate_batch_size();
     bool should_continue_cleanup(time_t start_time);

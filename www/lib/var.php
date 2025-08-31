@@ -124,7 +124,7 @@ $varpub_globals['reencode_resolutions'] = $GLOBALS['reencode_resolutions'];
 
 $varpub->globals = $varpub_globals;
 
-#LexActivator status code
+#License constants for compatibility (always return success)
 define('LA_OK', 0);
 define('LA_FAIL', 1);
 define('LA_EXPIRED', 20);
@@ -132,8 +132,6 @@ define('LA_SUSPENDED', 21);
 define('LA_GRACE_PERIOD_OVER', 22);
 define('LA_TRIAL_EXPIRED', 25);
 define('LA_LOCAL_TRIAL_EXPIRED', 26);
-define('LA_RELEASE_UPDATE_AVAILABLE', 30);
-define('LA_RELEASE_NO_UPDATE_AVAILABLE', 31);
 define('LA_E_FILE_PATH', 40);
 define('LA_E_PRODUCT_FILE', 41);
 define('LA_E_PRODUCT_DATA', 42);
@@ -176,7 +174,7 @@ define('LA_E_RATE_LIMIT', 90);
 define('LA_E_SERVER', 91);
 define('LA_E_CLIENT', 92);
 
-#License Command
+#License Command (kept for compatibility but not used)
 define('LA_IS_ACTIVATED',           'bc_v3_license_isActivated');
 define('LA_IS_LICENSE_GENUINE',     'bc_v3_license_isLicenseGenuine');
 define('LA_IS_TRIAL_GENUINE',       'bc_v3_license_IsTrialGenuine');
@@ -187,5 +185,5 @@ define('LA_ACTIVATE_LICENSE',       'bc_v3_license_ActivateLicense');
 define('LA_ACTIVATE_TRIAL',         'bc_v3_license_ActivateTrial');
 define('LA_DEACTIVATE_LICENSE',     'bc_v3_license_DeactivateLicense');
 
-#License Other
-define('NO_LICENSE_DEFAULT_ALLOWED', 4);
+#License Other (removed device limit)
+define('NO_LICENSE_DEFAULT_ALLOWED', -1);

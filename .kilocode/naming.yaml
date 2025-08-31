@@ -1,0 +1,14 @@
+file_structure:
+  - server/: C++ backend, daemons, streaming, and API logic
+  - www/: PHP web frontend, AJAX endpoints, templates, and static assets
+  - lib/: Shared C++ libraries and device integration
+  - misc/: Scripts, SQL schema, and utilities
+  - installer/, debian/, rpm/: Packaging and deployment
+  - actions/, scripts/, utils/: Automation and helper scripts
+naming_conventions:
+  - Tables: PascalCase (e.g., Devices, EventsCam, Users)
+  - Columns: snake_case or lowerCamelCase
+  - PHP: snake_case for files, PascalCase for classes, lowerCamelCase for methods
+  - C++: snake_case for files, PascalCase for classes, lowerCamelCase for methods
+  - API endpoints: lowercase, underscore-separated (e.g., /ajax/devices.php)
+  - Config/constants: UPPER_SNAKE_CASE 

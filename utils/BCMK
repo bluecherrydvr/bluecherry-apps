@@ -2,7 +2,6 @@ CPPFLAGS	+= -iquote $(TOPDIR)/server
 LDFLAGS		+= -lbluecherry -lavcodec -lavformat -lavutil -lswscale
 
 TARGETS		= pelcocmd ptzcmd \
-		  bc-license licensecmd 
 		  #onvif_tool/onvif_tool
 
 all: $(TARGETS)
@@ -10,8 +9,7 @@ all: $(TARGETS)
 getaudio: %:%.o $(TOPDIR)/server/g723-dec.o
 	$(LD) -o $@ $^ $(LDFLAGS) -lasound
 
-bc-license: %:%.o
-	$(CXX) -o $@ $^ -lbsd
+
 
 $(TOPDIR)/server/g723-dec.o: %.o:%.c %.h
 	$(BCMK) -C "$(@D)" $(@F)
@@ -25,7 +23,5 @@ clean:
 #	&& $(MAKE) $(MAKEARGS) \
 #	&& $(STRIP) onvif_tool
 
-install: licensecmd ptzcmd
-	$(INSTALL_PROG) -D licensecmd $(DESTDIR)$(libexec_dir)/licensecmd
+install: ptzcmd
 	$(INSTALL_PROG) -D ptzcmd $(DESTDIR)$(libexec_dir)/ptzcmd
-	$(INSTALL_PROG) -D onvif_tool $(DESTDIR)$(libexec_dir)/onvif_tool || true

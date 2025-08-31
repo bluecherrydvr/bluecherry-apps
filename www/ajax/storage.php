@@ -133,6 +133,12 @@ class storage extends Controller {
 
     public function postData()
     {
+        // Check if this is a database sync request
+        if (isset($_POST['action']) && $_POST['action'] === 'sync_database') {
+            $this->syncDatabase();
+            return;
+        }
+        
         $storage_check = $this->ctl('storagecheck');
         $values = array();
         $errors = array();
@@ -188,6 +194,91 @@ class storage extends Controller {
             // Rollback transaction
             data::query("ROLLBACK", true);
             data::responseJSON(false, $e->getMessage());
+        }
+    }
+    
+    private function syncDatabase()
+    {
+        try {
+            // Get all non-archived media files from database
+            $query = "SELECT id, filepath FROM Media WHERE archive=0 AND filepath!=''";
+            $media_files = data::query($query);
+            
+            if (!$media_files) {
+                data::responseJSON(true, "No media files found in database");
+                return;
+            }
+            
+            $orphaned_count = 0;
+            $total_checked = count($media_files);
+            
+            // Check each file against filesystem
+            foreach ($media_files as $file) {
+                $filepath = $file['filepath'];
+                $id = $file['id'];
+                
+                if (empty($filepath)) {
+                    continue;
+                }
+                
+                // Check if file exists on filesystem
+                if (!file_exists($filepath)) {
+                    $orphaned_count++;
+                }
+            }
+            
+            if ($orphaned_count == 0) {
+                data::responseJSON(true, "Database sync complete: {$total_checked} files checked, no orphaned entries found");
+                return;
+            }
+            
+            // Clean up orphaned database entries in batches
+            $batch_size = 100;
+            $cleaned_count = 0;
+            
+            for ($i = 0; $i < count($media_files); $i += $batch_size) {
+                $batch_end = min($i + $batch_size, count($media_files));
+                $batch_ids = array();
+                
+                // Collect orphaned IDs for this batch
+                for ($j = $i; $j < $batch_end; $j++) {
+                    $filepath = $media_files[$j]['filepath'];
+                    if (!empty($filepath) && !file_exists($filepath)) {
+                        $batch_ids[] = $media_files[$j]['id'];
+                    }
+                }
+                
+                if (empty($batch_ids)) {
+                    continue;
+                }
+                
+                // Start transaction for this batch
+                data::query("START TRANSACTION", true);
+                
+                try {
+                    // Update Media table
+                    $ids_str = implode(',', $batch_ids);
+                    data::query("UPDATE Media SET archive = 1 WHERE id IN ({$ids_str})", true);
+                    
+                    // Update EventsCam table
+                    data::query("UPDATE EventsCam SET archive = 1 WHERE media_id IN ({$ids_str})", true);
+                    
+                    // Commit transaction
+                    data::query("COMMIT", true);
+                    
+                    $cleaned_count += count($batch_ids);
+                    
+                } catch (Exception $e) {
+                    // Rollback transaction
+                    data::query("ROLLBACK", true);
+                    throw new Exception("Failed to clean up batch: " . $e->getMessage());
+                }
+            }
+            
+            data::responseJSON(true, "Database sync complete: {$cleaned_count} orphaned entries cleaned up out of {$total_checked} total files");
+            
+        } catch (Exception $e) {
+            data::responseJSON(false, "Database sync failed: " . $e->getMessage());
         }
     }
 }

@@ -727,7 +727,12 @@ bool hls_session::create_response()
         if (pthread_mutex_lock(&content->_mutex))
         {
             bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-            return false;
+            // CRITICAL FIX: Return proper error response instead of false
+            std::string response = std::string("HTTP/1.1 503 Service Unavailable\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+            return true;
         }
 
         size_t window_size = content->_window.size();
@@ -889,8 +894,13 @@ bool hls_session::create_response()
 
         if (pthread_mutex_unlock(&content->_mutex))
         {
-            bc_log(Error, "Can not lock pthread mutex: %s", strerror(errno));
-            return false;
+            bc_log(Error, "Can not unlock pthread mutex: %s", strerror(errno));
+            // CRITICAL FIX: Return proper error response instead of false
+            std::string response = std::string("HTTP/1.1 503 Service Unavailable\r\n");
+            std_string_append(response, "User-Agent: bluechery/%s\r\n", __VERSION__);
+            std_string_append(response, "Content-Length: 0\r\n\r\n");
+            _tx_buffer.append((uint8_t*)response.c_str(), response.length());
+            return true;
         }
 
         if (segment == NULL)
@@ -1384,7 +1394,28 @@ hls_content::~hls_content()
 {
     if (!_init) return;
 
-    clear_window();
+    // CRITICAL FIX: Safe cleanup with timeout protection
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 2; // 2 second timeout
+    
+    if (pthread_mutex_timedlock(&_mutex, &timeout) == 0) {
+        clear_window();
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        bc_log(Error, "Failed to acquire mutex during HLS content destruction - forcing cleanup");
+        // Force cleanup without mutex if timeout occurs
+        while (_window.size()) {
+            hls_segment *front = _window.front();
+            _window.pop_front();
+            if (front) delete front;
+        }
+        if (_init_segment) {
+            delete _init_segment;
+            _init_segment = NULL;
+        }
+    }
+    
     pthread_mutex_destroy(&_mutex);
 }
 
@@ -1793,6 +1824,36 @@ hls_listener::hls_listener()
 hls_listener::~hls_listener()
 {
     if (!_init) return;
+    
+    // CRITICAL FIX: Safe cleanup with timeout protection
+    struct timespec timeout;
+    clock_gettime(CLOCK_REALTIME, &timeout);
+    timeout.tv_sec += 3; // 3 second timeout
+    
+    if (pthread_mutex_timedlock(&_mutex, &timeout) == 0) {
+        // Clear all content safely
+        hls_content_it it;
+        for (it = _content.begin(); it != _content.end(); it++) {
+            hls_content *content = it->second;
+            if (content) {
+                delete content;
+            }
+        }
+        _content.clear();
+        pthread_mutex_unlock(&_mutex);
+    } else {
+        bc_log(Error, "Failed to acquire mutex during HLS listener destruction - forcing cleanup");
+        // Force cleanup without mutex if timeout occurs
+        hls_content_it it;
+        for (it = _content.begin(); it != _content.end(); it++) {
+            hls_content *content = it->second;
+            if (content) {
+                delete content;
+            }
+        }
+        _content.clear();
+    }
+    
     pthread_mutex_destroy(&_mutex);
     _fd = sock_shutdown(_fd);
 }

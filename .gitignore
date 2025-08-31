@@ -26,3 +26,5 @@ utils/onvif_tool
 /stage/
 
 .DS_Store
+
+.k*

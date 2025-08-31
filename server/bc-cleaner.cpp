@@ -711,7 +711,21 @@ int CleanupManager::run_cleanup() {
             batch_count++;
             
             if (!batch_success) {
-                bc_log(Info, "No more files to delete, stopping cleanup");
+                bc_log(Info, "No more files to delete, checking for database sync issues");
+                
+                // Check if storage is still full despite no files found
+                if (current_usage > target_threshold + 5.0) { // 5% buffer
+                    bc_log(Info, "Storage still full (%.1f%%) despite no files found, running database sync", current_usage);
+                    int sync_result = sync_database_with_filesystem();
+                    if (sync_result > 0) {
+                        bc_log(Info, "Database sync cleaned up %d orphaned entries, re-running cleanup", sync_result);
+                        // Reset for another cleanup attempt
+                        total_deleted = 0;
+                        batch_count = 0;
+                        start_time = time(nullptr);
+                        continue; // Go back to cleanup loop
+                    }
+                }
                 break;
             }
             
@@ -1345,4 +1359,137 @@ static float path_used_percent(const char *path) {
 static int is_storage_full(const struct bc_storage *stor) {
     float used = path_used_percent(stor->path);
     return (used >= 0 && used >= stor->max_thresh);
+}
+
+// Database synchronization functions
+int CleanupManager::sync_database_with_filesystem() {
+    bc_log(Info, "Starting database/filesystem synchronization");
+    
+    // Get all non-archived media files from database
+    BC_DB_RES dbres = bc_db_get_table("SELECT id, filepath FROM Media WHERE archive=0 AND filepath!=''");
+    if (!dbres) {
+        bc_log(Error, "Database error during sync: failed to get media files");
+        return -1;
+    }
+    
+    std::vector<std::string> orphaned_files;
+    std::vector<int> orphaned_ids;
+    int total_checked = 0;
+    int orphaned_count = 0;
+    
+    // Check each file in database against filesystem
+    while (bc_db_fetch_row(dbres) == 0) {
+        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+        int id = bc_db_get_val_int(dbres, "id");
+        
+        if (!filepath || !*filepath) {
+            continue;
+        }
+        
+        total_checked++;
+        
+        // Check if file exists on filesystem
+        struct stat st;
+        if (stat(filepath, &st) != 0) {
+            // File doesn't exist on filesystem but exists in database
+            orphaned_files.push_back(filepath);
+            orphaned_ids.push_back(id);
+            orphaned_count++;
+            
+            if (orphaned_count <= 10) { // Log first 10 for debugging
+                bc_log(Info, "Found orphaned database entry: ID=%d, filepath=%s", id, filepath);
+            }
+        }
+    }
+    bc_db_free_table(dbres);
+    
+    if (orphaned_count == 0) {
+        bc_log(Info, "Database/filesystem sync complete: %d files checked, no orphaned entries found", total_checked);
+        return 0;
+    }
+    
+    bc_log(Info, "Found %d orphaned database entries out of %d total files", orphaned_count, total_checked);
+    
+    // Clean up orphaned database entries in batches
+    const int BATCH_SIZE = 100;
+    int cleaned_count = 0;
+    
+    for (size_t i = 0; i < orphaned_ids.size(); i += BATCH_SIZE) {
+        size_t batch_end = std::min(i + BATCH_SIZE, orphaned_ids.size());
+        
+        // Start transaction
+        if (bc_db_query("START TRANSACTION") != 0) {
+            bc_log(Error, "Failed to start sync transaction");
+            return -1;
+        }
+        
+        try {
+            // Build batch query for Media table
+            std::string media_query = "UPDATE Media SET archive = 1 WHERE id IN (";
+            for (size_t j = i; j < batch_end; ++j) {
+                if (j > i) media_query += ",";
+                media_query += std::to_string(orphaned_ids[j]);
+            }
+            media_query += ")";
+            
+            if (bc_db_query("%s", media_query.c_str()) != 0) {
+                bc_log(Error, "Failed to update Media table for orphaned entries");
+                bc_db_query("ROLLBACK");
+                return -1;
+            }
+            
+            // Build batch query for EventsCam table
+            std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
+            for (size_t j = i; j < batch_end; ++j) {
+                if (j > i) events_query += ",";
+                events_query += std::to_string(orphaned_ids[j]);
+            }
+            events_query += ")";
+            
+            if (bc_db_query("%s", events_query.c_str()) != 0) {
+                bc_log(Error, "Failed to update EventsCam table for orphaned entries");
+                bc_db_query("ROLLBACK");
+                return -1;
+            }
+            
+            // Commit transaction
+            if (bc_db_query("COMMIT") != 0) {
+                bc_log(Error, "Failed to commit sync transaction");
+                bc_db_query("ROLLBACK");
+                return -1;
+            }
+            
+            cleaned_count += (batch_end - i);
+            bc_log(Info, "Cleaned up batch of %zu orphaned entries (total: %d)", batch_end - i, cleaned_count);
+            
+        } catch (...) {
+            bc_log(Error, "Exception during sync batch cleanup, rolling back");
+            bc_db_query("ROLLBACK");
+            return -1;
+        }
+    }
+    
+    bc_log(Info, "Database/filesystem sync complete: %d orphaned entries cleaned up", cleaned_count);
+    return cleaned_count;
+}
+
+int CleanupManager::run_database_sync() {
+    std::lock_guard<std::mutex> lock(cleanup_mutex);
+    
+    if (cleanup_in_progress) {
+        bc_log(Info, "Cleanup already in progress, skipping database sync");
+        return 0;
+    }
+    
+    cleanup_in_progress = true;
+    
+    try {
+        int result = sync_database_with_filesystem();
+        cleanup_in_progress = false;
+        return result;
+    } catch (const std::exception& e) {
+        bc_log(Error, "Exception during database sync: %s", e.what());
+        cleanup_in_progress = false;
+        return -1;
+    }
 }

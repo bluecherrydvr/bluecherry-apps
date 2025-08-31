@@ -233,11 +233,13 @@ static inline void safe_disconnect(stream_consumer* consumer, stream_source* sou
     
     // Only try to disconnect if the consumer is actually connected to this source
     try {
-        // First try to disconnect from the source side
-        source->disconnect(consumer);
-        
-        // Then try to disconnect from the consumer side
-        consumer->disconnect();
+        // Check if the consumer is actually connected to this source before disconnecting
+        if (consumer->is_connected_to(source)) {
+            // Only disconnect from the source side - the source will call consumer->disconnected()
+            source->disconnect(consumer);
+        }
+        // If not connected to this source, don't attempt any disconnection
+        // The consumer might be connected to a different source or already disconnected
     } catch (const std::exception& e) {
         // Log but don't throw
         bc_log(Warning, "Error during disconnect: %s", e.what());

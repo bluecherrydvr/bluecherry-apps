@@ -10,16 +10,21 @@
 #include <thread>
 #include <sys/statvfs.h>
 #include <mntent.h>
+#include <set>
+#include <map>
+#include <cstdlib> // For system()
 
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 
 #include "bc-stats.h"
 #include "logc.h"
+#include "libbluecherry.h"
 
 #define BC_DIR_NETWORK           "/sys/class/net/"
 #define BC_FILE_SELFSTATUS       "/proc/self/status"
@@ -121,6 +126,14 @@ bool bc_stats::update_mem_info()
     __sync_lock_test_and_set(&_memory.avail, parse_info(buffer, length, "MemAvailable"));
     __sync_lock_test_and_set(&_memory.buff, parse_info(buffer, length, "Buffers"));
     __sync_lock_test_and_set(&_memory.swap, parse_info(buffer, length, "SwapCached"));
+    
+    /* Calculate memory usage percentage using MemAvailable (consistent with web UI) */
+    uint64_t total = __sync_add_and_fetch(&_memory.total, 0);
+    uint64_t available = __sync_add_and_fetch(&_memory.avail, 0);
+    if (total > 0) {
+        uint32_t mem_usage_percent = (uint32_t)(100 - (available * 100 / total));
+        __sync_lock_test_and_set(&_memory.usage_percent, mem_usage_percent);
+    }
 
     /* Load /proc/self/status file */
     length = load_file(BC_FILE_SELFSTATUS, buffer, sizeof(buffer));
@@ -437,14 +450,36 @@ bool bc_stats::update_storage_info()
     pthread_mutex_lock(&_mutex);
     
     std::vector<storage_path> new_storage_paths;
-    
-    // Open /etc/mtab or /proc/mounts to get mounted filesystems
+    std::set<std::string> unique_mounts;
+
+    // Always include the default storage path
+    std::vector<std::string> storage_paths = {"/var/lib/bluecherry/recordings"};
+
+    // Query the Storage table for user-defined paths
+    BC_DB_RES dbres = bc_db_get_table("SELECT path FROM Storage");
+    if (dbres) {
+        while (!bc_db_fetch_row(dbres)) {
+            const char *path = bc_db_get_val(dbres, "path", NULL);
+            if (path && *path) {
+                storage_paths.push_back(std::string(path));
+            }
+        }
+        bc_db_free_table(dbres);
+    } else {
+        // CRITICAL FIX: Handle database query failure gracefully
+        // Use default storage path only if database is unavailable
+        bc_log(Warning, "Failed to query Storage table, using default path only");
+    }
+
+    // Open /proc/mounts to map mount points
     FILE *mtab = setmntent("/proc/mounts", "r");
     if (!mtab) {
         pthread_mutex_unlock(&_mutex);
         return false;
     }
-    
+
+    // Build a map from mount point to filesystem type
+    std::map<std::string, std::string> mount_map;
     struct mntent *entry;
     while ((entry = getmntent(mtab)) != NULL) {
         // Skip non-local filesystems and special filesystems
@@ -457,32 +492,52 @@ bool bc_stats::update_storage_info()
             strncmp(entry->mnt_type, "fuse.", 5) == 0) {
             continue;
         }
-        
+        mount_map[std::string(entry->mnt_dir)] = std::string(entry->mnt_type);
+    }
+    endmntent(mtab);
+
+    // For each storage path, resolve its mount point
+    for (const auto& path : storage_paths) {
+        char resolved[PATH_MAX];
+        if (!realpath(path.c_str(), resolved)) {
+            continue;
+        }
+        std::string best_mount = "/";
+        size_t best_len = 0;
+        for (const auto& m : mount_map) {
+            if (strncmp(resolved, m.first.c_str(), m.first.length()) == 0) {
+                if (m.first.length() > best_len) {
+                    best_mount = m.first;
+                    best_len = m.first.length();
+                }
+            }
+        }
+        unique_mounts.insert(best_mount);
+    }
+
+    // Always include root mount
+    unique_mounts.insert("/");
+
+    // For each unique mount, collect stats
+    for (const auto& mount : unique_mounts) {
         struct statvfs vfs;
-        if (statvfs(entry->mnt_dir, &vfs) == 0) {
+        if (statvfs(mount.c_str(), &vfs) == 0) {
             storage_path path_info;
-            path_info.path = std::string(entry->mnt_dir);
-            path_info.filesystem = std::string(entry->mnt_type);
-            
-            // Calculate sizes in bytes
+            path_info.path = mount;
+            path_info.filesystem = mount_map.count(mount) ? mount_map[mount] : "unknown";
             uint64_t block_size = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
             path_info.total_size = (uint64_t)vfs.f_blocks * block_size;
             path_info.free_size = (uint64_t)vfs.f_bavail * block_size;
             path_info.used_size = path_info.total_size - path_info.free_size;
-            
-            // Calculate usage percentage
             if (path_info.total_size > 0) {
                 path_info.usage_percent = (uint32_t)((path_info.used_size * 100) / path_info.total_size);
             } else {
                 path_info.usage_percent = 0;
             }
-            
             new_storage_paths.push_back(path_info);
         }
     }
-    
-    endmntent(mtab);
-    
+
     // Update the storage paths
     _storage_paths = new_storage_paths;
     
@@ -495,6 +550,7 @@ void bc_stats::monithoring_thread()
     pthread_setname_np(pthread_self(), "MONITORING");
     int history_counter = 0;
     int storage_counter = 0;
+    int rrd_counter = 0;  // Counter for RRD updates
     
     while (!__sync_add_and_fetch(&_cancel, 0))
     {
@@ -516,6 +572,13 @@ void bc_stats::monithoring_thread()
             history_counter = 0;
         }
 
+        // Update RRD every 10 seconds (less frequent to reduce I/O)
+        rrd_counter++;
+        if (rrd_counter >= 10) {
+            update_rrd_data();
+            rrd_counter = 0;
+        }
+
         //display();
         sleep(1);
     }
@@ -527,6 +590,9 @@ void bc_stats::start_monithoring()
 {
     pthread_mutex_init(&_mutex, NULL);
     __sync_lock_test_and_set(&_active, 1);
+
+    // Initialize RRD file if it doesn't exist
+    initialize_rrd_file();
 
     _thread = std::thread(&bc_stats::monithoring_thread, this);
 }
@@ -603,4 +669,166 @@ size_t bc_stats::get_history_size() const
 {
     std::lock_guard<std::mutex> lock(_history_mutex);
     return _history.size();
+}
+
+void bc_stats::initialize_rrd_file()
+{
+    // Try multiple possible RRD locations
+    const char* rrd_paths[] = {
+        "/var/lib/bluecherry/monitor.rrd",
+        "/tmp/bluecherry-monitor.rrd",
+        "/var/tmp/bluecherry-monitor.rrd"
+    };
+    
+    const char* rrd_path = nullptr;
+    
+    // Find the first writable location
+    for (const char* path : rrd_paths) {
+        FILE* test_file = fopen(path, "r");
+        if (test_file) {
+            fclose(test_file);
+            bc_log(Info, "RRD file %s already exists", path);
+            return;
+        }
+        
+        // Try to create the directory if it doesn't exist
+        char dir_path[256];
+        snprintf(dir_path, sizeof(dir_path), "%s", path);
+        char* last_slash = strrchr(dir_path, '/');
+        if (last_slash) {
+            *last_slash = '\0';
+            mkdir(dir_path, 0755); // Ignore errors
+        }
+        
+        // Test if we can write to this location
+        FILE* test_write = fopen(path, "w");
+        if (test_write) {
+            fclose(test_write);
+            unlink(path); // Remove the test file
+            rrd_path = path;
+            break;
+        }
+    }
+    
+    if (!rrd_path) {
+        bc_log(Error, "No writable location found for RRD file");
+        return;
+    }
+    
+    // Get network interfaces for RRD data sources
+    std::string network_ds = "";
+    DIR *net_dir = opendir(BC_DIR_NETWORK);
+    if (net_dir != NULL) {
+        struct dirent *dir_entry = readdir(net_dir);
+        while(dir_entry != NULL) {
+            if (strcmp(".", dir_entry->d_name) != 0 && strcmp("..", dir_entry->d_name) != 0) {
+                // Skip loopback and virtual interfaces
+                if (strncmp(dir_entry->d_name, "lo", 2) != 0 && 
+                    strncmp(dir_entry->d_name, "docker", 6) != 0 &&
+                    strncmp(dir_entry->d_name, "veth", 4) != 0) {
+                    
+                    char iface_name[64];
+                    snprintf(iface_name, sizeof(iface_name), "%s", dir_entry->d_name);
+                    
+                    // Add data sources for this interface
+                    network_ds += " DS:";
+                    network_ds += iface_name;
+                    network_ds += "_rx:COUNTER:20:0:U";
+                    network_ds += " DS:";
+                    network_ds += iface_name;
+                    network_ds += "_tx:COUNTER:20:0:U";
+                }
+            }
+            dir_entry = readdir(net_dir);
+        }
+        closedir(net_dir);
+    }
+    
+    // Create RRD file with appropriate data sources and archives (10-second step)
+    char create_cmd[2048]; // Increased buffer size for network interfaces
+    snprintf(create_cmd, sizeof(create_cmd),
+        "rrdtool create %s --step 10 "
+        "DS:cpu:GAUGE:20:0:100 "
+        "DS:mem:GAUGE:20:0:100 "
+        "DS:disk:GAUGE:20:0:100%s "
+        "RRA:AVERAGE:0.5:1:360 "     /* 1 hour of 10-second data */
+        "RRA:AVERAGE:0.5:6:1440 "    /* 24 hours of 1-minute data */
+        "RRA:AVERAGE:0.5:30:288 "    /* 1 day of 5-minute data */
+        "RRA:AVERAGE:0.5:360:168 "   /* 1 week of 1-hour data */
+        "RRA:AVERAGE:0.5:8640:30",   /* 1 month of 1-day data */
+        rrd_path, network_ds.c_str());
+    
+    int result = system(create_cmd);
+    if (result == 0) {
+        bc_log(Info, "Successfully created RRD file %s with network interfaces", rrd_path);
+    } else {
+        bc_log(Error, "Failed to create RRD file %s (exit code: %d)", rrd_path, result);
+    }
+}
+
+void bc_stats::update_rrd_data()
+{
+    // Prepare values for RRD update (CPU, memory, disk usage)
+    float cpu_percent = 0.0f;
+    if (_cpu.cores.size() > 0) {
+        // Convert encoded CPU values to percentages
+        float user_space = bc_u32_to_float(_cpu.cores[0].user_space);
+        float kernel_space = bc_u32_to_float(_cpu.cores[0].kernel_space);
+        float user_niced = bc_u32_to_float(_cpu.cores[0].user_niced);
+        cpu_percent = user_space + kernel_space + user_niced;
+    }
+    float mem_percent = 0.0f;
+    if (_memory.total > 0) {
+        // Use MemAvailable for consistency with web UI
+        mem_percent = 100.0f * (float)(_memory.total - _memory.avail) / (float)_memory.total;
+    }
+    float disk_percent = 0.0f;
+    if (!_storage_paths.empty()) {
+        disk_percent = (float)_storage_paths[0].usage_percent;
+    }
+    
+    // Build network interface data string
+    std::string network_data = "";
+    pthread_mutex_lock(&_mutex);
+    for (const auto& pair : _network) {
+        const std::string& iface_name = pair.first;
+        const net_iface& iface = pair.second;
+        
+        // Skip loopback and virtual interfaces
+        if (iface_name.substr(0, 2) != "lo" && 
+            iface_name.substr(0, 6) != "docker" &&
+            iface_name.substr(0, 4) != "veth") {
+            
+            network_data += ":";
+            network_data += std::to_string(iface.bytes_recv);
+            network_data += ":";
+            network_data += std::to_string(iface.bytes_sent);
+        }
+    }
+    pthread_mutex_unlock(&_mutex);
+    
+    // Try multiple possible RRD locations
+    const char* rrd_paths[] = {
+        "/var/lib/bluecherry/monitor.rrd",
+        "/tmp/bluecherry-monitor.rrd",
+        "/var/tmp/bluecherry-monitor.rrd"
+    };
+    
+    bool updated = false;
+    for (const char* rrd_path : rrd_paths) {
+        char rrd_cmd[2048]; // Increased buffer size for network data
+        snprintf(rrd_cmd, sizeof(rrd_cmd),
+            "rrdtool update %s N:%.2f:%.2f:%.2f%s 2>/dev/null",
+            rrd_path, cpu_percent, mem_percent, disk_percent, network_data.c_str());
+        
+        int result = system(rrd_cmd);
+        if (result == 0) {
+            updated = true;
+            break;
+        }
+    }
+    
+    if (!updated) {
+        bc_log(Debug, "Failed to update RRD file (all locations failed)");
+    }
 }

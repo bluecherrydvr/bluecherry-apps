@@ -39,6 +39,54 @@ static void bc_avlog(int val, const char *msg)
 	bc_log(Error, "%s: %s", msg, err);
 }
 
+// Audio stream compatibility validation function
+static bool is_audio_stream_compatible(const stream_properties::audio_properties &audio_props)
+{
+	enum AVCodecID codec_id = audio_props.codec_id;
+	int channels = audio_props.channels;
+	int sample_rate = audio_props.sample_rate;
+	
+	// Enhanced problematic audio detection - discard completely if issues detected
+	if ((codec_id == AV_CODEC_ID_PCM_MULAW || codec_id == AV_CODEC_ID_PCM_ALAW) && channels == 1) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with 1 channel (causes muxer initialization failure)", 
+			avcodec_get_name(codec_id));
+		return false;
+	}
+	
+	// Check for non-standard sample rates for G711 codecs
+	if (codec_id == AV_CODEC_ID_PCM_ALAW && sample_rate != 8000) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with non-standard sample rate %d Hz (expected 8000 Hz)", 
+			avcodec_get_name(codec_id), sample_rate);
+		return false;
+	}
+	
+	if (codec_id == AV_CODEC_ID_PCM_MULAW && sample_rate != 8000) {
+		bc_log(Warning, "Discarding problematic audio stream: %s with non-standard sample rate %d Hz (expected 8000 Hz)", 
+			avcodec_get_name(codec_id), sample_rate);
+		return false;
+	}
+	
+	// Check if codec is supported
+	switch (codec_id) {
+		case AV_CODEC_ID_PCM_S16LE:
+		case AV_CODEC_ID_PCM_S16BE:
+		case AV_CODEC_ID_PCM_ALAW:
+		case AV_CODEC_ID_PCM_MULAW:
+		case AV_CODEC_ID_AAC:
+		case AV_CODEC_ID_ADPCM_G726:
+		case AV_CODEC_ID_ADPCM_G726LE:
+		case AV_CODEC_ID_MP3:
+		case AV_CODEC_ID_G723_1:
+		case AV_CODEC_ID_G729:
+		case AV_CODEC_ID_GSM:
+		case AV_CODEC_ID_AC3:
+			return true;
+		default:
+			bc_log(Warning, "Audio codec not supported: %s, recording video only", avcodec_get_name(codec_id));
+			return false;
+	}
+}
+
 ///////////////////////////////////////////////////////////////
 // S.K. >> Implementation of separated media writer
 ///////////////////////////////////////////////////////////////
@@ -77,6 +125,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	opkt.size         = pkt.size;
 	opkt.stream_index = stream->index;
 
+	// CRITICAL SAFETY CHECK: Validate stream index and context
+	if (!out_ctx || opkt.stream_index < 0 || opkt.stream_index >= out_ctx->nb_streams || 
+	    !out_ctx->streams[opkt.stream_index]) {
+		bc_log(Error, "Invalid stream context: out_ctx=%p, stream_index=%d, nb_streams=%d", 
+		       out_ctx, opkt.stream_index, out_ctx ? out_ctx->nb_streams : -1);
+		return false;
+	}
+
 	/* Fix non-increasing timestamps */
 	static_assert(AVMEDIA_TYPE_VIDEO == 0);
 	static_assert(AVMEDIA_TYPE_AUDIO == 1);
@@ -95,9 +151,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 
 		// Get the tolerated gap from configuration, default to 2 seconds
 		int tolerated_gap_seconds = 2;
-		if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+		AVStream *current_stream = out_ctx->streams[opkt.stream_index];
+		if (current_stream && current_stream->codecpar && 
+		    current_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
 			// For video streams, check if it's VBR
-			AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			AVCodecParameters *codecpar = current_stream->codecpar;
 			if (codecpar->bit_rate == 0) {  // VBR is indicated by bit_rate = 0
 				// For VBR cameras, use a more lenient gap tolerance
 				// Based on typical I-frame intervals and network conditions
@@ -121,8 +179,9 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// For CBR streams, be more conservative about timestamp adjustment
 			// Only adjust if the gap is extremely large (more than 5 seconds)
 			bool should_adjust = true;
-			if (out_ctx->streams[opkt.stream_index]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-				AVCodecParameters *codecpar = out_ctx->streams[opkt.stream_index]->codecpar;
+			if (current_stream && current_stream->codecpar && 
+			    current_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+				AVCodecParameters *codecpar = current_stream->codecpar;
 				if (codecpar->bit_rate != 0) {  // CBR stream
 					// Only adjust CBR timestamps if gap is very large
 					should_adjust = (delta_dts > 5 * AV_TIME_BASE);
@@ -201,19 +260,36 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		}
 	}
 
-	bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
-		opkt.dts, opkt.pts, out_ctx->streams[opkt.stream_index]->time_base.num,
-		out_ctx->streams[opkt.stream_index]->time_base.den, opkt.stream_index,
-		!!(opkt.flags & AV_PKT_FLAG_KEY));
-
-	// Additional safety check for invalid timestamps before writing
-	if (opkt.dts != AV_NOPTS_VALUE && opkt.dts < 0) {
-		bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
-		opkt.dts = 0;
+	// SAFE DEBUG LOGGING: Add null pointer checks before accessing stream properties
+	AVStream *debug_stream = out_ctx->streams[opkt.stream_index];
+	if (debug_stream) {
+		bc_log(Debug, "av_interleaved_write_frame: dts=%" PRId64 " pts=%" PRId64 " tb=%d/%d s_i=%d k=%d",
+			opkt.dts, opkt.pts, debug_stream->time_base.num,
+			debug_stream->time_base.den, opkt.stream_index,
+			!!(opkt.flags & AV_PKT_FLAG_KEY));
+	} else {
+		bc_log(Error, "av_interleaved_write_frame: NULL stream at index %d", opkt.stream_index);
+		return false;
 	}
-	if (opkt.pts != AV_NOPTS_VALUE && opkt.pts < 0) {
-		bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
-		opkt.pts = 0;
+
+	// Enhanced safety check for invalid timestamps before writing
+	if (opkt.dts != AV_NOPTS_VALUE) {
+		if (opkt.dts < 0) {
+			bc_log(Warning, "Negative DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+			opkt.dts = 0;
+		} else if (opkt.dts > INT64_MAX / 2) {
+			bc_log(Warning, "Extremely large DTS detected (%" PRId64 "), setting to 0", opkt.dts);
+			opkt.dts = 0;
+		}
+	}
+	if (opkt.pts != AV_NOPTS_VALUE) {
+		if (opkt.pts < 0) {
+			bc_log(Warning, "Negative PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+			opkt.pts = 0;
+		} else if (opkt.pts > INT64_MAX / 2) {
+			bc_log(Warning, "Extremely large PTS detected (%" PRId64 "), setting to 0", opkt.pts);
+			opkt.pts = 0;
+		}
 	}
 
 	auto last_mux_dts_uncommitted = opkt.dts; // opkt.dts is lost as av_interleaved_write_frame() frees opkt
@@ -225,14 +301,16 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// Try to recover by resetting the timestamp tracking
 			last_mux_dts = AV_NOPTS_VALUE;
 		} else {
-			// Provide more specific error information
+			// SAFE ERROR HANDLING: Add null pointer checks before accessing stream properties
 			char err_buf[256];
 			av_strerror(re, err_buf, sizeof(err_buf));
+			const char *codec_name = "unknown";
+			if (stream && stream->codecpar) {
+				codec_name = avcodec_get_name(stream->codecpar->codec_id);
+			}
 			bc_log(Error, "Error writing %s frame to recording: %s (codec: %s, stream: %d)", 
 				pkt.type == AVMEDIA_TYPE_VIDEO ? "video" : "audio",
-				err_buf,
-				avcodec_get_name(stream->codecpar->codec_id),
-				opkt.stream_index);
+				err_buf, codec_name, opkt.stream_index);
 		}
 		update_last_mux_dts = false;
 		return false;
@@ -256,11 +334,14 @@ void media_writer::close()
 
 	if (out_ctx)
 	{
-		if (out_ctx->pb)
-			av_write_trailer(out_ctx);
-
-		if (out_ctx->pb)
+		// SAFE CLEANUP: Add null pointer checks before accessing context
+		if (out_ctx->pb) {
+			// Only write trailer if the context is still valid
+			if (out_ctx->nb_streams > 0 && out_ctx->streams[0]) {
+				av_write_trailer(out_ctx);
+			}
 			avio_close(out_ctx->pb);
+		}
 
 		avformat_free_context(out_ctx);
 		out_ctx = NULL;
@@ -447,77 +528,26 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	properties.video.apply(video_st->codecpar);
 
 	/* Setup audio stream if available */
+	audio_st = NULL;
 	if (properties.has_audio())
 	{
-		audio_st = avformat_new_stream(out_ctx, NULL);
-		if (!audio_st)
-		{
-			close();
-			return -1;
-		}
-
-		// Check if the incoming audio codec is supported for recording
-		enum AVCodecID incoming_codec = properties.audio.codec_id;
-		bool codec_supported = false;
-		
-		// Skip problematic audio configurations that cause muxer failures
-		if (incoming_codec == AV_CODEC_ID_PCM_MULAW && properties.audio.channels == 1) {
-			bc_log(Warning, "Skipping problematic audio stream: pcm_mulaw with 1 channel (causes muxer initialization failure)");
-			codec_supported = false;
-		} else {
-			// Most common IP camera audio codecs
-			switch (incoming_codec) {
-				// Standard PCM codecs
-				case AV_CODEC_ID_PCM_S16LE:
-				case AV_CODEC_ID_PCM_S16BE:
-				case AV_CODEC_ID_PCM_ALAW:
-				case AV_CODEC_ID_PCM_MULAW:
-				
-				// Common IP camera audio codecs
-				case AV_CODEC_ID_AAC:           // Most common modern codec
-				case AV_CODEC_ID_ADPCM_G726:    // Very common in older IP cameras
-				case AV_CODEC_ID_ADPCM_G726LE:  // Little-endian variant
-				case AV_CODEC_ID_MP3:           // Common in consumer cameras
-				case AV_CODEC_ID_G723_1:        // Low bitrate telephony
-				case AV_CODEC_ID_G729:          // Low bitrate telephony
-				case AV_CODEC_ID_GSM:           // Mobile telephony standard
-				case AV_CODEC_ID_AC3:           // Dolby Digital (high-end cameras)
-					codec_supported = true;
-					break;
-				
-				default:
-					codec_supported = false;
-					break;
-			}
-		}
-		
-		if (!codec_supported) {
-			bc_log(Warning, "Unsupported audio codec %s for recording, disabling audio stream (camera: %s)", 
-				avcodec_get_name(incoming_codec),
-				properties.audio.codec_id == AV_CODEC_ID_NONE ? "unknown" : avcodec_get_name(incoming_codec));
-			
-			// Clean up the audio stream we just created
-			if (audio_st) {
-				// Remove the stream from the context
-				for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
-					if (out_ctx->streams[i] == audio_st) {
-						// Shift remaining streams down
-						for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
-							out_ctx->streams[j] = out_ctx->streams[j + 1];
-						}
-						out_ctx->nb_streams--;
-						break;
-					}
-				}
-				audio_st = NULL;
+		// Validate audio stream compatibility before creating it
+		if (is_audio_stream_compatible(properties.audio)) {
+			// Only create audio stream if it's compatible
+			AVStream *tmp_audio_st = avformat_new_stream(out_ctx, NULL);
+			if (!tmp_audio_st) {
+				bc_log(Warning, "Audio stream could not be created, recording video only");
+			} else {
+				// Apply the actual audio properties from the stream
+				properties.audio.apply(tmp_audio_st->codecpar);
+				bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
+					avcodec_get_name(properties.audio.codec_id),
+					properties.audio.sample_rate,
+					properties.audio.channels);
+				audio_st = tmp_audio_st;
 			}
 		} else {
-			// Apply the actual audio properties from the stream
-			properties.audio.apply(audio_st->codecpar);
-			bc_log(Info, "Audio stream configured: %s, %d Hz, %d channels", 
-				avcodec_get_name(incoming_codec),
-				properties.audio.sample_rate,
-				properties.audio.channels);
+			bc_log(Info, "Audio stream discarded due to compatibility issues, recording video only");
 		}
 	}
 
@@ -541,12 +571,66 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	if (ret)
 	{
 		av_strerror(ret, error, sizeof(error));
-		bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
+		if (audio_st) {
+			// Try again without audio
+			bc_log(Warning, "Audio stream initialization failed (muxer error), recording video only: %s (%d)", error, ret);
+			// Remove audio stream and try again
+			for (unsigned int i = 0; i < out_ctx->nb_streams; i++) {
+				if (out_ctx->streams[i] == audio_st) {
+					for (unsigned int j = i; j < out_ctx->nb_streams - 1; j++) {
+						out_ctx->streams[j] = out_ctx->streams[j + 1];
+					}
+					out_ctx->nb_streams--;
+					break;
+				}
+			}
+			audio_st = NULL;
+			// Try header again
+			ret = avformat_write_header(out_ctx, NULL);
+			if (ret) {
+				bc_log(Error, "Failed to init muxer for output file %s (video only): %s (%d)",
+					recording_path.c_str(), error, ret);
+				avio_closep(&out_ctx->pb);
+				close();
+				return -1;
+			}
+		} else {
+			bc_log(Error, "Failed to init muxer for output file %s: %s (%d)",
 				recording_path.c_str(), error, ret);
+			avio_closep(&out_ctx->pb);
+			close();
+			return -1;
+		}
+	}
 
-		avio_closep(&out_ctx->pb);
+	// CRITICAL SAFETY CHECK: Validate stream initialization
+	if (!out_ctx || out_ctx->nb_streams == 0 || !out_ctx->streams[0]) {
+		bc_log(Error, "Stream validation failed after muxer initialization: out_ctx=%p, nb_streams=%d", 
+		       out_ctx, out_ctx ? out_ctx->nb_streams : -1);
 		close();
 		return -1;
+	}
+
+	// Validate video stream is accessible
+	if (video_st && video_st->index >= 0 && video_st->index < out_ctx->nb_streams) {
+		if (out_ctx->streams[video_st->index] != video_st) {
+			bc_log(Error, "Video stream index mismatch: expected=%d, actual=%d", 
+			       video_st->index, out_ctx->streams[video_st->index] ? out_ctx->streams[video_st->index]->index : -1);
+			close();
+			return -1;
+		}
+	} else {
+		bc_log(Error, "Video stream not accessible after muxer initialization");
+		close();
+		return -1;
+	}
+
+	// Validate audio stream is accessible (if present)
+	if (audio_st && audio_st->index >= 0 && audio_st->index < out_ctx->nb_streams) {
+		if (out_ctx->streams[audio_st->index] != audio_st) {
+			bc_log(Warning, "Audio stream index mismatch after muxer initialization, recording video only");
+			audio_st = NULL;
+		}
 	}
 
 	return 0;

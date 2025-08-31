@@ -1,0 +1,20 @@
+security_practices:
+  - Credentials (DB, API) stored in config files, not in code (recommended, but some legacy code may hardcode)
+  - Session-based authentication for web UI (PHP $_SESSION['id'])
+  - Basic Auth for API endpoints (server-side only)
+  - Access checks in most AJAX endpoints
+  - Use of prepared statements in some places, but some inline SQL remains
+  - Passwords hashed in DB (Users table)
+  - .htaccess and web server config restrict access to sensitive files
+do:
+  - Store secrets in config files with restricted permissions
+  - Use session checks for all sensitive AJAX endpoints
+  - Use HTTPS for all web and API traffic
+  - Regularly audit for inline SQL and credential leakage
+dont:
+  - Hardcode credentials in code (move to config if found)
+  - Expose API credentials to browser
+  - Allow unauthenticated access to AJAX endpoints
+notable_unsafe_patterns:
+  - Some inline SQL queries (risk of SQL injection if not sanitized)
+  - Some legacy endpoints may lack full access checks 

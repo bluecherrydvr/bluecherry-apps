@@ -40,12 +40,13 @@ define('MMENU_SCHED', 'Global schedule');
 define('MMENU_LIVEVIEW', 'LiveView');
 define('MMENU_PLAYBACK', 'Playback');
 define('MMENU_STATISTICS', 'Event statistics');
+define('MMENU_MONITORING', 'System Monitoring');
 define('MMENU_ACTIVE_USERS', 'Connected users');
 define('MMENU_CLIENT_DOWNLOAD', 'Download remote client');
 define('MMENU_DOCUMENTATION', 'Documentation');
 define('MMENU_NOTFICATIONS', 'Email notifications');
 define('MMENU_BACKUP', 'Database backup');
-define('MMENU_LICENSING', 'License keys');
+
 
 #main
 define('COUND_NOT_OPEN_PAGE', 'Page could not be loaded');
@@ -325,7 +326,7 @@ define('STATS_UPT', 'Server uptime:');
 define('USER_KICKED', 'Your session was terminated by an Administrator.');
 define('USER_NACCESS', 'You need administrator priveleges to access this page. Please <a href="/">login again</a>.');
 define('USER_RELOGIN', 'Your session has expired, please <a htef="/">relogin</a>. ');
-define('NO_CONNECTION', 'Cound not connect to the server.<br /><br />Please make sure that:<br />-server httpd is running<br />-you are online');
+define('NO_CONNECTION', 'Could not connect to the server.<br /><br />Please make sure that:<br />-server httpd is running<br />-you are online');
 
 #active users 
 define('ACTIVE_USERS_HEADER', 'Connected users');
@@ -622,9 +623,7 @@ define('L_CONFIRMCODE_MSG', 'Unfortunately we could not confirm the license key 
 define('L_INVALID_LICENSE', 'The license key you entered does not appear to be valid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
 define('L_INVALID_LICENSE_EXISTS', 'The license key you entered is already in use on this system.');
 define('L_INVALID_CONFIRMATION', 'Confirmation license key you entered is invalid. Please make sure that it is typed in or copied exactly as provided. If you continue to experience this problem, please <a href="mailto:support@bluecherrydvr.com">contact</a> Bluecherry.');
-define('L_LICENSE_ACTIVATED', 'The license key was successfully activated.');
-define('L_LICENSE_DEACTIVATED', 'The license key was deactivated.');
-define('L_LICENSE_DEACTIVATED_DB_FAIL', 'The license key was deactivated.<br> But this license key isn\'t removed from database due to database problem.<br>Please remove this manually later.');
+
 define('L_CURRENT',  'Active license key');
 define('L_CONFIRM', 'Confirm');
 define('L_CONFIRM_DELETE', 'Are you sure you want to deactivate this license key?');
@@ -706,8 +705,9 @@ define('L_NONE', 'none');
 define('U_LOADING', 'Loading...');
 define('L_ENABLE', 'enable');
 define('L_DISABLE', 'disable');
+define('DB_SYNC_BUTTON', 'Sync Database');
 
-define('BETA_LICENSE_WARNING', 'You are using the community version of our software, for support options please click here.<br><a href=https://www.bluecherrydvr.com/licenses>www.bluecherrydvr.com/licenses</a><br>');
+define('BETA_LICENSE_WARNING', 'Bluecherry DVR is now free and open source software.<br>');
 
 #ip cam props
 define('IPCAM_TCPUDP_LEVEL', 'Transport');

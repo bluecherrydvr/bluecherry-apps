@@ -6,6 +6,8 @@ class StandaloneDatabase {
     private $dbuser;
     private $dbpassword;
     private $dbhost;
+    private $connection_timeout = 10; // 10 second timeout
+    private $max_retries = 3;
 
     public function __construct() {
         $this->connect();
@@ -46,28 +48,83 @@ class StandaloneDatabase {
         $this->dbhost = stripslashes($dbhost);
     }
 
+    // CRITICAL FIX: Improved connection with retry logic and health checking
     private function connect(): void
     {
         $this->load_config();
-        $this->dblink = mysqli_connect($this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
+        
+        $retries = 0;
+        while ($retries < $this->max_retries) {
+            // CRITICAL FIX: Set connection timeout
+            $this->dblink = mysqli_init();
+            if (!$this->dblink) {
+                $retries++;
+                continue;
+            }
+            
+            // CRITICAL FIX: Set connection options for better reliability
+            mysqli_options($this->dblink, MYSQLI_OPT_CONNECT_TIMEOUT, $this->connection_timeout);
+            // Use constants only if they exist (PHP version compatibility)
+            if (defined('MYSQLI_OPT_READ_TIMEOUT')) {
+                mysqli_options($this->dblink, MYSQLI_OPT_READ_TIMEOUT, 30);
+            }
+            if (defined('MYSQLI_OPT_WRITE_TIMEOUT')) {
+                mysqli_options($this->dblink, MYSQLI_OPT_WRITE_TIMEOUT, 30);
+            }
+            
+            $connect_result = mysqli_real_connect($this->dblink, $this->dbhost, $this->dbuser, $this->dbpassword, $this->dbname);
+            
+            if ($connect_result) {
+                // CRITICAL FIX: Set charset and other options
+                mysqli_real_query($this->dblink, "set names utf8;");
+                mysqli_real_query($this->dblink, "SET SESSION wait_timeout=300;");
+                mysqli_real_query($this->dblink, "SET SESSION interactive_timeout=300;");
+                return;
+            }
+            
+            $retries++;
+            if ($retries < $this->max_retries) {
+                usleep(100000); // 100ms delay before retry
+            }
+        }
 
         if (!$this->dblink) {
             header('HTTP/1.1 503 Service Unavailable');
             Reply::ajaxDie('unavailable', LANG_DIE_COULDNOTCONNECT);
         }
-
-        mysqli_real_query($this->dblink, "set names utf8;");
+    }
+    
+    // CRITICAL FIX: Check connection health
+    private function check_connection() {
+        if (!$this->dblink || !is_object($this->dblink) || !mysqli_ping($this->dblink)) {
+            error_log("Database connection lost or invalid, attempting to reconnect");
+            $this->connect();
+        }
     }
 
-    public function escapeString($string): string
-    {
-        $string = mysqli_real_escape_string($this->dblink, $string);
-        return $string;
-    }
-
-    public function query($query): bool
-    {
-        $ret = mysqli_real_query($this->dblink, $query);
+    public function query($query) {
+        $this->check_connection();
+        
+        $ret = false;
+        $retries = 0;
+        
+        while ($retries < $this->max_retries) {
+            $ret = mysqli_real_query($this->dblink, $query);
+            
+            if ($ret) {
+                break;
+            }
+            
+            $error = mysqli_error($this->dblink);
+            if (strpos($error, 'MySQL server has gone away') !== false || 
+                strpos($error, 'Lost connection') !== false) {
+                $retries++;
+                $this->connect();
+                continue;
+            }
+            
+            break;
+        }
 
         if (!$ret)
             trigger_error(mysqli_error($this->dblink)." query:".$query, E_USER_ERROR);
@@ -75,23 +132,38 @@ class StandaloneDatabase {
         return $ret;
     }
 
-    public function fetchAll($query): array
-    {
+    public function fetchAll($query) {
+        $this->check_connection();
+        
         $fetchedTable = array();
-        $qresult = mysqli_query($this->dblink, $query, MYSQLI_STORE_RESULT);
+        $retries = 0;
+        
+        while ($retries < $this->max_retries) {
+            $qresult = mysqli_query($this->dblink, $query, MYSQLI_STORE_RESULT);
 
-        if ($qresult) {
-            $fetchedTable = mysqli_fetch_all($qresult, MYSQLI_ASSOC);
-        }
-        else {
+            if ($qresult) {
+                $fetchedTable = mysqli_fetch_all($qresult, MYSQLI_ASSOC);
+                mysqli_free_result($qresult);
+                break;
+            }
+            
+            $error = mysqli_error($this->dblink);
+            if (strpos($error, 'MySQL server has gone away') !== false || 
+                strpos($error, 'Lost connection') !== false) {
+                $retries++;
+                $this->connect();
+                continue;
+            }
+            
             trigger_error(mysqli_error($this->dblink)." query:".$query, E_USER_ERROR);
+            break;
         }
 
         return $fetchedTable;
     }
 
-    public function last_id(): int|string
-    {
+    public function last_id() {
+        $this->check_connection();
         return mysqli_insert_id($this->dblink);
     }
 }

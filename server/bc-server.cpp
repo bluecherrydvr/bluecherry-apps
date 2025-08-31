@@ -45,9 +45,7 @@ extern "C" {
 #include "vaapi.h"
 #include "bc-cleanup.h"
 
-#ifdef V3_LICENSING
-#include "v3license_server.h"
-#endif /* V3_LICENSING */
+
 
 #include <unordered_map>
 #include <vector>
@@ -97,9 +95,6 @@ typedef std::vector<std::string> bc_string_array;
 static rtsp_server *rtsp = NULL;
 static hls_listener *hls = NULL;
 static bc_api *api = NULL;
-#ifdef V3_LICENSING
-static v3license_server *v3license = NULL;
-#endif /* V3_LICENSING */
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -1925,19 +1920,7 @@ int main(int argc, char **argv)
 		hls_th.detach();
 	}
 
-#ifdef V3_LICENSING
-	v3license = new v3license_server;
-	if (v3license->setup(7004)) {
-		delete rtsp;
-		rtsp = NULL;
 
-		delete v3license;
-		v3license = NULL;
-
-		bc_log(Error, "Failed to setup V3LICENSE server");
-		return 1;
-	}
-#endif /* V3_LICENSING */
 
 	if (open_db_loop(config_file))
 		return 1;
@@ -1963,14 +1946,24 @@ int main(int argc, char **argv)
 	// Initialize cleanup manager for regular scheduling
 	g_cleanup_manager = std::make_unique<CleanupManager>();
 	bc_log(Info, "Cleanup manager initialized with regular schedule");
+	
+	// Run initial database sync to clean up orphaned entries
+	if (g_cleanup_manager) {
+		bc_log(Info, "Running initial database/filesystem synchronization");
+		int sync_result = g_cleanup_manager->run_database_sync();
+		if (sync_result > 0) {
+			bc_log(Info, "Initial database sync cleaned up %d orphaned entries", sync_result);
+		} else if (sync_result == 0) {
+			bc_log(Info, "Initial database sync completed: no orphaned entries found");
+		} else {
+			bc_log(Error, "Initial database sync failed with error code %d", sync_result);
+		}
+	}
 
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
-#ifdef V3_LICENSING
-	pthread_t v3license_thread;
-	pthread_create(&v3license_thread, NULL, v3license_server::runThread, v3license);
-#endif /* V3_LICENSING */
+
 
 	/* Main loop */
 	for (unsigned int loops = 0 ;; sleep(1), loops++) {
@@ -2050,10 +2043,7 @@ int main(int argc, char **argv)
 	}
 
 	stats.stop_monithoring();
-#ifdef V3_LICENSING
-	v3license_server::stopThread();
-	pthread_join(v3license_thread, NULL);
-#endif /* V3_LICENSING */
+
 
 	bc_stop_threads();
 	bc_db_close();

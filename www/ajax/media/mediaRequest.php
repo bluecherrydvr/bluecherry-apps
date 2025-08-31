@@ -81,11 +81,13 @@ function dl_file_resumable($file)
 		list($size_unit, $range_orig) =
 			explode('=', $_SERVER['HTTP_RANGE'], 2);
 
-		if ($size_unit == 'bytes')
-			list($range, $extra_ranges) =
-				explode(',', $range_orig, 2);
-		else
+		if ($size_unit == 'bytes') {
+			$ranges = explode(',', $range_orig, 2);
+			$range = $ranges[0];
+			$extra_ranges = isset($ranges[1]) ? $ranges[1] : null;
+		} else {
 			$range = '-';
+		}
 	} else {
 		$range = '-';
 	}

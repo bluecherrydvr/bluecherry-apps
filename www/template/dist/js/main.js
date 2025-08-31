@@ -75,52 +75,57 @@ function protocolBlocks (el) {
     }
 }
 
+// MODERN STATS UPDATE SYSTEM - Simple and robust
 function updateStatData() {
-    
-        var ajax_req = new ajaxReq();
-        ajax_req.manReq({
-            form_act : '/ajax/stats.php',
-            type_data : 'HTML',
-            callback_func: function (msg, done) {
-
-                var sr  = $('#sr');
-    			var snr = $('#snr');
-    			var ncn = $('#ncn');
-    			var ftw = $('#ftw');
-
-                if (done) {
-                    msg = $.parseXML(msg);
-                    $msg = $(msg);
-
-                    var cpuUsage = ($msg.find('cpu-usage').text() || 0);
-                    var memInUse = ($msg.find('memory-inuse').text() || 0);
-                    var memTotal = ($msg.find('memory-total').text() || 0);
-                    var memPertg = ($msg.find('memory-used-percentage').text() || 0);
-                    var serverUp = ($msg.find('server-uptime').text() || 0);
-                    var serverRn = ($msg.find('bc-server-running').text() || 0);
-
-                    if (serverRn != 'up'){
-                        sr.hide();
-                        snr.show();
-                    } else {
-                        snr.hide();
-                        sr.show();
-                    }
-                    ncn.hide();
-                    $('#server-stats').show();
-                    updateStatBar('stat-cpu', cpuUsage);
-                    updateStatBar('stat-mem', memPertg);
-                    $('#stat-meminfo').html(Math.round(memInUse/1024) + "MB / " + Math.round(memTotal/1024)+ "MB");
-                    $('#server-uptime').html(serverUp);
-
-                } else {
-                    ncn.show();
-                    sr.hide();
-                    snr.hide();
-                }
+    // Simple fetch request with error handling
+    fetch('/ajax/stats.php?format=json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
-        }, false); 
-        setTimeout("updateStatData();", 2000);
+            return response.json();
+        })
+        .then(data => {
+            // Hide connection error
+            $('#ncn').hide();
+            
+            // Update server status
+            if (data.live && data.live.server_running) {
+                $('#sr').show();
+                $('#snr').hide();
+                $('#server-stats').show();
+                
+                // Update stats
+                if (data.live.cpu !== undefined) {
+                    updateStatBar('stat-cpu', data.live.cpu);
+                }
+                if (data.live.memory !== undefined) {
+                    updateStatBar('stat-mem', data.live.memory);
+                }
+                if (data.live.memory_info) {
+                    $('#stat-meminfo').html(data.live.memory_info);
+                }
+                if (data.live.uptime) {
+                    $('#server-uptime').html(data.live.uptime);
+                }
+            } else {
+                // Server not running
+                $('#sr').hide();
+                $('#snr').show();
+                $('#server-stats').hide();
+            }
+        })
+        .catch(error => {
+            console.log('Stats update failed:', error);
+            // Show connection error
+            $('#ncn').show();
+            $('#sr').hide();
+            $('#snr').hide();
+            $('#server-stats').hide();
+        });
+    
+    // Schedule next update
+    setTimeout(updateStatData, 5000); // Update every 5 seconds
 }
 
 updateStatBar = function(barId, val, y, r){

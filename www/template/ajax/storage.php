@@ -11,6 +11,7 @@
 <div class="row">
     <div class="col-lg-12">
         <div class="btn-group pull-right">
+            <a href="javascript:void(0);" class="btn btn-info" id="db-sync-but"><i class="fa fa-refresh fa-fw"></i>  <?php echo DB_SYNC_BUTTON; ?></a>
             <a href="javascript:void(0);" class="btn btn-success" id="store-add-but"><i class="fa fa-plus fa-fw"></i>  <?php echo ADD_LOCATION; ?></a>
             <a href="javascript:void(0);" class="btn btn-success send-req-form" data-form-id="storage-form"><i class="fa fa-check fa-fw"></i>  <?php echo SAVE_CHANGES; ?></a>
         </div>

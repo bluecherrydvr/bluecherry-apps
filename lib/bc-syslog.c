@@ -84,5 +84,24 @@ void bc_syslogv(bc_logv *iov, int iovcnt)
 
 	/* LOG_INFO | LOG_DAEMON */
 	VSET(iov[0], hdr, hdr_size);
-	writev(syslog_fd, iov, iovcnt);
+
+	ssize_t ret = writev(syslog_fd, iov, iovcnt);
+	if (ret == -1 && (errno == ECONNREFUSED || errno == ENOTCONN || errno == EBADF)) {
+		// Attempt to reconnect to /dev/log and retry once
+		int sock = socket(AF_UNIX, SOCK_DGRAM, 0);
+		if (sock != -1) {
+			struct sockaddr_un usock = {
+				.sun_family = AF_UNIX,
+				.sun_path = "/dev/log",
+			};
+			if (connect(sock, (struct sockaddr *)&usock, sizeof(usock)) == 0) {
+				close(syslog_fd);
+				syslog_fd = sock;
+				// Retry the log write once
+				writev(syslog_fd, iov, iovcnt);
+			} else {
+				close(sock);
+			}
+		}
+	}
 }

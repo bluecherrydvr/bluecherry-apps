@@ -128,6 +128,8 @@ function install_certbot
 	pip3 install pyopenssl --upgrade
 }
 
+
+
 function start_apache
 {
 	if [[ $IN_DEB ]]
@@ -372,8 +374,7 @@ case "$1" in
 				echo "Backup database: $BACKUP_DB_FILE"
 				mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > BACKUP_DB_FILE
 
-				echo "Dropping Licenses"
-				/usr/share/bluecherry/drop_licenses.sh "$dbname" "$user" "$password" "$host"
+
 			else
 				DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
 				echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
@@ -395,6 +396,8 @@ case "$1" in
 		then
 			rm -f "$DB_BACKUP_GZ_FILE"
 		fi
+
+
 
 		mkdir -p /usr/share/bluecherry/sqlite
 		if [[ $IN_DEB ]]

@@ -1,4 +1,27 @@
-bluecherry (3:3.1.13) bookworm bullseye buster focal jammy mantic noble; urgency=low
+bluecherry (3:3.1.14) bookworm bullseye buster focal jammy mantic noble; urgency=emergency
+
+  * CRITICAL: Fix segmentation faults and deadlocks affecting large installations (53+ cameras, 35TB+ data)
+  * FIX: Add comprehensive null pointer protection and bounds checking in recording and streaming systems
+  * FIX: Prevent HLS cleanup race conditions and resource leaks during service destruction
+  * FIX: Add mutex timeout protection and safe thread cleanup to prevent server lockups
+  * FIX: Implement database timeout handling to avoid endless loops and hangs
+  * FIX: Enable fragmented MP4 for crash recovery (partial recordings recoverable after crash)
+  * FIX: Improve error handling, replace assertions with graceful degradation
+  * FIX: PHP: Prevent memory errors and improve range request handling for large event lists
+  * FIX: Web UI: Correct timezone handling and filter out 0s-duration events for better performance
+  * FEATURE: Add automatic database/filesystem synchronization to prevent disk space issues
+  * FEATURE: Web interface for manual database sync with real-time progress indicators
+  * FEATURE: Startup database sync to clean orphaned entries on server start
+  * FEATURE: Automatic sync integration with cleanup process for seamless operation
+  * FIX: Implement robust audio stream validation to prevent TP-Link recording failures
+  * FIX: Discard problematic PCM A-law/μ-law audio streams before muxer initialization
+  * FIX: Enhanced audio compatibility checking for G711 codecs with non-standard parameters
+  * DOC: Update documentation for crash recovery, stability, and deployment steps
+  * Maintain backward compatibility with all supported distributions
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Tue, 09 Jul 2025 10:00:00 -0500
+
+bluecherry (3:3.1.13) bookworm bullseye buster buster focal jammy mantic noble; urgency=low
 
   * FIX: Major cleanup optimization to resolve high system load and MySQL overload issues
   * FIX: Implement adaptive batch sizing based on system load and MySQL connection count

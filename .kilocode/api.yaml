@@ -1,0 +1,14 @@
+api_structure:
+  - REST-like AJAX endpoints in www/ajax/ (e.g., devices.php, events.php, storage.php)
+  - Some endpoints grouped in subfolders (e.g., events/, media/)
+  - C++ backend exposes HTTP API on port 7005 (e.g., /stats, /stats/cpu, /stats/memory)
+  - Endpoints use JSON for data exchange
+naming_conventions:
+  - Endpoints: lowercase, underscore-separated, .php extension for PHP endpoints
+  - C++ API: RESTful, path-based (e.g., /stats/cpu)
+authentication:
+  - Web UI: PHP session (session cookie, $_SESSION['id'])
+  - API: HTTP Basic Auth (server-to-server, not exposed to browser)
+legacy_vs_modern:
+  - Legacy: PHP endpoints in www/ajax/ (procedural, some inline SQL)
+  - Modern: C++ API (structured, JSON, background-updated stats) 

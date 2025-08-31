@@ -1,0 +1,29 @@
+project_name: Bluecherry
+summary: |
+  Bluecherry is a modular, open-source video surveillance and management system. It includes a C++ server backend for video processing and streaming, a PHP web frontend for configuration and monitoring, and a set of tools for device management, event handling, and user access control.
+  
+  Licensing and feature restrictions are enforced using Cryptlex, a commercial licensing and activation system. Cryptlex is integrated into both the backend (C++ daemons) and the web UI to validate license keys, enforce feature restrictions, and manage trial/activation states. Licensing checks occur at startup, during feature access, and when users attempt to activate or update their license. The system supports online activation, trial periods, and periodic license validation with the Cryptlex cloud service. License status and metadata are stored in the database (Licenses table) and referenced throughout the codebase for access control.
+  
+  **Integration Points:**
+    - C++ backend: Integrates Cryptlex SDK in files such as `server/v3license_server.cpp`, `server/v3license_processor.cpp`, and related headers. Handles license activation, validation, and feature gating.
+    - PHP web UI: License management and activation handled in `www/ajax/licenses.php`, `www/template/licenses.php`, and related AJAX endpoints. UI for entering license keys, viewing status, and triggering activation.
+    - Database: License data stored in the `Licenses` table (see `misc/sql/schema_mysql.sql`).
+    - API calls: Backend communicates with Cryptlex cloud via HTTPS for activation, validation, and status checks. Example API endpoints include `/api/licenses.php` (PHP) and internal C++ calls to Cryptlex SDK.
+    - Licensing logic: Enforced in both backend (C++ feature checks, daemon startup) and frontend (PHP access checks, UI restrictions).
+    - Trial and activation: Trial status, activation, and periodic re-validation are managed by both the backend and web UI, with status reflected in the database and UI.
+major_components:
+  - Bluecherry Server (C++): Handles video ingest, RTSP/HLS streaming, event processing, API, and Cryptlex license enforcement (see `server/v3license_server.cpp`, `server/v3license_processor.cpp`).
+  - www Frontend (PHP): Web UI for configuration, monitoring, user management, and license activation/validation (see `www/ajax/licenses.php`, `www/template/licenses.php`).
+  - RTSP/HLS Streaming: Real-time and historical video delivery.
+  - Licensing & User Restrictions: Enforces access and feature controls using Cryptlex (see `Licenses` table, `misc/sql/schema_mysql.sql`).
+primary_languages:
+  - C++
+  - PHP
+  - JavaScript (Chart.js, AJAX)
+  - SQL (MySQL, SQLite)
+  - Bash (scripts)
+language_guidance:
+  - Use C++ for performance-critical backend and streaming logic, including Cryptlex SDK integration (see `server/v3license_server.cpp`).
+  - Use PHP for web UI, AJAX endpoints, business logic, and license management UI (see `www/ajax/licenses.php`).
+  - Use SQL for relational data and event storage, including license metadata (see `Licenses` table).
+  - Use JavaScript for dynamic frontend features and charting. 

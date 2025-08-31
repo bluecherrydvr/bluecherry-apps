@@ -28,6 +28,7 @@ public:
         uint64_t _BC_ALIGNED_ free = 0;
         uint64_t _BC_ALIGNED_ swap = 0;
         uint64_t _BC_ALIGNED_ buff = 0;
+        uint32_t _BC_ALIGNED_ usage_percent = 0;  // Memory usage percentage
     };
 
     struct storage_path {
@@ -131,6 +132,8 @@ private:
     bool update_mem_info();
     bool update_cpu_info();
     bool update_storage_info();
+    void initialize_rrd_file();
+    void update_rrd_data();
 
     uint8_t _BC_ALIGNED_ _active = 0;
     uint8_t _BC_ALIGNED_ _cancel = 0;

@@ -172,14 +172,15 @@
                             <a href="/statistics" class="ajax-content" data-left-menu="true"><i class="fa fa-bar-chart-o fa-fw"></i> <?php echo MMENU_STATISTICS; ?></a>
                         </li>
                         <li>
+                            <a href="/monitor" class="ajax-content" data-left-menu="true"><i class="fa fa-area-chart fa-fw"></i> <?php echo MMENU_MONITORING; ?></a>
+                        </li>
+                        <li>
                             <a href="/backup" class="ajax-content" data-left-menu="true"><i class="fa fa-database fa-fw"></i> <?php echo MMENU_BACKUP; ?></a>
                         </li>
                         <li>
                             <a href="/log" class="ajax-content" data-left-menu="true"><i class="fa fa-file-o fa-fw"></i> <?php echo MMENU_LOG; ?></a>
                         </li>
-                        <li>
-                            <a href="/licenses" class="ajax-content" data-left-menu="true"><i class="fa fa-lock fa-fw"></i> <?php echo MMENU_LICENSING; ?></a>
-                        </li>
+
                     </ul>
 
                     <div class="panel-body">
