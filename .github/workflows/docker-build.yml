@@ -73,7 +73,7 @@ jobs:
       - name: Build & push (plain logs)
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./actions
           # Adjust if your Dockerfile lives somewhere else
           file: ./actions/Dockerfile
           push: true
