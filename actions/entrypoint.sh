@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-log(){ echo ">$SHELL_MSG $*"; }
+log(){ echo ">$*"; }   
 
 # -------------------------------
 # 0) Resolve env with defaults
@@ -65,12 +65,10 @@ chmod 777 /proc/self/fd/1 || true
 # -------------------------------
 # 2) Container-safe rsyslog setup
 # -------------------------------
-# Precreate target log and relax perms so rsyslog can write without chown
 mkdir -p /var/log
 touch /var/log/bluecherry.log
 chmod 666 /var/log/bluecherry.log || true
 
-# Strip owner/group directives from shipped config to prevent chown errors
 RSYS_CFG="/etc/rsyslog.d/10-bluecherry.conf"
 if [ -f "$RSYS_CFG" ]; then
   sed -i -E \
@@ -79,16 +77,12 @@ if [ -f "$RSYS_CFG" ]; then
     -e 's/(owner|group)=\"?[A-Za-z0-9_.-]+\"?//g' \
     "$RSYS_CFG" || true
 fi
-
-# Replace deprecated '~' discard action with 'stop' (quiet warning)
 sed -i -E 's/^[[:space:]]*~[[:space:]]*$/stop/' /etc/rsyslog.d/*.conf 2>/dev/null || true
 
-# Ensure logs also go to docker logs
 cat >/etc/rsyslog.d/99-stdout.conf <<'EOF'
 *.*  /proc/self/fd/1
 EOF
 
-# Start rsyslog with a clean pidfile
 log "Starting rsyslogd"
 rm -f /run/rsyslogd.pid /var/run/rsyslogd.pid 2>/dev/null || true
 /usr/sbin/rsyslogd -n &
@@ -119,7 +113,7 @@ start_php_fpm() {
 }
 start_php_fpm || true
 
-# Create a compatibility symlink for configs expecting /etc/alternatives/php-fpm.sock
+# Compat symlink for configs expecting /etc/alternatives/php-fpm.sock
 for s in /run/php/php8.3-fpm.sock /run/php/php-fpm.sock; do
   if [ -S "$s" ]; then
     mkdir -p /etc/alternatives
@@ -160,11 +154,7 @@ else
   fi
 fi
 
-# -----------------------------------------
-# 4.1) DB grants for MySQL 8 (quiet backup)
-# -----------------------------------------
-# If admin creds are available, ensure the app user has backup-friendly perms
-# and uses mysql_native_password for compatibility, using your env values.
+# DB grants for MySQL 8 (quiet backups + compat auth)
 if [ -n "${MYSQL_ADMIN_LOGIN:-}" ] && [ -n "${MYSQL_ADMIN_PASSWORD:-}" ]; then
   log "Ensuring '${DB_USER}' has PROCESS/SHOW VIEW/EVENT/TRIGGER/LOCK TABLES and native auth"
   mysql -h"${DB_HOST}" -u"${MYSQL_ADMIN_LOGIN}" -p"${MYSQL_ADMIN_PASSWORD}" <<SQL || true
@@ -175,38 +165,30 @@ FLUSH PRIVILEGES;
 SQL
 fi
 
-# -----------------------------------------
-# 4.2) Optional: motion_map one-time fixes
-# -----------------------------------------
-#if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" -e "SHOW TABLES LIKE 'Devices'" | grep -q Devices; then
-#  echo "Fixing motion maps..."
-#  mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" <<'SQL' || true
-#UPDATE Devices SET motion_map = REPEAT('3', 768) WHERE protocol LIKE 'IP%' AND LENGTH(motion_map) <> 768;
-#UPDATE Devices SET motion_map = REPEAT('3', 192) WHERE driver = 'tw5864' AND LENGTH(motion_map) <> 192;
-#UPDATE Devices SET motion_map = REPEAT('3', 396) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 396;
-#UPDATE Devices SET motion_map = REPEAT('3', 330) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 330;
-#SQL
-#fi
+# Optional: motion_map fixes (guarded)
+if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" -e "SHOW TABLES LIKE 'Devices'" | grep -q Devices; then
+  echo "Fixing motion maps..."
+  mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" <<'SQL' || true
+UPDATE Devices SET motion_map = REPEAT('3', 768) WHERE protocol LIKE 'IP%' AND LENGTH(motion_map) <> 768;
+UPDATE Devices SET motion_map = REPEAT('3', 192) WHERE driver = 'tw5864' AND LENGTH(motion_map) <> 192;
+UPDATE Devices SET motion_map = REPEAT('3', 396) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 396;
+UPDATE Devices SET motion_map = REPEAT('3', 330) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 330;
+SQL
+fi
 
-# -------------------------------
-# 5) DEBUG mode (optional)
-# -------------------------------
+# DEBUG mode
 if [ "${DEBUG:-0}" = "1" ]; then
   export LD_LIBRARY_PATH=/usr/lib/bluecherry
   exec /usr/sbin/bc-server -u bluecherry -g bluecherry -d 7
 fi
 
-# -------------------------------
-# 6) Start Bluecherry server
-# -------------------------------
+# Start Bluecherry server
 log "Starting bc-server as bluecherry:bluecherry"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
 /usr/sbin/bc-server -u bluecherry -g bluecherry &
 BC_PID=$!
 
-# -------------------------------
-# 7) Graceful shutdown trap
-# -------------------------------
+# Graceful shutdown
 graceful_exit() {
   echo "> Caught signal, stopping services..."
   kill -TERM "${BC_PID:-0}" 2>/dev/null || true
@@ -222,9 +204,7 @@ graceful_exit() {
 }
 trap graceful_exit TERM INT
 
-# -------------------------------
-# 8) Watchdog loop
-# -------------------------------
+# Watchdog loop
 log "All services launched. Entering watchdog loop."
 while sleep 15; do
   kill -0 "${RSYSLOG_PID}" 2>/dev/null || { echo "rsyslogd exited"; exit 1; }
