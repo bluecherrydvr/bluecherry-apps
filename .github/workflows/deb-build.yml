@@ -22,16 +22,18 @@ jobs:
         run: |
           set -eux
           mkdir -p bluecherry-apps/releases
-          curl -fsSL http://dl.bluecherrydvr.com/pool/noble/bluecherry_3.1.14_amd64.deb -o bluecherry-apps/releases/bluecherry_3.1.14_amd64.deb
+          curl -fsSL http://dl.bluecherrydvr.com/pool/noble/bluecherry_${{ github.run_id }}.deb -o bluecherry-apps/releases/bluecherry_${{ github.run_id }}.deb
 
       - name: Get version, compute SHA256
         id: meta
         run: |
           set -eux
-          DEB="bluecherry-apps/releases/bluecherry_3.1.14_amd64.deb"
+          DEB="bluecherry-apps/releases/bluecherry_${{ github.run_id }}.deb"
           echo "deb_path=$DEB" >> $GITHUB_OUTPUT
           VER="$(dpkg-deb -f "$DEB" Version)"
+          VER_CLEAN="$(echo "$VER" | sed 's/^[0-9]*://')"
           echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "version_clean=$VER_CLEAN" >> $GITHUB_OUTPUT
           SHA="$(sha256sum "$DEB" | awk '{print $1}')"
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
           echo "$SHA  $(basename "$DEB")" > bluecherry-apps/releases/SHA256SUMS
@@ -39,12 +41,13 @@ jobs:
       - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: bc-${{ steps.meta.outputs.version }}-noble
+          tag_name: bc-${{ steps.meta.outputs.version_clean }}-noble
           name: Bluecherry Server ${{ steps.meta.outputs.version }} (Ubuntu 24.04)
           draft: false
           prerelease: false
           files: |
             ${{ steps.meta.outputs.deb_path }}
             bluecherry-apps/releases/SHA256SUMS
+          overwrite: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
