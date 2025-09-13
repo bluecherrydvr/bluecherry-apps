@@ -1,112 +1,21 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-log() { echo "$(date -Iseconds) $*"; }
-
 # -------------------------------
-# Config files
-# -------------------------------
-log "> Writing /root/.my.cnf"
-cat >/root/.my.cnf <<EOF
-[client]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-[mysqldump]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-EOF
-
-log "> Writing /etc/bluecherry.conf"
-cat >/etc/bluecherry.conf <<EOF
-# Bluecherry configuration file
-version = "1.0";
-bluecherry:
-{
-    db:
-    {
-        type = 2;
-        dbname   = "${BLUECHERRY_DB_NAME:-bluecherry}";
-        user     = "${BLUECHERRY_DB_USER:-bluecherry}";
-        password = "${BLUECHERRY_DB_PASSWORD:-bluecherry}";
-        host     = "${BLUECHERRY_DB_HOST:-bc-mysql}";
-        userhost = "${BLUECHERRY_DB_ACCESS_HOST:-%}";
-    };
-};
-EOF
-
-# -------------------------------
-# Permissions
-# -------------------------------
-install -d -m 0775 /var/lib/bluecherry/recordings
-chown bluecherry:bluecherry /var/lib/bluecherry/recordings || true
-chmod ug+rwx /var/lib/bluecherry/recordings
-
-chmod 777 /proc/self/fd/1 || true
-
-# -------------------------------
-# Ancillary services
-# -------------------------------
-log "> Starting rsyslogd"
-/usr/sbin/rsyslogd || log "WARN: rsyslogd failed (continuing)"
-
-# PHP-FPM (try 8.3 → 8.2 → 8.1)
-for v in 8.3 8.2 8.1; do
-  if command -v "php-fpm${v}" >/dev/null 2>&1; then
-    log "> Starting php-fpm${v}"
-    "php-fpm${v}" || log "WARN: php-fpm${v} failed (continuing)"
-    sock="/run/php/php${v}-fpm.sock"
-    if [ -S "$sock" ]; then
-      ln -sf "$sock" /etc/alternatives/php-fpm.sock
-    fi
-    break
-  fi
-done
-
-log "> Starting nginx"
-nginx || log "WARN: nginx failed (continuing)"
-
-# -------------------------------
-# DB prep (wait + migrate/create)
-# -------------------------------
-DB_HOST="${BLUECHERRY_DB_HOST:-bc-mysql}"
-DB_NAME="${BLUECHERRY_DB_NAME:-bluecherry}"
-DB_USER="${BLUECHERRY_DB_USER:-bluecherry}"
-DB_PASS="${BLUECHERRY_DB_PASSWORD:-bluecherry}"
-
-log "> Waiting for MySQL at $DB_HOST..."
-for i in {1..60}; do
-  mysql -h "$DB_HOST" -e "SELECT 1" >/dev/null 2>&1 && break
-  sleep 1
-done
-
-if mysql -h "$DB_HOST" -e "USE \`$DB_NAME\`" >/dev/null 2>&1; then
-  log "> DB exists → upgrading"
-  /bin/bc-database-upgrade "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" || { log "DB upgrade failed"; exit 1; }
-else
-  log "> DB missing → creating"
-  /bin/bc-database-create "$DB_NAME" "$DB_USER" "$DB_PASS" "$DB_HOST" || { log "DB create failed"; exit 1; }
-fi
-
-# -------------------------------
-# Start bc-server
+# 4) Start bc-server
 # -------------------------------
 log "> Starting bc-server"
-export LD_LIBRARY_PATH=/usr/lib/bluecherry
-/usr/sbin/bc-server -u bluecherry -g bluecherry -d &
-BC_PID=$!
 
-# -------------------------------
-# Watchdog (bc-server only)
-# -------------------------------
-log "All services launched. Entering watchdog loop."
-SLEEP="${WATCHDOG_INTERVAL:-5}"
-while sleep "$SLEEP"; do
-  if ! kill -0 "$BC_PID" 2>/dev/null; then
-    wait "$BC_PID" || true
-    EXIT=$?
-    log "bc-server exited (code=$EXIT). Exiting container."
-    exit 1
-  fi
-  pgrep -x nginx    >/dev/null || log "WARN: nginx not running"
-  pgrep -x rsyslogd >/dev/null || log "WARN: rsyslogd not running"
-done
+export LD_LIBRARY_PATH=/usr/lib/bluecherry
+
+# Build args for bc-server
+BC_ARGS=(-u "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}" -g "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}")
+
+# If DEBUG=1 → run with debug logging, stay attached
+if [ "${DEBUG:-0}" = "1" ]; then
+  log "Running bc-server in DEBUG mode (foreground, log level debug)"
+  exec /usr/sbin/bc-server "${BC_ARGS[@]}" -l d
+fi
+
+# Otherwise → normal mode, stay in foreground (no -d flag)
+# Watchdog will keep container alive, Docker will handle restart policy.
+log "Running bc-server in normal mode (foreground)"
+/usr/sbin/bc-server "${BC_ARGS[@]}" &
+BC_PID=$!
