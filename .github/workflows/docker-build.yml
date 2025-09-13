@@ -2,8 +2,8 @@ name: Build & Push Bluecherry (from .deb)
 
 on:
   push:
-    branches: [ "dev-actions", "master" ]   # adjust if needed
-    tags:     [ "v*" ]              # optional: build on tags like v3.1.14
+    branches: [ "dev-ci", "master" ]
+    tags:     [ "v*" ]
   workflow_dispatch:
     inputs:
       deb_url:
@@ -27,7 +27,6 @@ jobs:
     env:
       DEFAULT_DEB_URL: http://dl.bluecherrydvr.com/pool/noble/bluecherry_3.1.14_amd64.deb
       DEFAULT_IMAGE:   bluecherrydvr/bluecherry
-      DEFAULT_TAG:     test-3.1.14
 
     steps:
       - name: Checkout
@@ -38,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           URL="${{ inputs.deb_url || env.DEFAULT_DEB_URL }}"
-          # Tag priority: workflow input > Git tag (strip 'v') > branch > default
+          # Tag priority: workflow input > Git tag (strip 'v') > branch > 'latest' for master/main
           if [ -n "${{ inputs.image_tag }}" ]; then
             TAG="${{ inputs.image_tag }}"
           elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
@@ -50,15 +49,17 @@ jobs:
           fi
           echo "deb_url=$URL"   >> "$GITHUB_OUTPUT"
           echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Using .deb: $URL"
+          echo "Image tag:  $TAG"
 
-      # Optional: compute SHA of the .deb so Dockerfile can verify it
-      - name: Compute SHA256 of .deb (optional)
+      - name: Compute SHA256 of .deb (optional, for verification)
         id: sha
         run: |
           set -euo pipefail
           curl -fsSL "${{ steps.decide.outputs.deb_url }}" -o /tmp/bluecherry.deb
           SHA="$(sha256sum /tmp/bluecherry.deb | awk '{print $1}')"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $SHA"
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -69,12 +70,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build & push
+      - name: Build & push (plain logs)
         uses: docker/build-push-action@v6
         with:
           context: .
-          # If your Dockerfile is in a different path, set `file: ./actions/Dockerfile`
-          file: ./Dockerfile
+          # Adjust if your Dockerfile lives somewhere else
+          file: ./actions/Dockerfile
           push: true
           tags: |
             ${{ env.DEFAULT_IMAGE }}:${{ steps.decide.outputs.image_tag }}
@@ -84,3 +85,14 @@ jobs:
             BLUECHERRY_DEB_SHA256=${{ steps.sha.outputs.sha }}
           cache-from: type=registry,ref=${{ env.DEFAULT_IMAGE }}:buildcache
           cache-to:   type=registry,ref=${{ env.DEFAULT_IMAGE }}:buildcache,mode=max
+          provenance: false
+          sbom: false
+          outputs: type=image,name=${{ env.DEFAULT_IMAGE }},push-by-digest=true,name-canonical=true
+          # show full Dockerfile logs so we can see each RUN
+          build-args-from-env: false
+          no-cache: false
+          pull: true
+          # Display detailed BuildKit logs:
+          # (v6 uses global logging; we can enforce plain output via env)
+        env:
+          BUILDKIT_PROGRESS: plain
