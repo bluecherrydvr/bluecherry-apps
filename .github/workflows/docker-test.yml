@@ -4,7 +4,7 @@ name: Build & Push (Bluecherry .deb from dl.bluecherrydvr.com)
 on:
   workflow_dispatch:
   push:
-    branches: [ "docker-dev", "master" ]
+    branches: [ "dev-docker", "master" ]
 
 concurrency:
   group: docker-test
