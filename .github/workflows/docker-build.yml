@@ -2,7 +2,7 @@ name: Build & Push Bluecherry (from .deb)
 
 on:
   push:
-    branches: [ "dev-ci", "master" ]
+    branches: [ "dev-ci", "master", "main" ]
     tags:     [ "v*" ]
   workflow_dispatch:
     inputs:
@@ -10,11 +10,11 @@ on:
         description: "Override .deb URL (optional)"
         required: false
       image_tag:
-        description: "Override image tag (optional)"
+        description: "Override image tag (optional; otherwise auto)"
         required: false
 
 concurrency:
-  group: docker-build
+  group: docker-build-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -26,40 +26,59 @@ jobs:
 
     env:
       DEFAULT_DEB_URL: http://dl.bluecherrydvr.com/pool/noble/bluecherry_3.1.14_amd64.deb
-      DEFAULT_IMAGE:   bluecherrydvr/bluecherry
+      IMAGE_NAME: bluecherrydvr/bluecherry
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Decide inputs (URL & tag)
-        id: decide
+      # Decide the deb URL (input or default)
+      - name: Decide deb url
+        id: decide-deb
         run: |
           set -euo pipefail
           URL="${{ inputs.deb_url || env.DEFAULT_DEB_URL }}"
-          # Tag priority: workflow input > Git tag (strip 'v') > branch > 'latest' for master/main
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            TAG="${{ inputs.image_tag }}"
-          elif [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG="${GITHUB_REF_NAME#v}"     # v3.1.14 -> 3.1.14
-          elif [[ "${GITHUB_REF_NAME}" =~ ^(master|main)$ ]]; then
-            TAG="latest"
-          else
-            TAG="${GITHUB_REF_NAME}"
-          fi
-          echo "deb_url=$URL"   >> "$GITHUB_OUTPUT"
-          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "deb_url=${URL}" >> "$GITHUB_OUTPUT"
           echo "Using .deb: $URL"
-          echo "Image tag:  $TAG"
 
-      - name: Compute SHA256 of .deb (optional, for verification)
+      - name: Compute SHA256 of .deb
         id: sha
         run: |
           set -euo pipefail
-          curl -fsSL "${{ steps.decide.outputs.deb_url }}" -o /tmp/bluecherry.deb
+          curl -fsSL "${{ steps.decide-deb.outputs.deb_url }}" -o /tmp/bluecherry.deb
           SHA="$(sha256sum /tmp/bluecherry.deb | awk '{print $1}')"
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
           echo "SHA256: $SHA"
+
+      # Generate tags & labels automatically
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE_NAME }}
+          labels: |
+            org.opencontainers.image.title=Bluecherry
+            org.opencontainers.image.description=Dockerized Bluecherry Server from .deb
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+          tags: |
+            # explicit override from workflow_dispatch
+            type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
+            # semver tags when pushing Git tags like v3.1.14
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            # master/main -> latest
+            type=ref,event=branch,enable=${{ github.ref_name == 'master' || github.ref_name == 'main' }},value=latest
+            # dev-ci branch -> dev-ci
+            type=raw,value=dev-ci,enable=${{ github.ref_name == 'dev-ci' }}
+            # always include branch name
+            type=ref,event=branch
+            # short SHA tag (immutable)
+            type=sha,format=short
+            # date tag (immutable-ish)
+            type=raw,value={{date 'YYYYMMDD-HHmmss'}}
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -70,22 +89,46 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & push Docker image
+      - name: Build & push
+        id: build
         uses: docker/build-push-action@v6
         env:
-          BUILDKIT_PROGRESS: plain   # show full logs in CI
+          BUILDKIT_PROGRESS: plain
         with:
           context: ./actions
           file: ./actions/Dockerfile
           push: true
           pull: true
-          tags: |
-            ${{ env.DEFAULT_IMAGE }}:${{ steps.decide.outputs.image_tag }}
+          platforms: linux/amd64
+          # Use tags & labels from metadata-action
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             INSTALL_METHOD=deb
-            BLUECHERRY_DEB_URL=${{ steps.decide.outputs.deb_url }}
+            BLUECHERRY_DEB_URL=${{ steps.decide-deb.outputs.deb_url }}
             BLUECHERRY_DEB_SHA256=${{ steps.sha.outputs.sha }}
-          cache-from: type=registry,ref=${{ env.DEFAULT_IMAGE }}:buildcache
-          cache-to:   type=registry,ref=${{ env.DEFAULT_IMAGE }}:buildcache,mode=max
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to:   type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
           provenance: false
           sbom: false
+
+      - name: Show pushed digest(s)
+        run: |
+          echo "Digests:"
+          echo "${{ steps.build.outputs.digest }}"
+          echo "Tags:"
+          echo "${{ steps.meta.outputs.tags }}"
+
+      - name: Job summary
+        run: |
+          {
+            echo "## Bluecherry Image Pushed"
+            echo ""
+            echo "- **Image**: \`${{ env.IMAGE_NAME }}\`"
+            echo "- **Digest**: \`${{ steps.build.outputs.digest }}\`"
+            echo "- **Tags:**"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo "- **.deb SHA256**: \`${{ steps.sha.outputs.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
