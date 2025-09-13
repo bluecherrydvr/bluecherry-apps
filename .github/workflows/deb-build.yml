@@ -1,0 +1,53 @@
+name: Build .deb (Ubuntu 24.04) and Release
+on:
+  push:
+    branches: [ main, docker-actions-v2 ]
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git build-essential autoconf automake libtool debhelper ccache \
+            bison flex yasm cmake libcurl4-openssl-dev \
+            libbsd-dev libopencv-dev libudev-dev libva-dev libmysqlclient-dev
+
+      - name: Download pre-built .deb for testing
+        run: |
+          set -eux
+          mkdir -p bluecherry-apps/releases
+          curl -fsSL http://dl.bluecherrydvr.com/pool/noble/bluecherry_${{ github.run_id }}.deb -o bluecherry-apps/releases/bluecherry_${{ github.run_id }}.deb
+
+      - name: Get version, compute SHA256
+        id: meta
+        run: |
+          set -eux
+          DEB="bluecherry-apps/releases/bluecherry_${{ github.run_id }}.deb"
+          echo "deb_path=$DEB" >> $GITHUB_OUTPUT
+          VER="$(dpkg-deb -f "$DEB" Version)"
+          VER_CLEAN="$(echo "$VER" | sed 's/^[0-9]*://')"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "version_clean=$VER_CLEAN" >> $GITHUB_OUTPUT
+          SHA="$(sha256sum "$DEB" | awk '{print $1}')"
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          echo "$SHA  $(basename "$DEB")" > bluecherry-apps/releases/SHA256SUMS
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: bc-${{ steps.meta.outputs.version_clean }}-noble
+          name: Bluecherry Server ${{ steps.meta.outputs.version }} (Ubuntu 24.04)
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.meta.outputs.deb_path }}
+            bluecherry-apps/releases/SHA256SUMS
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
