@@ -1,11 +1,67 @@
-# --- Container-safe rsyslog config for Bluecherry ---
+#!/bin/bash
+set -euo pipefail
 
-# Precreate log file and make it world-writable (so omfile won't fail)
+# -------------------------------
+# 0) Helper: echo with prefix
+# -------------------------------
+log() { echo ">" "$@"; }
+
+# -------------------------------
+# 1) Write helper configs from env
+# -------------------------------
+log "Writing /root/.my.cnf"
+cat >/root/.my.cnf <<EOF
+[client]
+user=${MYSQL_ADMIN_LOGIN:-root}
+password=${MYSQL_ADMIN_PASSWORD:-root}
+[mysql]
+user=${MYSQL_ADMIN_LOGIN:-root}
+password=${MYSQL_ADMIN_PASSWORD:-root}
+[mysqldump]
+user=${MYSQL_ADMIN_LOGIN:-root}
+password=${MYSQL_ADMIN_PASSWORD:-root}
+[mysqldiff]
+user=${MYSQL_ADMIN_LOGIN:-root}
+password=${MYSQL_ADMIN_PASSWORD:-root}
+EOF
+
+log "Writing /etc/bluecherry.conf"
+cat >/etc/bluecherry.conf <<EOF
+# Bluecherry configuration file
+version = "1.0";
+bluecherry:
+{
+    db:
+    {
+        # 0 = sqlite, 1 = pgsql, 2 = mysql
+        type = 2;
+        dbname   = "${BLUECHERRY_DB_NAME:-bluecherry}";
+        user     = "${BLUECHERRY_DB_USER:-bluecherry}";
+        password = "${BLUECHERRY_DB_PASSWORD:-bluecherry}";
+        host     = "${BLUECHERRY_DB_HOST:-127.0.0.1}";
+        userhost = "${BLUECHERRY_DB_ACCESS_HOST:-%}";
+    };
+};
+EOF
+
+# Runtime dirs & recordings
+log "Fixing permissions on /var/lib/bluecherry/recordings"
+mkdir -p /var/lib/bluecherry/recordings /var/run/bluecherry
+chown -R bluecherry:bluecherry /var/lib/bluecherry /var/run/bluecherry || true
+chmod ug+rwx /var/lib/bluecherry/recordings || true
+
+# Route app logs to STDOUT if needed
+chmod 777 /proc/self/fd/1 || true
+
+# -------------------------------
+# 2) Container-safe rsyslog setup
+# -------------------------------
+# Precreate target log and relax perms so rsyslog can write without chown
 mkdir -p /var/log
 touch /var/log/bluecherry.log
 chmod 666 /var/log/bluecherry.log || true
 
-# Patch vendor config to strip owner/group directives
+# Strip owner/group directives from shipped config to prevent chown errors
 RSYS_CFG="/etc/rsyslog.d/10-bluecherry.conf"
 if [ -f "$RSYS_CFG" ]; then
   sed -i -E \
@@ -15,42 +71,33 @@ if [ -f "$RSYS_CFG" ]; then
     "$RSYS_CFG" || true
 fi
 
-# Ensure a minimal stdout mirror exists so logs also flow to docker logs
+# Ensure logs also go to docker logs
 cat >/etc/rsyslog.d/99-stdout.conf <<'EOF'
 *.*  /proc/self/fd/1
 EOF
 
-# Clear any stale pidfile
+# Start rsyslog in foreground (backgrounded by us) with a clean pidfile
+log "Starting rsyslogd"
 rm -f /run/rsyslogd.pid /var/run/rsyslogd.pid 2>/dev/null || true
-
-# Runtime dirs for bluecherry
-mkdir -p /var/run/bluecherry /var/lib/bluecherry/recordings
-chown -R bluecherry:bluecherry /var/run/bluecherry /var/lib/bluecherry || true
-chmod ug+rwx /var/lib/bluecherry/recordings || true
-
-# -----------------------------
-# Start rsyslog (container-safe)
-# -----------------------------
-echo "> Starting rsyslogd"
 /usr/sbin/rsyslogd -n &
 RSYSLOG_PID=$!
 
-# -----------------------------
-# PHP-FPM (auto-detect version)
-# -----------------------------
-echo "> Starting php-fpm"
+# -------------------------------
+# 3) PHP-FPM (auto-detect) + nginx
+# -------------------------------
+log "Starting php-fpm"
 mkdir -p /run/php
 start_php_fpm() {
   for v in 8.3 8.2 8.1 7.4; do
     if command -v "php-fpm${v}" >/dev/null 2>&1; then
-      echo ">> php-fpm${v} -F"
+      log ">> php-fpm${v} -F"
       "php-fpm${v}" -F &
       echo $! > /run/php/php-fpm.pid
       return 0
     fi
   done
   if command -v php-fpm >/dev/null 2>&1; then
-    echo ">> php-fpm -F"
+    log ">> php-fpm -F"
     php-fpm -F &
     echo $! > /run/php/php-fpm.pid
     return 0
@@ -60,62 +107,69 @@ start_php_fpm() {
 }
 start_php_fpm || true
 
-# -----------
-# Start nginx
-# -----------
-echo "> Starting nginx"
+log "Starting nginx"
 nginx -g 'daemon off;' &
 NGINX_PID=$!
 
-# ------------------------------------------
-# DB wait + conditional create/upgrade logic
-# ------------------------------------------
+# -------------------------------
+# 4) DB wait + create/upgrade
+# -------------------------------
 DB_HOST="${BLUECHERRY_DB_HOST:-127.0.0.1}"
 DB_NAME="${BLUECHERRY_DB_NAME:-bluecherry}"
 DB_USER="${BLUECHERRY_DB_USER:-bluecherry}"
 DB_PASS="${BLUECHERRY_DB_PASSWORD:-bluecherry}"
 
-# Optionally wait for DB
 if [ "${WAIT_FOR_DB:-1}" = "1" ]; then
-  echo "> Waiting for MySQL at ${DB_HOST}..."
+  log "Waiting for MySQL at ${DB_HOST}..."
   for i in {1..60}; do
     if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -e "SELECT 1" >/dev/null 2>&1; then
-      echo "> DB is up."
+      log "DB is up."
       break
     fi
     sleep 2
   done
 fi
 
-# Decide whether to create or upgrade
-echo "> Checking if DB '${DB_NAME}' exists..."
+log "Checking if DB '${DB_NAME}' exists…"
 if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -e "SHOW DATABASES LIKE '${DB_NAME}';" 2>/dev/null | grep -q "${DB_NAME}"; then
-  echo "> DB exists -> skipping create; running upgrade"
+  log "DB exists → running upgrade"
   if command -v bc-database-upgrade >/dev/null 2>&1; then
-    # Note: upgrade may try to mysqldump with PROCESS priv; harmless warning if not root.
+    # may warn about PROCESS privilege if non-admin; that's OK
     bc-database-upgrade || true
   fi
 else
-  echo "> DB missing -> running create"
+  log "DB missing → running create"
   if command -v bc-database-create >/dev/null 2>&1; then
     bc-database-create || true
   fi
 fi
 
-# --------------------------
-# Start Bluecherry in fg/bg
-# --------------------------
-echo "> Starting bc-server as bluecherry:bluecherry"
+# -------------------------------
+# 5) Start Bluecherry server
+# -------------------------------
+log "Starting bc-server as bluecherry:bluecherry"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
 /usr/sbin/bc-server -u bluecherry -g bluecherry &
 BC_PID=$!
 
-# --------------------------
-# Watchdog
-# --------------------------
-echo "> All services launched. Entering watchdog loop."
+# -------------------------------
+# 6) Watchdog loop
+# -------------------------------
+log "All services launched. Entering watchdog loop."
 while sleep 15; do
-  kill -0 "${RSYSLOG_PID}" 2>/dev/null || { echo "rsyslogd exited"; exit 1; }
-  pgrep -x nginx >/dev/null || { echo "nginx exited"; exit 1; }
-  kill -0 "${BC_PID}" 2>/dev/null || { echo "bc-server exited"; exit 1; }
+  # rsyslogd must be running
+  if ! kill -0 "${RSYSLOG_PID}" 2>/dev/null; then
+    echo "rsyslogd exited"
+    exit 1
+  fi
+  # nginx must be running (check master process name)
+  if ! pgrep -x nginx >/dev/null; then
+    echo "nginx exited"
+    exit 1
+  fi
+  # bc-server must be running
+  if ! kill -0 "${BC_PID}" 2>/dev/null; then
+    echo "bc-server exited"
+    exit 1
+  fi
 done
