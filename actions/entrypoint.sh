@@ -1,7 +1,27 @@
-# Logging (make sure file exists and is writable)
+# --- Container-safe rsyslog config for Bluecherry ---
+
+# Precreate log file and make it world-writable (so omfile won't fail)
 mkdir -p /var/log
 touch /var/log/bluecherry.log
 chmod 666 /var/log/bluecherry.log || true
+
+# Patch vendor config to strip owner/group directives
+RSYS_CFG="/etc/rsyslog.d/10-bluecherry.conf"
+if [ -f "$RSYS_CFG" ]; then
+  sed -i -E \
+    -e 's/^[[:space:]]*\$?FileOwner.*$//g' \
+    -e 's/^[[:space:]]*\$?FileGroup.*$//g' \
+    -e 's/(owner|group)=\"?[A-Za-z0-9_.-]+\"?//g' \
+    "$RSYS_CFG" || true
+fi
+
+# Ensure a minimal stdout mirror exists so logs also flow to docker logs
+cat >/etc/rsyslog.d/99-stdout.conf <<'EOF'
+*.*  /proc/self/fd/1
+EOF
+
+# Clear any stale pidfile
+rm -f /run/rsyslogd.pid /var/run/rsyslogd.pid 2>/dev/null || true
 
 # Runtime dirs for bluecherry
 mkdir -p /var/run/bluecherry /var/lib/bluecherry/recordings
@@ -12,7 +32,6 @@ chmod ug+rwx /var/lib/bluecherry/recordings || true
 # Start rsyslog (container-safe)
 # -----------------------------
 echo "> Starting rsyslogd"
-rm -f /run/rsyslogd.pid /var/run/rsyslogd.pid 2>/dev/null || true
 /usr/sbin/rsyslogd -n &
 RSYSLOG_PID=$!
 
