@@ -70,13 +70,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build & push (plain logs)
+      - name: Build & push Docker image
         uses: docker/build-push-action@v6
+        env:
+          BUILDKIT_PROGRESS: plain   # show full logs in CI
         with:
           context: ./actions
-          # Adjust if your Dockerfile lives somewhere else
           file: ./actions/Dockerfile
           push: true
+          pull: true
           tags: |
             ${{ env.DEFAULT_IMAGE }}:${{ steps.decide.outputs.image_tag }}
           build-args: |
@@ -87,12 +89,3 @@ jobs:
           cache-to:   type=registry,ref=${{ env.DEFAULT_IMAGE }}:buildcache,mode=max
           provenance: false
           sbom: false
-          outputs: type=image,name=${{ env.DEFAULT_IMAGE }},push-by-digest=true,name-canonical=true
-          # show full Dockerfile logs so we can see each RUN
-          build-args-from-env: false
-          no-cache: false
-          pull: true
-          # Display detailed BuildKit logs:
-          # (v6 uses global logging; we can enforce plain output via env)
-        env:
-          BUILDKIT_PROGRESS: plain
