@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-log(){ echo ">$*"; }   
+log(){ echo ">$*"; }
 
 # -------------------------------
 # 0) Resolve env with defaults
@@ -69,6 +69,7 @@ mkdir -p /var/log
 touch /var/log/bluecherry.log
 chmod 666 /var/log/bluecherry.log || true
 
+# Strip unsafe owner/group directives (avoid chown in container)
 RSYS_CFG="/etc/rsyslog.d/10-bluecherry.conf"
 if [ -f "$RSYS_CFG" ]; then
   sed -i -E \
@@ -77,8 +78,10 @@ if [ -f "$RSYS_CFG" ]; then
     -e 's/(owner|group)=\"?[A-Za-z0-9_.-]+\"?//g' \
     "$RSYS_CFG" || true
 fi
+# Replace deprecated discard operator
 sed -i -E 's/^[[:space:]]*~[[:space:]]*$/stop/' /etc/rsyslog.d/*.conf 2>/dev/null || true
 
+# Mirror to docker logs
 cat >/etc/rsyslog.d/99-stdout.conf <<'EOF'
 *.*  /proc/self/fd/1
 EOF
@@ -113,15 +116,22 @@ start_php_fpm() {
 }
 start_php_fpm || true
 
-# Compat symlink for configs expecting /etc/alternatives/php-fpm.sock
-for s in /run/php/php8.3-fpm.sock /run/php/php-fpm.sock; do
-  if [ -S "$s" ]; then
-    mkdir -p /etc/alternatives
-    ln -sf "$s" /etc/alternatives/php-fpm.sock
-    echo "Linked $s -> /etc/alternatives/php-fpm.sock"
-    break
-  fi
+# Wait for php-fpm socket, then create compat symlink nginx expects
+PHP_SOCK=""
+for i in {1..60}; do
+  for s in /run/php/php8.3-fpm.sock /run/php/php-fpm.sock; do
+    [ -S "$s" ] && PHP_SOCK="$s" && break
+  done
+  [ -n "$PHP_SOCK" ] && break
+  sleep 0.5
 done
+if [ -n "$PHP_SOCK" ]; then
+  mkdir -p /etc/alternatives
+  ln -sf "$PHP_SOCK" /etc/alternatives/php-fpm.sock
+  echo "Linked $PHP_SOCK -> /etc/alternatives/php-fpm.sock"
+else
+  echo "WARN: php-fpm socket not found; nginx may 502."
+fi
 
 log "Starting nginx"
 nginx -g 'daemon off;' &
@@ -165,30 +175,25 @@ FLUSH PRIVILEGES;
 SQL
 fi
 
-# Optional: motion_map fixes (guarded)
-if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" -e "SHOW TABLES LIKE 'Devices'" | grep -q Devices; then
-  echo "Fixing motion maps..."
-  mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -D"${DB_NAME}" <<'SQL' || true
-UPDATE Devices SET motion_map = REPEAT('3', 768) WHERE protocol LIKE 'IP%' AND LENGTH(motion_map) <> 768;
-UPDATE Devices SET motion_map = REPEAT('3', 192) WHERE driver = 'tw5864' AND LENGTH(motion_map) <> 192;
-UPDATE Devices SET motion_map = REPEAT('3', 396) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 396;
-UPDATE Devices SET motion_map = REPEAT('3', 330) WHERE driver LIKE 'solo6%' AND LENGTH(motion_map) <> 330;
-SQL
-fi
-
-# DEBUG mode
+# -------------------------------
+# 5) DEBUG mode (optional)
+# -------------------------------
 if [ "${DEBUG:-0}" = "1" ]; then
   export LD_LIBRARY_PATH=/usr/lib/bluecherry
   exec /usr/sbin/bc-server -u bluecherry -g bluecherry -d 7
 fi
 
-# Start Bluecherry server
+# -------------------------------
+# 6) Start Bluecherry server
+# -------------------------------
 log "Starting bc-server as bluecherry:bluecherry"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
 /usr/sbin/bc-server -u bluecherry -g bluecherry &
 BC_PID=$!
 
-# Graceful shutdown
+# -------------------------------
+# 7) Graceful shutdown trap
+# -------------------------------
 graceful_exit() {
   echo "> Caught signal, stopping services..."
   kill -TERM "${BC_PID:-0}" 2>/dev/null || true
@@ -204,7 +209,9 @@ graceful_exit() {
 }
 trap graceful_exit TERM INT
 
-# Watchdog loop
+# -------------------------------
+# 8) Watchdog loop
+# -------------------------------
 log "All services launched. Entering watchdog loop."
 while sleep 15; do
   kill -0 "${RSYSLOG_PID}" 2>/dev/null || { echo "rsyslogd exited"; exit 1; }
