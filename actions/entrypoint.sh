@@ -1,63 +1,24 @@
-#!/bin/bash
-set -euo pipefail
+# Logging (make sure file exists and is writable)
+mkdir -p /var/log
+touch /var/log/bluecherry.log
+chmod 666 /var/log/bluecherry.log || true
 
-# -------------------------------
-# 1) Write helper configs from env
-# -------------------------------
-echo "> Writing /root/.my.cnf"
-cat >/root/.my.cnf <<EOF
-[client]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-[mysql]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-[mysqldump]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-[mysqldiff]
-user=${MYSQL_ADMIN_LOGIN:-root}
-password=${MYSQL_ADMIN_PASSWORD:-root}
-EOF
-
-echo "> Writing /etc/bluecherry.conf"
-cat >/etc/bluecherry.conf <<EOF
-# Bluecherry configuration file
-# Used to be sure we don't use configurations not suitable for us
-version = "1.0";
-bluecherry:
-{
-    db:
-    {
-        # 0 = sqlite, 1 = pgsql, 2 = mysql
-        type = 2;
-        dbname = "${BLUECHERRY_DB_NAME:-bluecherry}";
-        user = "${BLUECHERRY_DB_USER:-bluecherry}";
-        password = "${BLUECHERRY_DB_PASSWORD:-bluecherry}";
-        host = "${BLUECHERRY_DB_HOST:-127.0.0.1}";
-        userhost = "${BLUECHERRY_DB_ACCESS_HOST:-%}";
-    };
-};
-EOF
-
-echo "> Fixing permissions on /var/lib/bluecherry/recordings"
-mkdir -p /var/lib/bluecherry/recordings
-chown bluecherry:bluecherry /var/lib/bluecherry/recordings || true
+# Runtime dirs for bluecherry
+mkdir -p /var/run/bluecherry /var/lib/bluecherry/recordings
+chown -R bluecherry:bluecherry /var/run/bluecherry /var/lib/bluecherry || true
 chmod ug+rwx /var/lib/bluecherry/recordings || true
 
-# Route app logs to STDOUT (as your rsyslog config expects)
-chmod 777 /proc/self/fd/1 || true
-
-# ------------------------------------
-# 2) Start services in container style
-# ------------------------------------
+# -----------------------------
+# Start rsyslog (container-safe)
+# -----------------------------
 echo "> Starting rsyslogd"
-# Run in foreground but background the process (so we can keep a watch loop)
-# -n = no fork
+rm -f /run/rsyslogd.pid /var/run/rsyslogd.pid 2>/dev/null || true
 /usr/sbin/rsyslogd -n &
 RSYSLOG_PID=$!
 
-# PHP-FPM (auto-detect version; Ubuntu 24.04 ships 8.3)
+# -----------------------------
+# PHP-FPM (auto-detect version)
+# -----------------------------
 echo "> Starting php-fpm"
 mkdir -p /run/php
 start_php_fpm() {
@@ -75,22 +36,31 @@ start_php_fpm() {
     echo $! > /run/php/php-fpm.pid
     return 0
   fi
-  echo "WARN: No php-fpm binary found; continuing without it."
+  echo "WARN: No php-fpm binary found; continuing."
   return 1
 }
 start_php_fpm || true
 
-# NGINX (we use nginx only; no apache)
-/usr/sbin/nginx -g 'daemon off;' &
+# -----------
+# Start nginx
+# -----------
+echo "> Starting nginx"
+nginx -g 'daemon off;' &
 NGINX_PID=$!
 
-# ------------------------------------------------
-# 3) (Optional) Wait for DB and run schema actions
-# ------------------------------------------------
+# ------------------------------------------
+# DB wait + conditional create/upgrade logic
+# ------------------------------------------
+DB_HOST="${BLUECHERRY_DB_HOST:-127.0.0.1}"
+DB_NAME="${BLUECHERRY_DB_NAME:-bluecherry}"
+DB_USER="${BLUECHERRY_DB_USER:-bluecherry}"
+DB_PASS="${BLUECHERRY_DB_PASSWORD:-bluecherry}"
+
+# Optionally wait for DB
 if [ "${WAIT_FOR_DB:-1}" = "1" ]; then
-  echo "> Waiting for MySQL at ${BLUECHERRY_DB_HOST:-127.0.0.1}..."
+  echo "> Waiting for MySQL at ${DB_HOST}..."
   for i in {1..60}; do
-    if mysql -h"${BLUECHERRY_DB_HOST:-127.0.0.1}" -u"${BLUECHERRY_DB_USER:-bluecherry}" -p"${BLUECHERRY_DB_PASSWORD:-bluecherry}" -e "SELECT 1" >/dev/null 2>&1; then
+    if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -e "SELECT 1" >/dev/null 2>&1; then
       echo "> DB is up."
       break
     fi
@@ -98,31 +68,35 @@ if [ "${WAIT_FOR_DB:-1}" = "1" ]; then
   done
 fi
 
-# Run create/upgrade if available; ignore errors if already initialized
-if command -v bc-database-create >/dev/null 2>&1; then
-  echo "> bc-database-create (ignore errors if already created)"
-  bc-database-create || true
-fi
-if command -v bc-database-upgrade >/dev/null 2>&1; then
-  echo "> bc-database-upgrade (ignore errors if already up-to-date)"
-  bc-database-upgrade || true
+# Decide whether to create or upgrade
+echo "> Checking if DB '${DB_NAME}' exists..."
+if mysql -h"${DB_HOST}" -u"${DB_USER}" -p"${DB_PASS}" -e "SHOW DATABASES LIKE '${DB_NAME}';" 2>/dev/null | grep -q "${DB_NAME}"; then
+  echo "> DB exists -> skipping create; running upgrade"
+  if command -v bc-database-upgrade >/dev/null 2>&1; then
+    # Note: upgrade may try to mysqldump with PROCESS priv; harmless warning if not root.
+    bc-database-upgrade || true
+  fi
+else
+  echo "> DB missing -> running create"
+  if command -v bc-database-create >/dev/null 2>&1; then
+    bc-database-create || true
+  fi
 fi
 
-# --------------------------------
-# 4) Start Bluecherry server
-# --------------------------------
+# --------------------------
+# Start Bluecherry in fg/bg
+# --------------------------
 echo "> Starting bc-server as bluecherry:bluecherry"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
 /usr/sbin/bc-server -u bluecherry -g bluecherry &
 BC_PID=$!
 
-# --------------------------------
-# 5) Lightweight process watchdog
-# --------------------------------
+# --------------------------
+# Watchdog
+# --------------------------
 echo "> All services launched. Entering watchdog loop."
 while sleep 15; do
   kill -0 "${RSYSLOG_PID}" 2>/dev/null || { echo "rsyslogd exited"; exit 1; }
-  # nginx may respawn masters; check by name rather than fixed PID
   pgrep -x nginx >/dev/null || { echo "nginx exited"; exit 1; }
   kill -0 "${BC_PID}" 2>/dev/null || { echo "bc-server exited"; exit 1; }
 done
