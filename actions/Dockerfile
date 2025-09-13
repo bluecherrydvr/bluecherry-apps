@@ -105,11 +105,20 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends "$DEB_PATH"; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
-# Runtime user & recordings dir
-RUN groupadd -g $BLUECHERRY_LINUX_GROUP_ID -f $BLUECHERRY_LINUX_GROUP_NAME && \
-    useradd -m -d /var/lib/bluecherry -u $BLUECHERRY_LINUX_USER_ID -g $BLUECHERRY_LINUX_GROUP_NAME \
-      -G audio,video -s /bin/bash $BLUECHERRY_LINUX_USER_NAME || true && \
-    mkdir -p /recordings && chown bluecherry:bluecherry /recordings && chmod 775 /recordings
+# ---- Runtime user & recordings dir (idempotent) ----
+RUN set -eux; \
+    # Ensure group exists (do NOT force GID; package may have created it)
+    if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
+      groupadd -f "$BLUECHERRY_LINUX_GROUP_NAME"; \
+    fi; \
+    # Ensure user exists (do NOT force UID; package may have created it)
+    if ! id -u "$BLUECHERRY_LINUX_USER_NAME" >/dev/null 2>&1; then \
+      useradd -m -d /var/lib/bluecherry -g "$BLUECHERRY_LINUX_GROUP_NAME" \
+        -G audio,video -s /bin/bash "$BLUECHERRY_LINUX_USER_NAME"; \
+    fi; \
+    # Create recordings dir and try to assign ownership (ok if user already exists)
+    install -d -m 0775 /recordings; \
+    chown "$BLUECHERRY_LINUX_USER_NAME":"$BLUECHERRY_LINUX_GROUP_NAME" /recordings || true
 
 # Cleanup installer-time secrets
 RUN rm -f /root/.my.cnf /etc/bluecherry.conf || true
