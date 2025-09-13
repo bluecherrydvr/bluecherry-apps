@@ -51,16 +51,14 @@ chmod 777 /proc/self/fd/1 || true
 log "> Starting rsyslogd"
 /usr/sbin/rsyslogd || log "WARN: rsyslogd failed (continuing)"
 
-# PHP-FPM (try 8.3 → 8.2 → 8.1), **daemonized** (no -F)
+# PHP-FPM (try 8.3 → 8.2 → 8.1), daemonized (no -F)
 PHPFPM_STARTED=0
 for v in 8.3 8.2 8.1; do
   if command -v "php-fpm${v}" >/dev/null 2>&1; then
     log "> Starting php-fpm${v}"
     if "php-fpm${v}"; then
       sock="/run/php/php${v}-fpm.sock"
-      if [ -S "$sock" ]; then
-        ln -sf "$sock" /etc/alternatives/php-fpm.sock || true
-      fi
+      [ -S "$sock" ] && ln -sf "$sock" /etc/alternatives/php-fpm.sock || true
       PHPFPM_STARTED=1
     else
       log "WARN: php-fpm${v} failed (continuing)"
@@ -113,18 +111,18 @@ log "> Ensuring '${DB_USER}' has PROCESS/SHOW VIEW/EVENT/TRIGGER/LOCK TABLES and
 } || log 'WARN: grant/alter failed; continuing'
 
 # -------------------------------
-# 5) Start bc-server
+# 5) Start bc-server  (IMPORTANT: use -s so it does NOT background)
 # -------------------------------
 log "> Starting bc-server"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
-BC_ARGS=(-u "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}" -g "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}")
+BC_ARGS=(-u "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}" -g "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" -s)
 
 if [ "${DEBUG:-0}" = "1" ]; then
-  log "Running bc-server in DEBUG mode (log level debug)"
+  log "Running bc-server in DEBUG mode (foreground, log level debug)"
   exec /usr/sbin/bc-server "${BC_ARGS[@]}" -l d
 fi
 
-# Normal mode: foreground process started in background, watchdog monitors it
+# Normal mode: keep script control, watchdog monitors actual bc-server PID
 /usr/sbin/bc-server "${BC_ARGS[@]}" &
 BC_PID=$!
 
@@ -136,7 +134,6 @@ log "All services launched. Entering watchdog loop."
 # Allow disabling watchdog for deep debugging
 if [ "${DISABLE_WATCHDOG:-0}" = "1" ]; then
   log "Watchdog disabled (DISABLE_WATCHDOG=1)."
-  # Keep container alive
   tail -f /dev/null
 fi
 
