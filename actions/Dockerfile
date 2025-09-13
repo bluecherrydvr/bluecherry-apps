@@ -33,7 +33,7 @@ ARG BLUECHERRY_LINUX_GROUP_ID=1000
 ARG BLUECHERRY_LINUX_USER_NAME=bluecherry
 ARG BLUECHERRY_LINUX_USER_ID=1000
 
-# ---- Bring in your helper scripts (these paths are relative to the build context) ----
+# ---- Bring in your helper scripts (paths relative to build context) ----
 COPY entrypoint.sh /entrypoint.sh
 COPY bc-database-create.sh /bin/bc-database-create
 COPY bc-database-upgrade.sh /bin/bc-database-upgrade
@@ -85,6 +85,14 @@ RUN sed -i '/imklog/s/^/#/' /etc/rsyslog.conf || true
 
 # Some installers reference $host for DB connectivity checks; set benign default
 ENV host=$BLUECHERRY_DB_HOST
+
+# ---- Prepare environment so postinst doesn't fail in containers ----
+# 1) Create /etc/sudoers.d expected by package postinstall (for www-data sudoers fragment)
+# 2) Block service restarts during build to avoid trigger errors
+RUN set -eux; \
+    install -d -m 0750 -o root -g root /etc/sudoers.d; \
+    printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d; \
+    chmod +x /usr/sbin/policy-rc.d
 
 # Install the (patched) deb into the image
 RUN set -eux; \
