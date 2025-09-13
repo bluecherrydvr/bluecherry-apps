@@ -1,7 +1,7 @@
 name: Build .deb (Ubuntu 24.04) and Release
 on:
   push:
-    branches: [ main ]
+    branches: [ main, docker-actions-v2 ]
   workflow_dispatch:
 
 jobs:
