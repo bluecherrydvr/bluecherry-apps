@@ -1,0 +1,43 @@
+# .github/workflows/docker-test.yml
+name: Build & Push (Bluecherry .deb from dl.bluecherrydvr.com)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "docker-dev", "master" ]
+
+concurrency:
+  group: docker-test
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & push (no SHA)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            bluecherrydvr/bluecherry:test-3.1.14
+          build-args: |
+            INSTALL_METHOD=deb
+            BLUECHERRY_DEB_URL=http://dl.bluecherrydvr.com/pool/noble/bluecherry_3.1.14_amd64.deb
+          cache-from: type=registry,ref=bluecherrydvr/bluecherry:buildcache
+          cache-to: type=registry,ref=bluecherrydvr/bluecherry:buildcache,mode=max
