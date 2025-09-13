@@ -59,7 +59,7 @@ RUN if [ "$INSTALL_METHOD" = "deb" ] && [ -z "$BLUECHERRY_DEB_URL" ]; then \
       echo "ERROR: INSTALL_METHOD=deb but BLUECHERRY_DEB_URL is empty"; exit 2; \
     fi
 
-# Fetch, (optionally) verify, and patch the .deb so it doesn't try DB ops during build
+# Fetch, (optionally) verify, and PATCH the .deb so maintainer scripts are NO-OP during build
 RUN if [ "$INSTALL_METHOD" = "deb" ] && [ -n "$BLUECHERRY_DEB_URL" ]; then \
       set -eux; \
       echo "Fetching .deb from: $BLUECHERRY_DEB_URL"; \
@@ -68,14 +68,17 @@ RUN if [ "$INSTALL_METHOD" = "deb" ] && [ -n "$BLUECHERRY_DEB_URL" ]; then \
       if [ -n "$BLUECHERRY_DEB_SHA256" ]; then \
         echo "$BLUECHERRY_DEB_SHA256  /root/releases/bluecherry.deb" | sha256sum -c -; \
       fi; \
-      echo "Patching .deb to skip DB creation during image build (if present)"; \
+      echo "Repacking .deb to stub maintainer scripts (preinst/postinst/prerm/postrm)"; \
       mkdir -p /tmp/deb-patch && cd /tmp/deb-patch; \
       dpkg-deb -x /root/releases/bluecherry.deb .; \
       dpkg-deb -e /root/releases/bluecherry.deb DEBIAN/; \
-      # Comment out any 'new_db' calls in postinstall script if it exists
-      if [ -f ./usr/share/bluecherry/postinstall.sh ]; then \
-        sed -i '/bc_db_tool.sh[[:space:]]\+new_db/ s/^/# Docker build skip: /' ./usr/share/bluecherry/postinstall.sh || true; \
-      fi; \
+      # Make upstream postinstall logic inert at build-time: stub all maintainer scripts if present
+      for s in postinst preinst prerm postrm; do \
+        if [ -f "DEBIAN/$s" ]; then \
+          printf '#!/bin/sh\nset -e\nexit 0\n' > "DEBIAN/$s"; \
+          chmod 0755 "DEBIAN/$s"; \
+        fi; \
+      done; \
       dpkg-deb -b . /root/releases/bluecherry.deb; \
       cd /root && rm -rf /tmp/deb-patch; \
     fi
@@ -86,9 +89,9 @@ RUN sed -i '/imklog/s/^/#/' /etc/rsyslog.conf || true
 # Some installers reference $host for DB connectivity checks; set benign default
 ENV host=$BLUECHERRY_DB_HOST
 
-# ---- Prepare environment so postinst doesn't fail in containers ----
-# 1) Create /etc/sudoers.d expected by package postinstall (for www-data sudoers fragment)
-# 2) Block service restarts during build to avoid trigger errors
+# Prepare environment so install won't fail:
+# 1) Create /etc/sudoers.d expected by package postinstall fragments
+# 2) Block service restarts during build
 RUN set -eux; \
     install -d -m 0750 -o root -g root /etc/sudoers.d; \
     printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d; \
@@ -98,8 +101,6 @@ RUN set -eux; \
 RUN set -eux; \
     DEB_PATH="/root/releases/bluecherry.deb"; \
     test -f "$DEB_PATH"; \
-    # If the package's postinst tries to fiddle with php-fpm alternatives, neutralize it
-    sed -i 's|update-alternatives --install /run/php/php-fpm.sock php-fpm.sock .*|true|' /usr/share/bluecherry/postinst || true; \
     apt-get update; \
     apt-get install -y --no-install-recommends "$DEB_PATH"; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
@@ -117,7 +118,7 @@ RUN rm -f /root/.my.cnf /etc/bluecherry.conf || true
 RUN chmod +x /entrypoint.sh /bin/bc-database-create /bin/bc-database-upgrade
 EXPOSE 7001/tcp 7002/tcp
 
-# Simple healthcheck: confirm main server process is alive
+# Simple healthcheck: confirm main server process is alive (adjust binary name if different)
 HEALTHCHECK --interval=30s --timeout=5s --retries=10 CMD pgrep -x bc-server >/dev/null || exit 1
 
 CMD ["/entrypoint.sh"]
