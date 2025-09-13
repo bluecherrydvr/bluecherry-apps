@@ -213,8 +213,20 @@ trap graceful_exit TERM INT
 # 8) Watchdog loop
 # -------------------------------
 log "All services launched. Entering watchdog loop."
-while sleep 15; do
-  kill -0 "${RSYSLOG_PID}" 2>/dev/null || { echo "rsyslogd exited"; exit 1; }
-  pgrep -x nginx >/dev/null || { echo "nginx exited"; exit 1; }
-  kill -0 "${BC_PID}" 2>/dev/null || { echo "bc-server exited"; exit 1; }
+
+# --- Watchdog: only fail the container if bc-server dies ---
+SLEEP="${WATCHDOG_INTERVAL:-5}"
+
+while sleep "$SLEEP"; do
+  # Prefer the PID we started; fall back to a command match if not set.
+  if [ -n "${BC_PID:-}" ]; then
+    kill -0 "$BC_PID" 2>/dev/null || { echo "bc-server exited"; exit 1; }
+  else
+    pgrep -f "/usr/sbin/bc-server" >/dev/null || { echo "bc-server exited"; exit 1; }
+  fi
+
+  # Warn-only for ancillary services (they can flap briefly)
+  pgrep -x nginx    >/dev/null || echo "WARN: nginx not running (transient?)"
+  pgrep -x rsyslogd >/dev/null || echo "WARN: rsyslogd not running (transient?)"
 done
+
