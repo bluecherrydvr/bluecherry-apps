@@ -7,6 +7,8 @@
 
 .deps
 .libs/
+.kilo*
+.vs*
 
 bc-reader
 bc.cgi
