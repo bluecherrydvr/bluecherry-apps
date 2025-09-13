@@ -28,10 +28,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /root
 
 # RUN git clone --recurse-submodules --progress --depth 1 \
- RUN git clone --recurse-submodules --progress http://github.com/bluecherrydvr/bluecherry-apps.git \
+ RUN git clone --recurse-submodules --progress https://github.com/bluecherrydvr/bluecherry-apps.git \
  && cd bluecherry-apps \
  && git checkout $BLUECHERRY_GIT_BRANCH_TAG \
- && sed -i '/#define PRODUCT_VERSION/s/"$/-docker"/' server/v3license_processor.h
+ && sed -i '/#define PRODUCT_VERSION/s/\"\(.*\)\"/\"\1-docker\"/g' server/v3license_processor.h
 
 
  
