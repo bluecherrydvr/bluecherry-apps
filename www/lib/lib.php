@@ -1429,7 +1429,7 @@ class Cameras
 //    const API_SEARCH_URL = 'https://api.evercam.io/v1/models?page=%d&vendor_id=%s';
       const API_SEARCH_URL = 'https://cam-api.bluecherry.workers.dev/models?filterByFormula=={Manufacturer}="%s"';
 
-    const API_DETAILS_URL = 'https://api.evercam.io/v1/models/%s';
+//    const API_DETAILS_URL = 'https://api.evercam.io/v1/models/%s';
 
     public static function getList($manufacturer)
     {
