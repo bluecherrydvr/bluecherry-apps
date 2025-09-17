@@ -1458,7 +1458,7 @@ class Cameras
                                 // print_r($data);
 
                                 foreach($data['records'] as $camera) {
-                    $list[rawurlencode($manufacturer).' - '.$camera['id']] = $camera['fields']['Model'];
+                    $list[rawurlencode($manufacturer)] = $camera['fields']['Model'];
                                 }
 
                                 if(isset($data['offset']))
