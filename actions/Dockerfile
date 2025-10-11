@@ -131,10 +131,6 @@ RUN set -eux; \
     chown www-data /usr/share/bluecherry/sqlite; \
     if [ -f /usr/share/bluecherry/cameras_shipped.db ]; then \
         cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db; \
-    fi; \
-    # PHP-FPM symlink for compatibility \
-    if ! [[ -L /run/php/php-fpm.sock ]]; then \
-        update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*.*-fpm.sock 0; \
     fi
 RUN set -eux; \
     if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
