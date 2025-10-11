@@ -97,6 +97,18 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends "$DEB_PATH"; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
+# Runtime user & recordings dir
+RUN set -eux; \
+    if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
+      groupadd -f "$BLUECHERRY_LINUX_GROUP_NAME"; \
+    fi; \
+    if ! id -u "$BLUECHERRY_LINUX_USER_NAME" >/dev/null 2>&1; then \
+      useradd -m -d /var/lib/bluecherry -g "$BLUECHERRY_LINUX_GROUP_NAME" \
+        -G audio,video -s /bin/bash "$BLUECHERRY_LINUX_USER_NAME"; \
+    fi; \
+    install -d -m 0775 /recordings; \
+    chown "$BLUECHERRY_LINUX_USER_NAME":"$BLUECHERRY_LINUX_GROUP_NAME" /recordings || true
+
 # Run essential postinstall tasks that were skipped due to patched postinst
 RUN set -eux; \
     # Permissions for bluecherry directories \
@@ -122,8 +134,6 @@ RUN set -eux; \
     if ! [[ -L /run/php/php-fpm.sock ]]; then \
         update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*.*-fpm.sock 0; \
     fi
-
-# Runtime user & recordings dir
 RUN set -eux; \
     if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
       groupadd -f "$BLUECHERRY_LINUX_GROUP_NAME"; \
