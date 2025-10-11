@@ -97,6 +97,32 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends "$DEB_PATH"; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
+# Run essential postinstall tasks that were skipped due to patched postinst
+RUN set -eux; \
+    # Permissions for bluecherry directories \
+    mkdir -p /var/lib/bluecherry /var/run/bluecherry; \
+    chown -R bluecherry:bluecherry /var/lib/bluecherry /var/run/bluecherry; \
+    chmod -R 770 /var/lib/bluecherry; \
+    chmod -R 750 /var/run/bluecherry; \
+    # SSL certificates \
+    mkdir -p /usr/share/bluecherry/ssl; \
+    cp /etc/ssl/certs/ssl-cert-snakeoil.pem /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem; \
+    cp /etc/ssl/private/ssl-cert-snakeoil.key /usr/share/bluecherry/ssl/bluecherry-snakeoil.key; \
+    chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.pem; \
+    chown bluecherry:bluecherry /usr/share/bluecherry/ssl/bluecherry-snakeoil.key; \
+    # Log file \
+    touch /var/log/bluecherry.log; \
+    chown root:bluecherry /var/log/bluecherry.log; \
+    chmod 640 /var/log/bluecherry.log; \
+    # SQLite directory and database \
+    mkdir -p /usr/share/bluecherry/sqlite; \
+    chown www-data /usr/share/bluecherry/sqlite; \
+    cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db; \
+    # PHP-FPM symlink for compatibility \
+    if ! [[ -L /run/php/php-fpm.sock ]]; then \
+        update-alternatives --install /run/php/php-fpm.sock php-fpm.sock /run/php/php*.*-fpm.sock 0; \
+    fi
+
 # Runtime user & recordings dir
 RUN set -eux; \
     if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
