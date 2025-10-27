@@ -43,6 +43,7 @@
                             <input type="checkbox" class="click-event" data-function="triggerONVIFevents"  <?php echo (($device_schedule->schedule_data[0]['onvif_events_enabled']) ? ' checked="checked"': '' ); ?> /> <?php echo TRIGGER_ONVIF_EVENTS; ?>
                             <input type="hidden" name="onvif_events_enabled" value="<?php echo (($device_schedule->schedule_data[0]['onvif_events_enabled']) ? '1': '0' ); ?>" />
                         </label>
+                        <div id="onvif-live-event-types-list" style="margin-top:10px;"></div>
                 <?php } ?>
             </div>
         </div>
