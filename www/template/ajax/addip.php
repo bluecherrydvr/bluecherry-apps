@@ -188,7 +188,7 @@
 
                         <div class="col-lg-6 col-md-6">
                             <div class="input-group">
-                                <input class="form-control" type="text" name="onvif_port" value="80" />
+                                <input class="form-control" type="text" name="onvif_port" value="<?php echo isset($ipCamera->info['onvif_port']) ? $ipCamera->info['onvif_port'] : (isset($_POST['onvif_port']) ? $_POST['onvif_port'] : '80'); ?>" />
                                 <span class="input-group-btn">
                                     <button type="button" class="btn btn-default click-event" data-function="addIpCheckOnvifPort"><?php echo AIP_CHECK_ONVIF_PORT; ?></button>
                                 </span>
