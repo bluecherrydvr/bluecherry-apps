@@ -105,11 +105,47 @@ function triggerONVIFevents(el) {
     var el_val = par.find('input[name="onvif_events_enabled"]');
 
     if (el.prop('checked')) {
-        
         el_val.val('1');
-    } else {
+        // Fetch and display live ONVIF event types
+        var deviceId = $("input[name='id']").val();
+        if (deviceId && deviceId !== 'global') {
+            $('#onvif-live-event-types-list').html('<span class="text-info">Scanning for ONVIF events (20s)...</span>');
+            $.get('/onvif/devices/' + deviceId + '/events/live-scan', function(response) {
+                if (response && response.liveTopics && response.liveTopics.length > 0) {
+                    var html = '<b>Detected ONVIF Event Types:</b><form id="onvif-event-types-form"><ul style="list-style:none;padding-left:0;">';
+                    response.liveTopics.forEach(function(type, idx) {
+                        var label = type.label || type.type;
+                        var value = label;
+                        html += '<li>' +
+                            '<label>' +
+                            '<input type="checkbox" class="onvif-event-checkbox" name="onvif_event_types[]" value="'+value+'" checked> ' +
+                            '<b>' + label + '</b> <span style="color:#888">(' + type.fullTopic + ')</span>' +
+                            '</label>' +
+                            '</li>';
+                    });
+                    html += '</ul>';
+                    html += '<input type="hidden" name="onvif_event_types_selected" id="onvif_event-types-selected" value="">';
+                    html += '</form>';
+                    $('#onvif-live-event-types-list').html(html);
 
+                    // Update hidden input on change
+                    function updateSelectedEvents() {
+                        var selected = [];
+                        $('#onvif-live-event-types-list .onvif-event-checkbox:checked').each(function() {
+                            selected.push($(this).val());
+                        });
+                        $('#onvif_event-types-selected').val(selected.join(','));
+                    }
+                    $('#onvif-live-event-types-list').on('change', '.onvif-event-checkbox', updateSelectedEvents);
+                    updateSelectedEvents();
+                } else {
+                    $('#onvif-live-event-types-list').html('<span class="text-warning">No ONVIF events detected during scan.</span>');
+                }
+            });
+        }
+    } else {
         el_val.val('0');
+        $('#onvif-live-event-types-list').empty();
     }
 }
 
