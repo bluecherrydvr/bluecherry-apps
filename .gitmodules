@@ -11,9 +11,9 @@
 #[submodule "misc/pugixml"]
 # path = misc/pugixml
 # url = https://github.com/zeux/pugixml.git
-[submodule "misc/libconfig"]
-	path = misc/libconfig
-	url = https://github.com/hyperrealm/libconfig.git
+#[submodule "misc/libconfig"]
+# path = misc/libconfig
+# url = https://github.com/hyperrealm/libconfig.git
 #[submodule "utils/onvif_tool"]
 #	path = utils/onvif_tool
 #	url = https://github.com/bluecherrydvr/onvif_tool.git
