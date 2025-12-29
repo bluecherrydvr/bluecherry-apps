@@ -32,6 +32,10 @@ protected:
 	bool frame_rate_warned[2] = {false, false};
 	bool timestamp_gap_warned[2] = {false, false};
 	time_t last_timestamp_warning[2] = {0, 0};
+	
+	/* Track consecutive timestamp adjustments to prevent infinite loops */
+	int consecutive_adjustments[2] = {0, 0};
+	static const int MAX_CONSECUTIVE_ADJUSTMENTS = 10;
 };
 
 class snapshot_writer

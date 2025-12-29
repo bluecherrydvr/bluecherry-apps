@@ -95,7 +95,8 @@ media_writer::media_writer():
 	last_mux_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE},
 	frame_rate_warned{false, false},
 	timestamp_gap_warned{false, false},
-	last_timestamp_warning{0, 0}
+	last_timestamp_warning{0, 0},
+	consecutive_adjustments{0, 0}
 {
 }
 
@@ -146,8 +147,10 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		update_last_mux_dts = false;
 	} else if (last_mux_dts == AV_NOPTS_VALUE) {
 		// First packet ever. Initialize last_mux_dts and move on.
+		consecutive_adjustments[pkt.type] = 0;
 	} else if (last_mux_dts < opkt.dts) {
 		// Monotonically increasing timestamps. This is normal.
+		consecutive_adjustments[pkt.type] = 0;  // Reset adjustment counter on good timestamp
 
 		// Get the tolerated gap from configuration, default to 2 seconds
 		int tolerated_gap_seconds = 2;
@@ -214,6 +217,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 				if (opkt.pts != AV_NOPTS_VALUE) {
 					opkt.pts = opkt.dts;
 				}
+				
+				// Track consecutive adjustments to prevent infinite loops
+				consecutive_adjustments[pkt.type]++;
+				if (consecutive_adjustments[pkt.type] > MAX_CONSECUTIVE_ADJUSTMENTS) {
+					bc_log(Error, "Too many consecutive timestamp adjustments (%d) on stream %d, restarting recording",
+						consecutive_adjustments[pkt.type], opkt.stream_index);
+					return false;
+				}
 			}
 		}
 	} else {
@@ -251,6 +262,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			opkt.dts = last_mux_dts + frame_increment;
 			if (opkt.pts != AV_NOPTS_VALUE) {
 				opkt.pts = opkt.dts;
+			}
+			
+			// Track consecutive adjustments to prevent infinite loops
+			consecutive_adjustments[pkt.type]++;
+			if (consecutive_adjustments[pkt.type] > MAX_CONSECUTIVE_ADJUSTMENTS) {
+				bc_log(Error, "Too many consecutive timestamp adjustments (%d) on stream %d, restarting recording",
+					consecutive_adjustments[pkt.type], opkt.stream_index);
+				return false;
 			}
 		} else {
 			// This should not happen, but handle gracefully if it does
@@ -330,6 +349,7 @@ void media_writer::close()
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
 		last_timestamp_warning[i] = 0;
+		consecutive_adjustments[i] = 0;
 	}
 
 	if (out_ctx)
@@ -564,6 +584,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 
 	this->recording_path = path;
 	av_dict_set(&muxer_opts, "avoid_negative_ts", "+make_zero", 0);
+	av_dict_set(&muxer_opts, "fflags", "+genpts", 0);  // Let FFmpeg generate PTS when missing
 
 	ret = avformat_write_header(out_ctx, &muxer_opts);
 	av_dict_free(&muxer_opts);
