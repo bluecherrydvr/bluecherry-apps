@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rsyslog iproute2 sysstat nano cron \
     mysql-client \
     xz-utils dpkg-dev \
+    libva2 libva-drm2 libva-x11-2 libdrm2 libx11-6 \
  && rm -rf /var/lib/apt/lists/*
 
 FROM base AS app
@@ -99,13 +100,17 @@ RUN set -eux; \
 
 # Runtime user & recordings dir
 RUN set -eux; \
+    if getent passwd 1000 >/dev/null; then userdel -r $(getent passwd 1000 | cut -d: -f1); fi; \
+    if getent group 1000 >/dev/null; then groupdel $(getent group 1000 | cut -d: -f1); fi; \
     if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
-      groupadd -f "$BLUECHERRY_LINUX_GROUP_NAME"; \
+      groupadd -f -g "$BLUECHERRY_LINUX_GROUP_ID" "$BLUECHERRY_LINUX_GROUP_NAME"; \
     fi; \
     if ! id -u "$BLUECHERRY_LINUX_USER_NAME" >/dev/null 2>&1; then \
-      useradd -m -d /var/lib/bluecherry -g "$BLUECHERRY_LINUX_GROUP_NAME" \
+      useradd -m -d /var/lib/bluecherry -u "$BLUECHERRY_LINUX_USER_ID" -g "$BLUECHERRY_LINUX_GROUP_NAME" \
         -G audio,video -s /bin/bash "$BLUECHERRY_LINUX_USER_NAME"; \
     fi; \
+    # Add www-data to bluecherry group so PHP can read recordings \
+    usermod -a -G "$BLUECHERRY_LINUX_GROUP_NAME" www-data; \
     install -d -m 0775 /recordings; \
     chown "$BLUECHERRY_LINUX_USER_NAME":"$BLUECHERRY_LINUX_GROUP_NAME" /recordings || true
 
@@ -132,16 +137,6 @@ RUN set -eux; \
     if [ -f /usr/share/bluecherry/cameras_shipped.db ]; then \
         cp /usr/share/bluecherry/cameras_shipped.db /usr/share/bluecherry/sqlite/cameras.db; \
     fi
-RUN set -eux; \
-    if ! getent group "$BLUECHERRY_LINUX_GROUP_NAME" >/dev/null; then \
-      groupadd -f "$BLUECHERRY_LINUX_GROUP_NAME"; \
-    fi; \
-    if ! id -u "$BLUECHERRY_LINUX_USER_NAME" >/dev/null 2>&1; then \
-      useradd -m -d /var/lib/bluecherry -g "$BLUECHERRY_LINUX_GROUP_NAME" \
-        -G audio,video -s /bin/bash "$BLUECHERRY_LINUX_USER_NAME"; \
-    fi; \
-    install -d -m 0775 /recordings; \
-    chown "$BLUECHERRY_LINUX_USER_NAME":"$BLUECHERRY_LINUX_GROUP_NAME" /recordings || true
 
 # Cleanup installer-time secrets
 RUN rm -f /root/.my.cnf /etc/bluecherry.conf || true

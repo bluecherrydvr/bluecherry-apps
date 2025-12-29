@@ -42,6 +42,9 @@ install -d -m 0775 /var/lib/bluecherry/recordings
 chown "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}":"${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" /var/lib/bluecherry/recordings || true
 chmod ug+rwx /var/lib/bluecherry/recordings || true
 
+# Ensure www-data is in the bluecherry group so PHP can read recordings
+usermod -a -G "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" www-data || true
+
 # Route container logs to stdout safely
 chmod 777 /proc/self/fd/1 || true
 
