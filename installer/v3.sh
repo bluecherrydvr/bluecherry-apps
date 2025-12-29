@@ -146,6 +146,7 @@ elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.2" && "$VERSION_CODENAME" =
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "21.3" && "$VERSION_CODENAME" == "virginia" ]]; then jammy_install; # based on Ubuntu 22.04 Jammy
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "22" && "$VERSION_CODENAME" == "wilma" ]]; then noble_install; # based on Ubuntu 24.04 Noble
 elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "22.1" && "$VERSION_CODENAME" == "xia" ]]; then noble_install; # based on Ubuntu 24.04 Noble
+elif [[ "$ID" == "linuxmint" && "$VERSION_ID" == "22.2" && "$VERSION_CODENAME" == "zara" ]]; then noble_install; # based on Ubuntu 24.04 Noble
 else
     echo "Currently we only support up to date Ubuntu, Debian and Mint Linux distributions."
     exit 1

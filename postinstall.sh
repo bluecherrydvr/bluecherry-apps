@@ -7,8 +7,9 @@ function install_certbot
 
     # Handle known modern distros where apt is preferred but we can't run it inside dpkg
     if [[ ("$ID" == "ubuntu" && "$VERSION_CODENAME" == "noble") || \
-          ("$ID" == "linuxmint" && "$VERSION_ID" == "22.1" && "$VERSION_CODENAME" == "xia") ]]; then
-        echo 'Detected Ubuntu 24.04 or Linux Mint 22.1 (Noble/Xia-based) or newer'
+          ("$ID" == "linuxmint" && "$VERSION_ID" == "22.1" && "$VERSION_CODENAME" == "xia") || \
+          ("$ID" == "linuxmint" && "$VERSION_ID" == "22.2" && "$VERSION_CODENAME" == "zara") ]]; then
+        echo 'Detected Ubuntu 24.04 or Linux Mint 22.1/22.2 (Noble/Xia/Zara-based) or newer'
         echo 'Skipping pip-based certbot install to preserve system integrity.'
         echo 'Please manually run the following after install completes:'
         echo '  sudo apt install certbot python3-certbot-nginx python3-certbot-dns-cloudflare'

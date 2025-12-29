@@ -102,8 +102,9 @@ function install_pip
 function install_certbot
 {
 	source /etc/os-release
-	if [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == noble ]]; then
-		echo 'For Ubuntu 24.04 (noble) we rely on packaged certbot'
+	if [[ ("$ID" == ubuntu && "$VERSION_CODENAME" == noble) || \
+	      ("$ID" == linuxmint && "$VERSION_CODENAME" == zara) ]]; then
+		echo 'For Ubuntu 24.04 (noble) or Linux Mint 22.2 (zara) we rely on packaged certbot'
 		return
 	elif [[ "$ID" == ubuntu ]] && [[ "$VERSION_CODENAME" == mantic ]]; then
 		echo 'For Ubuntu 23.10 (mantic) we rely on packaged certbot'
