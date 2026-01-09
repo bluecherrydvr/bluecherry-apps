@@ -59,6 +59,9 @@ case "$1" in
 				-g bluecherry -G audio,video bluecherry
 		fi
 		usermod -a -G video,audio,bluecherry,dialout,adm www-data || true
+		# For bluecherry group membership to take effect, restart web server.
+		# It might be not configured yet, so restart might fail. That's fine.
+		systemctl restart nginx || true
 
 		;;
 esac
