@@ -371,7 +371,7 @@ rtsp_connection::rtsp_connection(rtsp_server *server, int fd)
 	/* If streaming high-definition video over a network with good performance characteristics,
 	 * we might consider using a larger send buffer. Lets start with a size of 1MB (1024*1024)
 	 * and kernel may adjust the value we provide to align with its internal constraints and limits. */
-	int value = 1024*1024;
+	int value = 6144*1024;
 	setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value));
 }
 
