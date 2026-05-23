@@ -309,6 +309,8 @@ struct rtsp_write_buffer
 		int i = strlen(msg);
 
 		for (rtsp_write_buffer *p = this; p; p = p->next) {
+			if (i >= (int)sizeof(msg) - 1)
+				break;
 			char c = '?';
 			switch (p->type) {
 			case Control:   c = 'c'; break;

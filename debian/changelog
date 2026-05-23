@@ -16,6 +16,15 @@ bluecherry (3:3.1.15) bookworm bullseye buster focal jammy mantic noble; urgency
   * FIX: Rate-limit warnings when GlobalSettings database reads fail under load
   * FIX: Use bounded string copies in ONVIF event, motion debug, and RTSP paths
     to prevent buffer overflows
+  * FIX: Pin MySQL connection for transaction and get_table lifecycle to prevent
+    commands-out-of-sync and crash under concurrent load
+  * FIX: Convert cleanup transactions to bc_db_start_trans API instead of raw
+    START TRANSACTION SQL
+  * FIX: Archive only successfully deleted files in cleanup batch commits
+  * FIX: Complete buffer bounds checking in motion debug path and RTSP debug helper
+  * FIX: Validate notification email addresses before sending; catch SwiftMailer
+    invalid-address exceptions gracefully
+  * FIX: Add database contention counters and GlobalSettings read cooldown under load
   * Maintain backward compatibility with all supported distributions
 
  -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 23 May 2026 12:00:00 -0500

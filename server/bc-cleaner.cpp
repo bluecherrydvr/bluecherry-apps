@@ -388,6 +388,7 @@ void CleanupScheduler::set_high_priority_interval(std::chrono::seconds new_inter
 CleanupManager::CleanupManager() 
     : cleanup_in_progress(false)
     , constrained_batch_size(0)
+    , consecutive_successful_batches(0)
     , retry_manager(std::make_unique<CleanupRetryManager>())
     , parallel_cleanup(std::make_unique<ParallelCleanup>())
     , scheduler(std::make_unique<CleanupScheduler>()) {}
@@ -509,9 +510,11 @@ int CleanupManager::get_adaptive_batch_size() {
     return batch_size;
 }
 
-void CleanupManager::batch_delete_files(const std::vector<std::string>& files, int& deleted_count, size_t& bytes_freed) {
+void CleanupManager::batch_delete_files(const std::vector<std::string>& files, int& deleted_count,
+                                        size_t& bytes_freed, std::vector<std::string>& deleted_files) {
     deleted_count = 0;
     bytes_freed = 0;
+    deleted_files.clear();
     
     for (const auto& filepath : files) {
         struct stat st;
@@ -524,6 +527,7 @@ void CleanupManager::batch_delete_files(const std::vector<std::string>& files, i
         if (unlink(filepath.c_str()) == 0) {
             deleted_count++;
             bytes_freed += st.st_size;
+            deleted_files.push_back(filepath);
             
             // Delete sidecar files
             std::string base_path = filepath;
@@ -548,7 +552,7 @@ bool CleanupManager::commit_batch_chunk(const std::vector<std::string>& deleted_
         return true;
     }
 
-    if (bc_db_query("START TRANSACTION") != 0) {
+    if (bc_db_start_trans() != 0) {
         bc_log(Error, "Failed to start batch transaction");
         return false;
     }
@@ -560,9 +564,9 @@ bool CleanupManager::commit_batch_chunk(const std::vector<std::string>& deleted_
     }
     media_query += ")";
 
-    if (bc_db_query("%s", media_query.c_str()) != 0) {
+    if (__bc_db_query("%s", media_query.c_str()) != 0) {
         bc_log(Error, "Failed to batch update Media table");
-        bc_db_query("ROLLBACK");
+        bc_db_rollback_trans();
         return false;
     }
 
@@ -574,15 +578,15 @@ bool CleanupManager::commit_batch_chunk(const std::vector<std::string>& deleted_
     }
     events_query += "))";
 
-    if (bc_db_query("%s", events_query.c_str()) != 0) {
+    if (__bc_db_query("%s", events_query.c_str()) != 0) {
         bc_log(Error, "Failed to batch update EventsCam table");
-        bc_db_query("ROLLBACK");
+        bc_db_rollback_trans();
         return false;
     }
 
-    if (bc_db_query("COMMIT") != 0) {
+    if (bc_db_commit_trans() != 0) {
         bc_log(Error, "Failed to commit batch transaction");
-        bc_db_query("ROLLBACK");
+        bc_db_rollback_trans();
         return false;
     }
 
@@ -611,8 +615,13 @@ bool CleanupManager::commit_batch_changes(const std::vector<std::string>& delete
 
         if (!commit_batch_chunk(chunk)) {
             note_db_error_backoff(deleted_files.size());
+            consecutive_successful_batches = 0;
             bc_log(Error, "Committed %zu/%zu cleanup records before database failure",
                    committed, deleted_files.size());
+            for (size_t i = offset; i < deleted_files.size(); ++i) {
+                bc_log(Warning, "Cleanup orphan: deleted on disk but not archived: %s",
+                       deleted_files[i].c_str());
+            }
             return false;
         }
 
@@ -667,13 +676,22 @@ bool CleanupManager::process_batch(int batch_size, double target_threshold, int&
     // Delete files from filesystem
     int deleted_count = 0;
     size_t bytes_freed = 0;
-    batch_delete_files(files_to_delete, deleted_count, bytes_freed);
+    std::vector<std::string> deleted_files;
+    batch_delete_files(files_to_delete, deleted_count, bytes_freed, deleted_files);
     
     if (deleted_count > 0) {
-        if (!commit_batch_changes(files_to_delete)) {
+        if (!commit_batch_changes(deleted_files)) {
             bc_log(Error, "Filesystem cleanup succeeded but database update failed for %d files",
                    deleted_count);
             return false;
+        }
+
+        consecutive_successful_batches++;
+        if (constrained_batch_size > 0 &&
+            consecutive_successful_batches >= SUCCESS_BATCHES_TO_RESET) {
+            constrained_batch_size = 0;
+            consecutive_successful_batches = 0;
+            bc_log(Info, "Database cleanup recovered, restoring default batch size");
         }
 
         total_deleted += deleted_count;
@@ -1450,56 +1468,45 @@ int CleanupManager::sync_database_with_filesystem() {
     for (size_t i = 0; i < orphaned_ids.size(); i += BATCH_SIZE) {
         size_t batch_end = std::min(i + BATCH_SIZE, orphaned_ids.size());
         
-        // Start transaction
-        if (bc_db_query("START TRANSACTION") != 0) {
+        if (bc_db_start_trans() != 0) {
             bc_log(Error, "Failed to start sync transaction");
             return -1;
         }
-        
-        try {
-            // Build batch query for Media table
-            std::string media_query = "UPDATE Media SET archive = 1 WHERE id IN (";
-            for (size_t j = i; j < batch_end; ++j) {
-                if (j > i) media_query += ",";
-                media_query += std::to_string(orphaned_ids[j]);
-            }
-            media_query += ")";
-            
-            if (bc_db_query("%s", media_query.c_str()) != 0) {
-                bc_log(Error, "Failed to update Media table for orphaned entries");
-                bc_db_query("ROLLBACK");
-                return -1;
-            }
-            
-            // Build batch query for EventsCam table
-            std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
-            for (size_t j = i; j < batch_end; ++j) {
-                if (j > i) events_query += ",";
-                events_query += std::to_string(orphaned_ids[j]);
-            }
-            events_query += ")";
-            
-            if (bc_db_query("%s", events_query.c_str()) != 0) {
-                bc_log(Error, "Failed to update EventsCam table for orphaned entries");
-                bc_db_query("ROLLBACK");
-                return -1;
-            }
-            
-            // Commit transaction
-            if (bc_db_query("COMMIT") != 0) {
-                bc_log(Error, "Failed to commit sync transaction");
-                bc_db_query("ROLLBACK");
-                return -1;
-            }
-            
-            cleaned_count += (batch_end - i);
-            bc_log(Info, "Cleaned up batch of %zu orphaned entries (total: %d)", batch_end - i, cleaned_count);
-            
-        } catch (...) {
-            bc_log(Error, "Exception during sync batch cleanup, rolling back");
-            bc_db_query("ROLLBACK");
+
+        std::string media_query = "UPDATE Media SET archive = 1 WHERE id IN (";
+        for (size_t j = i; j < batch_end; ++j) {
+            if (j > i) media_query += ",";
+            media_query += std::to_string(orphaned_ids[j]);
+        }
+        media_query += ")";
+
+        if (__bc_db_query("%s", media_query.c_str()) != 0) {
+            bc_log(Error, "Failed to update Media table for orphaned entries");
+            bc_db_rollback_trans();
             return -1;
         }
+
+        std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
+        for (size_t j = i; j < batch_end; ++j) {
+            if (j > i) events_query += ",";
+            events_query += std::to_string(orphaned_ids[j]);
+        }
+        events_query += ")";
+
+        if (__bc_db_query("%s", events_query.c_str()) != 0) {
+            bc_log(Error, "Failed to update EventsCam table for orphaned entries");
+            bc_db_rollback_trans();
+            return -1;
+        }
+
+        if (bc_db_commit_trans() != 0) {
+            bc_log(Error, "Failed to commit sync transaction");
+            bc_db_rollback_trans();
+            return -1;
+        }
+
+        cleaned_count += (batch_end - i);
+        bc_log(Info, "Cleaned up batch of %zu orphaned entries (total: %d)", batch_end - i, cleaned_count);
     }
     
     bc_log(Info, "Database/filesystem sync complete: %d orphaned entries cleaned up", cleaned_count);

@@ -33,6 +33,27 @@ enum bc_db_type {
 
 static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct bc_db_ops *db_ops = NULL;
+static unsigned long db_lock_timeouts = 0;
+static unsigned long db_skipped_queries = 0;
+static unsigned long db_transaction_start_failures = 0;
+static time_t db_stats_last_log = 0;
+
+static void bc_db_maybe_log_contention(void)
+{
+	time_t now = time(NULL);
+
+	if (db_lock_timeouts == 0 && db_skipped_queries == 0 &&
+	    db_transaction_start_failures == 0)
+		return;
+
+	if (now - db_stats_last_log < 60)
+		return;
+
+	bc_log(Warning,
+	       "Database contention: lock_timeouts=%lu skipped_queries=%lu transaction_start_failures=%lu",
+	       db_lock_timeouts, db_skipped_queries, db_transaction_start_failures);
+	db_stats_last_log = now;
+}
 
 static int bc_db_lock(void)
 {
@@ -45,6 +66,7 @@ static int bc_db_lock(void)
 		return 0;
 
 	fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
+	db_lock_timeouts++;
 
 	clock_gettime(CLOCK_REALTIME, &timeout);
 	timeout.tv_sec += 2;
@@ -53,6 +75,8 @@ static int bc_db_lock(void)
 		return 0;
 
 	fprintf(stderr, "CRITICAL: Database lock retry failed - server may be overloaded\n");
+	db_lock_timeouts++;
+	bc_db_maybe_log_contention();
 	return -1;
 }
 
@@ -66,6 +90,8 @@ int bc_db_start_trans(void)
 	int ret = 0;
 
 	if (bc_db_lock() != 0) {
+		db_transaction_start_failures++;
+		bc_db_maybe_log_contention();
 		bc_log(Error, "Cannot start transaction - database lock unavailable");
 		return -1;
 	}
@@ -188,6 +214,8 @@ int bc_db_query(const char *sql, ...)
 	va_end(ap);
 
 	if (bc_db_lock() != 0) {
+		db_skipped_queries++;
+		bc_db_maybe_log_contention();
 		bc_log(Error, "Skipping query - could not acquire database lock");
 		free(query);
 		return -1;
@@ -233,6 +261,8 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 	va_end(ap);
 
 	if (bc_db_lock() != 0) {
+		db_skipped_queries++;
+		bc_db_maybe_log_contention();
 		bc_log(Error, "Skipping query - could not acquire database lock");
 		free(query);
 		return NULL;

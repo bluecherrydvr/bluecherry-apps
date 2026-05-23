@@ -314,7 +314,31 @@ if (empty($emails)) {
 	exit(); // Nobody to notify
 }
 
-$message->setTo(array_unique($emails));
+$valid_emails = array();
+foreach ($emails as $email) {
+	$email = trim($email);
+	if ($email === '') {
+		continue;
+	}
+	if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+		$valid_emails[] = $email;
+	} else {
+		error_log("mailer.php: skipping invalid notification email: {$email}");
+	}
+}
+$valid_emails = array_unique($valid_emails);
+
+if (empty($valid_emails)) {
+	error_log('mailer.php: no valid notification email addresses after validation');
+	exit();
+}
+
+try {
+	$message->setTo($valid_emails);
+} catch (Swift_RfcComplianceException $e) {
+	error_log('mailer.php: invalid email address: ' . $e->getMessage());
+	exit('E: Invalid notification email address');
+}
 
 switch($global_settings->data['G_SMTP_SERVICE']){
 	case 'default': #use MTA
@@ -341,6 +365,7 @@ $transport->registerPlugin(new \Swift_Plugins_LoggerPlugin($logger));
 
 
 
+try {
 if ($transport->send($message)) {
 	data::query("UPDATE GlobalSettings set value='' WHERE parameter='G_SMTP_FAIL'", true);
 	exit('OK');
@@ -349,5 +374,9 @@ if ($transport->send($message)) {
 	$message = $logger->dump();
 	data::query("UPDATE GlobalSettings set value='{$message}' WHERE parameter='G_SMTP_FAIL'", true);
 	exit("E: " . $message);
+}
+} catch (Swift_RfcComplianceException $e) {
+	error_log('mailer.php: SwiftMailer rejected recipient: ' . $e->getMessage());
+	exit('E: Invalid notification email address');
 }
 ?>

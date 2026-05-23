@@ -478,11 +478,14 @@ void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
     strftime(stime, sizeof(stime), "%H-%M-%S", &m_debugEventTime);
 
     // append to the end of fname to get the entire pathname
-    snprintf(fname + strlen(fname), sizeof(fname)-1, "/%s/%06d/%s.debug", date, m_recorder->id, stime);
+    size_t fname_len = strlen(fname);
+    snprintf(fname + fname_len, sizeof(fname) - fname_len, "/%s/%06d/%s.debug",
+             date, m_recorder->id, stime);
     mkdir_p(fname, S_IRWXU | S_IRWXG | S_IRWXO);
 
     // append again to the end of fname to get the absolute filename
-    snprintf(fname + strlen(fname), sizeof(fname) - strlen(fname), "/%06ld.%s.jpg",
+    fname_len = strlen(fname);
+    snprintf(fname + fname_len, sizeof(fname) - fname_len, "/%06ld.%s.jpg",
              (long)m_debugFrameNum, name);
     if (!imwrite(fname, m))
             bc_log(Error, "Failed to save %s Frame", name);

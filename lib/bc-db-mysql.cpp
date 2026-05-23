@@ -61,6 +61,7 @@ static MYSQL *my_con_global;  // Keep for backward compatibility
 static struct mysql_connection connection_pool[MAX_CONNECTIONS];
 static pthread_mutex_t pool_lock = PTHREAD_MUTEX_INITIALIZER;
 static time_t last_connection_check = 0;
+static MYSQL *pinned_handle = NULL;
 
 static inline void free_null(char **p)
 {
@@ -228,6 +229,80 @@ static MYSQL *get_handle(void)
 	return my_con_global ? my_con_global : reset_con();
 }
 
+static MYSQL *acquire_mysql_handle(void)
+{
+	if (pinned_handle)
+		return pinned_handle;
+	return get_handle();
+}
+
+static void release_mysql_handle(MYSQL *con)
+{
+	if (!con)
+		return;
+	if (pinned_handle && con == pinned_handle)
+		return;
+	release_pooled_connection(con);
+}
+
+static void clear_pinned_handle(void)
+{
+	if (pinned_handle) {
+		release_pooled_connection(pinned_handle);
+		pinned_handle = NULL;
+	}
+}
+
+static MYSQL *replace_mysql_handle(MYSQL *my_con)
+{
+	if (pinned_handle && my_con == pinned_handle) {
+		MYSQL *old = pinned_handle;
+		MYSQL *new_con = get_handle();
+
+		if (!new_con)
+			return NULL;
+
+		pinned_handle = new_con;
+		if (old != new_con)
+			release_pooled_connection(old);
+		return new_con;
+	}
+
+	release_pooled_connection(my_con);
+	return reset_con();
+}
+
+static int mysql_run_query(MYSQL **my_con, const char *query)
+{
+	int ret;
+
+	if (!my_con || !*my_con)
+		return -1;
+
+	if (!is_connection_valid(*my_con)) {
+		bc_log(Warning, "Database connection lost, attempting to reconnect");
+		*my_con = replace_mysql_handle(*my_con);
+		if (!*my_con)
+			return -1;
+	}
+
+	unsigned int retries = 3;
+	for (; (ret = mysql_query(*my_con, query)) && retries; retries--) {
+		if (!is_con_lost(*my_con))
+			break;
+
+		*my_con = replace_mysql_handle(*my_con);
+		if (!*my_con)
+			break;
+	}
+
+	if (ret)
+		bc_log(Error, "Query error: [%s] => %s", query,
+		       *my_con ? mysql_error(*my_con) : "connection unavailable");
+
+	return ret;
+}
+
 static void bc_db_mysql_close(void)
 {
 	free_null(&dbname);
@@ -300,38 +375,14 @@ static bool is_connection_valid(MYSQL *con)
 
 static int bc_db_mysql_query(const char *query)
 {
-	MYSQL *my_con = get_handle();
+	MYSQL *my_con = acquire_mysql_handle();
 	int ret;
 
 	if (my_con == NULL)
 		return -1;
 
-	// CRITICAL FIX: Check connection health before query
-	if (!is_connection_valid(my_con)) {
-		bc_log(Warning, "Database connection lost, attempting to reconnect");
-		my_con = reset_con();
-		if (!my_con) {
-			return -1;
-		}
-	}
-
-	unsigned int retries = 3;
-	for (; (ret = mysql_query(my_con, query)) && retries; retries--) {
-		if (!is_con_lost(my_con))
-			break;
-
-		/* reconnect to DBMS */
-		my_con = reset_con();
-		if (!my_con)
-			break;
-	}
-
-	if (ret)
-		bc_log(Error, "Query error: [%s] => %s", query,
-		       mysql_error(my_con));
-
-	// CRITICAL FIX: Release pooled connection if used
-	release_pooled_connection(my_con);
+	ret = mysql_run_query(&my_con, query);
+	release_mysql_handle(my_con);
 
 	return ret;
 }
@@ -339,23 +390,31 @@ static int bc_db_mysql_query(const char *query)
 static BC_DB_RES bc_db_mysql_get_table(char *query)
 {
 	struct bc_db_mysql_res *dbres;
+	MYSQL *my_con;
 
 	dbres = (struct bc_db_mysql_res *)malloc(sizeof(*dbres));
 	if (!dbres)
+		return NULL;
+
+	my_con = acquire_mysql_handle();
+	if (!my_con)
 		goto error;
 
-	if (bc_db_mysql_query(query))
-		goto error;
+	if (mysql_run_query(&my_con, query))
+		goto error_release;
 
-	dbres->res = mysql_store_result(get_handle());
+	dbres->res = mysql_store_result(my_con);
 	if (!dbres->res) {
 		bc_log(Error, "Query has no result: [%s]", query);
-		goto error;
+		goto error_release;
 	}
 
 	dbres->ncols = mysql_num_fields(dbres->res);
+	release_mysql_handle(my_con);
 	return dbres;
 
+error_release:
+	release_mysql_handle(my_con);
 error:
 	free(dbres);
 	return NULL;
@@ -427,161 +486,74 @@ static const char *bc_db_mysql_get_field(BC_DB_RES __dbres,
 
 static unsigned long bc_db_mysql_last_insert_rowid(void)
 {
-	MYSQL *my_con = get_handle();
+	MYSQL *my_con = acquire_mysql_handle();
 
 	if (my_con == NULL)
 		return 0;
 
-	return mysql_insert_id(my_con);
+	unsigned long rowid = mysql_insert_id(my_con);
+	release_mysql_handle(my_con);
+	return rowid;
 }
 
 static void bc_db_mysql_escape_string(char *to, const char *from, size_t len)
 {
-	MYSQL *my_con = get_handle();
+	MYSQL *my_con = acquire_mysql_handle();
 
 	if (my_con == NULL)
 		mysql_escape_string(to, from, len);
 	else
 		mysql_real_escape_string(my_con, to, from, len);
+
+	release_mysql_handle(my_con);
 }
 
 static int bc_db_mysql_start_trans(void)
 {
-	MYSQL *my_con = get_handle();
 	int ret;
 
-	if (my_con == NULL)
+	if (pinned_handle) {
+		bc_log(Error, "Nested database transaction attempted");
 		return -1;
-
-	unsigned int retries = 3;
-	for (; retries; retries--) {
-		ret = mysql_query(my_con, "START TRANSACTION");
-		if (!ret)
-			break;
-
-		int err = mysql_errno(my_con);
-		if (err == CR_COMMANDS_OUT_OF_SYNC) {
-			// CRITICAL FIX: Handle "Commands out of sync" error
-			bc_log(Warning, "MySQL commands out of sync, attempting to reset connection");
-			
-			// Try to reset the connection
-			my_con = reset_con();
-			if (!my_con) {
-				bc_log(Error, "Failed to reset MySQL connection");
-				break;
-			}
-			
-			// Small delay before retry
-			usleep(100000); // 100ms
-			continue;
-		} else if (is_con_lost(my_con)) {
-			// Handle connection loss
-			my_con = reset_con();
-			if (!my_con)
-				break;
-			continue;
-		} else {
-			// Other error, don't retry
-			break;
-		}
 	}
 
+	pinned_handle = get_handle();
+	if (pinned_handle == NULL)
+		return -1;
+
+	ret = mysql_run_query(&pinned_handle, "START TRANSACTION");
 	if (ret)
-		bc_log(Error, "Failed to start transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+		clear_pinned_handle();
 
 	return ret;
 }
 
 static int bc_db_mysql_commit_trans(void)
 {
-	MYSQL *my_con = get_handle();
 	int ret;
 
-	if (my_con == NULL)
+	if (!pinned_handle) {
+		bc_log(Error, "Commit requested with no active database transaction");
 		return -1;
-
-	unsigned int retries = 3;
-	for (; retries; retries--) {
-		ret = mysql_query(my_con, "COMMIT");
-		if (!ret)
-			break;
-
-		int err = mysql_errno(my_con);
-		if (err == CR_COMMANDS_OUT_OF_SYNC) {
-			// CRITICAL FIX: Handle "Commands out of sync" error
-			bc_log(Warning, "MySQL commands out of sync during commit, attempting to reset connection");
-			
-			// Try to reset the connection
-			my_con = reset_con();
-			if (!my_con) {
-				bc_log(Error, "Failed to reset MySQL connection during commit");
-				break;
-			}
-			
-			// Small delay before retry
-			usleep(100000); // 100ms
-			continue;
-		} else if (is_con_lost(my_con)) {
-			// Handle connection loss
-			my_con = reset_con();
-			if (!my_con)
-				break;
-			continue;
-		} else {
-			// Other error, don't retry
-			break;
-		}
 	}
 
-	if (ret)
-		bc_log(Error, "Failed to commit transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+	ret = mysql_run_query(&pinned_handle, "COMMIT");
+	clear_pinned_handle();
 
 	return ret;
 }
 
 static int bc_db_mysql_rollback_trans(void)
 {
-	MYSQL *my_con = get_handle();
 	int ret;
 
-	if (my_con == NULL)
+	if (!pinned_handle) {
+		bc_log(Error, "Rollback requested with no active database transaction");
 		return -1;
-
-	unsigned int retries = 3;
-	for (; retries; retries--) {
-		ret = mysql_query(my_con, "ROLLBACK");
-		if (!ret)
-			break;
-
-		int err = mysql_errno(my_con);
-		if (err == CR_COMMANDS_OUT_OF_SYNC) {
-			// CRITICAL FIX: Handle "Commands out of sync" error
-			bc_log(Warning, "MySQL commands out of sync during rollback, attempting to reset connection");
-			
-			// Try to reset the connection
-			my_con = reset_con();
-			if (!my_con) {
-				bc_log(Error, "Failed to reset MySQL connection during rollback");
-				break;
-			}
-			
-			// Small delay before retry
-			usleep(100000); // 100ms
-			continue;
-		} else if (is_con_lost(my_con)) {
-			// Handle connection loss
-			my_con = reset_con();
-			if (!my_con)
-				break;
-			continue;
-		} else {
-			// Other error, don't retry
-			break;
-		}
 	}
 
-	if (ret)
-		bc_log(Error, "Failed to rollback transaction after %d retries: %s", 3 - retries + 1, mysql_error(my_con));
+	ret = mysql_run_query(&pinned_handle, "ROLLBACK");
+	clear_pinned_handle();
 
 	return ret;
 }

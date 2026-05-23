@@ -399,6 +399,14 @@ static int bc_check_globals(void)
 {
 	BC_DB_RES dbres;
 	static time_t last_db_failure_log = 0;
+	static time_t globals_query_fail_time = 0;
+	const int GLOBALS_QUERY_COOLDOWN_SEC = 30;
+	time_t now = time(NULL);
+
+	if (globals_query_fail_time > 0 &&
+	    (now - globals_query_fail_time) < GLOBALS_QUERY_COOLDOWN_SEC) {
+		return 0;
+	}
 
 	auto log_db_failure = [](const char *setting) {
 		time_t now = time(NULL);
@@ -408,12 +416,20 @@ static int bc_check_globals(void)
 		}
 	};
 
+	auto note_globals_db_failure = [&]() {
+		globals_query_fail_time = time(NULL);
+	};
+
+	bool globals_ok = true;
+
 	/* Get global schedule, default to continuous */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DEV_SCED'");
 
 	if (!dbres) {
 		log_db_failure("global schedule");
+		note_globals_db_failure();
+		globals_ok = false;
 		bc_status_component_error("Database failure for global schedule");
 	}
 
@@ -437,6 +453,8 @@ static int bc_check_globals(void)
 
 	if (!dbres) {
 		log_db_failure("snapshot delay");
+		note_globals_db_failure();
+		globals_ok = false;
 		bc_status_component_error("Database failure for snapshot delay");
 	}
 
@@ -456,6 +474,8 @@ static int bc_check_globals(void)
 
 	if (!dbres) {
 		log_db_failure("max recording time");
+		note_globals_db_failure();
+		globals_ok = false;
 		bc_status_component_error("Database failure for max recording time");
 	}
 
@@ -470,6 +490,8 @@ static int bc_check_globals(void)
 	bc_db_free_table(dbres);
 
 	/* Get path to media storage locations, or use default */
+	if (globals_ok)
+		globals_query_fail_time = 0;
 	return load_storage_paths();
 }
 
@@ -729,26 +751,25 @@ static void bc_cleanup_media_retry()
 
 static int bc_media_is_archived(const char *filepath)
 {
-	// Start transaction
-	if (bc_db_query("START TRANSACTION") != 0) {
+	if (bc_db_start_trans() != 0) {
 		bc_log(Error, "Failed to start transaction for file: %s", filepath);
 		return -1;
 	}
 
 	char query[2048];
-	snprintf(query, sizeof(query), 
-			"SELECT archive FROM Media WHERE filepath = '%s'", 
+	snprintf(query, sizeof(query),
+			"SELECT archive FROM Media WHERE filepath = '%s'",
 			filepath);
-	
-	BC_DB_RES dbres = bc_db_get_table("%s", query);
+
+	BC_DB_RES dbres = __bc_db_get_table("%s", query);
 	if (!dbres) {
-		bc_db_query("ROLLBACK");
+		bc_db_rollback_trans();
 		bc_log(Error, "Failed to check archive status for file: %s", filepath);
 		return -1;
 	}
 
 	int archived = 0;
-	if (bc_db_fetch_row(dbres)) {
+	if (!bc_db_fetch_row(dbres)) {
 		const char *archive_str = bc_db_get_val(dbres, "archive", NULL);
 		if (archive_str) {
 			archived = atoi(archive_str);
@@ -756,7 +777,11 @@ static int bc_media_is_archived(const char *filepath)
 	}
 
 	bc_db_free_table(dbres);
-	bc_db_query("COMMIT");
+	if (bc_db_commit_trans() != 0) {
+		bc_db_rollback_trans();
+		bc_log(Error, "Failed to commit archive check for file: %s", filepath);
+		return -1;
+	}
 	return archived;
 }
 
@@ -1201,8 +1226,7 @@ static int bc_cleanup_older_media(const char *filepath)
 
 static int bc_cleanup_media()
 {
-    // Start transaction
-    if (bc_db_query("START TRANSACTION") != 0) {
+    if (bc_db_start_trans() != 0) {
         bc_log(Error, "Failed to start cleanup transaction");
         return -1;
     }
@@ -1218,7 +1242,7 @@ static int bc_cleanup_media()
         }
 
         /* Get files to clean up, ordered by date components from filepath */
-        dbres = bc_db_get_table("SELECT *, "
+        dbres = __bc_db_get_table("SELECT *, "
             "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 1), '/', -1) as year, "
             "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 2), '/', -1) as month, "
             "SUBSTRING_INDEX(SUBSTRING_INDEX(filepath, '/', 3), '/', -1) as day, "
@@ -1228,12 +1252,13 @@ static int bc_cleanup_media()
 
         if (!dbres) {
             bc_status_component_error("Database error during media cleanup");
+            bc_db_rollback_trans();
             return -1;
         }
 
         // First, count total files
         int total_files = 0;
-        BC_DB_RES count_res = bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE filepath!=''");
+        BC_DB_RES count_res = __bc_db_get_table("SELECT COUNT(*) as count FROM Media WHERE filepath!=''");
         if (count_res && bc_db_fetch_row(count_res) == 0) {
             total_files = bc_db_get_val_int(count_res, "count");
         }
@@ -1274,7 +1299,7 @@ static int bc_cleanup_media()
             struct stat st;
             if (stat(filepath, &st) != 0) {
                 // File doesn't exist on disk, delete from database
-                if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+                if (__bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
                     bc_log(Error, "Failed to delete non-existent file from database: %s", filepath);
                 } else {
                     bc_log(Info, "Deleted non-existent file from database: %s", filepath);
@@ -1308,7 +1333,7 @@ static int bc_cleanup_media()
             sync();
 
             // Delete from database
-            if (bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
+            if (__bc_db_query("DELETE FROM Media WHERE id=%d", id)) {
                 bc_log(Error, "Failed to delete file from database: %s", filepath);
                 continue;
             }
@@ -1347,14 +1372,18 @@ static int bc_cleanup_media()
         }
 
         bc_db_free_table(dbres);
-        bc_db_query("COMMIT");
+        if (bc_db_commit_trans() != 0) {
+            bc_db_rollback_trans();
+            bc_log(Error, "Failed to commit cleanup transaction");
+            return -1;
+        }
 
         // Final filesystem sync
         sync();
 
         return 0;
     } catch (...) {
-        bc_db_query("ROLLBACK");
+        bc_db_rollback_trans();
         bc_log(Error, "Cleanup failed, rolling back transaction");
         return -1;
     }

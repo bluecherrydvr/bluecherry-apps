@@ -36,6 +36,7 @@ constexpr int TRANSACTION_TIMEOUT_SEC = 30;  // Maximum transaction time
 constexpr int LOAD_CHECK_INTERVAL = 5;       // Check system load every N batches
 constexpr int SQL_UPDATE_CHUNK_SIZE = 50;    // Max rows per cleanup DB transaction
 constexpr int DB_ERROR_BACKOFF_SEC = 5;      // Pause after DB lock/query failures
+constexpr int SUCCESS_BATCHES_TO_RESET = 5;  // Reset constrained batch size after N successes
 
 // Cleanup statistics structure
 struct cleanup_stats_report {
@@ -243,13 +244,15 @@ private:
     cleanup_stats_report stats;
     std::mutex stats_mutex;
     int constrained_batch_size;
+    int consecutive_successful_batches;
 
     // Helper functions
     bool delete_media_file(const std::string& filepath, int id);
     bool check_storage_status();
     int get_adaptive_batch_size();
     bool process_batch(int batch_size, double target_threshold, int& total_deleted);
-    void batch_delete_files(const std::vector<std::string>& files, int& deleted_count, size_t& bytes_freed);
+    void batch_delete_files(const std::vector<std::string>& files, int& deleted_count,
+                            size_t& bytes_freed, std::vector<std::string>& deleted_files);
     bool commit_batch_chunk(const std::vector<std::string>& deleted_files);
     bool commit_batch_changes(const std::vector<std::string>& deleted_files);
     void note_db_error_backoff(size_t attempted_batch_size);
