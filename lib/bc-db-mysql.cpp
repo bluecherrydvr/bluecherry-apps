@@ -253,6 +253,9 @@ static void clear_pinned_handle(void)
 	}
 }
 
+static bool is_con_lost(MYSQL *con);
+static bool is_connection_valid(MYSQL *con);
+
 static MYSQL *replace_mysql_handle(MYSQL *my_con)
 {
 	if (pinned_handle && my_con == pinned_handle) {
