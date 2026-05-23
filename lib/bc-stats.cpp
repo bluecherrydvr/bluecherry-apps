@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <math.h>
+#include <time.h>
 #include <thread>
 #include <sys/statvfs.h>
 #include <mntent.h>
@@ -448,6 +449,13 @@ void bc_stats::get_storage_info(std::vector<storage_path> *storage_paths)
 bool bc_stats::update_storage_info()
 {
     pthread_mutex_lock(&_mutex);
+
+    time_t now = time(NULL);
+    if (_storage_query_fail_time > 0 &&
+        (now - _storage_query_fail_time) < STORAGE_QUERY_COOLDOWN_SEC) {
+        pthread_mutex_unlock(&_mutex);
+        return true;
+    }
     
     std::vector<storage_path> new_storage_paths;
     std::set<std::string> unique_mounts;
@@ -456,8 +464,10 @@ bool bc_stats::update_storage_info()
     std::vector<std::string> storage_paths = {"/var/lib/bluecherry/recordings"};
 
     // Query the Storage table for user-defined paths
+    bool storage_query_ok = false;
     BC_DB_RES dbres = bc_db_get_table("SELECT path FROM Storage");
     if (dbres) {
+        storage_query_ok = true;
         while (!bc_db_fetch_row(dbres)) {
             const char *path = bc_db_get_val(dbres, "path", NULL);
             if (path && *path) {
@@ -466,8 +476,7 @@ bool bc_stats::update_storage_info()
         }
         bc_db_free_table(dbres);
     } else {
-        // CRITICAL FIX: Handle database query failure gracefully
-        // Use default storage path only if database is unavailable
+        _storage_query_fail_time = now;
         bc_log(Warning, "Failed to query Storage table, using default path only");
     }
 
@@ -540,6 +549,9 @@ bool bc_stats::update_storage_info()
 
     // Update the storage paths
     _storage_paths = new_storage_paths;
+    if (storage_query_ok) {
+        _storage_query_fail_time = 0;
+    }
     
     pthread_mutex_unlock(&_mutex);
     return true;

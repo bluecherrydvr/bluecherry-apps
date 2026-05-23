@@ -39,7 +39,7 @@ void onvif_events::run_onvif_tool(struct bc_record *r)
 	char *split = strchr(devaddr, '|');
 	*split = '\0';
 
-	sprintf(read_buf, "%s:%u", devaddr, r->cfg.onvif_port);
+	snprintf(read_buf, sizeof(read_buf), "%s:%u", devaddr, r->cfg.onvif_port);
 	this->addr = read_buf;
 	this->username = r->cfg.rtsp_username;
 	this->password = r->cfg.rtsp_password;
@@ -125,7 +125,7 @@ void onvif_events::unsubscribe()
 		char buf[4096];
 		FILE *pf;
 
-		sprintf(buf, "/usr/lib/bluecherry/onvif_tool %s %s %s events_unsubscribe %s",
+		snprintf(buf, sizeof(buf), "/usr/lib/bluecherry/onvif_tool %s %s %s events_unsubscribe %s",
 			addr.c_str(),
 			username.c_str(),
 			password.c_str(),

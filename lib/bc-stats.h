@@ -145,6 +145,8 @@ private:
     bc_stats::memory    _memory;
     bc_stats::cpu       _cpu;
     std::vector<storage_path> _storage_paths;
+    time_t _storage_query_fail_time = 0;
+    static const int STORAGE_QUERY_COOLDOWN_SEC = 60;
 
     // Historical data storage
     std::deque<stats_history_entry> _history;

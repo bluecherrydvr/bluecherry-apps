@@ -398,13 +398,24 @@ static int load_storage_paths(void)
 static int bc_check_globals(void)
 {
 	BC_DB_RES dbres;
+	static time_t last_db_failure_log = 0;
+
+	auto log_db_failure = [](const char *setting) {
+		time_t now = time(NULL);
+		if (now - last_db_failure_log >= 60) {
+			bc_log(Warning, "Database unavailable while reading %s; keeping current/default values", setting);
+			last_db_failure_log = now;
+		}
+	};
 
 	/* Get global schedule, default to continuous */
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 				"parameter='G_DEV_SCED'");
 
-	if (!dbres)
+	if (!dbres) {
+		log_db_failure("global schedule");
 		bc_status_component_error("Database failure for global schedule");
+	}
 
 	if (dbres && !bc_db_fetch_row(dbres)) {
 		const char *sched = bc_db_get_val(dbres, "value", NULL);
@@ -424,8 +435,10 @@ static int bc_check_globals(void)
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 			"parameter='G_SNAPSHOT_DELAY'");
 
-	if (!dbres)
+	if (!dbres) {
+		log_db_failure("snapshot delay");
 		bc_status_component_error("Database failure for snapshot delay");
+	}
 
 	pthread_mutex_lock(&mutex_snapshot_delay_ms);
 	if (dbres && !bc_db_fetch_row(dbres)) {
@@ -441,8 +454,10 @@ static int bc_check_globals(void)
 	dbres = bc_db_get_table("SELECT * from GlobalSettings WHERE "
 			"parameter='G_MAX_RECORD_TIME'");
 
-	if (!dbres)
+	if (!dbres) {
+		log_db_failure("max recording time");
 		bc_status_component_error("Database failure for max recording time");
+	}
 
 	pthread_mutex_lock(&mutex_max_record_time_sec);
 	if (dbres && !bc_db_fetch_row(dbres)) {

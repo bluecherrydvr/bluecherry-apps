@@ -1,3 +1,25 @@
+bluecherry (3:3.1.15) bookworm bullseye buster focal jammy mantic noble; urgency=high
+
+  * FIX: Prevent bc-server crash during storage cleanup when database lock
+    acquisition fails under concurrent load from cleanup, global settings polling,
+    and monitoring threads
+  * FIX: Fail fast in database query paths when mutex lock cannot be acquired
+    instead of running unlocked MySQL operations
+  * FIX: Correct database lock retry timeout to use now+2s instead of absolute
+    tv_sec=2
+  * FIX: Chunk cleanup archive commits to 50 rows per transaction to reduce
+    lock contention and long-running transactions
+  * FIX: Reduce cleanup batch size and pause after database errors during
+    storage cleanup
+  * FIX: Add 60-second cooldown for failed Storage table queries in stats
+    monitoring to avoid hammering MySQL during outages
+  * FIX: Rate-limit warnings when GlobalSettings database reads fail under load
+  * FIX: Use bounded string copies in ONVIF event, motion debug, and RTSP paths
+    to prevent buffer overflows
+  * Maintain backward compatibility with all supported distributions
+
+ -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 23 May 2026 12:00:00 -0500
+
 bluecherry (3:3.1.14) bookworm bullseye buster focal jammy mantic noble; urgency=emergency
 
   * CRITICAL: Fix segmentation faults and deadlocks affecting large installations (53+ cameras, 35TB+ data)

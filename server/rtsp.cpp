@@ -305,7 +305,7 @@ struct rtsp_write_buffer
 	void print_buffer(const char *prefix)
 	{
 		char msg[1024];
-		strcpy(msg, prefix);
+		snprintf(msg, sizeof(msg), "%s", prefix);
 		int i = strlen(msg);
 
 		for (rtsp_write_buffer *p = this; p; p = p->next) {

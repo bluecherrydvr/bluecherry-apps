@@ -387,6 +387,7 @@ void CleanupScheduler::set_high_priority_interval(std::chrono::seconds new_inter
 // CleanupManager implementation
 CleanupManager::CleanupManager() 
     : cleanup_in_progress(false)
+    , constrained_batch_size(0)
     , retry_manager(std::make_unique<CleanupRetryManager>())
     , parallel_cleanup(std::make_unique<ParallelCleanup>())
     , scheduler(std::make_unique<CleanupScheduler>()) {}
@@ -500,6 +501,10 @@ int CleanupManager::get_adaptive_batch_size() {
     
     // Ensure within bounds
     batch_size = std::max(MIN_BATCH_SIZE, std::min(MAX_BATCH_SIZE, batch_size));
+
+    if (constrained_batch_size > 0) {
+        batch_size = std::min(batch_size, constrained_batch_size);
+    }
     
     return batch_size;
 }
@@ -538,60 +543,84 @@ void CleanupManager::batch_delete_files(const std::vector<std::string>& files, i
     }
 }
 
-void CleanupManager::commit_batch_changes(const std::vector<std::string>& deleted_files) {
+bool CleanupManager::commit_batch_chunk(const std::vector<std::string>& deleted_files) {
     if (deleted_files.empty()) {
-        return;
+        return true;
     }
-    
-    // Start transaction
+
     if (bc_db_query("START TRANSACTION") != 0) {
         bc_log(Error, "Failed to start batch transaction");
-        return;
+        return false;
     }
-    
-    try {
-        // Batch update Media table
-        std::string media_query = "UPDATE Media SET archive = 1 WHERE filepath IN (";
-        for (size_t i = 0; i < deleted_files.size(); ++i) {
-            if (i > 0) media_query += ",";
-            media_query += "'" + deleted_files[i] + "'";
-        }
-        media_query += ")";
-        
-        if (bc_db_query("%s", media_query.c_str()) != 0) {
-            bc_log(Error, "Failed to batch update Media table");
-            bc_db_query("ROLLBACK");
-            return;
-        }
-        
-        // Batch update EventsCam table
-        std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
-        events_query += "SELECT id FROM Media WHERE filepath IN (";
-        for (size_t i = 0; i < deleted_files.size(); ++i) {
-            if (i > 0) events_query += ",";
-            events_query += "'" + deleted_files[i] + "'";
-        }
-        events_query += "))";
-        
-        if (bc_db_query("%s", events_query.c_str()) != 0) {
-            bc_log(Error, "Failed to batch update EventsCam table");
-            bc_db_query("ROLLBACK");
-            return;
-        }
-        
-        // Commit transaction
-        if (bc_db_query("COMMIT") != 0) {
-            bc_log(Error, "Failed to commit batch transaction");
-            bc_db_query("ROLLBACK");
-            return;
-        }
-        
-        bc_log(Info, "Successfully committed batch changes for %zu files", deleted_files.size());
-        
-    } catch (...) {
-        bc_log(Error, "Exception during batch commit, rolling back");
+
+    std::string media_query = "UPDATE Media SET archive = 1 WHERE filepath IN (";
+    for (size_t i = 0; i < deleted_files.size(); ++i) {
+        if (i > 0) media_query += ",";
+        media_query += "'" + deleted_files[i] + "'";
+    }
+    media_query += ")";
+
+    if (bc_db_query("%s", media_query.c_str()) != 0) {
+        bc_log(Error, "Failed to batch update Media table");
         bc_db_query("ROLLBACK");
+        return false;
     }
+
+    std::string events_query = "UPDATE EventsCam SET archive = 1 WHERE media_id IN (";
+    events_query += "SELECT id FROM Media WHERE filepath IN (";
+    for (size_t i = 0; i < deleted_files.size(); ++i) {
+        if (i > 0) events_query += ",";
+        events_query += "'" + deleted_files[i] + "'";
+    }
+    events_query += "))";
+
+    if (bc_db_query("%s", events_query.c_str()) != 0) {
+        bc_log(Error, "Failed to batch update EventsCam table");
+        bc_db_query("ROLLBACK");
+        return false;
+    }
+
+    if (bc_db_query("COMMIT") != 0) {
+        bc_log(Error, "Failed to commit batch transaction");
+        bc_db_query("ROLLBACK");
+        return false;
+    }
+
+    return true;
+}
+
+void CleanupManager::note_db_error_backoff(size_t attempted_batch_size) {
+    int reduced = static_cast<int>(attempted_batch_size / 2);
+    constrained_batch_size = std::max(MIN_BATCH_SIZE, reduced);
+    bc_log(Warning, "Database contention during cleanup, reducing batch size to %d and pausing %d seconds",
+           constrained_batch_size, DB_ERROR_BACKOFF_SEC);
+    sleep(DB_ERROR_BACKOFF_SEC);
+}
+
+bool CleanupManager::commit_batch_changes(const std::vector<std::string>& deleted_files) {
+    if (deleted_files.empty()) {
+        return true;
+    }
+
+    size_t committed = 0;
+    for (size_t offset = 0; offset < deleted_files.size(); offset += SQL_UPDATE_CHUNK_SIZE) {
+        size_t chunk_size = std::min(static_cast<size_t>(SQL_UPDATE_CHUNK_SIZE),
+                                     deleted_files.size() - offset);
+        std::vector<std::string> chunk(deleted_files.begin() + offset,
+                                       deleted_files.begin() + offset + chunk_size);
+
+        if (!commit_batch_chunk(chunk)) {
+            note_db_error_backoff(deleted_files.size());
+            bc_log(Error, "Committed %zu/%zu cleanup records before database failure",
+                   committed, deleted_files.size());
+            return false;
+        }
+
+        committed += chunk.size();
+    }
+
+    bc_log(Info, "Successfully committed batch changes for %zu files", committed);
+    return true;
 }
 
 bool CleanupManager::process_batch(int batch_size, double target_threshold, int& total_deleted) {
@@ -607,6 +636,7 @@ bool CleanupManager::process_batch(int batch_size, double target_threshold, int&
     
     if (!dbres) {
         bc_log(Error, "Database error during batch cleanup");
+        note_db_error_backoff(batch_size);
         return false;
     }
     
@@ -640,9 +670,12 @@ bool CleanupManager::process_batch(int batch_size, double target_threshold, int&
     batch_delete_files(files_to_delete, deleted_count, bytes_freed);
     
     if (deleted_count > 0) {
-        // Commit database changes in a single transaction
-        commit_batch_changes(files_to_delete);
-        
+        if (!commit_batch_changes(files_to_delete)) {
+            bc_log(Error, "Filesystem cleanup succeeded but database update failed for %d files",
+                   deleted_count);
+            return false;
+        }
+
         total_deleted += deleted_count;
         stats.add_bytes_freed(bytes_freed);
         

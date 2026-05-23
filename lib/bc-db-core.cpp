@@ -19,9 +19,9 @@
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>
-#include <time.h> // Required for clock_gettime
-#include <stdio.h> // Required for fprintf
-#include <stdbool.h> // Required for bool
+#include <time.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 #include "bc-db.h"
 
@@ -32,30 +32,28 @@ enum bc_db_type {
 };
 
 static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
-static bool db_lock_available = true; // Track if database lock is available
 static struct bc_db_ops *db_ops = NULL;
 
-static void bc_db_lock(void)
+static int bc_db_lock(void)
 {
-	// CRITICAL FIX: Add timeout to prevent database deadlock
 	struct timespec timeout;
+
 	clock_gettime(CLOCK_REALTIME, &timeout);
-	timeout.tv_sec += 10; // 10 second timeout for database operations
-	
-	if (pthread_mutex_timedlock(&db_lock, &timeout) != 0) {
-		// Log error but don't crash - this is critical for server stability
-		fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
-		// CRITICAL FIX: Don't continue without lock - this causes transaction conflicts
-		// Instead, try one more time with a shorter timeout
-		timeout.tv_sec = 2; // 2 second retry timeout
-		if (pthread_mutex_timedlock(&db_lock, &timeout) != 0) {
-			fprintf(stderr, "CRITICAL: Database lock retry failed - server may be overloaded\n");
-			// Mark database as unavailable for transactions
-			db_lock_available = false;
-			return;
-		}
-	}
-	db_lock_available = true;
+	timeout.tv_sec += 10;
+
+	if (pthread_mutex_timedlock(&db_lock, &timeout) == 0)
+		return 0;
+
+	fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
+
+	clock_gettime(CLOCK_REALTIME, &timeout);
+	timeout.tv_sec += 2;
+
+	if (pthread_mutex_timedlock(&db_lock, &timeout) == 0)
+		return 0;
+
+	fprintf(stderr, "CRITICAL: Database lock retry failed - server may be overloaded\n");
+	return -1;
 }
 
 static void bc_db_unlock(void)
@@ -67,10 +65,7 @@ int bc_db_start_trans(void)
 {
 	int ret = 0;
 
-	bc_db_lock();
-	
-	// CRITICAL FIX: Check if database lock is available
-	if (!db_lock_available) {
+	if (bc_db_lock() != 0) {
 		bc_log(Error, "Cannot start transaction - database lock unavailable");
 		return -1;
 	}
@@ -182,7 +177,6 @@ int bc_db_query(const char *sql, ...)
 	char *query;
 	int ret;
 
-	// CRITICAL FIX: Add null pointer protection
 	if (!db_ops) {
 		bc_log(Error, "Database not initialized - cannot execute query");
 		return -1;
@@ -193,7 +187,12 @@ int bc_db_query(const char *sql, ...)
 		return -1;
 	va_end(ap);
 
-	bc_db_lock();
+	if (bc_db_lock() != 0) {
+		bc_log(Error, "Skipping query - could not acquire database lock");
+		free(query);
+		return -1;
+	}
+
 	ret = db_ops->query(query);
 	bc_db_unlock();
 
@@ -223,7 +222,6 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 	char *query;
 	BC_DB_RES dbres;
 
-	// CRITICAL FIX: Add null pointer protection
 	if (!db_ops) {
 		bc_log(Error, "Database not initialized - cannot execute query");
 		return NULL;
@@ -234,7 +232,12 @@ BC_DB_RES bc_db_get_table(const char *sql, ...)
 		return NULL;
 	va_end(ap);
 
-	bc_db_lock();
+	if (bc_db_lock() != 0) {
+		bc_log(Error, "Skipping query - could not acquire database lock");
+		free(query);
+		return NULL;
+	}
+
 	dbres = db_ops->get_table(query);
 	bc_db_unlock();
 
@@ -249,7 +252,6 @@ BC_DB_RES __bc_db_get_table(const char *sql, ...)
 	char *query;
 	BC_DB_RES dbres;
 
-	// CRITICAL FIX: Add null pointer protection
 	if (!db_ops) {
 		bc_log(Error, "Database not initialized - cannot execute query");
 		return NULL;
@@ -319,8 +321,12 @@ char *bc_db_escape_string(const char *from, size_t len)
 	if (to == NULL)
 		return NULL;
 
-	/* MySQL requires locking around mysql_real_escape_string */
-	bc_db_lock();
+	if (bc_db_lock() != 0) {
+		bc_log(Error, "Skipping escape_string - could not acquire database lock");
+		free(to);
+		return NULL;
+	}
+
 	db_ops->escape_string(to, from, len);
 	bc_db_unlock();
 

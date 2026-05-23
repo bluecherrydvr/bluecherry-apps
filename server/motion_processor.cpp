@@ -390,7 +390,7 @@ int mkdir_p(const char *path, int perms)
         errno = ENAMETOOLONG;
         return -1;
     }
-    strcpy(_path, path);
+    memcpy(_path, path, len + 1);
 
     /* Iterate the string */
     for (p = _path + 1; *p; p++) {
@@ -482,7 +482,8 @@ void motion_processor::dump_opencv_frame(cv::Mat &m, const char *name)
     mkdir_p(fname, S_IRWXU | S_IRWXG | S_IRWXO);
 
     // append again to the end of fname to get the absolute filename
-    sprintf(fname + strlen(fname),"/%06ld.%s.jpg", m_debugFrameNum, name);
+    snprintf(fname + strlen(fname), sizeof(fname) - strlen(fname), "/%06ld.%s.jpg",
+             (long)m_debugFrameNum, name);
     if (!imwrite(fname, m))
             bc_log(Error, "Failed to save %s Frame", name);
 }
