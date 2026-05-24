@@ -102,6 +102,7 @@ public:
 
 	/* Scheduling, 24x7 */
 	char			sched_cur, sched_last;
+	time_t			sched_transition_at;
 	const char		*thread_should_die;
 	int			file_started;
 
@@ -186,6 +187,9 @@ void bc_status_component_error(const char *error, ...);
 int bc_status_component_end(bc_status_component component, int ok);
 
 extern char global_sched[7 * 24 + 1];
+/* Spread global schedule transitions across cameras to reduce DB/thread spikes */
+#define BC_SCHED_TRANSITION_STAGGER_SLOTS 120
+#define BC_SCHED_TRANSITION_STAGGER_SEC   1
 #define SNAPSHOT_DELAY_MS_DEFAULT 1000
 extern int snapshot_delay_ms;
 #define MAX_RECORD_TIME_SEC_DEFAULT 900

@@ -192,6 +192,15 @@ static void check_schedule(struct bc_record *bc_rec)
 		if (!bc_rec->sched_last)
 			bc_rec->sched_last = bc_rec->sched_cur;
 		bc_rec->sched_cur = sched_new;
+
+		const int delay_sec = (bc_rec->id % BC_SCHED_TRANSITION_STAGGER_SLOTS) *
+				      BC_SCHED_TRANSITION_STAGGER_SEC;
+		bc_rec->sched_transition_at = t + delay_sec;
+		if (delay_sec > 0) {
+			bc_rec->log.log(Info,
+					"Device %d: Schedule transition queued for %d seconds to stagger load",
+					bc_rec->id, delay_sec);
+		}
 	}
 }
 
@@ -315,6 +324,11 @@ void bc_record::run()
 		}
 
 		if (sched_last) {
+			time_t now = time(NULL);
+			if (sched_transition_at > now) {
+				goto schedule_transition_done;
+			}
+
 			std::string sched_str;
 			switch (sched_cur) {
 				case 'X': sched_str = "continuous + motion"; break;
@@ -399,6 +413,7 @@ void bc_record::run()
 			if (!all_threads_joined) {
 				log.log(Error, "Device %d: Schedule transition aborted - worker threads did not stop in time", id);
 				sched_last = 0;
+				sched_transition_at = 0;
 				goto schedule_transition_done;
 			}
 
@@ -575,6 +590,7 @@ void bc_record::run()
 
 			log.log(Info, "Device %d: Successfully completed schedule transition to '%s'", id, sched_str.c_str());
 			sched_last = 0;
+			sched_transition_at = 0;
 		schedule_transition_done:
 			;
 		}
@@ -703,6 +719,7 @@ bc_record::bc_record(int i)
 
 	sched_cur = 'N';
 	sched_last = 0;
+	sched_transition_at = 0;
 	thread_should_die = 0;
 	file_started = 0;
 	onvif_ev = 0;
