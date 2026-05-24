@@ -5,12 +5,13 @@ After=network.target remote-fs.target nss-lookup.target mysql.target
 [Service]
 Type=simple
 #EnvironmentFile=/etc/sysconfig/httpd
+ExecStartPre=/bin/rm -f /tmp/bluecherry_status /tmp/bluecherry_trigger
 ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
 #ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
 Restart=always
 RestartSec=5
 ExecStop=/bin/kill -TERM ${MAINPID}
-KillSignal=SIGKILL
+KillSignal=SIGTERM
 
 [Install]
 WantedBy=multi-user.target

@@ -38,6 +38,8 @@ void trigger_server::destroy() {
 		close(_bindFd);
 		_bindFd = -1;
 	}
+	if (!_socketPath.empty())
+		unlink(_socketPath.c_str());
 }
 
 int trigger_server::openBindListenUnixSocket(const std::string& socketPath) {
@@ -57,11 +59,19 @@ int trigger_server::openBindListenUnixSocket(const std::string& socketPath) {
 	memset(&addr, 0, sizeof(addr));
 	snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", socketPath.c_str());
 	addr.sun_family = AF_UNIX;
-	unlink(addr.sun_path);  //!< Remove possibly previously existing file
-	int ret;
-	ret = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
-	if (ret == -1) {
-		bc_log(Error, "Binding to %s failed", socketPath.c_str());
+	unlink(addr.sun_path);
+
+	int ret = -1;
+	for (int attempt = 0; attempt < 10; attempt++) {
+		ret = bind(fd, (struct sockaddr*)&addr, sizeof(addr));
+		if (ret == 0)
+			break;
+		if (errno == EADDRINUSE && attempt + 1 < 10) {
+			unlink(addr.sun_path);
+			usleep(200000);
+			continue;
+		}
+		bc_log(Error, "Binding to %s failed: %s", socketPath.c_str(), strerror(errno));
 		close(fd);
 		return -1;
 	}
@@ -104,7 +114,7 @@ int trigger_server::reconfigure(const std::string& socketPath) {
 		bc_log(Error, "Failed to bind to socket %s", _socketPath.c_str());
 		return 1;
 	}
-	bc_log(Info, "Status reports are served at %s", _socketPath.c_str());
+	bc_log(Info, "Trigger events are served at %s", _socketPath.c_str());
 	ret = pthread_create(&_tid, NULL, servingLoopWrapper, this);
 	if (ret == -1) {
 		bc_log(Error, "Failed to start thread");

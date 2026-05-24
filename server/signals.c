@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "bt.h"
+#include "bc-server-sockets.h"
 
 static const char * const sig_name[] = {
 	[SIGABRT] = "Aborted",
@@ -27,6 +28,7 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGILL:
 	case SIGFPE:
 		bt(sig_name[signum], info->si_addr);
+		bc_server_unlink_socket_paths();
 		_exit(1);
 
 	case SIGINT:

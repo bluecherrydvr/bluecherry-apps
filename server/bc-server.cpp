@@ -42,6 +42,7 @@ extern "C" {
 #include "version.h"
 #include "status_server.h"
 #include "trigger_server.h"
+#include "bc-server-sockets.h"
 #include "vaapi.h"
 #include "bc-cleanup.h"
 
@@ -135,6 +136,19 @@ static bc_media_files g_media_files;
 extern volatile sig_atomic_t shutdown_flag;
 
 static std::unique_ptr<CleanupManager> g_cleanup_manager;
+
+static status_server *g_status_server = nullptr;
+
+static void bc_server_shutdown_listeners(void)
+{
+	if (g_status_server) {
+		g_status_server->destroy();
+		delete g_status_server;
+		g_status_server = nullptr;
+	}
+	trigger_server::Instance().destroy();
+	bc_server_unlink_socket_paths();
+}
 
 class DirectoryGuard {
 	DIR* dir;
@@ -1842,6 +1856,7 @@ int main(int argc, char **argv)
 	pthread_setname_np(pthread_self(), "MAIN");
 
 	umask(007);
+	bc_server_unlink_socket_paths();
 
 	while ((opt = getopt(argc, argv, "hsm:r:u:g:l:f:")) != -1) {
 		switch (opt) {
@@ -1910,16 +1925,21 @@ int main(int argc, char **argv)
 	}
 
 	status_server *status_serv = new status_server(xml_status_callback);
-	ret = status_serv->reconfigure("/tmp/bluecherry_status");
+	g_status_server = status_serv;
+	ret = status_serv->reconfigure(BC_STATUS_SOCKET_PATH);
 	if (ret) {
 		bc_log(Error, "Failed to setup the status server");
 		return 1;
 	}
 
-	ret = trigger_server::Instance().reconfigure("/tmp/bluecherry_trigger");
+	ret = trigger_server::Instance().reconfigure(BC_TRIGGER_SOCKET_PATH);
 	if (ret) {
 		bc_log(Error, "Failed to setup the trigger server");
 		return 1;
+	}
+
+	if (atexit(bc_server_shutdown_listeners) != 0) {
+		bc_log(Warning, "Failed to register listener shutdown handler");
 	}
 
 	bc_log(Info, "Started bc-server " BC_VERSION " (toolchain "
@@ -2088,6 +2108,7 @@ int main(int argc, char **argv)
 
 	stats.stop_monithoring();
 
+	bc_server_shutdown_listeners();
 
 	bc_stop_threads();
 	bc_db_close();
