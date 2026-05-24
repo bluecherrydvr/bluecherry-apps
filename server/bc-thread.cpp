@@ -325,10 +325,7 @@ void bc_record::run()
 
 		if (sched_last) {
 			time_t now = time(NULL);
-			if (sched_transition_at > now) {
-				goto schedule_transition_done;
-			}
-
+			if (sched_transition_at <= now) {
 			std::string sched_str;
 			switch (sched_cur) {
 				case 'X': sched_str = "continuous + motion"; break;
@@ -414,8 +411,7 @@ void bc_record::run()
 				log.log(Error, "Device %d: Schedule transition aborted - worker threads did not stop in time", id);
 				sched_last = 0;
 				sched_transition_at = 0;
-				goto schedule_transition_done;
-			}
+			} else {
 
 			// Delete old components
 			log.log(Debug, "Device %d: Deleting old components", id);
@@ -591,8 +587,8 @@ void bc_record::run()
 			log.log(Info, "Device %d: Successfully completed schedule transition to '%s'", id, sched_str.c_str());
 			sched_last = 0;
 			sched_transition_at = 0;
-		schedule_transition_done:
-			;
+			}
+			}
 		}
 
 		ret = bc->input->read_packet();
