@@ -25,6 +25,7 @@ bluecherry (3:3.1.15) bookworm bullseye buster focal jammy mantic noble; urgency
   * FIX: Validate notification email addresses before sending; catch SwiftMailer
     invalid-address exceptions gracefully
   * FIX: Add database contention counters and GlobalSettings read cooldown under load
+  * FIX: Prevent bc-server abort during schedule transition when thread join times out
   * Maintain backward compatibility with all supported distributions
 
  -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 23 May 2026 12:00:00 -0500
