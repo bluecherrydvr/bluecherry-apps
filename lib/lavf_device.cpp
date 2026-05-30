@@ -139,7 +139,7 @@ int lavf_device::start()
 					  (ip[0] == 192 && ip[1] == 168);
 			bc_log(Debug, "IP address %s is %s", host, is_local ? "local" : "remote");
 		} else {
-			bc_log(Debug, "Host %s is not an IP address, assuming remote");
+			bc_log(Debug, "Host %s is not an IP address, assuming remote", host);
 		}
 		
 		// Check if this is a Reolink camera by looking for common Reolink paths

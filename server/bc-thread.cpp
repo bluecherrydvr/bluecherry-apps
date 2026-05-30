@@ -203,7 +203,7 @@ static void bc_disconnect_recording_workers(bc_record *rec)
 		safe_disconnect(rec->t_processor, rec->bc->source);
 	if (rec->m_handler && rec->m_handler->input_consumer()) {
 		if (rec->m_processor)
-			safe_disconnect(rec->m_processor->output(), rec->m_handler->input_consumer());
+			safe_disconnect(rec->m_handler->input_consumer(), rec->m_processor->output());
 		else
 			safe_disconnect(rec->m_handler->input_consumer(), rec->bc->source);
 	}
