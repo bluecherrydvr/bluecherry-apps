@@ -24,6 +24,7 @@ extern "C" {
 }
 
 #include "libbluecherry.h"
+#include <mutex>
 
 #define MAX_STREAMS 3
 
@@ -59,10 +60,12 @@ private:
 	int video_stream_index, audio_stream_index;
 	AVPacket frame;
 	stream_packet current_packet;
+	mutable std::mutex ctx_mutex;
 
 	void create_stream_packet(AVPacket *src);
 
 	void update_properties();
+	void stop_unlocked();
 };
 
 #endif /* __LAVF_DEVICE_H */

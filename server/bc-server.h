@@ -20,6 +20,7 @@
 
 #include "libbluecherry.h"
 #include <pthread.h>
+#include <atomic>
 #include <thread>
 
 extern "C" {
@@ -53,6 +54,7 @@ struct bc_storage {
 #define MAX_STOR_LOCS    10
 
 extern struct bc_storage media_stor[MAX_STOR_LOCS];
+extern std::atomic<time_t> g_last_recording_progress_time;
 
 class bc_record
 {

@@ -15,6 +15,7 @@ static const char * const sig_name[] = {
 };
 
 volatile sig_atomic_t shutdown_flag;
+static volatile sig_atomic_t fatal_signal_in_progress;
 
 static void sighandler(int signum, siginfo_t *info, void *ctx)
 {
@@ -27,6 +28,9 @@ static void sighandler(int signum, siginfo_t *info, void *ctx)
 	case SIGSEGV:
 	case SIGILL:
 	case SIGFPE:
+		if (fatal_signal_in_progress)
+			_exit(128 + signum);
+		fatal_signal_in_progress = 1;
 		bt(sig_name[signum], info->si_addr);
 		bc_server_unlink_socket_paths();
 		_exit(1);
@@ -49,6 +53,7 @@ void signals_setup()
 	int ret;
 
 	shutdown_flag = 0;
+	fatal_signal_in_progress = 0;
 
 	const int sig[] = { SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGINT, SIGTERM, SIGQUIT, SIGHUP };
 	struct sigaction sa;

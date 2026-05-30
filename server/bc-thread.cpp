@@ -132,7 +132,9 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	if (bc_rec->liveview_substream)
 	{
 		bc_rec->liveview_substream->stop();
-		bc_rec->liveview_substream_thread->join();
+		if (bc_rec->liveview_substream_thread &&
+		    bc_rec->liveview_substream_thread->joinable())
+			bc_rec->liveview_substream_thread->join();
 		delete bc_rec->liveview_substream;
 		delete bc_rec->liveview_substream_thread;
 		bc_rec->liveview_substream = 0;
@@ -621,6 +623,7 @@ void bc_record::run()
 		}
 
 		packet = bc->input->packet();
+		g_last_recording_progress_time.store(time(NULL));
 		bc->source->send(packet);
 
 		/* Reencode packet for live streaming here */

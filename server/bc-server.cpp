@@ -136,6 +136,7 @@ static bc_media_files g_media_files;
 extern volatile sig_atomic_t shutdown_flag;
 
 static std::unique_ptr<CleanupManager> g_cleanup_manager;
+std::atomic<time_t> g_last_recording_progress_time{0};
 
 static status_server *g_status_server = nullptr;
 
@@ -148,6 +149,59 @@ static void bc_server_shutdown_listeners(void)
 	}
 	trigger_server::Instance().destroy();
 	bc_server_unlink_socket_paths();
+}
+
+static int bc_check_recording_health(void)
+{
+	const time_t now = time(NULL);
+	const time_t last_progress = g_last_recording_progress_time.load();
+	static time_t last_warn = 0;
+	static const int WARN_STALE_SEC = 90;
+	static const int FAIL_STALE_SEC = 180;
+
+	int active_recording_devices = 0;
+
+	pthread_mutex_lock(&bc_rec_list_lock);
+	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
+		bc_record *rec = *it;
+		if (!rec || rec->thread_should_die)
+			continue;
+		/* Ignore intentionally stopped schedules. */
+		if (rec->sched_cur == 'N')
+			continue;
+		/* Ignore streams that are still reconnecting/offline. */
+		if (!rec->bc || !rec->bc->input || !rec->bc->input->is_started())
+			continue;
+		active_recording_devices++;
+	}
+	pthread_mutex_unlock(&bc_rec_list_lock);
+
+	if (active_recording_devices == 0) {
+		g_last_recording_progress_time.store(now);
+		return 0;
+	}
+
+	if (last_progress == 0) {
+		g_last_recording_progress_time.store(now);
+		return 0;
+	}
+
+	const time_t stale_for = now - last_progress;
+	if (stale_for >= FAIL_STALE_SEC) {
+		bc_status_component_error("Recording stalled for %ld seconds while %d devices are active",
+					  stale_for, active_recording_devices);
+		bc_log(Error, "Recording watchdog tripped: no packets for %ld seconds (%d active devices)",
+		       stale_for, active_recording_devices);
+		return -1;
+	}
+
+	if (stale_for >= WARN_STALE_SEC && now - last_warn >= 30) {
+		last_warn = now;
+		bc_log(Warning, "Recording progress stale for %ld seconds (%d active devices)",
+		       stale_for, active_recording_devices);
+	}
+
+	return 0;
 }
 
 class DirectoryGuard {
@@ -229,6 +283,7 @@ static const char *component_string(bc_status_component c)
 		case STATUS_DB_POLLING1: return "database-1";
 		case STATUS_MEDIA_CHECK: return "media";
 		case STATUS_HWCARD_DETECT: return "hwcard";
+		case STATUS_WATCHDOG: return "watchdog";
 		default: return "";
 	}
 }
@@ -2027,6 +2082,8 @@ int main(int argc, char **argv)
 	pthread_t rtsp_thread;
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
+	g_last_recording_progress_time.store(time(NULL));
+	int exit_code = 0;
 
 
 	/* Main loop */
@@ -2102,6 +2159,17 @@ int main(int argc, char **argv)
 		/* Every second, check for dead threads */
 		bc_check_threads();
 
+		/* Every 15 seconds, verify recording still makes forward progress. */
+		if ((loops % 15) == 0) {
+			bc_status_component_begin(STATUS_WATCHDOG);
+			int watchdog_ok = (bc_check_recording_health() == 0);
+			bc_status_component_end(STATUS_WATCHDOG, watchdog_ok);
+			if (!watchdog_ok) {
+				exit_code = 2;
+				break;
+			}
+		}
+
 		if (!(loops & 63))
 			bc_update_server_status();
 	}
@@ -2116,5 +2184,5 @@ int main(int argc, char **argv)
 
 	pthread_rwlock_destroy(&media_lock);
 
-	return 0;
+	return exit_code;
 }

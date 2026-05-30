@@ -53,6 +53,12 @@ lavf_device::~lavf_device()
 
 void lavf_device::stop()
 {
+	std::lock_guard<std::mutex> guard(ctx_mutex);
+	stop_unlocked();
+}
+
+void lavf_device::stop_unlocked()
+{
 	_started = false;
 
 	if (!ctx)
@@ -73,8 +79,9 @@ void lavf_device::stop()
 
 int lavf_device::start()
 {
+	std::lock_guard<std::mutex> guard(ctx_mutex);
 	// Ensure clean state before starting
-	stop();
+	stop_unlocked();
 
 	if (ctx) {
 		bc_log(Error, "Format context not properly cleaned up");
@@ -366,6 +373,7 @@ static void wrap_av_destruct_packet(AVPacket *pkt)
 
 int lavf_device::read_packet()
 {
+	std::lock_guard<std::mutex> guard(ctx_mutex);
 	int re;
 	if (!ctx) {
 		strcpy(error_message, "No active session");
@@ -490,6 +498,7 @@ void lavf_device::update_properties()
 
 const char *lavf_device::stream_info()
 {
+	std::lock_guard<std::mutex> guard(ctx_mutex);
 	char *buf = error_message;
 	int size = sizeof(error_message);
 
@@ -535,9 +544,9 @@ const char *lavf_device::stream_info()
 
 void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
 {
+	std::lock_guard<std::mutex> guard(ctx_mutex);
 	// AVFormatContext info
 	if (ctx && ctx->iformat && ctx->nb_streams) {
-		// TODO FIXME Unguarded access, may crash if managing thread releases it meanwhile
 		unsigned i;
 		pugi::xml_node av_ctx = xmlnode.append_child("AVFormatContext");
 		av_ctx.append_attribute("Format") = ctx->iformat->name;
