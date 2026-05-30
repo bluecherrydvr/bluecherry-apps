@@ -20,6 +20,11 @@ void substream::run(struct bc_record *r)
 
 	while (!exit_flag)
 	{
+		if (!r->bc->substream_mode || !r->bc->substream_input) {
+			sleep(1);
+			continue;
+		}
+
 		if (r->bc->substream_mode && !r->bc->substream_input->is_started()) {
 			if (r->bc->substream_input->start() < 0) {
 				if ((r->start_failed & BC_SUBSTREAM_START_FAILED) == 0) {

@@ -61,8 +61,9 @@ private:
 	AVPacket frame;
 	stream_packet current_packet;
 	mutable std::mutex ctx_mutex;
+	int64_t last_video_dts_;
 
-	void create_stream_packet(AVPacket *src);
+	bool create_stream_packet(AVPacket *src);
 
 	void update_properties();
 	void stop_unlocked();

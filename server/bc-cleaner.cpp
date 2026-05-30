@@ -867,6 +867,16 @@ void CleanupManager::mark_startup_cleanup_done() {
     scheduler->mark_startup_cleanup_done();
 }
 
+bool CleanupManager::is_cleanup_in_progress() {
+    std::lock_guard<std::mutex> lock(cleanup_mutex);
+    return cleanup_in_progress;
+}
+
+void CleanupManager::wait_for_cleanup_idle() {
+    for (int i = 0; i < 600 && is_cleanup_in_progress(); ++i)
+        usleep(100000);
+}
+
 // Utility functions
 std::string bc_get_directory_path(const std::string& filePath) {
     size_t found = filePath.find_last_of("/\\");

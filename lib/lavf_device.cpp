@@ -33,7 +33,7 @@ extern "C" {
 
 lavf_device::lavf_device(const char *u, int rtp_protocol)
 	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
-		, rtp_protocol(rtp_protocol)
+		, rtp_protocol(rtp_protocol), last_video_dts_(0)
 {
 	strlcpy(url, u, sizeof(url));
 
@@ -75,6 +75,7 @@ void lavf_device::stop_unlocked()
 	}
 	
 	video_stream_index = audio_stream_index = -1;
+	last_video_dts_ = 0;
 }
 
 int lavf_device::start()
@@ -239,7 +240,7 @@ int lavf_device::start()
 		av_dict_free(&avopt_find_stream_info);
 
 		if (re < 0) {
-			stop();
+			stop_unlocked();
 			av_strerror(re, error_message, sizeof(error_message));
 			bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
 			return -1;
@@ -295,7 +296,7 @@ int lavf_device::start()
 		av_dict_free(&avopt_find_stream_info);
 
 		if (re < 0) {
-			stop();
+			stop_unlocked();
 			av_strerror(re, error_message, sizeof(error_message));
 			bc_log(Error, "Failed to analyze input stream. Error: %d (%s)", re, error_message);
 			return -1;
@@ -306,6 +307,14 @@ int lavf_device::start()
 	for (unsigned int i = 0; i < ctx->nb_streams && i < MAX_STREAMS; ++i)
 	{
 		AVStream *stream = ctx->streams[i];
+
+		if (!stream || !stream->codecpar) {
+			bc_log(Warning, "Session for %s stream %u has no codec parameters; discarding",
+			       url, i);
+			if (stream)
+				stream->discard = AVDISCARD_ALL;
+			continue;
+		}
 
 		if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
 		{
@@ -352,7 +361,7 @@ int lavf_device::start()
 
 	if (video_stream_index < 0)
 	{
-		stop();
+		stop_unlocked();
 		strcpy(error_message, "Session contains no valid video stream");
 		return -1;
 	}
@@ -380,20 +389,38 @@ int lavf_device::read_packet()
 		return -1;
 	}
 
-	av_packet_unref(&frame);
-	re = av_read_frame(ctx, &frame);
-	if (re < 0) {
-		av_strerror(re, error_message, sizeof(error_message));
-		return -1;
+	for (;;) {
+		av_packet_unref(&frame);
+		re = av_read_frame(ctx, &frame);
+		if (re < 0) {
+			av_strerror(re, error_message, sizeof(error_message));
+			return -1;
+		}
+
+		if (!create_stream_packet(&frame))
+			continue;
+
+		if (current_packet.type == AVMEDIA_TYPE_VIDEO ||
+		    current_packet.type == AVMEDIA_TYPE_AUDIO)
+			return 0;
 	}
-
-	create_stream_packet(&frame);
-
-	return 0;
 }
 
-void lavf_device::create_stream_packet(AVPacket *src)
+bool lavf_device::create_stream_packet(AVPacket *src)
 {
+	if (!ctx || !ctx->streams || src->stream_index < 0 ||
+	    src->stream_index >= (int)ctx->nb_streams ||
+	    !ctx->streams[src->stream_index] ||
+	    !ctx->streams[src->stream_index]->codecpar) {
+		bc_log(Error, "Invalid stream access in lavf_device: ctx=%p, streams=%p, stream_index=%d, nb_streams=%d",
+		       ctx, ctx ? ctx->streams : NULL, src->stream_index, ctx ? ctx->nb_streams : -1);
+		return false;
+	}
+
+	if (src->stream_index != video_stream_index &&
+	    src->stream_index != audio_stream_index)
+		return false;
+
 	uint8_t *buf = new uint8_t[src->size + AV_INPUT_BUFFER_PADDING_SIZE];
 	/* XXX The padding is a hack to avoid overreads by optimized
 	 * functions. */
@@ -403,18 +430,6 @@ void lavf_device::create_stream_packet(AVPacket *src)
 	current_packet.seq      = next_packet_seq++;
 	current_packet.size     = src->size;
 	current_packet.ts_clock = time(NULL);
-	
-	// SAFE ACCESS: Validate stream index and stream before accessing
-	if (!ctx || !ctx->streams || src->stream_index < 0 || 
-	    src->stream_index >= ctx->nb_streams || 
-	    !ctx->streams[src->stream_index]) {
-		bc_log(Error, "Invalid stream access in lavf_device: ctx=%p, streams=%p, stream_index=%d, nb_streams=%d",
-		       ctx, ctx ? ctx->streams : NULL, src->stream_index, ctx ? ctx->nb_streams : -1);
-		current_packet.pts = 0;
-		current_packet.dts = 0;
-		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
-		return;
-	}
 	
 	// Get stream timebase
 	AVRational tb = ctx->streams[src->stream_index]->time_base;
@@ -431,13 +446,13 @@ void lavf_device::create_stream_packet(AVPacket *src)
 		if (video_stream_index >= 0 && video_stream_index < ctx->nb_streams && 
 		    ctx->streams[video_stream_index] && ctx->streams[video_stream_index]->codecpar) {
 			AVCodecParameters *codecpar = ctx->streams[video_stream_index]->codecpar;
-			static int64_t last_dts = 0;
-			if (codecpar->bit_rate == 0 && dts == last_dts) {
+			if (codecpar->bit_rate == 0 && dts == last_video_dts_) {
 				// For VBR streams, increment DTS by a small amount
-				dts = last_dts + 1;
-				bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld", last_dts, dts);
+				dts = last_video_dts_ + 1;
+				bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld",
+				       (long)last_video_dts_, (long)dts);
 			}
-			last_dts = dts;
+			last_video_dts_ = dts;
 		}
 	}
 	
@@ -450,10 +465,10 @@ void lavf_device::create_stream_packet(AVPacket *src)
 
 	if (src->stream_index == video_stream_index)
 		current_packet.type = AVMEDIA_TYPE_VIDEO;
-	else if (src->stream_index == audio_stream_index)
-		current_packet.type = AVMEDIA_TYPE_AUDIO;
 	else
-		current_packet.type = AVMEDIA_TYPE_UNKNOWN;
+		current_packet.type = AVMEDIA_TYPE_AUDIO;
+
+	return true;
 }
 
 void lavf_device::update_properties()
@@ -554,6 +569,9 @@ void lavf_device::getStatusXml(pugi::xml_node& xmlnode)
 		for (i = 0; i < ctx->nb_streams; i++) {
 			AVStream *s = ctx->streams[i];
 			char codec_descr[100];
+
+			if (!s || !s->codecpar)
+				continue;
 
 			const AVCodecDescriptor *desc = avcodec_descriptor_get(s->codecpar->codec_id);
 			if (desc == NULL) snprintf(codec_descr, sizeof(codec_descr), "Unknown");

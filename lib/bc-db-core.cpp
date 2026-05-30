@@ -37,6 +37,7 @@ static unsigned long db_lock_timeouts = 0;
 static unsigned long db_skipped_queries = 0;
 static unsigned long db_transaction_start_failures = 0;
 static time_t db_stats_last_log = 0;
+static bool db_transaction_active = false;
 
 static void bc_db_maybe_log_contention(void)
 {
@@ -99,28 +100,45 @@ int bc_db_start_trans(void)
 	if (db_ops->start_trans)
 		ret = db_ops->start_trans();
 
-	if (ret)
+	if (ret) {
 		bc_db_unlock();
+		return ret;
+	}
 
+	db_transaction_active = true;
 	return ret;
 }
 
 int bc_db_commit_trans(void)
 {
 	int ret = 0;
+
+	if (!db_transaction_active)
+		return -1;
+
 	if (db_ops->commit_trans)
 		ret = db_ops->commit_trans();
-	if (!ret)
-		bc_db_unlock();
+
+	if (ret && db_ops->rollback_trans)
+		db_ops->rollback_trans();
+
+	bc_db_unlock();
+	db_transaction_active = false;
 	return ret;
 }
 
 int bc_db_rollback_trans(void)
 {
 	int ret = 0;
+
+	if (!db_transaction_active)
+		return 0;
+
 	if (db_ops->rollback_trans)
 		ret = db_ops->rollback_trans();
+
 	bc_db_unlock();
+	db_transaction_active = false;
 	return ret;
 }
 
@@ -128,6 +146,13 @@ void bc_db_close(void)
 {
 	if (db_ops == NULL)
 		return;
+
+	if (db_transaction_active) {
+		if (db_ops->rollback_trans)
+			db_ops->rollback_trans();
+		bc_db_unlock();
+		db_transaction_active = false;
+	}
 
 	db_ops->close();
 	db_ops = NULL;

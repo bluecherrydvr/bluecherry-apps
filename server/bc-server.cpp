@@ -28,6 +28,7 @@
 #include <limits.h>
 #include <dirent.h>
 #include <thread>
+#include <mutex>
 
 extern "C" {
 #include <libavutil/log.h>
@@ -137,8 +138,18 @@ extern volatile sig_atomic_t shutdown_flag;
 
 static std::unique_ptr<CleanupManager> g_cleanup_manager;
 std::atomic<time_t> g_last_recording_progress_time{0};
+static time_t g_server_start_time = 0;
+static std::mutex g_cleanup_worker_mutex;
+static std::thread g_cleanup_worker;
 
 static status_server *g_status_server = nullptr;
+
+static void bc_wait_for_cleanup_worker(void)
+{
+	std::lock_guard<std::mutex> lock(g_cleanup_worker_mutex);
+	if (g_cleanup_worker.joinable())
+		g_cleanup_worker.join();
+}
 
 static void bc_server_shutdown_listeners(void)
 {
@@ -156,16 +167,30 @@ static int bc_check_recording_health(void)
 	const time_t now = time(NULL);
 	const time_t last_progress = g_last_recording_progress_time.load();
 	static time_t last_warn = 0;
+	static time_t last_critical = 0;
+	static const int STARTUP_GRACE_SEC = 120;
 	static const int WARN_STALE_SEC = 90;
+	static const int CRITICAL_STALE_SEC = 120;
 	static const int FAIL_STALE_SEC = 180;
 
+	if (g_server_start_time != 0 && now - g_server_start_time < STARTUP_GRACE_SEC)
+		return 0;
+
+	if (g_cleanup_manager && g_cleanup_manager->is_cleanup_in_progress()) {
+		g_last_recording_progress_time.store(now);
+		return 0;
+	}
+
 	int active_recording_devices = 0;
+	bool schedule_transition_active = false;
 
 	pthread_mutex_lock(&bc_rec_list_lock);
 	for (auto it = bc_rec_list.begin(); it != bc_rec_list.end(); it++) {
 		bc_record *rec = *it;
 		if (!rec || rec->thread_should_die)
 			continue;
+		if (rec->sched_transition_at != 0)
+			schedule_transition_active = true;
 		/* Ignore intentionally stopped schedules. */
 		if (rec->sched_cur == 'N')
 			continue;
@@ -175,6 +200,11 @@ static int bc_check_recording_health(void)
 		active_recording_devices++;
 	}
 	pthread_mutex_unlock(&bc_rec_list_lock);
+
+	if (schedule_transition_active) {
+		g_last_recording_progress_time.store(now);
+		return 0;
+	}
 
 	if (active_recording_devices == 0) {
 		g_last_recording_progress_time.store(now);
@@ -195,7 +225,11 @@ static int bc_check_recording_health(void)
 		return -1;
 	}
 
-	if (stale_for >= WARN_STALE_SEC && now - last_warn >= 30) {
+	if (stale_for >= CRITICAL_STALE_SEC && now - last_critical >= 30) {
+		last_critical = now;
+		bc_log(Error, "Recording progress critically stale for %ld seconds (%d active devices)",
+		       stale_for, active_recording_devices);
+	} else if (stale_for >= WARN_STALE_SEC && now - last_warn >= 30) {
 		last_warn = now;
 		bc_log(Warning, "Recording progress stale for %ld seconds (%d active devices)",
 		       stale_for, active_recording_devices);
@@ -1478,8 +1512,11 @@ static int bc_check_media(void)
             
             // Use the optimized cleanup system instead of the old cleanup
             if (g_cleanup_manager && g_cleanup_manager->should_run_cleanup()) {
-                // Schedule optimized cleanup to run in a separate thread
-                std::thread cleanup_thread([]() {
+                std::lock_guard<std::mutex> lock(g_cleanup_worker_mutex);
+                if (g_cleanup_worker.joinable())
+                    g_cleanup_worker.join();
+
+                g_cleanup_worker = std::thread([]() {
                     if (g_cleanup_manager) {
                         bc_log(Info, "Starting optimized cleanup process");
                         int result = g_cleanup_manager->run_cleanup();
@@ -1490,7 +1527,6 @@ static int bc_check_media(void)
                         }
                     }
                 });
-                cleanup_thread.detach();
             } else {
                 bc_log(Info, "Cleanup not needed or already in progress");
             }
@@ -1599,20 +1635,28 @@ static void get_last_run_date()
 
 static void *bc_update_abandoned_media_threadproc(void *arg)
 {
+	(void)arg;
 	bc_log(Info, "started processing abandoned recordings");
-	while(!abandoned_media_to_update.empty()) {
+	for (;;) {
+		struct media_record m;
+
+		pthread_mutex_lock(&mutex_abandoned_media);
+		if (abandoned_media_to_update.empty()) {
+			pthread_mutex_unlock(&mutex_abandoned_media);
+			break;
+		}
+		m = abandoned_media_to_update.front();
+		abandoned_media_to_update.pop();
+		pthread_mutex_unlock(&mutex_abandoned_media);
+
 		char cmd[4096];
 		char *line = NULL;
 		size_t len = 0;
 		FILE *fp;
-		struct media_record m;
-
-		m = abandoned_media_to_update.front();
 		
 		// Validate filepath before using it
 		if (m.filepath.empty()) {
 			bc_log(Warning, "Empty filepath in abandoned media queue, skipping");
-			abandoned_media_to_update.pop();
 			continue;
 		}
 
@@ -1620,7 +1664,6 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 		struct stat st;
 		if (stat(m.filepath.c_str(), &st) != 0) {
 			bc_log(Warning, "File no longer exists: %s", m.filepath.c_str());
-			abandoned_media_to_update.pop();
 			continue;
 		}
 
@@ -1629,7 +1672,6 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 		fp = popen(cmd, "r");
 		if (fp == NULL) {
 			bc_log(Warning, "Failed to execute mkvinfo for %s", m.filepath.c_str());
-			abandoned_media_to_update.pop();
 			continue;
 		}
 
@@ -1648,8 +1690,6 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 		pthread_mutex_lock(&mutex_abandoned_media);
 		abandoned_media_updated.push(m);
 		pthread_mutex_unlock(&mutex_abandoned_media);
-
-		abandoned_media_to_update.pop();
 	}
 
 	bc_log(Info, "finished processing abandoned recordings");
@@ -1658,14 +1698,28 @@ static void *bc_update_abandoned_media_threadproc(void *arg)
 
 static void bc_check_abandoned_media_updates()
 {
+	size_t pending_count = 0;
+
+	pthread_mutex_lock(&mutex_abandoned_media);
+	pending_count = abandoned_media_updated.size();
+	pthread_mutex_unlock(&mutex_abandoned_media);
+
 	/* Called from main loop, updates lengths of processed recordings in database */
-	bc_log(Info, "Updating length of %ld abandoned recordings", abandoned_media_updated.size());
-	while(!abandoned_media_updated.empty()) {
+	bc_log(Info, "Updating length of %zu abandoned recordings", pending_count);
+	while (true) {
 		struct media_record m;
+		bool has_item = false;
 
 		pthread_mutex_lock(&mutex_abandoned_media);
-		m = abandoned_media_updated.front();
+		if (!abandoned_media_updated.empty()) {
+			m = abandoned_media_updated.front();
+			abandoned_media_updated.pop();
+			has_item = true;
+		}
 		pthread_mutex_unlock(&mutex_abandoned_media);
+
+		if (!has_item)
+			break;
 
 		if (!m.duration) {
 			bc_log(Info, "Deleting empty media %s", m.filepath.c_str());
@@ -1681,14 +1735,12 @@ static void bc_check_abandoned_media_updates()
 			bc_db_query("UPDATE EventsCam SET length=%d WHERE "
 				    "id=%d", m.duration, m.id);
 		}
-
-		pthread_mutex_lock(&mutex_abandoned_media);
-		abandoned_media_updated.pop();
-		pthread_mutex_unlock(&mutex_abandoned_media);
 	}
 
+	pthread_mutex_lock(&mutex_abandoned_media);
 	if (abandoned_media_to_update.empty())
 		abandoned_media_update_in_progress = false;
+	pthread_mutex_unlock(&mutex_abandoned_media);
 }
 
 static void bc_check_inprogress(void)
@@ -1737,12 +1789,18 @@ static void bc_check_inprogress(void)
 			continue;
 		}
 
+		pthread_mutex_lock(&mutex_abandoned_media);
 		abandoned_media_to_update.push(m);
 		abandoned_media_update_in_progress = true;
+		pthread_mutex_unlock(&mutex_abandoned_media);
 		bc_log(Info, "Found abandoned recording %s, queued for length update", m.filepath.c_str());
 	}
 
-	if (abandoned_media_update_in_progress) {
+	pthread_mutex_lock(&mutex_abandoned_media);
+	const bool start_abandoned_worker = abandoned_media_update_in_progress;
+	pthread_mutex_unlock(&mutex_abandoned_media);
+
+	if (start_abandoned_worker) {
 		pthread_t thread_id;
 		pthread_attr_t attr;
 
@@ -2083,6 +2141,7 @@ int main(int argc, char **argv)
 	pthread_create(&rtsp_thread, NULL, rtsp_server::runThread, rtsp);
 
 	g_last_recording_progress_time.store(time(NULL));
+	g_server_start_time = time(NULL);
 	int exit_code = 0;
 
 
@@ -2177,6 +2236,9 @@ int main(int argc, char **argv)
 	stats.stop_monithoring();
 
 	bc_server_shutdown_listeners();
+	bc_wait_for_cleanup_worker();
+	if (g_cleanup_manager)
+		g_cleanup_manager->wait_for_cleanup_idle();
 
 	bc_stop_threads();
 	bc_db_close();

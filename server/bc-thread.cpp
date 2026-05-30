@@ -99,6 +99,116 @@ static void bc_release_thread_handle(bc_record *rec, std::thread *&thread,
 	thread = nullptr;
 }
 
+static bool bc_shutdown_recorder(bc_record *rec, recorder *&worker, std::thread *&thread,
+                                 const char *name, int timeout_seconds)
+{
+	if (worker)
+		worker->destroy();
+
+	const bool joined = bc_join_thread_with_timeout(rec, thread, name, timeout_seconds);
+	bc_release_thread_handle(rec, thread, name, joined);
+
+	if (joined && worker) {
+		delete worker;
+		worker = nullptr;
+	}
+
+	return joined;
+}
+
+static bool bc_shutdown_motion_processor(bc_record *rec, motion_processor *&worker,
+                                         std::thread *&thread, int timeout_seconds)
+{
+	if (worker)
+		worker->destroy();
+
+	const bool joined = bc_join_thread_with_timeout(rec, thread, "motion processor",
+	                                                timeout_seconds);
+	bc_release_thread_handle(rec, thread, "motion processor", joined);
+
+	if (joined && worker) {
+		delete worker;
+		worker = nullptr;
+	}
+
+	return joined;
+}
+
+static bool bc_shutdown_motion_handler(bc_record *rec, motion_handler *&worker,
+                                       std::thread *&thread, int timeout_seconds)
+{
+	if (worker)
+		worker->destroy();
+
+	const bool joined = bc_join_thread_with_timeout(rec, thread, "motion handler",
+	                                                timeout_seconds);
+	bc_release_thread_handle(rec, thread, "motion handler", joined);
+
+	if (joined && worker) {
+		delete worker;
+		worker = nullptr;
+	}
+
+	return joined;
+}
+
+static bool bc_shutdown_trigger_processor(bc_record *rec, trigger_processor *&worker,
+                                          std::thread *&thread, int timeout_seconds)
+{
+	if (worker)
+		worker->destroy();
+
+	const bool joined = bc_join_thread_with_timeout(rec, thread, "trigger processor",
+	                                                timeout_seconds);
+	bc_release_thread_handle(rec, thread, "trigger processor", joined);
+
+	if (joined && worker) {
+		delete worker;
+		worker = nullptr;
+	}
+
+	return joined;
+}
+
+static bool bc_shutdown_onvif(bc_record *rec, onvif_events *&worker, std::thread *&thread,
+                              int timeout_seconds)
+{
+	if (worker)
+		worker->stop();
+
+	const bool joined = bc_join_thread_with_timeout(rec, thread, "ONVIF events",
+	                                                timeout_seconds);
+	bc_release_thread_handle(rec, thread, "ONVIF events", joined);
+
+	if (joined && worker) {
+		delete worker;
+		worker = nullptr;
+	}
+
+	return joined;
+}
+
+static void bc_disconnect_recording_workers(bc_record *rec)
+{
+	if (!rec->bc || !rec->bc->source)
+		return;
+
+	if (rec->rec_continuous)
+		safe_disconnect(rec->rec_continuous, rec->bc->source);
+	if (rec->rec_motion && rec->m_handler)
+		safe_disconnect(rec->rec_motion, rec->m_handler);
+	if (rec->m_processor)
+		safe_disconnect(rec->m_processor, rec->bc->source);
+	if (rec->t_processor)
+		safe_disconnect(rec->t_processor, rec->bc->source);
+	if (rec->m_handler && rec->m_handler->input_consumer()) {
+		if (rec->m_processor)
+			safe_disconnect(rec->m_processor->output(), rec->m_handler->input_consumer());
+		else
+			safe_disconnect(rec->m_handler->input_consumer(), rec->bc->source);
+	}
+}
+
 /* For Ubuntu Lucid */
 #ifndef V4L2_CID_MPEG_VIDEO_H264_MIN_QP
 #define V4L2_CID_MPEG_VIDEO_H264_MIN_QP (V4L2_CID_MPEG_BASE+353)
@@ -343,128 +453,38 @@ void bc_record::run()
 			log.log(Info, "Device %d: Starting schedule transition to '%s'", id, sched_str.c_str());
 
 			// First disconnect all components from their sources
-			if (bc && bc->source) {
-				log.log(Debug, "Device %d: Disconnecting components from source", id);
-				// Disconnect all components from the main source first
-				if (rec_continuous) {
-					log.log(Debug, "Device %d: Disconnecting continuous recorder", id);
-					safe_disconnect(rec_continuous, bc->source);
-				}
-				if (rec_motion) {
-					log.log(Debug, "Device %d: Disconnecting motion recorder", id);
-					safe_disconnect(rec_motion, bc->source);
-				}
-				if (m_processor) {
-					log.log(Debug, "Device %d: Disconnecting motion processor", id);
-					safe_disconnect(m_processor, bc->source);
-				}
-				if (t_processor) {
-					log.log(Debug, "Device %d: Disconnecting trigger processor", id);
-					safe_disconnect(t_processor, bc->source);
-				}
-				if (m_handler && m_handler->input_consumer()) {
-					log.log(Debug, "Device %d: Disconnecting motion handler", id);
-					safe_disconnect(m_handler->input_consumer(), bc->source);
-				}
-			}
+			log.log(Debug, "Device %d: Disconnecting components from source", id);
+			bc_disconnect_recording_workers(this);
 
 			// Give a small delay for disconnects to complete
 			log.log(Debug, "Device %d: Waiting 100ms for disconnects to complete", id);
 			usleep(100000); // 100ms
 
-			// CRITICAL FIX: Add timeout protection for thread joins to prevent hangs
+			// Stop workers before joining their threads.
 			log.log(Debug, "Device %d: Starting thread cleanup with timeout protection", id);
 
-			bool continuous_joined = true;
-			bool motion_joined = true;
-			bool processor_joined = true;
-			bool trigger_joined = true;
-			bool onvif_joined = true;
-
-			if (rec_continuous_thread) {
-				continuous_joined = bc_join_thread_with_timeout(this, rec_continuous_thread,
-										"continuous recorder", 10);
-			}
-
-			if (rec_motion_thread) {
-				motion_joined = bc_join_thread_with_timeout(this, rec_motion_thread,
-									      "motion recorder", 10);
-			}
-
-			if (m_processor_thread) {
-				processor_joined = bc_join_thread_with_timeout(this, m_processor_thread,
-									       "motion processor", 10);
-			}
-
-			if (t_processor_thread) {
-				trigger_joined = bc_join_thread_with_timeout(this, t_processor_thread,
-									     "trigger processor", 10);
-			}
-
-			if (onvif_ev_thread) {
-				onvif_joined = bc_join_thread_with_timeout(this, onvif_ev_thread,
-								   "ONVIF events", 5);
-			}
+			const bool continuous_joined = bc_shutdown_recorder(this, rec_continuous,
+			                                                      rec_continuous_thread,
+			                                                      "continuous recorder", 10);
+			const bool motion_joined = bc_shutdown_recorder(this, rec_motion,
+			                                                  rec_motion_thread,
+			                                                  "motion recorder", 10);
+			const bool handler_joined = bc_shutdown_motion_handler(this, m_handler,
+			                                                       m_handler_thread, 10);
+			const bool processor_joined = bc_shutdown_motion_processor(this, m_processor,
+			                                                           m_processor_thread, 10);
+			const bool trigger_joined = bc_shutdown_trigger_processor(this, t_processor,
+			                                                          t_processor_thread, 10);
+			const bool onvif_joined = bc_shutdown_onvif(this, onvif_ev, onvif_ev_thread, 5);
 
 			const bool all_threads_joined = continuous_joined && motion_joined &&
-				processor_joined && trigger_joined && onvif_joined;
+				handler_joined && processor_joined && trigger_joined && onvif_joined;
 
 			if (!all_threads_joined) {
 				log.log(Error, "Device %d: Schedule transition aborted - worker threads did not stop in time", id);
 				sched_last = 0;
 				sched_transition_at = 0;
 			} else {
-
-			// Delete old components
-			log.log(Debug, "Device %d: Deleting old components", id);
-			if (rec_continuous) {
-				log.log(Debug, "Device %d: Deleting continuous recorder", id);
-				delete rec_continuous;
-				rec_continuous = nullptr;
-			}
-			if (rec_motion) {
-				log.log(Debug, "Device %d: Deleting motion recorder", id);
-				delete rec_motion;
-				rec_motion = nullptr;
-			}
-			if (m_processor) {
-				log.log(Debug, "Device %d: Deleting motion processor", id);
-				delete m_processor;
-				m_processor = nullptr;
-			}
-			if (t_processor) {
-				log.log(Debug, "Device %d: Deleting trigger processor", id);
-				delete t_processor;
-				t_processor = nullptr;
-			}
-			if (m_handler) {
-				log.log(Debug, "Device %d: Deleting motion handler", id);
-				delete m_handler;
-				m_handler = nullptr;
-			}
-
-			// Delete thread objects
-			log.log(Debug, "Device %d: Deleting thread objects", id);
-			if (rec_continuous_thread) {
-				delete rec_continuous_thread;
-				rec_continuous_thread = nullptr;
-			}
-			if (rec_motion_thread) {
-				delete rec_motion_thread;
-				rec_motion_thread = nullptr;
-			}
-			if (m_processor_thread) {
-				delete m_processor_thread;
-				m_processor_thread = nullptr;
-			}
-			if (t_processor_thread) {
-				delete t_processor_thread;
-				t_processor_thread = nullptr;
-			}
-			if (onvif_ev_thread) {
-				delete onvif_ev_thread;
-				onvif_ev_thread = nullptr;
-			}
 
 			// Give a small delay before creating new components to ensure cleanup is complete
 			log.log(Debug, "Device %d: Waiting 50ms before creating new components", id);
@@ -835,6 +855,14 @@ void bc_record::destroy_elements()
     // Stop the liveview substream first
     if (liveview_substream) {
         liveview_substream->stop();
+        if (liveview_substream_thread && liveview_substream_thread->joinable()) {
+            bc_join_thread_with_timeout(this, liveview_substream_thread,
+                                        "liveview substream", 5);
+        }
+        delete liveview_substream_thread;
+        liveview_substream_thread = nullptr;
+        delete liveview_substream;
+        liveview_substream = nullptr;
     }
 
     // CRITICAL FIX: Safe HLS stream cleanup with proper synchronization
@@ -890,97 +918,29 @@ void bc_record::destroy_elements()
         rtsp_stream = nullptr;
     }
 
-    // First disconnect all components from their sources
-    if (bc && bc->source) {
-        // Disconnect all components from the main source first
-        if (rec_continuous) {
-            safe_disconnect(rec_continuous, bc->source);
-        }
-        if (rec_motion) {
-            safe_disconnect(rec_motion, bc->source);
-        }
-        if (m_processor) {
-            safe_disconnect(m_processor, bc->source);
-        }
-        if (t_processor) {
-            safe_disconnect(t_processor, bc->source);
-        }
-        if (m_handler && m_handler->input_consumer()) {
-            safe_disconnect(m_handler->input_consumer(), bc->source);
-        }
-    }
+    bc_disconnect_recording_workers(this);
 
     // Give a small delay for disconnects to complete
     usleep(100000); // 100ms
 
-    // CRITICAL FIX: Add timeout protection for thread joins during shutdown
     log.log(Debug, "Device %d: Starting thread cleanup during shutdown with timeout protection", id);
 
-    bool continuous_joined = true;
-    bool motion_joined = true;
-    bool processor_joined = true;
-    bool trigger_joined = true;
-    bool onvif_joined = true;
-
-    if (rec_continuous_thread) {
-        continuous_joined = bc_join_thread_with_timeout(this, rec_continuous_thread,
+    const bool continuous_joined = bc_shutdown_recorder(this, rec_continuous,
+                                                        rec_continuous_thread,
                                                         "continuous recorder", 5);
-    }
-
-    if (rec_motion_thread) {
-        motion_joined = bc_join_thread_with_timeout(this, rec_motion_thread,
+    const bool motion_joined = bc_shutdown_recorder(this, rec_motion, rec_motion_thread,
                                                     "motion recorder", 5);
-    }
+    const bool handler_joined = bc_shutdown_motion_handler(this, m_handler,
+                                                           m_handler_thread, 5);
+    const bool processor_joined = bc_shutdown_motion_processor(this, m_processor,
+                                                               m_processor_thread, 5);
+    const bool trigger_joined = bc_shutdown_trigger_processor(this, t_processor,
+                                                              t_processor_thread, 5);
+    const bool onvif_joined = bc_shutdown_onvif(this, onvif_ev, onvif_ev_thread, 3);
 
-    if (m_processor_thread) {
-        processor_joined = bc_join_thread_with_timeout(this, m_processor_thread,
-                                                         "motion processor", 5);
-    }
-
-    if (t_processor_thread) {
-        trigger_joined = bc_join_thread_with_timeout(this, t_processor_thread,
-                                                     "trigger processor", 5);
-    }
-
-    if (onvif_ev_thread) {
-        onvif_joined = bc_join_thread_with_timeout(this, onvif_ev_thread,
-                                                   "ONVIF events", 3);
-    }
-
-    if (!(continuous_joined && motion_joined && processor_joined &&
+    if (!(continuous_joined && motion_joined && handler_joined && processor_joined &&
           trigger_joined && onvif_joined)) {
         log.log(Warning, "Device %d: Some threads failed to join during shutdown", id);
-    }
-
-    // Delete thread objects
-    log.log(Debug, "Device %d: Deleting thread objects during shutdown", id);
-    bc_release_thread_handle(this, rec_continuous_thread, "continuous recorder", continuous_joined);
-    bc_release_thread_handle(this, rec_motion_thread, "motion recorder", motion_joined);
-    bc_release_thread_handle(this, m_processor_thread, "motion processor", processor_joined);
-    bc_release_thread_handle(this, t_processor_thread, "trigger processor", trigger_joined);
-    bc_release_thread_handle(this, onvif_ev_thread, "ONVIF events", onvif_joined);
-
-    // Delete component objects
-    log.log(Debug, "Device %d: Deleting component objects during shutdown", id);
-    if (rec_continuous && continuous_joined) {
-        delete rec_continuous;
-        rec_continuous = nullptr;
-    }
-    if (rec_motion && motion_joined) {
-        delete rec_motion;
-        rec_motion = nullptr;
-    }
-    if (m_processor && processor_joined) {
-        delete m_processor;
-        m_processor = nullptr;
-    }
-    if (t_processor && trigger_joined) {
-        delete t_processor;
-        t_processor = nullptr;
-    }
-    if (m_handler && motion_joined) {
-        delete m_handler;
-        m_handler = nullptr;
     }
 
     log.log(Debug, "Device %d: Completed destroy_elements", id);

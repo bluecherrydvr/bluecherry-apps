@@ -269,6 +269,8 @@ public:
     bool should_run_cleanup() const;
     bool needs_startup_cleanup() const;
     void mark_startup_cleanup_done();
+    bool is_cleanup_in_progress();
+    void wait_for_cleanup_idle();
 };
 
 // Utility functions
