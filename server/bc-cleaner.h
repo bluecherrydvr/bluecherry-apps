@@ -236,7 +236,7 @@ public:
 class CleanupManager {
 private:
     std::mutex cleanup_mutex;
-    bool cleanup_in_progress;
+    std::atomic<bool> cleanup_in_progress;
     std::unique_ptr<CleanupRetryManager> retry_manager;
     std::unique_ptr<ParallelCleanup> parallel_cleanup;
     std::unique_ptr<CleanupScheduler> scheduler;

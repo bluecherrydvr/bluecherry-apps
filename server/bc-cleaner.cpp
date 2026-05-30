@@ -715,12 +715,12 @@ bool CleanupManager::process_batch(int batch_size, double target_threshold, int&
 int CleanupManager::run_cleanup() {
     std::lock_guard<std::mutex> lock(cleanup_mutex);
     
-    if (cleanup_in_progress) {
+    if (cleanup_in_progress.load(std::memory_order_acquire)) {
         bc_log(Info, "Cleanup already in progress, skipping");
         return 0;
     }
     
-    cleanup_in_progress = true;
+    cleanup_in_progress.store(true, std::memory_order_release);
     int total_deleted = 0;
     time_t start_time = time(nullptr);
     int batch_count = 0;
@@ -818,11 +818,11 @@ int CleanupManager::run_cleanup() {
         
     } catch (const std::exception& e) {
         bc_log(Error, "Exception during cleanup: %s", e.what());
-        cleanup_in_progress = false;
+        cleanup_in_progress.store(false, std::memory_order_release);
         return -1;
     }
     
-    cleanup_in_progress = false;
+    cleanup_in_progress.store(false, std::memory_order_release);
     return 0;
 }
 
@@ -868,12 +868,11 @@ void CleanupManager::mark_startup_cleanup_done() {
 }
 
 bool CleanupManager::is_cleanup_in_progress() {
-    std::lock_guard<std::mutex> lock(cleanup_mutex);
-    return cleanup_in_progress;
+    return cleanup_in_progress.load(std::memory_order_acquire);
 }
 
 void CleanupManager::wait_for_cleanup_idle() {
-    for (int i = 0; i < 600 && is_cleanup_in_progress(); ++i)
+    for (int i = 0; i < 3600 && cleanup_in_progress.load(std::memory_order_acquire); ++i)
         usleep(100000);
 }
 
@@ -1526,20 +1525,20 @@ int CleanupManager::sync_database_with_filesystem() {
 int CleanupManager::run_database_sync() {
     std::lock_guard<std::mutex> lock(cleanup_mutex);
     
-    if (cleanup_in_progress) {
+    if (cleanup_in_progress.load(std::memory_order_acquire)) {
         bc_log(Info, "Cleanup already in progress, skipping database sync");
         return 0;
     }
     
-    cleanup_in_progress = true;
+    cleanup_in_progress.store(true, std::memory_order_release);
     
     try {
         int result = sync_database_with_filesystem();
-        cleanup_in_progress = false;
+        cleanup_in_progress.store(false, std::memory_order_release);
         return result;
     } catch (const std::exception& e) {
         bc_log(Error, "Exception during database sync: %s", e.what());
-        cleanup_in_progress = false;
+        cleanup_in_progress.store(false, std::memory_order_release);
         return -1;
     }
 }
