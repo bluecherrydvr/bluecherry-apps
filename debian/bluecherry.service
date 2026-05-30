@@ -6,7 +6,7 @@ After=syslog.target network.target mysql.service
 Type=simple
 User=bluecherry
 Group=bluecherry
-ExecStartPre=+/bin/rm -f /tmp/bluecherry_status /tmp/bluecherry_trigger
+ExecStartPre=+/bin/sh -c 'rm -f /tmp/bluecherry_status /tmp/bluecherry_trigger; i=0; while fuser 7005/tcp 7003/tcp 7002/tcp >/dev/null 2>&1 && [ "$i" -lt 10 ]; do i=$((i+1)); sleep 1; done'
 #ExecStart=/usr/bin/valgrind --tool=memcheck --leak-check=yes --leak-check=full --show-leak-kinds=all --log-file=/tmp/bluecherry-valgrind.log /usr/sbin/bc-server -s
 #ExecStart=/usr/bin/rr record -o /tmp/bluecherry.rr /usr/sbin/bc-server -s
 ExecStart=/usr/sbin/bc-server -s

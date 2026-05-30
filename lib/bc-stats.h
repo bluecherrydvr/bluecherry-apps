@@ -112,6 +112,7 @@ public:
 
     void start_monithoring();
     void stop_monithoring();
+    ~bc_stats();
     void display();
 
     void get_proc_usage(bc_stats::cpu::process *proc);

@@ -2026,6 +2026,11 @@ bool hls_listener::register_listener(uint16_t port)
     return true;
 }
 
+void hls_listener::stop_listener()
+{
+    _fd = sock_shutdown(_fd);
+}
+
 bool hls_listener::ssl_service()
 {
 #ifdef BC_HLS_WITH_SSL

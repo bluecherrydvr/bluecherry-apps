@@ -374,6 +374,7 @@ public:
     ~hls_listener();
 
     void run();
+    void stop_listener();
     void reconfigure(hls_config *config);
     bool register_listener(uint16_t port);
     hls_content *get_hls_content(int id);

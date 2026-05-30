@@ -115,6 +115,7 @@ public:
 
     bool create_socket(uint16_t port);
     bool start_listener(uint16_t port);
+    void stop_listener();
     void set_stats(bc_stats* stats) { _stats = stats; }
 
     void get_cpu_stats(std::string &outout);

@@ -885,6 +885,11 @@ bool bc_api::start_listener(uint16_t port)
     return true;
 }
 
+void bc_api::stop_listener()
+{
+    _fd = api_sock_shutdown(_fd);
+}
+
 void bc_api::run()
 {
     pthread_setname_np(pthread_self(), "API");

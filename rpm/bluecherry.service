@@ -5,7 +5,7 @@ After=network.target remote-fs.target nss-lookup.target mysql.target
 [Service]
 Type=simple
 #EnvironmentFile=/etc/sysconfig/httpd
-ExecStartPre=/bin/rm -f /tmp/bluecherry_status /tmp/bluecherry_trigger
+ExecStartPre=/bin/sh -c 'rm -f /tmp/bluecherry_status /tmp/bluecherry_trigger; i=0; while fuser 7005/tcp 7003/tcp 7002/tcp >/dev/null 2>&1 && [ "$i" -lt 10 ]; do i=$((i+1)); sleep 1; done'
 ExecStart=/usr/sbin/bc-server -s -u bluecherry -g bluecherry
 #ExecReload=/usr/sbin/httpd $OPTIONS -k graceful
 Restart=always

@@ -97,6 +97,8 @@ typedef std::vector<std::string> bc_string_array;
 static rtsp_server *rtsp = NULL;
 static hls_listener *hls = NULL;
 static bc_api *api = NULL;
+static std::thread g_api_thread;
+static std::thread g_hls_thread;
 
 static char *component_error[NUM_STATUS_COMPONENTS];
 static char *component_error_tmp;
@@ -153,6 +155,22 @@ static void bc_wait_for_cleanup_worker(void)
 
 static void bc_server_shutdown_listeners(void)
 {
+	if (api) {
+		api->stop_listener();
+		if (g_api_thread.joinable())
+			g_api_thread.join();
+		delete api;
+		api = NULL;
+	}
+
+	if (hls) {
+		hls->stop_listener();
+		if (g_hls_thread.joinable())
+			g_hls_thread.join();
+		delete hls;
+		hls = NULL;
+	}
+
 	if (g_status_server) {
 		g_status_server->destroy();
 		delete g_status_server;
@@ -2069,12 +2087,11 @@ int main(int argc, char **argv)
 	api->set_stats(&stats);
 
 	if (!api->start_listener(7005)) {
-		bc_log(Error, "Failed to setup API listener");
+		bc_log(Warning, "Failed to setup API listener on port 7005; continuing without stats API");
 		delete api;
-		return 1;
+		api = NULL;
 	} else {
-		std::thread api_th(&bc_api::run, api);
-		api_th.detach();
+		g_api_thread = std::thread(&bc_api::run, api);
 	}
 
 	rtsp = new rtsp_server;
@@ -2088,13 +2105,12 @@ int main(int argc, char **argv)
 
 	hls = new hls_listener;
 	if (!hls->register_listener(7003)) {
-		bc_log(Error, "Failed to setup HLS listener");
+		bc_log(Warning, "Failed to setup HLS listener on port 7003; continuing without HLS server");
 		delete hls;
-		return 1;
+		hls = NULL;
 	} else {
 		hls->set_auth(true); // enable authentication
-		std::thread hls_th(&hls_listener::run, hls);
-		hls_th.detach();
+		g_hls_thread = std::thread(&hls_listener::run, hls);
 	}
 
 

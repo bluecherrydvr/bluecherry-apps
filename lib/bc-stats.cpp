@@ -600,6 +600,9 @@ void bc_stats::monithoring_thread()
 
 void bc_stats::start_monithoring()
 {
+    if (_thread.joinable())
+        return;
+
     pthread_mutex_init(&_mutex, NULL);
     __sync_lock_test_and_set(&_active, 1);
 
@@ -611,12 +614,22 @@ void bc_stats::start_monithoring()
 
 void bc_stats::stop_monithoring()
 {
+    if (!_thread.joinable())
+        return;
+
     /* Notify thread about finish processing */
     __sync_lock_test_and_set(&_cancel, 1);
 
     _thread.join();
     /* Destroy mutex */
     pthread_mutex_destroy(&_mutex);
+    __sync_lock_test_and_set(&_active, 0);
+    __sync_lock_test_and_set(&_cancel, 0);
+}
+
+bc_stats::~bc_stats()
+{
+    stop_monithoring();
 }
 
 // Historical data methods implementation
