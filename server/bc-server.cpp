@@ -300,19 +300,35 @@ int bc_status_component_end(bc_status_component c, int ok)
 void bc_status_component_error(const char *error, ...)
 {
 	va_list args;
+	char *chunk = NULL;
+
 	va_start(args, error);
+	if (vasprintf(&chunk, error, args) < 0) {
+		va_end(args);
+		return;
+	}
+	va_end(args);
 
 	if (component_error_tmp) {
-		int l = strlen(component_error_tmp);
-		component_error_tmp = (char*) realloc(component_error_tmp, l + 1024);
-		component_error_tmp[l++] = '\n';
-		vsnprintf(component_error_tmp + l, 1024, error, args);
+		char *merged = NULL;
+		if (asprintf(&merged, "%s\n%s", component_error_tmp, chunk) >= 0) {
+			free(component_error_tmp);
+			component_error_tmp = merged;
+		}
 	} else {
-		component_error_tmp = (char*) malloc(1024);
-		vsnprintf(component_error_tmp, 1024, error, args);
+		component_error_tmp = chunk;
+		chunk = NULL;
 	}
 
-	va_end(args);
+	free(chunk);
+
+	/* Prevent unbounded growth during prolonged DB outages. */
+	if (component_error_tmp && strlen(component_error_tmp) > 8191) {
+		component_error_tmp[8188] = '.';
+		component_error_tmp[8189] = '.';
+		component_error_tmp[8190] = '.';
+		component_error_tmp[8191] = '\0';
+	}
 }
 
 static void bc_initialize_mutexes()
@@ -344,7 +360,6 @@ static void bc_update_server_status()
 {
 	int ret;
 	char *full_error = NULL;
-	int full_error_sz = 0;
 	time_t ts;
 	BC_DB_RES dbres;
 
@@ -354,17 +369,21 @@ static void bc_update_server_status()
 			continue;
 
 		if (full_error) {
-			int nl = strlen(component_error[i]);
-			full_error = (char*) realloc(full_error, full_error_sz + nl + 128);
-			snprintf(full_error + strlen(full_error), nl + 128, "\n\n[%s] %s",
-			         component_str, component_error[i]);
-			full_error_sz += nl + 128;
+			char *merged = NULL;
+			if (asprintf(&merged, "%s\n\n[%s] %s", full_error, component_str,
+			             component_error[i]) >= 0) {
+				free(full_error);
+				full_error = merged;
+			}
 		} else {
-			full_error_sz = asprintf(&full_error, "[%s] %s", component_str, component_error[i]);
-			if (full_error_sz < 0) full_error = NULL; // Failed to allocate
+			if (asprintf(&full_error, "[%s] %s", component_str,
+			             component_error[i]) < 0)
+				full_error = NULL;
 		}
 
 		bc_log(Fatal, "[%s] %s", component_str, component_error[i]);
+		free(component_error[i]);
+		component_error[i] = NULL;
 	}
 
 	if (bc_db_start_trans())
