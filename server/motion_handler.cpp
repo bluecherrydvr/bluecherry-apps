@@ -191,7 +191,8 @@ void motion_handler::run()
 
 	bc_log(Debug, "motion_handler destroying");
 	l.unlock();
-	delete this;
+	/* Ownership belongs to bc_record (bc_shutdown_motion_handler deletes
+	 * the worker after joining this thread); never delete this here. */
 }
 
 static inline bool packet_seq_compare(const stream_packet &p1, const stream_packet &p2)

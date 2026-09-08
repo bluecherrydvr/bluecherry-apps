@@ -20,6 +20,7 @@
 
 #include <sys/types.h>
 
+#include <atomic>
 #include <string>
 
 class onvif_events
@@ -32,7 +33,7 @@ private:
 	void run_onvif_tool(struct bc_record *r);
 	void unsubscribe();
 	struct bc_record *rec;
-	bool exit_flag;
+	std::atomic<bool> exit_flag;
 	pid_t onvif_tool_pid;
 	std::string subscription_ref_addr;
 	std::string addr;

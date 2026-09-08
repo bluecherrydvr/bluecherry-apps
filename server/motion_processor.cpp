@@ -202,7 +202,8 @@ void motion_processor::run()
 	pthread_cleanup_pop(0);
 
 	bc_log(Debug, "motion_processor destroying");
-	delete this;
+	/* Ownership belongs to bc_record (bc_shutdown_motion_processor deletes
+	 * the worker after joining this thread); never delete this here. */
 }
 
 bool motion_processor::decode_create(const stream_properties &prop)

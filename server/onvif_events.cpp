@@ -37,6 +37,13 @@ void onvif_events::run_onvif_tool(struct bc_record *r)
 
 	char *devaddr = strdupa(r->cfg.dev);
 	char *split = strchr(devaddr, '|');
+	if (!split) {
+		r->log.log(Error, "ONVIF events: malformed device address '%s', "
+				   "expected 'host|path' - disabling ONVIF events thread",
+				   r->cfg.dev);
+		exit_flag = true;
+		return;
+	}
 	*split = '\0';
 
 	snprintf(read_buf, sizeof(read_buf), "%s:%u", devaddr, r->cfg.onvif_port);

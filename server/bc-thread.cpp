@@ -58,7 +58,13 @@ static bool bc_join_thread_with_timeout(bc_record *rec, std::thread *thread,
 
 	std::atomic<bool> joined{false};
 	std::thread join_helper([thread, &joined]() {
-		thread->join();
+		/* The worker thread may be detached elsewhere after a timeout;
+		 * joining a detached thread throws, and an uncaught exception
+		 * here would terminate the whole server. */
+		try {
+			thread->join();
+		} catch (...) {
+		}
 		joined = true;
 	});
 
@@ -93,6 +99,12 @@ static void bc_release_thread_handle(bc_record *rec, std::thread *&thread,
 		rec->log.log(Warning, "Device %d: Detaching stuck %s thread",
 			     rec->id, thread_name);
 		thread->detach();
+		/* The detached join helper above is still blocked in join() on
+		 * this handle. Freeing it here would hand the helper a dangling
+		 * pointer, so intentionally leak the handle; the helper releases
+		 * its own resources when the stuck worker finally exits. */
+		thread = nullptr;
+		return;
 	}
 
 	delete thread;
@@ -855,14 +867,25 @@ void bc_record::destroy_elements()
     // Stop the liveview substream first
     if (liveview_substream) {
         liveview_substream->stop();
+        bool sub_joined = true;
         if (liveview_substream_thread && liveview_substream_thread->joinable()) {
-            bc_join_thread_with_timeout(this, liveview_substream_thread,
-                                        "liveview substream", 5);
+            sub_joined = bc_join_thread_with_timeout(this, liveview_substream_thread,
+                                                     "liveview substream", 5);
         }
-        delete liveview_substream_thread;
-        liveview_substream_thread = nullptr;
-        delete liveview_substream;
-        liveview_substream = nullptr;
+        if (sub_joined) {
+            delete liveview_substream_thread;
+            liveview_substream_thread = nullptr;
+            delete liveview_substream;
+            liveview_substream = nullptr;
+        } else {
+            /* Stuck substream thread owns these objects now; freeing them
+             * here would race it. Detach and intentionally leak, matching
+             * bc_release_thread_handle semantics for stuck workers. */
+            if (liveview_substream_thread->joinable())
+                liveview_substream_thread->detach();
+            liveview_substream_thread = nullptr;
+            liveview_substream = nullptr;
+        }
     }
 
     // CRITICAL FIX: Safe HLS stream cleanup with proper synchronization

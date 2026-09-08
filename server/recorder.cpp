@@ -160,7 +160,8 @@ end:
 	l.unlock();
 	recording_end();
 	bc_event_cam_end(&current_event);
-	delete this;
+	/* Ownership belongs to bc_record (bc_shutdown_recorder deletes
+	 * the worker after joining this thread); never delete this here. */
 }
 
 void recorder::event_trigger_notifications(bc_event_cam_t event)
