@@ -1,6 +1,8 @@
 #ifndef MOTION_PROCESSOR_H
 #define MOTION_PROCESSOR_H
 
+#include <atomic>
+
 #include "stream_elements.h"
 #include "opencv2/opencv.hpp"
 #include "bc-server.h"
@@ -54,7 +56,7 @@ public:
 
 private:
 	AVCodecContext *decode_ctx;
-	bool destroy_flag;
+	std::atomic<bool> destroy_flag;
 
 	struct SwsContext *convContext;
 	AVFrame           *refFrame;

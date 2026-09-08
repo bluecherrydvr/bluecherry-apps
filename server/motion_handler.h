@@ -1,6 +1,8 @@
 #ifndef MOTION_HANDLER_H
 #define MOTION_HANDLER_H
 
+#include <atomic>
+
 #include "libbluecherry.h"
 #include "stream_elements.h"
 #include "sliding_seq_window.h"
@@ -59,7 +61,7 @@ public:
 private:
 	class raw_input_consumer *raw_stream;
 	stream_consumer *flag_stream;
-	bool destroy_flag;
+	std::atomic<bool> destroy_flag;
 	int prerecord_time;
 	int postrecord_time;
 

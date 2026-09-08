@@ -1,6 +1,8 @@
 #ifndef TRIGGER_PROCESSOR_H
 #define TRIGGER_PROCESSOR_H
 
+#include <atomic>
+
 #include "stream_elements.h"
 
 struct AVCodecContext;
@@ -40,7 +42,7 @@ public:
 	void trigger(const char *description);
 
 private:
-	bool destroy_flag;
+	std::atomic<bool> destroy_flag;
 	int camera_id;
 
 	pthread_mutex_t trigger_flag_lock;

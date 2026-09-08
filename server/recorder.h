@@ -1,6 +1,8 @@
 #ifndef RECORDER_H
 #define RECORDER_H
 
+#include <atomic>
+
 #include "stream_elements.h"
 
 struct AVCodecContext;
@@ -26,7 +28,7 @@ public:
 
 private:
 	int device_id;
-	bool destroy_flag;
+	std::atomic<bool> destroy_flag;
 	bc_event_cam_type_t recording_type;
 
 	media_writer *writer = NULL;

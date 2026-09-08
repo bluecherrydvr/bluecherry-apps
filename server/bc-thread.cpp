@@ -605,6 +605,11 @@ void bc_record::run()
 				}
 			}
 
+			/* Drop the previous schedule's reencoder, if any. It is only
+			 * ever used on this thread, so deleting here is safe. */
+			delete reenc;
+			reenc = nullptr;
+
 			if (cfg.reencode_enabled && bc->substream_mode == BC_DEVICE_STREAMING_COMMON_INPUT) {
 				log.log(Debug, "Device %d: Setting up reencoder", id);
 				reenc = new reencoder(cfg.reencode_bitrate, cfg.reencode_frame_width, cfg.reencode_frame_height);
@@ -940,6 +945,11 @@ void bc_record::destroy_elements()
         rtsp_stream::remove(this);
         rtsp_stream = nullptr;
     }
+
+    // The reencoder is only ever used on the device thread, so free it
+    // here instead of leaking it on every shutdown.
+    delete reenc;
+    reenc = nullptr;
 
     bc_disconnect_recording_workers(this);
 
