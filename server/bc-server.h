@@ -96,6 +96,10 @@ public:
 
 	time_t			osd_time;
 	unsigned int		start_failed;
+	/* Reconnect backoff: consecutive stream failures for backoff delay */
+	unsigned int		stream_fail_count;
+	/* Last wall-clock time a device-state mailer notification was sent */
+	time_t			last_notify_time;
 
 	pthread_t		thread;
 

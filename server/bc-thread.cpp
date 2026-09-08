@@ -341,8 +341,19 @@ void bc_rec_thread_cleanup(void *data)
 	bt("bc_record unexpectedly cancelled", RET_ADDR);
 }
 
+/* Minimum seconds between device-state mailer notifications for one
+ * device. A flapping camera can generate OFFLINE/BACK ONLINE pairs every
+ * few seconds, and each one forks a PHP mailer; rate-limit the forks here
+ * (state changes are still in the journal regardless). */
+#define BC_NOTIFY_MIN_INTERVAL_SEC 300
+
 void bc_record::notify_device_state(const char *state)
 {
+	time_t now = time(NULL);
+	if ((now - last_notify_time) < BC_NOTIFY_MIN_INTERVAL_SEC)
+		return;
+	last_notify_time = now;
+
 	pid_t pid = fork();
 	if (pid < 0) {
 		bc_log(Bug, "cannot fork for event notification");
@@ -632,6 +643,7 @@ void bc_record::run()
 
 		ret = bc->input->read_packet();
 		if (ret == EAGAIN) {
+			stream_fail_count = 0;
 			continue;
 		} else if (ret != 0) {
 			if (bc->type == BC_DEVICE_LAVF) {
@@ -652,6 +664,7 @@ void bc_record::run()
 		}
 
 		/* End any active error events, because we successfully read a packet */
+		stream_fail_count = 0;
 		if (event) {
 			bc_event_cam_end(&event);
 			log.log(Info, "Back online");
@@ -715,7 +728,25 @@ void bc_record::run()
 		msleep(10);
 		continue;
 error:
-		sleep(10);
+		/* Exponential backoff on consecutive stream failures so a dead
+		 * or flapping camera doesn't hot-loop connects, event writes
+		 * and mailer forks: 10s, 20s, 40s ... capped at 5 minutes. */
+		if (stream_fail_count < 100)
+			stream_fail_count++;
+		{
+			unsigned int shift = stream_fail_count - 1;
+			if (shift > 5)
+				shift = 5;
+			unsigned int delay = 10u << shift;
+			if (delay > 300)
+				delay = 300;
+			if (stream_fail_count > 1) {
+				log.log(Warning, "Device %d: backing off reconnect %us "
+					"after %u consecutive failures",
+					id, delay, stream_fail_count);
+			}
+			sleep(delay);
+		}
 	}
 	log.log(Info, "Shutting down device thread");
 
@@ -750,6 +781,8 @@ bc_record::bc_record(int i)
 
 	osd_time = 0;
 	start_failed = 0;
+	stream_fail_count = 0;
+	last_notify_time = 0;
 
 	memset(&event, 0, sizeof(event));
 
