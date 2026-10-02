@@ -38,12 +38,40 @@ EOF
 # -------------------------------
 # 2) Permissions
 # -------------------------------
-install -d -m 0775 /var/lib/bluecherry/recordings
-chown "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}":"${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" /var/lib/bluecherry/recordings || true
-chmod ug+rwx /var/lib/bluecherry/recordings || true
+REC_DIR=/var/lib/bluecherry/recordings
+BC_USER="${BLUECHERRY_LINUX_USER_NAME:-bluecherry}"
+BC_GROUP="${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}"
+
+install -d -m 0775 "$REC_DIR"
+if ! chown "${BC_USER}:${BC_GROUP}" "$REC_DIR"; then
+  log "WARN: chown ${BC_USER}:${BC_GROUP} $REC_DIR failed; check the volume mount"
+fi
+if ! chmod ug+rwx "$REC_DIR"; then
+  log "WARN: chmod ug+rwx $REC_DIR failed"
+fi
 
 # Ensure www-data is in the bluecherry group so PHP can read recordings
-usermod -a -G "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" www-data || true
+if ! usermod -a -G "$BC_GROUP" www-data; then
+  log "WARN: adding www-data to group $BC_GROUP failed"
+fi
+log "> Recordings dir: $(stat -c '%U:%G %a' "$REC_DIR" 2>/dev/null || echo unknown)"
+
+# Self-check: the web user must traverse and read recordings, otherwise
+# Storage settings, playback and downloads fail with confusing errors.
+if command -v su >/dev/null 2>&1; then
+  BECOME_WWW=(su -s /bin/sh www-data -c)
+elif command -v runuser >/dev/null 2>&1; then
+  BECOME_WWW=(runuser -u www-data -- sh -c)
+else
+  BECOME_WWW=()
+fi
+if [ "${#BECOME_WWW[@]}" -gt 0 ]; then
+  if ! "${BECOME_WWW[@]}" "test -r '$REC_DIR' && test -x '$REC_DIR'" >/dev/null 2>&1; then
+    log "WARN: www-data cannot read $REC_DIR (debug: id www-data; ls -ld $REC_DIR)"
+  fi
+else
+  log "WARN: neither su nor runuser available; skipping www-data readability check"
+fi
 
 # Route container logs to stdout safely
 chmod 777 /proc/self/fd/1 || true
@@ -118,7 +146,7 @@ log "> Ensuring '${DB_USER}' has PROCESS/SHOW VIEW/EVENT/TRIGGER/LOCK TABLES and
 # -------------------------------
 log "> Starting bc-server"
 export LD_LIBRARY_PATH=/usr/lib/bluecherry
-BC_ARGS=(-u "${BLUECHERRY_LINUX_USER_NAME:-bluecherry}" -g "${BLUECHERRY_LINUX_GROUP_NAME:-bluecherry}" -s)
+BC_ARGS=(-u "$BC_USER" -g "$BC_GROUP" -s)
 
 if [ "${DEBUG:-0}" = "1" ]; then
   log "Running bc-server in DEBUG mode (foreground, log level debug)"

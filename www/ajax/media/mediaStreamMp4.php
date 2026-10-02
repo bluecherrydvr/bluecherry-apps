@@ -25,11 +25,24 @@ class mediaStreamMp4 extends Controller {
         }
         $filename = $query_res[0]['filepath'];
 
-        # check video codec, using ffprobe and its parsable output (see -show-format -show-streams);
-        $ffprobe_output = shell_exec("LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffprobe -show_format -show_streams -print_format flat $filename");
-        if (strstr($ffprobe_output, 'streams.stream.0.codec_type="video"') === false) {
-            header("HTTP/1.0 500 Internal Server Error - file's first stream is not a video, FIXME to support more cases");
+        if ($filename === '' || !file_exists($filename)) {
+            header("HTTP/1.0 404 Not Found - recording file does not exist");
             die();
+        }
+        if (!is_readable($filename)) {
+            header("HTTP/1.0 500 Internal Server Error - recording file is not readable (check permissions)");
+            die();
+        }
+
+        # check video codec, using ffprobe and its parsable output (see -show-format -show-streams);
+        # the video stream may sit at any index (some cameras mux audio first).
+        $escaped_file = escapeshellarg($filename);
+        $ffprobe_output = shell_exec("LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffprobe -show_format -show_streams -print_format flat {$escaped_file} 2>&1");
+        $streams = ffprobeParseStreams($ffprobe_output);
+        $video = ffprobeFirstVideoStream($streams);
+        if ($video === null) {
+            header("HTTP/1.0 500 Internal Server Error - no video stream found in file");
+            die("No video stream found in file.<br><br>ffprobe output:<br><br>".nl2br(htmlspecialchars((string)$ffprobe_output)));
         }
 
         $outfile = tempnam('/tmp', 'bluecherry_streaming__');
@@ -37,11 +50,12 @@ class mediaStreamMp4 extends Controller {
             header("HTTP/1.0 500 Internal Server Error - failed to create temporary file");
             die();
         }
+        $escaped_out = escapeshellarg($outfile);
 
-        if (strstr($ffprobe_output, 'codec_type="audio"') === false) {
+        if (!ffprobeHasStream($streams, 'audio')) {
             # If no audio streams detected
             $audio_options = ' -an ';
-        } else if (strstr($ffprobe_output, 'codec_name="aac"') !== false) {
+        } else if (ffprobeHasStream($streams, 'audio', 'aac')) {
             # If AAC audio stream detected
             $audio_options = ' -acodec copy ';
         } else {
@@ -61,26 +75,32 @@ class mediaStreamMp4 extends Controller {
 		$hwfilter = "-filter_hw_device hwva -vf 'format=nv12|vaapi,hwupload'";
 	}
 
-        if (strstr($ffprobe_output, 'streams.stream.0.codec_name="h264"') !== false
-            || strstr($ffprobe_output, 'streams.stream.0.codec_name="mpeg4"') !== false) {
-            # -- if codec is MPEG4 or H264, remux the file into MP4 container format;
+        $video_codec = $video['codec'];
+        if ($video_codec === 'h264' || $video_codec === 'mpeg4' || $video_codec === 'hevc') {
+            # -- if codec is MPEG4, H264 or HEVC, remux the file into MP4 container format;
             # -faststart option must be used for MP4 file to enable instant playback start.
-            $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i $filename $audio_options -vcodec copy  -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
-        } else if (strstr($ffprobe_output, 'streams.stream.0.codec_name="mjpeg"') !== false) {
+            # Note: HEVC in MP4 plays in Safari but not in most other browsers.
+            $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg -i {$escaped_file} {$audio_options} -vcodec copy  -movflags faststart -f mp4 -y {$escaped_out} 2>&1 && echo SUCCEED";
+        } else if ($video_codec === 'mjpeg') {
             # -- otherwise, if codec is MJPEG, reencode the video stream to MPEG4 or H264 codec;
             # Lower framerate on request, but forbid making it unreasonably high to avoid DoS attack
-            if (isset($_GET['fps']) && (is_numeric($_GET['fps']) || is_float($_GET['fps'])) && $_GET['fps'] <= 30)
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg $hwaccel -i $filename $audio_options $hwfilter -vcodec $vcodec -r {$_GET['fps']} -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+            if (isset($_GET['fps']) && is_numeric($_GET['fps']) && $_GET['fps'] > 0 && $_GET['fps'] <= 30)
+                $fps = floatval($_GET['fps']);
             else
-                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg $hwaccel -i $filename $audio_options $hwfilter -vcodec $vcodec -movflags faststart -f mp4 -y $outfile 2>&1 && echo SUCCEED";
+                $fps = 0;
+            if ($fps > 0)
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg {$hwaccel} -i {$escaped_file} {$audio_options} {$hwfilter} -vcodec {$vcodec} -r {$fps} -movflags faststart -f mp4 -y {$escaped_out} 2>&1 && echo SUCCEED";
+            else
+                $ffmpeg_cmd = "LD_LIBRARY_PATH=/usr/lib/bluecherry/ /usr/lib/bluecherry/ffmpeg {$hwaccel} -i {$escaped_file} {$audio_options} {$hwfilter} -vcodec {$vcodec} -movflags faststart -f mp4 -y {$escaped_out} 2>&1 && echo SUCCEED";
         } else {
             unlink($outfile);
-            header("HTTP/1.0 500 Internal Server Error - unsupported codec in video file");
+            header("HTTP/1.0 500 Internal Server Error - unsupported codec in video file: {$video_codec}");
             die();
         }
 
         $ffmpeg_output = shell_exec($ffmpeg_cmd);
         if (strstr($ffmpeg_output, 'SUCCEED') === false) {
+            unlink($outfile);
             header("HTTP/1.0 500 Internal Server Error - MP4 file preparation failed");
             die("MP4 file preparation failed:<br><br>".nl2br($ffmpeg_output));
         }

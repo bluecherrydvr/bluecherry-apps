@@ -73,8 +73,9 @@ verify_write_permissions() {
     return 0
 }
 
-# Directory variable to store location
-DIR=$(realpath "$1") # Converts to absolute path
+# Directory variable to store location (-m so missing paths canonicalize
+# instead of aborting before the create branch below can run)
+DIR=$(realpath -m "$1") # Converts to absolute path
 
 # Validate path format
 if ! is_valid_path "$DIR"; then

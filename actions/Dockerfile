@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Minimal runtime + tools needed to repack a .deb cleanly
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl wget gnupg openssl \
-    rsyslog iproute2 sysstat nano cron \
+    rsyslog iproute2 sysstat nano cron sudo \
     mysql-client \
     xz-utils dpkg-dev \
     libva2 libva-drm2 libva-x11-2 libdrm2 libx11-6 \
@@ -116,6 +116,9 @@ RUN set -eux; \
 
 # Run essential postinstall tasks that were skipped due to patched postinst
 RUN set -eux; \
+    # Sudoers drop-in so www-data can run the storage-permission helper (mirrors postinstall.sh) \
+    install -m 0440 -o root -g root /usr/share/bluecherry/sudoers.d/www-data /etc/sudoers.d/www-data; \
+    visudo -c -f /etc/sudoers.d/www-data; \
     # Permissions for bluecherry directories \
     mkdir -p /var/lib/bluecherry /var/run/bluecherry; \
     chown -R bluecherry:bluecherry /var/lib/bluecherry /var/run/bluecherry; \

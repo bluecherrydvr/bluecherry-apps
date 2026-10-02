@@ -28,11 +28,19 @@ class storagecheck extends Controller {
 
 public function change_directory_permissions($path)
 {
-    // Call the bash script to change directory permissions and ownership
-    $output = shell_exec("sudo /usr/share/bluecherry/scripts/check_dir_permission.sh " . escapeshellarg($path));
+    // Call the bash script to change directory permissions and ownership,
+    // capturing stderr and the exit code so missing-sudo and script
+    // errors surface instead of vanishing.
+    $lines = array();
+    $exit_code = 0;
+    exec("sudo /usr/share/bluecherry/scripts/check_dir_permission.sh " . escapeshellarg($path) . " 2>&1", $lines, $exit_code);
+    $output = implode("\n", $lines);
 
     // Interpret the output from the script to form the response
-    if (strpos($output, 'Error') !== false) {
+    if ($exit_code !== 0 || strpos($output, 'Error') !== false) {
+        if ($output === '') {
+            $output = "permission script failed with exit code {$exit_code} and no output (is sudo installed and configured for www-data?)";
+        }
         return array('F', $output);
     } elseif (strpos($output, 'Changing permissions') !== false || strpos($output, 'Modifying permissions and ownership') !== false) {
         return array('OK', 'Permissions and ownership changed for ' . $path);
