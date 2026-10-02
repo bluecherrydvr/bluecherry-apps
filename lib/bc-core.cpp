@@ -203,10 +203,20 @@ static int lavf_handle_init(struct bc_handle *bc, BC_DB_RES dbres)
 									"XXX", /* host should be always present, this default doesn't matter */
 									"554", /* port should be always present, this default doesn't matter */
 									uri_schema);
-				if (r)
-					return -1;
-
-				bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+				if (r) {
+					/* A bad substream path must not take down the
+					 * mainstream: log, fall back to substream off,
+					 * motion keeps running on the main stream. */
+					bc_log(Error, "Invalid substream_path '%s', "
+					       "disabling substream for this device", val);
+					bc->substream_mode = BC_DEVICE_STREAMING_COMMON_INPUT;
+				} else {
+					bc->substream_input = new lavf_device(url, rtsp_rtp_prefer_tcp);
+				}
+			} else {
+				bc_log(Error, "substream_mode is on but substream_path "
+				       "is empty, disabling substream for this device");
+				bc->substream_mode = BC_DEVICE_STREAMING_COMMON_INPUT;
 			}
 		}
 	}
@@ -291,7 +301,17 @@ struct bc_handle *bc_handle_get(BC_DB_RES dbres)
 		ret = bc->input->has_error();
 	}
 
+	/* Substreams only exist for IP (lavf) devices; the V4L2 branches
+	 * above never create a substream_input, so a stale mode flag would
+	 * leave the device thread and motion wiring chasing a NULL input. */
+	if (bc->type != BC_DEVICE_LAVF && bc->substream_mode) {
+		bc_log(Error, "substream_mode is only supported for IP cameras, "
+		       "disabling substream for this device");
+		bc->substream_mode = BC_DEVICE_STREAMING_COMMON_INPUT;
+	}
+
 	bc->source = new stream_source("Input Source");
+	bc->sub_source = new stream_source("Substream Source");
 
 	if (ret) {
 		bc_handle_free(bc);
@@ -317,6 +337,7 @@ void bc_handle_free(struct bc_handle *bc)
 		delete bc->input;
 
 	delete bc->source;
+	delete bc->sub_source;
 
 	if (bc->substream_mode && bc->substream_input) {
 		bc->substream_input->stop();

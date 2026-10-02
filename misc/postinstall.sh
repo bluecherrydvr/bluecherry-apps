@@ -372,14 +372,14 @@ case "$1" in
 				# Backup the DB
 				BACKUP_DB_FILE=/tmp/bluecherry_backup.sql.gz
 				echo "Backup database: $BACKUP_DB_FILE"
-				mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > BACKUP_DB_FILE
+				mysqldump --single-transaction -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $BACKUP_DB_FILE
 
 
 			else
 				DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
 				echo "Going to upgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
 				# Backup the DB
-				mysqldump -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
+				mysqldump --single-transaction -h "$host" "$dbname" -u"$user" -p"$password" | gzip -c > $DB_BACKUP_GZ_FILE
 			fi
 
 			if ! /usr/share/bluecherry/bc_db_tool.sh upgrade_db "$dbname" "$user" "$password" "$host"

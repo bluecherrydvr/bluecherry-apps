@@ -6,7 +6,7 @@
 	notifempty
 	delaycompress
 	compress
-	create 644 root bluecherry
+	create 640 syslog bluecherry
 	postrotate
 		systemctl restart rsyslog.service
 	endscript

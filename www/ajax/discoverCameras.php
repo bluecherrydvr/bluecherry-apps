@@ -318,9 +318,8 @@ class discoverCameras extends Controller {
                     try {
                         $json_out = shell_exec("node /usr/share/bluecherry/onvif/getRtspUrls.js " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password));
                         if ($json_out) {
-                            $urls = json_decode($json_out, /*associative=*/true);
-                            $main_stream = $urls[0]['rtspUri'];
-                            $sub_stream = $urls[1]['rtspUri'];
+                            list($main_stream, $sub_stream) = ipCamera::rankOnvifStreams(
+                                json_decode($json_out, /*associative=*/true));
                         } else {
                             $p = @popen("/usr/lib/bluecherry/onvif_tool " . escapeshellarg($onvif_addr) .' '. escapeshellarg($onvif_username) .' '. escapeshellarg($onvif_password). " get_stream_urls", "r");
                              if (!$p)
@@ -332,9 +331,10 @@ class discoverCameras extends Controller {
                                      $err['onvif_ip'][] = $ip;
                                      break(2);
                              }
-                             $main_stream = fgets($p);
-                             $sub_stream = fgets($p);
+                             $main_stream = trim((string)fgets($p));
+                             $sub_stream = trim((string)fgets($p));
                              pclose($p);
+                             list($main_stream, $sub_stream) = ipCamera::rankOnvifStreams(array($main_stream, $sub_stream));
                         }
 
 			if ($main_stream)
@@ -348,19 +348,10 @@ class discoverCameras extends Controller {
                             } else {
                                 $err_add = false;
                                 // add camera to db
+                                list($rtsp_path, $rtsp_port) = ipCamera::splitRtspUri($media_uri);
+                                list($sub_path) = ipCamera::splitRtspUri($sub_stream);
+
                                 $media_uri_parse = parse_url($media_uri);
-
-                                if (!isset($media_uri_parse['port'])) {
-                                    $media_uri_parse['port'] = 554;
-                                }
-
-                                if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
-
-				if ($sub_stream) {
-				    $sub_parse = parse_url(trim($sub_stream));
-				    $sub_stream = $sub_parse['path'];
-				    if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
-				}
                                 $_POST = Array(
                                     'mode' => 'addip',
                                     'models' => 'Generic',
@@ -369,9 +360,10 @@ class discoverCameras extends Controller {
                                     'user' => $login,
                                     'pass' => $password,
                                     'protocol' => 'IP-RTSP',
-                                    'rtsp' => $media_uri_parse['path'],
-                                    'port' => $media_uri_parse['port'],
-				                    'substream' => $sub_stream,
+                                    'rtsp' => $rtsp_path,
+                                    'port' => $rtsp_port,
+				                    'substream' => $sub_path,
+                                    'substream_enabled' => (!empty($sub_path) ? 'on' : ''),
                                     'prefertcp' => '0',
                                     'mjpeg' => '',
                                     'portMjpeg' => 80

@@ -72,8 +72,7 @@ class addip extends Controller {
 	$json_out = shell_exec("node /usr/share/bluecherry/onvif/getRtspUrls.js " . escapeshellarg($onvif_addr) .' '. escapeshellarg($user) .' '. escapeshellarg($pass));
 	if ($json_out) {
 	    $urls = json_decode($json_out, /*associative=*/true);
-	    $main_stream = $urls[0]['rtspUri'];
-	    $sub_stream = $urls[1]['rtspUri'];
+	    list($main_stream, $sub_stream) = ipCamera::rankOnvifStreams($urls);
 	} else {
 	    $p = @popen("/usr/lib/bluecherry/onvif_tool " . escapeshellarg($onvif_addr) .' '. escapeshellarg($user) .' '. escapeshellarg($pass). " get_stream_urls", "r");
 
@@ -83,30 +82,23 @@ class addip extends Controller {
 	    }
 
 	    $media_service = fgets($p);
-	    $main_stream = fgets($p);
-	    $sub_stream = fgets($p);
+	    $main_stream = trim((string)fgets($p));
+	    $sub_stream = trim((string)fgets($p));
 	    pclose($p);
+	    list($main_stream, $sub_stream) = ipCamera::rankOnvifStreams(array($main_stream, $sub_stream));
 	}
 	if ($main_stream) {
 	$stat = 6;
 	$msg = AIP_CHECK_ONVIF_SUCCESS;
 
-	$media_uri_parse = parse_url(trim($main_stream));
-	if (!isset($media_uri_parse['port']))
-		$media_uri_parse['port'] = 554;
-	if (isset($media_uri_parse['query'])) $media_uri_parse['path'] .= '?'.$media_uri_parse['query'];
-
-	if ($sub_stream) {
-		$sub_parse = parse_url(trim($sub_stream));
-		$sub_stream = $sub_parse['path'];
-		if (isset($sub_parse['path'])) $sub_stream .= '?'.$sub_parse['query'];
-	}
+	list($rtsp_path, $rtsp_port) = ipCamera::splitRtspUri($main_stream);
+	list($sub_path) = ipCamera::splitRtspUri($sub_stream);
 
         $data_r = Array(
             //'camName' => (isset($data['Model']) ? $data['Model'] : ''),
-            'rtspPath' => $media_uri_parse['path'],
-            'rtspPort' => $media_uri_parse['port'],
-	    'substream' => $sub_stream,
+            'rtspPath' => $rtsp_path,
+            'rtspPort' => $rtsp_port,
+	    'substream' => $sub_path,
             //'user' => (isset($data['Default username']) ? $data['Default username'] : ''),
             //'pass' => (isset($data['Default password']) ? $data['Default password'] : ''),
                 );

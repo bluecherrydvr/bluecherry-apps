@@ -28,9 +28,29 @@ bluecherry (3:3.1.15) bookworm bullseye buster focal jammy mantic noble; urgency
   * FIX: Prevent bc-server abort during schedule transition when thread join times out
   * FIX: Stagger global schedule transitions per camera to reduce database and thread spikes
   * FIX: Unlink status/trigger Unix sockets on shutdown and crash to avoid systemd restart races
+  * FEATURE: Run motion analysis on the substream when configured, keeping
+    recording at full mainstream resolution
+  * FIX: Cap OpenCV and motion-decoder thread pools to stop CPU
+    oversubscription on multi-camera systems
+  * FIX: Serialize live-streaming setup, writes and teardown between the
+    device and substream threads
+  * FIX: Make the database lock robust with holder diagnostics so a dead
+    thread can no longer wedge all recording
+  * FIX: Add Media archive/filepath indexes to stop full-table scans during
+    storage cleanup
+  * FIX: Rank ONVIF profiles when discovering main/substream URLs; harden
+    add-camera URL parsing
+  * FIX: Localize the login page and add a language switcher
+  * FIX: Use --single-transaction for database backup dumps
+  * FIX: Save Storage settings in Docker (ship sudo and the sudoers
+    drop-in); create missing storage directories instead of failing
+  * FIX: Play and export MP4 when video is not the first stream; remux HEVC
+  * FIX: Report missing vs unreadable recording files distinctly on download
+  * FIX: Playback heading shows the TZ-aware recording start; fix MKV posters
+  * FIX: Warn at container boot when the web user cannot read recordings
   * Maintain backward compatibility with all supported distributions
 
- -- Curtis Hall <chall@corp.bluecherry.net>  Fri, 23 May 2026 12:00:00 -0500
+ -- Curtis Hall <chall@corp.bluecherry.net>  Thu, 01 Oct 2026 22:05:00 -0500
 
 bluecherry (3:3.1.14) bookworm bullseye buster focal jammy mantic noble; urgency=emergency
 

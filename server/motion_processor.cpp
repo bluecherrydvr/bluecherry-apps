@@ -32,6 +32,14 @@ motion_processor::motion_processor(bc_record *bcRecord)
 	output_source = new stream_source("Motion Detection");
 	set_motion_thresh_global('3');
 
+	/* The process runs one motion_processor per camera (dozens). Let those
+	 * per-device threads be the parallelism and keep OpenCV's internal
+	 * thread pool out of the way: nested OpenCV/TBB threading across all
+	 * devices oversubscribed a 32-core box several times over (motion
+	 * threads at ~2700% CPU, starving mysqld and stalling all recording)
+	 * while adding nothing per frame. */
+	cv::setNumThreads(1);
+
 	md_frame_pool_index = 0;
 	memset(md_frame_pool, 0, 255);
 
@@ -220,7 +228,17 @@ bool motion_processor::decode_create(const stream_properties &prop)
 
 	decode_ctx->get_format = vaapi_hwaccel::get_format;
 
-	// XXX we may want to set some options here, such as disabling threaded decoding
+	/* One motion decoder runs per camera and the process may host dozens
+	 * of cameras; per-device threads are the parallelism. Cap this
+	 * decoder to a single thread (must precede avcodec_open2, which
+	 * spawns the worker pool): ffmpeg's default frame threading spawns
+	 * a pool per decoder, and 50+ pools oversubscribe the box
+	 * (observed: ~80 same-named decoder threads at ~2700% CPU, starving
+	 * the database and stalling all recording). Single-thread decode is
+	 * far more than fast enough for motion sampling, which already
+	 * downscales and skips frames. */
+	decode_ctx->thread_count = 1;
+
 	AVDictionary *decoder_opts = NULL;
 	av_dict_set(&decoder_opts, "refcounted_frames", "1", 0);
 	ret = avcodec_open2(decode_ctx, codec, &decoder_opts);

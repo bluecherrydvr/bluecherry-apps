@@ -14,7 +14,7 @@ DB_BACKUP_GZ_FILE=$(mktemp ~bluecherry/bc_db_backup.XXXXXXXXXX.sql.gz)
 echo "Going to updgrade Bluecherry DB. Taking a backup into $DB_BACKUP_GZ_FILE just in case" >&2
 
 # Backup the DB
-mysqldump -h "$BLUECHERRY_DB_HOST" "$BLUECHERRY_DB_NAME" -u"$BLUECHERRY_DB_USER" \
+mysqldump --single-transaction -h "$BLUECHERRY_DB_HOST" "$BLUECHERRY_DB_NAME" -u"$BLUECHERRY_DB_USER" \
           -p"$BLUECHERRY_DB_PASSWORD" | gzip -c > $DB_BACKUP_GZ_FILE
 
 if ! /usr/share/bluecherry/bc_db_tool.sh upgrade_db \

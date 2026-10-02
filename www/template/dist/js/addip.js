@@ -87,6 +87,7 @@ var cameraProc = function (form) {
         getEl('user', enabled, true);
         getEl('pass', enabled, true);
         getEl('substream', enabled, true);
+        form.find('input[name="substream_enabled"]').prop('checked', false);
     };
 
     self.setData = function (data) {
@@ -98,6 +99,7 @@ var cameraProc = function (form) {
         getEl('pass', true, true, data.pass);
         getEl('onvif_port', true, true, '80');
         getEl('substream', true, true, data.substream);
+        if (data.substream) form.find('input[name="substream_enabled"]').prop('checked', true);
 
         getEl('hls_window_size', true, true, '5');
         getEl('hls_segment_size', true, true, '2695168');

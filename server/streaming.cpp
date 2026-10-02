@@ -59,21 +59,29 @@ int bc_streaming_setup(struct bc_record *bc_rec, bc_streaming_type bc_type, std:
 {
 	int ret = 0;
 
+	/* The substream thread sets up the same slots the device
+	 * thread tears down; serialize the whole sequence. */
+	pthread_mutex_lock(&bc_rec->streaming_mutex);
+
 	if ((bc_type == BC_RTP && bc_rec->rtp_stream_ctx[0]) ||
 		(bc_type == BC_HLS && bc_rec->hls_stream_ctx[0])) {
 		bc_rec->log.log(Warning, "bc_streaming_setup() launched on already-setup bc_record");
+		pthread_mutex_unlock(&bc_rec->streaming_mutex);
 		return 0;
 	}
 
 	ret |= bc_streaming_setup_elementary(bc_rec, props, 0, AVMEDIA_TYPE_VIDEO, bc_type);
 	if (bc_rec->bc->input->has_audio())
 		ret |= bc_streaming_setup_elementary(bc_rec, props, 1, AVMEDIA_TYPE_AUDIO, bc_type);
-	if (ret)
+	if (ret) {
+		pthread_mutex_unlock(&bc_rec->streaming_mutex);
 		return ret;
+	}
 
 	if (bc_type == BC_RTP)
 		bc_rec->rtsp_stream = rtsp_stream::create(bc_rec, bc_rec->rtp_stream_ctx);
 
+	pthread_mutex_unlock(&bc_rec->streaming_mutex);
 	return 0;
 }
 
@@ -209,6 +217,9 @@ error:
 
 void bc_streaming_destroy_rtp(struct bc_record *bc_rec)
 {
+	/* Recursive mutex: destroy also runs nested inside write-error
+	 * handling while a caller holds this lock for check+write. */
+	pthread_mutex_lock(&bc_rec->streaming_mutex);
 	for (int i = 0; i < 2; i++) {
 		AVFormatContext *ctx = bc_rec->rtp_stream_ctx[i];
 
@@ -227,10 +238,12 @@ void bc_streaming_destroy_rtp(struct bc_record *bc_rec)
 
 	rtsp_stream::remove(bc_rec);
 	bc_rec->rtsp_stream = NULL;
+	pthread_mutex_unlock(&bc_rec->streaming_mutex);
 }
 
 void bc_streaming_destroy_hls(struct bc_record *bc_rec)
 {
+	pthread_mutex_lock(&bc_rec->streaming_mutex);
 	for (int i = 0; i < 2; i++) {
 		AVFormatContext *ctx = bc_rec->hls_stream_ctx[i];
 
@@ -246,6 +259,7 @@ void bc_streaming_destroy_hls(struct bc_record *bc_rec)
 		avformat_free_context(ctx);
 		bc_rec->hls_stream_ctx[i] = NULL;
 	}
+	pthread_mutex_unlock(&bc_rec->streaming_mutex);
 }
 
 int bc_streaming_is_setup(struct bc_record *bc_rec)

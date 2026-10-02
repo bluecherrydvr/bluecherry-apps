@@ -65,20 +65,36 @@ void substream::run(struct bc_record *r)
 
 		liveview_packet = r->bc->substream_input->packet();
 
+		/* Motion analysis consumes here when enabled, independent of
+		 * live clients; recording stays on the mainstream source. */
+		if (r->bc->sub_source)
+			r->bc->sub_source->send(liveview_packet);
+
+		/* Hold the streaming lock across each is_active+write
+		 * pair: the device thread may otherwise destroy the
+		 * muxer context between the check and the write. */
+		pthread_mutex_lock(&r->streaming_mutex);
 		if (bc_streaming_is_active_hls(r)) {
 			if (bc_streaming_hls_packet_write(r, liveview_packet) == -1) {
 				r->log.log(Error, "Failed to write HLS substream packet");
+				pthread_mutex_unlock(&r->streaming_mutex);
 				goto error;
 			}
 		}
+		pthread_mutex_unlock(&r->streaming_mutex);
 
 		/* Send packet to streaming clients */
+		pthread_mutex_lock(&r->streaming_mutex);
 		if (bc_streaming_is_active(r)) {
 			if (bc_streaming_packet_write(r, liveview_packet) == -1) {
 				r->log.log(Error, "Failed to write substream packet");
+				pthread_mutex_unlock(&r->streaming_mutex);
 				goto error;
 			}
-		} else if (!bc_streaming_is_active_hls(r)) { // Dont sleep if HLS is active
+		}
+		pthread_mutex_unlock(&r->streaming_mutex);
+		if (!bc_streaming_is_active(r) && !bc_streaming_is_active_hls(r) && !r->motion_on_substream) {
+			// Dont sleep if RTSP/HLS clients are active or motion analysis consumes the substream
 			r->log.log(Debug, "Substream: no active RTSP or HLS clients, sleeping...");
 			sleep(1);
 		}

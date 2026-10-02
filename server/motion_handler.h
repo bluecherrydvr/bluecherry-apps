@@ -54,13 +54,22 @@ public:
 	 * packets to be flagged with motion. */
 	stream_consumer *input_consumer() __attribute__((pure));
 
+	/* Optional second stream carrying motion analysis results (e.g. from a
+	 * motion_processor fed by a low-res substream while this handler
+	 * buffers the full-res mainstream for recording). Flagged video
+	 * packets here feed the motion trigger window; recording still uses
+	 * the raw buffer above. */
+	stream_consumer *flag_consumer() __attribute__((pure));
+	void set_use_flag_stream(bool use);
+
 	void disconnect();
 	void destroy();
 	void run();
 
 private:
 	class raw_input_consumer *raw_stream;
-	stream_consumer *flag_stream;
+	class flag_input_consumer *flag_stream;
+	bool use_flag_stream;
 	std::atomic<bool> destroy_flag;
 	int prerecord_time;
 	int postrecord_time;

@@ -12,15 +12,28 @@ public:
 	}
 };
 
+class flag_input_consumer : public stream_consumer
+{
+public:
+	friend class motion_handler;
+
+	flag_input_consumer()
+		: stream_consumer("Motion Handling (Flags)")
+	{
+	}
+};
+
 motion_handler::motion_handler()
-	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0), motion_threshold_percentage(66)
+	: stream_source("Motion Handling"), destroy_flag(false), prerecord_time(0), postrecord_time(0), motion_threshold_percentage(66), use_flag_stream(false)
 {
 	raw_stream = new raw_input_consumer;
+	flag_stream = new flag_input_consumer;
 }
 
 motion_handler::~motion_handler()
 {
 	delete raw_stream;
+	delete flag_stream;
 }
 
 void motion_handler::destroy()
@@ -29,16 +42,28 @@ void motion_handler::destroy()
 	destroy_flag = true;
 	lock.unlock();
 	raw_stream->buffer_wait.notify_all();
+	flag_stream->buffer_wait.notify_all();
 }
 
 void motion_handler::disconnect()
 {
 	raw_stream->disconnect();
+	flag_stream->disconnect();
 }
 
 stream_consumer *motion_handler::input_consumer()
 {
 	return raw_stream;
+}
+
+stream_consumer *motion_handler::flag_consumer()
+{
+	return flag_stream;
+}
+
+void motion_handler::set_use_flag_stream(bool use)
+{
+	use_flag_stream = use;
 }
 
 void motion_handler::set_buffer_time(int pre, int post)
@@ -78,6 +103,7 @@ void motion_handler::run()
 	bc_log_context_push(log);
 
 	int last_pkt_seq = -1;
+	int last_flag_seq = -1;
 
 	while (!destroy_flag)
 	{
@@ -110,7 +136,7 @@ void motion_handler::run()
 				break;  // for...
 			}
 
-			if (it->type == AVMEDIA_TYPE_VIDEO) {
+			if (it->type == AVMEDIA_TYPE_VIDEO && !use_flag_stream) {
 				// TODO Use DTS instead of PTS for STWC for sure monotonity?
 				ssw_motion_analysis.push(/* value */ (it->flags & stream_packet::MotionFlag) ? 1 : 0);
 				// Check the "sum" (count) of motion-flagged packets in SSWC
@@ -118,6 +144,31 @@ void motion_handler::run()
 				bc_log(Debug, "count = %d; percentage = %d; motion_threshold_percentage %d",
 						ssw_motion_analysis.count(), percentage, motion_threshold_percentage);
 
+				if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
+						&& (percentage >= motion_threshold_percentage)) {
+					triggered = true;
+					break;  // for...
+				}
+			}
+		}
+
+		/* Substream motion mode: the trigger window is fed by the flag
+		 * stream (motion_processor output on the low-res stream) while
+		 * the raw buffer above stays full-res for recording. Each flag
+		 * packet votes once, exactly like an in-band flagged packet. */
+		if (use_flag_stream && !triggered) {
+			std::lock_guard<std::mutex> fl(flag_stream->lock);
+			for (auto fit = flag_stream->buffer.begin();
+			     fit != flag_stream->buffer.end(); fit++) {
+				if ((int)fit->seq <= last_flag_seq)
+					continue;
+				last_flag_seq = fit->seq;
+				if (fit->type != AVMEDIA_TYPE_VIDEO)
+					continue;
+				ssw_motion_analysis.push(/* value */
+					(fit->flags & stream_packet::MotionFlag) ? 1 : 0);
+				int percentage = 100 * ssw_motion_analysis.sum()
+					/ ssw_motion_analysis.count();
 				if ((ssw_motion_analysis.count() == ssw_motion_analysis.getSeqWindow())
 						&& (percentage >= motion_threshold_percentage)) {
 					triggered = true;

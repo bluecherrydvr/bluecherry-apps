@@ -25,7 +25,24 @@ require_once ('Ponvif.php');
 require_once('bc_license_wrapper.php');
 
 if (empty($nload)){
-	include("lang.php");
+	#Interface language. ?setlang=xx stores a 'bc_lang' cookie, read back
+	#here on every request -- it must work before session and DB exist, so
+	#it cannot come from the database. Only one lang_XX.php is ever loaded
+	#because constants cannot be redefined: the selected translation
+	#replaces English wholesale, which means translations must cover every
+	#key in lang.php (a missing key fatals under PHP 8 when referenced).
+	#The two-letter whitelist plus file_exists() keep this safe from any
+	#path traversal; an unknown code falls back to English.
+	if (!empty($_GET['setlang']) && preg_match('/^[a-z]{2}$/', $_GET['setlang'])) {
+		setcookie('bc_lang', $_GET['setlang'], time() + 365*24*3600, '/');
+		$_COOKIE['bc_lang'] = $_GET['setlang'];
+	}
+	$bc_lang = (!empty($_COOKIE['bc_lang']) && preg_match('/^[a-z]{2}$/', $_COOKIE['bc_lang'])) ? $_COOKIE['bc_lang'] : 'en';
+	if ($bc_lang !== 'en' && file_exists('lang_' . $bc_lang . '.php')) {
+		include('lang_' . $bc_lang . '.php');
+	} else {
+		include("lang.php");
+	}
 	include("var.php");
 	include("upgrade.php");
 }
@@ -830,8 +847,9 @@ class ipCamera{
 			}
 		}
 		$this->info['substream_enabled'] = ($info[0]['substream_mode'] != '0') ? '1' : '0';
+		$this->info['substream'] = '';
 		$tmp = explode('|', $info[0]['substream_path']);
-		if (isset($tmp[2]))
+		if (isset($tmp[2]) && $tmp[2] !== '')
 			$this->info['substream'] = $tmp[2];
 		#get manufacturer and model information
                 $stmt = getReadOnlyDb()->prepare(
@@ -878,6 +896,17 @@ class ipCamera{
 		$rtsp_data = json_decode($ffprobe_output, true);
 
 		$this->info['connection_status']['success'] = array_key_exists('streams', $rtsp_data) ? count($rtsp_data['streams']) > 0 : false;
+
+		# Probe the substream too when one is configured; reported
+		# separately so a bad sub URL never fails the main check.
+		$this->info['connection_status']['substream'] = null;
+		if ($this->info['protocol'] == 'IP-RTSP' && !empty($this->info['substream'])) {
+			$sub_path = 'rtsp://'.((empty($this->info['rtsp_username'])) ? '' : urlencode($this->info['rtsp_username']).':'.urlencode($this->info['rtsp_password']).'@').$this->info['ipAddr'].':'.$this->info['port'].$this->info['substream'];
+			$sub_out = shell_exec(
+				"/usr/lib/bluecherry/ffprobe -timeout 5000000 -hide_banner -show_format -show_streams -print_format json ".$args. " " . escapeshellarg($sub_path));
+			$sub_data = json_decode($sub_out, true);
+			$this->info['connection_status']['substream'] = array_key_exists('streams', (array)$sub_data) ? count($sub_data['streams']) > 0 : false;
+		}
 	}
 
 	protected static function autoConfigure($driver, $info){ #auto configure known cameras
@@ -886,6 +915,60 @@ class ipCamera{
 		$control = get_ipcam_control($driver, $info);
 		if ($control) { $result = $control->auto_configure(); };
 		return $result;
+	}
+	# Rank ONVIF-discovered stream URIs into main/sub by encoder
+	# resolution instead of trusting camera profile order. Returns
+	# array(main_uri_or_null, sub_uri_or_null). Largest area wins main,
+	# smallest wins sub; entries without resolution keep discovery order
+	# as fallback; single-profile cameras yield a null sub.
+	public static function rankOnvifStreams($urls){
+		$uris = array();
+		if (is_array($urls)) {
+			foreach ($urls as $u) {
+				if (is_array($u) && !empty($u['rtspUri']))
+					$uris[] = $u;
+				elseif (is_string($u) && trim($u) !== '')
+					$uris[] = array('rtspUri' => trim($u));
+			}
+		}
+		if (empty($uris))
+			return array(null, null);
+		$ranked = array();
+		$unranked = array();
+		foreach ($uris as $u) {
+			$w = isset($u['width']) ? intval($u['width']) : 0;
+			$h = isset($u['height']) ? intval($u['height']) : 0;
+			if ($w > 0 && $h > 0) {
+				$u['_area'] = $w * $h;
+				$ranked[] = $u;
+			} else {
+				$unranked[] = $u;
+			}
+		}
+		usort($ranked, function($a, $b){ return $b['_area'] - $a['_area']; });
+		$main = !empty($ranked) ? $ranked[0]['rtspUri'] : $unranked[0]['rtspUri'];
+		$sub = null;
+		if (count($ranked) >= 2) {
+			$sub = $ranked[count($ranked)-1]['rtspUri'];
+		} else {
+			foreach (array_merge($ranked, $unranked) as $u) {
+				if ($u['rtspUri'] !== $main) { $sub = $u['rtspUri']; break; }
+			}
+		}
+		if ($sub === $main)
+			$sub = null;
+		return array($main, $sub);
+	}
+	# Split an RTSP URI into path (+query, guarded) and port (default 554).
+	public static function splitRtspUri($uri){
+		$p = parse_url(trim((string)$uri));
+		if ($p === false || empty($p['path']))
+			return array(null, 554);
+		$path = $p['path'];
+		if (!empty($p['query']))
+			$path .= '?'.$p['query'];
+		$port = isset($p['port']) ? $p['port'] : 554;
+		return array($path, $port);
 	}
 	private static function prepareData($rawData, $self_id = false){
 		#prepare device
@@ -914,11 +997,18 @@ class ipCamera{
 			$data['audio_disabled'] = (!empty($rawData['audio_enabled']) && $rawData['audio_enabled']=='on') ? 0 : 1;
 		#prepare debug level, ignored for new devices
 			$data['substream_mode'] = (!empty($rawData['substream_enabled']) && $rawData['substream_enabled']=='on') ? 1 : 0;
-			empty ($rawData['substream']) or $rawData['substream'] = (substr($rawData['substream'][0], 0, 1) != '/') ? '/'.$rawData['substream'] : $rawData['substream'];
-			if ($rawData['protocol'] == "IP-MJPEG")
-				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['portMjpeg']}|{$rawData['substream']}";
-			else
-				$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['substream']}";
+			if (empty($rawData['substream'])) {
+				# No substream path: store empty and force mode off so the
+				# server never chases a 'host|port|' artifact.
+				$data['substream_path'] = '';
+				$data['substream_mode'] = 0;
+			} else {
+				empty ($rawData['substream']) or $rawData['substream'] = (substr($rawData['substream'][0], 0, 1) != '/') ? '/'.$rawData['substream'] : $rawData['substream'];
+				if ($rawData['protocol'] == "IP-MJPEG")
+					$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['portMjpeg']}|{$rawData['substream']}";
+				else
+					$data['substream_path'] = "{$rawData['ipAddr']}|{$rawData['port']}|{$rawData['substream']}";
+			}
 
 			$data['debug_level'] = (!empty($rawData['debug_level']) && $rawData['debug_level']=='on') ? 1 : 0;
 		#prepare rtsp username/password
@@ -972,7 +1062,7 @@ class ipCamera{
 
 		$hls_segment_size = $data['hls_segment_size']  ? $data['hls_segment_size'] : 0;
 		$hls_segment_duration = $data['hls_segment_duration'] ?  $data['hls_segment_duration'] : 0;
-		$inputQuery = "INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port, substream_path, hls_window_size, hls_segment_size, hls_segment_duration) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']},'{$data['substream_path']}', {$data['hls_window_size']}, {$hls_segment_size}, {$hls_segment_duration})";
+		$inputQuery = "INSERT INTO Devices (device_name, protocol, device, driver, rtsp_username, rtsp_password, resolutionX, resolutionY, mjpeg_path, model, rtsp_rtp_prefer_tcp, onvif_port, substream_mode, substream_path, hls_window_size, hls_segment_size, hls_segment_duration) VALUES ('{$data['device_name']}', '{$data['protocol']}', '{$data['device']}', '{$data['driver']}', '{$data['rtsp_username']}', '{$data['rtsp_password']}', 640, 480, '{$data['mjpeg_path']}', '{$data['model']}', {$data['rtsp_rtp_prefer_tcp']}, {$data['onvif_port']}, {$data['substream_mode']},'{$data['substream_path']}', {$data['hls_window_size']}, {$hls_segment_size}, {$hls_segment_duration})";
 
 		$result = data::query($inputQuery, true);
 		#try to automatically set the camera up

@@ -176,10 +176,17 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_SUBSTREAM_ENABLE; ?></label>
+
+                        <div class="col-lg-6 col-md-6 form-control-static">
+                            <input class="" type="checkbox" name="substream_enabled" />
+                        </div>
+		    </div>
+                    <div class="form-group">
                         <label class="col-lg-4 col-md-4 control-label"><?php echo AIP_SUBSTREAM_PATH; ?></label>
 
                         <div class="col-lg-6 col-md-6">
-                            <input class="form-control" type="text" name="substream" disabled="disabled"  />
+                            <input class="form-control" type="text" name="substream" />
                         </div>
                     </div>
 

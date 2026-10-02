@@ -39,14 +39,25 @@ const camera = new onvif.Cam({
       return console.error(err);
     }
 
-    // Fetch and output RTSP URLs for each profile
+    // Fetch and output RTSP URLs for each profile, with encoder
+    // resolution when the camera reports it (used to rank main vs
+    // substream instead of trusting profile order).
     const rtspUrls = profiles.map(profile => {
       return new Promise((resolve, reject) => {
         this.getStreamUri({protocol: 'RTSP', profileToken: profile.token}, (err, stream) => {
           if (err) {
             reject(err);
           } else {
-            resolve({profileName: profile.name, rtspUri: stream.uri});
+            let width = null, height = null;
+            try {
+              const vec = profile.videoEncoderConfiguration || {};
+              const res = vec.resolution || {};
+              if (res.width && res.height) {
+                width = parseInt(res.width, 10);
+                height = parseInt(res.height, 10);
+              }
+            } catch (e) { /* resolution optional */ }
+            resolve({profileName: profile.name, rtspUri: stream.uri, width: width, height: height});
           }
         });
       });

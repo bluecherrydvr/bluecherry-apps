@@ -209,15 +209,30 @@ static void bc_disconnect_recording_workers(bc_record *rec)
 		safe_disconnect(rec->rec_continuous, rec->bc->source);
 	if (rec->rec_motion && rec->m_handler)
 		safe_disconnect(rec->rec_motion, rec->m_handler);
-	if (rec->m_processor)
+	if (rec->m_processor) {
 		safe_disconnect(rec->m_processor, rec->bc->source);
+		safe_disconnect(rec->m_processor, rec->bc->sub_source);
+	}
 	if (rec->t_processor)
 		safe_disconnect(rec->t_processor, rec->bc->source);
-	if (rec->m_handler && rec->m_handler->input_consumer()) {
-		if (rec->m_processor)
-			safe_disconnect(rec->m_handler->input_consumer(), rec->m_processor->output());
-		else
+	if (rec->m_handler) {
+		/* The recording buffer (input consumer) sits on the
+		 * mainstream source when motion runs on the substream
+		 * (or V4L2), and on the motion processor output when
+		 * motion runs on the mainstream: release both, the
+		 * guard makes the wrong one a no-op. The flag consumer
+		 * only ever sits on the processor output, released the
+		 * same way for symmetry. */
+		if (rec->m_handler->input_consumer()) {
+			if (rec->m_processor)
+				safe_disconnect(rec->m_handler->input_consumer(), rec->m_processor->output());
 			safe_disconnect(rec->m_handler->input_consumer(), rec->bc->source);
+		}
+		if (rec->m_handler->flag_consumer()) {
+			if (rec->m_processor)
+				safe_disconnect(rec->m_handler->flag_consumer(), rec->m_processor->output());
+			safe_disconnect(rec->m_handler->flag_consumer(), rec->bc->source);
+		}
 	}
 }
 
@@ -255,12 +270,23 @@ void stop_handle_properly(struct bc_record *bc_rec)
 	{
 		bc_rec->liveview_substream->stop();
 		if (bc_rec->liveview_substream_thread &&
-		    bc_rec->liveview_substream_thread->joinable())
+		    bc_rec->liveview_substream_thread->joinable() &&
+		    bc_rec->liveview_substream_thread->get_id() !=
+		    std::this_thread::get_id()) {
 			bc_rec->liveview_substream_thread->join();
-		delete bc_rec->liveview_substream;
-		delete bc_rec->liveview_substream_thread;
-		bc_rec->liveview_substream = 0;
-		bc_rec->liveview_substream_thread = 0;
+			delete bc_rec->liveview_substream;
+			delete bc_rec->liveview_substream_thread;
+			bc_rec->liveview_substream = 0;
+			bc_rec->liveview_substream_thread = 0;
+		} else if (bc_rec->liveview_substream_thread &&
+			   bc_rec->liveview_substream_thread->joinable()) {
+			/* Streaming write errors can land here on the
+			 * substream thread itself: joining self would
+			 * terminate the process. The thread is already
+			 * exiting via stop(); leave the handles for the
+			 * device thread to join in destroy_elements. */
+			bc_rec->log.log(Debug, "stop_handle on liveview substream thread, deferring join");
+		}
 	}
 
 
@@ -554,6 +580,7 @@ void bc_record::run()
 						log.log(Debug, "Device %d: Using V4L2 motion detection", id);
 						bc->input->set_motion(true);
 						bc->source->connect(m_handler->input_consumer(), stream_source::StartFromLastKeyframe);
+						motion_on_substream = false;
 					} else {
 						log.log(Debug, "Device %d: Creating motion processor", id);
 						m_processor = new motion_processor(this);
@@ -571,8 +598,36 @@ void bc_record::run()
 						m_processor->set_motion_blend_ratio(cfg.motion_blend_ratio);
 						m_processor->set_motion_debug(cfg.motion_debug);
 
-						bc->source->connect(m_processor, stream_source::StartFromLastKeyframe);
-						m_processor->output()->connect(m_handler->input_consumer());
+						/* The recording buffer always stays full-res
+						 * mainstream. */
+						bc->source->connect(m_handler->input_consumer(),
+							stream_source::StartFromLastKeyframe);
+
+						/* Motion analysis prefers the low-res substream
+						 * when one is configured: flagged substream
+						 * packets feed the handler's flag stream
+						 * while recording stays mainstream.
+						 * Otherwise the processor analyzes the
+						 * mainstream exactly as before.
+						 * No is_started() gate: the substream thread
+						 * (re)connects on its own retry loop and feeds
+						 * sub_source as soon as it flows; bc-core
+						 * already forced mode off for bad paths. */
+						if (bc->substream_mode && bc->substream_input &&
+						    bc->sub_source) {
+							bc->sub_source->connect(m_processor,
+								stream_source::StartFromLastKeyframe);
+							m_processor->output()->connect(m_handler->flag_consumer());
+							m_handler->set_use_flag_stream(true);
+							motion_on_substream = true;
+							log.log(Info, "Device %d: Motion analysis on substream", id);
+						} else {
+							bc->source->connect(m_processor,
+								stream_source::StartFromLastKeyframe);
+							m_processor->output()->connect(m_handler->input_consumer());
+							m_handler->set_use_flag_stream(false);
+							motion_on_substream = false;
+						}
 						m_processor_thread = new std::thread(&motion_processor::run, m_processor);
 						log.log(Debug, "Device %d: Motion processor thread started", id);
 					}
@@ -694,6 +749,7 @@ void bc_record::run()
 							log.log(Error, "Unable to reinitialize reencoded live HLS stream");
 					}
 
+					pthread_mutex_lock(&streaming_mutex);
 					if (bc_streaming_is_active_hls(this)) {
 						if (bc_streaming_hls_packet_write(this, packet) == -1)
 							log.log(Error, "Failed to stream reencoded HLS live view");
@@ -702,6 +758,7 @@ void bc_record::run()
 					if (bc_streaming_is_active(this))
 						if (bc_streaming_packet_write(this, packet) == -1)
 							log.log(Error, "Failed to stream reencoded live view");
+					pthread_mutex_unlock(&streaming_mutex);
 				}
 			}
 
@@ -710,10 +767,12 @@ void bc_record::run()
 		}
 
 		if (!bc->substream_mode) {
+			pthread_mutex_lock(&streaming_mutex);
 			/* Send packet to HLS streaming clients */
 			if (bc_streaming_is_active_hls(this) &&
 				bc_streaming_hls_packet_write(this, packet) == -1) {
 				log.log(Error, "Failed to stream packet for HLS live view, going to reconnect after a delay");
+				pthread_mutex_unlock(&streaming_mutex);
 				goto error;
 			}
 
@@ -721,8 +780,10 @@ void bc_record::run()
 			if (bc_streaming_is_active(this) &&
 				bc_streaming_packet_write(this, packet) == -1) {
 				log.log(Error, "Failed to stream packet for live view, going to reconnect after a delay");
+				pthread_mutex_unlock(&streaming_mutex);
 				goto error;
 			}
+			pthread_mutex_unlock(&streaming_mutex);
 		}
 
 		msleep(10);
@@ -770,6 +831,15 @@ bc_record::bc_record(int i)
 	cfg_dirty = 0;
 	pthread_mutex_init(&cfg_mutex, NULL);
 
+	{
+		pthread_mutexattr_t streaming_attr;
+		pthread_mutexattr_init(&streaming_attr);
+		pthread_mutexattr_settype(&streaming_attr,
+					PTHREAD_MUTEX_RECURSIVE);
+		pthread_mutex_init(&streaming_mutex, &streaming_attr);
+		pthread_mutexattr_destroy(&streaming_attr);
+	}
+
 	rtp_stream_ctx[0] = 0;
 	rtp_stream_ctx[1] = 0;
 	rtsp_stream = 0;
@@ -808,6 +878,7 @@ bc_record::bc_record(int i)
 	reenc = 0;
 	liveview_substream = 0;
 	liveview_substream_thread = 0;
+	motion_on_substream = false;
 }
 
 bc_record *bc_record::create_from_db(int id, BC_DB_RES dbres)
@@ -893,6 +964,7 @@ bc_record::~bc_record()
 	}
 
 	pthread_mutex_destroy(&cfg_mutex);
+	pthread_mutex_destroy(&streaming_mutex);
 }
 
 void bc_record::destroy_elements()

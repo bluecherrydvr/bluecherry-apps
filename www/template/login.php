@@ -46,20 +46,23 @@
         <div class="row">
             <div class="col-md-4 col-md-offset-4">
                 <div class="panel panel-default">
-                    <div class="panel-heading">Please Sign In
+                    <div class="panel-heading"><?php echo PAGE_HEADER_LOGIN; ?>
                     </div>
                     <div class="panel-body">
                         <form role="form" method="post" action="/login">
                             <fieldset>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Username" name="login" autofocus>
+                                    <input class="form-control" placeholder="<?php echo G_SMTP_USERNAME; ?>" name="login" autofocus>
                                 </div>
                                 <div class="form-group">
-                                    <input class="form-control" placeholder="Password" name="password" type="password" value="">
+                                    <input class="form-control" placeholder="<?php echo USERS_PASSWORD; ?>" name="password" type="password" value="">
                                 </div>
                                 <!-- Change this to a button or input when using this as a form -->
                                 <div class="form-group">
-                                    <button type="submit" class="btn btn-lg btn-success btn-block send-req-form">Login</button>
+                                    <button type="submit" class="btn btn-lg btn-success btn-block send-req-form"><?php echo PAGE_HEADER_LOGIN; ?></button>
+                                </div>
+                                <div class="form-group text-center">
+                                    <a href="?setlang=en">English</a> | <a href="?setlang=ru">Русский</a>
                                 </div>
 
                                 <div class="form-group">

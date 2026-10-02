@@ -31,13 +31,54 @@ enum bc_db_type {
 	BC_DB_MYSQL = 2,
 };
 
-static pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
+/* The lock guarding all database access. Robust: if a thread dies while
+ * holding it (the wedged-lock outages that stalled all recording with no
+ * live holder doing DB work), the next acquirer gets EOWNERDEAD instead of
+ * hanging forever, drops any orphaned transaction and carries on. Needs
+ * attributes, so no static initializer: see bc_db_lock_init. */
+static pthread_mutex_t db_lock;
+static pthread_once_t db_lock_once = PTHREAD_ONCE_INIT;
 static struct bc_db_ops *db_ops = NULL;
 static unsigned long db_lock_timeouts = 0;
 static unsigned long db_skipped_queries = 0;
 static unsigned long db_transaction_start_failures = 0;
 static time_t db_stats_last_log = 0;
 static bool db_transaction_active = false;
+/* Best-effort diagnostics for wedged-lock outages. Written on acquisition,
+ * cleared on release, read on timeout only. */
+static pthread_t db_lock_holder = 0;
+static char db_lock_holder_op[32] = "";
+static char db_lock_holder_name[16] = "";
+static time_t db_lock_acquired_at = 0;
+static time_t db_last_acquire_ok = 0;
+/* Set by each entry point before acquiring; recorded on success so the next
+ * wedge names the operation, not just a thread id. String literals only. */
+static __thread const char *db_lock_want_op = "";
+
+static void bc_db_lock_init(void)
+{
+	pthread_mutexattr_t attr;
+
+	pthread_mutexattr_init(&attr);
+#ifdef PTHREAD_MUTEX_ROBUST_NP
+	pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST_NP);
+#else
+	pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+#endif
+	pthread_mutex_init(&db_lock, &attr);
+	pthread_mutexattr_destroy(&attr);
+}
+
+static void bc_db_note_acquired(void)
+{
+	db_lock_holder = pthread_self();
+	pthread_getname_np(db_lock_holder, db_lock_holder_name,
+			   sizeof(db_lock_holder_name));
+	snprintf(db_lock_holder_op, sizeof(db_lock_holder_op), "%s",
+		 db_lock_want_op ? db_lock_want_op : "");
+	db_lock_acquired_at = time(NULL);
+	db_last_acquire_ok = db_lock_acquired_at;
+}
 
 static void bc_db_maybe_log_contention(void)
 {
@@ -53,18 +94,60 @@ static void bc_db_maybe_log_contention(void)
 	bc_log(Warning,
 	       "Database contention: lock_timeouts=%lu skipped_queries=%lu transaction_start_failures=%lu",
 	       db_lock_timeouts, db_skipped_queries, db_transaction_start_failures);
+	if (db_lock_holder != 0 && db_lock_acquired_at != 0) {
+		bc_log(Warning, "Database lock held by thread %lu ('%.15s', op '%s') for %lds "
+		       "(last successful acquire %lds ago)",
+		       (unsigned long)db_lock_holder, db_lock_holder_name,
+		       db_lock_holder_op,
+		       (long)(now - db_lock_acquired_at),
+		       db_last_acquire_ok ? (long)(now - db_last_acquire_ok) : -1L);
+	}
 	db_stats_last_log = now;
+}
+
+static int bc_db_lock(void);
+static void bc_db_unlock(void);
+
+/* Previous holder died with the lock held. Mark the mutex consistent,
+ * drop any transaction it left open through the normal rollback path
+ * (keeps the active flag and backend in sync), then acquire cleanly. */
+static int bc_db_reclaim_after_owner_death(void)
+{
+	time_t now = time(NULL);
+
+	bc_log(Error, "Database lock holder (thread %lu ('%.15s', op '%s'), held %lds) died; reclaiming lock",
+	       (unsigned long)db_lock_holder, db_lock_holder_name,
+	       db_lock_holder_op,
+	       db_lock_acquired_at ? (long)(now - db_lock_acquired_at) : -1L);
+	if (pthread_mutex_consistent(&db_lock) != 0) {
+		bc_log(Error, "Database lock inconsistent and unrecoverable");
+		return -1;
+	}
+	db_transaction_active = true; /* rollback is a no-op unless set */
+	bc_db_rollback_trans();
+	db_lock_timeouts++;
+	/* Recurse into the normal path (at most one level per dead owner:
+	 * the mutex was just made consistent and released). */
+	return bc_db_lock();
 }
 
 static int bc_db_lock(void)
 {
 	struct timespec timeout;
+	int r;
+
+	pthread_once(&db_lock_once, bc_db_lock_init);
 
 	clock_gettime(CLOCK_REALTIME, &timeout);
 	timeout.tv_sec += 10;
 
-	if (pthread_mutex_timedlock(&db_lock, &timeout) == 0)
+	r = pthread_mutex_timedlock(&db_lock, &timeout);
+	if (r == 0) {
+		bc_db_note_acquired();
 		return 0;
+	}
+	if (r == EOWNERDEAD)
+		return bc_db_reclaim_after_owner_death();
 
 	fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
 	db_lock_timeouts++;
@@ -72,8 +155,13 @@ static int bc_db_lock(void)
 	clock_gettime(CLOCK_REALTIME, &timeout);
 	timeout.tv_sec += 2;
 
-	if (pthread_mutex_timedlock(&db_lock, &timeout) == 0)
+	r = pthread_mutex_timedlock(&db_lock, &timeout);
+	if (r == 0) {
+		bc_db_note_acquired();
 		return 0;
+	}
+	if (r == EOWNERDEAD)
+		return bc_db_reclaim_after_owner_death();
 
 	fprintf(stderr, "CRITICAL: Database lock retry failed - server may be overloaded\n");
 	db_lock_timeouts++;
@@ -83,11 +171,17 @@ static int bc_db_lock(void)
 
 static void bc_db_unlock(void)
 {
+	/* Clear holder identity before releasing so a timeout observed
+	 * afterwards cannot misattribute the lock to a thread that already
+	 * let go of it. */
+	db_lock_holder = 0;
+	db_lock_acquired_at = 0;
 	pthread_mutex_unlock(&db_lock);
 }
 
 int bc_db_start_trans(void)
 {
+	db_lock_want_op = "start_trans";
 	int ret = 0;
 
 	if (bc_db_lock() != 0) {
@@ -224,6 +318,7 @@ int __bc_db_query(const char *sql, ...)
 
 int bc_db_query(const char *sql, ...)
 {
+	db_lock_want_op = "query";
 	va_list ap;
 	char *query;
 	int ret;
@@ -271,6 +366,7 @@ int bc_db_fetch_row(BC_DB_RES dbres)
 
 BC_DB_RES bc_db_get_table(const char *sql, ...)
 {
+	db_lock_want_op = "get_table";
 	va_list ap;
 	char *query;
 	BC_DB_RES dbres;
@@ -363,6 +459,7 @@ long unsigned bc_db_last_insert_rowid(void)
 
 char *bc_db_escape_string(const char *from, size_t len)
 {
+	db_lock_want_op = "escape_string";
 	char *to;
 
 	if (db_ops == NULL)

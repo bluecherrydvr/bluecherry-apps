@@ -218,6 +218,8 @@ CREATE TABLE `Media` (
   `archive` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `device_id` (`device_id`),
+  KEY `archive_start` (`archive`,`start`),
+  KEY `filepath` (`filepath`(191)),
   CONSTRAINT `Media_ibfk_1` FOREIGN KEY (`device_id`) REFERENCES `Devices` (`id`) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;

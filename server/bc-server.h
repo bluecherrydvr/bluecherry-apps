@@ -85,6 +85,13 @@ public:
 	log_context log;
 
 	/* Streaming */
+	/* Serializes the live-streaming contexts shared between the
+	 * device thread and the substream thread: setup, the
+	 * is_active+write pairs, and destroy must not interleave
+	 * (destroy frees the AVFormatContext a writer may be inside).
+	 * Recursive: write-error paths nest destroy via
+	 * stop_handle_properly. */
+	pthread_mutex_t streaming_mutex;
 	/* RTP muxing contexts */
 	AVFormatContext *rtp_stream_ctx[2];
 	class rtsp_stream *rtsp_stream;
@@ -130,6 +137,11 @@ public:
 	/* Live View substream */
 	class substream *liveview_substream;
 	class std::thread *liveview_substream_thread;
+	/* True when the motion pipeline consumes the substream (motion
+	 * analysis on low-res, recording stays full-res). Decided at each
+	 * schedule wiring; keeps the substream thread feeding packets with
+	 * no live clients attached. */
+	bool motion_on_substream;
 
 	/* Livestream reencoding */
 	class reencoder *reenc;

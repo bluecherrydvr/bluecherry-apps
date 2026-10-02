@@ -84,6 +84,13 @@ struct bc_handle {
 
 	class stream_source     *source;
 
+	/* Carries substream packets for live clients and, when enabled,
+	 * motion analysis. Fed by the substream thread; motion_processor
+	 * connects here instead of to source so recording stays full
+	 * resolution while detection runs on the low-res stream. Always
+	 * allocated (cheap); empty unless a substream input is active. */
+	class stream_source     *sub_source;
+
 	/* PTZ params. Path is a device for PELCO types and full URI
 	 * for IP based PTZ controls. */
 	char			ptz_path[1024];
