@@ -1425,43 +1425,60 @@ static int is_storage_full(const struct bc_storage *stor) {
 int CleanupManager::sync_database_with_filesystem() {
     bc_log(Info, "Starting database/filesystem synchronization");
     
-    // Get all non-archived media files from database
-    BC_DB_RES dbres = bc_db_get_table("SELECT id, filepath FROM Media WHERE archive=0 AND filepath!=''");
-    if (!dbres) {
-        bc_log(Error, "Database error during sync: failed to get media files");
-        return -1;
-    }
-    
     std::vector<std::string> orphaned_files;
     std::vector<int> orphaned_ids;
     int total_checked = 0;
     int orphaned_count = 0;
-    
-    // Check each file in database against filesystem
-    while (bc_db_fetch_row(dbres) == 0) {
-        const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
-        int id = bc_db_get_val_int(dbres, "id");
-        
-        if (!filepath || !*filepath) {
-            continue;
+
+    /* Page the scan by id: one unbounded SELECT would hold the global
+     * database lock across the whole result fetch, stalling every
+     * camera past the lock timeout on large Media tables (issue #767).
+     * Each page holds the lock only for its own bounded fetch. */
+    unsigned long last_id = 0;
+    for (;;) {
+        BC_DB_RES dbres = bc_db_get_table(
+            "SELECT id, filepath FROM Media "
+            "WHERE archive=0 AND filepath!='' AND id > %lu "
+            "ORDER BY id ASC LIMIT 1000",
+            last_id);
+        if (!dbres) {
+            bc_log(Error, "Database error during sync: failed to get media files");
+            return -1;
         }
-        
-        total_checked++;
-        
-        // Check if file exists on filesystem
-        struct stat st;
-        if (stat(filepath, &st) != 0) {
-            // File doesn't exist on filesystem but exists in database
-            orphaned_files.push_back(filepath);
-            orphaned_ids.push_back(id);
-            orphaned_count++;
-            
-            if (orphaned_count <= 10) { // Log first 10 for debugging
-                bc_log(Info, "Found orphaned database entry: ID=%d, filepath=%s", id, filepath);
+
+        unsigned page_rows = 0;
+        while (bc_db_fetch_row(dbres) == 0) {
+            const char *filepath = bc_db_get_val(dbres, "filepath", NULL);
+            int id = bc_db_get_val_int(dbres, "id");
+
+            if (id > 0 && (unsigned long)id > last_id)
+                last_id = (unsigned long)id;
+            page_rows++;
+
+            if (!filepath || !*filepath) {
+                continue;
+            }
+
+            total_checked++;
+
+            // Check if file exists on filesystem
+            struct stat st;
+            if (stat(filepath, &st) != 0) {
+                // File doesn't exist on filesystem but exists in database
+                orphaned_files.push_back(filepath);
+                orphaned_ids.push_back(id);
+                orphaned_count++;
+
+                if (orphaned_count <= 10) { // Log first 10 for debugging
+                    bc_log(Info, "Found orphaned database entry: ID=%d, filepath=%s", id, filepath);
+                }
             }
         }
+        bc_db_free_table(dbres);
+
+        if (page_rows < 1000)
+            break;
     }
-    bc_db_free_table(dbres);
     
     if (orphaned_count == 0) {
         bc_log(Info, "Database/filesystem sync complete: %d files checked, no orphaned entries found", total_checked);

@@ -440,6 +440,13 @@ bool lavf_device::create_stream_packet(AVPacket *src)
 	int64_t dts = av_rescale_q_rnd(src->dts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
+	/* Cameras that send no dts would otherwise poison every downstream
+	 * muxer: libavformat cannot order such packets, its interleave
+	 * queue grows without bound, and the server OOMs (issue #768).
+	 * Standard fallback: dts tracks pts when the source omits it. */
+	if (dts == AV_NOPTS_VALUE)
+		dts = pts;
+
 	// Only adjust DTS for VBR streams (bit_rate == 0)
 	if (src->stream_index == video_stream_index) {
 		// SAFE ACCESS: Validate video stream before accessing codecpar

@@ -16,6 +16,7 @@
  */
 
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include "bc-server.h"
 #include "rtsp.h"
@@ -323,7 +324,12 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	re = av_write_frame(bc_rec->rtp_stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
-			bc_rec->log.log(Warning, "Likely timestamping(%ld) error. Ignoring.", opkt.pts);
+			/* Throttled: broken-timestamp streams fail every packet. */
+			time_t now = time(nullptr);
+			if (now - bc_rec->last_stream_ts_warn[ctx_index] >= 30) {
+				bc_rec->log.log(Warning, "Likely timestamping(%ld) error. Ignoring.", opkt.pts);
+				bc_rec->last_stream_ts_warn[ctx_index] = now;
+			}
 			return 1;
 		}
 		char err[512] = { 0 };
@@ -385,7 +391,12 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	re = av_interleaved_write_frame(bc_rec->hls_stream_ctx[ctx_index], &opkt);
 	if (re < 0) {
 		if (re == AVERROR(EINVAL)) {
-			bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
+			/* Throttled: broken-timestamp streams fail every packet. */
+			time_t now = time(nullptr);
+			if (now - bc_rec->last_stream_ts_warn[ctx_index] >= 30) {
+				bc_rec->log.log(Warning, "Likely timestamping error. Ignoring.");
+				bc_rec->last_stream_ts_warn[ctx_index] = now;
+			}
 			return 1;
 		}
 

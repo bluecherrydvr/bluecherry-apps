@@ -107,6 +107,9 @@ public:
 	unsigned int		stream_fail_count;
 	/* Last wall-clock time a device-state mailer notification was sent */
 	time_t			last_notify_time;
+	/* Last wall-clock time a live-stream timestamp warning fired, per
+	 * stream index (video/audio); throttles muxer EINVAL spam */
+	time_t			last_stream_ts_warn[2];
 
 	pthread_t		thread;
 

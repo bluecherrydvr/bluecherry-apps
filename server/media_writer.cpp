@@ -39,6 +39,29 @@ static void bc_avlog(int val, const char *msg)
 	bc_log(Error, "%s: %s", msg, err);
 }
 
+/* One frame step in the stream's time-base units, from its frame rate
+ * (30fps default when the stream names none). Shared by every path
+ * that synthesizes a replacement dts. */
+static int64_t mux_frame_increment(AVStream *stream, int stream_index,
+				   bool *rate_warned)
+{
+	int64_t frame_increment;
+
+	if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
+		frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
+	} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
+		frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
+	} else {
+		frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
+		if (!*rate_warned) {
+			bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", stream_index);
+			*rate_warned = true;
+		}
+	}
+
+	return frame_increment;
+}
+
 // Audio stream compatibility validation function
 static bool is_audio_stream_compatible(const stream_properties::audio_properties &audio_props)
 {
@@ -139,11 +162,24 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	int64_t &last_mux_dts = this->last_mux_dts[pkt.type];
 	bool update_last_mux_dts = true;
 	if (opkt.dts == AV_NOPTS_VALUE) {
-		// Do nothing.
-		// In ffmpeg, ffmpeg_mux.c:write_packet() does nothing and
-		// lavf/mux.c:compute_muxer_pkt_fields() deals with it for now
-		bc_log(Info, "Got bad dts=NOPTS on stream %d, passing to libavformat to handle", opkt.stream_index);
-		update_last_mux_dts = false;
+		/* A missing dts must never reach libavformat: its interleave
+		 * queue cannot order such packets and grows without bound
+		 * (RAM exhaustion, issue #768). Synthesize from the last
+		 * muxed dts; only a first-ever NOPTS packet passes through. */
+		if (last_mux_dts != AV_NOPTS_VALUE) {
+			AVStream *stream = out_ctx->streams[opkt.stream_index];
+			opkt.dts = last_mux_dts +
+				mux_frame_increment(stream, opkt.stream_index,
+						    &frame_rate_warned[pkt.type]);
+		} else {
+			time_t now = time(nullptr);
+			if (now - last_timestamp_warning[pkt.type] >= 30) {
+				bc_log(Info, "Got bad dts=NOPTS on stream %d with no reference timestamp, passing to libavformat to handle",
+					opkt.stream_index);
+				last_timestamp_warning[pkt.type] = now;
+			}
+			update_last_mux_dts = false;
+		}
 	} else if (last_mux_dts == AV_NOPTS_VALUE) {
 		// First packet ever. Initialize last_mux_dts and move on.
 	} else if (last_mux_dts < opkt.dts) {
@@ -189,25 +225,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			}
 			
 			if (should_adjust) {
-				// Calculate frame increment based on the stream's time base
 				AVStream *stream = out_ctx->streams[opkt.stream_index];
 				int64_t frame_increment;
 				
-				// Try to get frame rate from stream
-				if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
-					// Convert frame rate to time base units
-					frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
-				} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
-					// Fall back to r_frame_rate if avg_frame_rate is not available
-					frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
-				} else {
-					// If no frame rate info is available, use a conservative default of 1/30
-					frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
-					if (!frame_rate_warned[pkt.type]) {
-						bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
-						frame_rate_warned[pkt.type] = true;
-					}
-				}
+				frame_increment = mux_frame_increment(stream,
+					opkt.stream_index, &frame_rate_warned[pkt.type]);
 				
 				// Adjust the timestamp to maintain continuity
 				opkt.dts = last_mux_dts + frame_increment;
@@ -227,25 +249,11 @@ bool media_writer::write_packet(const stream_packet &pkt)
 				last_timestamp_warning[pkt.type] = now;
 			}
 			
-			// Calculate frame increment based on the stream's time base
 			AVStream *stream = out_ctx->streams[opkt.stream_index];
 			int64_t frame_increment;
 			
-			// Try to get frame rate from stream
-			if (stream->avg_frame_rate.num && stream->avg_frame_rate.den) {
-				// Convert frame rate to time base units
-				frame_increment = av_rescale_q(1, (AVRational){stream->avg_frame_rate.den, stream->avg_frame_rate.num}, stream->time_base);
-			} else if (stream->r_frame_rate.num && stream->r_frame_rate.den) {
-				// Fall back to r_frame_rate if avg_frame_rate is not available
-				frame_increment = av_rescale_q(1, (AVRational){stream->r_frame_rate.den, stream->r_frame_rate.num}, stream->time_base);
-			} else {
-				// If no frame rate info is available, use a conservative default of 1/30
-				frame_increment = av_rescale_q(1, (AVRational){1, 30}, stream->time_base);
-				if (!frame_rate_warned[pkt.type]) {
-					bc_log(Warning, "No frame rate information available for stream %d, using default 30fps", opkt.stream_index);
-					frame_rate_warned[pkt.type] = true;
-				}
-			}
+			frame_increment = mux_frame_increment(stream,
+				opkt.stream_index, &frame_rate_warned[pkt.type]);
 			
 			// Adjust the timestamp to maintain continuity
 			opkt.dts = last_mux_dts + frame_increment;
@@ -259,6 +267,12 @@ bool media_writer::write_packet(const stream_packet &pkt)
 			// Continue with the packet as-is to avoid dropping frames
 		}
 	}
+
+	/* A missing pts stalls the muxer the same way a missing dts does;
+	 * track the (now valid) dts. When dts itself is still NOPTS
+	 * (first-ever packet), pts passes through as before. */
+	if (opkt.pts == AV_NOPTS_VALUE)
+		opkt.pts = opkt.dts;
 
 	// SAFE DEBUG LOGGING: Add null pointer checks before accessing stream properties
 	AVStream *debug_stream = out_ctx->streams[opkt.stream_index];

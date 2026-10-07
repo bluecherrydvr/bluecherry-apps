@@ -853,6 +853,8 @@ bc_record::bc_record(int i)
 	start_failed = 0;
 	stream_fail_count = 0;
 	last_notify_time = 0;
+	last_stream_ts_warn[0] = 0;
+	last_stream_ts_warn[1] = 0;
 
 	memset(&event, 0, sizeof(event));
 

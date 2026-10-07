@@ -69,6 +69,23 @@ static void bc_db_lock_init(void)
 	pthread_mutexattr_destroy(&attr);
 }
 
+/* One-line timeout report naming the current holder. Uses stderr, not
+ * bc_log, so it cannot wedge behind the logging lock it may be
+ * diagnosing. Best effort: the holder fields are written under the
+ * mutex this caller failed to take. */
+static void bc_db_log_timeout_holder(const char *what)
+{
+	time_t now = time(NULL);
+
+	fprintf(stderr, "CRITICAL: %s (holder thread %lu ('%.15s', op '%s'), "
+		"held %lds, last successful acquire %lds ago)\n",
+		what,
+		(unsigned long)db_lock_holder, db_lock_holder_name,
+		db_lock_holder_op,
+		db_lock_acquired_at ? (long)(now - db_lock_acquired_at) : -1L,
+		db_last_acquire_ok ? (long)(now - db_last_acquire_ok) : -1L);
+}
+
 static void bc_db_note_acquired(void)
 {
 	db_lock_holder = pthread_self();
@@ -149,7 +166,11 @@ static int bc_db_lock(void)
 	if (r == EOWNERDEAD)
 		return bc_db_reclaim_after_owner_death();
 
-	fprintf(stderr, "CRITICAL: Database lock timeout - potential deadlock detected\n");
+	/* Name the holder on every timeout: without it a field report
+	 * cannot distinguish one wedged query from general contention.
+	 * Same holder on both lines below means one stuck operation;
+	 * different holders mean many slow ones. */
+	bc_db_log_timeout_holder("Database lock timeout - potential deadlock detected");
 	db_lock_timeouts++;
 
 	clock_gettime(CLOCK_REALTIME, &timeout);
@@ -163,7 +184,7 @@ static int bc_db_lock(void)
 	if (r == EOWNERDEAD)
 		return bc_db_reclaim_after_owner_death();
 
-	fprintf(stderr, "CRITICAL: Database lock retry failed - server may be overloaded\n");
+	bc_db_log_timeout_holder("Database lock retry failed - server may be overloaded");
 	db_lock_timeouts++;
 	bc_db_maybe_log_contention();
 	return -1;
