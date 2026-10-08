@@ -1,7 +1,10 @@
 #include "libbluecherry.h"
 
 input_device::input_device()
-	: _audio_enabled(false), _started(false), next_packet_seq(0) 
+	: _audio_enabled(false), _started(false), next_packet_seq(0),
+	  ts_last_dts{AV_NOPTS_VALUE, AV_NOPTS_VALUE},
+	  ts_last_pts{AV_NOPTS_VALUE, AV_NOPTS_VALUE},
+	  ts_last_warn{0, 0}
 {
 }
 
@@ -12,6 +15,75 @@ input_device::~input_device()
 void input_device::set_audio_enabled(bool v)
 {
 	_audio_enabled = v;
+}
+
+/* Sanity bounds for one packet's dts jump, in microseconds. Network
+ * reorder jitter is millisecond-scale; an incoherent jump beyond
+ * these bounds is demuxer/camera garbage, not timing. */
+#define BC_TS_BACK_TOL_US (2 * AV_TIME_BASE)
+#define BC_TS_FWD_TOL_US  (10 * AV_TIME_BASE)
+
+void input_device::sanitize_packet_timestamps(int type, int64_t &pts, int64_t &dts)
+{
+	if (type != AVMEDIA_TYPE_VIDEO && type != AVMEDIA_TYPE_AUDIO)
+		return;
+	int i = (type == AVMEDIA_TYPE_AUDIO) ? 1 : 0;
+
+	/* First packet of this type anchors the stream. Never emit
+	 * NOPTS: muxers cannot order such packets and queue them
+	 * without bound (issue #768). */
+	if (ts_last_dts[i] == AV_NOPTS_VALUE) {
+		if (dts == AV_NOPTS_VALUE)
+			dts = (pts != AV_NOPTS_VALUE) ? pts : 0;
+		if (pts == AV_NOPTS_VALUE || pts < dts)
+			pts = dts;
+		ts_last_dts[i] = dts;
+		ts_last_pts[i] = pts;
+		return;
+	}
+
+	if (dts == AV_NOPTS_VALUE)
+		dts = (pts != AV_NOPTS_VALUE) ? pts : ts_last_dts[i] + 1;
+	if (pts == AV_NOPTS_VALUE)
+		pts = dts;
+
+	bool dts_back = dts < ts_last_dts[i] - BC_TS_BACK_TOL_US;
+	bool dts_fwd  = dts > ts_last_dts[i] + BC_TS_FWD_TOL_US;
+	bool pts_back = pts < ts_last_pts[i] - BC_TS_BACK_TOL_US;
+	bool pts_fwd  = pts > ts_last_pts[i] + BC_TS_FWD_TOL_US;
+
+	if ((dts_back && pts_back) || (dts_fwd && pts_fwd)) {
+		/* Both clocks jumped together: camera reboot, timestamp
+		 * restart, NTP step, or counter wrap. Accept and re-anchor. */
+		if (pts < dts)
+			pts = dts;
+		ts_last_dts[i] = dts;
+		ts_last_pts[i] = pts;
+		return;
+	}
+
+	if (dts_back || dts_fwd) {
+		/* dts jumped but pts did not follow: garbage. Track pts. */
+		time_t now = time(NULL);
+		if (now - ts_last_warn[i] >= 30) {
+			bc_log(Warning, "Dropping garbage %s dts=%" PRId64
+			       " (last %" PRId64 "), using pts=%" PRId64,
+			       i ? "audio" : "video",
+			       dts, ts_last_dts[i], pts);
+			ts_last_warn[i] = now;
+		}
+		dts = pts;
+	}
+
+	/* Enforce strictly monotonic dts (reorder clamp; subsumes the old
+	 * VBR dts==last micro-adjust) and keep pts at or after dts. */
+	if (dts <= ts_last_dts[i])
+		dts = ts_last_dts[i] + 1;
+	if (pts < dts)
+		pts = dts;
+
+	ts_last_dts[i] = dts;
+	ts_last_pts[i] = pts;
 }
 
 stream_packet::stream_packet()

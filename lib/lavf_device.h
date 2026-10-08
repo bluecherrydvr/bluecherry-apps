@@ -61,7 +61,6 @@ private:
 	AVPacket frame;
 	stream_packet current_packet;
 	mutable std::mutex ctx_mutex;
-	int64_t last_video_dts_;
 
 	bool create_stream_packet(AVPacket *src);
 

@@ -33,7 +33,7 @@ extern "C" {
 
 lavf_device::lavf_device(const char *u, int rtp_protocol)
 	: ctx(0), video_stream_index(-1), audio_stream_index(-1)
-		, rtp_protocol(rtp_protocol), last_video_dts_(0)
+		, rtp_protocol(rtp_protocol)
 {
 	strlcpy(url, u, sizeof(url));
 
@@ -75,7 +75,6 @@ void lavf_device::stop_unlocked()
 	}
 	
 	video_stream_index = audio_stream_index = -1;
-	last_video_dts_ = 0;
 }
 
 int lavf_device::start()
@@ -440,29 +439,13 @@ bool lavf_device::create_stream_packet(AVPacket *src)
 	int64_t dts = av_rescale_q_rnd(src->dts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
-	/* Cameras that send no dts would otherwise poison every downstream
-	 * muxer: libavformat cannot order such packets, its interleave
-	 * queue grows without bound, and the server OOMs (issue #768).
-	 * Standard fallback: dts tracks pts when the source omits it. */
-	if (dts == AV_NOPTS_VALUE)
-		dts = pts;
+	/* Enforce sane, monotonic stamps for every downstream muxer
+	 * (issue #768): missing, garbage, or reordered dts is repaired
+	 * here, once, for recording, live, and snapshot paths alike. */
+	sanitize_packet_timestamps(
+		src->stream_index == video_stream_index ?
+		AVMEDIA_TYPE_VIDEO : AVMEDIA_TYPE_AUDIO, pts, dts);
 
-	// Only adjust DTS for VBR streams (bit_rate == 0)
-	if (src->stream_index == video_stream_index) {
-		// SAFE ACCESS: Validate video stream before accessing codecpar
-		if (video_stream_index >= 0 && video_stream_index < ctx->nb_streams && 
-		    ctx->streams[video_stream_index] && ctx->streams[video_stream_index]->codecpar) {
-			AVCodecParameters *codecpar = ctx->streams[video_stream_index]->codecpar;
-			if (codecpar->bit_rate == 0 && dts == last_video_dts_) {
-				// For VBR streams, increment DTS by a small amount
-				dts = last_video_dts_ + 1;
-				bc_log(Debug, "VBR stream detected - adjusted DTS from %ld to %ld",
-				       (long)last_video_dts_, (long)dts);
-			}
-			last_video_dts_ = dts;
-		}
-	}
-	
 	current_packet.pts = pts;
 	current_packet.dts = dts;
 	

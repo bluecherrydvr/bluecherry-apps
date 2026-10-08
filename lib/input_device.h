@@ -22,6 +22,8 @@
 #include <vector>
 #include <deque>
 #include <memory>
+#include <cstdint>
+#include <ctime>
 
 /* GCC starting with 4.5.x ships <atomic>, while older versions use <cstdatomic> */
 #if __GNUC__ == 4 && __GNUC_MINOR__ < 5
@@ -119,6 +121,20 @@ protected:
 	 */
 	unsigned next_packet_seq;
 	std::shared_ptr<stream_properties> current_properties;
+
+	/* Last accepted timestamps per media type (video=0, audio=1), in
+	 * AV_TIME_BASE_Q; AV_NOPTS_VALUE means "no packet anchored yet". */
+	int64_t ts_last_dts[2];
+	int64_t ts_last_pts[2];
+	time_t ts_last_warn[2];
+
+	/* Enforce the stream_packet timestamp contract on one packet's
+	 * stamps: dts strictly monotonic (except coherent clock
+	 * restarts/wraps, which re-anchor), never NOPTS, pts never
+	 * NOPTS and never below dts. Garbage dts from broken
+	 * cameras/demuxers would otherwise reach every muxer, whose
+	 * interleave queues grow without bound (issue #768). */
+	void sanitize_packet_timestamps(int type, int64_t &pts, int64_t &dts);
 
 	void set_error_message(const std::string &msg) { _error_message = msg; }
 };

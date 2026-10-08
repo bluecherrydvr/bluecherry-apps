@@ -397,6 +397,11 @@ int v4l2_device_solo6010_dkms::read_packet()
 	AVRational tb = { vparm.parm.capture.timeperframe.numerator, vparm.parm.capture.timeperframe.denominator };
 	current_packet.pts = av_rescale_q(current_packet.seq, tb, AV_TIME_BASE_Q);
 
+	/* dts was never set here (always NOPTS): derive it so downstream
+	 * muxers get ordered stamps (issue #768). */
+	sanitize_packet_timestamps(AVMEDIA_TYPE_VIDEO,
+		current_packet.pts, current_packet.dts);
+
 	return 0;
 }
 

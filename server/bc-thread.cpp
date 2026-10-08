@@ -855,6 +855,10 @@ bc_record::bc_record(int i)
 	last_notify_time = 0;
 	last_stream_ts_warn[0] = 0;
 	last_stream_ts_warn[1] = 0;
+	last_rtp_mux_dts[0] = AV_NOPTS_VALUE;
+	last_rtp_mux_dts[1] = AV_NOPTS_VALUE;
+	last_hls_mux_dts[0] = AV_NOPTS_VALUE;
+	last_hls_mux_dts[1] = AV_NOPTS_VALUE;
 
 	memset(&event, 0, sizeof(event));
 

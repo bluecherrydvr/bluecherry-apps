@@ -278,6 +278,39 @@ int bc_streaming_is_active_hls(struct bc_record *bc_rec)
 	return bc_rec->hls_stream != NULL ? 1 : 0;
 }
 
+/* Last-resort stamp repair for the live muxers, in the muxer's own
+ * stream time base. Producers are supposed to emit sane monotonic
+ * stamps, but if one ever feeds NOPTS, stalled, reordered, or
+ * far-future dts here, repair it instead of wedging the muxer
+ * (whose interleave queue has no size limit) or EINVAL-spamming
+ * every packet. After this, dts is strictly increasing (forward
+ * jumps capped at 60s so one garbage packet cannot park the live
+ * timeline in the far future) and pts is valid and >= dts. */
+static void stream_mux_repair(int64_t *last_dts, AVPacket *opkt, AVRational tb)
+{
+	int64_t max_step = av_rescale_q(60 * AV_TIME_BASE, AV_TIME_BASE_Q, tb);
+	if (max_step < 1)
+		max_step = 1;
+	if (*last_dts == AV_NOPTS_VALUE) {
+		/* First packet anchors the stream. */
+		if (opkt->dts == AV_NOPTS_VALUE)
+			opkt->dts = (opkt->pts != AV_NOPTS_VALUE) ? opkt->pts : 0;
+	} else if (opkt->dts == AV_NOPTS_VALUE || opkt->dts <= *last_dts) {
+		if (opkt->pts != AV_NOPTS_VALUE && opkt->pts > *last_dts)
+			opkt->dts = opkt->pts;
+		else if (*last_dts < INT64_MAX - 1)
+			opkt->dts = *last_dts + 1;
+		else
+			opkt->dts = *last_dts; /* saturate; muxer EINVALs once, throttled */
+	} else if (*last_dts < INT64_MAX - max_step &&
+		   opkt->dts > *last_dts + max_step) {
+		opkt->dts = *last_dts + max_step;
+	}
+	if (opkt->pts == AV_NOPTS_VALUE || opkt->pts < opkt->dts)
+		opkt->pts = opkt->dts;
+	*last_dts = opkt->dts;
+}
+
 int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt)
 {
 	AVPacket opkt;
@@ -316,6 +349,9 @@ int bc_streaming_packet_write(struct bc_record *bc_rec, const stream_packet &pkt
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0;
+
+	stream_mux_repair(&bc_rec->last_rtp_mux_dts[ctx_index], &opkt,
+		bc_rec->rtp_stream_ctx[ctx_index]->streams[0]->time_base);
 
 	bc_rec->cur_pkt_flags = pkt.flags;
 	bc_rec->cur_stream_index = ctx_index;
@@ -382,6 +418,9 @@ int bc_streaming_hls_packet_write(struct bc_record *bc_rec, const stream_packet 
 	opkt.data         = const_cast<uint8_t*>(pkt.data());
 	opkt.size         = pkt.size;
 	opkt.stream_index = 0;
+
+	stream_mux_repair(&bc_rec->last_hls_mux_dts[ctx_index], &opkt,
+		bc_rec->hls_stream_ctx[ctx_index]->streams[0]->time_base);
 
 	bc_rec->cur_pkt_flags = pkt.flags;
 	bc_rec->cur_stream_index = ctx_index;

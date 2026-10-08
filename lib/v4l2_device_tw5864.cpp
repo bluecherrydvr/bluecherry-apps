@@ -342,10 +342,10 @@ void v4l2_device_tw5864::create_stream_packet(AVPacket *src)
 			AV_TIME_BASE_Q, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 	current_packet.dts      = av_rescale_q_rnd(src->dts, demuxer->streams[src->stream_index]->time_base,
 			AV_TIME_BASE_Q, (enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-	/* Missing dts poisons downstream muxers (unbounded interleave
-	 * queue, issue #768): fall back to pts like lavf_device does. */
-	if (current_packet.dts == AV_NOPTS_VALUE)
-		current_packet.dts = current_packet.pts;
+	/* Enforce sane, monotonic stamps for every downstream muxer
+	 * (issue #768). */
+	sanitize_packet_timestamps(AVMEDIA_TYPE_VIDEO,
+		current_packet.pts, current_packet.dts);
 	if (src->flags & AV_PKT_FLAG_KEY)
 		current_packet.flags |= stream_packet::KeyframeFlag;
 	current_packet.ts_monotonic = bc_gettime_monotonic();

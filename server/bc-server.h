@@ -110,6 +110,12 @@ public:
 	/* Last wall-clock time a live-stream timestamp warning fired, per
 	 * stream index (video/audio); throttles muxer EINVAL spam */
 	time_t			last_stream_ts_warn[2];
+	/* Last dts fed to each live muxer, per stream index, in that
+	 * muxer's stream time base; AV_NOPTS_VALUE until the first
+	 * packet. The live paths repair stamps against these so a
+	 * broken producer can never wedge a muxer queue (issue #768). */
+	int64_t			last_rtp_mux_dts[2];
+	int64_t			last_hls_mux_dts[2];
 
 	pthread_t		thread;
 
