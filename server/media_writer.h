@@ -32,6 +32,9 @@ protected:
 	bool frame_rate_warned[2] = {false, false};
 	bool timestamp_gap_warned[2] = {false, false};
 	time_t last_timestamp_warning[2] = {0, 0};
+	/* Consecutive out-of-order adjustments; sustained stalls demote
+	 * from Warning to a one-time Info plus Debug (issue #768). */
+	int dts_stall_streak[2] = {0, 0};
 };
 
 class snapshot_writer

@@ -29,6 +29,10 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+/* Consecutive synthesized packets before a dts stall demotes from
+ * Warning to a one-time Info plus Debug (issue #768 follow-up). */
+#define BC_DTS_STALL_DEMOTE_PACKETS 300
+
 #include "bc-server.h"
 #include "lavf_device.h"
 
@@ -182,8 +186,14 @@ bool media_writer::write_packet(const stream_packet &pkt)
 		}
 	} else if (last_mux_dts == AV_NOPTS_VALUE) {
 		// First packet ever. Initialize last_mux_dts and move on.
+		dts_stall_streak[pkt.type] = 0;
 	} else if (last_mux_dts < opkt.dts) {
 		// Monotonically increasing timestamps. This is normal.
+		if (dts_stall_streak[pkt.type] > BC_DTS_STALL_DEMOTE_PACKETS) {
+			bc_log(Info, "dts recovered on stream %d after %d synthesized packets",
+				opkt.stream_index, dts_stall_streak[pkt.type]);
+		}
+		dts_stall_streak[pkt.type] = 0;
 
 		// Get the tolerated gap from configuration, default to 2 seconds
 		int tolerated_gap_seconds = 2;
@@ -241,14 +251,27 @@ bool media_writer::write_packet(const stream_packet &pkt)
 	} else {
 		// In this clause we're dealing with incorrect timestamp received from the source.
 		if (last_mux_dts >= opkt.dts) {
-			// Rate limit warnings to prevent log spam (max once per 30 seconds per stream)
+			dts_stall_streak[pkt.type]++;
 			time_t now = time(nullptr);
-			if (now - last_timestamp_warning[pkt.type] >= 30) {
-				bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp", 
-					opkt.dts, last_mux_dts, opkt.stream_index);
+			if (dts_stall_streak[pkt.type] <= BC_DTS_STALL_DEMOTE_PACKETS) {
+				// Rate limit warnings to prevent log spam (max once per 30 seconds per stream)
+				if (now - last_timestamp_warning[pkt.type] >= 30) {
+					bc_log(Warning, "Got out-of-order dts=%" PRId64 " while last was %" PRId64 " on stream %d, adjusting timestamp",
+						opkt.dts, last_mux_dts, opkt.stream_index);
+					last_timestamp_warning[pkt.type] = now;
+				}
+			} else if (dts_stall_streak[pkt.type] == BC_DTS_STALL_DEMOTE_PACKETS + 1) {
+				/* Source clock stalled: every packet needs
+				 * synthesis and the gap can never close, so say
+				 * so once and drop to debug level (issue #768). */
+				bc_log(Info, "dts stall on stream %d: synthesizing timestamps until source recovers (%d packets adjusted)",
+					opkt.stream_index, dts_stall_streak[pkt.type]);
+			} else if (now - last_timestamp_warning[pkt.type] >= 30) {
+				bc_log(Debug, "dts stall continues on stream %d: got dts=%" PRId64 " while last was %" PRId64,
+					opkt.stream_index, opkt.dts, last_mux_dts);
 				last_timestamp_warning[pkt.type] = now;
 			}
-			
+
 			AVStream *stream = out_ctx->streams[opkt.stream_index];
 			int64_t frame_increment;
 			
@@ -344,6 +367,7 @@ void media_writer::close()
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
 		last_timestamp_warning[i] = 0;
+		dts_stall_streak[i] = 0;
 	}
 
 	if (out_ctx)
@@ -509,6 +533,7 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 		frame_rate_warned[i] = false;
 		timestamp_gap_warned[i] = false;
 		last_timestamp_warning[i] = 0;
+		dts_stall_streak[i] = 0;
 	}
 
 	AVDictionary *muxer_opts = NULL;
@@ -540,6 +565,12 @@ int media_writer::open(const std::string &path, const stream_properties &propert
 	}
 
 	properties.video.apply(video_st->codecpar);
+
+	/* Carry the input frame rate onto the output stream: copy-remux
+	 * leaves avg_frame_rate unset, which forced every timestamp
+	 * adjustment onto a 30fps assumption (issue #768 follow-up). */
+	if (properties.video.frame_rate.num > 0 && properties.video.frame_rate.den > 0)
+		video_st->avg_frame_rate = properties.video.frame_rate;
 
 	/* Setup audio stream if available */
 	audio_st = NULL;

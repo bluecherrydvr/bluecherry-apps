@@ -470,6 +470,14 @@ void lavf_device::update_properties()
 	    ctx->streams[video_stream_index] && ctx->streams[video_stream_index]->codecpar) {
 		AVCodecParameters *ic = ctx->streams[video_stream_index]->codecpar;
 		AVRational tb = ctx->streams[video_stream_index]->time_base;
+		AVStream *vs = ctx->streams[video_stream_index];
+		/* Nominal rate for timestamp synthesis: avg, else the raw
+		 * estimate, else unknown. Insane values (find_stream_info
+		 * can guess 90000/1) are discarded, not trusted. */
+		AVRational fr = (vs->avg_frame_rate.num > 0 && vs->avg_frame_rate.den > 0)
+			? vs->avg_frame_rate : vs->r_frame_rate;
+		double fps = (fr.num > 0 && fr.den > 0) ? av_q2d(fr) : 0;
+		p->video.frame_rate = (fps >= 1 && fps <= 120) ? fr : (AVRational){ 0, 0 };
 		p->video.codec_id = ic->codec_id;
 		p->video.pix_fmt = (AVPixelFormat)ic->format;
 		p->video.width = ic->width;

@@ -164,6 +164,11 @@ public:
 		/* Note that this is codec time_base; you should NOT use it other than
 		 * setting on an AVCodecContext. See stream_packet doc. */
 		AVRational time_base;
+		/* Nominal input frame rate (avg, else r_frame_rate) for
+		 * timestamp synthesis; 0/0 when unknown. Deliberately
+		 * excluded from operator!= (estimate wobble must not
+		 * reopen writers). */
+		AVRational frame_rate;
 		int profile;
 		std::vector<char> extradata;
 
