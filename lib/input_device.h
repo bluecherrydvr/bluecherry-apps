@@ -61,6 +61,54 @@
 class stream_packet;
 class stream_properties;
 
+/* 32-bit RTP timestamp wrap guard (issue #768).
+ *
+ * Video RTP timestamps are 32-bit at 90kHz, so they wrap every 2^32/90000 =
+ * 13h15m21s of session time. Cheap cameras reset them per RTSP session, and
+ * ffmpeg's RTP demuxer wedges at the first wrap: from then on it emits
+ * rescaled-NOPTS garbage (dts=-830103483316929823) instead of advancing
+ * stamps. That garbage overflow-clamps back to NOPTS at our rescale step, so
+ * the producer timeline freezes (sanitize can only emit last+1us per packet)
+ * while the recording writer synthesizes full frame increments: the gap never
+ * closes and every packet logs "adjusting timestamp" forever.
+ *
+ * No timestamp math downstream can recover wall-clock time once the demuxer
+ * wedges (the RTP info is destroyed inside ffmpeg), so the cure is to
+ * re-establish the session: feed every video packet's raw (pre-rescale) dts
+ * to observe() and restart the input when it reports anything but Ok. The
+ * recorder cuts the file on the new session's properties (see session_id),
+ * so the writer re-anchors cleanly instead of synthesizing across the jump.
+ */
+struct rtp_wrap_guard {
+	rtp_wrap_guard() {}
+	void reset();
+
+	enum result {
+		Ok = 0,
+		/* Raw dts entered the pre-wrap window after a long healthy
+		 * session: restart now, before the demuxer wedges. */
+		PreWrap = 1,
+		/* The demuxer stopped emitting usable stamps for longer than
+		 * wedge_timeout_sec although the session was healthy before:
+		 * restart as a backstop (covers non-wrap wedges too). */
+		Wedged = 2,
+	};
+
+	/* raw_dts: pre-rescale video dts in stream time-base units;
+	 * tb_num/tb_den: that time base; usable: the post-rescale stamp was
+	 * valid (not NOPTS); now: time(NULL). */
+	int observe(int64_t raw_dts, int tb_num, int tb_den, bool usable, time_t now);
+
+	int prewrap_margin_sec = 300;
+	int wedge_timeout_sec = 30;
+
+private:
+	bool have_base = false;
+	int64_t base_raw = 0;
+	bool wedge_armed = false;
+	time_t wedge_since = 0;
+};
+
 /* input_device provides an abstract interface implemented by device backends, such
  * as v4l2_device and lavf_device. Generally, each bc_handle has an input_device, which
  * while running will be repeatedly polled with read_packet(), which should block until
@@ -102,6 +150,15 @@ public:
 
 	virtual int caps() const { return 0; }
 	virtual bool has_error() const { return false; }
+
+	/* Non-null when the input wants the device thread to perform an
+	 * orderly restart (stop + start, no error event or reconnect
+	 * backoff). The returned string names the reason and must stay
+	 * valid until the next start(). Default: never restart. */
+	virtual const char *restart_requested() const { return 0; }
+
+	/* Session epoch source for stream_properties::session_id. */
+	static uint64_t next_session_id();
 
 	virtual int set_resolution(uint16_t width, uint16_t height, uint8_t interval) { return 0; }
 	virtual int set_osd(const char *fmt, ...) __attribute__ ((format (printf, 2, 3))) { return 0; }
@@ -196,6 +253,14 @@ public:
 		void apply(AVCodecContext *cc) const;
 		void apply(AVCodecParameters *cp) const;
 	} audio;
+
+	/* Input session epoch, assigned by every backend's update_properties()
+	 * (i.e. once per input start()). Included in operator!= so consumers
+	 * that compare properties by value (notably the recorder, which ends
+	 * the file on change) resynchronize after any input restart: packet
+	 * timestamps always rebase when the input restarts, so continuing the
+	 * old timeline would synthesize forever (issue #768). */
+	uint64_t session_id = 0;
 
 	bool operator!=(const stream_properties&) const;
 

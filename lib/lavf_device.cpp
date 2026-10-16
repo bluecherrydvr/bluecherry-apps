@@ -366,6 +366,8 @@ int lavf_device::start()
 	}
 
 	update_properties();
+	wrap_guard.reset();
+	restart_reason = 0;
 	_started = true;
 
 	return 0;
@@ -439,6 +441,19 @@ bool lavf_device::create_stream_packet(AVPacket *src)
 	int64_t dts = av_rescale_q_rnd(src->dts, tb, AV_TIME_BASE_Q,
 			(enum AVRounding)(AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
 
+	/* RTP wrap/wedge watch (issue #768), video only: the raw stamp is
+	 * examined before sanitize so a demuxer wedged at the 32-bit wrap
+	 * (or emitting no usable stamps at all) triggers a session restart
+	 * instead of a permanent synthesis storm downstream. */
+	if (!restart_reason && src->stream_index == video_stream_index) {
+		int rc = wrap_guard.observe(src->dts, tb.num, tb.den,
+		    dts != AV_NOPTS_VALUE, time(NULL));
+		if (rc == rtp_wrap_guard::PreWrap)
+			restart_reason = "RTP timestamp wrap approaching";
+		else if (rc == rtp_wrap_guard::Wedged)
+			restart_reason = "timestamp wedge (demuxer stopped emitting usable stamps)";
+	}
+
 	/* Enforce sane, monotonic stamps for every downstream muxer
 	 * (issue #768): missing, garbage, or reordered dts is repaired
 	 * here, once, for recording, live, and snapshot paths alike. */
@@ -464,6 +479,7 @@ bool lavf_device::create_stream_packet(AVPacket *src)
 void lavf_device::update_properties()
 {
 	stream_properties *p = new stream_properties;
+	p->session_id = next_session_id();
 
 	// SAFE ACCESS: Validate video stream before accessing properties
 	if (video_stream_index >= 0 && video_stream_index < ctx->nb_streams && 
@@ -509,6 +525,12 @@ void lavf_device::update_properties()
 	current_properties = std::shared_ptr<stream_properties>(p);
 }
 
+const char *lavf_device::restart_requested() const
+{
+	std::lock_guard<std::mutex> guard(ctx_mutex);
+	return restart_reason;
+}
+
 const char *lavf_device::stream_info()
 {
 	std::lock_guard<std::mutex> guard(ctx_mutex);
@@ -535,8 +557,8 @@ const char *lavf_device::stream_info()
 	else snprintf(buf, size, "%s", desc->name);
 
 	int off = strlen(buf);
-	off += snprintf(buf+off, size-off, ", %d/%d(s) %d/%d(c)", stream->time_base.num,
-                stream->time_base.den, stream->time_base.num, stream->time_base.den);
+	off += snprintf(buf+off, size-off, ", %d/%d(s)", stream->time_base.num,
+                stream->time_base.den);
 
 	// SAFE ACCESS: Validate audio stream before accessing
 	if (audio_stream_index >= 0 && audio_stream_index < ctx->nb_streams && 

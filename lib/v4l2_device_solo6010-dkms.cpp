@@ -560,6 +560,7 @@ int v4l2_device_solo6010_dkms::set_osd(const char *fmt, ...)
 void v4l2_device_solo6010_dkms::update_properties()
 {
 	stream_properties *p = new stream_properties;
+	p->session_id = next_session_id();
 
 	p->video.codec_id = codec_id;
 	p->video.pix_fmt = AV_PIX_FMT_YUV420P;

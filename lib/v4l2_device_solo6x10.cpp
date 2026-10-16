@@ -485,6 +485,7 @@ int v4l2_device_solo6x10::set_osd(const char *fmt, ...)
 void v4l2_device_solo6x10::update_properties()
 {
 	stream_properties *p = new stream_properties;
+	p->session_id = next_session_id();
 
 	AVCodecParameters *ic = demuxer->streams[0]->codecpar;
 	p->video.codec_id = demuxer->streams[0]->codecpar->codec_id;

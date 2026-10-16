@@ -231,8 +231,70 @@ stream_properties::video_properties::video_properties()
 {
 }
 
+uint64_t input_device::next_session_id()
+{
+	static std::atomic<uint64_t> counter{1};
+	return counter.fetch_add(1, std::memory_order_relaxed);
+}
+
+void rtp_wrap_guard::reset()
+{
+	have_base = false;
+	base_raw = 0;
+	wedge_armed = false;
+	wedge_since = 0;
+}
+
+int rtp_wrap_guard::observe(int64_t raw_dts, int tb_num, int tb_den, bool usable, time_t now)
+{
+	if (!usable) {
+		/* Unusable stamp (NOPTS, or rescale-overflow garbage from a
+		 * wedged demuxer). Only meaningful once the session proved
+		 * healthy; some sources never provide stamps at all. */
+		if (!wedge_armed)
+			return Ok;
+		if (!wedge_since)
+			wedge_since = now;
+		if (now - wedge_since >= wedge_timeout_sec)
+			return Wedged;
+		return Ok;
+	}
+	wedge_since = 0;
+	wedge_armed = true;
+
+	/* The pre-wrap window only applies to 32-bit RTP video clocks. */
+	if (tb_num != 1 || tb_den != 90000)
+		return Ok;
+	if (raw_dts < 0 || (uint64_t)raw_dts >= 0x100000000ULL)
+		return Ok;
+
+	const int64_t margin = (int64_t)prewrap_margin_sec * 90000;
+
+	if (!have_base) {
+		base_raw = raw_dts;
+		have_base = true;
+		return Ok;
+	}
+
+	if (raw_dts < base_raw) {
+		/* Backward jump within a session: small ones are reorder and
+		 * harmless, but a jump from near the top to near the bottom
+		 * means the wrap already happened while we watched. */
+		if (base_raw >= (int64_t)0x100000000ULL - margin && raw_dts < margin)
+			return PreWrap;
+		return Ok;
+	}
+
+	if (raw_dts >= (int64_t)0x100000000ULL - margin &&
+	    raw_dts - base_raw >= margin)
+		return PreWrap;
+	return Ok;
+}
+
 bool stream_properties::operator!=(const stream_properties& other) const
 {
+	if (session_id != other.session_id)
+		return true;
 	if (video.codec_id != other.video.codec_id
 		|| video.pix_fmt != other.video.pix_fmt
 		|| video.width != other.video.width

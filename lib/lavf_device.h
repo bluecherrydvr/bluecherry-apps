@@ -46,6 +46,8 @@ public:
 
 	virtual bool has_audio() const { return audio_stream_index >= 0; }
 
+	virtual const char *restart_requested() const override;
+
 	const char *get_error_message() const { return error_message; }
 	const char *stream_info();
 
@@ -61,6 +63,12 @@ private:
 	AVPacket frame;
 	stream_packet current_packet;
 	mutable std::mutex ctx_mutex;
+
+	/* RTP wrap/wedge detector (issue #768), fed by
+	 * create_stream_packet(); restart_reason latches the first firing
+	 * until the next start(). Guarded by ctx_mutex. */
+	rtp_wrap_guard wrap_guard;
+	const char *restart_reason = 0;
 
 	bool create_stream_packet(AVPacket *src);
 
