@@ -22,8 +22,11 @@ fi
 # TODO Implement building outside of sources tree
 
 # Safety measures. TODO quick compilation without spare rebuilds
+# NB: the clean/reset below stays disabled: it destroys local changes.
 #git submodule foreach --recursive "git clean -dxf && git reset --hard"
-#git submodule update --recursive --init
+# Populate submodules on fresh clones; without this the misc/ build fails
+# with "not a git repository" / missing configure.ac (issue #768 reporter).
+git submodule update --recursive --init
 
 $(dirname $0)/check-db-version-consistency
 
