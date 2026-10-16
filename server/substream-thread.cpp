@@ -63,6 +63,17 @@ void substream::run(struct bc_record *r)
 			goto error;
 		}
 
+		/* Orderly restart requested by the substream input itself (RTP
+		 * wrap/wedge watch, issue #768): same teardown as the error
+		 * path but restart immediately, without the 3s sleep. */
+		if (const char *rr = r->bc->substream_input->restart_requested()) {
+			r->log.log(Info, "Restarting substream (%s)", rr);
+			bc_streaming_destroy_rtp(r);
+			bc_streaming_destroy_hls(r);
+			r->bc->substream_input->stop();
+			continue;
+		}
+
 		liveview_packet = r->bc->substream_input->packet();
 
 		/* Motion analysis consumes here when enabled, independent of

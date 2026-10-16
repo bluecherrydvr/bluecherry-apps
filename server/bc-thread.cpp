@@ -727,6 +727,19 @@ void bc_record::run()
 			notify_device_state("BACK ONLINE");
 		}
 
+		/* Orderly input restart requested by the device itself (e.g. RTP
+		 * timestamp wrap approaching, issue #768): tear down streaming
+		 * and the input like the error path, but without the error
+		 * event, offline notification, or reconnect backoff. The next
+		 * iteration restarts the input immediately, and the recorder
+		 * cuts the file on the new session's properties. The triggering
+		 * packet is dropped so the old file ends on healthy stamps. */
+		if (const char *rr = bc->input->restart_requested()) {
+			log.log(Info, "Restarting device stream (%s)", rr);
+			stop_handle_properly(this);
+			continue;
+		}
+
 		packet = bc->input->packet();
 		g_last_recording_progress_time.store(time(NULL));
 		bc->source->send(packet);
