@@ -68,6 +68,24 @@ noble_install()
     mantic_install
 }
 
+# Ubuntu 26.04
+resolute_install()
+{
+    # Same flow as mantic_install but for Ubuntu 26.04 Resolute.
+    # NOTE: mysql-server 8.4 conflicts with mariadb-common on resolute, and
+    # mariadb-common is required by bluecherry's closure (php-mysql), so the
+    # mysql-server Recommends can never be satisfied here. Install the
+    # MariaDB server explicitly instead; postinst works with it unchanged.
+    apt-get update
+    apt -y install gpg software-properties-common wget
+    wget -q https://dl.bluecherrydvr.com/key/bluecherry.asc -O- | sudo tee /etc/apt/trusted.gpg.d/bluecherry.asc
+    : "${SRCLIST_URL:=https://dl.bluecherrydvr.com/sources.list.d/bluecherry-resolute.list}"
+    wget --output-document=/etc/apt/sources.list.d/bluecherry-"$VERSION_CODENAME".list "$SRCLIST_URL"
+    apt -y update
+    apt -y install bluecherry mariadb-server mariadb-client
+    systemctl restart bluecherry
+}
+
 # Debian 10
 buster_install()
 {
@@ -138,6 +156,7 @@ if   [[ "$ID" == "ubuntu" && "$VERSION_ID" == "20.04" && "$VERSION_CODENAME" == 
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "22.04" && "$VERSION_CODENAME" == "jammy"    ]]; then jammy_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.04" && "$VERSION_CODENAME" == "noble"    ]]; then noble_install;
 elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "24.10" && "$VERSION_CODENAME" == "oracular" ]]; then noble_install;
+elif [[ "$ID" == "ubuntu" && "$VERSION_ID" == "26.04" && "$VERSION_CODENAME" == "resolute"  ]]; then resolute_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "10"    && "$VERSION_CODENAME" == "buster"   ]]; then buster_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "11"    && "$VERSION_CODENAME" == "bullseye" ]]; then bullseye_install;
 elif [[ "$ID" == "debian" && "$VERSION_ID" == "12"    && "$VERSION_CODENAME" == "bookworm" ]]; then bookworm_install;
