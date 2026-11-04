@@ -42,7 +42,13 @@ then
 	mkdir -p $DST_DIR
 	mv -v ~build/rpmbuild/RPMS/x86_64/*.rpm $DST_DIR
 else
-	debian/rules debian/control
+	# Generate debian/control directly instead of via debian/rules:
+	# dpkg >= 1.23 (Ubuntu 26.04+) reads debian/control while parsing
+	# debian/rules (buildapi.mk), so invoking rules to CREATE control
+	# is a chicken-and-egg failure. This replicates the rule recipe.
+	RELEASE_NAME=$(./scripts/build_helper/get_distro_release_name.sh)
+	if [ -z "$RELEASE_NAME" ]; then echo "could not determine distro release name" >&2; exit 1; fi
+	sed -e "s/^#${RELEASE_NAME}//" debian/control.in | grep -v '^#' > debian/control
 	debian/rules clean binary
 	mkdir -p $DST_DIR
 	mv -v ../bluecherry*.deb $DST_DIR

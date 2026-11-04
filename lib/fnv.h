@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 #include <sys/types.h>
+#include <stdint.h>
 
 #define FNV_INIT  ((uint64_t)0xcbf29ce484222325ULL)
 #define FNV_PRIME ((uint64_t)0x100000001b3ULL)

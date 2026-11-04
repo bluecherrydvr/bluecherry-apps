@@ -158,7 +158,7 @@ pugixml-clean: FORCE
 	-rm pugixml/Makefile
 
 pugixml/Makefile:
-	cd pugixml && CC="ccache gcc" CXX="ccache g++" cmake -DCMAKE_INSTALL_PREFIX=$(STAGE) -DBUILD_SHARED_LIBS=1 scripts/
+	cd pugixml && CC="ccache gcc" CXX="ccache g++" cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_INSTALL_PREFIX=$(STAGE) -DBUILD_SHARED_LIBS=1 scripts/
 
 $(STAGE)/lib/libpugixml.so: pugixml/Makefile
 	$(MAKE) $(MAKEARGS) -C pugixml install
