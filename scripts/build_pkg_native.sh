@@ -26,7 +26,9 @@ fi
 #git submodule foreach --recursive "git clean -dxf && git reset --hard"
 # Populate submodules on fresh clones; without this the misc/ build fails
 # with "not a git repository" / missing configure.ac (issue #768 reporter).
-git submodule update --recursive --init
+# List paths explicitly: misc/libconfig still has a vestigial gitlink but no
+# .gitmodules entry, and a bare --init fatals on it ("No url found").
+git submodule update --recursive --init -- misc/libav misc/ponvif misc/ponvif_ext
 
 $(dirname $0)/check-db-version-consistency
 
