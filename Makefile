@@ -7,6 +7,11 @@ export TOPDIR STAGE BCMK CONTRIB_BASE_DIR
 
 SUBDIRS = misc lib server utils
 
+# Serialize only the subdir goals (they must build in listed order: utils
+# links libbluecherry from lib/, etc.). Sub-makes still parallelize their
+# own recipes via the jobserver. No-op under -j1.
+.NOTPARALLEL:
+
 
 # Goal blacklist, required in order to support debhelper
 goal-bl   = distclean realclean test check
